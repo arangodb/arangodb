@@ -43,10 +43,12 @@ class ArangoGlobalContext {
   void unmaskStandardSignals();
   void runStartupChecks();
   void tempPathAvailable();
+  bool useEventLog() { return _useEventLog; } 
 
  private:
   std::string _binaryName;
   int _ret;
+  bool _useEventLog;
 };
 }
 

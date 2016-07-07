@@ -28,6 +28,9 @@
 
 using namespace arangodb::aql;
 
+static bool const CreatesAdditionalPlans = true;
+static bool const DoesNotCreateAdditionalPlans = false;
+
 arangodb::Mutex Optimizer::SetupLock;
 
 // @brief list of all rules
@@ -146,12 +149,14 @@ int Optimizer::createPlans(ExecutionPlan* plan,
         level = (*it).first;
         auto& rule = (*it).second;
 
-        if ((runOnlyRequiredRules ||
+        // skip over rules if we should
+        // however, we don't want to skip those rules that will not create
+        // additional plans
+        if (((runOnlyRequiredRules && rule.canCreateAdditionalPlans) ||
              disabledIds.find(level) != disabledIds.end()) &&
             rule.canBeDisabled) {
           // we picked a disabled rule or we have reached the max number of
-          // plans
-          // and just skip this rule
+          // plans and just skip this rule
 
           _newPlans.push_back(p, level);  // nothing to do, just keep it
 
@@ -299,7 +304,7 @@ std::unordered_set<int> Optimizer::getDisabledRuleIds(
         }
       } else {
         // disable a specific rule
-        auto it = _ruleLookup.find(std::string(name.c_str() + 1));
+        auto it = _ruleLookup.find(name.c_str() + 1);
 
         if (it != _ruleLookup.end()) {
           disabled.emplace((*it).second);
@@ -311,7 +316,7 @@ std::unordered_set<int> Optimizer::getDisabledRuleIds(
         // enable all rules
         disabled.clear();
       } else {
-        auto it = _ruleLookup.find(std::string(name.c_str() + 1));
+        auto it = _ruleLookup.find(name.c_str() + 1);
 
         if (it != _ruleLookup.end()) {
           disabled.erase((*it).second);
@@ -351,153 +356,153 @@ void Optimizer::setupRules() {
   // this rule cannot be turned off (otherwise, the query result might be
   // wrong!)
   registerHiddenRule("specialize-collect", specializeCollectRule,
-                     specializeCollectRule_pass1, false);
+                     specializeCollectRule_pass1, CreatesAdditionalPlans, false);
 
   // inline subqueries one level higher
   registerRule("inline-subqueries", inlineSubqueriesRule,
-               inlineSubqueriesRule_pass1, true);
+               inlineSubqueriesRule_pass1, DoesNotCreateAdditionalPlans, true);
 
   // move calculations up the dependency chain (to pull them out of
   // inner loops etc.)
   registerRule("move-calculations-up", moveCalculationsUpRule,
-               moveCalculationsUpRule_pass1, true);
+               moveCalculationsUpRule_pass1, DoesNotCreateAdditionalPlans, true);
 
   // move filters up the dependency chain (to make result sets as small
   // as possible as early as possible)
   registerRule("move-filters-up", moveFiltersUpRule, moveFiltersUpRule_pass1,
-               true);
+               DoesNotCreateAdditionalPlans, true);
 
   // remove redundant calculations
   registerRule("remove-redundant-calculations", removeRedundantCalculationsRule,
-               removeRedundantCalculationsRule_pass1, true);
+               removeRedundantCalculationsRule_pass1, DoesNotCreateAdditionalPlans, true);
 
   /// "Pass 2": try to remove redundant or unnecessary nodes
   // remove filters from the query that are not necessary at all
   // filters that are always true will be removed entirely
   // filters that are always false will be replaced with a NoResults node
   registerRule("remove-unnecessary-filters", removeUnnecessaryFiltersRule,
-               removeUnnecessaryFiltersRule_pass2, true);
+               removeUnnecessaryFiltersRule_pass2, DoesNotCreateAdditionalPlans, true);
 
   // remove calculations that are never necessary
   registerRule("remove-unnecessary-calculations",
                removeUnnecessaryCalculationsRule,
-               removeUnnecessaryCalculationsRule_pass2, true);
+               removeUnnecessaryCalculationsRule_pass2, DoesNotCreateAdditionalPlans, true);
 
   // remove redundant sort blocks
   registerRule("remove-redundant-sorts", removeRedundantSortsRule,
-               removeRedundantSortsRule_pass2, true);
+               removeRedundantSortsRule_pass2, DoesNotCreateAdditionalPlans, true);
 
   /// "Pass 3": interchange EnumerateCollection nodes in all possible ways
   ///           this is level 500, please never let new plans from higher
   ///           levels go back to this or lower levels!
   registerRule("interchange-adjacent-enumerations",
                interchangeAdjacentEnumerationsRule,
-               interchangeAdjacentEnumerationsRule_pass3, true);
+               interchangeAdjacentEnumerationsRule_pass3, CreatesAdditionalPlans, true);
 
   // "Pass 4": moving nodes "up" (potentially outside loops) (second try):
   // move calculations up the dependency chain (to pull them out of
   // inner loops etc.)
   registerRule("move-calculations-up-2", moveCalculationsUpRule,
-               moveCalculationsUpRule_pass4, true);
+               moveCalculationsUpRule_pass4, DoesNotCreateAdditionalPlans, true);
 
   // move filters up the dependency chain (to make result sets as small
   // as possible as early as possible)
   registerRule("move-filters-up-2", moveFiltersUpRule, moveFiltersUpRule_pass4,
-               true);
+               DoesNotCreateAdditionalPlans, true);
 
   // merge filters into traversals
   registerRule("optimize-traversals", optimizeTraversalsRule,
-               optimizeTraversalsRule_pass6, true);
+               optimizeTraversalsRule_pass6, DoesNotCreateAdditionalPlans, true);
 
   /// "Pass 5": try to remove redundant or unnecessary nodes (second try)
   // remove filters from the query that are not necessary at all
   // filters that are always true will be removed entirely
   // filters that are always false will be replaced with a NoResults node
   registerRule("remove-unnecessary-filters-2", removeUnnecessaryFiltersRule,
-               removeUnnecessaryFiltersRule_pass6, true);
+               removeUnnecessaryFiltersRule_pass6, DoesNotCreateAdditionalPlans, true);
 
   // remove redundant sort node
   registerRule("remove-redundant-sorts-2", removeRedundantSortsRule,
-               removeRedundantSortsRule_pass5, true);
+               removeRedundantSortsRule_pass5, DoesNotCreateAdditionalPlans, true);
 
   // SORT RAND() if appropriate
   registerRule("remove-sort-rand", removeSortRandRule, removeSortRandRule_pass5,
-               true);
+               DoesNotCreateAdditionalPlans, true);
 
   // remove unused INTO variable from COLLECT, or unused aggregates
   registerRule("remove-collect-variables", removeCollectVariablesRule,
-               removeCollectVariablesRule_pass5, true);
+               removeCollectVariablesRule_pass5, DoesNotCreateAdditionalPlans, true);
 
   // remove unused out variables for data-modification queries
   registerRule("remove-data-modification-out-variables",
                removeDataModificationOutVariablesRule,
-               removeDataModificationOutVariablesRule_pass5, true);
+               removeDataModificationOutVariablesRule_pass5, DoesNotCreateAdditionalPlans, true);
 
   // propagate constant attributes in FILTERs
   registerRule("propagate-constant-attributes", propagateConstantAttributesRule,
-               propagateConstantAttributesRule_pass5, true);
+               propagateConstantAttributesRule_pass5, DoesNotCreateAdditionalPlans, true);
 
   /// "Pass 6": use indexes if possible for FILTER and/or SORT nodes
   // try to replace simple OR conditions with IN
   registerRule("replace-or-with-in", replaceOrWithInRule,
-               replaceOrWithInRule_pass6, true);
+               replaceOrWithInRule_pass6, DoesNotCreateAdditionalPlans, true);
 
   // try to remove redundant OR conditions
   registerRule("remove-redundant-or", removeRedundantOrRule,
-               removeRedundantOrRule_pass6, true);
+               removeRedundantOrRule_pass6, DoesNotCreateAdditionalPlans, true);
 
   // try to find a filter after an enumerate collection and find indexes
-  registerRule("use-indexes", useIndexesRule, useIndexesRule_pass6, true);
+  registerRule("use-indexes", useIndexesRule, useIndexesRule_pass6, DoesNotCreateAdditionalPlans, true);
 
   // try to remove filters which are covered by index ranges
   registerRule("remove-filter-covered-by-index",
                removeFiltersCoveredByIndexRule,
-               removeFiltersCoveredByIndexRule_pass6, true);
+               removeFiltersCoveredByIndexRule_pass6, DoesNotCreateAdditionalPlans, true);
 
   // try to find sort blocks which are superseeded by indexes
   registerRule("use-index-for-sort", useIndexForSortRule,
-               useIndexForSortRule_pass6, true);
+               useIndexForSortRule_pass6, DoesNotCreateAdditionalPlans, true);
 
   // sort in-values in filters (note: must come after
   // remove-filter-covered-by-index rule)
   registerRule("sort-in-values", sortInValuesRule, sortInValuesRule_pass6,
-               true);
+               DoesNotCreateAdditionalPlans, true);
 
   // remove calculations that are never necessary
   registerRule("remove-unnecessary-calculations-2",
                removeUnnecessaryCalculationsRule,
-               removeUnnecessaryCalculationsRule_pass6, true);
+               removeUnnecessaryCalculationsRule_pass6, DoesNotCreateAdditionalPlans, true);
 
   // finally, push calculations as far down as possible
   registerRule("move-calculations-down", moveCalculationsDownRule,
-               moveCalculationsDownRule_pass9, true);
+               moveCalculationsDownRule_pass9, DoesNotCreateAdditionalPlans, true);
 
   // patch update statements
   registerRule("patch-update-statements", patchUpdateStatementsRule,
-               patchUpdateStatementsRule_pass9, true);
+               patchUpdateStatementsRule_pass9, DoesNotCreateAdditionalPlans, true);
 
   if (arangodb::ServerState::instance()->isCoordinator()) {
     // distribute operations in cluster
     registerRule("scatter-in-cluster", scatterInClusterRule,
-                 scatterInClusterRule_pass10, false);
+                 scatterInClusterRule_pass10, DoesNotCreateAdditionalPlans, false);
 
     registerRule("distribute-in-cluster", distributeInClusterRule,
-                 distributeInClusterRule_pass10, false);
+                 distributeInClusterRule_pass10, DoesNotCreateAdditionalPlans, false);
 
     // distribute operations in cluster
     registerRule("distribute-filtercalc-to-cluster",
                  distributeFilternCalcToClusterRule,
-                 distributeFilternCalcToClusterRule_pass10, true);
+                 distributeFilternCalcToClusterRule_pass10, DoesNotCreateAdditionalPlans, true);
 
     registerRule("distribute-sort-to-cluster", distributeSortToClusterRule,
-                 distributeSortToClusterRule_pass10, true);
+                 distributeSortToClusterRule_pass10, DoesNotCreateAdditionalPlans, true);
 
     registerRule("remove-unnecessary-remote-scatter",
                  removeUnnecessaryRemoteScatterRule,
-                 removeUnnecessaryRemoteScatterRule_pass10, true);
+                 removeUnnecessaryRemoteScatterRule_pass10, DoesNotCreateAdditionalPlans, true);
 
     registerRule("undistribute-remove-after-enum-coll",
                  undistributeRemoveAfterEnumCollRule,
-                 undistributeRemoveAfterEnumCollRule_pass10, true);
+                 undistributeRemoveAfterEnumCollRule_pass10, DoesNotCreateAdditionalPlans, true);
   }
 }

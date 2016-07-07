@@ -42,6 +42,7 @@ ImportFeature::ImportFeature(application_features::ApplicationServer* server,
     : ApplicationFeature(server, "Import"),
       _filename(""),
       _useBackslash(false),
+      _convert(true),
       _chunkSize(1024 * 1024 * 16),
       _collectionName(""),
       _fromCollectionPrefix(""),
@@ -54,6 +55,7 @@ ImportFeature::ImportFeature(application_features::ApplicationServer* server,
       _separator(""),
       _progress(true),
       _onDuplicateAction("error"),
+      _rowsToSkip(0),
       _result(result) {
   requiresElevatedPrivileges(false);
   setOptional(false);
@@ -88,6 +90,14 @@ void ImportFeature::collectOptions(
   options->addOption("--create-collection",
                      "create collection if it does not yet exist",
                      new BooleanParameter(&_createCollection));
+  
+  options->addOption("--skip-lines",
+                     "number of lines to skip for formats (csv and tsv only)",
+                     new UInt64Parameter(&_rowsToSkip));
+  
+  options->addOption("--convert",
+                     "convert the strings 'null', 'false', 'true' and strings containing numbers into non-string types (csv and tsv only)",
+                     new BooleanParameter(&_convert));
 
   std::unordered_set<std::string> types = {"document", "edge"};
   std::vector<std::string> typesVector(types.begin(), types.end());
@@ -225,6 +235,8 @@ void ImportFeature::start() {
     ih.setCreateCollectionType(_createCollectionType);
   }
 
+  ih.setConversion(_convert);
+  ih.setRowsToSkip(static_cast<size_t>(_rowsToSkip));
   ih.setOverwrite(_overwrite);
   ih.useBackslash(_useBackslash);
 

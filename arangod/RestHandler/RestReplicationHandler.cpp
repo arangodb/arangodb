@@ -1278,7 +1278,7 @@ int RestReplicationHandler::createCollection(VPackSlice const& slice,
     return TRI_ERROR_NO_ERROR;
   }
 
-  VocbaseCollectionInfo params(_vocbase, name.c_str(), slice);
+  VocbaseCollectionInfo params(_vocbase, name.c_str(), slice, true);
   /* Temporary ASSERTS to prove correctness of new constructor */
   TRI_ASSERT(params.doCompact() ==
              arangodb::basics::VelocyPackHelper::getBooleanValue(
@@ -1372,12 +1372,20 @@ void RestReplicationHandler::handleCommandRestoreCollection() {
     numberOfShards = StringUtils::uint64(value4);
   }
 
+  uint64_t replicationFactor = 1;
+  std::string const& value5 = _request->value("replicationFactor", found);
+
+  if (found) {
+    replicationFactor = StringUtils::uint64(value5);
+  }
+
   std::string errorMsg;
   int res;
 
   if (ServerState::instance()->isCoordinator()) {
     res = processRestoreCollectionCoordinator(slice, overwrite, recycleIds,
-                                              force, numberOfShards, errorMsg);
+                                              force, numberOfShards, errorMsg,
+                                              replicationFactor);
   } else {
     res =
         processRestoreCollection(slice, overwrite, recycleIds, force, errorMsg);
@@ -1577,7 +1585,7 @@ int RestReplicationHandler::processRestoreCollection(
 
 int RestReplicationHandler::processRestoreCollectionCoordinator(
     VPackSlice const& collection, bool dropExisting, bool reuseId, bool force,
-    uint64_t numberOfShards, std::string& errorMsg) {
+    uint64_t numberOfShards, std::string& errorMsg, uint64_t replicationFactor) {
   if (!collection.isObject()) {
     errorMsg = "collection declaration is invalid";
 
@@ -1645,20 +1653,34 @@ int RestReplicationHandler::processRestoreCollectionCoordinator(
   }
 
   // now re-create the collection
-  // dig out number of shards:
-  VPackSlice const shards = parameters.get("shards");
-  if (shards.isObject()) {
-    numberOfShards = static_cast<uint64_t>(shards.length());
+  // dig out number of shards, explicit attribute takes precedence:
+  VPackSlice const numberOfShardsSlice = parameters.get("numberOfShards");
+  if (numberOfShardsSlice.isInteger()) {
+    numberOfShards = numberOfShardsSlice.getNumericValue<uint64_t>();
   } else {
-    // "shards" not specified
-    // now check if numberOfShards property was given
-    if (numberOfShards == 0) {
-      // We take one shard if no value was given
-      numberOfShards = 1;
+    VPackSlice const shards = parameters.get("shards");
+    if (shards.isObject()) {
+      numberOfShards = static_cast<uint64_t>(shards.length());
+    } else {
+      // "shards" not specified
+      // now check if numberOfShards property was given
+      if (numberOfShards == 0) {
+        // We take one shard if no value was given
+        numberOfShards = 1;
+      }
     }
   }
 
   TRI_ASSERT(numberOfShards > 0);
+
+  VPackSlice const replFactorSlice = parameters.get("replicationFactor");
+  if (replFactorSlice.isInteger()) {
+    replicationFactor = replFactorSlice.getNumericValue
+                            <decltype(replicationFactor)>();
+  }
+  if (replicationFactor == 0) {
+    replicationFactor = 1;
+  }
 
   try {
     TRI_voc_tick_t newIdTick = ci->uniqid(1);
@@ -1677,31 +1699,29 @@ int RestReplicationHandler::processRestoreCollectionCoordinator(
     }
 
     // shards
-    if (!shards.isObject()) {
-      // if no shards were given, create a random list of shards
-      auto dbServers = ci->getCurrentDBServers();
-
-      if (dbServers.empty()) {
-        errorMsg = "no database servers found in cluster";
-        return TRI_ERROR_INTERNAL;
-      }
-
-      std::random_shuffle(dbServers.begin(), dbServers.end());
-
-      uint64_t const id = ci->uniqid(1 + numberOfShards);
-      toMerge.add("shards", VPackValue(VPackValueType::Object));
-      for (uint64_t i = 0; i < numberOfShards; ++i) {
-        // shard id
-        toMerge.add(
-            VPackValue(std::string("s" + StringUtils::itoa(id + 1 + i))));
-
-        // server ids
-        toMerge.add(VPackValue(VPackValueType::Array));
-        toMerge.add(VPackValue(dbServers[i % dbServers.size()]));
-        toMerge.close();  // server ids
-      }
-      toMerge.close();  // end of shards
+    std::vector<std::string> dbServers;  // will be filled
+    std::map<std::string, std::vector<std::string>> shardDistribution
+        = arangodb::distributeShards(numberOfShards, replicationFactor,
+                                     dbServers);
+    if (shardDistribution.empty()) {
+      errorMsg = "no database servers found in cluster";
+      return TRI_ERROR_INTERNAL;
     }
+
+    toMerge.add(VPackValue("shards"));
+    {
+      VPackObjectBuilder guard(&toMerge);
+      for (auto const& p : shardDistribution) {
+        toMerge.add(VPackValue(p.first));
+        {
+          VPackArrayBuilder guard2(&toMerge);
+          for (std::string const& s : p.second) {
+            toMerge.add(VPackValue(s));
+          }
+        }
+      }
+    }
+    toMerge.add("replicationFactor", VPackValue(replicationFactor));
 
     // Now put in the primary and an edge index if needed:
     toMerge.add("indexes", VPackValue(VPackValueType::Array));

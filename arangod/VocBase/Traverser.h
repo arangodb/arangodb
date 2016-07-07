@@ -27,7 +27,6 @@
 #include "Basics/Common.h"
 #include "Basics/hashes.h"
 #include "Basics/ShortestPathFinder.h"
-#include "Basics/Traverser.h"
 #include "Aql/AqlValue.h"
 #include "Aql/AstNode.h"
 #include "Utils/CollectionNameResolver.h"
@@ -239,6 +238,9 @@ struct TraverserOptions {
 };
 
 class Traverser {
+  friend class BreadthFirstEnumerator;
+  friend class DepthFirstEnumerator;
+
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Constructor. This is an abstract only class.
@@ -287,8 +289,7 @@ class Traverser {
   size_t skip(size_t amount) {
     size_t skipped = 0;
     for (size_t i = 0; i < amount; ++i) {
-      std::unique_ptr<TraversalPath> p(next());
-      if (p == nullptr) {
+      if (!next()) {
         _done = true;
         break;
       }
@@ -301,7 +302,53 @@ class Traverser {
   /// @brief Get the next possible path in the graph.
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual TraversalPath* next() = 0;
+  virtual bool next() = 0;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Function to load edges for a node
+  //////////////////////////////////////////////////////////////////////////////
+
+  virtual void getEdge(std::string const&, std::vector<std::string>&, size_t*&,
+                       size_t&) = 0;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Function to load all edges for a list of nodes
+  //////////////////////////////////////////////////////////////////////////////
+
+  virtual void getAllEdges(std::string const&, std::unordered_set<std::string>&,
+                           size_t) = 0;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Function to load the other sides vertex of an edge
+  ///        Returns true if the vertex passes filtering conditions
+  //////////////////////////////////////////////////////////////////////////////
+
+  virtual bool getVertex(std::string const&, std::string const&, size_t,
+                         std::string&) = 0;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Builds only the last vertex as AQLValue
+  //////////////////////////////////////////////////////////////////////////////
+
+  virtual aql::AqlValue lastVertexToAqlValue() = 0;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Builds only the last edge as AQLValue
+  //////////////////////////////////////////////////////////////////////////////
+
+  virtual aql::AqlValue lastEdgeToAqlValue() = 0;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Builds the complete path as AQLValue
+  ///        Has the format:
+  ///        {
+  ///           vertices: [<vertex-as-velocypack>],
+  ///           edges: [<edge-as-velocypack>]
+  ///        }
+  ///        NOTE: Will clear the given buffer and will leave the path in it.
+  //////////////////////////////////////////////////////////////////////////////
+
+  virtual aql::AqlValue pathToAqlValue(arangodb::velocypack::Builder&) = 0;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Get the number of filtered paths
@@ -383,6 +430,32 @@ class Traverser {
 
   std::unordered_map<size_t, std::vector<TraverserExpression*>> const*
       _expressions;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Function to fetch the real data of a vertex into an AQLValue
+  //////////////////////////////////////////////////////////////////////////////
+
+  virtual aql::AqlValue fetchVertexData(std::string const&) = 0;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Function to fetch the real data of an edge into an AQLValue
+  //////////////////////////////////////////////////////////////////////////////
+
+  virtual aql::AqlValue fetchEdgeData(std::string const&) = 0;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Function to add the real data of a vertex into a velocypack builder
+  //////////////////////////////////////////////////////////////////////////////
+
+  virtual void addVertexToVelocyPack(std::string const&,
+                                     arangodb::velocypack::Builder&) = 0;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Function to add the real data of an edge into a velocypack builder
+  //////////////////////////////////////////////////////////////////////////////
+
+  virtual void addEdgeToVelocyPack(std::string const&,
+                                   arangodb::velocypack::Builder&) = 0;
 };
 }  // traverser
 }  // arangodb

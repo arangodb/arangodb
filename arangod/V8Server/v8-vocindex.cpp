@@ -26,6 +26,7 @@
 #include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Cluster/ClusterMethods.h"
 #include "FulltextIndex/fulltext-index.h"
 #include "Indexes/EdgeIndex.h"
 #include "Indexes/FulltextIndex.h"
@@ -965,8 +966,9 @@ static void CreateCollectionCoordinator(
 
   ClusterInfo* ci = ClusterInfo::instance();
 
-  // fetch a unique id for the new collection plus one for each shard to create
-  uint64_t const id = ci->uniqid(1 + numberOfShards);
+  // fetch a unique id for the new collection, this is also used for the
+  // edge index, if that is needed, therefore we create the id anyway:
+  uint64_t const id = ci->uniqid(1);
   if (cid.empty()) {
     // collection id is the first unique id we got
     cid = StringUtils::itoa(id);
@@ -975,7 +977,6 @@ static void CreateCollectionCoordinator(
 
   std::vector<std::string> dbServers;
 
-  bool done = false;
   if (!distributeShardsLike.empty()) {
     CollectionNameResolver resolver(vocbase);
     TRI_voc_cid_t otherCid =
@@ -996,55 +997,20 @@ static void CreateCollectionCoordinator(
             }
           }
         }
-        done = true;
       }
     }
   }
 
-  if (!done) {
-    // fetch list of available servers in cluster, and shuffle them randomly
-    dbServers = ci->getCurrentDBServers();
+  // If the list dbServers is still empty, it will be filled in
+  // distributeShards below.
 
-    if (dbServers.empty()) {
-      TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "no database servers found in cluster");
-    }
-
-    random_shuffle(dbServers.begin(), dbServers.end());
-  }
-
-  // now create the shards
-  std::map<std::string, std::vector<std::string>> shards;
-  size_t count = 0;
-  for (uint64_t i = 0; i < numberOfShards; ++i) {
-    // determine responsible server(s)
-    std::vector<std::string> serverIds;
-    for (uint64_t j = 0; j < replicationFactor; ++j) {
-      std::string candidate;
-      size_t count2 = 0;
-      bool found = true;
-      do {
-        candidate = dbServers[count++];
-        if (count >= dbServers.size()) {
-          count = 0;
-        }
-        if (++count2 == dbServers.size() + 1) {
-          LOG(WARN) << "createCollectionCoordinator: replicationFactor is "
-                       "too large for the number of DBservers";
-          found = false;
-          break;
-        }
-      } while (std::find(serverIds.begin(), serverIds.end(), candidate) != 
-               serverIds.end());
-      if (found) {
-        serverIds.push_back(candidate);
-      }
-    }
-
-    // determine shard id
-    std::string shardId = "s" + StringUtils::itoa(id + 1 + i);
-
-    shards.insert(std::make_pair(shardId, serverIds));
+  // Now create the shards:
+  std::map<std::string, std::vector<std::string>> shards
+      = arangodb::distributeShards(numberOfShards, replicationFactor,
+                                   dbServers);
+  if (shards.empty()) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "no database servers found in cluster");
   }
 
   // now create the VelocyPack for the collection
@@ -1483,7 +1449,7 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
   }
 
   VocbaseCollectionInfo parameters(vocbase, name.c_str(), collectionType,
-                                   infoSlice);
+                                   infoSlice, false);
 
   if (ServerState::instance()->isCoordinator()) {
     CreateCollectionCoordinator(args, collectionType, vocbase->_name,

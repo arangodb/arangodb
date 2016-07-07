@@ -293,28 +293,21 @@ bool TraversalBlock::morePaths(size_t hint) {
 
   TransactionBuilderLeaser tmp(_trx);
   for (size_t j = 0; j < hint; ++j) {
-    std::unique_ptr<arangodb::traverser::TraversalPath> p(_traverser->next());
-
-    if (p == nullptr) {
+    if (!_traverser->next()) {
       // There are no further paths available.
       break;
     }
 
     if (usesVertexOutput()) {
-      _vertices.emplace_back(p->lastVertexToAqlValue(_trx));
+      _vertices.emplace_back(_traverser->lastVertexToAqlValue());
     }
     if (usesEdgeOutput()) {
-      tmp->clear();
-      p->lastEdgeToVelocyPack(_trx, *tmp.builder());
-      _edges.emplace_back(tmp->slice());
+      _edges.emplace_back(_traverser->lastEdgeToAqlValue());
     }
     if (usesPathOutput()) {
       tmp->clear();
-      p->pathToVelocyPack(_trx, *tmp.builder());
-      _paths.emplace_back(tmp->slice());
+      _paths.emplace_back(_traverser->pathToAqlValue(*tmp.builder()));
     }
-    _engine->_stats.scannedIndex += p->getReadDocuments();
-
     throwIfKilled();  // check if we were aborted
   }
 

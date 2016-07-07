@@ -127,13 +127,13 @@ module.exports =
         const def = definitions[name];
         if (!def) {
           warnings.push(`Unexpected option "${name}"`);
-          return;
+          return warnings;
         }
 
         if (def.required === false && (rawValue === undefined || rawValue === null || rawValue === '')) {
           delete this.options.configuration[name];
           this.configuration[name] = def.default;
-          return;
+          return warnings;
         }
 
         const validate = parameterTypes[def.type];
@@ -399,6 +399,19 @@ module.exports =
       return module.exports;
     }
 
+    executeScript (name, argv) {
+      var scripts = this.manifest.scripts;
+      // Only run setup/teardown scripts if they exist
+      if (!scripts[name] && (name === 'setup' || name === 'teardown')) {
+        return undefined;
+      }
+      return this.run(scripts[name], {
+        foxxContext: {
+          argv: argv ? (Array.isArray(argv) ? argv : [argv]) : []
+        }
+      });
+    }
+
     _reset () {
       this.requireCache = {};
       const lib = this.manifest.lib || '.';
@@ -425,6 +438,7 @@ module.exports =
         this.main.context.options = this.options;
         this.main.context.use = undefined;
         this.main.context.apiDocumentation = undefined;
+        this.main.context.graphql = undefined;
         this.main.context.registerType = undefined;
         const foxxConsole = require('@arangodb/foxx/legacy/console')(this.mount);
         this.main[$_MODULE_CONTEXT].console = foxxConsole;

@@ -212,16 +212,18 @@ class Optimizer {
     std::string name;
     RuleFunction func;
     RuleLevel const level;
+    bool const canCreateAdditionalPlans;
     bool const canBeDisabled;
     bool const isHidden;
 
     Rule() = delete;
 
     Rule(std::string const& name, RuleFunction func, RuleLevel level,
-         bool canBeDisabled, bool isHidden)
+         bool canCreateAdditionalPlans, bool canBeDisabled, bool isHidden)
         : name(name),
           func(func),
           level(level),
+          canCreateAdditionalPlans(canCreateAdditionalPlans),
           canBeDisabled(canBeDisabled),
           isHidden(isHidden) {}
   };
@@ -414,8 +416,8 @@ class Optimizer {
 
   /// @brief register a rule
   static void registerRule(std::string const& name, RuleFunction func,
-                           RuleLevel level, bool canBeDisabled,
-                           bool isHidden = false) {
+                           RuleLevel level, bool canCreateAdditionalPlans,
+                           bool canBeDisabled, bool isHidden = false) {
     if (_ruleLookup.find(name) != _ruleLookup.end()) {
       // duplicate rule names are not allowed
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -429,13 +431,13 @@ class Optimizer {
                                      "duplicate optimizer rule level");
     }
 
-    _rules.emplace(level, Rule(name, func, level, canBeDisabled, isHidden));
+    _rules.emplace(level, Rule(name, func, level, canCreateAdditionalPlans, canBeDisabled, isHidden));
   }
 
   /// @brief register a hidden rule
   static void registerHiddenRule(std::string const& name, RuleFunction func,
-                                 RuleLevel level, bool canBeDisabled) {
-    registerRule(name, func, level, canBeDisabled, true);
+                                 RuleLevel level, bool canCreateAdditionalPlans, bool canBeDisabled) {
+    registerRule(name, func, level, canCreateAdditionalPlans, canBeDisabled, true);
   }
 
   /// @brief set up the optimizer rules once and forever

@@ -27,6 +27,7 @@
 #include "VocBase/Traverser.h"
 #include "Aql/AqlValue.h"
 #include "Utils/OperationCursor.h"
+#include "VocBase/PathEnumerator.h"
 
 namespace arangodb {
 
@@ -34,13 +35,13 @@ class EdgeIndex;
 
 namespace traverser {
 
-class SingleServerTraverser final : public Traverser {
+class PathEnumerator;
 
-  friend class SingleServerTraversalPath;
+class SingleServerTraverser final : public Traverser {
 
  private:
 
-  class VertexGetter : public arangodb::basics::VertexGetter<std::string, std::string> {
+  class VertexGetter {
    public:
     explicit VertexGetter(SingleServerTraverser* traverser)
         : _traverser(traverser) {}
@@ -48,7 +49,7 @@ class SingleServerTraverser final : public Traverser {
     virtual ~VertexGetter() = default;
 
     virtual bool getVertex(std::string const&, std::string const&, size_t,
-                           std::string&) override;
+                           std::string&);
     virtual void reset(std::string const&);
 
    protected:
@@ -75,8 +76,8 @@ class SingleServerTraverser final : public Traverser {
   /// @brief callable class to load edges based on opts.
   //////////////////////////////////////////////////////////////////////////////
 
-  class EdgeGetter
-      : public arangodb::basics::EdgeGetter<std::string, std::string, size_t> {
+  class EdgeGetter {
+
    public:
     EdgeGetter(SingleServerTraverser* traverser,
                TraverserOptions const& opts,
@@ -88,9 +89,9 @@ class SingleServerTraverser final : public Traverser {
     //////////////////////////////////////////////////////////////////////////////
 
     void getEdge(std::string const&, std::vector<std::string>&,
-                 size_t*&, size_t&) override;
+                 size_t*&, size_t&);
 
-    void getAllEdges(std::string const&, std::unordered_set<std::string>&, size_t) override;
+    void getAllEdges(std::string const&, std::unordered_set<std::string>&, size_t);
 
    private:
 
@@ -151,8 +152,7 @@ class SingleServerTraverser final : public Traverser {
   /// @brief internal cursor to enumerate the paths of a graph
   //////////////////////////////////////////////////////////////////////////////
 
-  std::unique_ptr<arangodb::basics::PathEnumerator<std::string, std::string,
-                                                   size_t>> _enumerator;
+  std::unique_ptr<arangodb::traverser::PathEnumerator> _enumerator;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief internal getter to extract an edge
@@ -183,22 +183,90 @@ public:
 
   void setStartVertex(std::string const& v) override;
 
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Function to load edges for a node
+  //////////////////////////////////////////////////////////////////////////////
+
+  void getEdge(std::string const&, std::vector<std::string>&, size_t*&,
+               size_t&) override;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Function to load all edges for a list of nodes
+  //////////////////////////////////////////////////////////////////////////////
+
+  void getAllEdges(std::string const&, std::unordered_set<std::string>&,
+                   size_t) override;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Function to load the other sides vertex of an edge
+  ///        Returns true if the vertex passes filtering conditions
+  //////////////////////////////////////////////////////////////////////////////
+
+  bool getVertex(std::string const&, std::string const&, size_t,
+                 std::string&) override;
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Get the next possible path in the graph.
   //////////////////////////////////////////////////////////////////////////////
 
-  TraversalPath* next() override;
+  bool next() override;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Builds only the last vertex as AQLValue
+  //////////////////////////////////////////////////////////////////////////////
+
+  aql::AqlValue lastVertexToAqlValue() override;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Builds only the last edge as AQLValue
+  //////////////////////////////////////////////////////////////////////////////
+
+  aql::AqlValue lastEdgeToAqlValue() override;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Builds the complete path as AQLValue
+  ///        Has the format:
+  ///        {
+  ///           vertices: [<vertex-as-velocypack>],
+  ///           edges: [<edge-as-velocypack>]
+  ///        }
+  ///        NOTE: Will clear the given buffer and will leave the path in it.
+  //////////////////////////////////////////////////////////////////////////////
+
+  aql::AqlValue pathToAqlValue(arangodb::velocypack::Builder&) override;
+
+ protected:
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Function to fetch the real data of a vertex into an AQLValue
+  //////////////////////////////////////////////////////////////////////////////
+
+  aql::AqlValue fetchVertexData(std::string const&) override;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Function to fetch the real data of an edge into an AQLValue
+  //////////////////////////////////////////////////////////////////////////////
+
+  aql::AqlValue fetchEdgeData(std::string const&) override;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Function to add the real data of a vertex into a velocypack builder
+  //////////////////////////////////////////////////////////////////////////////
+
+  void addVertexToVelocyPack(std::string const&,
+                             arangodb::velocypack::Builder&) override;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Function to add the real data of an edge into a velocypack builder
+  //////////////////////////////////////////////////////////////////////////////
+
+  void addEdgeToVelocyPack(std::string const&,
+                           arangodb::velocypack::Builder&) override;
 
  private:
   bool edgeMatchesConditions(arangodb::velocypack::Slice, size_t);
 
   bool vertexMatchesConditions(std::string const&, size_t);
-
- //////////////////////////////////////////////////////////////////////////////
-  /// @brief Fetch the vertex data from the transaction
-  //////////////////////////////////////////////////////////////////////////////
-
-  aql::AqlValue fetchVertexData(std::string const&);
 
   std::vector<TRI_document_collection_t*> _edgeCols;
 

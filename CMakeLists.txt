@@ -71,6 +71,7 @@ set(ARANGO_DUMP_FRIENDLY_STRING    "arangodump - export")
 set(ARANGO_RESTORE_FRIENDLY_STRING "arangrestore - importer")
 set(ARANGO_IMP_FRIENDLY_STRING     "arangoimp - TSV/CSV/JSON importer")
 set(ARANGOSH_FRIENDLY_STRING       "arangosh - commandline client")
+set(ARANGO_VPACK_FRIENDLY_STRING   "arangovpack - vpack printer")
 
 # libraries
 set(LIB_ARANGO        arango)
@@ -83,6 +84,7 @@ set(BIN_ARANGODUMP    arangodump)
 set(BIN_ARANGOIMP     arangoimp)
 set(BIN_ARANGORESTORE arangorestore)
 set(BIN_ARANGOSH      arangosh)
+set(BIN_ARANGOVPACK   arangovpack)
 
 # test binaries
 set(TEST_BASICS_SUITE basics_suite)

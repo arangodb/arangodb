@@ -168,11 +168,11 @@ module.exports =
       return this;
     }
 
-    json (value) {
+    json (value, pretty) {
       if (!this._raw.contentType) {
         this._raw.contentType = MIME_JSON;
       }
-      if (this.context.isDevelopment) {
+      if (pretty || this.context.isDevelopment) {
         this._raw.body = JSON.stringify(value, null, 2);
       } else {
         this._raw.body = JSON.stringify(value);

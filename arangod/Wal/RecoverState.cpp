@@ -835,7 +835,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
         VPackSlice isSystem = bx.slice();
         VPackBuilder b2 = VPackCollection::merge(payloadSlice, isSystem, false);
 
-        arangodb::VocbaseCollectionInfo info(vocbase, name.c_str(), b2.slice());
+        arangodb::VocbaseCollectionInfo info(vocbase, name.c_str(), b2.slice(), isSystemValue);
 
         if (state->willBeDropped(collectionId)) {
           // in case we detect that this collection is going to be deleted anyway,

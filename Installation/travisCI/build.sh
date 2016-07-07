@@ -2,17 +2,6 @@
 set -e
 
 echo
-echo "$0: loading precompiled libraries"
-
-V8_VERSION=`/bin/ls 3rdParty/V8/|grep V8 |sed "s;V8-;;"`
-
-wget \
-  -O 3rdParty.tar.gz \
-  "https://www.arangodb.com/support-files/travisCI/precompiled-libraries-${V8_VERSION}.tar.gz"
-
-tar xzf 3rdParty.tar.gz
-
-echo
 echo "$0: setup make-system"
 
 test -d build || mkdir build
@@ -22,12 +11,15 @@ echo "$0: configuring ArangoDB"
 
 export LDFLAGS="-lrt"
 
-(cd build && cmake .. -DCMAKE_BUILD_TYPE=Release -DUSE_MAINTAINER_MODE=On -DUSE_RELATIVE=ON -DUSE_PRECOMPILED_V8=ON)
+echo "CC: $CC"
+echo "CXX: $CXX"
+
+(cd build && cmake .. -DCMAKE_BUILD_TYPE=Release -DUSE_MAINTAINER_MODE=On -DCMAKE_C_COMPILER=$CC -DCMAKE_CXX_COMPILER=$CXX)
 
 echo
 echo "$0: compiling ArangoDB"
 
-(cd build && make -j1)
+(cd build && make -j2)
 
 echo
 echo "$0: testing ArangoDB"
