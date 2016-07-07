@@ -267,6 +267,7 @@ AqlItemBlock* RemoveBlock::work(std::vector<AqlItemBlock*>& blocks) {
       keyBuilder.openArray();
     }
 
+    std::string key;
     int errorCode = TRI_ERROR_NO_ERROR;
     // loop over the complete block
     // build the request block
@@ -274,13 +275,13 @@ AqlItemBlock* RemoveBlock::work(std::vector<AqlItemBlock*>& blocks) {
       AqlValue const& a = res->getValueReference(i, registerId);
 
       // only copy 1st row of registers inherited from previous frame(s)
-      inheritRegisters(res, result.get(), i, dstRow);
+      inheritRegisters(res, result.get(), i, dstRow + i);
 
-      std::string key;
       errorCode = TRI_ERROR_NO_ERROR;
 
       if (a.isObject()) {
-        // value is an array. now extract the _key attribute
+        // value is an object. now extract the _key attribute
+        key.clear();
         errorCode = extractKey(a, key);
       } else if (a.isString()) {
         // value is a string
@@ -300,6 +301,7 @@ AqlItemBlock* RemoveBlock::work(std::vector<AqlItemBlock*>& blocks) {
         handleResult(errorCode, ep->_options.ignoreErrors);
       }
     }
+
     if (isMultiple) {
       // We have to close the array
       keyBuilder.close();
