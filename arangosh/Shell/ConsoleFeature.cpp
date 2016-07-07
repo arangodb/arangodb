@@ -335,15 +335,12 @@ std::string ConsoleFeature::readPassword(std::string const& message) {
 }
 
 std::string ConsoleFeature::readPassword() {
-  std::string password;
-#ifdef TRI_HAVE_TERMIOS_H
   TRI_SetStdinVisibility(false);
-  std::getline(std::cin, password);
 
-  TRI_SetStdinVisibility(true);
-#else
+  TRI_DEFER(TRI_SetStdinVisibility(true));
+
+  std::string password;
   std::getline(std::cin, password);
-#endif
   return password;
 }
 

@@ -857,6 +857,9 @@
       if (this.queryView) {
         this.queryView.resize();
       }
+      if (this.graphViewer2) {
+        this.graphViewer2.resize();
+      }
       if (this.documentsView) {
         this.documentsView.resize();
       }

@@ -64,13 +64,16 @@
             "frontend/js/lib/sigma.layout.noverlap.js",
             "frontend/js/lib/sigma.plugins.fullScreen.js",
             "frontend/js/lib/sigma.layout.fruchtermanReingold.js",
+            "frontend/js/lib/sigma.exporters.svg.js",
             "frontend/js/lib/worker.js",
             "frontend/js/lib/supervisor.js",
             // END SIGMA LIBRARIES
+            // START NEW
             "frontend/js/lib/wheelnav.slicePath.js",
             "frontend/js/lib/wheelnav.min.js",
             "frontend/js/lib/raphael.min.js",
             "frontend/js/lib/raphael.icons.min.js",
+            // END NEW LIBRARIES
             "frontend/js/lib/jsoneditor-min.js",
             "frontend/js/lib/strftime-min.js",
             "frontend/js/lib/d3.fisheye.min.js",

@@ -1,8 +1,6 @@
 devel
 -----
 
-* fixed issue #1930
-
 * added option `--skip-lines` for arangoimp
   this allows skipping the first few lines from the import file in case the
   CSV or TSV import are used
@@ -29,7 +27,13 @@ devel
 v3.0.2 (XXXX-XX-XX)
 -------------------
 
-* don't expose local file paths in error messages.
+* fixed assertion failure in case multiple remove operations were used in the same query
+
+* fixed upsert behavior in case upsert was used in a loop with the same document example 
+
+* fixed issue #1930
+
+* don't expose local file paths in Foxx error messages.
 
 * fixed issue #1929
 
