@@ -30,8 +30,38 @@
      
         <div class="pure-g pure-table pure-table-body">
           <% _.each(specific, function(val, key) { %>
-            <div class="<%= genClass %> left"><%=key%></div>
-            <div class="<%= genClass %> left"><%=val%></div>
+            <div class="<%= genClass %> left"><%=val.name%></div>
+            <div class="<%= genClass %> left">
+
+
+              <% var VALUE; %>
+              <% if (val.value) { %>
+                <% VALUE = val.value %>
+              <% } else { %>
+                <% VALUE = val.default %>
+              <% } %>
+
+              <% if (val.type === 'string') { %>
+                <input type="text" value="<%=VALUE%>" placeholder=""></input>
+              <% } %>
+
+              <% if (val.type === 'color') { %>
+                <input type='color' name='color' value="<%=VALUE%>"/>
+              <% } %>
+
+              <% if (val.type === 'select') { %>
+                <div class="<%= genClass %> left">
+                  <select>
+                    <% _.each(val, function(option, optKey) { %>
+                      <% if (option.name) { %>
+                        <option> <%=option.name%> </option>
+                      <% } %>
+                    <% }); %>
+                  </select>
+                </div>
+              <% } %>
+
+            </div>
           <% }); %>
         </div>
 
@@ -55,15 +85,33 @@
         </div>
      
         <div class="pure-g pure-table pure-table-body">
+
           <% _.each(general, function(val, key) { %>
             <div class="<%= genClass %> left"><%=key%></div>
-            <div class="<%= genClass %> left"><%=val%></div>
+
+              <% if (val.type === 'select') { %>
+                <div class="<%= genClass %> left">
+                  <select>
+                    <% _.each(val, function(option, optKey) { %>
+                      <% if (option.name) { %>
+                        <option> <%=option.name%> </option>
+                      <% } %>
+                    <% }); %>
+                  </select>
+                </div>
+              <% } %>
+
+              <% if (val.type === 'numeric') { %>
+                <input type="text" id="<%=val %>" value="<%=val.value %>" placeholder=""></input>
+              <% } %>
+
           <% }); %>
         </div>
 
       </div>
 
     <button id="saveGraphSettings" style="margin-top: 20px;" class="button-success pull-right">Save</button>
+    <button id="saveGraphSettings" style="margin-top: 20px;" class="button-success pull-right">Restore defaults</button>
   </div>
 
 </script>
