@@ -1,11 +1,11 @@
-/*jshint browser: true */
-/*jshint unused: false */
-/*global Backbone, EJS, $, setTimeout, localStorage, ace, Storage, window, _, console, btoa*/
-/*global _, arangoHelper, templateEngine, jQuery, Joi, d3*/
+/* jshint browser: true */
+/* jshint unused: false */
+/* global Backbone, $, setTimeout, localStorage, ace, Storage, window, _, console, btoa*/
+/* global _, arangoHelper, templateEngine, Joi */
 
 (function () {
   'use strict';
-  window.queryView = Backbone.View.extend({
+  window.QueryView = Backbone.View.extend({
     el: '#content',
     bindParamId: '#bindParamEditor',
     myQueriesId: '#queryTable',
@@ -102,11 +102,11 @@
           this.updateQueryTable();
           this.bindParamAceEditor.setValue(JSON.stringify(this.bindParamTableObj, null, '\t'), 1);
           this.deselect(this.bindParamAceEditor);
-        }else {
+        } else {
           $('#switchTypes').text('JSON');
           this.renderBindParamTable();
         }
-      }else {
+      } else {
         arangoHelper.arangoError('Bind parameter', 'Could not parse bind parameter');
       }
       this.resize();
@@ -174,7 +174,7 @@
       }
       if (obj) {
         obj = obj.get('value');
-      }else {
+      } else {
         _.each(this.queries, function (query) {
           if (query.name === qName) {
             obj = query.value;
@@ -216,17 +216,17 @@
           $('.aqlEditorWrapper').first().width($(window).width() * 0.33);
           this.queryPreview.setValue('No query selected.', 1);
           this.deselect(this.queryPreview);
-        }else {
+        } else {
           if (this.settings.aqlWidth === undefined) {
             $('.aqlEditorWrapper').first().width($(window).width() * 0.33);
-          }else {
+          } else {
             $('.aqlEditorWrapper').first().width(this.settings.aqlWidth);
           }
         }
-      }else {
+      } else {
         if (this.settings.aqlWidth === undefined) {
           $('.aqlEditorWrapper').first().width($(window).width() * 0.33);
-        }else {
+        } else {
           $('.aqlEditorWrapper').first().width(this.settings.aqlWidth);
         }
       }
@@ -257,15 +257,15 @@
       var name;
       if ($(e.currentTarget).is('tr')) {
         name = $(e.currentTarget).children().first().text();
-      }
-      else if ($(e.currentTarget).is('span')) {
+      } else if ($(e.currentTarget).is('span')) {
         name = $(e.currentTarget).parent().parent().prev().text();
       }
       return name;
     },
 
     deleteQueryModal: function (name) {
-      var buttons = [], tableContent = [];
+      var buttons = [];
+      var tableContent = [];
       tableContent.push(
         window.modalView.createReadOnlyEntry(
           undefined,
@@ -301,8 +301,8 @@
     },
 
     selectQueryFromTable: function (e, toggle) {
-      var name = this.getQueryNameFromTable(e),
-        self = this;
+      var name = this.getQueryNameFromTable(e);
+      var self = this;
 
       if (toggle === undefined) {
         this.toggleQueries();
@@ -338,7 +338,7 @@
       var callbackRemove = function (error) {
         if (error) {
           arangoHelper.arangoError('Query', 'Could not delete query.');
-        }else {
+        } else {
           this.updateLocalQueries();
           this.updateQueryTable();
           this.resize();
@@ -357,7 +357,7 @@
 
       if ($(e.currentTarget).text() === 'Result') {
         $(e.currentTarget).text('AQL');
-      }else {
+      } else {
         $(e.currentTarget).text('Result');
       }
       $('#outputEditor' + count).toggle();
@@ -368,22 +368,22 @@
     },
 
     downloadQueryResult: function (e) {
-      var count = $(e.currentTarget).attr('counter'),
-        editor = ace.edit('sentQueryEditor' + count),
-        query = editor.getValue();
+      var count = $(e.currentTarget).attr('counter');
+      var editor = ace.edit('sentQueryEditor' + count);
+      var query = editor.getValue();
 
       if (query !== '' || query !== undefined || query !== null) {
         var url;
         if (Object.keys(this.bindParamTableObj).length === 0) {
           url = 'query/result/download/' + encodeURIComponent(btoa(JSON.stringify({ query: query })));
-        }else {
+        } else {
           url = 'query/result/download/' + encodeURIComponent(btoa(JSON.stringify({
             query: query,
             bindVars: this.bindParamTableObj
           })));
         }
         arangoHelper.download(url);
-      }else {
+      } else {
         arangoHelper.arangoError('Query error', 'could not query result.');
       }
     },
@@ -398,10 +398,10 @@
         type: 'Explain'
       }));
 
-      var counter = this.outputCounter,
-        outputEditor = ace.edit('outputEditor' + counter),
-        sentQueryEditor = ace.edit('sentQueryEditor' + counter),
-        sentBindParamEditor = ace.edit('sentBindParamEditor' + counter);
+      var counter = this.outputCounter;
+      var outputEditor = ace.edit('outputEditor' + counter);
+      var sentQueryEditor = ace.edit('sentQueryEditor' + counter);
+      var sentBindParamEditor = ace.edit('sentBindParamEditor' + counter);
 
       sentQueryEditor.getSession().setMode('ace/mode/aql');
       sentQueryEditor.setOption('vScrollBarAlwaysVisible', true);
@@ -426,8 +426,8 @@
     fillExplain: function (outputEditor, sentQueryEditor, counter) {
       sentQueryEditor.setValue(this.aqlEditor.getValue(), 1);
 
-      var self = this,
-        queryData = this.readQueryData();
+      var self = this;
+      var queryData = this.readQueryData();
       $('#outputEditorWrapper' + counter + ' .queryExecutionTime').text('');
       this.execPending = false;
 
@@ -449,7 +449,7 @@
             if (data.msg.includes('errorMessage')) {
               self.removeOutputEditor(counter);
               arangoHelper.arangoError('Explain', data.msg);
-            }else {
+            } else {
               outputEditor.setValue(data.msg, 1);
               self.deselect(outputEditor);
               $.noty.clearQueue();
@@ -483,8 +483,8 @@
 
     getCachedQueryAfterRender: function () {
       // get cached query if available
-      var queryObject = this.getCachedQuery(),
-        self = this;
+      var queryObject = this.getCachedQuery();
+      var self = this;
 
       if (queryObject !== null && queryObject !== undefined && queryObject !== '') {
         this.aqlEditor.setValue(queryObject.query, 1);
@@ -547,8 +547,8 @@
 
     fillSelectBoxes: function () {
       // fill select box with # of results
-      var querySize = 1000,
-        sizeBox = $('#querySize');
+      var querySize = 1000;
+      var sizeBox = $('#querySize');
       sizeBox.empty();
 
       [ 100, 250, 500, 1000, 2500, 5000, 10000, 'all' ].forEach(function (value) {
@@ -605,13 +605,13 @@
         cancelCallback = function () {
           $('#aqlEditor .ace_text-input').focus();
         };
-      }else {
+      } else {
         var focused = $(':focus');
         callback = function (string) {
           var old = $(focused).val();
           $(focused).val(old + string);
           $(focused).focus();
-        }.bind(this);
+        };
 
         cancelCallback = function () {
           $(focused).focus();
@@ -635,7 +635,7 @@
         $('#arangoBindParamTable tbody').css('width', $('#bindParamEditor').width());
         $('#arangoBindParamTable tbody tr').css('width', $('#bindParamEditor').width());
         $('#arangoBindParamTable tbody td').css('width', $('#bindParamEditor').width() / 2);
-      }else {
+      } else {
         this.queryPreview.resize();
         $('#arangoMyQueriesTable thead').css('width', $('#queryTable').width());
         $('#arangoMyQueriesTable thead th').css('width', $('#queryTable').width() / 2);
@@ -680,16 +680,17 @@
         val = JSON.parse(val);
         if (val instanceof Array) {
           type = 'arraytype';
-        }else {
+        } else {
           type = typeof val + 'type';
         }
-      } catch(ignore) {}
+      } catch (ignore) {}
 
       return type;
     },
 
     updateBindParams: function (e) {
-      var id, self = this;
+      var id;
+      var self = this;
 
       if (e) {
         id = $(e.currentTarget).attr('name');
@@ -703,7 +704,7 @@
           $(e.currentTarget).removeClass(type);
         });
         $(e.currentTarget).addClass(self.checkType($(e.currentTarget).val()));
-      }else {
+      } else {
         _.each($('#arangoBindParamTable input'), function (element) {
           id = $(element).attr('name');
           self.bindParamTableObj[id] = arangoHelper.parseInput(element);
@@ -725,14 +726,14 @@
     },
 
     parseQuery: function (query) {
-      var STATE_NORMAL = 0,
-        STATE_STRING_SINGLE = 1,
-        STATE_STRING_DOUBLE = 2,
-        STATE_STRING_TICK = 3,
-        STATE_COMMENT_SINGLE = 4,
-        STATE_COMMENT_MULTI = 5,
-        STATE_BIND = 6,
-        STATE_STRING_BACKTICK = 7;
+      var STATE_NORMAL = 0;
+      var STATE_STRING_SINGLE = 1;
+      var STATE_STRING_DOUBLE = 2;
+      var STATE_STRING_TICK = 3;
+      var STATE_COMMENT_SINGLE = 4;
+      var STATE_COMMENT_MULTI = 5;
+      var STATE_BIND = 6;
+      var STATE_STRING_BACKTICK = 7;
 
       query += ' ';
       var self = this;
@@ -842,7 +843,7 @@
       _.each(foundBindParams, function (word) {
         if (self.bindParamTableObj[word]) {
           newObject[word] = self.bindParamTableObj[word];
-        }else {
+        } else {
           newObject[word] = '';
         }
       });
@@ -878,10 +879,9 @@
           if ($(element).attr('name') === key) {
             if (val instanceof Array) {
               $(element).val(JSON.stringify(val)).addClass('arraytype');
-            }
-            else if (typeof val === 'object') {
+            } else if (typeof val === 'object') {
               $(element).val(JSON.stringify(val)).addClass(typeof val + 'type');
-            }else {
+            } else {
               $(element).val(val).addClass(typeof val + 'type');
             }
           }
@@ -932,7 +932,7 @@
               self.bindParamTableObj[k] = '';
             });
             self.allowParamToggle = true;
-          }else {
+          } else {
             self.allowParamToggle = false;
           }
         }
@@ -1031,10 +1031,9 @@
         var x;
         if (a.name < b.name) {
           x = -1;
-        }
-        else if (a.name > b.name) {
+        } else if (a.name > b.name) {
           x = 1;
-        }else {
+        } else {
           x = 0;
         }
         return x;
@@ -1080,7 +1079,9 @@
     },
 
     createCustomQueryModal: function () {
-      var buttons = [], tableContent = [];
+      var buttons = [];
+      var tableContent = [];
+
       tableContent.push(
         window.modalView.createTextEntry(
           'new-query-name',
@@ -1120,7 +1121,7 @@
         $('#modalButton1').removeClass('button-success');
         $('#modalButton1').addClass('button-warning');
         $('#modalButton1').text('Update');
-      }else {
+      } else {
         $('#modalButton1').removeClass('button-warning');
         $('#modalButton1').addClass('button-success');
         $('#modalButton1').text('Save');
@@ -1135,8 +1136,8 @@
       // update queries first, before writing
       this.refreshAQL();
 
-      var saveName = $('#new-query-name').val(),
-        bindVars = this.bindParamTableObj;
+      var saveName = $('#new-query-name').val();
+      var bindVars = this.bindParamTableObj;
 
       if ($('#new-query-name').hasClass('invalid-input')) {
         return;
@@ -1147,9 +1148,9 @@
         return;
       }
 
-      var content = this.aqlEditor.getValue(),
+      var content = this.aqlEditor.getValue();
         // check for already existing entry
-        quit = false;
+      var quit = false;
       _.each(this.customQueries, function (v) {
         if (v.name === saveName) {
           v.value = content;
@@ -1162,7 +1163,7 @@
         // Heiko: Form-Validator - name already taken
         // Update model and save
         this.collection.findWhere({name: saveName}).set('value', content);
-      }else {
+      } else {
         if (bindVars === '' || bindVars === undefined) {
           bindVars = '{}';
         }
@@ -1184,7 +1185,7 @@
       var callback = function (error) {
         if (error) {
           arangoHelper.arangoError('Query', 'Could not save query');
-        }else {
+        } else {
           var self = this;
           this.collection.fetch({
             success: function () {
@@ -1232,10 +1233,10 @@
       $('#outputEditorWrapper' + this.outputCounter).hide();
       $('#outputEditorWrapper' + this.outputCounter).show('fast');
 
-      var counter = this.outputCounter,
-        outputEditor = ace.edit('outputEditor' + counter),
-        sentQueryEditor = ace.edit('sentQueryEditor' + counter),
-        sentBindParamEditor = ace.edit('sentBindParamEditor' + counter);
+      var counter = this.outputCounter;
+      var outputEditor = ace.edit('outputEditor' + counter);
+      var sentQueryEditor = ace.edit('sentQueryEditor' + counter);
+      var sentBindParamEditor = ace.edit('sentBindParamEditor' + counter);
 
       sentQueryEditor.getSession().setMode('ace/mode/aql');
       sentQueryEditor.setOption('vScrollBarAlwaysVisible', true);
@@ -1270,7 +1271,7 @@
 
       if (sizeBox.val() === 'all') {
         data.batchSize = 1000000;
-      }else {
+      } else {
         data.batchSize = parseInt(sizeBox.val(), 10);
       }
 
@@ -1406,7 +1407,7 @@
 
           if ($('#bindParamEditor').is(':visible')) {
             self.renderBindParamTable();
-          }else {
+          } else {
             self.bindParamAceEditor.setValue(JSON.stringify(bindParam), 1);
             self.deselect(self.bindParamAceEditor);
           }
@@ -1466,7 +1467,7 @@
                 appendSpan(
                   data.extra.stats.writesIgnored + ' writes ignored', 'fa-check-circle positive', 'additional'
                 );
-              }else {
+              } else {
                 appendSpan(
                   data.extra.stats.writesIgnored + ' writes ignored', 'fa-exclamation-circle warning', 'additional'
                 );
@@ -1476,7 +1477,7 @@
               appendSpan(
                 'full collection scan', 'fa-exclamation-circle warning', 'additional'
               );
-            }else {
+            } else {
               appendSpan(
                 'no full collection scan', 'fa-check-circle positive', 'additional'
               );
@@ -1511,13 +1512,11 @@
           contentType: 'application/json',
           processData: false,
           success: function (data, textStatus, xhr) {
-
             // query finished, now fetch results
             if (xhr.status === 201) {
               fetchQueryResult(data);
-            }
+            } else if (xhr.status === 204) {
             // query not ready yet, retry
-            else if (xhr.status === 204) {
               self.checkQueryTimer = window.setTimeout(function () {
                 checkQueryStatus();
               }, 500);
@@ -1541,7 +1540,7 @@
                     error.errorMessage.match(/'.*'/g)[0],
                     error.errorMessage.match(/\d+:\d+/g)[0]
                   );
-                }else {
+                } else {
                   self.markPositionError(
                     error.errorMessage.match(/\(\w+\)/g)[0]
                   );
@@ -1590,15 +1589,15 @@
       var callback = function (error) {
         if (error) {
           arangoHelper.arangoError('Query', 'Could not reload Queries');
-        }else {
+        } else {
           self.updateLocalQueries();
           self.updateQueryTable();
         }
-      }.bind(self);
+      };
 
       var originCallback = function () {
         self.getSystemQueries(callback);
-      }.bind(self);
+      };
 
       this.getAQL(originCallback);
     },
@@ -1663,10 +1662,10 @@
                   'Custom Queries',
                   'Could not import old local storage queries'
                 );
-              }else {
+              } else {
                 localStorage.removeItem('customQueries');
               }
-            }.bind(self);
+            };
             self.collection.saveCollectionQueries(callback);
           }
           self.updateLocalQueries();

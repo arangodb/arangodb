@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global arangoHelper, Backbone, templateEngine, $, window, _, nv, d3 */
+/* global arangoHelper, Backbone, templateEngine, $, window, _ */
 (function () {
   'use strict';
 
@@ -55,7 +55,7 @@
             self.continueRender(nodes, data);
           }
         });
-      }.bind(this);
+      };
 
       $.ajax({
         type: 'GET',
@@ -78,7 +78,9 @@
     },
 
     continueRender: function (nodes, scaling) {
-      var coords = {}, dbs = {}, scale = false;
+      var coords = {};
+      var dbs = {};
+      var scale = false;
 
       _.each(nodes, function (node, name) {
         if (node.Role === 'Coordinator') {
@@ -164,8 +166,6 @@
     },
 
     renderCounts: function (scale, callback) {
-      var self = this;
-
       var renderFunc = function (id, ok, pending, error) {
         var string = '<span class="positive"><span>' + ok + '</span><i class="fa fa-check-circle"></i></span>';
         if (pending && scale === true) {
@@ -180,11 +180,15 @@
           $('.title').css('position', 'relative');
           $('.title').css('top', '-4px');
         }
-      }.bind(this);
+      };
 
       var callbackFunction = function (nodes) {
-        var coordsErrors = 0, coords = 0, coordsPending = 0,
-          dbs = 0, dbsErrors = 0, dbsPending = 0;
+        var coordsErrors = 0;
+        var coords = 0;
+        var coordsPending = 0;
+        var dbs = 0;
+        var dbsErrors = 0;
+        var dbsPending = 0;
 
         _.each(nodes, function (node) {
           if (node.Role === 'Coordinator') {
@@ -227,7 +231,7 @@
             }
           }
         });
-      }.bind(this);
+      };
 
       $.ajax({
         type: 'GET',
@@ -258,8 +262,8 @@
     },
 
     readNumberFromID: function (id, increment, decrement) {
-      var value = $(id).val(),
-        parsed = false;
+      var value = $(id).val();
+      var parsed = false;
 
       try {
         parsed = JSON.parse(value);

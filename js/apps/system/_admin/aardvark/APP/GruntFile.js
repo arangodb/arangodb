@@ -320,6 +320,20 @@
         }
       },
 
+      semistandard: {
+        options: {
+          format: false
+        },
+        app: {
+          src: [
+            'frontend/js/views/*.js',
+            'frontend/js/arango/*.js',
+            'frontend/js/models/*.js',
+            'frontend/js/collections/*.js',
+            'frontend/js/routers/*.js'
+          ]
+        }
+      },
 
       uglify: {
         default1: {
@@ -387,6 +401,7 @@
       }
     });
 
+    grunt.loadNpmTasks('grunt-semistandard');
     grunt.loadNpmTasks("grunt-sass");
     grunt.loadNpmTasks("grunt-contrib-imagemin");
     grunt.loadNpmTasks('grunt-contrib-cssmin');
@@ -423,6 +438,7 @@
 
     grunt.registerTask('deploy', [
       'sass:dev',
+      'semistandard',
       'replace',
       'imagemin',
       'concat',

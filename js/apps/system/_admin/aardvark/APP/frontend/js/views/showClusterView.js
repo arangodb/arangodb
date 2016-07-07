@@ -62,7 +62,7 @@
       this.coordinators = new window.ClusterCoordinators([], {
         interval: this.interval
       });
-      this.documentStore = new window.arangoDocuments();
+      this.documentStore = new window.ArangoDocuments();
       this.statisticsDescription = new window.StatisticsDescription();
       this.statisticsDescription.fetch({
         async: false
@@ -118,8 +118,9 @@
     updateServerStatus: function (nextStep) {
       var self = this;
       var callBack = function (cls, stat, serv) {
-        var id = serv,
-          type, icon;
+        var id = serv;
+        var type;
+        var icon;
         id = id.replace(/\./g, '-');
         id = id.replace(/\:/g, '_');
         icon = $('#id' + id);
@@ -277,7 +278,7 @@
       var h = self.hist[name];
       var l = h.length;
 
-      if (0 === l) {
+      if (l === 0) {
         h.push({
           time: time,
           snap: snap,
@@ -303,16 +304,6 @@
             requestsPerSecond: ps
           });
         }
-      /*
-      else {
-        h.times.push({
-          time: time,
-          snap: snap,
-          requests: requests,
-          requestsPerSecond: 0
-        })
-      }
-      */
       }
     },
 
@@ -327,7 +318,7 @@
 
       // create statistics collector for DB servers
       this.dbservers.forEach(function (dbserver) {
-        if (dbserver.get('status') !== 'ok') {return;}
+        if (dbserver.get('status') !== 'ok') { return; }
 
         if (self.knownServers.indexOf(dbserver.id) === -1) {
           self.knownServers.push(dbserver.id);
@@ -335,17 +326,17 @@
 
         var stat = new window.Statistics({name: dbserver.id});
 
-        stat.url = coord.get('protocol') + '://'
-        + coord.get('address')
-        + '/_admin/clusterStatistics?DBserver='
-        + dbserver.get('name');
+        stat.url = coord.get('protocol') + '://' +
+        coord.get('address') +
+        '/_admin/clusterStatistics?DBserver=' +
+        dbserver.get('name');
 
         statCollect.add(stat);
       });
 
       // create statistics collector for coordinator
       this.coordinators.forEach(function (coordinator) {
-        if (coordinator.get('status') !== 'ok') {return;}
+        if (coordinator.get('status') !== 'ok') { return; }
 
         if (self.knownServers.indexOf(coordinator.id) === -1) {
           self.knownServers.push(coordinator.id);
@@ -353,9 +344,9 @@
 
         var stat = new window.Statistics({name: coordinator.id});
 
-        stat.url = coordinator.get('protocol') + '://'
-          + coordinator.get('address')
-          + '/_admin/statistics';
+        stat.url = coordinator.get('protocol') + '://' +
+          coordinator.get('address') +
+          '/_admin/statistics';
 
         statCollect.add(stat);
       });
@@ -432,7 +423,8 @@
         .style('text-anchor', 'middle')
         .text(function (d) {
           var v = d.data.value / 1024 / 1024 / 1024;
-          return v.toFixed(2); });
+          return v.toFixed(2);
+        });
 
       slices.append('text')
         .attr('transform', function (d) { return 'translate(' + arc2.centroid(d) + ')'; })
@@ -455,11 +447,11 @@
 
       var d, h, i, j, tt, snap;
 
-      for (i = 0;  i < ks.length;  ++i) {
+      for (i = 0; i < ks.length; ++i) {
         h = self.hist[ks[i]];
 
         if (h) {
-          for (j = 0;  j < h.length;  ++j) {
+          for (j = 0; j < h.length; ++j) {
             snap = h[j].snap;
 
             if (snap < t) {
@@ -524,12 +516,12 @@
       var cur;
       var coord;
 
-      var ip_port = tar.attr('id');
-      ip_port = ip_port.replace(/\-/g, '.');
-      ip_port = ip_port.replace(/\_/g, ':');
-      ip_port = ip_port.substr(2);
+      var ipPort = tar.attr('id');
+      ipPort = ipPort.replace(/\-/g, '.');
+      ipPort = ipPort.replace(/\_/g, ':');
+      ipPort = ipPort.substr(2);
 
-      serv.raw = ip_port;
+      serv.raw = ipPort;
       serv.isDBServer = tar.hasClass('dbserver');
 
       if (serv.isDBServer) {
@@ -539,16 +531,16 @@
         coord = this.coordinators.findWhere({
           status: 'ok'
         });
-        serv.endpoint = coord.get('protocol')
-        + '://'
-        + coord.get('address');
+        serv.endpoint = coord.get('protocol') +
+          '://' +
+          coord.get('address');
       } else {
         cur = this.coordinators.findWhere({
           address: serv.raw
         });
-        serv.endpoint = cur.get('protocol')
-        + '://'
-        + cur.get('address');
+        serv.endpoint = cur.get('protocol') +
+          '://' +
+          cur.get('address');
       }
 
       serv.target = encodeURIComponent(cur.get('name'));

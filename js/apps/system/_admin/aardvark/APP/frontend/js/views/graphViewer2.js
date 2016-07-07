@@ -70,7 +70,10 @@
 
       var generateMenu = function (e, nodeId) {
         var hotaru = ['#364C4A', '#497C7F', '#92C5C0', '#858168', '#CCBCA5'];
-        var wheel = new wheelnav('nodeContextMenu');
+
+        var Wheelnav = wheelnav;
+
+        var wheel = new Wheelnav('nodeContextMenu');
         wheel.maxPercent = 1.0;
         wheel.wheelRadius = 50;
         wheel.clockwise = false;
@@ -127,8 +130,10 @@
         return;
       }
 
+      this.Sigma = sigma;
+
       // create sigma graph
-      var s = new sigma({
+      var s = new this.Sigma({
         graph: graph,
         container: 'graph-container',
         renderer: {
@@ -265,6 +270,7 @@
       } else {
         dragListener = sigma.plugins.dragNodes(s, s.renderers[0]);
       }
+      console.log(dragListener);
     }
 
   });

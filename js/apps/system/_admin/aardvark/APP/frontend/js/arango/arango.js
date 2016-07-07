@@ -105,8 +105,8 @@
     },
 
     parseInput: function (element) {
-      var parsed,
-        string = $(element).val();
+      var parsed;
+      var string = $(element).val();
 
       try {
         parsed = JSON.parse(string);
@@ -225,8 +225,8 @@
         window.scrollBy(0, -180);
       },
       showHotkeysModal: function () {
-        var buttons = [],
-          content = window.arangoHelper.allHotkeys;
+        var buttons = [];
+        var content = window.arangoHelper.allHotkeys;
 
         window.modalView.show('modalHotkeys.ejs', 'Keyboard Shortcuts', buttons, content);
       }
@@ -467,8 +467,8 @@
     },
 
     openDocEditor: function (id, type, callback) {
-      var ids = id.split('/'),
-        self = this;
+      var ids = id.split('/');
+      var self = this;
 
       var docFrameView = new window.DocumentView({
         collection: window.App.arangoDocumentStore
@@ -729,12 +729,12 @@
         return n < 10 ? '0' + n : n;
       };
 
-      return dt.getUTCFullYear() + '-'
-        + pad(dt.getUTCMonth() + 1) + '-'
-        + pad(dt.getUTCDate()) + ' '
-        + pad(dt.getUTCHours()) + ':'
-        + pad(dt.getUTCMinutes()) + ':'
-        + pad(dt.getUTCSeconds());
+      return dt.getUTCFullYear() + '-' +
+        pad(dt.getUTCMonth() + 1) + '-' +
+        pad(dt.getUTCDate()) + ' ' +
+        pad(dt.getUTCHours()) + ':' +
+        pad(dt.getUTCMinutes()) + ':' +
+        pad(dt.getUTCSeconds());
     },
 
     escapeHtml: function (val) {
@@ -765,7 +765,8 @@
     },
 
     showAuthDialog: function () {
-      var toShow = true, show = localStorage.getItem('authenticationNotification');
+      var toShow = true;
+      var show = localStorage.getItem('authenticationNotification');
 
       if (show === 'false') {
         toShow = false;
