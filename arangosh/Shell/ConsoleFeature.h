@@ -69,6 +69,7 @@ class ConsoleFeature final : public application_features::ApplicationFeature {
   void printWelcomeInfo();
   void printByeBye();
   std::string readPassword(std::string const& message);
+  static std::string readPassword();
   void printContinuous(std::string const&);
   void printLine(std::string const&);
   void printErrorLine(std::string const&);

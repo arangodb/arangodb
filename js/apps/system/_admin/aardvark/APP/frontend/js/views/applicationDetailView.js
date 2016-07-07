@@ -164,15 +164,15 @@
             var info;
             if (err) {
               info = (
-                '<p>The script failed with an error'
-                + (err.statusCode ? (' (HTTP ' + err.statusCode + ')') : '')
-                + ':</p>'
-                + '<pre>' + err.message + '</pre>'
+                '<p>The script failed with an error' +
+                (err.statusCode ? (' (HTTP ' + err.statusCode + ')') : '') +
+                ':</p>' +
+                '<pre>' + err.message + '</pre>'
               );
             } else if (result) {
               info = (
-                '<p>Script results:</p>'
-                + '<pre>' + JSON.stringify(result, null, 2) + '</pre>'
+                '<p>Script results:</p>' +
+                '<pre>' + JSON.stringify(result, null, 2) + '</pre>'
               );
             } else {
               info = '<p>The script ran successfully.</p>';
@@ -209,13 +209,13 @@
     runTests: function (event) {
       event.preventDefault();
       var warning = (
-      '<p><strong>WARNING:</strong> Running tests may result in destructive side-effects including data loss.'
-        + ' Please make sure not to run tests on a production database.</p>'
+      '<p><strong>WARNING:</strong> Running tests may result in destructive side-effects including data loss.' +
+        ' Please make sure not to run tests on a production database.</p>'
       );
       if (this.model.isDevelopment()) {
         warning += (
-          '<p><strong>WARNING:</strong> This app is running in <strong>development mode</strong>.'
-          + " If any of the tests access the app's HTTP API they may become non-deterministic.</p>"
+          '<p><strong>WARNING:</strong> This app is running in <strong>development mode</strong>.' +
+          ' If any of the tests access the app\'s HTTP API they may become non-deterministic.</p>'
         );
       }
       var buttons = [
@@ -253,7 +253,7 @@
           } else {
             $(this.el).html(this.template.render({
               app: this.model,
-              db: db,
+              baseUrl: arangoHelper.databaseUrl('', db),
               mode: mode
             }));
 
@@ -373,9 +373,7 @@
     },
 
     appUrl: function (currentDB) {
-      return window.location.origin + '/_db/'
-        + encodeURIComponent(currentDB)
-        + this.model.get('mount');
+      return arangoHelper.databaseUrl(this.model.get('mount'), currentDB);
     },
 
     applyConfig: function () {

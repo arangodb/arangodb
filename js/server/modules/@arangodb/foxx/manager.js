@@ -304,7 +304,7 @@ function checkMountedSystemService (dbname) {
     mount = usedSystemMountPoints[i];
     delete serviceCache[dbname][mount];
     _scanFoxx(mount, {replace: true});
-    executeScript('setup', lookupService(mount));
+    lookupService(mount).executeScript('setup');
   }
 }
 
@@ -538,22 +538,6 @@ function computeServicePath (mount) {
   var root = computeRootServicePath(mount);
   var mountPath = transformMountToPath(mount);
   return joinPath(root, mountPath);
-}
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief executes a service script
-// //////////////////////////////////////////////////////////////////////////////
-
-function executeScript (scriptName, service, argv) {
-  var scripts = service.manifest.scripts;
-  // Only run setup/teardown scripts if they exist
-  if (scripts[scriptName] || (scriptName !== 'setup' && scriptName !== 'teardown')) {
-    return service.run(scripts[scriptName], {
-      foxxContext: {
-        argv: argv ? (Array.isArray(argv) ? argv : [argv]) : []
-      }
-    });
-  }
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -820,7 +804,7 @@ function patchManifestFile (servicePath, patchData) {
     );
   }
   Object.assign(manifest, patchData);
-  fs.write(filename, JSON.stringify(manifest));
+  fs.write(filename, JSON.stringify(manifest, null, 2));
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -854,8 +838,11 @@ function runScript (scriptName, mount, options) {
   );
 
   var service = lookupService(mount);
-
-  return executeScript(scriptName, service, options) || null;
+  if (service.isDevelopment && scriptName !== 'setup') {
+    service.executeScript('setup');
+  }
+  ensureRouted(mount);
+  return service.executeScript(scriptName, options) || null;
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -888,12 +875,6 @@ function readme (mount) {
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief run a Foxx service's tests
-// /
-// / Input:
-// / * mount: the mount path starting with a "/"
-// /
-// / Output:
-// / -
 // //////////////////////////////////////////////////////////////////////////////
 
 function runTests (mount, options) {
@@ -904,6 +885,10 @@ function runTests (mount, options) {
   );
 
   var service = lookupService(mount);
+  if (service.isDevelopment) {
+    service.executeScript('setup');
+  }
+  ensureRouted(mount);
   var reporter = options ? options.reporter : null;
   return require('@arangodb/foxx/mocha').run(service, reporter);
 }
@@ -1087,7 +1072,7 @@ function _install (serviceInfo, mount, options, runSetup) {
   try {
     service = _scanFoxx(mount, options);
     if (runSetup) {
-      executeScript('setup', lookupService(mount));
+      lookupService(mount).executeScript('setup');
     }
     if (!service.needsConfiguration()) {
       // Validate Routing & Exports
@@ -1225,7 +1210,7 @@ function _uninstall (mount, options) {
   }
   if (options.teardown !== false && options.teardown !== 'false') {
     try {
-      executeScript('teardown', service);
+      service.executeScript('teardown');
     } catch (e) {
       if (!options.force) {
         throw e;
@@ -1451,9 +1436,9 @@ function initializeFoxx (options) {
   var mounts = syncWithFolder(options);
   refillCaches(dbname);
   checkMountedSystemService(dbname);
-  mounts.forEach(function (mount) {
-    executeScript('setup', lookupService(mount));
-  });
+  for (const mount of mounts) {
+    lookupService(mount).executeScript('setup');
+  }
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -1473,6 +1458,10 @@ function _toggleDevelopment (mount, activate) {
   var service = lookupService(mount);
   service.development(activate);
   utils.updateService(mount, service.toJSON());
+  if (!activate) {
+    // Make sure setup changes from devmode are respected
+    service.executeScript('setup');
+  }
   reloadRouting();
   return service;
 }

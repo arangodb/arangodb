@@ -1,11 +1,10 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global frontendConfig, _, window, document, Backbone, EJS, SwaggerUi, hljs, $, arangoHelper, templateEngine,
-  CryptoJS, Joi */
+/* global frontendConfig, window, document, Backbone, $, arangoHelper, templateEngine, Joi*/
 (function () {
   'use strict';
 
-  window.userManagementView = Backbone.View.extend({
+  window.UserManagementView = Backbone.View.extend({
     el: '#content',
     el2: '#userManagementThumbnailsIn',
 
@@ -34,16 +33,16 @@
     dropdownVisible: false,
 
     initialize: function () {
-      var self = this,
-        callback = function (error, user) {
-          if (frontendConfig.authenticationEnabled === true) {
-            if (error || user === null) {
-              arangoHelper.arangoError('User', 'Could not fetch user data');
-            } else {
-              this.currentUser = this.collection.findWhere({user: user});
-            }
+      var self = this;
+      var callback = function (error, user) {
+        if (frontendConfig.authenticationEnabled === true) {
+          if (error || user === null) {
+            arangoHelper.arangoError('User', 'Could not fetch user data');
+          } else {
+            this.currentUser = this.collection.findWhere({user: user});
           }
-        }.bind(this);
+        }
+      }.bind(this);
 
       // fetch collection defined in router
       this.collection.fetch({
@@ -96,7 +95,7 @@
           $('#userManagementDropdown').show();
         }
 
-        if (!!isProfile) {
+        if (isProfile) {
           this.editCurrentUser();
         }
 
@@ -227,8 +226,8 @@
     },
 
     createCreateUserModal: function () {
-      var buttons = [],
-        tableContent = [];
+      var buttons = [];
+      var tableContent = [];
 
       tableContent.push(
         window.modalView.createTextEntry(

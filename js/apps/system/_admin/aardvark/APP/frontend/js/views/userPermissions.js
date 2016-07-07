@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global CryptoJS, _, frontendConfig, arangoHelper, Backbone, window, templateEngine, $ */
+/* global _, frontendConfig, arangoHelper, Backbone, window, templateEngine, $ */
 
 (function () {
   'use strict';

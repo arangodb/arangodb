@@ -213,8 +213,8 @@
       }
       var data = {
         waitForSync: wfs,
-        journalSize: parseInt(journalSize),
-        indexBuckets: parseInt(indexBuckets)
+        journalSize: parseInt(journalSize, 10),
+        indexBuckets: parseInt(indexBuckets, 10)
       };
 
       $.ajax({

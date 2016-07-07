@@ -99,7 +99,7 @@
         <div id="swaggerJsonContent" style="display: none">
           <div id="swaggerJsonEditor" style="height: 100%;"></div>
         </div>
-        <iframe src="/_db/<%= db %>/_admin/aardvark/foxxes/docs/index.html?mount=<%= encodeURIComponent(app.get('mount')) %>" name="Documentation"></iframe>
+        <iframe src="<%= baseUrl %>/_admin/aardvark/foxxes/docs/index.html?mount=<%= encodeURIComponent(app.get('mount')) %>" name="Documentation"></iframe>
       </div>
       <div id="settings" class="readme" style="display: none;">
         <% if (_.isEmpty(app.get('config'))) { %>
@@ -135,12 +135,12 @@
         <dd>
           <ul>
             <li>
-              <a href="/_db/<%= db %>/_admin/aardvark/foxxes/docs/standalone/index.html?mount=<%= encodeURIComponent(app.get('mount')) %>" target="_blank">
+              <a href="<%= baseUrl %>/_admin/aardvark/foxxes/docs/standalone/index.html?mount=<%= encodeURIComponent(app.get('mount')) %>" target="_blank">
                 API Documentation
               </a>
             </li>
             <li>
-              <a href="/_db/<%= db %>/_admin/aardvark/foxxes/docs/swagger.json?mount=<%= encodeURIComponent(app.get('mount')) %>" target="_blank">
+              <a href="<%= baseUrl %>/_admin/aardvark/foxxes/docs/swagger.json?mount=<%= encodeURIComponent(app.get('mount')) %>" target="_blank">
                 API as JSON
               </a>
             </li>

@@ -1,6 +1,8 @@
 devel
 -----
 
+* fixed issue #1930
+
 * added option `--skip-lines` for arangoimp
   this allows skipping the first few lines from the import file in case the
   CSV or TSV import are used
@@ -16,9 +18,32 @@ devel
 * added AQL function `OUTERSECTION` to return the symmetric difference of its
   input arguments
 
+* Foxx manifests of installed services are now saved to disk with indentation
+
+* Foxx tests and scripts in development mode should now always respect updated
+  files instead of loading stale modules
+
+* When disabling Foxx development mode the setup script is now re-run
+
 
 v3.0.2 (XXXX-XX-XX)
 -------------------
+
+* don't expose local file paths in error messages.
+
+* fixed issue #1929
+
+* make arangodump dump the attribute `isSystem` when dumping the structure
+  of a collection, additionally make arangorestore not fail when the attribute
+  is missing
+
+* fixed "Could not extract custom attribute" issue when using COLLECT with
+  MIN/MAX functions in some contexts
+
+* honor presence of persistent index for sorting
+
+* make AQL query optimizer not skip "use-indexes-rule", even if enough 
+  plans have been created already
 
 * make AQL optimizer not skip "use-indexes-rule", even if enough execution plans 
   have been created already
@@ -28,6 +53,10 @@ v3.0.2 (XXXX-XX-XX)
 * added missing SSL support for arangorestore
 
 * improved cluster import performance
+
+* fix Foxx thumbnails on DC/OS
+
+* fix Foxx configuration not being saved
 
 
 v3.0.1 (XXXX-XX-XX)

@@ -79,14 +79,14 @@
       }
       port = port || loc.port;
 
-      var url = protocol
-        + '//'
-        + window.location.hostname
-        + ':'
-        + port
-        + '/_db/'
-        + encodeURIComponent(name)
-        + '/_admin/aardvark/standalone.html';
+      var url = protocol +
+        '//' +
+        window.location.hostname +
+        ':' +
+        port +
+        '/_db/' +
+        encodeURIComponent(name) +
+        '/_admin/aardvark/standalone.html';
       if (hash) {
         var base = hash.split('/')[0];
         if (base.indexOf('#collection') === 0) {
@@ -127,7 +127,7 @@
         } else {
           callback(false, _.includes(list, '_system'));
         }
-      }.bind(this);
+      };
 
       this.getDatabasesForUser(callback2);
     }
