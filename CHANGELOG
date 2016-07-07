@@ -1,7 +1,9 @@
 v3.0.2 (XXXX-XX-XX)
 -------------------
 
-* don't expose local file paths in error messages.
+* fixed issue #1930
+
+* don't expose local file paths in Foxx error messages
 
 * fixed issue #1929
 

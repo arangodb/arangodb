@@ -64,5 +64,18 @@ void TRI_SetStdinVisibility(bool visible) {
     tty.c_lflag &= ~ECHO;
   }
   (void)tcsetattr(STDIN_FILENO, TCSANOW, &tty);
+#else
+#ifdef WIN32
+  HANDLE hStdin = GetStdHandle(STD_INPUT_HANDLE); 
+  DWORD mode;
+  GetConsoleMode(hStdin, &mode);
+              
+  if (visible) {
+    mode |= ENABLE_ECHO_INPUT;
+  } else {
+    mode &= ~ENABLE_ECHO_INPUT;
+  }
+  SetConsoleMode(hStdin, mode);
+#endif
 #endif
 }
