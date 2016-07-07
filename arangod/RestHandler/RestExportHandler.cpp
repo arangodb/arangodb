@@ -262,7 +262,7 @@ void RestExportHandler::createCursor() {
       bool count = arangodb::basics::VelocyPackHelper::getBooleanValue(
           options, "count", false);
 
-      createResponse(GeneralResponse::ResponseCode::CREATED);
+      setResponseCode(GeneralResponse::ResponseCode::CREATED);
 
       // TODO needs to generalized
       auto* response = dynamic_cast<HttpResponse*>(_response);
@@ -339,7 +339,7 @@ void RestExportHandler::modifyCursor() {
   }
 
   try {
-    createResponse(GeneralResponse::ResponseCode::OK);
+    setResponseCode(GeneralResponse::ResponseCode::OK);
 
     // TODO this needs to be generalized
     auto* response = dynamic_cast<HttpResponse*>(_response);

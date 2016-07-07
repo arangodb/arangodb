@@ -168,9 +168,9 @@ void RestVocbaseBaseHandler::generateSaved(
     arangodb::OperationResult const& result, std::string const& collectionName,
     TRI_col_type_e type, VPackOptions const* options, bool isMultiple) {
   if (result.wasSynchronous) {
-    createResponse(GeneralResponse::ResponseCode::CREATED);
+    setResponseCode(GeneralResponse::ResponseCode::CREATED);
   } else {
-    createResponse(GeneralResponse::ResponseCode::ACCEPTED);
+    setResponseCode(GeneralResponse::ResponseCode::ACCEPTED);
   }
 
   if (isMultiple && !result.countErrorCodes.empty()) {
@@ -195,9 +195,9 @@ void RestVocbaseBaseHandler::generateDeleted(
     arangodb::OperationResult const& result, std::string const& collectionName,
     TRI_col_type_e type, VPackOptions const* options) {
   if (result.wasSynchronous) {
-    createResponse(GeneralResponse::ResponseCode::OK);
+    setResponseCode(GeneralResponse::ResponseCode::OK);
   } else {
-    createResponse(GeneralResponse::ResponseCode::ACCEPTED);
+    setResponseCode(GeneralResponse::ResponseCode::ACCEPTED);
   }
   generate20x(result, collectionName, type, options);
 }
@@ -256,7 +256,7 @@ void RestVocbaseBaseHandler::generateForbidden() {
 
 void RestVocbaseBaseHandler::generatePreconditionFailed(
     VPackSlice const& slice) {
-  createResponse(GeneralResponse::ResponseCode::PRECONDITION_FAILED);
+  setResponseCode(GeneralResponse::ResponseCode::PRECONDITION_FAILED);
 
   if (slice.isObject()) {  // single document case
     std::string const rev =
@@ -310,7 +310,7 @@ void RestVocbaseBaseHandler::generatePreconditionFailed(
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestVocbaseBaseHandler::generateNotModified(TRI_voc_rid_t rid) {
-  createResponse(GeneralResponse::ResponseCode::NOT_MODIFIED);
+  setResponseCode(GeneralResponse::ResponseCode::NOT_MODIFIED);
   _response->setHeaderNC(StaticStrings::Etag,
                          "\"" + StringUtils::itoa(rid) + "\"");
 }
@@ -331,7 +331,7 @@ void RestVocbaseBaseHandler::generateDocument(VPackSlice const& input,
   }
 
   // and generate a response
-  createResponse(GeneralResponse::ResponseCode::OK);
+  setResponseCode(GeneralResponse::ResponseCode::OK);
 
   // set ETAG header
   if (!rev.empty()) {

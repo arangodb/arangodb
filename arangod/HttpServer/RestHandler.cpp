@@ -127,6 +127,7 @@ GeneralResponse* RestHandler::stealResponse() {
   return tmp;
 }
 
-void RestHandler::createResponse(GeneralResponse::ResponseCode code) {
+void RestHandler::setResponseCode(GeneralResponse::ResponseCode code) {
+  TRI_ASSERT(_response != nullptr);
   _response->reset(code);
 }

@@ -116,8 +116,8 @@ class RestHandler : public RequestStatisticsAgent, public arangodb::WorkItem {
   GeneralResponse* stealResponse();
 
  protected:
-  // create a new REST response
-  void createResponse(GeneralResponse::ResponseCode);
+  // sets response Code
+  void setResponseCode(GeneralResponse::ResponseCode);
 
  protected:
   // handler id
@@ -132,6 +132,7 @@ class RestHandler : public RequestStatisticsAgent, public arangodb::WorkItem {
   // the request
   GeneralRequest* _request;
 
+//OBI-TODO make private
   // the response
   GeneralResponse* _response;
 };

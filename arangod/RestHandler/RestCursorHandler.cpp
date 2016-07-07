@@ -136,7 +136,7 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
   TRI_ASSERT(qResult.isArray());
 
   {
-    createResponse(GeneralResponse::ResponseCode::CREATED);
+    setResponseCode(GeneralResponse::ResponseCode::CREATED);
 
     // TODO needs to generalized
     auto* response = dynamic_cast<HttpResponse*>(_response);
@@ -477,7 +477,7 @@ void RestCursorHandler::modifyCursor() {
   }
 
   try {
-    createResponse(GeneralResponse::ResponseCode::OK);
+    setResponseCode(GeneralResponse::ResponseCode::OK);
 
     // TODO needs to generalized
     auto* response = dynamic_cast<HttpResponse*>(_response);

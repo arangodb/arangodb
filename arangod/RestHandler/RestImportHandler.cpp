@@ -837,7 +837,7 @@ int RestImportHandler::performImport(SingleCollectionTransaction& trx,
 
 void RestImportHandler::generateDocumentsCreated(
     RestImportResult const& result) {
-  createResponse(GeneralResponse::ResponseCode::CREATED);
+  setResponseCode(GeneralResponse::ResponseCode::CREATED);
 
   try {
     VPackBuilder json;

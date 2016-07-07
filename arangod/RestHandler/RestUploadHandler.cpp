@@ -112,7 +112,7 @@ RestHandler::status RestUploadHandler::execute() {
   TRI_Free(TRI_CORE_MEM_ZONE, relative);
 
   // create the response
-  createResponse(GeneralResponse::ResponseCode::CREATED);
+  setResponseCode(GeneralResponse::ResponseCode::CREATED);
 
   VPackBuilder b;
 

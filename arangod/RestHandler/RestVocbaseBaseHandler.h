@@ -154,14 +154,14 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   void generateOk() {
-    createResponse(GeneralResponse::ResponseCode::NO_CONTENT);
+    setResponseCode(GeneralResponse::ResponseCode::NO_CONTENT);
   }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief generates ok message with no body but with certain status code
   //////////////////////////////////////////////////////////////////////////////
 
-  void generateOk(GeneralResponse::ResponseCode code) { createResponse(code); }
+  void generateOk(GeneralResponse::ResponseCode code) { setResponseCode(code); }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief generates message for a saved document

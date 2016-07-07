@@ -46,13 +46,13 @@ class MaintenanceHandler : public RestHandler {
   bool isDirect() const override { return true; };
 
   status execute() override {
-    createResponse(GeneralResponse::ResponseCode::SERVICE_UNAVAILABLE);
+    setResponseCode(GeneralResponse::ResponseCode::SERVICE_UNAVAILABLE);
 
     return status::DONE;
   };
 
   void handleError(const Exception& error) override {
-    createResponse(GeneralResponse::ResponseCode::SERVICE_UNAVAILABLE);
+    setResponseCode(GeneralResponse::ResponseCode::SERVICE_UNAVAILABLE);
   };
 };
 }

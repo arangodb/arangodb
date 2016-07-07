@@ -1,5 +1,6 @@
 tags
 build
+core.*
 
 .deps
 .dirstamp

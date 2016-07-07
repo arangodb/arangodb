@@ -499,8 +499,6 @@ bool RestEdgesHandler::readFilteredEdges() {
   if (!parseSuccess) {
     // We continue unfiltered
     // Filter could be done by caller
-    delete _response;
-    _response = nullptr;
     return readEdges(expressions);
   }
   VPackSlice body = parsedBody->slice();
