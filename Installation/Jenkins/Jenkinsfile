@@ -2,5 +2,10 @@
 
 
 node {
-    echo 'Hello from Pipeline'
+  if (isUnix()) {
+    echo 'Hello Unix'
+  }
+  else {
+    echo 'hello else'
+  }
 }
