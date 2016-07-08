@@ -744,6 +744,78 @@ function ahuacatlModifySuite () {
       queries.forEach(function(query) { 
         assertQueryError(errors.ERROR_QUERY_ACCESS_AFTER_MODIFICATION.code, query, { "@cn": cn1 }, query);
       });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test upsert on same document
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpsertDocumentInitiallyPresent : function () {
+      AQL_EXECUTE("FOR i IN 0..1999 INSERT { _key: CONCAT('test', i), value1: i } IN @@cn1", { "@cn1" : cn1 });
+
+      var expected = { writesExecuted: 1, writesIgnored: 0 };
+      var actual = AQL_EXECUTE("UPSERT { value1: 0 } INSERT { value1: 0, value2: 0 } UPDATE { value2: 1 } IN " + cn1, {});
+
+      assertEqual(2001, c1.count());
+      assertEqual(expected, sanitizeStats(actual.stats));
+      assertEqual([ ], actual.json);
+
+      assertEqual(0, c1.document("test0").value1);
+      assertEqual(1, c1.document("test0").value2);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test upsert on same document
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpsertDocumentInitiallyNotPresent : function () {
+      AQL_EXECUTE("FOR i IN 0..1999 INSERT { _key: CONCAT('test', i), value1: i } IN @@cn1", { "@cn1" : cn1 });
+
+      var expected = { writesExecuted: 1, writesIgnored: 0 };
+      var actual = AQL_EXECUTE("UPSERT { value1: 999999 } INSERT { _key: 'test999999', value1: 999999, value2: 0 } UPDATE { value2: 1 } IN " + cn1, {});
+
+      assertEqual(2002, c1.count());
+      assertEqual(expected, sanitizeStats(actual.stats));
+      assertEqual([ ], actual.json);
+
+      assertEqual(999999, c1.document("test999999").value1);
+      assertEqual(0, c1.document("test999999").value2);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test upsert on same document
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpsertDocumentRepeatedInitiallyPresent : function () {
+      AQL_EXECUTE("FOR i IN 0..1999 INSERT { _key: CONCAT('test', i), value1: i } IN @@cn1", { "@cn1" : cn1 });
+
+      var expected = { writesExecuted: 2000, writesIgnored: 0 };
+      var actual = AQL_EXECUTE("FOR i IN 1..2000 UPSERT { value1: 0 } INSERT { value1: 0, value2: 0 } UPDATE { value2: 1 } IN " + cn1, {});
+
+      assertEqual(2001, c1.count());
+      assertEqual(expected, sanitizeStats(actual.stats));
+      assertEqual([ ], actual.json);
+
+      assertEqual(0, c1.document("test0").value1);
+      assertEqual(1, c1.document("test0").value2);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test upsert on same document
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpsertDocumentRepeatedInitiallyNotPresent : function () {
+      AQL_EXECUTE("FOR i IN 0..1999 INSERT { _key: CONCAT('test', i), value1: i } IN @@cn1", { "@cn1" : cn1 });
+
+      var expected = { writesExecuted: 2000, writesIgnored: 0 };
+      var actual = AQL_EXECUTE("FOR i IN 1..2000 UPSERT { value1: 999999 } INSERT { _key: 'test999999', value1: 999999, value2: 0 } UPDATE { value2: 1 } IN " + cn1, {});
+
+      assertEqual(2002, c1.count());
+      assertEqual(expected, sanitizeStats(actual.stats));
+      assertEqual([ ], actual.json);
+
+      assertEqual(999999, c1.document("test999999").value1);
+      assertEqual(1, c1.document("test999999").value2);
     }
 
   };
