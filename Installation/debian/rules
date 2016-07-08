@@ -77,7 +77,6 @@ build-stamp:
 	# not used
 	rm -rf js/node/node_modules/js-yaml/demo
 
-	rm -f .file-list-js
 	make -j12 all
 
 	# --- end custom part for compiling
