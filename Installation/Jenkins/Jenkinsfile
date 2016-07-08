@@ -4,12 +4,8 @@
 node {
   if (isUnix()) {
     echo 'Hello Unix'
-    folder('build')
-    dir('build') {
-      // s    ome block
-      sh 'cmake .. '
-    }
-
+    sh 'cmake . '
+    sh 'make'
   }
   else {
     echo 'hello else'
