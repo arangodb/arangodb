@@ -469,13 +469,13 @@ ConsoleFeature::Prompt ConsoleFeature::buildPrompt(ClientFeature* client) {
 
         if (c == 'E') {
           // replace protocol
-          if (ep.compare("tcp://") == 0) {
+          if (ep.compare(0, strlen("tcp://"), "tcp://") == 0) {
             ep = ep.substr(strlen("tcp://"));
-          } else if (ep.compare("http+tcp://") == 0) {
+          } else if (ep.compare(0, strlen("http+tcp://"), "http+tcp://") == 0) {
             ep = ep.substr(strlen("http+tcp://"));
-          } else if (ep.compare("ssl://") == 0) {
+          } else if (ep.compare(0, strlen("ssl://"), "ssl://") == 0) {
             ep = ep.substr(strlen("ssl://"));
-          } else if (ep.compare("unix://") == 0) {
+          } else if (ep.compare(0, strlen("unix://"), "unix://") == 0) {
             ep = ep.substr(strlen("unix://"));
           }
         }
