@@ -4,6 +4,11 @@
 node {
   if (isUnix()) {
     echo 'Hello Unix'
+    dir('build') {
+      // s    ome block
+      sh 'cmake .. '
+    }
+
   }
   else {
     echo 'hello else'
