@@ -469,7 +469,7 @@ ConsoleFeature::Prompt ConsoleFeature::buildPrompt(ClientFeature* client) {
 
         if (c == 'E') {
           // replace protocol
-          if (ep.commpare("tcp://") == 0) {
+          if (ep.compare("tcp://") == 0) {
             ep = ep.substr(strlen("tcp://"));
           } else if (ep.compare("http+tcp://") == 0) {
             ep = ep.substr(strlen("http+tcp://"));
