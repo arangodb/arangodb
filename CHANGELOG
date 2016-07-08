@@ -41,6 +41,9 @@ v3.0.2 (XXXX-XX-XX)
 * add option --default-replication-factor to arangorestore and simplify
   the control over the number of shards when restoring
 
+* fix a bug in the VPack -> V8 conversion if special attributes _key,
+  _id, _rev, _from and _to had non-string values, which is allowed
+  below the top level
 
 v3.0.1 (XXXX-XX-XX)
 -------------------
