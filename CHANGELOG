@@ -1,4 +1,4 @@
-v3.0.2 (XXXX-XX-XX)
+v3.0.2 (2016-07-09)
 -------------------
 
 * fixed assertion failure in case multiple remove operations were used in the same query
@@ -45,7 +45,10 @@ v3.0.2 (XXXX-XX-XX)
   _id, _rev, _from and _to had non-string values, which is allowed
   below the top level
 
-v3.0.1 (XXXX-XX-XX)
+* fix malloc_usable_size for darwin
+
+
+v3.0.1 (2016-06-30)
 -------------------
 
 * fixed periodic jobs: there should be only one instance running - even if it
