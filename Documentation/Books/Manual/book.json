@@ -23,9 +23,6 @@
       "js": ["styles/header.js"],
       "css": ["styles/header.css"]
     },
-    "add-header": {
-        "BASE_PATH": "https://docs.arangodb.com/devel"
-    },
     "piwik": {
         "URL": "www.arangodb.com/piwik/",
         "siteId": 12

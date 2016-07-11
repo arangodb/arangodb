@@ -140,7 +140,7 @@ Searching for all persons with an age above 30:
     @endDocuBlock 06_workWithColl_AOQL_INT
 
 
-John was put in there by mistake – so let's delete him again; We fetch
+John was put in there by mistake – so let's delete him again. We fetch
 the `_id` using *byExample*:
 
     @startDocuBlockInline 07_workWithColl_remove
@@ -153,7 +153,7 @@ the `_id` using *byExample*:
     @endDocuBlock 07_workWithColl_remove
 
 
-You can learn all about the query language [Aql](../../AQL/index.html). Note that
+You can learn all about the query language [AQL](../../AQL/index.html). Note that
 *_query* is a short-cut for *_createStatement* and *execute*. We will
 come back to these functions when we talk about cursors.
 
