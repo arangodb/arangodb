@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global arangoHelper, Backbone, templateEngine, $, window, _, nv, d3 */
+/* global Backbone, templateEngine, $, window */
 (function () {
   'use strict';
 
@@ -21,11 +21,12 @@
         this.updateServerTime();
 
         // start polling with interval
+        /*
         window.setInterval(function () {
           if (window.location.hash.indexOf('#node/') === 0) {
-            var callback = function (data) {};
           }
         }, this.interval);
+       */
       }
     },
 

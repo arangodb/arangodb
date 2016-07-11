@@ -159,6 +159,7 @@ function aqlVPackExternalsTestSuite () {
       let ecoll = db._collection(edgeColl);
       coll.truncate();
       ecoll.truncate();
+      
       coll.insert({ _key: "a", w: 1});
       coll.insert({ _key: "b", w: 2});
       coll.insert({ _key: "c", w: 3});
@@ -170,8 +171,25 @@ function aqlVPackExternalsTestSuite () {
       const cursor = db._query(query);
       var doc = cursor.next();
       delete doc.x._rev;
-      assertEqual({ "x" : { "_key" : "b", "_id" : collName + "/b", "w" : 2 } }, doc); 
+      assertEqual({ "x" : { "_key" : "b", "_id" : collName + "/b", "w" : 2 } }, doc);
+    }, 
+
+    testExternalAttributeAccess2: function () {
+      let coll = db._collection(collName);
+      let ecoll = db._collection(edgeColl);
+      coll.truncate();
+      ecoll.truncate();
+
+      for (var i = 0; i < 100; ++i) {
+        coll.insert({ _key: "test" + i, username: "test" + i });
+        ecoll.insert({ _from: collName + "/test" + i, _to: collName + "/test" + (i + 1), _key: "test" + i });
+      }
+
+      const query = `LET us = (FOR u1 IN ${collName} FILTER u1.username == "test1" FOR u2 IN ${collName} FILTER u2.username == "test2" RETURN { u1, u2 }) FOR u IN us FOR msg IN ${edgeColl} FILTER msg._from == u.u1._id && msg._to == u.u2._id RETURN msg._id`; 
+      const result = db._query(query).toArray();
+      assertEqual(edgeColl + "/test1", result[0]);
     }
+
   };
 
 }

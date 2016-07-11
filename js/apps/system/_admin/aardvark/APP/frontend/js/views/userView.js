@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global CryptoJS, _, arangoHelper, Backbone, window, templateEngine, $ */
+/* global CryptoJS, _, arangoHelper, Backbone, window $ */
 
 (function () {
   'use strict';
@@ -51,8 +51,8 @@
     },
 
     createEditUserPasswordModal: function () {
-      var buttons = [],
-        tableContent = [];
+      var buttons = [];
+      var tableContent = [];
 
       tableContent.push(
         window.modalView.createPasswordEntry(
@@ -85,8 +85,8 @@
     },
 
     createEditCurrentUserModal: function (username, name, img) {
-      var buttons = [],
-        tableContent = [];
+      var buttons = [];
+      var tableContent = [];
 
       tableContent.push(
         window.modalView.createReadOnlyEntry('id_username', 'Username', username)
@@ -99,9 +99,9 @@
           'editCurrentUserProfileImg',
           'Gravatar account (Mail)',
           img,
-          'Mailaddress or its md5 representation of your gravatar account.'
-          + ' The address will be converted into a md5 string. '
-          + 'Only the md5 string will be stored, not the mailaddress.',
+          'Mailaddress or its md5 representation of your gravatar account.' +
+          'The address will be converted into a md5 string. ' +
+          'Only the md5 string will be stored, not the mailaddress.',
           'myAccount(at)gravatar.com'
         )
       );
@@ -224,8 +224,8 @@
     },
 
     submitEditUserPassword: function () {
-      var newPasswd = $('#newCurrentPassword').val(),
-        confirmPasswd = $('#confirmCurrentPassword').val();
+      var newPasswd = $('#newCurrentPassword').val();
+      var confirmPasswd = $('#confirmCurrentPassword').val();
       $('#newCurrentPassword').val('');
       $('#confirmCurrentPassword').val('');
       // check input

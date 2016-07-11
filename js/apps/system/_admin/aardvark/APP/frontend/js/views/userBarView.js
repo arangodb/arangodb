@@ -66,10 +66,10 @@
         if (error) {
           arangoHelper.arangoErro('User', 'Could not fetch user.');
         } else {
-          var img = null,
-            name = null,
-            active = false,
-            currentUser = null;
+          var img = null;
+          var name = null;
+          var active = false;
+          var currentUser = null;
           if (username !== false) {
             currentUser = this.userCollection.findWhere({user: username});
             currentUser.set({loggedIn: true});

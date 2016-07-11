@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global Backbone, activeUser, window, ArangoQuery, $, data, _, arangoHelper*/
+/* global Backbone, window, ArangoQuery, $, _, arangoHelper*/
 (function () {
   'use strict';
 
@@ -26,7 +26,7 @@
     activeUser: null,
 
     parse: function (response) {
-      var self = this, toReturn;
+      var self = this; var toReturn;
       if (this.activeUser === false || this.activeUser === null) {
         this.activeUser = 'root';
       }

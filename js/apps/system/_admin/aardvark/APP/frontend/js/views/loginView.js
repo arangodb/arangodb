@@ -1,10 +1,10 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global Backbone, document, EJS, _, arangoHelper, window, setTimeout, $, templateEngine, frontendConfig*/
+/* global Backbone, document, _, arangoHelper, window, setTimeout, $, templateEngine, frontendConfig*/
 
 (function () {
   'use strict';
-  window.loginView = Backbone.View.extend({
+  window.LoginView = Backbone.View.extend({
     el: '#content',
     el2: '.header',
     el3: '.footer',
@@ -122,7 +122,6 @@
 
         // get list of allowed dbs
         $.ajax(url).success(function (permissions) {
-
           // HANDLE PERMISSIONS
           _.each(permissions.result, function (value, key) {
             if (value !== 'rw') {
@@ -181,8 +180,8 @@
         }
       };
 
-      var path = window.location.protocol + '//' + window.location.host
-        + frontendConfig.basePath + '/_db/' + database + '/_admin/aardvark/index.html';
+      var path = window.location.protocol + '//' + window.location.host +
+        frontendConfig.basePath + '/_db/' + database + '/_admin/aardvark/index.html';
 
       window.location.href = path;
 

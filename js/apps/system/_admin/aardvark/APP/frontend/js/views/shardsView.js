@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global arangoHelper, Backbone, templateEngine, $, window, _, nv, d3 */
+/* global arangoHelper, Backbone, templateEngine, $, window, _ */
 (function () {
   'use strict';
 
@@ -45,7 +45,8 @@
         processData: false,
         async: true,
         success: function (data) {
-          var collsAvailable = false, collName;
+          var collsAvailable = false;
+          var collName;
           self.shardDistribution = data.results;
 
           _.each(data.results, function (ignore, name) {
@@ -92,10 +93,11 @@
         fromServer = from;
       }
 
-      var buttons = [],
-        tableContent = [];
+      var buttons = [];
+      var tableContent = [];
 
-      var obj = {}, array = [];
+      var obj = {};
+      var array = [];
 
       self.dbServers[0].each(function (db) {
         if (db.get('name') !== fromServer) {

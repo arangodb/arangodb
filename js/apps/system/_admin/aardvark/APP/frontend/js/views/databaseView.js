@@ -1,10 +1,10 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global window, document, Backbone, EJS, SwaggerUi, hljs, $, arangoHelper, templateEngine, Joi*/
+/* global window, document, Backbone, $, arangoHelper, templateEngine, Joi*/
 (function () {
   'use strict';
 
-  window.databaseView = Backbone.View.extend({
+  window.DatabaseView = Backbone.View.extend({
     users: null,
     el: '#content',
 
@@ -153,31 +153,12 @@
     },
 
     submitCreateDatabase: function () {
-      var self = this, // userPassword,
-        dbname = $('#newDatabaseName').val(),
-        userName = $('#newUser').val();
-
-      /*
-      if ($('#useDefaultPassword').val() === 'true') {
-        userPassword = 'ARANGODB_DEFAULT_ROOT_PASSWORD'; 
-      }
-      else {
-        userPassword = $('#newPassword').val()
-      }
-      if (!this.validateDatabaseInfo(name, userName, userPassword)) {
-        return
-      }
-      */
+      var self = this; // userPassword,
+      var dbname = $('#newDatabaseName').val();
+      var userName = $('#newUser').val();
 
       var options = {
         name: dbname
-      /* users: [
-        {
-          username: userName,
-          passwd: userPassword,
-          active: true
-        }
-      ]*/
       };
 
       this.collection.create(options, {
@@ -241,8 +222,8 @@
     },
 
     editDatabase: function (e) {
-      var dbName = this.evaluateDatabaseName($(e.currentTarget).attr('id'), '_edit-database'),
-        isDeletable = true;
+      var dbName = this.evaluateDatabaseName($(e.currentTarget).attr('id'), '_edit-database');
+      var isDeletable = true;
       if (dbName === this.currentDB) {
         isDeletable = false;
       }
@@ -298,8 +279,8 @@
     },
 
     createEditDatabaseModal: function (dbName, isDeletable) {
-      var buttons = [],
-        tableContent = [];
+      var buttons = [];
+      var tableContent = [];
 
       tableContent.push(
         window.modalView.createReadOnlyEntry('id_name', 'Name', dbName, '')
@@ -323,8 +304,8 @@
     },
 
     createAddDatabaseModal: function () {
-      var buttons = [],
-        tableContent = [];
+      var buttons = [];
+      var tableContent = [];
 
       tableContent.push(
         window.modalView.createTextEntry(
@@ -364,56 +345,15 @@
           'newUser',
           'Username',
           this.users !== null ? this.users.whoAmI() : 'root',
-          'Please define the owner of this database. This will be the only user having '
-          + 'initial access to this database if authentication is turned on. Please note '
-          + 'that if you specify a username different to your account you will not be '
-          + 'able to access the database with your account after having creating it. '
-          + 'Specifying a username is mandatory even with authentication turned off. '
-          + 'If there is a failure you will be informed.',
+          'Please define the owner of this database. This will be the only user having ' +
+          'initial access to this database if authentication is turned on. Please note ' +
+          'that if you specify a username different to your account you will not be ' +
+          'able to access the database with your account after having creating it. ' +
+          'Specifying a username is mandatory even with authentication turned off. ' +
+          'If there is a failure you will be informed.',
           users
         )
       );
-      /*
-      tableContent.push(
-        window.modalView.createTextEntry(
-          "newUser",
-          "Username",
-          this.users !== null ? this.users.whoAmI() : 'root',
-          "Please define the owner of this database. This will be the only user having "
-            + "initial access to this database if authentication is turned on. Please note "
-            + "that if you specify a username different to your account you will not be "
-            + "able to access the database with your account after having creating it. "
-            + "Specifying a username is mandatory even with authentication turned off. "
-            + "If there is a failure you will be informed.",
-          "Database Owner",
-          true,
-          [
-            {
-              rule: Joi.string().required(),
-              msg: "No username given."
-            }
-          ]
-        )
-      )
-      tableContent.push(
-        window.modalView.createSelectEntry(
-          "useDefaultPassword",
-          "Use default password",
-          true,
-          "Read the password from the environment variable ARANGODB_DEFAULT_ROOT_PASSWORD.",
-          [{value: false, label: "No"}, {value: true, label: "Yes"}]        )
-      )
-      tableContent.push(
-        window.modalView.createPasswordEntry(
-          "newPassword",
-          "Password",
-          "",
-          false,
-          "",
-          false
-        )
-      )
-      */
       buttons.push(
         window.modalView.createSuccessButton(
           'Create',
