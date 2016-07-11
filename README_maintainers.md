@@ -252,6 +252,7 @@ syntax --option value --sub:option value. Using Valgrind could look like this:
       --extraargs:scheduler.threads 1 \
       --extraargs:javascript.gc-frequency 1000000 \
       --extraargs:javascript.gc-interval 65536 \
+      --javascript.v8-contexts 2 \
       --valgrind /usr/bin/valgrind \
       --valgrindargs:log-file /tmp/valgrindlog.%p
 
