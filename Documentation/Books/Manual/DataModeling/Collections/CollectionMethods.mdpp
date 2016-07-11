@@ -191,7 +191,7 @@ Loads a collection into memory.
 
 
 !SUBSECTION Reserve
-`collection.reserve( number)`
+`collection.reserve(number)`
 
 Sends a resize hint to the indexes in the collection. The resize hint allows indexes to reserve space for additional documents (specified by number) in one go.
 

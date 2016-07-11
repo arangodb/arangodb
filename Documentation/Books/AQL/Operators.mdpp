@@ -70,7 +70,8 @@ The pattern matching performed by the *LIKE* operator is case-sensitive.
 
 The regular expression operators *=~* and *!~* expect their left-hand operands to
 be strings, and their right-hand operands to be strings containing valid regular
-expressions as specified in the documentation for the AQL function REGEX_TEST.
+expressions as specified in the documentation for the AQL function
+[REGEX_TEST()](Functions/String.md#regextest).
 
 !SUBSUBSECTION Array comparison operators
 
