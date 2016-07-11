@@ -9,13 +9,6 @@ document.addEventListener("DOMContentLoaded", function(event) {
   }
 });
 
-$(document).ready(function() {
-  var bookVersion = gitbook.state.root.match(/\/(\d\.\d|devel)\//);
-  if (bookVersion) {
-    $(".arangodb-version-switcher").val(bookVersion[1]);
-  } 
-});
-
 window.onload = function(){
 window.localStorage.removeItem(":keyword");
 
