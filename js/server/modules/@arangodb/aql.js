@@ -840,7 +840,7 @@ function FCALL_USER (name, parameters) {
   }
 
   try {
-    return FIX_VALUE(UserFunctions[prefix][name].func.apply(null, parameters));
+    return FIX_VALUE(UserFunctions[prefix][name].func.apply({ name: name }, parameters));
   } catch (err) {
     WARN(name, INTERNAL.errors.ERROR_QUERY_FUNCTION_RUNTIME_ERROR, AQL_TO_STRING(err.stack || String(err)));
     return null;
@@ -888,7 +888,7 @@ function FCALL_DYNAMIC (func, applyDirect, values, name, args) {
 
   if (applyDirect) {
     try {
-      return FIX_VALUE(toCall.apply(null, args));
+      return FIX_VALUE(toCall.apply({ name: name }, args));
     } catch (err) {
       WARN(name, INTERNAL.errors.ERROR_QUERY_FUNCTION_RUNTIME_ERROR, AQL_TO_STRING(err));
       return null;
@@ -902,7 +902,7 @@ function FCALL_DYNAMIC (func, applyDirect, values, name, args) {
     for (i in values) {
       if (values.hasOwnProperty(i)) {
         args[0] = values[i];
-        result[i] = FIX_VALUE(toCall.apply(null, args));
+        result[i] = FIX_VALUE(toCall.apply({ name: name }, args));
       }
     }
     return result;
@@ -910,7 +910,7 @@ function FCALL_DYNAMIC (func, applyDirect, values, name, args) {
     result = [];
     for (i = 0; i < values.length; ++i) {
       args[0] = values[i];
-      result[i] = FIX_VALUE(toCall.apply(null, args));
+      result[i] = FIX_VALUE(toCall.apply({ name: name }, args));
     }
     return result;
   }

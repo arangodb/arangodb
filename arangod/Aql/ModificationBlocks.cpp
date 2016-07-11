@@ -72,6 +72,16 @@ ModificationBlock::~ModificationBlock() {}
 
 /// @brief get some - this accumulates all input and calls the work() method
 AqlItemBlock* ModificationBlock::getSome(size_t atLeast, size_t atMost) {
+  // for UPSERT operations, we read and write data in the same collection
+  // we cannot use any batching here because if the search document is not
+  // found, the UPSERTs INSERT operation may create it. after that, the
+  // search document is present and we cannot use an already queried result
+  // from the initial search batch
+  if (getPlanNode()->getType() == ExecutionNode::NodeType::UPSERT) {
+    atLeast = 1;
+    atMost = 1;
+  }
+  
   std::vector<AqlItemBlock*> blocks;
   std::unique_ptr<AqlItemBlock> replyBlocks;
 

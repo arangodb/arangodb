@@ -31,10 +31,6 @@
 #include "Random/RandomGenerator.h"
 
 #include <ctime>
-//XXX #warning MOP why? use ConditionVariable
-#include <condition_variable>
-//XXX #warning MOP why? use Mutex
-#include <mutex>
 
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
