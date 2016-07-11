@@ -1,6 +1,9 @@
 #!/bin/bash
 set -e
 
+if test -z "${PARALLEL_BUILDS}"; then
+    PARALLEL_BUILDS=1
+fi
 # remove local from LD_LIBRARY_PATH
 
 if [ "$LD_LIBRARY_PATH" != "" ]; then
@@ -61,6 +64,7 @@ MAKE_CMD_PREFIX=""
 CONFIGURE_OPTIONS="$CMAKE_OPENSSL"
 MAINTAINER_MODE="-DUSE_MAINTAINER_MODE=off"
 
+TARGET_DIR=""
 CLANG36=0
 CLANG=0
 COVERGAE=0
@@ -125,6 +129,10 @@ while [ $# -gt 0 ];  do
 	PATH=/opt/csw/bin/:${PATH}
 	shift
 	;;
+    --targetDir)
+        shift
+        TARGET_DIR=$1
+        shift
     *)
       break
       ;;
@@ -253,17 +261,17 @@ if [ ! -f Makefile ];  then
 fi
 
 ${MAKE_CMD_PREFIX} ${MAKE} ${VERBOSE_MAKE} -j "${PARALLEL_BUILDS}" ${MAKE_PARAMS}
-if [ "$CPACK" == "1" -a -n "$2" ];  then
+if [ "$CPACK" == "1" -a -n "${TARGET_DIR}" ];  then
   cpack -G DEB
-  cp *.deb $2
+  cp *.deb ${TARGET_DIR}
 fi
 
 git rev-parse HEAD > ../last_compiled_version.sha
 
 # and install
 
-if test -n "$2";  then
-  dir="$2"
+if test -n "${TARGET_DIR}";  then
+  dir="${TARGET_DIR}"
   TARFILE=${dir}/arangodb.tar.gz
   TARFILE_TMP=`pwd`/arangodb.tar.$$
 
