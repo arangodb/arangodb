@@ -11,6 +11,7 @@
 
     initialize: function (options) {
       this.name = options.name;
+      this.userConfig = options.userConfig;
       this.initSigma();
     },
 
@@ -52,7 +53,6 @@
 
     render: function () {
       this.$el.html(this.template.render({}));
-      arangoHelper.buildGraphSubNav(this.name, 'Content');
 
       this.resize();
       this.fetchGraph();
@@ -60,26 +60,30 @@
 
     fetchGraph: function () {
       var self = this;
+      arangoHelper.buildGraphSubNav(self.name, 'Content');
       $('#content').append(
         '<div id="calculatingGraph" style="position: absolute; left: 25px; top: 130px;">' +
         '<i class="fa fa-circle-o-notch fa-spin" style="margin-right: 10px;"></i>' +
         'Calculating layout. Please wait ... </div>'
       );
 
-      // TODO LOAD GRAPH SETTINGS
-      // var settings = this.loadGraphSettings();
+      var fetchGraph = function () {
+        $.ajax({
+          type: 'GET',
+          url: arangoHelper.databaseUrl('/_admin/aardvark/graph/' + encodeURIComponent(this.name)),
+          contentType: 'application/json',
+          success: function (data) {
+            arangoHelper.buildGraphSubNav(self.name, 'Content');
+            self.renderGraph(data);
+          },
+          error: function () {
+            $('#calculatingGraph').html('Failed to fetch graph information.');
+          }
+        });
+      }.bind(this);
 
-      $.ajax({
-        type: 'GET',
-        url: arangoHelper.databaseUrl('/_admin/aardvark/graph/' + encodeURIComponent(this.name)),
-        contentType: 'application/json',
-        success: function (data) {
-          self.renderGraph(data);
-        },
-        error: function () {
-          $('#calculatingGraph').html('Failed to fetch graph information.');
-        }
-      });
+      // TODO LOAD GRAPH SETTINGS
+      this.getGraphSettings(fetchGraph);
     },
 
     clearOldContextMenu: function () {
@@ -145,10 +149,19 @@
       generateMenu(e, nodeId);
     },
 
-    loadGraphSettings: function () {
-      var settings;
+    getGraphSettings: function (callback) {
+      var self = this;
+      var combinedName = window.App.currentDB.toJSON().name + '_' + this.name;
 
-      return settings;
+      this.userConfig.fetch({
+        success: function (data) {
+          self.graphConfig = data.toJSON().graphs[combinedName];
+
+          if (callback) {
+            callback();
+          }
+        }
+      });
     },
 
     editNode: function (id) {
@@ -166,8 +179,25 @@
 
       this.Sigma = sigma;
 
-      var algorithm = 'force';
-      var renderer = 'webgl';
+      // defaults
+      var algorithm = 'noverlap';
+      var renderer = 'canvas';
+
+      if (this.graphConfig) {
+        console.log(this.graphConfig);
+
+        if (this.graphConfig.layout) {
+          algorithm = this.graphConfig.layout;
+        }
+
+        if (this.graphConfig.renderer) {
+          renderer = this.graphConfig.renderer;
+
+          if (renderer === 'canvas') {
+            self.isEditable = true;
+          }
+        }
+      }
 
       var settings = {
         doubleClickEnabled: false,
