@@ -2359,7 +2359,13 @@ void TRI_SanitizeObjectWithEdges(VPackSlice const slice, VPackBuilder& builder) 
 /// @brief Convert a revision ID to a string
 ////////////////////////////////////////////////////////////////////////////////
 
+constexpr static TRI_voc_rid_t tickLimit 
+  = static_cast<TRI_voc_rid_t>(2016-1970) * 1000 * 60 * 60 * 24 * 365;
+
 std::string TRI_RidToString(TRI_voc_rid_t rid) {
+  if (rid <= tickLimit) {
+    return arangodb::basics::StringUtils::itoa(rid);
+  }
   return HybridLogicalClock::encodeTimeStamp(rid);
 }
 
@@ -2368,7 +2374,7 @@ std::string TRI_RidToString(TRI_voc_rid_t rid) {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_voc_rid_t TRI_StringToRid(std::string const& ridStr) {
-  return HybridLogicalClock::decodeTimeStamp(ridStr);
+  return TRI_StringToRid(ridStr.c_str(), ridStr.size());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2376,6 +2382,17 @@ TRI_voc_rid_t TRI_StringToRid(std::string const& ridStr) {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_voc_rid_t TRI_StringToRid(char const* p, size_t len) {
+  if (len > 0 && *p >= '1' && *p <= '9') {
+    // Remove this case before the year 3887 AD because then it will
+    // start to clash with encoded timestamps:
+    TRI_voc_rid_t r = arangodb::basics::StringUtils::uint64(p, len);
+    if (r > tickLimit) {
+      // An old tick value that could be confused with a time stamp
+      LOG(WARN)
+        << "Saw old _rev value that could be confused with a time stamp!";
+    }
+    return r;
+  }
   return HybridLogicalClock::decodeTimeStamp(p, len);
 }
 
@@ -2384,7 +2401,7 @@ TRI_voc_rid_t TRI_StringToRid(char const* p, size_t len) {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_voc_rid_t TRI_StringToRidWithCheck(std::string const& ridStr) {
-  return HybridLogicalClock::decodeTimeStampWithCheck(ridStr);
+  return TRI_StringToRidWithCheck(ridStr.c_str(), ridStr.size());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2392,6 +2409,17 @@ TRI_voc_rid_t TRI_StringToRidWithCheck(std::string const& ridStr) {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_voc_rid_t TRI_StringToRidWithCheck(char const* p, size_t len) {
+  if (len > 0 && *p >= '1' && *p <= '9') {
+    // Remove this case before the year 3887 AD because then it will
+    // start to clash with encoded timestamps:
+    TRI_voc_rid_t r = arangodb::basics::StringUtils::uint64_check(p, len);
+    if (r > tickLimit) {
+      // An old tick value that could be confused with a time stamp
+      LOG(WARN)
+        << "Saw old _rev value that could be confused with a time stamp!";
+    }
+    return r;
+  }
   return HybridLogicalClock::decodeTimeStampWithCheck(p, len);
 }
 
