@@ -3,6 +3,9 @@ v3.0.3 (XXXX-XX-XX)
 
 * fixed issue #1936
 
+* improved performance of arangorestore in clusters with synchronous
+  replication
+
 
 v3.0.2 (2016-07-09)
 -------------------
