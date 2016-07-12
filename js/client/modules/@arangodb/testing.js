@@ -3058,6 +3058,8 @@ function runArangodRecovery(instanceInfo, options, script, setup) {
 }
 
 const recoveryTests = [
+  "insert-update-replace",
+  "die-during-collector",
   "disk-full-logfile",
   "disk-full-logfile-data",
   "disk-full-datafile",
