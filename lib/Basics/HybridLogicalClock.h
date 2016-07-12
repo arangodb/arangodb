@@ -153,7 +153,7 @@ class HybridLogicalClock {
   }
 
   static uint64_t assembleTimeStamp(uint64_t time, uint64_t count) {
-    return (time << 20) | count;
+    return (time << 20) + count;
   }
 
   static char encodeTable[65];
