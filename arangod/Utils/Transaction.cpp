@@ -911,7 +911,8 @@ void Transaction::extractKeyAndRevFromDocument(VPackSlice slice,
     } else if (*p == basics::VelocyPackHelper::RevAttribute) {
       VPackSlice revSlice(p + 1);
       if (revSlice.isString()) {
-        revisionId = TRI_StringToRid(revSlice.copyString());
+        bool isOld;
+        revisionId = TRI_StringToRid(revSlice.copyString(), isOld);
       } else if (revSlice.isNumber()) {
         revisionId = revSlice.getNumericValue<TRI_voc_rid_t>();
       }
@@ -928,7 +929,9 @@ void Transaction::extractKeyAndRevFromDocument(VPackSlice slice,
 
   // fall back to regular lookup
   keySlice = slice.get(StaticStrings::KeyString);    
-  revisionId = TRI_StringToRid(slice.get(StaticStrings::RevString).copyString());
+  bool isOld;
+  revisionId = TRI_StringToRid(slice.get(StaticStrings::RevString).copyString(),
+                               isOld);
 }
 
 //////////////////////////////////////////////////////////////////////////////
