@@ -317,6 +317,6 @@ if test -n "${TARGET_DIR}";  then
   rm files.$$
 
   gzip < ${TARFILE_TMP} > ${dir}/${TARFILE}
-  md5sum ${TARFILE} > ${dir}/${TARFILE}.md5
+  md5sum ${dir}/${TARFILE} > ${dir}/${TARFILE}.md5
   rm ${TARFILE_TMP}
 fi
