@@ -127,9 +127,9 @@ class SkiplistInLookupBuilder : public BaseSkiplistLookupBuilder {
     struct PosStruct {
       size_t field;
       size_t current;
-      size_t max;
+      size_t _max; // thanks, windows.h!
 
-      PosStruct(size_t f, size_t c, size_t m) : field(f), current(c), max(m) {}
+      PosStruct(size_t f, size_t c, size_t m) : field(f), current(c), _max(m) {}
     };
 
     TransactionBuilderLeaser _dataBuilder;
