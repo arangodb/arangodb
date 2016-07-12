@@ -22,14 +22,6 @@
 // / @author Alan Plum
 // //////////////////////////////////////////////////////////////////////////////
 
-// * schema: Object the schema
-// * context: ?mixed graphql context
-// * rootValue: ?Object graphql rootValue
-// * pretty: ?boolean prettier output
-// * formatError: ?Function formatError for graphql errors
-// * validationRules: ?Array<any> additional validation rules???
-// * graphiql: ?boolean enable graphiql
-
 const dd = require('dedent');
 const assert = require('assert');
 const joi = require('joi');
