@@ -254,7 +254,6 @@ bool SkiplistLookupBuilder::next() {
   return false;  
 }
 
-
 SkiplistInLookupBuilder::SkiplistInLookupBuilder(
     Transaction* trx,
     std::vector<std::vector<arangodb::aql::AstNode const*>>& ops,
@@ -529,7 +528,6 @@ TRI_doc_mptr_t* SkiplistIterator::next() {
   return tmp->document()->document();
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Checks if the interval is valid. It is declared invalid if
 ///        one border is nullptr or the right is lower than left.
@@ -553,14 +551,12 @@ bool SkiplistIterator2::intervalValid(Node* left, Node* right) const {
   return true;
 }
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Reset the cursor
 ////////////////////////////////////////////////////////////////////////////////
 
 void SkiplistIterator2::reset() {
-  // If _interals is empty at this point
+  // If _intervals is empty at this point
   // the cursor does not contain any
   // document at all. Reset is pointless
   if (!_intervals.empty()) {
@@ -685,7 +681,6 @@ void SkiplistIterator2::initNextInterval() {
     return;
   }
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create the skiplist index
