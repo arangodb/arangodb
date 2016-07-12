@@ -932,11 +932,16 @@ char* TRI_EscapeControlsCString(char const* in, size_t inLength,
         *qtr++ = '\\';
         *qtr = 'r';
         break;
+      
+      case '\t':
+        *qtr++ = '\\';
+        *qtr = 't';
+        break;
 
       default:
         n = (uint8_t)(*ptr);
 
-        if (n < 32 || n > 127) {
+        if (n < 32) {
           uint8_t n1 = n >> 4;
           uint8_t n2 = n & 0x0F;
 
