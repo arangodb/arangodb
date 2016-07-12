@@ -137,6 +137,8 @@ class SkiplistInLookupBuilder : public BaseSkiplistLookupBuilder {
     /// values. (field, inPosition, maxPosition)
     std::list<PosStruct> _inPositions;
 
+    bool _done;
+
   public:
    SkiplistInLookupBuilder(
        Transaction* trx,
