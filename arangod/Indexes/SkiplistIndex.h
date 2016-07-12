@@ -60,7 +60,7 @@ class BaseSkiplistLookupBuilder {
   arangodb::velocypack::Slice _upperSlice;
 
  public:
-  BaseSkiplistLookupBuilder(Transaction* trx) :
+  explicit BaseSkiplistLookupBuilder(Transaction* trx) :
     _lowerBuilder(trx), _upperBuilder(trx)
   {
     _isEquality = true;
