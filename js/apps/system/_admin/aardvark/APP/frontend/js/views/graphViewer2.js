@@ -339,6 +339,7 @@
       } else {
         dragListener = sigma.plugins.dragNodes(s, s.renderers[0]);
       }
+      console.log(dragListener);
 
       $('#calculatingGraph').remove();
     }

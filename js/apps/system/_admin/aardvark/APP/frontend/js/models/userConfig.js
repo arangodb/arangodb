@@ -66,6 +66,4 @@ window.UserConfig = Backbone.Model.extend({
     });
   }
 
-
-
 });
