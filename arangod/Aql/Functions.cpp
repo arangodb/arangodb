@@ -600,7 +600,7 @@ static AqlValue MergeParameters(arangodb::aql::Query* query,
   // use the first argument as the preliminary result
   AqlValue initial = ExtractFunctionParameterValue(trx, parameters, 0);
   AqlValueMaterializer materializer(trx);
-  VPackSlice initialSlice = materializer.slice(initial, false);
+  VPackSlice initialSlice = materializer.slice(initial, true);
 
   if (initial.isArray() && n == 1) {
     // special case: a single array parameter
