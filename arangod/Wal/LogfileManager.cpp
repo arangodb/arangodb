@@ -1500,6 +1500,10 @@ void LogfileManager::setCollectionRequested(Logfile* logfile) {
 
 // mark a file as being done with collection
 void LogfileManager::setCollectionDone(Logfile* logfile) {
+  TRI_IF_FAILURE("setCollectionDone") {
+    return;
+  }
+  
   TRI_ASSERT(logfile != nullptr);
   Logfile::IdType id = logfile->id();
 

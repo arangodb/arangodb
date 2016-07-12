@@ -3353,7 +3353,7 @@ int TRI_document_collection_t::update(Transaction* trx,
   if (!newSlice.isObject()) {
     return TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID;
   }
-  
+ 
   // initialize the result
   TRI_ASSERT(mptr != nullptr);
   mptr->setVPack(nullptr);
@@ -3809,7 +3809,7 @@ int TRI_document_collection_t::lookupDocument(
     TRI_doc_mptr_t*& header) {
   
   if (!key.isString()) {
-    return TRI_ERROR_INTERNAL;
+    return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
   }
 
   header = primaryIndex()->lookupKey(trx, key);

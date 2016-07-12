@@ -24,7 +24,13 @@ devel
 * When disabling Foxx development mode the setup script is now re-run
 
 
-v3.0.2 (XXXX-XX-XX)
+v3.0.3 (XXXX-XX-XX)
+-------------------
+
+* fixed issue #1936
+
+
+v3.0.2 (2016-07-09)
 -------------------
 
 * fixed assertion failure in case multiple remove operations were used in the same query
@@ -61,6 +67,17 @@ v3.0.2 (XXXX-XX-XX)
 * fix Foxx thumbnails on DC/OS
 
 * fix Foxx configuration not being saved
+
+* fix Foxx app access from within the frontend on DC/OS
+
+* add option --default-replication-factor to arangorestore and simplify
+  the control over the number of shards when restoring
+
+* fix a bug in the VPack -> V8 conversion if special attributes _key,
+  _id, _rev, _from and _to had non-string values, which is allowed
+  below the top level
+
+* fix malloc_usable_size for darwin
 
 
 v3.0.1 (XXXX-XX-XX)

@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, sub: true, maxlen: 500 */
-/*global assertEqual, assertTrue */
+/*global assertEqual, assertFalse, assertTrue */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for query language, graph functions
@@ -188,6 +188,16 @@ function aqlVPackExternalsTestSuite () {
       const query = `LET us = (FOR u1 IN ${collName} FILTER u1.username == "test1" FOR u2 IN ${collName} FILTER u2.username == "test2" RETURN { u1, u2 }) FOR u IN us FOR msg IN ${edgeColl} FILTER msg._from == u.u1._id && msg._to == u.u2._id RETURN msg._id`; 
       const result = db._query(query).toArray();
       assertEqual(edgeColl + "/test1", result[0]);
+    },
+
+    testExternalInTraversalMerge: function () {
+      const query = `LET s = (FOR n IN OUTBOUND "${collName}/test1000" ${edgeColl} RETURN n) RETURN MERGE(s)`;
+      const cursor = db._query(query);
+      const doc = cursor.next();
+      assertTrue(doc.hasOwnProperty('_key'));
+      assertTrue(doc.hasOwnProperty('_rev'));
+      assertTrue(doc.hasOwnProperty('_id'));
+      assertFalse(cursor.hasNext());
     }
 
   };

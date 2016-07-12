@@ -39,7 +39,7 @@ Bind parameters (JSON view mode):
 }
 ```
 
-How bind parameters work can be found in [Aql Fundamentals](../Fundamentals/BindParameters.md).
+How bind parameters work can be found in [AQL Fundamentals](../Fundamentals/BindParameters.md).
 
 Queries can also be saved in the AQL editor along with their bind parameter values
 for later reuse. This data is stored in the user profile in the current database

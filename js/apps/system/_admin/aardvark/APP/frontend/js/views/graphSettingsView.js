@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global arangoHelper, Backbone, templateEngine, $, window*/
+/* global arangoHelper, Backbone, templateEngine, $, window, _ */
 (function () {
   'use strict';
 
@@ -8,29 +8,37 @@
     el: '#content',
 
     general: {
-      'Layout': {
+      'layout': {
         type: 'select',
+        name: 'Layout algorithm',
         noverlap: {
-          name: 'No overlap (fast)'
+          name: 'No overlap (fast)',
+          val: 'noverlap'
         },
         force: {
-          name: 'Force (slow)'
+          name: 'Force (slow)',
+          val: 'force'
         },
         fruchtermann: {
-          name: 'Fruchtermann (very slow)'
+          name: 'Fruchtermann (very slow)',
+          val: 'fruchtermann'
         }
       },
-      'Renderer': {
+      'renderer': {
         type: 'select',
+        name: 'Renderer',
         canvas: {
-          name: 'Canvas (editable)'
+          name: 'Canvas (editable)',
+          val: 'canvas'
         },
         webgl: {
-          name: 'WebGL (only display)'
+          name: 'WebGL (only display)',
+          val: 'webgl'
         }
       },
       'depth': {
         type: 'numeric',
+        name: 'Search depth',
         value: 2
       }
     },
@@ -89,24 +97,68 @@
 
     initialize: function (options) {
       this.name = options.name;
-    },
-
-    loadGraphSettings: function () {
-
-    },
-
-    saveGraphSettings: function () {
-
+      this.userConfig = options.userConfig;
     },
 
     events: {
+      'click #saveGraphSettings': 'saveGraphSettings',
+      'click #restoreGraphSettings': 'restoreGraphSettings'
+    },
+
+    getGraphSettings: function (render) {
+      var self = this;
+      var combinedName = window.App.currentDB.toJSON().name + '_' + this.name;
+
+      this.userConfig.fetch({
+        success: function (data) {
+          self.graphConfig = data.toJSON().graphs[combinedName];
+
+          if (render) {
+            self.continueRender();
+          }
+        }
+      });
+    },
+
+    saveGraphSettings: function () {
+      var combinedName = window.App.currentDB.toJSON().name + '_' + this.name;
+
+      var config = {};
+      config[combinedName] = {
+        layout: $('#g_layout').val(),
+        renderer: $('#g_renderer').val(),
+        depth: $('#g_depth').val()
+      };
+
+      var callback = function () {
+        window.arangoHelper.arangoNotification('Graph ' + this.name, 'Configuration saved.');
+      }.bind(this);
+
+      this.userConfig.setItem('graphs', config, callback);
+    },
+
+    setDefaults: function () {
+
     },
 
     render: function () {
+      this.getGraphSettings(true);
+    },
+
+    continueRender: function () {
       $(this.el).html(this.template.render({
         general: this.general,
         specific: this.specific
       }));
+
+      if (this.graphConfig) {
+        _.each(this.graphConfig, function (val, key) {
+          $('#g_' + key).val(val);
+        });
+      } else {
+        this.setDefaults();
+      }
+
       arangoHelper.buildGraphSubNav(this.name, 'Settings');
 
       // load graph settings from local storage
