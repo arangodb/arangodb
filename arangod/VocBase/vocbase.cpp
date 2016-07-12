@@ -1189,12 +1189,9 @@ void TRI_vocbase_col_t::toVelocyPackIndexes(VPackBuilder& builder,
   for (auto const& file : files) {
     if (StringUtils::isPrefix(file, "index-") &&
         StringUtils::isSuffix(file, ".json")) {
-      // TODO: fix memleak
-      char* fqn = TRI_Concatenate2File(_path.c_str(), file.c_str());
-      std::string path = std::string(fqn, strlen(fqn));
+      std::string path = basics::FileUtils::buildFilename(_path, file);
       std::shared_ptr<VPackBuilder> indexVPack =
           arangodb::basics::VelocyPackHelper::velocyPackFromFile(path);
-      TRI_FreeString(TRI_CORE_MEM_ZONE, fqn);
 
       VPackSlice const indexSlice = indexVPack->slice();
       VPackSlice const id = indexSlice.get("id");

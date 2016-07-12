@@ -1947,6 +1947,12 @@ int RestReplicationHandler::processRestoreIndexesCoordinator(
 
   int res = TRI_ERROR_NO_ERROR;
   for (VPackSlice const& idxDef : VPackArrayIterator(indexes)) {
+    VPackSlice type = idxDef.get("type");
+    if (type.isString() && (type.copyString() == "primary" || type.copyString() == "edge")) {
+      // must ignore these types of indexes during restore
+      continue;
+    }
+
     VPackBuilder tmp;
     res = ci->ensureIndexCoordinator(dbName, col->id_as_string(), idxDef, true,
                                      arangodb::Index::Compare, tmp, errorMsg,
