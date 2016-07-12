@@ -254,13 +254,12 @@ bool SkiplistLookupBuilder::next() {
   return false;  
 }
 
-
 SkiplistInLookupBuilder::SkiplistInLookupBuilder(
     Transaction* trx,
     std::vector<std::vector<arangodb::aql::AstNode const*>>& ops,
-    arangodb::aql::Variable const* var, bool reverse) : BaseSkiplistLookupBuilder(trx), _dataBuilder(trx) {
+    arangodb::aql::Variable const* var, bool reverse) : BaseSkiplistLookupBuilder(trx), _dataBuilder(trx), _done(false) {
   TRI_ASSERT(!ops.empty()); // We certainly do not need IN here
-  VPackBuilder tmp;
+  TransactionBuilderLeaser tmp(trx);
   std::set<VPackSlice, arangodb::basics::VelocyPackHelper::VPackSorted<true>>
       unique_set(
           (arangodb::basics::VelocyPackHelper::VPackSorted<true>(reverse)));
@@ -293,10 +292,10 @@ SkiplistInLookupBuilder::SkiplistInLookupBuilder(
       } else {
         // Case: x.a IN value
         TRI_ASSERT(value->numMembers() > 0);
-        tmp.clear();
+        tmp->clear();
         unique_set.clear();
-        value->toVelocyPackValue(tmp);
-        for (auto const& it : VPackArrayIterator(tmp.slice())) {
+        value->toVelocyPackValue(*(tmp.get()));
+        for (auto const& it : VPackArrayIterator(tmp->slice())) {
           unique_set.emplace(it);
         }
         _inPositions.emplace_back(i, 0, unique_set.size());
@@ -366,10 +365,10 @@ SkiplistInLookupBuilder::SkiplistInLookupBuilder(
         TRI_ASSERT(upper == nullptr);
         TRI_ASSERT(lower == nullptr);
         TRI_ASSERT(value->numMembers() > 0);
-        tmp.clear();
+        tmp->clear();
         unique_set.clear();
-        value->toVelocyPackValue(tmp);
-        for (auto const& it : VPackArrayIterator(tmp.slice())) {
+        value->toVelocyPackValue(*(tmp.get()));
+        for (auto const& it : VPackArrayIterator(tmp->slice())) {
           unique_set.emplace(it);
         }
         _inPositions.emplace_back(ops.size() - 1, 0, unique_set.size());
@@ -380,6 +379,7 @@ SkiplistInLookupBuilder::SkiplistInLookupBuilder(
         _dataBuilder->close();
         _isEquality = true;
         _dataBuilder->close();
+
         buildSearchValues();
         return;
       case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ:
@@ -388,6 +388,7 @@ SkiplistInLookupBuilder::SkiplistInLookupBuilder(
         value->toVelocyPackValue(*(_dataBuilder.get()));
         _isEquality = true;
         _dataBuilder->close();
+
         buildSearchValues();
         return;
       default:
@@ -408,11 +409,12 @@ SkiplistInLookupBuilder::SkiplistInLookupBuilder(
   }
   _dataBuilder->close();
   _dataBuilder->close();
+
   buildSearchValues();
 }
 
 bool SkiplistInLookupBuilder::next() {
-  if (!forwardInPosition()) {
+  if (_done || !forwardInPosition()) {
     return false;
   }
   buildSearchValues();
@@ -423,14 +425,15 @@ bool SkiplistInLookupBuilder::forwardInPosition() {
   std::list<PosStruct>::reverse_iterator it = _inPositions.rbegin();
   while (it != _inPositions.rend()) {
     it->current++;
-    TRI_ASSERT(it->max > 0);
-    if (it->current < it->max) {
+    TRI_ASSERT(it->_max > 0);
+    if (it->current < it->_max) {
       return true;
       // Okay we increased this, next search value;
     }
     it->current = 0;
     it++;
   }
+  _done = true;
   // If we get here all positions are reset to 0.
   // We are done, no further combination
   return false;
@@ -529,7 +532,6 @@ TRI_doc_mptr_t* SkiplistIterator::next() {
   return tmp->document()->document();
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Checks if the interval is valid. It is declared invalid if
 ///        one border is nullptr or the right is lower than left.
@@ -553,14 +555,12 @@ bool SkiplistIterator2::intervalValid(Node* left, Node* right) const {
   return true;
 }
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Reset the cursor
 ////////////////////////////////////////////////////////////////////////////////
 
 void SkiplistIterator2::reset() {
-  // If _interals is empty at this point
+  // If _intervals is empty at this point
   // the cursor does not contain any
   // document at all. Reset is pointless
   if (!_intervals.empty()) {
@@ -685,7 +685,6 @@ void SkiplistIterator2::initNextInterval() {
     return;
   }
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create the skiplist index

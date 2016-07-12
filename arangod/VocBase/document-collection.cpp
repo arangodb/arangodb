@@ -794,7 +794,9 @@ static int OpenIteratorHandleDocumentMarker(TRI_df_marker_t const* marker,
   Transaction::extractKeyAndRevFromDocument(slice, keySlice, revisionId);
  
   SetRevision(document, revisionId, false);
-  document->_keyGenerator->track(keySlice.copyString());
+  VPackValueLength length;
+  char const* p = keySlice.getString(length);
+  document->_keyGenerator->track(p, length);
 
   ++state->_documents;
  
@@ -891,7 +893,9 @@ static int OpenIteratorHandleDeletionMarker(TRI_df_marker_t const* marker,
   Transaction::extractKeyAndRevFromDocument(slice, keySlice, revisionId);
  
   document->setLastRevision(revisionId, false);
-  document->_keyGenerator->track(keySlice.copyString());
+  VPackValueLength length;
+  char const* p = keySlice.getString(length);
+  document->_keyGenerator->track(p, length);
 
   ++state->_deletions;
 

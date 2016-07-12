@@ -60,7 +60,7 @@ class BaseSkiplistLookupBuilder {
   arangodb::velocypack::Slice _upperSlice;
 
  public:
-  BaseSkiplistLookupBuilder(Transaction* trx) :
+  explicit BaseSkiplistLookupBuilder(Transaction* trx) :
     _lowerBuilder(trx), _upperBuilder(trx)
   {
     _isEquality = true;
@@ -127,15 +127,17 @@ class SkiplistInLookupBuilder : public BaseSkiplistLookupBuilder {
     struct PosStruct {
       size_t field;
       size_t current;
-      size_t max;
+      size_t _max; // thanks, windows.h!
 
-      PosStruct(size_t f, size_t c, size_t m) : field(f), current(c), max(m) {}
+      PosStruct(size_t f, size_t c, size_t m) : field(f), current(c), _max(m) {}
     };
 
     TransactionBuilderLeaser _dataBuilder;
     /// @brief keeps track of the positions in the in-lookup
     /// values. (field, inPosition, maxPosition)
     std::list<PosStruct> _inPositions;
+
+    bool _done;
 
   public:
    SkiplistInLookupBuilder(
