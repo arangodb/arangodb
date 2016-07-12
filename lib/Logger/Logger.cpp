@@ -205,7 +205,7 @@ void Logger::log(char const* function, char const* file, long int line,
                  std::string const& message) {
 #ifdef _WIN32
   if (level == LogLevel::FATAL || level == LogLevel::ERR) {
-    if (ArangoGlobalContext::CONTEXT->useEventLog()) {
+    if (ArangoGlobalContext::CONTEXT != nullptr && ArangoGlobalContext::CONTEXT->useEventLog()) {
       TRI_LogWindowsEventlog(function, file, line, message);
     }
   }

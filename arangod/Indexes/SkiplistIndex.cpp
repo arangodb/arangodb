@@ -423,8 +423,8 @@ bool SkiplistInLookupBuilder::forwardInPosition() {
   std::list<PosStruct>::reverse_iterator it = _inPositions.rbegin();
   while (it != _inPositions.rend()) {
     it->current++;
-    TRI_ASSERT(it->max > 0);
-    if (it->current < it->max) {
+    TRI_ASSERT(it->_max > 0);
+    if (it->current < it->_max) {
       return true;
       // Okay we increased this, next search value;
     }
