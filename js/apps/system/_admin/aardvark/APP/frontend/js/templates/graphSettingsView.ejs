@@ -87,14 +87,14 @@
         <div class="pure-g pure-table pure-table-body">
 
           <% _.each(general, function(val, key) { %>
-            <div class="<%= genClass %> left"><%=key%></div>
+            <div class="<%= genClass %> left"><%=val.name%></div>
 
               <% if (val.type === 'select') { %>
                 <div class="<%= genClass %> left">
-                  <select>
+                  <select id="g_<%=key%>">
                     <% _.each(val, function(option, optKey) { %>
                       <% if (option.name) { %>
-                        <option> <%=option.name%> </option>
+                        <option value="<%=option.val%>"> <%=option.name%> </option>
                       <% } %>
                     <% }); %>
                   </select>
@@ -102,7 +102,7 @@
               <% } %>
 
               <% if (val.type === 'numeric') { %>
-                <input type="text" id="<%=val %>" value="<%=val.value %>" placeholder=""></input>
+                <input id="g_<%=key%>" type="text" id="<%=val %>" value="<%=val.value %>" placeholder=""></input>
               <% } %>
 
           <% }); %>
@@ -111,7 +111,7 @@
       </div>
 
     <button id="saveGraphSettings" style="margin-top: 20px;" class="button-success pull-right">Save</button>
-    <button id="saveGraphSettings" style="margin-top: 20px;" class="button-success pull-right">Restore defaults</button>
+    <button id="restoreGraphSettings" style="margin-top: 20px;" class="button-success pull-right">Restore defaults</button>
   </div>
 
 </script>
