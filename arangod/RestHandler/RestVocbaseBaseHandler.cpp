@@ -590,7 +590,8 @@ TRI_voc_rid_t RestVocbaseBaseHandler::extractRevision(char const* header,
 
     TRI_voc_rid_t rid = 0;
 
-    rid = TRI_StringToRidWithCheck(std::string(s, e-s));
+    bool isOld;
+    rid = TRI_StringToRidWithCheck(s, e-s, isOld);
     isValid = (rid != 0);
 
     return rid;
@@ -602,7 +603,8 @@ TRI_voc_rid_t RestVocbaseBaseHandler::extractRevision(char const* header,
     if (found) {
       TRI_voc_rid_t rid = 0;
 
-      rid = TRI_StringToRidWithCheck(etag2);
+      bool isOld;
+      rid = TRI_StringToRidWithCheck(etag2, isOld);
       isValid = (rid != 0);
 
       return rid;

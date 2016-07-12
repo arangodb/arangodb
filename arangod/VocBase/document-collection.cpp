@@ -3365,7 +3365,12 @@ int TRI_document_collection_t::update(Transaction* trx,
     if (!oldRev.isString()) {
       return TRI_ERROR_ARANGO_DOCUMENT_REV_BAD;
     }
-    revisionId = TRI_StringToRid(oldRev.copyString());
+    bool isOld;
+    revisionId = TRI_StringToRid(oldRev.copyString(), isOld);
+    if (isOld) {
+      // Do not tolerate old revision IDs
+      revisionId = TRI_HybridLogicalClock();
+    }
   } else {
     revisionId = TRI_HybridLogicalClock();
   }
@@ -3518,7 +3523,12 @@ int TRI_document_collection_t::replace(Transaction* trx,
     if (!oldRev.isString()) {
       return TRI_ERROR_ARANGO_DOCUMENT_REV_BAD;
     }
-    revisionId = TRI_StringToRid(oldRev.copyString());
+    bool isOld;
+    revisionId = TRI_StringToRid(oldRev.copyString(), isOld);
+    if (isOld) {
+      // Do not tolerate old revision ticks:
+      revisionId = TRI_HybridLogicalClock();
+    }
   } else {
     revisionId = TRI_HybridLogicalClock();
   }
@@ -3634,7 +3644,12 @@ int TRI_document_collection_t::remove(arangodb::Transaction* trx,
     if (!oldRev.isString()) {
       revisionId = TRI_HybridLogicalClock();
     } else {
-      revisionId = TRI_StringToRid(oldRev.copyString());
+      bool isOld;
+      revisionId = TRI_StringToRid(oldRev.copyString(), isOld);
+      if (isOld) {
+        // Do not tolerate old revisions
+        revisionId = TRI_HybridLogicalClock();
+      }
     }
   } else {
     revisionId = TRI_HybridLogicalClock();
@@ -4154,7 +4169,12 @@ int TRI_document_collection_t::newObjectForInsert(
     if (!oldRev.isString()) {
       return TRI_ERROR_ARANGO_DOCUMENT_REV_BAD;
     }
-    newRevSt = oldRev.copyString();
+    bool isOld;
+    TRI_voc_rid_t oldRevision = TRI_StringToRid(oldRev.copyString(), isOld);
+    if (isOld) {
+      oldRevision = TRI_HybridLogicalClock();
+    }
+    newRevSt = TRI_RidToString(oldRevision);
   } else {
     if (newRev == 0) {
       newRev = TRI_HybridLogicalClock();

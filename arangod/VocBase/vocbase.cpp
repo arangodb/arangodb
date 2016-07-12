@@ -2289,7 +2289,8 @@ TRI_voc_rid_t TRI_ExtractRevisionId(VPackSlice slice) {
 
   VPackSlice r(slice.get(StaticStrings::RevString));
   if (r.isString()) {
-    return TRI_StringToRid(r.copyString());
+    bool isOld;
+    return TRI_StringToRid(r.copyString(), isOld);
   }
   if (r.isInteger()) {
     return r.getNumber<TRI_voc_rid_t>();
@@ -2370,15 +2371,15 @@ std::string TRI_RidToString(TRI_voc_rid_t rid) {
 /// @brief Convert a string into a revision ID, no check variant
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_voc_rid_t TRI_StringToRid(std::string const& ridStr) {
-  return TRI_StringToRid(ridStr.c_str(), ridStr.size());
+TRI_voc_rid_t TRI_StringToRid(std::string const& ridStr, bool& isOld) {
+  return TRI_StringToRid(ridStr.c_str(), ridStr.size(), isOld);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Convert a string into a revision ID, no check variant
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_voc_rid_t TRI_StringToRid(char const* p, size_t len) {
+TRI_voc_rid_t TRI_StringToRid(char const* p, size_t len, bool& isOld) {
   if (len > 0 && *p >= '1' && *p <= '9') {
     // Remove this case before the year 3887 AD because then it will
     // start to clash with encoded timestamps:
@@ -2388,8 +2389,10 @@ TRI_voc_rid_t TRI_StringToRid(char const* p, size_t len) {
       LOG(WARN)
         << "Saw old _rev value that could be confused with a time stamp!";
     }
+    isOld = true;
     return r;
   }
+  isOld = false;
   return HybridLogicalClock::decodeTimeStamp(p, len);
 }
 
@@ -2397,15 +2400,15 @@ TRI_voc_rid_t TRI_StringToRid(char const* p, size_t len) {
 /// @brief Convert a string into a revision ID, returns 0 if format invalid
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_voc_rid_t TRI_StringToRidWithCheck(std::string const& ridStr) {
-  return TRI_StringToRidWithCheck(ridStr.c_str(), ridStr.size());
+TRI_voc_rid_t TRI_StringToRidWithCheck(std::string const& ridStr, bool& isOld) {
+  return TRI_StringToRidWithCheck(ridStr.c_str(), ridStr.size(), isOld);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Convert a string into a revision ID, returns 0 if format invalid
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_voc_rid_t TRI_StringToRidWithCheck(char const* p, size_t len) {
+TRI_voc_rid_t TRI_StringToRidWithCheck(char const* p, size_t len, bool& isOld) {
   if (len > 0 && *p >= '1' && *p <= '9') {
     // Remove this case before the year 3887 AD because then it will
     // start to clash with encoded timestamps:
@@ -2415,8 +2418,10 @@ TRI_voc_rid_t TRI_StringToRidWithCheck(char const* p, size_t len) {
       LOG(WARN)
         << "Saw old _rev value that could be confused with a time stamp!";
     }
+    isOld = true;
     return r;
   }
+  idOld = false;
   return HybridLogicalClock::decodeTimeStampWithCheck(p, len);
 }
 

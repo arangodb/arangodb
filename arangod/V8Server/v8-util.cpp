@@ -181,7 +181,8 @@ bool ExtractDocumentHandle(v8::Isolate* isolate,
       return true;
     }
     v8::String::Utf8Value str(revObj);
-    uint64_t rid = TRI_StringToRidWithCheck(std::string(*str, str.length()));
+    bool isOld;
+    uint64_t rid = TRI_StringToRidWithCheck(*str, str.length(), isOld);
 
     if (rid == 0) {
       return false;
