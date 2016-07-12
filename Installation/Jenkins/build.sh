@@ -272,6 +272,7 @@ git rev-parse HEAD > ../last_compiled_version.sha
 # and install
 
 if test -n "${TARGET_DIR}";  then
+  echo "building distribution tarball"
   dir="${TARGET_DIR}"
   TARFILE=arangodb.tar.gz
   TARFILE_TMP=`pwd`/arangodb.tar.$$
