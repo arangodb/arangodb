@@ -2238,7 +2238,6 @@ int RestReplicationHandler::processRestoreDataBatch(
 
   // Now try to insert all keys for which the last marker was a document
   // marker, note that these could still be replace markers!
-  std::vector<VPackValueLength> insertTried;
   builder.clear();
   {
     VPackArrayBuilder guard(&builder);

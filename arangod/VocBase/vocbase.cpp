@@ -2421,7 +2421,7 @@ TRI_voc_rid_t TRI_StringToRidWithCheck(char const* p, size_t len, bool& isOld) {
     isOld = true;
     return r;
   }
-  idOld = false;
+  isOld = false;
   return HybridLogicalClock::decodeTimeStampWithCheck(p, len);
 }
 
