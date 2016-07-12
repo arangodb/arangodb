@@ -318,7 +318,7 @@ OperationID ClusterComm::asyncRequest(
         ServerState::instance()->getAuthentication();
   }
   TRI_voc_tick_t timeStamp = TRI_HybridLogicalClock();
-  (*op->headerFields)["X-Arango-HLC"]
+  (*op->headerFields)[StaticStrings::HLCHeader]
       = arangodb::basics::HybridLogicalClock::encodeTimeStamp(timeStamp);
 
 #ifdef DEBUG_CLUSTER_COMM
@@ -449,7 +449,7 @@ std::unique_ptr<ClusterCommResult> ClusterComm::syncRequest(
 
     headersCopy["Authorization"] = ServerState::instance()->getAuthentication();
     TRI_voc_tick_t timeStamp = TRI_HybridLogicalClock();
-    headersCopy["X-Arango-HLC"]
+    headersCopy[StaticStrings::HLCHeader]
         = arangodb::basics::HybridLogicalClock::encodeTimeStamp(timeStamp);
 #ifdef DEBUG_CLUSTER_COMM
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -842,6 +842,9 @@ void ClusterComm::asyncAnswer(std::string& coordinatorHeader,
   headers["X-Arango-Response-Code"] =
       responseToSend->responseString(responseToSend->responseCode());
   headers["Authorization"] = ServerState::instance()->getAuthentication();
+  TRI_voc_tick_t timeStamp = TRI_HybridLogicalClock();
+  headers[StaticStrings::HLCHeader]
+      = arangodb::basics::HybridLogicalClock::encodeTimeStamp(timeStamp);
 
   char const* body = responseToSend->body().c_str();
   size_t len = responseToSend->body().length();

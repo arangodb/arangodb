@@ -24,6 +24,7 @@
 
 #include "HttpCommTask.h"
 
+#include "Basics/HybridLogicalClock.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
@@ -32,6 +33,7 @@
 #include "HttpServer/HttpHandlerFactory.h"
 #include "HttpServer/HttpServer.h"
 #include "Scheduler/Scheduler.h"
+#include "VocBase/server.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -842,6 +844,17 @@ void HttpCommTask::processRequest() {
       << HttpRequest::translateMethod(_requestType) << "\",\""
       << HttpRequest::translateVersion(_httpVersion) << "\"," << _fullUrl
       << "\"";
+
+  // check for an HLC time stamp
+  std::string const& timeStamp = _request->header(StaticStrings::HLCHeader, found);
+  if (found) {
+    uint64_t timeStampInt
+        = arangodb::basics::HybridLogicalClock::decodeTimeStampWithCheck(
+            timeStamp);
+    if (timeStampInt != 0) {
+      TRI_HybridLogicalClock(timeStampInt);
+    }
+  }
 
   // check for an async request
   std::string const& asyncExecution = _request->header(StaticStrings::Async, found);

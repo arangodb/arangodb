@@ -75,6 +75,7 @@ std::string const StaticStrings::ErrorCodes("x-arango-error-codes");
 std::string const StaticStrings::Etag("etag");
 std::string const StaticStrings::Expect("expect");
 std::string const StaticStrings::ExposedCorsHeaders("etag, content-encoding, content-length, location, server, x-arango-errors, x-arango-async-id");
+std::string const StaticStrings::HLCHeader("x-arango-hlc");
 std::string const StaticStrings::KeepAlive("Keep-Alive");
 std::string const StaticStrings::Location("location");
 std::string const StaticStrings::MultiPartContentType("multipart/form-data");
