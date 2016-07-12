@@ -121,7 +121,7 @@ ArangoDB Unittesting Framework
 Dependencies
 ------------
 * *Ruby*, *rspec*, *httparty* to install the required dependencies run:
-  cd UnitTests/HttpInterface; bundler
+  `cd UnitTests/HttpInterface; bundler`
 * boost_test (compile time)
 
 
