@@ -133,6 +133,7 @@ while [ $# -gt 0 ];  do
         shift
         TARGET_DIR=$1
         shift
+        ;;
     *)
       break
       ;;
