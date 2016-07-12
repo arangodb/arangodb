@@ -210,6 +210,9 @@
 
         window.checkVersion();
 
+        this.userConfig = new window.UserConfig();
+        this.userConfig.fetch();
+
         this.documentsView = new window.DocumentsView({
           collection: new window.ArangoDocuments(),
           documentStore: this.arangoDocumentStore,
@@ -669,7 +672,8 @@
         return;
       }
       this.graphViewer2 = new window.GraphViewer2({
-        name: name
+        name: name,
+        userConfig: this.userConfig
       });
       this.graphViewer2.render();
     },
@@ -681,7 +685,8 @@
         return;
       }
       this.graphSettingsView = new window.GraphSettingsView({
-        name: name
+        name: name,
+        userConfig: this.userConfig
       });
       this.graphSettingsView.render();
     },
