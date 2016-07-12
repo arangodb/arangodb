@@ -23,6 +23,9 @@ devel
 
 * When disabling Foxx development mode the setup script is now re-run
 
+* Foxx now provides an easy way to directly serve GraphQL requests using the
+  `@arangodb/foxx/graphql` module and the bundled `graphql-sync` dependency
+
 
 v3.0.3 (XXXX-XX-XX)
 -------------------
