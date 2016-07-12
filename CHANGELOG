@@ -1,6 +1,10 @@
 v3.0.3 (XXXX-XX-XX)
 -------------------
 
+* fixed AQL MERGE() function with External objects originating from traversals
+
+* fixed some logfile recovery errors with error message "document not found"
+
 * fixed issue #1937
 
 * fixed issue #1936
