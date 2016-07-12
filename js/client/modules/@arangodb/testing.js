@@ -132,52 +132,53 @@ const optionsDocumentation = [
 ];
 
 const optionsDefaults = {
-  "agencySize": 3,
-  "build": "",
-  "buildType": "",
-  "cleanup": true,
-  "cluster": false,
-  "clusterNodes": 2,
-  "concurrency": 3,
-  "coreDirectory": "/var/tmp",
-  "duration": 10,
-  "extraArgs": {},
-  "extremeVerbosity": false,
-  "force": true,
-  "jsonReply": false,
-  "loopEternal": false,
-  "loopSleepSec": 1,
-  "loopSleepWhen": 1,
-  "onlyNightly": false,
-  "password": "",
-  "replication": false,
-  "rr": false,
-  "rspec": "rspec",
-  "ruby": "",
-  "sanitizer": false,
-  "skipAql": false,
-  "skipArangoBench": false,
-  "skipArangoBenchNonConnKeepAlive": true,
-  "skipAuthentication": false,
-  "skipBoost": false,
-  "skipGeo": false,
-  "skipLogAnalysis": false,
-  "skipMemoryIntense": false,
-  "skipNightly": true,
-  "skipNondeterministic": false,
-  "skipRanges": false,
-  "skipShebang": false,
-  "skipSsl": false,
-  "skipTimeCritical": false,
-  "test": undefined,
-  "testBuckets": undefined,
-  "username": "root",
-  "valgrind": false,
-  "valgrindFileBase": "",
-  "valgrindArgs": {},
-  "valgrindHosts": false,
-  "verbose": false,
-  "writeXmlReport": true
+  'agencySize': 3,
+  'build': '',
+  'buildType': '',
+  'cleanup': true,
+  'cluster': false,
+  'clusterNodes': 2,
+  'concurrency': 3,
+  'coreDirectory': '/var/tmp',
+  'duration': 10,
+  'extraArgs': {},
+  'extremeVerbosity': false,
+  'force': true,
+  'jsonReply': false,
+  'loopEternal': false,
+  'loopSleepSec': 1,
+  'loopSleepWhen': 1,
+  'maxPort': 32768,
+  'onlyNightly': false,
+  'password': '',
+  'replication': false,
+  'rr': false,
+  'rspec': 'rspec',
+  'ruby': '',
+  'sanitizer': false,
+  'skipAql': false,
+  'skipArangoBench': false,
+  'skipArangoBenchNonConnKeepAlive': true,
+  'skipAuthentication': false,
+  'skipBoost': false,
+  'skipGeo': false,
+  'skipLogAnalysis': false,
+  'skipMemoryIntense': false,
+  'skipNightly': true,
+  'skipNondeterministic': false,
+  'skipRanges': false,
+  'skipShebang': false,
+  'skipSsl': false,
+  'skipTimeCritical': false,
+  'test': undefined,
+  'testBuckets': undefined,
+  'username': 'root',
+  'valgrind': false,
+  'valgrindFileBase': '',
+  'valgrindArgs': {},
+  'valgrindHosts': false,
+  'verbose': false,
+  'writeXmlReport': true
 };
 
 const _ = require("lodash");
@@ -595,10 +596,16 @@ function cleanupDBDirectories(options) {
 /// @brief finds a free port
 ////////////////////////////////////////////////////////////////////////////////
 
-function findFreePort() {
+function findFreePort (maxPort) {
+  if (typeof maxPort !== 'number') {
+    maxPort = 32768;
+  }
+  if (maxPort < 2048) {
+    maxPort = 2048;
+  }
   while (true) {
-    const port = Math.floor(Math.random() * (65536 - 1024)) + 1024;
-    const free = testPort("tcp://0.0.0.0:" + port);
+    const port = Math.floor(Math.random() * (maxPort - 1024)) + 1024;
+    const free = testPort('tcp://0.0.0.0:' + port);
 
     if (free) {
       return port;
@@ -1274,7 +1281,7 @@ function startInstanceCluster(instanceInfo, protocol, options,
   let agencyEndpoint = instanceInfo.endpoint;
   let i;
   for (i = 0; i < options.clusterNodes; i++) {
-    let endpoint = protocol + "://127.0.0.1:" + findFreePort();
+    let endpoint = protocol + '://127.0.0.1:' + findFreePort(options.maxPort);
     let primaryArgs = _.clone(options.extraArgs);
     primaryArgs['server.endpoint'] = endpoint;
     primaryArgs['cluster.my-address'] = endpoint;
@@ -1285,7 +1292,7 @@ function startInstanceCluster(instanceInfo, protocol, options,
     startInstanceSingleServer(instanceInfo, protocol, options, ...makeArgs('dbserver' + i, primaryArgs));
   }
 
-  let endpoint = protocol + "://127.0.0.1:" + findFreePort();
+  let endpoint = protocol + '://127.0.0.1:' + findFreePort(options.maxPort);
   let coordinatorArgs = _.clone(options.extraArgs);
   coordinatorArgs['server.endpoint'] = endpoint;
   coordinatorArgs['cluster.my-address'] = endpoint;
@@ -1338,9 +1345,9 @@ function startArango(protocol, options, addArgs, name, rootDir, isAgency) {
   let endpoint;
   let port;
 
-  if (!addArgs["server.endpoint"]) {
-    port = findFreePort();
-    endpoint = protocol + "://127.0.0.1:" + port;
+  if (!addArgs['server.endpoint']) {
+    port = findFreePort(options.maxPort);
+    endpoint = protocol + '://127.0.0.1:' + port;
   } else {
     endpoint = addArgs["server.endpoint"];
     port = endpoint.split(":").pop();
@@ -1412,8 +1419,8 @@ function startInstanceAgency(instanceInfo, protocol, options,
     instanceArgs["database.directory"] = dataDir + String(i);
 
     if (i === N - 1) {
-      const port = findFreePort();
-      instanceArgs["server.endpoint"] = "tcp://127.0.0.1:" + port;
+      const port = findFreePort(options.maxPort);
+      instanceArgs['server.endpoint'] = 'tcp://127.0.0.1:' + port;
       let l = [];
       instanceInfo.arangods.forEach(arangod => {
         l.push("--agency.endpoint");
@@ -3657,8 +3664,8 @@ testFuncs.upgrade = function(options) {
   const tmpDataDir = fs.getTempFile();
   fs.makeDirectoryRecursive(tmpDataDir);
 
-  const appDir = fs.join(tmpDataDir, "app");
-  const port = findFreePort();
+  const appDir = fs.join(tmpDataDir, 'app');
+  const port = findFreePort(options.maxPort);
 
   let args = makeArgsArangod(options, appDir);
   args["server.endpoint"] = "tcp://127.0.0.1:" + port;
