@@ -27,7 +27,12 @@ devel
 v3.0.3 (XXXX-XX-XX)
 -------------------
 
+* fixed issue #1937
+
 * fixed issue #1936
+
+* improved performance of arangorestore in clusters with synchronous
+  replication
 
 
 v3.0.2 (2016-07-09)
@@ -442,8 +447,24 @@ v3.0.0-rc1 (2015-06-10)
   using a backwards-compatible "legacy mode"
 
 
-v2.8.10 (XXXX-XX-XX)
+v2.8.11 (XXXX-XX-XX)
 --------------------
+
+* fixed issue #1937
+
+
+v2.8.10 (2016-07-01)
+--------------------
+
+* make sure next local _rev value used for a document is at least as high as the
+  _rev value supplied by external sources such as replication
+
+* make adding a collection in both read- and write-mode to a transaction behave as
+  expected (write includes read). This prevents the `unregister collection used in
+  transaction` error
+
+* fixed sometimes invalid result for `byExample(...).count()` when an index plus
+  post-filtering was used
 
 * fixed "collection is a nullptr" issue when starting a traversal from a transaction
 
