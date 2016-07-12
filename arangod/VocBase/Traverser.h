@@ -276,7 +276,7 @@ class Traverser {
   /// @brief Constructor. This is an abstract only class.
   //////////////////////////////////////////////////////////////////////////////
 
-  Traverser(TraverserOptions& opts)
+  explicit Traverser(TraverserOptions& opts)
       : _readDocuments(0),
         _filteredPaths(0),
         _pruneNext(false),
