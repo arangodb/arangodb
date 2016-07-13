@@ -5,7 +5,7 @@
 
 @RESTHEADER{POST /_api/user, Create User}
 
--RESTBODYPARAM{user,string,required,string}
+@RESTBODYPARAM{user,string,required,string}
 The name of the user as a string. This is mandatory.
 
 @RESTBODYPARAM{passwd,string,required,string}
@@ -43,7 +43,7 @@ from the request.
 
 @EXAMPLE_ARANGOSH_RUN{RestCreateUser}
     var url = "/_api/user";
-    var data = { user: "admin@example", password: "secure" };
+    var data = { user: "admin@example", passwd: "secure" };
     var response = logCurlRequest('POST', url, data);
 
     assert(response.code === 201);
@@ -151,7 +151,7 @@ The specified user does not exist
     users.save("admin@myapp", "secret")
 
     var url = "/_api/user/admin@myapp";
-    var data = { password: "secure" };
+    var data = { passwd: "secure" };
     var response = logCurlRequest('PUT', url, data);
 
     assert(response.code === 200);
@@ -209,7 +209,7 @@ The specified user does not exist
     users.save("admin@yourapp", "secret")
 
     var url = "/_api/user/admin@yourapp";
-    var data = { password: "secure" };
+    var data = { passwd: "secure" };
     var response = logCurlRequest('PATCH', url, data);
 
     assert(response.code === 200);
