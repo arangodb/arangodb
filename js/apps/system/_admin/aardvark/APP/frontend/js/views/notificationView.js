@@ -53,11 +53,11 @@
     renderNotifications: function (a, b, event) {
       if (event) {
         if (event.add) {
-          var latestModel = this.collection.at(this.collection.length - 1),
-            message = latestModel.get('title'),
-            time = 3000,
-            closeWidth = ['click'],
-            buttons;
+          var latestModel = this.collection.at(this.collection.length - 1);
+          var message = latestModel.get('title');
+          var time = 3000;
+          var closeWidth = ['click'];
+          var buttons;
 
           if (latestModel.get('content')) {
             message = message + ': ' + latestModel.get('content');

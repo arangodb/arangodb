@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, sub: true, maxlen: 500 */
-/*global assertEqual, assertTrue */
+/*global assertEqual, assertFalse, assertTrue */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for query language, graph functions
@@ -152,7 +152,54 @@ function aqlVPackExternalsTestSuite () {
      
       assertEqual([ 1, 2 ], cursor.next());
       assertEqual([ 1, 2, 3 ], cursor.next());
+    },
+
+    testIdAccessInMinMax: function () {
+      let coll = db._collection(collName);
+      let ecoll = db._collection(edgeColl);
+      coll.truncate();
+      ecoll.truncate();
+      
+      coll.insert({ _key: "a", w: 1});
+      coll.insert({ _key: "b", w: 2});
+      coll.insert({ _key: "c", w: 3});
+      ecoll.insert({ _from: coll.name() + "/a", _to: coll.name() + "/b", w: 1});
+      ecoll.insert({ _from: coll.name() + "/b", _to: coll.name() + "/c", w: 2});
+      ecoll.insert({ _from: coll.name() + "/a", _to: coll.name() + "/a", w: 3});
+
+      const query = `FOR x IN ANY '${collName}/a' ${edgeColl} COLLECT ct = x.w >= 1 INTO g RETURN MAX(g)`;
+      const cursor = db._query(query);
+      var doc = cursor.next();
+      delete doc.x._rev;
+      assertEqual({ "x" : { "_key" : "b", "_id" : collName + "/b", "w" : 2 } }, doc);
+    }, 
+
+    testExternalAttributeAccess2: function () {
+      let coll = db._collection(collName);
+      let ecoll = db._collection(edgeColl);
+      coll.truncate();
+      ecoll.truncate();
+
+      for (var i = 0; i < 100; ++i) {
+        coll.insert({ _key: "test" + i, username: "test" + i });
+        ecoll.insert({ _from: collName + "/test" + i, _to: collName + "/test" + (i + 1), _key: "test" + i });
+      }
+
+      const query = `LET us = (FOR u1 IN ${collName} FILTER u1.username == "test1" FOR u2 IN ${collName} FILTER u2.username == "test2" RETURN { u1, u2 }) FOR u IN us FOR msg IN ${edgeColl} FILTER msg._from == u.u1._id && msg._to == u.u2._id RETURN msg._id`; 
+      const result = db._query(query).toArray();
+      assertEqual(edgeColl + "/test1", result[0]);
+    },
+
+    testExternalInTraversalMerge: function () {
+      const query = `LET s = (FOR n IN OUTBOUND "${collName}/test1000" ${edgeColl} RETURN n) RETURN MERGE(s)`;
+      const cursor = db._query(query);
+      const doc = cursor.next();
+      assertTrue(doc.hasOwnProperty('_key'));
+      assertTrue(doc.hasOwnProperty('_rev'));
+      assertTrue(doc.hasOwnProperty('_id'));
+      assertFalse(cursor.hasNext());
     }
+
   };
 
 }

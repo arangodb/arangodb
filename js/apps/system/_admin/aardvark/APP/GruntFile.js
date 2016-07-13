@@ -35,7 +35,6 @@
             "frontend/css/nv.d3.css",
             "frontend/css/swaggerView.css",
             "frontend/css/ansi.css",
-            "frontend/css/popper.css",
             "frontend/css/highlightjs.css",
             "frontend/css/jsoneditor.css",
             "frontend/css/grids-responsive-min.css",
@@ -65,10 +64,16 @@
             "frontend/js/lib/sigma.layout.noverlap.js",
             "frontend/js/lib/sigma.plugins.fullScreen.js",
             "frontend/js/lib/sigma.layout.fruchtermanReingold.js",
+            "frontend/js/lib/sigma.exporters.svg.js",
             "frontend/js/lib/worker.js",
             "frontend/js/lib/supervisor.js",
             // END SIGMA LIBRARIES
-            "frontend/js/lib/popper.min.js",
+            // START NEW
+            "frontend/js/lib/wheelnav.slicePath.js",
+            "frontend/js/lib/wheelnav.min.js",
+            "frontend/js/lib/raphael.min.js",
+            "frontend/js/lib/raphael.icons.min.js",
+            // END NEW LIBRARIES
             "frontend/js/lib/jsoneditor-min.js",
             "frontend/js/lib/strftime-min.js",
             "frontend/js/lib/d3.fisheye.min.js",
@@ -318,14 +323,19 @@
         }
       },
 
-
-      jshint: {
+      semistandard: {
         options: {
-          laxbreak: true
+          format: false
         },
-        default: [
-          '<%=project.standalone.js %>'
-        ]
+        app: {
+          src: [
+            'frontend/js/views/*.js',
+            'frontend/js/arango/*.js',
+            'frontend/js/models/*.js',
+            'frontend/js/collections/*.js',
+            'frontend/js/routers/*.js'
+          ]
+        }
       },
 
       uglify: {
@@ -394,6 +404,7 @@
       }
     });
 
+    grunt.loadNpmTasks('grunt-semistandard');
     grunt.loadNpmTasks("grunt-sass");
     grunt.loadNpmTasks("grunt-contrib-imagemin");
     grunt.loadNpmTasks('grunt-contrib-cssmin');
@@ -408,7 +419,6 @@
 
     grunt.registerTask('default', [
       'sass:dev',
-      'jshint:default',
       'replace',
       'concat',
       'concat_in_order:default',
@@ -421,7 +431,6 @@
 
     grunt.registerTask('devel', [
       'sass:dev',
-      'jshint:default',
       'replace',
       'concat',
       'concat_in_order:default',
@@ -432,7 +441,7 @@
 
     grunt.registerTask('deploy', [
       'sass:dev',
-      'jshint:default',
+      'semistandard',
       'replace',
       'imagemin',
       'concat',

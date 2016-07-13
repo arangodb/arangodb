@@ -28,6 +28,9 @@
 
 #include "Basics/debugging.h"
 #include "Basics/files.h"
+#ifdef __arm__
+#include "Basics/FileUtils.h"
+#endif
 #include "Logger/LogAppender.h"
 #include "Logger/Logger.h"
 #include "Rest/InitializeRest.h"
@@ -108,7 +111,17 @@ LONG CALLBACK unhandledExceptionHandler(EXCEPTION_POINTERS* e) {
 ArangoGlobalContext* ArangoGlobalContext::CONTEXT = nullptr;
 
 ArangoGlobalContext::ArangoGlobalContext(int argc, char* argv[])
-    : _binaryName(TRI_BinaryName(argv[0])), _ret(EXIT_FAILURE) {
+    : _binaryName(TRI_BinaryName(argv[0])), _ret(EXIT_FAILURE), _useEventLog(true) {
+
+  static char const* serverName = "arangod";
+  if (_binaryName.size() < strlen(serverName) ||
+      _binaryName.substr(_binaryName.size() - strlen(serverName)) != serverName) {
+    // turn off event-logging for all binaries except arangod
+    // the reason is that all other tools are client tools that will directly
+    // print all errors so the user can handle them 
+    _useEventLog = false;
+  }
+
   ADB_WindowsEntryFunction();
 
 #ifdef _WIN32

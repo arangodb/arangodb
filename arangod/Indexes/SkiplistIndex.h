@@ -29,8 +29,11 @@
 #include "Basics/SkipList.h"
 #include "Indexes/IndexIterator.h"
 #include "Indexes/PathBasedIndex.h"
+#include "Utils/Transaction.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
+
+#include <list>
 
 namespace arangodb {
 namespace aql {
@@ -40,6 +43,120 @@ struct Variable;
 
 class SkiplistIndex;
 class Transaction;
+
+
+/// @brief Abstract Builder for lookup values in skiplist index
+
+class BaseSkiplistLookupBuilder {
+ protected:
+  bool _isEquality;
+  bool _includeLower;
+  bool _includeUpper;
+
+  TransactionBuilderLeaser _lowerBuilder;
+  arangodb::velocypack::Slice _lowerSlice;
+
+  TransactionBuilderLeaser _upperBuilder;
+  arangodb::velocypack::Slice _upperSlice;
+
+ public:
+  explicit BaseSkiplistLookupBuilder(Transaction* trx) :
+    _lowerBuilder(trx), _upperBuilder(trx)
+  {
+    _isEquality = true;
+    _includeUpper = true;
+    _includeLower = true;
+
+    _lowerBuilder->clear();
+    _upperBuilder->clear();
+  }
+
+  virtual ~BaseSkiplistLookupBuilder() {};
+
+  /// @brief Compute the next lookup values
+  ///        If returns false there is no further lookup
+  virtual bool next() = 0;
+
+  /// @brief Returns if we only have equality checks (== or IN)
+  bool isEquality() const;
+
+  /// @brief Get the lookup value for the lower bound.
+  arangodb::velocypack::Slice const* getLowerLookup() const;
+
+  /// @brief Test if the lower bound should be included.
+  ///        If there is no lower bound given returns true
+  ///        as well.
+  bool includeLower() const;
+
+  /// @brief Get the lookup value for the upper bound.
+  arangodb::velocypack::Slice const* getUpperLookup() const;
+
+  /// @brief Test if the upper bound should be included.
+  ///        If there is no upper bound given returns true
+  ///        as well.
+  bool includeUpper() const;
+};
+
+/// @brief Builder for lookup values in skiplist index
+///        Offers lower and upper bound lookup values
+///        and handles multiplication of IN search values.
+///        Also makes sure that the lookup values are
+///        returned in the correct ordering. And no
+///        lookup is returned twice.
+
+class SkiplistLookupBuilder : public BaseSkiplistLookupBuilder {
+
+  public:
+   SkiplistLookupBuilder(
+       Transaction* trx,
+       std::vector<std::vector<arangodb::aql::AstNode const*>>&,
+       arangodb::aql::Variable const*, bool);
+
+    ~SkiplistLookupBuilder() {}
+
+/// @brief Compute the next lookup values
+///        If returns false there is no further lookup
+    bool next() override;
+
+};
+
+class SkiplistInLookupBuilder : public BaseSkiplistLookupBuilder {
+
+  private:
+
+    struct PosStruct {
+      size_t field;
+      size_t current;
+      size_t _max; // thanks, windows.h!
+
+      PosStruct(size_t f, size_t c, size_t m) : field(f), current(c), _max(m) {}
+    };
+
+    TransactionBuilderLeaser _dataBuilder;
+    /// @brief keeps track of the positions in the in-lookup
+    /// values. (field, inPosition, maxPosition)
+    std::list<PosStruct> _inPositions;
+
+    bool _done;
+
+  public:
+   SkiplistInLookupBuilder(
+       Transaction* trx,
+       std::vector<std::vector<arangodb::aql::AstNode const*>>&,
+       arangodb::aql::Variable const*, bool);
+
+    ~SkiplistInLookupBuilder() {}
+
+/// @brief Compute the next lookup values
+///        If returns false there is no further lookup
+    bool next() override;
+
+  private:
+
+    bool forwardInPosition();
+
+    void buildSearchValues();
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Iterator structure for skip list. We require a start and stop node
@@ -95,6 +212,110 @@ class SkiplistIterator : public IndexIterator {
 
   void reset() override;
 };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Iterator structure for skip list. We require a start and stop node
+///
+/// Intervals are open in the sense that both end points are not members
+/// of the interval. This means that one has to use SkipList::nextNode
+/// on the start node to get the first element and that the stop node
+/// can be NULL. Note that it is ensured that all intervals in an iterator
+/// are non-empty.
+////////////////////////////////////////////////////////////////////////////////
+
+class SkiplistIterator2 : public IndexIterator {
+ private:
+  // Shorthand for the skiplist node
+  typedef arangodb::basics::SkipListNode<VPackSlice,
+                                         TRI_index_element_t> Node;
+
+  typedef arangodb::basics::SkipList<VPackSlice,
+                                     TRI_index_element_t> TRI_Skiplist;
+
+ private:
+
+  TRI_Skiplist const* _skiplistIndex;
+  bool _reverse;
+  Node* _cursor;
+
+  // The pair.first is the left border
+  // The pair.second is the right border
+  // Both borders are inclusive
+  std::vector<std::pair<Node*, Node*>> _intervals;
+  size_t _currentInterval;
+
+  BaseSkiplistLookupBuilder* _builder;
+
+  std::function<int(TRI_index_element_t const*, TRI_index_element_t const*,
+                      arangodb::basics::SkipListCmpType)> _CmpElmElm;
+
+ public:
+  SkiplistIterator2(
+      TRI_Skiplist const* skiplist,
+      std::function<int(TRI_index_element_t const*, TRI_index_element_t const*,
+                        arangodb::basics::SkipListCmpType)> CmpElmElm,
+      bool reverse, BaseSkiplistLookupBuilder* builder)
+      : _skiplistIndex(skiplist),
+        _reverse(reverse),
+        _cursor(nullptr),
+        _currentInterval(0),
+        _builder(builder),
+        _CmpElmElm(CmpElmElm) {
+    TRI_ASSERT(_builder != nullptr);
+    initNextInterval(); // Initializes the cursor
+    TRI_ASSERT((_intervals.empty() && _cursor == nullptr) ||
+               (!_intervals.empty() && _cursor != nullptr));
+  }
+
+  ~SkiplistIterator2() {
+    delete _builder;
+  }
+
+  // always holds the last node returned, initially equal to
+  // the _leftEndPoint (or the
+  // _rightEndPoint in the reverse case),
+  // can be nullptr if the iterator is exhausted.
+
+ public:
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief Get the next element in the skiplist
+  ////////////////////////////////////////////////////////////////////////////////
+
+  TRI_doc_mptr_t* next() override;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief Reset the cursor
+  ////////////////////////////////////////////////////////////////////////////////
+
+  void reset() override;
+
+ private:
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief Initialize left and right endpoints with current lookup
+  ///        value. Also points the _cursor to the border of this interval.
+  ////////////////////////////////////////////////////////////////////////////////
+
+  void initNextInterval();
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief Forward the cursor to the next interval. If there was no
+  ///        interval the next one is computed. If the _cursor has
+  ///        nullptr after this call the iterator is exhausted.
+  ////////////////////////////////////////////////////////////////////////////////
+
+  void forwardCursor();
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief Checks if the interval is valid. It is declared invalid if
+  ///        one border is nullptr or the right is lower than left.
+  ////////////////////////////////////////////////////////////////////////////////
+
+  bool intervalValid(Node*, Node*) const;
+};
+
+
 
 class SkiplistIndex final : public PathBasedIndex {
   struct KeyElementComparator {
@@ -196,27 +417,37 @@ class SkiplistIndex final : public PathBasedIndex {
       std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>>&,
       bool) const;
 
+  bool accessFitsIndex(
+      arangodb::aql::AstNode const*, arangodb::aql::AstNode const*,
+      arangodb::aql::AstNode const*, arangodb::aql::Variable const*,
+      std::vector<std::vector<arangodb::aql::AstNode const*>>&) const;
+
+
   void matchAttributes(
       arangodb::aql::AstNode const*, arangodb::aql::Variable const*,
       std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>>&,
       size_t&, bool) const;
 
- private:
-
-  // Shorthand for the skiplist node
-  typedef arangodb::basics::SkipListNode<VPackSlice,
-                                         TRI_index_element_t> Node;
-
-  ElementElementComparator CmpElmElm;
-
-  KeyElementComparator CmpKeyElm;
+  bool findMatchingConditions(
+      arangodb::aql::AstNode const*, arangodb::aql::Variable const*,
+      std::vector<std::vector<arangodb::aql::AstNode const*>>&, bool&) const;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief Checks if the interval is valid. It is declared invalid if
   ///        one border is nullptr or the right is lower than left.
   ////////////////////////////////////////////////////////////////////////////////
 
+  // Shorthand for the skiplist node
+  typedef arangodb::basics::SkipListNode<VPackSlice,
+                                         TRI_index_element_t> Node;
+
   bool intervalValid(Node* left, Node* right) const;
+
+ private:
+
+  ElementElementComparator CmpElmElm;
+
+  KeyElementComparator CmpKeyElm;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the actual skiplist index

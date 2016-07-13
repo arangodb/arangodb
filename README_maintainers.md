@@ -50,6 +50,14 @@ Debugging the build process
 ---------------------------
 If the compile goes wrong for no particular reason, appending 'verbose=' adds more output. For some reason V8 has VERBOSE=1 for the same effect.
 
+Temporary files and temp directories
+------------------------------------
+Depending on the native way ArangoDB tries to locate the temporary directory.
+
+* Linux/Mac: the environment variable `TMPDIR` is evaluated.
+* Windows: the [W32 API function GetTempPath()](https://msdn.microsoft.com/en-us/library/windows/desktop/aa364992%28v=vs.85%29.aspx) is called
+* all platforms: `--temp.path` overrules the above system provided settings.
+
 Runtime
 -------
  * start arangod with `--console` to get a debug console
@@ -113,7 +121,7 @@ ArangoDB Unittesting Framework
 Dependencies
 ------------
 * *Ruby*, *rspec*, *httparty* to install the required dependencies run:
-  cd UnitTests/HttpInterface; bundler
+  `cd UnitTests/HttpInterface; bundler`
 * boost_test (compile time)
 
 
@@ -256,6 +264,7 @@ syntax --option value --sub:option value. Using Valgrind could look like this:
       --extraargs:scheduler.threads 1 \
       --extraargs:javascript.gc-frequency 1000000 \
       --extraargs:javascript.gc-interval 65536 \
+      --javascript.v8-contexts 2 \
       --valgrind /usr/bin/valgrind \
       --valgrindargs:log-file /tmp/valgrindlog.%p
 

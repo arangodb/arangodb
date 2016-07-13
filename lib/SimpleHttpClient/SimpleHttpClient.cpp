@@ -546,7 +546,7 @@ void SimpleHttpClient::setRequest(
     for (; i != _pathToBasicAuth.end(); ++i) {
       std::string& f = i->first;
 
-      if (l->find(f) == 0) {
+      if (l->compare(0, f.size(), f) == 0) {
         // f is prefix of l
         if (f.length() > foundPrefix.length()) {
           foundPrefix = f;

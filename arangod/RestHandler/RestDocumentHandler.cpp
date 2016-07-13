@@ -401,7 +401,7 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
     }
     VPackSlice keyInBody = body.get(StaticStrings::KeyString);
     if ((revision != 0 && TRI_ExtractRevisionId(body) != revision) ||
-        keyInBody.isNone() ||
+        keyInBody.isNone() || keyInBody.isNull() ||
         (keyInBody.isString() && keyInBody.copyString() != key)) {
       // We need to rewrite the document with the given revision and key:
       builder = std::make_shared<VPackBuilder>();
@@ -439,7 +439,7 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
     generateTransactionError(collectionName, res, "");
     return false;
   }
-
+    
   OperationResult result(TRI_ERROR_NO_ERROR);
   if (isPatch) {
     // patching an existing document

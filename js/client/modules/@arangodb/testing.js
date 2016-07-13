@@ -149,6 +149,7 @@ const optionsDefaults = {
   'loopEternal': false,
   'loopSleepSec': 1,
   'loopSleepWhen': 1,
+  'maxPort': 32768,
   'onlyNightly': false,
   'password': '',
   'replication': false,
@@ -594,9 +595,15 @@ function cleanupDBDirectories (options) {
 // / @brief finds a free port
 // //////////////////////////////////////////////////////////////////////////////
 
-function findFreePort () {
+function findFreePort (maxPort) {
+  if (typeof maxPort !== 'number') {
+    maxPort = 32768;
+  }
+  if (maxPort < 2048) {
+    maxPort = 2048;
+  }
   while (true) {
-    const port = Math.floor(Math.random() * (65536 - 1024)) + 1024;
+    const port = Math.floor(Math.random() * (maxPort - 1024)) + 1024;
     const free = testPort('tcp://0.0.0.0:' + port);
 
     if (free) {
@@ -1104,7 +1111,8 @@ function runArangoDumpRestore (options, instanceInfo, which, database) {
     'server.username': options.username,
     'server.password': options.password,
     'server.endpoint': instanceInfo.endpoint,
-    'server.database': database
+    'server.database': database,
+    'include-system-collections': 'true'
   };
 
   let exe;
@@ -1281,7 +1289,7 @@ function startInstanceCluster (instanceInfo, protocol, options,
   let agencyEndpoint = instanceInfo.endpoint;
   let i;
   for (i = 0; i < options.clusterNodes; i++) {
-    let endpoint = protocol + '://127.0.0.1:' + findFreePort();
+    let endpoint = protocol + '://127.0.0.1:' + findFreePort(options.maxPort);
     let primaryArgs = _.clone(options.extraArgs);
     primaryArgs['server.endpoint'] = endpoint;
     primaryArgs['cluster.my-address'] = endpoint;
@@ -1292,7 +1300,7 @@ function startInstanceCluster (instanceInfo, protocol, options,
     startInstanceSingleServer(instanceInfo, protocol, options, ...makeArgs('dbserver' + i, primaryArgs));
   }
 
-  let endpoint = protocol + '://127.0.0.1:' + findFreePort();
+  let endpoint = protocol + '://127.0.0.1:' + findFreePort(options.maxPort);
   let coordinatorArgs = _.clone(options.extraArgs);
   coordinatorArgs['server.endpoint'] = endpoint;
   coordinatorArgs['cluster.my-address'] = endpoint;
@@ -1346,7 +1354,7 @@ function startArango (protocol, options, addArgs, name, rootDir, isAgency) {
   let port;
 
   if (!addArgs['server.endpoint']) {
-    port = findFreePort();
+    port = findFreePort(options.maxPort);
     endpoint = protocol + '://127.0.0.1:' + port;
   } else {
     endpoint = addArgs['server.endpoint'];
@@ -1421,7 +1429,7 @@ function startInstanceAgency (instanceInfo, protocol, options,
     instanceArgs['database.directory'] = dataDir + String(i);
 
     if (i === N - 1) {
-      const port = findFreePort();
+      const port = findFreePort(options.maxPort);
       instanceArgs['server.endpoint'] = 'tcp://127.0.0.1:' + port;
       let l = [];
       instanceInfo.arangods.forEach(arangod => {
@@ -3073,6 +3081,8 @@ function runArangodRecovery (instanceInfo, options, script, setup) {
 }
 
 const recoveryTests = [
+  'insert-update-replace',
+  'die-during-collector',
   'disk-full-logfile',
   'disk-full-logfile-data',
   'disk-full-datafile',
@@ -3664,7 +3674,7 @@ testFuncs.upgrade = function (options) {
   fs.makeDirectoryRecursive(tmpDataDir);
 
   const appDir = fs.join(tmpDataDir, 'app');
-  const port = findFreePort();
+  const port = findFreePort(options.maxPort);
 
   let args = makeArgsArangod(options, appDir);
   args['server.endpoint'] = 'tcp://127.0.0.1:' + port;

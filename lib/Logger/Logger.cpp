@@ -24,6 +24,7 @@
 
 #include "Logger.h"
 
+#include "Basics/ArangoGlobalContext.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/Exceptions.h"
 #include "Basics/MutexLocker.h"
@@ -204,7 +205,9 @@ void Logger::log(char const* function, char const* file, long int line,
                  std::string const& message) {
 #ifdef _WIN32
   if (level == LogLevel::FATAL || level == LogLevel::ERR) {
-    TRI_LogWindowsEventlog(function, file, line, message);
+    if (ArangoGlobalContext::CONTEXT != nullptr && ArangoGlobalContext::CONTEXT->useEventLog()) {
+      TRI_LogWindowsEventlog(function, file, line, message);
+    }
   }
 #endif
 

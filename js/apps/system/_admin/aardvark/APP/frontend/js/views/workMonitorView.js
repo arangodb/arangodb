@@ -1,11 +1,11 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global Backbone, EJS, $, window, _ */
-/* global _, arangoHelper, templateEngine, jQuery, Joi*/
+/* global Backbone, $, window */
+/* global templateEngine */
 
 (function () {
   'use strict';
-  window.workMonitorView = Backbone.View.extend({
+  window.WorkMonitorView = Backbone.View.extend({
     el: '#content',
     id: '#workMonitorContent',
 

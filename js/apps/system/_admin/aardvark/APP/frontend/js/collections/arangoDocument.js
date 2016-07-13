@@ -1,8 +1,8 @@
 /* jshint browser: true */
 /* jshint strict: false, unused: false */
-/* global Backbone, window, arangoDocument, arangoDocumentModel, $, arangoHelper */
+/* global Backbone, window, arangoDocumentModel, $, arangoHelper */
 
-window.arangoDocument = Backbone.Collection.extend({
+window.ArangoDocument = Backbone.Collection.extend({
   url: '/_api/document/',
   model: arangoDocumentModel,
   collectionInfo: {},

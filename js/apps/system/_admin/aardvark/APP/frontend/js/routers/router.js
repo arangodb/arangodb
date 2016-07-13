@@ -1,6 +1,6 @@
 /* jshint unused: false */
-/* global window, $, Backbone, document, arangoCollectionModel*/
-/* global arangoHelper, btoa, dashboardView, arangoDatabase, _, frontendConfig */
+/* global window, $, Backbone, document */
+/* global $, arangoHelper, btoa, _, frontendConfig */
 
 (function () {
   'use strict';
@@ -41,6 +41,7 @@
       'logs': 'logs',
       'helpus': 'helpUs',
       'graph2/:name': 'graph2',
+      'graph2/:name/settings': 'graph2settings',
       'support': 'support'
     },
 
@@ -124,7 +125,6 @@
     initFinished: false,
 
     initialize: function () {
-
       // check frontend config for global conf settings
       if (frontendConfig.isCluster === true) {
         this.isCluster = true;
@@ -155,6 +155,9 @@
               }
             });
           }
+          if (error) {
+            console.log(error);
+          }
         }.bind(this);
 
         window.isCoordinator(callback);
@@ -166,10 +169,10 @@
         this.arangoDatabase = new window.ArangoDatabase();
         this.currentDB = new window.CurrentDatabase();
 
-        this.arangoCollectionsStore = new window.arangoCollections();
-        this.arangoDocumentStore = new window.arangoDocument();
+        this.arangoCollectionsStore = new window.ArangoCollections();
+        this.arangoDocumentStore = new window.ArangoDocument();
 
-        // Cluster 
+        // Cluster
         this.coordinatorCollection = new window.ClusterCoordinators();
 
         arangoHelper.setDocumentStore(this.arangoDocumentStore);
@@ -207,8 +210,11 @@
 
         window.checkVersion();
 
+        this.userConfig = new window.UserConfig();
+        this.userConfig.fetch();
+
         this.documentsView = new window.DocumentsView({
-          collection: new window.arangoDocuments(),
+          collection: new window.ArangoDocuments(),
           documentStore: this.arangoDocumentStore,
           collectionsStore: this.arangoCollectionsStore
         });
@@ -404,19 +410,19 @@
       }
       if (!this.logsView) {
         var newLogsAllCollection = new window.ArangoLogs(
-            {upto: true, loglevel: 4}
-          ),
-          newLogsDebugCollection = new window.ArangoLogs(
-            {loglevel: 4}
-          ),
-          newLogsInfoCollection = new window.ArangoLogs(
-            {loglevel: 3}
-          ),
-          newLogsWarningCollection = new window.ArangoLogs(
-            {loglevel: 2}
-          ),
-          newLogsErrorCollection = new window.ArangoLogs(
-            {loglevel: 1}
+          {upto: true, loglevel: 4}
+        );
+        var newLogsDebugCollection = new window.ArangoLogs(
+          {loglevel: 4}
+        );
+        var newLogsInfoCollection = new window.ArangoLogs(
+          {loglevel: 3}
+        );
+        var newLogsWarningCollection = new window.ArangoLogs(
+          {loglevel: 2}
+        );
+        var newLogsErrorCollection = new window.ArangoLogs(
+          {loglevel: 1}
         );
         this.logsView = new window.LogsView({
           logall: newLogsAllCollection,
@@ -494,7 +500,7 @@
     login: function () {
       var callback = function (error, user) {
         if (!this.loginView) {
-          this.loginView = new window.loginView({
+          this.loginView = new window.LoginView({
             collection: this.userCollection
           });
         }
@@ -602,7 +608,7 @@
       }
       if (!this.documentsView) {
         this.documentsView = new window.DocumentsView({
-          collection: new window.arangoDocuments(),
+          collection: new window.ArangoDocuments(),
           documentStore: this.arangoDocumentStore,
           collectionsStore: this.arangoCollectionsStore
         });
@@ -645,18 +651,6 @@
       arangoHelper.collectionApiType(colid, null, callback);
     },
 
-    shell: function (initialized) {
-      this.checkUser();
-      if (!initialized) {
-        this.waitForInit(this.shell.bind(this));
-        return;
-      }
-      if (!this.shellView) {
-        this.shellView = new window.shellView();
-      }
-      this.shellView.render();
-    },
-
     query: function (initialized) {
       this.checkUser();
       if (!initialized) {
@@ -664,7 +658,7 @@
         return;
       }
       if (!this.queryView) {
-        this.queryView = new window.queryView({
+        this.queryView = new window.QueryView({
           collection: this.queryCollection
         });
       }
@@ -677,12 +671,24 @@
         this.waitForInit(this.graph2.bind(this), name);
         return;
       }
-      if (!this.graphViewer2) {
-        this.graphViewer2 = new window.GraphViewer2({
-          name: name
-        });
-      }
+      this.graphViewer2 = new window.GraphViewer2({
+        name: name,
+        userConfig: this.userConfig
+      });
       this.graphViewer2.render();
+    },
+
+    graph2settings: function (name, initialized) {
+      this.checkUser();
+      if (!initialized) {
+        this.waitForInit(this.graph2settings.bind(this), name);
+        return;
+      }
+      this.graphSettingsView = new window.GraphSettingsView({
+        name: name,
+        userConfig: this.userConfig
+      });
+      this.graphSettingsView.render();
     },
 
     helpUs: function (initialized) {
@@ -721,7 +727,7 @@
         this.workMonitorCollection = new window.WorkMonitorCollection();
       }
       if (!this.workMonitorView) {
-        this.workMonitorView = new window.workMonitorView({
+        this.workMonitorView = new window.WorkMonitorView({
           collection: this.workMonitorCollection
         });
       }
@@ -735,7 +741,7 @@
         return;
       }
       if (!this.queryManagementView) {
-        this.queryManagementView = new window.queryManagementView({
+        this.queryManagementView = new window.QueryManagementView({
           collection: undefined
         });
       }
@@ -757,7 +763,7 @@
           $('#databaseNaviSelect').css('display', 'none');
         } else {
           if (!this.databaseView) {
-            this.databaseView = new window.databaseView({
+            this.databaseView = new window.DatabaseView({
               users: this.userCollection,
               collection: this.arangoDatabase
             });
@@ -856,6 +862,9 @@
       if (this.queryView) {
         this.queryView.resize();
       }
+      if (this.graphViewer2) {
+        this.graphViewer2.resize();
+      }
       if (this.documentsView) {
         this.documentsView.resize();
       }
@@ -899,7 +908,7 @@
         return;
       }
       if (!this.userManagementView) {
-        this.userManagementView = new window.userManagementView({
+        this.userManagementView = new window.UserManagementView({
           collection: this.userCollection
         });
       }
@@ -913,7 +922,7 @@
         return;
       }
       if (!this.userManagementView) {
-        this.userManagementView = new window.userManagementView({
+        this.userManagementView = new window.UserManagementView({
           collection: this.userCollection
         });
       }

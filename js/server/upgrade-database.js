@@ -348,10 +348,12 @@
 
       // VERSION file exists, read its contents
       if (fs.exists(versionFile)) {
-        const versionInfo = fs.read(versionFile);
+        var versionInfo = fs.read(versionFile);
 
         if (versionInfo === '') {
-          return false;
+          logger.warn("VERSION file '" + versionFile + "' is empty. Creating new default VERSION file");
+          versionInfo = '{"version":' + currentVersion + ',"tasks":[]}';
+          //return false;
         }
 
         const versionValues = JSON.parse(versionInfo);

@@ -1325,7 +1325,7 @@ int RestReplicationHandler::createCollection(VPackSlice const& slice,
     return TRI_ERROR_NO_ERROR;
   }
 
-  VocbaseCollectionInfo params(_vocbase, name.c_str(), slice);
+  VocbaseCollectionInfo params(_vocbase, name.c_str(), slice, true);
   /* Temporary ASSERTS to prove correctness of new constructor */
   TRI_ASSERT(params.doCompact() ==
              arangodb::basics::VelocyPackHelper::getBooleanValue(
@@ -1999,6 +1999,12 @@ int RestReplicationHandler::processRestoreIndexesCoordinator(
 
   int res = TRI_ERROR_NO_ERROR;
   for (VPackSlice const& idxDef : VPackArrayIterator(indexes)) {
+    VPackSlice type = idxDef.get("type");
+    if (type.isString() && (type.copyString() == "primary" || type.copyString() == "edge")) {
+      // must ignore these types of indexes during restore
+      continue;
+    }
+
     VPackBuilder tmp;
     res = ci->ensureIndexCoordinator(dbName, col->id_as_string(), idxDef, true,
                                      arangodb::Index::Compare, tmp, errorMsg,
@@ -2179,7 +2185,6 @@ int RestReplicationHandler::processRestoreDataBatch(
       "received invalid JSON data for collection " + collectionName;
 
   VPackBuilder builder;
-  VPackBuilder oldBuilder;
 
   // TODO needs to generalized
   auto request = dynamic_cast<HttpRequest*>(_request);
@@ -2192,42 +2197,191 @@ int RestReplicationHandler::processRestoreDataBatch(
   char const* ptr = bodyStr.c_str();
   char const* end = ptr + bodyStr.size();
 
-  while (ptr < end) {
-    char const* pos = strchr(ptr, '\n');
+  VPackBuilder allMarkers;
+  VPackValueLength currentPos = 0;
+  std::unordered_map<std::string, VPackValueLength> latest;
 
-    if (pos == nullptr) {
-      pos = end;
-    } else {
-      *((char*)pos) = '\0';
+  // First parse and collect all markers, we assemble everything in one
+  // large builder holding an array. We keep for each key the latest
+  // entry.
+
+  {
+    VPackArrayBuilder guard(&allMarkers);
+    while (ptr < end) {
+      char const* pos = strchr(ptr, '\n');
+
+      if (pos == nullptr) {
+        pos = end;
+      } else {
+        *((char*)pos) = '\0';
+      }
+
+      if (pos - ptr > 1) {
+        // found something
+        std::string key;
+        std::string rev;
+        VPackSlice doc;
+        TRI_replication_operation_e type = REPLICATION_INVALID;
+
+        int res = restoreDataParser(ptr, pos, invalidMsg, useRevision, errorMsg,
+                                    key, rev, builder, doc, type);
+        if (res != TRI_ERROR_NO_ERROR) {
+          return res;
+        }
+
+        // Put into array of all parsed markers:
+        allMarkers.add(builder.slice());
+        auto it = latest.find(key);
+        if (it != latest.end()) {
+          // Already found, overwrite:
+          it->second = currentPos;
+        } else {
+          latest.emplace(std::make_pair(key, currentPos));
+        }
+        ++currentPos;
+      }
+
+      ptr = pos + 1;
     }
+  }
 
-    if (pos - ptr > 1) {
-      // found something
-      std::string key;
-      std::string rev;
-      VPackSlice doc;
+  // First remove all keys of which the last marker we saw was a deletion
+  // marker:
+  VPackSlice allMarkersSlice = allMarkers.slice();
+  VPackBuilder oldBuilder;
+  {
+    VPackArrayBuilder guard(&oldBuilder);
+
+    for (auto const& p : latest) {
+      VPackSlice const marker = allMarkersSlice.at(p.second);
+      VPackSlice const typeSlice = marker.get("type");
       TRI_replication_operation_e type = REPLICATION_INVALID;
-
-      int res = restoreDataParser(ptr, pos, invalidMsg, useRevision, errorMsg,
-                                  key, rev, builder, doc, type);
-      if (res != TRI_ERROR_NO_ERROR) {
-        return res;
+      if (typeSlice.isNumber()) {
+        int typeInt = typeSlice.getNumericValue<int>();
+        if (typeInt == 2301) {  // pre-3.0 type for edges
+          type = REPLICATION_MARKER_DOCUMENT;
+        } else {
+          type = static_cast<TRI_replication_operation_e>(typeInt);
+        }
       }
-
-      oldBuilder.clear();
-      oldBuilder.openObject();
-      oldBuilder.add(StaticStrings::KeyString, VPackValue(key));
-      oldBuilder.close();
-
-      res = applyCollectionDumpMarker(trx, resolver, collectionName, type,
-                                      oldBuilder.slice(), doc, errorMsg);
-
-      if (res != TRI_ERROR_NO_ERROR && !force) {
-        return res;
+      if (type == REPLICATION_MARKER_REMOVE) {
+        oldBuilder.add(VPackValue(p.first));  // Add _key
+      } else if (type != REPLICATION_MARKER_DOCUMENT) {
+        errorMsg = "unexpected marker type " + StringUtils::itoa(type);
+        return TRI_ERROR_REPLICATION_UNEXPECTED_MARKER;
       }
     }
+  }
 
-    ptr = pos + 1;
+  // Note that we ignore individual errors here, as long as the main
+  // operation did not fail. In particular, we intentionally ignore
+  // individual "DOCUMENT NOT FOUND" errors, because they can happen!
+  try {
+    OperationOptions options;
+    options.silent = true;
+    options.ignoreRevs = true;
+    options.isRestore = true;
+    options.waitForSync = false;
+    OperationResult opRes = trx.remove(collectionName, oldBuilder.slice(),
+                                       options);
+    if (!opRes.successful()) {
+      return opRes.code;
+    }
+  } catch (arangodb::basics::Exception const& ex) {
+    return ex.code();
+  } catch (...) {
+    return TRI_ERROR_INTERNAL;
+  }
+
+  // Now try to insert all keys for which the last marker was a document
+  // marker, note that these could still be replace markers!
+  builder.clear();
+  {
+    VPackArrayBuilder guard(&builder);
+
+    for (auto const& p : latest) {
+      VPackSlice const marker = allMarkersSlice.at(p.second);
+      VPackSlice const typeSlice = marker.get("type");
+      TRI_replication_operation_e type = REPLICATION_INVALID;
+      if (typeSlice.isNumber()) {
+        int typeInt = typeSlice.getNumericValue<int>();
+        if (typeInt == 2301) {  // pre-3.0 type for edges
+          type = REPLICATION_MARKER_DOCUMENT;
+        } else {
+          type = static_cast<TRI_replication_operation_e>(typeInt);
+        }
+      }
+      if (type == REPLICATION_MARKER_DOCUMENT) {
+        VPackSlice const doc = marker.get("data");
+        TRI_ASSERT(doc.isObject());
+        builder.add(doc);
+      }
+    }
+  }
+
+  VPackSlice requestSlice = builder.slice();
+  OperationResult opRes;
+  try {
+    OperationOptions options;
+    options.silent = false;
+    options.ignoreRevs = true;
+    options.isRestore = true;
+    options.waitForSync = false;
+    opRes = trx.insert(collectionName, requestSlice, options);
+    if (!opRes.successful()) {
+      return opRes.code;
+    }
+  } catch (arangodb::basics::Exception const& ex) {
+    return ex.code();
+  } catch (...) {
+    return TRI_ERROR_INTERNAL;
+  }
+
+  // Now go through the individual results and check each error, if it was
+  // TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED, then we have to call
+  // replace on the document:
+  VPackSlice resultSlice = opRes.slice();
+  VPackBuilder replBuilder;  // documents for replace operation
+  {
+    VPackArrayBuilder guard(&oldBuilder);
+    VPackArrayBuilder guard2(&replBuilder);
+    VPackArrayIterator itRequest(requestSlice);
+    VPackArrayIterator itResult(resultSlice);
+
+    while (itRequest.valid()) {
+      VPackSlice result = *itResult;
+      VPackSlice error = result.get("error");
+      if (error.isTrue()) {
+        error = result.get("errorNum");
+        if (error.isNumber()) {
+          int code = error.getNumericValue<int>();
+          if (code == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
+            replBuilder.add(*itRequest);
+          } else {
+            return code;
+          }
+        } else {
+          return TRI_ERROR_INTERNAL;
+        }
+      }
+      itRequest.next();
+      itResult.next();
+    }
+  }
+  try {
+    OperationOptions options;
+    options.silent = true;
+    options.ignoreRevs = true;
+    options.isRestore = true;
+    options.waitForSync = false;
+    opRes = trx.replace(collectionName, replBuilder.slice(), options);
+    if (!opRes.successful()) {
+      return opRes.code;
+    }
+  } catch (arangodb::basics::Exception const& ex) {
+    return ex.code();
+  } catch (...) {
+    return TRI_ERROR_INTERNAL;
   }
 
   return TRI_ERROR_NO_ERROR;

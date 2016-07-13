@@ -13,7 +13,7 @@ window.ClusterStatisticsCollection = Backbone.Collection.extend({
   initialize: function (models, options) {
     this.host = options.host;
     window.App.registerForUpdate(this);
-  },
+  }
 
 // The callback has to be invokeable for each result individually
 // TODO RE-ADD Auth

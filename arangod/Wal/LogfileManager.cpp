@@ -156,18 +156,18 @@ void LogfileManager::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--wal.directory", "logfile directory",
                      new StringParameter(&_directory));
 
-  options->addHiddenOption(
+  options->addOption(
       "--wal.historic-logfiles",
       "maximum number of historic logfiles to keep after collection",
       new UInt32Parameter(&_historicLogfiles));
 
-  options->addHiddenOption(
+  options->addOption(
       "--wal.ignore-logfile-errors",
       "ignore logfile errors. this will read recoverable data from corrupted "
       "logfiles but ignore any unrecoverable data",
       new BooleanParameter(&_ignoreLogfileErrors));
 
-  options->addHiddenOption(
+  options->addOption(
       "--wal.ignore-recovery-errors",
       "continue recovery even if re-applying operations fails",
       new BooleanParameter(&_ignoreRecoveryErrors));
@@ -1500,6 +1500,10 @@ void LogfileManager::setCollectionRequested(Logfile* logfile) {
 
 // mark a file as being done with collection
 void LogfileManager::setCollectionDone(Logfile* logfile) {
+  TRI_IF_FAILURE("setCollectionDone") {
+    return;
+  }
+  
   TRI_ASSERT(logfile != nullptr);
   Logfile::IdType id = logfile->id();
 

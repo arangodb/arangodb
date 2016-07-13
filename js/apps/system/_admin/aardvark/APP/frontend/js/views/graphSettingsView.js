@@ -1,0 +1,169 @@
+/* jshint browser: true */
+/* jshint unused: false */
+/* global arangoHelper, Backbone, templateEngine, $, window, _ */
+(function () {
+  'use strict';
+
+  window.GraphSettingsView = Backbone.View.extend({
+    el: '#content',
+
+    general: {
+      'layout': {
+        type: 'select',
+        name: 'Layout algorithm',
+        noverlap: {
+          name: 'No overlap (fast)',
+          val: 'noverlap'
+        },
+        force: {
+          name: 'Force (slow)',
+          val: 'force'
+        },
+        fruchtermann: {
+          name: 'Fruchtermann (very slow)',
+          val: 'fruchtermann'
+        }
+      },
+      'renderer': {
+        type: 'select',
+        name: 'Renderer',
+        canvas: {
+          name: 'Canvas (editable)',
+          val: 'canvas'
+        },
+        webgl: {
+          name: 'WebGL (only display)',
+          val: 'webgl'
+        }
+      },
+      'depth': {
+        type: 'numeric',
+        name: 'Search depth',
+        value: 2
+      }
+    },
+
+    specific: {
+      'nodeLabel': {
+        type: 'string',
+        name: 'Node label',
+        desc: 'Default node color. RGB or HEX value.',
+        default: '_key'
+      },
+      'nodeColor': {
+        type: 'color',
+        name: 'Node color',
+        desc: 'Default node color. RGB or HEX value.',
+        default: '#2ecc71'
+      },
+      'nodeSize': {
+        type: 'string',
+        name: 'Node size',
+        desc: 'Default node size. Numeric value > 0.',
+        value: undefined
+      },
+      'edgeLabel': {
+        type: 'string',
+        name: 'Edge label',
+        desc: 'Default edge label.',
+        value: undefined
+      },
+      'edgeColor': {
+        type: 'color',
+        name: 'Edge color',
+        desc: 'Default edge color. RGB or HEX value.',
+        default: '#cccccc'
+      },
+      'edgeSize': {
+        type: 'string',
+        name: 'Edge thickness',
+        desc: 'Default edge thickness. Numeric value > 0.',
+        value: undefined
+      },
+      'edgeType': {
+        type: 'select',
+        name: 'Edge type',
+        desc: 'The type of the edge',
+        canvas: {
+          name: 'Straight'
+        },
+        webgl: {
+          name: 'Curved'
+        }
+      }
+    },
+
+    template: templateEngine.createTemplate('graphSettingsView.ejs'),
+
+    initialize: function (options) {
+      this.name = options.name;
+      this.userConfig = options.userConfig;
+    },
+
+    events: {
+      'click #saveGraphSettings': 'saveGraphSettings',
+      'click #restoreGraphSettings': 'restoreGraphSettings'
+    },
+
+    getGraphSettings: function (render) {
+      var self = this;
+      var combinedName = window.App.currentDB.toJSON().name + '_' + this.name;
+
+      this.userConfig.fetch({
+        success: function (data) {
+          self.graphConfig = data.toJSON().graphs[combinedName];
+
+          if (render) {
+            self.continueRender();
+          }
+        }
+      });
+    },
+
+    saveGraphSettings: function () {
+      var combinedName = window.App.currentDB.toJSON().name + '_' + this.name;
+
+      var config = {};
+      config[combinedName] = {
+        layout: $('#g_layout').val(),
+        renderer: $('#g_renderer').val(),
+        depth: $('#g_depth').val()
+      };
+
+      var callback = function () {
+        window.arangoHelper.arangoNotification('Graph ' + this.name, 'Configuration saved.');
+      }.bind(this);
+
+      this.userConfig.setItem('graphs', config, callback);
+    },
+
+    setDefaults: function () {
+
+    },
+
+    render: function () {
+      this.getGraphSettings(true);
+    },
+
+    continueRender: function () {
+      $(this.el).html(this.template.render({
+        general: this.general,
+        specific: this.specific
+      }));
+
+      if (this.graphConfig) {
+        _.each(this.graphConfig, function (val, key) {
+          $('#g_' + key).val(val);
+        });
+      } else {
+        this.setDefaults();
+      }
+
+      arangoHelper.buildGraphSubNav(this.name, 'Settings');
+
+      // load graph settings from local storage
+      // apply those values to view then
+    }
+
+  });
+}());
