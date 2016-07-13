@@ -56,9 +56,6 @@ FILE(MAKE_DIRECTORY "${PROJECT_BINARY_DIR}/var/lib/arangodb3-apps")
 # logs
 FILE(MAKE_DIRECTORY "${PROJECT_BINARY_DIR}/var/log/arangodb3")
 
-# package
-set(TRI_PKGDATADIR "${CMAKE_INSTALL_PREFIX}/share/arangodb3")
-
 # resources
 set(TRI_RESOURCEDIR "resources")
 
@@ -131,7 +128,7 @@ endmacro ()
 #  generates config file using the configured paths ----------------------------
 macro (generate_path_config name)
   FILE(READ ${PROJECT_SOURCE_DIR}/etc/arangodb3/${name}.conf.in FileContent)
-  STRING(REPLACE "@PKGDATADIR@" "${TRI_PKGDATADIR}" 
+  STRING(REPLACE "@PKGDATADIR@" "${CMAKE_INSTALL_DATADIR}/arangodb3"
     FileContent "${FileContent}")
   STRING(REPLACE "@LOCALSTATEDIR@" "${VARDIR_NATIVE}" 
     FileContent "${FileContent}")
@@ -398,7 +395,7 @@ include(CPack)
 
 install(
   DIRECTORY ${PROJECT_SOURCE_DIR}/js/common ${PROJECT_SOURCE_DIR}/js/client 
-  DESTINATION share/arangodb3/js
+  DESTINATION ${CMAKE_INSTALL_DATADIR}/arangodb3/js
   FILES_MATCHING PATTERN "*.js"
   REGEX "^.*/common/test-data$" EXCLUDE
   REGEX "^.*/common/tests$" EXCLUDE
@@ -410,7 +407,7 @@ install(
 
 install(
   DIRECTORY ${PROJECT_SOURCE_DIR}/js/actions ${PROJECT_SOURCE_DIR}/js/apps ${PROJECT_SOURCE_DIR}/js/contrib ${PROJECT_SOURCE_DIR}/js/node ${PROJECT_SOURCE_DIR}/js/server
-  DESTINATION share/arangodb3/js
+  DESTINATION ${CMAKE_INSTALL_DATADIR}/arangodb3/js
   REGEX "^.*/server/tests$" EXCLUDE
   REGEX "^.*/aardvark/APP/node_modules$" EXCLUDE
 )
