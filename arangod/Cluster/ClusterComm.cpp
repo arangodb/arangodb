@@ -25,6 +25,7 @@
 
 #include "Logger/Logger.h"
 #include "Basics/ConditionLocker.h"
+#include "Basics/HybridLogicalClock.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
@@ -316,6 +317,9 @@ OperationID ClusterComm::asyncRequest(
     (*op->headerFields)["Authorization"] =
         ServerState::instance()->getAuthentication();
   }
+  TRI_voc_tick_t timeStamp = TRI_HybridLogicalClock();
+  (*op->headerFields)[StaticStrings::HLCHeader]
+      = arangodb::basics::HybridLogicalClock::encodeTimeStamp(timeStamp);
 
 #ifdef DEBUG_CLUSTER_COMM
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -444,6 +448,9 @@ std::unique_ptr<ClusterCommResult> ClusterComm::syncRequest(
     client->keepConnectionOnDestruction(true);
 
     headersCopy["Authorization"] = ServerState::instance()->getAuthentication();
+    TRI_voc_tick_t timeStamp = TRI_HybridLogicalClock();
+    headersCopy[StaticStrings::HLCHeader]
+        = arangodb::basics::HybridLogicalClock::encodeTimeStamp(timeStamp);
 #ifdef DEBUG_CLUSTER_COMM
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 #if ARANGODB_ENABLE_BACKTRACE
@@ -846,6 +853,9 @@ void ClusterComm::asyncAnswer(std::string& coordinatorHeader,
   headers["X-Arango-Response-Code"] =
       responseToSend->responseString(responseToSend->responseCode());
   headers["Authorization"] = ServerState::instance()->getAuthentication();
+  TRI_voc_tick_t timeStamp = TRI_HybridLogicalClock();
+  headers[StaticStrings::HLCHeader]
+      = arangodb::basics::HybridLogicalClock::encodeTimeStamp(timeStamp);
 
   char const* body = responseToSend->body().c_str();
   size_t len = responseToSend->body().length();
