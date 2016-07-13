@@ -1475,9 +1475,9 @@ function startInstance (protocol, options, addArgs, testname, tmpDir) {
   const startTime = time();
   try {
     if(options.hasOwnProperty("server")){
-        return { endpoint : options.server 
-               , url : options.server.replace("tcp","http")
-               , arangods : []
+        return { endpoint : options.server,
+                 url : options.server.replace("tcp", "http"),
+                 arangods : []
                };
     }
     else if (options.cluster) {
