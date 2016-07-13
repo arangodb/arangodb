@@ -22,9 +22,8 @@ list of agency endpoints
 `--cluster.agency-endpoint endpoint`
 
 An agency endpoint the server can connect to. The option can be specified
-multiple times so the server can use a cluster of agency servers.
-Endpoints
-have the following pattern:
+multiple times, so the server can use a cluster of agency servers.
+Endpoints have the following pattern:
 
 - tcp://ipv4-address:port - TCP/IP endpoint, using IPv4
 - tcp://[ipv6-address]:port - TCP/IP endpoint, using IPv6
