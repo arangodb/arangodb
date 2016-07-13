@@ -175,6 +175,15 @@ SkiplistLookupBuilder::SkiplistLookupBuilder(
       value->toVelocyPackValue(*(_lowerBuilder.get()));
       value->toVelocyPackValue(*(_upperBuilder.get()));
     }
+
+    TRI_IF_FAILURE("SkiplistIndex::permutationEQ") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+
+    TRI_IF_FAILURE("SkiplistIndex::permutationArrayIN") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+
     auto const& last = ops.back();
     for (auto const& op : last) {
       bool isReverseOrder = true;
@@ -242,6 +251,14 @@ SkiplistLookupBuilder::SkiplistLookupBuilder(
       }
       value->toVelocyPackValue(*(_lowerBuilder.get()));
     }
+
+    TRI_IF_FAILURE("SkiplistIndex::permutationEQ") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+
+    TRI_IF_FAILURE("SkiplistIndex::permutationArrayIN") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
     _lowerBuilder->close();
     _lowerSlice = _lowerBuilder->slice();
     _upperSlice = _lowerBuilder->slice();
@@ -285,6 +302,7 @@ SkiplistInLookupBuilder::SkiplistInLookupBuilder(
                    paramPair.first == var));
     }
     if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
+
       if (valueLeft) {
         // Case: value IN x.a
         // This is identical to == for the index.
@@ -297,6 +315,9 @@ SkiplistInLookupBuilder::SkiplistInLookupBuilder(
         value->toVelocyPackValue(*(tmp.get()));
         for (auto const& it : VPackArrayIterator(tmp->slice())) {
           unique_set.emplace(it);
+        }
+        TRI_IF_FAILURE("SkiplistIndex::permutationIN") {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
         _inPositions.emplace_back(i, 0, unique_set.size());
         _dataBuilder->openArray();
@@ -328,6 +349,7 @@ SkiplistInLookupBuilder::SkiplistInLookupBuilder(
                    paramPair.first == var));
       isReverseOrder = false;
     }
+
     switch (op->type) {
       case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LT:
         if (isReverseOrder) { 
@@ -370,6 +392,9 @@ SkiplistInLookupBuilder::SkiplistInLookupBuilder(
         value->toVelocyPackValue(*(tmp.get()));
         for (auto const& it : VPackArrayIterator(tmp->slice())) {
           unique_set.emplace(it);
+        }
+        TRI_IF_FAILURE("Index::permutationIN") {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
         _inPositions.emplace_back(ops.size() - 1, 0, unique_set.size());
         _dataBuilder->openArray();
@@ -1403,7 +1428,16 @@ IndexIterator* SkiplistIndex::iteratorForCondition(
     if (!findMatchingConditions(node, reference, mapping, usesIn)) {
       return new EmptyIndexIterator();
     }
+  } else {
+    TRI_IF_FAILURE("SkiplistIndex::noSortIterator") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
   }
+
+  TRI_IF_FAILURE("SkiplistIndex::noIterator") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+
   if (usesIn) {
     auto builder =
         std::make_unique<SkiplistInLookupBuilder>(trx, mapping, reference, reverse);
