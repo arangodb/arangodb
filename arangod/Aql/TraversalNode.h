@@ -220,6 +220,11 @@ class TraversalNode : public ExecutionNode {
                              AstNodeType comparisonType,
                              AstNode const* varAccess, AstNode* compareToNode);
   
+  /// @brief register a filter condition on a given search depth.
+  ///        If this condition is not fulfilled a traversal will abort.
+  ///        The condition will contain the local variable for it's accesses.
+  void registerCondition(bool isConditionOnEdge, size_t conditionLevel, AstNode const* condition);
+  
   bool allDirectionsEqual() const;
 
   void specializeToNeighborsSearch();

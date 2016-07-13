@@ -103,8 +103,163 @@ static bool checkPathVariableAccessFeasible(CalculationNode const* cn,
   return true;
 }
 
+static bool matchesPathAccessPattern(AstNode const* testee,
+                                     Variable const* findme, size_t& idx,
+                                     bool& isEdge) {
+  // The search pattern is:
+  // indexedAccess -> attributeAccess -> reference
+  // Where reference has to be equal to var
+
+  // Testee has to be IndexedAccess
+  if (testee->type != NODE_TYPE_INDEXED_ACCESS) {
+    return false;
+  }
+  TRI_ASSERT(testee->numMembers() == 2);
+
+  // Ok up to here, read the idx already.
+  AstNode const* idxNode = testee->getMemberUnchecked(1);
+  idx = idxNode->value.value._int;
+
+  // Advance to the AttributeAccess
+  testee = testee->getMemberUnchecked(0);
+  if (testee->type != NODE_TYPE_ATTRIBUTE_ACCESS) {
+    return false;
+  }
+  // Ok up to here, Check if it is edges or vertices
+  if (testee->stringEquals("edges", false)) {
+    // Ok this could be an edge access
+    isEdge = true;
+  } else if (testee->stringEquals("vertices", false)) {
+    // Ok this could be a vertex access
+    isEdge = false;
+  } else {
+    // This is indexed access on sth. completely different.
+    return false;
+  }
+
+
+  // Advance to the Variable
+  TRI_ASSERT(testee->numMembers() == 1);
+  testee = testee->getMemberUnchecked(0);
+  if (testee->type != NODE_TYPE_REFERENCE &&
+      testee->type != NODE_TYPE_VARIABLE  // Do we actually allow this case?
+    ) {
+    return false;
+  }
+
+  // Check if it really is the variable
+  auto variable = static_cast<Variable*>(testee->getData());
+  TRI_ASSERT(variable != nullptr);
+  if (variable->id == findme->id) {
+    return true;
+  }
+
+  return false;
+}
+
+static void transformCondition(AstNode const* node, Variable const* pvar, Ast* ast) {
+
+  // TODO REMOVE OUTPUT
+  node->dump(0);
+
+  TRI_ASSERT(node->type == NODE_TYPE_OPERATOR_NARY_OR);
+  // We do not support OR conditions for pruning
+  TRI_ASSERT(node->numMembers() == 1);
+
+  node = node->getMemberUnchecked(0);
+
+  AstNode* result = node->clone(ast);
+
+  auto tmpVar = ast->variables()->createTemporaryVariable();
+
+  size_t const n = result->numMembers();
+
+  // replace the path variable access by a variable access to edge/vertex
+  // (then current to the iteration)
+  auto varRefNode = new AstNode(NODE_TYPE_REFERENCE);
+  try {
+    ast->query()->addNode(varRefNode);
+  } catch (...) {
+    // prevent leak
+    delete varRefNode;
+    throw;
+  }
+  varRefNode->setData(tmpVar);
+
+  for (size_t i = 0; i < n; ++i) {
+    AstNode* baseCondition = result->getMemberUnchecked(i);
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    switch (baseCondition->type) {
+      case NODE_TYPE_OPERATOR_BINARY_EQ:
+      case NODE_TYPE_OPERATOR_BINARY_NE:
+      case NODE_TYPE_OPERATOR_BINARY_LT:
+      case NODE_TYPE_OPERATOR_BINARY_LE:
+      case NODE_TYPE_OPERATOR_BINARY_GT:
+      case NODE_TYPE_OPERATOR_BINARY_GE:
+      case NODE_TYPE_OPERATOR_BINARY_IN:
+      case NODE_TYPE_OPERATOR_BINARY_NIN:
+      case NODE_TYPE_INDEXED_ACCESS:
+        TRI_ASSERT(baseCondition->numMembers() == 2);
+        break;
+      case NODE_TYPE_ATTRIBUTE_ACCESS:
+        TRI_ASSERT(baseCondition->numMembers() == 1);
+        break;
+      default:
+        TRI_ASSERT(false);
+        break;
+    }
+#endif
+
+    // Navigate left side
+    // If we navigate over the side where access to path
+    // variable is we can only find an arbitrary
+    // amount of indexedAccess and attributeAccess.
+    // And the last 3 elements are:
+    // If we find something else we abort.
+
+    bool foundVar = false;
+    bool isEdge = false;
+    size_t idx = 0;
+    AstNode* top = baseCondition;
+    for (size_t i = 0; i < 2; ++i) {
+      AstNode* testee = baseCondition->getMemberUnchecked(i);
+      // Special case directly compare documents:
+      if (matchesPathAccessPattern(testee, pvar, idx, isEdge)) {
+        // We only find one!
+        TRI_ASSERT(!foundVar);
+        foundVar = true;
+        top->changeMember(i, varRefNode); 
+        break;
+      }
+
+      while(true) {
+        if (testee->numMembers() == 0) {
+          // Ok we barked up the wrong tree. Give up
+          break;
+        }
+        top = testee;
+        testee = testee->getMemberUnchecked(0);
+        if (matchesPathAccessPattern(testee, pvar, idx, isEdge)) {
+          // We only find one!
+          TRI_ASSERT(!foundVar);
+          foundVar = true;
+          top->changeMember(i, varRefNode); 
+          break;
+        }
+      }
+      if (foundVar) {
+        // We have an access. Can only be one.
+        break;
+      }
+    }
+  }
+
+  result->dump(0);
+}
+
 static bool extractSimplePathAccesses(AstNode const* node, TraversalNode* tn,
                                       Ast* ast) {
+  transformCondition(node, tn->pathOutVariable(), ast);
   std::vector<AstNode const*> currentPath;
   std::vector<std::vector<AstNode const*>> paths;
   std::vector<std::vector<AstNode const*>> clonePath;

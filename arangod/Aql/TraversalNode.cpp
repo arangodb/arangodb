@@ -731,3 +731,7 @@ void TraversalNode::storeSimpleExpression(bool isEdgeAccess, size_t indexAccess,
   it->second.push_back(e.get());
   e.release();
 }
+
+void TraversalNode::registerCondition(bool isConditionOnEdge,
+                                      size_t conditionLevel,
+                                      AstNode const* condition) {}
