@@ -73,15 +73,16 @@ class HybridLogicalClock {
       if (newTime == oldTime) {
         if (newTime == recTime) {
           // all three identical
-          newCount = (std::max)(extractCount(oldTime), extractCount(recTime))+1;
+          newCount = (std::max)(extractCount(oldTimeStamp),
+                                extractCount(recTimeStamp))+1;
         } else {
           // this means recTime < newTime
-          newCount = extractCount(oldTime) + 1;
+          newCount = extractCount(oldTimeStamp) + 1;
         }
       } else {
         // newTime > oldTime
         if (newTime == recTime) {
-          newCount = extractCount(recTime) + 1;
+          newCount = extractCount(recTimeStamp) + 1;
         } else {
           newCount = 0;
         }
