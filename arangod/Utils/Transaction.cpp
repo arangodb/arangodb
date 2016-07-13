@@ -766,7 +766,6 @@ VPackSlice Transaction::extractKeyFromDocument(VPackSlice slice) {
   // however this method may also be called for remove markers, which only
   // have _key and _rev. therefore the only assertion that we can make
   // here is that the document at least has two attributes 
-  TRI_ASSERT(slice.length() >= 2); 
 
   uint8_t const* p = slice.begin() + slice.findDataOffset(slice.head());
 
