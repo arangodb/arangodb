@@ -629,6 +629,11 @@ int HashIndex::batchInsertUnique (std::vector<TRI_doc_mptr_t const*> const* docu
     }
   }
 
+  if (elements.empty()) {
+    // no elements left to insert
+    return TRI_ERROR_NO_ERROR;
+  }
+
   int res = _uniqueArray->_hashArray->batchInsert(&elements, numThreads);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -721,6 +726,12 @@ int HashIndex::batchInsertMulti (std::vector<TRI_doc_mptr_t const*> const* docum
       return res;
     }
   }
+
+  if (elements.empty()) {
+    // no elements left to insert
+    return TRI_ERROR_NO_ERROR;
+  }
+
   return _multiArray->_hashArray->batchInsert(&elements, numThreads);
 }
 

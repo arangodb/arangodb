@@ -587,6 +587,11 @@ namespace triagens {
           int batchInsert (std::vector<Element*> const* data,
                            size_t numThreads) {
 
+            if (data->empty()) {
+              // nothing to do
+              return TRI_ERROR_NO_ERROR;
+            }
+
             std::atomic<int> res(TRI_ERROR_NO_ERROR);
             std::vector<Element*> const& elements = *(data);
 
@@ -596,6 +601,8 @@ namespace triagens {
             if (numThreads > _buckets.size()) {
               numThreads = _buckets.size();
             }
+
+            TRI_ASSERT(numThreads > 0);
 
             size_t const chunkSize = elements.size() / numThreads;
 

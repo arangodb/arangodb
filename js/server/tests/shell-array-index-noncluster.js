@@ -434,6 +434,25 @@ function arrayHashIndexSuite () {
       assertEqual(res[0]._id, id7);
     },
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: Multiple index batch inserts
+////////////////////////////////////////////////////////////////////////////////
+
+    testInsertBatches : function () {
+      // this really needs to be 1,000,000 documents to reproduce a bug that
+      // occurred with exactly this value and no others
+      for (var i = 0; i < 1000 * 1000; ++i) {
+        collection.insert({ a: [ "foo", "bar" ] });  
+      }
+
+      // this is expected to just work and not fail
+      collection.ensureIndex({ type: "hash", fields: ["a[*]"] }); 
+      collection.ensureIndex({ type: "hash", fields: ["a[*]", "b[*]"] });
+
+      assertEqual(1000 * 1000, collection.count());
+      assertEqual(3, collection.getIndexes().length);
+    }
+
     /* TODO Decission required here
     testInsertAndReadNestedElements: function () {
       var idx = collection.ensureHashIndex("a[*].b").id;
