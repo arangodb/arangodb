@@ -717,6 +717,11 @@ int HashIndex::batchInsertUnique(
       return res;
     }
   }
+  
+  if (elements.empty()) {
+    // no elements left to insert
+    return TRI_ERROR_NO_ERROR;
+  }
 
   int res = _uniqueArray->_hashArray->batchInsert(trx, &elements, numThreads);
 
@@ -808,6 +813,12 @@ int HashIndex::batchInsertMulti(
       return res;
     }
   }
+
+  if (elements.empty()) {
+    // no elements left to insert
+    return TRI_ERROR_NO_ERROR;
+  }
+
   return _multiArray->_hashArray->batchInsert(trx, &elements, numThreads);
 }
 
