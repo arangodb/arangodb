@@ -1,6 +1,9 @@
 v3.0.3 (XXXX-XX-XX)
 -------------------
 
+* fixed array index batch insertion issues for hash indexes that caused problems when 
+  no elements remained for insertion
+
 * fixed AQL MERGE() function with External objects originating from traversals
 
 * fixed some logfile recovery errors with error message "document not found"
