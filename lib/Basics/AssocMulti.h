@@ -351,6 +351,11 @@ class AssocMulti {
 
   int batchInsert(UserData* userData, std::vector<Element*> const* data,
                   size_t numThreads) {
+    if (data->empty()) {
+      // nothing to do
+      return TRI_ERROR_NO_ERROR;
+    }
+
 #ifdef TRI_CHECK_MULTI_POINTER_HASH
     check(userData, true, true);
 #endif
@@ -364,6 +369,8 @@ class AssocMulti {
     if (numThreads > _buckets.size()) {
       numThreads = _buckets.size();
     }
+    
+    TRI_ASSERT(numThreads > 0);
 
     size_t const chunkSize = elements.size() / numThreads;
 

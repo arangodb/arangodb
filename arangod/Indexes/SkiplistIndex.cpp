@@ -1350,32 +1350,32 @@ bool SkiplistIndex::findMatchingConditions(
       case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LT:
       case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE:
       case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GT:
-      case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE:
+      case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE: {
         TRI_ASSERT(op->numMembers() == 2);
         accessFitsIndex(op->getMember(0), op->getMember(1), op, reference,
                         mapping);
         accessFitsIndex(op->getMember(1), op->getMember(0), op, reference,
                         mapping);
         break;
-
-      case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN:
-        {
-          auto m = op->getMember(1);
-          if (accessFitsIndex(op->getMember(0), m, op, reference,
-                              mapping)) {
-            if (m->numMembers() == 0) {
-              // We want to do an IN [].
-              // No results
-              // Even if we cannot use the index.
-              return false;
-            }
+      }
+      case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN: {
+        auto m = op->getMember(1);
+        if (accessFitsIndex(op->getMember(0), m, op, reference,
+                            mapping)) {
+          if (m->numMembers() == 0) {
+            // We want to do an IN [].
+            // No results
+            // Even if we cannot use the index.
+            return false;
           }
-          break;
         }
+        break;
+      }
 
-      default:
+      default: {
         TRI_ASSERT(false);
         break;
+      }
     }
   }
 
@@ -1399,19 +1399,22 @@ bool SkiplistIndex::findMatchingConditions(
       case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ:
         TRI_ASSERT(conditions.size() == 1);
         break;
-      default:
+
+      default: {
         // All conditions after this cannot be used.
         // shrink and break outer for loop
         mapping.resize(i + 1);
         TRI_ASSERT(i + 1 == mapping.size());
-        goto forloopBreak;
+        return true;
+      }
     }
   }
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   for (auto const& it : mapping) {
     TRI_ASSERT(!it.empty());
   }
+#endif
 
-forloopBreak:
   return true;
 }
 
