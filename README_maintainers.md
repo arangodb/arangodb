@@ -86,7 +86,7 @@ ________________________________________________________________________________
 
 JSLint
 ======
-(we switched to jshint a while back - this is still named jslint for historical reasons)
+(we switched to eslint a while back - this is still named jslint for historical reasons)
 
 checker Script
 --------------
@@ -694,3 +694,29 @@ be used when we offer a new major release of arangodb.
 does not include the minifying process.
 
   * `grunt watch`
+
+--------------------------------------------------------------------------------
+NPM dependencies
+=======
+
+To add new NPM dependencies switch into the `js/node` folder and install them
+with npm using the following options:
+
+`npm install [<@scope>/]<name> --global-style --save --save-exact`
+
+or simply
+
+`npm install [<@scope>/]<name> --global-style -s -E`
+
+The `save` and `save-exact` options are necessary to make sure the `package.json`
+file is updated correctly.
+
+The `global-style` option prevents newer versions of npm from unrolling nested
+dependencies inside the `node_modules` folder. Omitting this option results in
+exposing *all* dependencies of *all* modules to ArangoDB users.
+
+When updating dependencies make sure that any mocked dependencies (like `glob`
+for `mocha`) match the versions required by the updated module and delete any
+duplicated nested dependencies if necessary (e.g. `mocha/node_modules/glob`)
+to make sure the global (mocked) version is used instead.
+
