@@ -3,6 +3,8 @@ v3.0.3 (XXXX-XX-XX)
 
 * fixed issue #1942
 
+* fixed issue #1941
+
 * fixed array index batch insertion issues for hash indexes that caused problems when 
   no elements remained for insertion
 
