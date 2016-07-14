@@ -35,8 +35,9 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestAdminLogHandler::RestAdminLogHandler(HttpRequest* request)
-    : RestBaseHandler(request) {}
+RestAdminLogHandler::RestAdminLogHandler(GeneralRequest* request,
+                                         GeneralResponse* response)
+    : RestBaseHandler(request, response) {}
 
 bool RestAdminLogHandler::isDirect() const { return true; }
 
@@ -44,7 +45,7 @@ bool RestAdminLogHandler::isDirect() const { return true; }
 /// @brief was docuBlock JSF_get_admin_modules_flush
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpHandler::status_t RestAdminLogHandler::execute() {
+RestHandler::status RestAdminLogHandler::execute() {
   // check the maximal log level to report
   bool found1;
   std::string const& upto =
@@ -85,7 +86,7 @@ HttpHandler::status_t RestAdminLogHandler::execute() {
                     TRI_ERROR_HTTP_BAD_PARAMETER,
                     std::string("unknown '") + (found2 ? "level" : "upto") +
                         "' log level: '" + logLevel + "'");
-      return status_t(HANDLER_DONE);
+      return status::DONE;
     }
   }
 
@@ -246,5 +247,5 @@ HttpHandler::status_t RestAdminLogHandler::execute() {
     // So ignore again
   }
 
-  return status_t(HANDLER_DONE);
+  return status::DONE;
 }

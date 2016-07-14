@@ -28,7 +28,7 @@
 #include "Basics/StringUtils.h"
 #include "Basics/WriteLocker.h"
 #include "Logger/Logger.h"
-#include "Rest/HttpRequest.h"
+#include "Rest/GeneralRequest.h"
 
 using namespace arangodb::basics;
 
@@ -111,7 +111,7 @@ TRI_action_t* TRI_DefineActionVocBase(std::string const& name,
 /// @brief looks up an action
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_action_t* TRI_LookupActionVocBase(arangodb::HttpRequest* request) {
+TRI_action_t* TRI_LookupActionVocBase(arangodb::GeneralRequest* request) {
   // check if we know a callback
   std::vector<std::string> suffix = request->suffix();
 

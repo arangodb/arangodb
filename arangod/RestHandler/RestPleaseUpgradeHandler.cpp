@@ -23,20 +23,30 @@
 
 #include "RestPleaseUpgradeHandler.h"
 
+#include "Rest/HttpResponse.h"
+
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestPleaseUpgradeHandler::RestPleaseUpgradeHandler(HttpRequest* request)
-    : HttpHandler(request) {}
+RestPleaseUpgradeHandler::RestPleaseUpgradeHandler(GeneralRequest* request,
+                                                   GeneralResponse* response)
+    : RestHandler(request, response) {}
 
 bool RestPleaseUpgradeHandler::isDirect() const { return true; }
 
-HttpHandler::status_t RestPleaseUpgradeHandler::execute() {
-  createResponse(GeneralResponse::ResponseCode::OK);
-  _response->setContentType(HttpResponse::CONTENT_TYPE_TEXT);
+RestHandler::status RestPleaseUpgradeHandler::execute() {
+  // TODO needs to generalized
+  auto response = dynamic_cast<HttpResponse*>(_response);
 
-  auto& buffer = _response->body();
+  if (response == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+  }
+
+  setResponseCode(GeneralResponse::ResponseCode::OK);
+  response->setContentType(GeneralResponse::ContentType::TEXT);
+
+  auto& buffer = response->body();
   buffer.appendText("Database: ");
   buffer.appendText(_request->databaseName());
   buffer.appendText("\r\n\r\n");
@@ -47,7 +57,7 @@ HttpHandler::status_t RestPleaseUpgradeHandler::execute() {
   buffer.appendText("  /etc/init.d/arangodb3 start\r\n\r\n");
   buffer.appendText("Please check the log file for details.\r\n");
 
-  return status_t(HANDLER_DONE);
+  return status::DONE;
 }
 
 void RestPleaseUpgradeHandler::handleError(const Exception&) {}

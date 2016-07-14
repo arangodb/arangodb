@@ -31,9 +31,13 @@ struct DocumentOperation {
         document(document),
         header(nullptr),
         tick(0),
+        rid(0),
         type(type),
         status(StatusType::CREATED) {
     TRI_ASSERT(marker != nullptr);
+    VPackSlice s(static_cast<uint8_t*>(marker->vpack()));
+    bool isOld;
+    rid = TRI_StringToRid(s.get(StaticStrings::RevString).copyString(), isOld);
   }
 
   ~DocumentOperation() {
@@ -50,6 +54,7 @@ struct DocumentOperation {
     DocumentOperation* copy =
         new DocumentOperation(trx, marker, document, type);
     copy->tick = tick;
+    copy->rid = rid;
     copy->header = header;
     copy->oldHeader = oldHeader;
     copy->status = status;
@@ -109,6 +114,7 @@ struct DocumentOperation {
   TRI_doc_mptr_t* header;
   TRI_doc_mptr_t oldHeader;
   TRI_voc_tick_t tick;
+  TRI_voc_rid_t rid;
   TRI_voc_document_operation_e type;
   StatusType status;
 };

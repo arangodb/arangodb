@@ -24,14 +24,18 @@
 
 #include "HttpCommTask.h"
 
+#include "Basics/HybridLogicalClock.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
-#include "Logger/Logger.h"
-#include "HttpServer/HttpHandler.h"
-#include "HttpServer/HttpHandlerFactory.h"
 #include "HttpServer/HttpServer.h"
+#include "HttpServer/RestHandler.h"
+#include "HttpServer/RestHandlerFactory.h"
+#include "Logger/Logger.h"
+#include "RestServer/RestServerFeature.h"
 #include "Scheduler/Scheduler.h"
+#include "Scheduler/SchedulerFeature.h"
+#include "VocBase/server.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -41,9 +45,9 @@ using namespace arangodb::rest;
 /// @brief static initializers
 ////////////////////////////////////////////////////////////////////////////////
 
-size_t const HttpCommTask::MaximalHeaderSize = 1 * 1024 * 1024;       //   1 MB
-size_t const HttpCommTask::MaximalBodySize = 512 * 1024 * 1024;       // 512 MB
-size_t const HttpCommTask::MaximalPipelineSize = 512 * 1024 * 1024;   // 512 MB
+size_t const HttpCommTask::MaximalHeaderSize = 1 * 1024 * 1024;      //   1 MB
+size_t const HttpCommTask::MaximalBodySize = 512 * 1024 * 1024;      // 512 MB
+size_t const HttpCommTask::MaximalPipelineSize = 512 * 1024 * 1024;  // 512 MB
 size_t const HttpCommTask::RunCompactEvery = 500;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -56,6 +60,7 @@ HttpCommTask::HttpCommTask(HttpServer* server, TRI_socket_t socket,
       SocketTask(socket, keepAliveTimeout),
       _connectionInfo(std::move(info)),
       _server(server),
+      _allowMethodOverride(server->allowMethodOverride()),
       _writeBuffers(),
       _writeBuffersStats(),
       _readPosition(0),
@@ -84,7 +89,7 @@ HttpCommTask::HttpCommTask(HttpServer* server, TRI_socket_t socket,
              << _connectionInfo.serverPort << ", client ip "
              << _connectionInfo.clientAddress << ", client port "
              << _connectionInfo.clientPort;
-  
+
   connectionStatisticsAgentSetHttp();
 }
 
@@ -109,16 +114,67 @@ HttpCommTask::~HttpCommTask() {
   delete _request;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief handles response
-////////////////////////////////////////////////////////////////////////////////
-
 void HttpCommTask::handleResponse(HttpResponse* response) {
   _requestPending = false;
   _isChunked = false;
   _startThread = false;
 
-  addResponse(response);
+  if (response == nullptr) {
+    handleSimpleError(GeneralResponse::ResponseCode::SERVER_ERROR);
+  } else {
+    addResponse(response);
+  }
+}
+
+void HttpCommTask::handleSimpleError(GeneralResponse::ResponseCode code) {
+  HttpResponse response(code);
+
+  resetState(true);
+  addResponse(&response);
+}
+
+void HttpCommTask::handleSimpleError(GeneralResponse::ResponseCode responseCode,
+                                     int errorNum,
+                                     std::string const& errorMessage) {
+  HttpResponse response(responseCode);
+
+  VPackBuilder builder;
+  builder.openObject();
+  builder.add(StaticStrings::Error, VPackValue(true));
+  builder.add(StaticStrings::ErrorNum, VPackValue(errorNum));
+  builder.add(StaticStrings::ErrorMessage, VPackValue(errorMessage));
+  builder.add(StaticStrings::Code, VPackValue((int)responseCode));
+  builder.close();
+
+  try {
+    response.fillBody(_request, builder.slice(), true, VPackOptions::Defaults);
+
+    clearRequest();
+    handleResponse(&response);
+  } catch (...) {
+    resetState(true);
+    addResponse(&response);
+  }
+}
+
+GeneralResponse::ResponseCode HttpCommTask::authenticateRequest() {
+  auto context = (_request == nullptr) ? nullptr : _request->requestContext();
+
+  if (context == nullptr && _request != nullptr) {
+    bool res = RestServerFeature::HANDLER_FACTORY->setRequestContext(_request);
+
+    if (!res) {
+      return GeneralResponse::ResponseCode::NOT_FOUND;
+    }
+
+    context = _request->requestContext();
+  }
+
+  if (context == nullptr) {
+    return GeneralResponse::ResponseCode::SERVER_ERROR;
+  }
+
+  return context->authenticate();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -148,7 +204,7 @@ bool HttpCommTask::processRead() {
 
 #if USE_DEV_TIMERS
       if (RequestStatisticsAgent::_statistics != nullptr) {
-        RequestStatisticsAgent::_statistics->_id = (void*) this;
+        RequestStatisticsAgent::_statistics->_id = (void*)this;
       }
 #endif
 
@@ -189,14 +245,8 @@ bool HttpCommTask::processRead() {
                 << ", request header size is " << headerLength;
 
       // header is too large
-      HttpResponse response(
+      handleSimpleError(
           GeneralResponse::ResponseCode::REQUEST_HEADER_FIELDS_TOO_LARGE);
-
-      // we need to close the connection, because there is no way we
-      // know what to remove and then continue
-      resetState(true);
-      handleResponse(&response);
-
       return false;
     }
 
@@ -211,24 +261,19 @@ bool HttpCommTask::processRead() {
       // check that we know, how to serve this request and update the connection
       // information, i. e. client and server addresses and ports and create a
       // request context for that request
-      _request = _server->handlerFactory()->createRequest(
+      _request = new HttpRequest(
           _connectionInfo, _readBuffer->c_str() + _startPosition,
-          _readPosition - _startPosition);
+          _readPosition - _startPosition, _allowMethodOverride);
 
       if (_request == nullptr) {
         LOG(ERR) << "cannot generate request";
 
         // internal server error
-        HttpResponse response(GeneralResponse::ResponseCode::SERVER_ERROR);
-
-        // we need to close the connection, because there is no way we
-        // know how to remove the body and then continue
-        resetState(true);
-        handleResponse(&response);
-
+        handleSimpleError(GeneralResponse::ResponseCode::SERVER_ERROR);
         return false;
       }
 
+      RestServerFeature::HANDLER_FACTORY->setRequestContext(_request);
       _request->setClientTaskId(_taskId);
 
       // check HTTP protocol version
@@ -236,14 +281,8 @@ bool HttpCommTask::processRead() {
 
       if (_httpVersion != GeneralRequest::ProtocolVersion::HTTP_1_0 &&
           _httpVersion != GeneralRequest::ProtocolVersion::HTTP_1_1) {
-        HttpResponse response(
+        handleSimpleError(
             GeneralResponse::ResponseCode::HTTP_VERSION_NOT_SUPPORTED);
-
-        // we need to close the connection, because there is no way we
-        // know what to remove and then continue
-        resetState(true);
-        handleResponse(&response);
-
         return false;
       }
 
@@ -251,14 +290,7 @@ bool HttpCommTask::processRead() {
       _fullUrl = _request->fullUrl();
 
       if (_fullUrl.size() > 16384) {
-        HttpResponse response(
-            GeneralResponse::ResponseCode::REQUEST_URI_TOO_LONG);
-
-        // we need to close the connection, because there is no way we
-        // know what to remove and then continue
-        resetState(true);
-        handleResponse(&response);
-
+        handleSimpleError(GeneralResponse::ResponseCode::REQUEST_URI_TOO_LONG);
         return false;
       }
 
@@ -280,8 +312,8 @@ bool HttpCommTask::processRead() {
       if (!_origin.empty()) {
         // check for Access-Control-Allow-Credentials header
         bool found;
-        std::string const& allowCredentials =
-            _request->header(StaticStrings::AccessControlAllowCredentials, found);
+        std::string const& allowCredentials = _request->header(
+            StaticStrings::AccessControlAllowCredentials, found);
 
         if (found) {
           // default is to allow nothing
@@ -359,25 +391,12 @@ bool HttpCommTask::processRead() {
                     << std::string(_readBuffer->c_str() + _startPosition, l)
                     << "'";
 
-          // bad request, method not allowed
-          HttpResponse response(
-              GeneralResponse::ResponseCode::METHOD_NOT_ALLOWED);
-
-          // we need to close the connection, because there is no way we
-          // know what to remove and then continue
-          resetState(true);
-
           // force a socket close, response will be ignored!
           TRI_CLOSE_SOCKET(_commSocket);
           TRI_invalidatesocket(&_commSocket);
 
-          // might delete this
-          // note that as we closed the socket above, the response will not make
-          // it to
-          // the client! will result in a "Empty reply from server" error in
-          // curl etc.
-          handleResponse(&response);
-
+          // bad request, method not allowed
+          handleSimpleError(GeneralResponse::ResponseCode::METHOD_NOT_ALLOWED);
           return false;
         }
       }
@@ -386,28 +405,21 @@ bool HttpCommTask::processRead() {
       // check if server is active
       // .............................................................................
 
-      Scheduler const* scheduler =
-          _server->scheduler();  // TODO(fc) this is singleton now
+      Scheduler const* scheduler = SchedulerFeature::SCHEDULER;
 
       if (scheduler != nullptr && !scheduler->isActive()) {
         // server is inactive and will intentionally respond with HTTP 503
         LOG(TRACE) << "cannot serve request - server is inactive";
 
-        HttpResponse response(
-            GeneralResponse::ResponseCode::SERVICE_UNAVAILABLE);
-
-        // we need to close the connection, because there is no way we
-        // know what to remove and then continue
-        resetState(true);
-        handleResponse(&response);
-
+        handleSimpleError(GeneralResponse::ResponseCode::SERVICE_UNAVAILABLE);
         return false;
       }
 
       // check for a 100-continue
       if (_readRequestBody) {
         bool found;
-        std::string const& expect = _request->header(StaticStrings::Expect, found);
+        std::string const& expect =
+            _request->header(StaticStrings::Expect, found);
 
         if (found && StringUtils::trim(expect) == "100-continue") {
           LOG(TRACE) << "received a 100-continue request";
@@ -505,8 +517,7 @@ bool HttpCommTask::processRead() {
   // authenticate
   // .............................................................................
 
-  GeneralResponse::ResponseCode authResult =
-      _server->handlerFactory()->authenticateRequest(_request);
+  GeneralResponse::ResponseCode authResult = authenticateRequest();
 
   // authenticated or an OPTIONS request. OPTIONS requests currently go
   // unauthenticated
@@ -521,37 +532,14 @@ bool HttpCommTask::processRead() {
 
   // not found
   else if (authResult == GeneralResponse::ResponseCode::NOT_FOUND) {
-    HttpResponse response(authResult);
-    response.setContentType(HttpResponse::CONTENT_TYPE_JSON);
-
-    response.body()
-        .appendText(TRI_CHAR_LENGTH_PAIR("{\"error\":true,\"errorMessage\":\""))
-        .appendText(TRI_errno_string(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND))
-        .appendText(TRI_CHAR_LENGTH_PAIR("\",\"code\":"))
-        .appendInteger((int)authResult)
-        .appendText(TRI_CHAR_LENGTH_PAIR(",\"errorNum\":"))
-        .appendInteger(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND)
-        .appendText(TRI_CHAR_LENGTH_PAIR("}"));
-
-    clearRequest();
-    handleResponse(&response);
+    handleSimpleError(authResult, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
+                      TRI_errno_string(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND));
   }
 
   // forbidden
   else if (authResult == GeneralResponse::ResponseCode::FORBIDDEN) {
-    HttpResponse response(authResult);
-    response.setContentType(HttpResponse::CONTENT_TYPE_JSON);
-
-    response.body()
-        .appendText(TRI_CHAR_LENGTH_PAIR(
-            "{\"error\":true,\"errorMessage\":\"change password\",\"code\":"))
-        .appendInteger((int)authResult)
-        .appendText(TRI_CHAR_LENGTH_PAIR(",\"errorNum\":"))
-        .appendInteger(TRI_ERROR_USER_CHANGE_PASSWORD)
-        .appendText(TRI_CHAR_LENGTH_PAIR("}"));
-
-    clearRequest();
-    handleResponse(&response);
+    handleSimpleError(authResult, TRI_ERROR_USER_CHANGE_PASSWORD,
+                      "change password");
   }
 
   // not authenticated
@@ -640,7 +628,9 @@ void HttpCommTask::addResponse(HttpResponse* response) {
 
   // set "connection" header
   // keep-alive is the default
-  response->setConnectionType(_closeRequested ? HttpResponse::CONNECTION_CLOSE : HttpResponse::CONNECTION_KEEP_ALIVE);
+  response->setConnectionType(_closeRequested
+                                  ? HttpResponse::CONNECTION_CLOSE
+                                  : HttpResponse::CONNECTION_KEEP_ALIVE);
 
   size_t const responseBodyLength = response->bodySize();
 
@@ -721,11 +711,7 @@ bool HttpCommTask::checkContentLength(bool expectContentLength) {
 
   if (bodyLength < 0) {
     // bad request, body length is < 0. this is a client error
-    HttpResponse response(GeneralResponse::ResponseCode::LENGTH_REQUIRED);
-
-    resetState(true);
-    handleResponse(&response);
-
+    handleSimpleError(GeneralResponse::ResponseCode::LENGTH_REQUIRED);
     return false;
   }
 
@@ -742,12 +728,7 @@ bool HttpCommTask::checkContentLength(bool expectContentLength) {
               << ", request body size is " << bodyLength;
 
     // request entity too large
-    HttpResponse response(
-        GeneralResponse::ResponseCode::REQUEST_ENTITY_TOO_LARGE);
-
-    resetState(true);
-    handleResponse(&response);
-
+    handleSimpleError(GeneralResponse::ResponseCode::REQUEST_ENTITY_TOO_LARGE);
     return false;
   }
 
@@ -798,7 +779,8 @@ void HttpCommTask::processCorsOptions() {
 
     // send back which HTTP methods are allowed for the resource
     // we'll allow all
-    response.setHeaderNC(StaticStrings::AccessControlAllowMethods, StaticStrings::CorsMethods);
+    response.setHeaderNC(StaticStrings::AccessControlAllowMethods,
+                         StaticStrings::CorsMethods);
 
     if (!allowHeaders.empty()) {
       // allow all extra headers the client requested
@@ -813,7 +795,8 @@ void HttpCommTask::processCorsOptions() {
     }
 
     // set caching time (hard-coded value)
-    response.setHeaderNC(StaticStrings::AccessControlMaxAge, StaticStrings::N1800);
+    response.setHeaderNC(StaticStrings::AccessControlMaxAge,
+                         StaticStrings::N1800);
   }
 
   clearRequest();
@@ -836,32 +819,14 @@ void HttpCommTask::processRequest() {
     }
   }
 
-  LOG_TOPIC(DEBUG, Logger::REQUESTS)
-      << "\"http-request-begin\",\"" << (void*)this << "\",\""
-      << _connectionInfo.clientAddress << "\",\""
-      << HttpRequest::translateMethod(_requestType) << "\",\""
-      << HttpRequest::translateVersion(_httpVersion) << "\"," << _fullUrl
-      << "\"";
-
-  // check for an async request
-  std::string const& asyncExecution = _request->header(StaticStrings::Async, found);
-
-  // create handler, this will take over the request
-  WorkItem::uptr<HttpHandler> handler(
-      _server->handlerFactory()->createHandler(_request));
-
-  if (handler == nullptr) {
-    LOG(TRACE) << "no handler is known, giving up";
-
-    HttpResponse response(GeneralResponse::ResponseCode::NOT_FOUND);
-
-    clearRequest();
-    handleResponse(&response);
-
-    return;
-  }
-
   if (_request != nullptr) {
+    LOG_TOPIC(DEBUG, Logger::REQUESTS)
+        << "\"http-request-begin\",\"" << (void*)this << "\",\""
+        << _connectionInfo.clientAddress << "\",\""
+        << HttpRequest::translateMethod(_requestType) << "\",\""
+        << HttpRequest::translateVersion(_httpVersion) << "\"," << _fullUrl
+        << "\"";
+
     std::string const& body = _request->body();
 
     if (!body.empty()) {
@@ -869,7 +834,43 @@ void HttpCommTask::processRequest() {
           << "\"http-request-body\",\"" << (void*)this << "\",\""
           << (StringUtils::escapeUnicode(body)) << "\"";
     }
-   
+  }
+
+  // check for an HLC time stamp
+  std::string const& timeStamp = _request->header(StaticStrings::HLCHeader, found);
+  if (found) {
+    uint64_t timeStampInt
+        = arangodb::basics::HybridLogicalClock::decodeTimeStampWithCheck(
+            timeStamp);
+    if (timeStampInt != 0) {
+      TRI_HybridLogicalClock(timeStampInt);
+    }
+  }
+
+  // check for an async request
+  std::string const& asyncExecution =
+      _request->header(StaticStrings::Async, found);
+
+  // create handler, this will take over the request and the response
+  std::unique_ptr<HttpResponse> response(
+      new HttpResponse(GeneralResponse::ResponseCode::SERVER_ERROR));
+
+  WorkItem::uptr<RestHandler> handler(
+      RestServerFeature::HANDLER_FACTORY->createHandler(_request,
+                                                        response.get()));
+
+  if (handler == nullptr) {
+    LOG(TRACE) << "no handler is known, giving up";
+
+    clearRequest();
+
+    handleSimpleError(GeneralResponse::ResponseCode::NOT_FOUND);
+    return;
+  }
+
+  response.release();
+
+  if (_request != nullptr) {
     bool found; 
     std::string const& startThread = _request->header(StaticStrings::StartThread, found);
 
@@ -918,8 +919,7 @@ void HttpCommTask::processRequest() {
   }
 
   if (!ok) {
-    HttpResponse response(GeneralResponse::ResponseCode::SERVER_ERROR);
-    handleResponse(&response);
+    handleSimpleError(GeneralResponse::ResponseCode::SERVER_ERROR);
   }
 }
 
@@ -944,6 +944,7 @@ void HttpCommTask::resetState(bool close) {
     clearRequest();
 
     _requestPending = false;
+    _isChunked = false;
     _closeRequested = true;
 
     _readPosition = 0;
@@ -1015,7 +1016,27 @@ void HttpCommTask::signalTask(TaskData* data) {
   // data response
   if (data->_type == TaskData::TASK_DATA_RESPONSE) {
     data->RequestStatisticsAgent::transferTo(this);
-    handleResponse(data->_response.get());
+
+    HttpResponse* response = dynamic_cast<HttpResponse*>(data->_response.get());
+
+    if (response != nullptr) {
+      handleResponse(response);
+      processRead();
+    } else {
+      handleSimpleError(GeneralResponse::ResponseCode::SERVER_ERROR);
+    }
+  }
+
+  // data response
+  else if (data->_type == TaskData::TASK_DATA_BUFFER) {
+    data->RequestStatisticsAgent::transferTo(this);
+
+    HttpResponse response(GeneralResponse::ResponseCode::OK);
+
+    velocypack::Slice slice(data->_buffer->data());
+    response.fillBody(_request, slice, true, VPackOptions::Defaults);
+
+    handleResponse(&response);
     processRead();
   }
 

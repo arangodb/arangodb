@@ -35,22 +35,22 @@ namespace arangodb {
 
 class RestAgencyHandler : public RestBaseHandler {
  public:
-  RestAgencyHandler(HttpRequest*, consensus::Agent*);
+  RestAgencyHandler(GeneralRequest*, GeneralResponse*, consensus::Agent*);
 
+ public:
   bool isDirect() const override;
-
-  status_t execute() override;
+  status execute() override;
 
  private:
-  status_t reportErrorEmptyRequest();
-  status_t reportTooManySuffices();
-  status_t reportUnknownMethod();
-  status_t handleStores();
-  status_t handleRead();
-  status_t handleWrite();
-  status_t handleConfig();
-  status_t reportMethodNotAllowed();
-  status_t handleState();
+  status reportErrorEmptyRequest();
+  status reportTooManySuffices();
+  status reportUnknownMethod();
+  status handleStores();
+  status handleRead();
+  status handleWrite();
+  status handleConfig();
+  status reportMethodNotAllowed();
+  status handleState();
 
   void redirectRequest(arangodb::consensus::id_t leaderId);
   consensus::Agent* _agent;

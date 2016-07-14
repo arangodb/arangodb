@@ -55,8 +55,8 @@ using namespace arangodb::basics;
 using namespace arangodb::rest;
 
 static TRI_action_result_t ExecuteActionVocbase(
-    TRI_vocbase_t* vocbase, v8::Isolate* isolate, TRI_action_t const* action,
-    v8::Handle<v8::Function> callback, HttpRequest* request);
+    TRI_vocbase_t*, v8::Isolate*, TRI_action_t const*,
+    v8::Handle<v8::Function> callback, GeneralRequest*, GeneralResponse*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief action description for V8
@@ -84,8 +84,9 @@ class v8_action_t : public TRI_action_t {
     _callbacks[isolate].Reset(isolate, callback);
   }
 
-  TRI_action_result_t execute(TRI_vocbase_t* vocbase, HttpRequest* request,
-                              Mutex* dataLock, void** data) override {
+  TRI_action_result_t execute(TRI_vocbase_t* vocbase, GeneralRequest* request,
+                              GeneralResponse* response, Mutex* dataLock,
+                              void** data) override {
     TRI_action_result_t result;
 
     // allow use datase execution in rest calls
@@ -128,8 +129,7 @@ class v8_action_t : public TRI_action_t {
                   << "'";
 
         result.isValid = true;
-        result.response =
-            new HttpResponse(GeneralResponse::ResponseCode::NOT_FOUND);
+        response->setResponseCode(GeneralResponse::ResponseCode::NOT_FOUND);
 
         return result;
       }
@@ -138,7 +138,7 @@ class v8_action_t : public TRI_action_t {
       {
         MUTEX_LOCKER(mutexLocker, *dataLock);
 
-        if (*data != 0) {
+        if (*data != nullptr) {
           result.canceled = true;
           return result;
         }
@@ -151,14 +151,14 @@ class v8_action_t : public TRI_action_t {
 
       try {
         result = ExecuteActionVocbase(vocbase, context->_isolate, this,
-                                      localFunction, request);
+                                      localFunction, request, response);
       } catch (...) {
         result.isValid = false;
       }
 
       {
         MUTEX_LOCKER(mutexLocker, *dataLock);
-        *data = 0;
+        *data = nullptr;
       }
     }
 
@@ -170,7 +170,7 @@ class v8_action_t : public TRI_action_t {
       MUTEX_LOCKER(mutexLocker, *dataLock);
 
       // either we have not yet reached the execute above or we are already done
-      if (*data == 0) {
+      if (*data == nullptr) {
         *data = (void*)1;  // mark as canceled
       }
 
@@ -290,9 +290,16 @@ static void AddCookie(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
 
 static v8::Handle<v8::Object> RequestCppToV8(v8::Isolate* isolate,
                                              TRI_v8_global_t const* v8g,
-                                             HttpRequest* request) {
+                                             GeneralRequest* generalRequest) {
   // setup the request
   v8::Handle<v8::Object> req = v8::Object::New(isolate);
+
+  auto request = dynamic_cast<HttpRequest*>(generalRequest);
+
+  // TODO generalize
+  if (request == nullptr) {
+    return req;
+  }
 
   // Example:
   //      {
@@ -492,9 +499,10 @@ static v8::Handle<v8::Object> RequestCppToV8(v8::Isolate* isolate,
 /// @brief convert a C++ HttpRequest to a V8 request object
 ////////////////////////////////////////////////////////////////////////////////
 
-static HttpResponse* ResponseV8ToCpp(v8::Isolate* isolate,
-                                     TRI_v8_global_t const* v8g,
-                                     v8::Handle<v8::Object> const res) {
+// TODO this needs to be generalized
+static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
+                            v8::Handle<v8::Object> const res,
+                            HttpResponse* response) {
   GeneralResponse::ResponseCode code = GeneralResponse::ResponseCode::OK;
 
   TRI_GET_GLOBAL_STRING(ResponseCodeKey);
@@ -504,7 +512,7 @@ static HttpResponse* ResponseV8ToCpp(v8::Isolate* isolate,
         (int)(TRI_ObjectToDouble(res->Get(ResponseCodeKey))));
   }
 
-  auto response = std::make_unique<HttpResponse>(code);
+  response->setResponseCode(code);
 
   TRI_GET_GLOBAL_STRING(ContentTypeKey);
   if (res->Has(ContentTypeKey)) {
@@ -624,16 +632,14 @@ static HttpResponse* ResponseV8ToCpp(v8::Isolate* isolate,
       for (uint32_t i = 0; i < v8Array->Length(); i++) {
         v8::Handle<v8::Value> v8Cookie = v8Array->Get(i);
         if (v8Cookie->IsObject()) {
-          AddCookie(isolate, v8g, response.get(), v8Cookie.As<v8::Object>());
+          AddCookie(isolate, v8g, response, v8Cookie.As<v8::Object>());
         }
       }
     } else if (v8Cookies->IsObject()) {
       // one cookie
-      AddCookie(isolate, v8g, response.get(), v8Cookies);
+      AddCookie(isolate, v8g, response, v8Cookies);
     }
   }
-
-  return response.release();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -642,9 +648,17 @@ static HttpResponse* ResponseV8ToCpp(v8::Isolate* isolate,
 
 static TRI_action_result_t ExecuteActionVocbase(
     TRI_vocbase_t* vocbase, v8::Isolate* isolate, TRI_action_t const* action,
-    v8::Handle<v8::Function> callback, HttpRequest* request) {
+    v8::Handle<v8::Function> callback, GeneralRequest* request,
+    GeneralResponse* responseGeneral) {
   v8::HandleScope scope(isolate);
   v8::TryCatch tryCatch;
+
+  // TODO needs to generalized
+  auto response = dynamic_cast<HttpResponse*>(responseGeneral);
+
+  if (response == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+  }
 
   TRI_GET_GLOBALS();
 
@@ -710,11 +724,13 @@ static TRI_action_result_t ExecuteActionVocbase(
     result.isValid = false;
     result.canceled = false;
 
-    HttpResponse* response =
-        new HttpResponse(GeneralResponse::ResponseCode::SERVER_ERROR);
+    // TODO how to generalize this?
+    response->setResponseCode(GeneralResponse::ResponseCode::SERVER_ERROR);
+
     if (errorMessage.empty()) {
       errorMessage = TRI_errno_string(errorCode);
     }
+
     response->body().appendText(errorMessage);
   }
 
@@ -725,11 +741,10 @@ static TRI_action_result_t ExecuteActionVocbase(
 
   else if (tryCatch.HasCaught()) {
     if (tryCatch.CanContinue()) {
-      HttpResponse* response =
-          new HttpResponse(GeneralResponse::ResponseCode::SERVER_ERROR);
-      response->body().appendText(TRI_StringifyV8Exception(isolate, &tryCatch));
+      response->setResponseCode(GeneralResponse::ResponseCode::SERVER_ERROR);
 
-      result.response = response;
+      // TODO how to generalize this?
+      response->body().appendText(TRI_StringifyV8Exception(isolate, &tryCatch));
     } else {
       v8g->_canceled = true;
       result.isValid = false;
@@ -738,7 +753,7 @@ static TRI_action_result_t ExecuteActionVocbase(
   }
 
   else {
-    result.response = ResponseV8ToCpp(isolate, v8g, res);
+    ResponseV8ToCpp(isolate, v8g, res, response);
   }
 
   return result;

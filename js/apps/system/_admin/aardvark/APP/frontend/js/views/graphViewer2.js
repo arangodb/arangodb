@@ -1,11 +1,17 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global arangoHelper, slicePath, icon, wheelnav, document, sigma, Backbone, templateEngine, $, window*/
+/* global arangoHelper, _, slicePath, icon, wheelnav, document, sigma, Backbone, templateEngine, $, window*/
 (function () {
   'use strict';
 
   window.GraphViewer2 = Backbone.View.extend({
     el: '#content',
+
+    remove: function () {
+      this.$el.empty().off(); /* off to unbind the events */
+      this.stopListening();
+      return this;
+    },
 
     template: templateEngine.createTemplate('graphViewer2.ejs'),
 
@@ -64,30 +70,104 @@
       $('#content').append(
         '<div id="calculatingGraph" style="position: absolute; left: 25px; top: 130px;">' +
         '<i class="fa fa-circle-o-notch fa-spin" style="margin-right: 10px;"></i>' +
-        'Calculating layout. Please wait ... </div>'
+        '<span id="calcText">Fetching graph data. Please wait ... </span></div>'
       );
 
-      var fetchGraph = function () {
+      var continueFetchGraph = function () {
+        var ajaxData = {};
+        if (this.graphConfig) {
+          ajaxData = _.clone(this.graphConfig);
+
+          // remove not needed params
+          delete ajaxData.layout;
+          delete ajaxData.edgeType;
+          delete ajaxData.renderer;
+        }
+
+        this.setupSigma();
+
         $.ajax({
           type: 'GET',
           url: arangoHelper.databaseUrl('/_admin/aardvark/graph/' + encodeURIComponent(this.name)),
           contentType: 'application/json',
+          data: ajaxData,
           success: function (data) {
+            $('#calcText').html('Calculating layout. Please wait ... ');
             arangoHelper.buildGraphSubNav(self.name, 'Content');
             self.renderGraph(data);
           },
-          error: function () {
+          error: function (e) {
+            console.log(e);
+            try {
+              arangoHelper.arangoError('Graph', e.responseJSON.exception);
+            } catch (ignore) {}
+
             $('#calculatingGraph').html('Failed to fetch graph information.');
           }
         });
       }.bind(this);
 
-      // TODO LOAD GRAPH SETTINGS
-      this.getGraphSettings(fetchGraph);
+      // load graph configuration
+      this.getGraphSettings(continueFetchGraph);
     },
 
-    clearOldContextMenu: function () {
+    setupSigma: function () {
+      if (this.graphConfig) {
+        if (this.graphConfig.edgeLabel) {
+          // Initialize package:
+          sigma.utils.pkg('sigma.settings');
+
+          var settings = {
+            defaultEdgeLabelColor: '#000',
+            defaultEdgeLabelActiveColor: '#000',
+            defaultEdgeLabelSize: 10,
+            edgeLabelSize: 'fixed',
+            edgeLabelSizePowRatio: 1,
+            edgeLabelThreshold: 1
+          };
+
+          // Export the previously designed settings:
+          sigma.settings = sigma.utils.extend(sigma.settings || {}, settings);
+
+          // Override default settings:
+          sigma.settings.drawEdgeLabels = true;
+        }
+      }
+    },
+
+    contextState: {
+      createEdge: false,
+      _from: false,
+      _to: false,
+      fromX: false,
+      fromY: false
+    },
+
+    clearOldContextMenu: function (states) {
+      var self = this;
+
+      // clear dom
       $('#nodeContextMenu').remove();
+      var string = '<div id="nodeContextMenu" class="nodeContextMenu"></div>';
+      $('#graph-container').append(string);
+
+      // clear state
+      if (states) {
+        _.each(this.contextState, function (val, key) {
+          self.contextState[key] = false;
+        });
+      }
+
+      // clear info div
+    },
+
+    createContextMenu: function (e) {
+      var x = e.data.captor.clientX;
+      var y = e.data.captor.clientX;
+      console.log('Context menu');
+      console.log(x);
+      console.log(y);
+      this.clearOldContextMenu();
     },
 
     createNodeContextMenu: function (nodeId, e) {
@@ -97,8 +177,6 @@
       var y = e.data.node['renderer1:y'];
 
       this.clearOldContextMenu();
-      var string = '<div id="nodeContextMenu" class="nodeContextMenu"></div>';
-      $('#graph-container').append(string);
 
       var generateMenu = function (e, nodeId) {
         var hotaru = ['#364C4A', '#497C7F', '#92C5C0', '#858168', '#CCBCA5'];
@@ -110,35 +188,49 @@
         wheel.wheelRadius = 50;
         wheel.clockwise = false;
         wheel.colors = hotaru;
+        wheel.multiSelect = true;
         wheel.clickModeRotate = false;
         wheel.slicePathFunction = slicePath().DonutSlice;
-        wheel.createWheel([icon.edit, icon.trash, icon.smallgear, icon.smallgear]);
+        wheel.createWheel([icon.edit, icon.trash, icon.arrowleft2, icon.connect]);
 
+        wheel.navItems[0].selected = false;
+        wheel.navItems[0].hovered = false;
         // add menu events
 
         // function 0: edit
-        wheel.navItems[0].navigateFunction = function () {
+        wheel.navItems[0].navigateFunction = function (e) {
           self.clearOldContextMenu();
           self.editNode(nodeId);
         };
 
-        // function 1:
-        wheel.navItems[1].navigateFunction = function () {
+        // function 1: delete
+        wheel.navItems[1].navigateFunction = function (e) {
           self.clearOldContextMenu();
-          self.editNode(nodeId);
+          self.deleteNode(nodeId);
         };
 
-        // function 2:
-        wheel.navItems[2].navigateFunction = function () {
+        // function 2: mark as start node
+        wheel.navItems[2].navigateFunction = function (e) {
           self.clearOldContextMenu();
-          self.editNode(nodeId);
+          self.setStartNode(nodeId);
         };
 
-        // function 3: delete
-        wheel.navItems[3].navigateFunction = function () {
+        // function 3: create edge
+        wheel.navItems[3].navigateFunction = function (e) {
+          self.contextState.createEdge = true;
+          self.contextState._from = nodeId;
+          self.contextState.fromX = x;
+          self.contextState.fromY = y;
+
+          var c = document.getElementsByClassName('sigma-mouse')[0];
+          c.addEventListener('mousemove', self.drawLine.bind(this), false);
+
           self.clearOldContextMenu();
-          self.editNode(nodeId);
         };
+
+        // deselect active default entry
+        wheel.navItems[0].selected = false;
+        wheel.navItems[0].hovered = false;
       };
 
       $('#nodeContextMenu').css('left', x + 115);
@@ -147,6 +239,31 @@
       $('#nodeContextMenu').height(100);
 
       generateMenu(e, nodeId);
+    },
+
+    clearMouseCanvas: function () {
+      var c = document.getElementsByClassName('sigma-mouse')[0];
+      var ctx = c.getContext('2d');
+      ctx.clearRect(0, 0, $(c).width(), $(c).height());
+    },
+
+    drawLine: function (e) {
+      var context = window.App.graphViewer2.contextState;
+
+      if (context.createEdge) {
+        var fromX = context.fromX;
+        var fromY = context.fromY;
+        var toX = e.offsetX;
+        var toY = e.offsetY;
+
+        var c = document.getElementsByClassName('sigma-mouse')[0];
+        var ctx = c.getContext('2d');
+        ctx.clearRect(0, 0, $(c).width(), $(c).height());
+        ctx.beginPath();
+        ctx.moveTo(fromX, fromY);
+        ctx.lineTo(toX, toY);
+        ctx.stroke();
+      }
     },
 
     getGraphSettings: function (callback) {
@@ -158,7 +275,7 @@
           self.graphConfig = data.toJSON().graphs[combinedName];
 
           if (callback) {
-            callback();
+            callback(self.graphConfig);
           }
         }
       });
@@ -184,8 +301,6 @@
       var renderer = 'canvas';
 
       if (this.graphConfig) {
-        console.log(this.graphConfig);
-
         if (this.graphConfig.layout) {
           algorithm = this.graphConfig.layout;
         }
@@ -201,20 +316,28 @@
 
       var settings = {
         doubleClickEnabled: false,
-        minEdgeSize: 0.5,
+        minNodeSize: 3.5,
+        minEdgeSize: 1,
         maxEdgeSize: 4,
         enableEdgeHovering: true,
-        // edgeHoverColor: 'edge',
-        // defaultEdgeHoverColor: '#000',
-        // defaultEdgeType: 'curve',
-        edgeHoverSizeRatio: 1,
+        edgeHoverColor: '#000',
+        defaultEdgeHoverColor: '#000',
+        defaultEdgeType: 'line',
+        edgeHoverSizeRatio: 2,
         edgeHoverExtremities: true
       };
 
+      if (this.graphConfig) {
+        if (this.graphConfig.edgeType) {
+          settings.defaultEdgeType = this.graphConfig.edgeType;
+        }
+      }
+
       // adjust display settings for big graphs
       if (graph.nodes.length > 500) {
-        // show node label if size is 20
-        settings.labelThreshold = 20;
+        // show node label if size is 15
+        settings.labelThreshold = 15;
+        settings.hideEdgesOnMove = true;
       }
 
       // adjust display settings for webgl renderer
@@ -271,7 +394,33 @@
         e.originalColor = e.color;
       });
 
-      if (renderer !== 'webgl') {
+      // for canvas renderer allow graph editing
+      if (renderer === 'canvas') {
+        s.bind('rightClickStage', function (e) {
+          self.createContextMenu(e);
+          self.clearMouseCanvas();
+        });
+
+        s.bind('clickNode', function (e) {
+          if (self.contextState.createEdge === true) {
+            // create the edge
+            self.contextState._to = e.data.node.id;
+
+            self.currentGraph.graph.addEdge({
+              source: self.contextState._from,
+              target: self.contextState._to,
+              id: Math.random(),
+              color: self.graphConfig.edgeColor
+            });
+
+            // rerender graph
+            self.currentGraph.refresh();
+
+            // then clear states
+            self.clearOldContextMenu(true);
+          }
+        });
+
         s.bind('rightClickNode', function (e) {
           var nodeId = e.data.node.id;
           self.createNodeContextMenu(nodeId, e);
@@ -314,7 +463,8 @@
         });
 
         s.bind('clickStage', function () {
-          self.clearOldContextMenu();
+          self.clearOldContextMenu(true);
+          self.clearMouseCanvas();
         });
       }
 
@@ -327,11 +477,18 @@
       } else if (algorithm === 'force') {
         s.startForceAtlas2({worker: true, barnesHutOptimize: false});
 
+        var duration = 3000;
+
+        if (graph.nodes.length > 2500) {
+          duration = 5000;
+        } else if (graph.nodes.length < 50) {
+          duration = 500;
+        }
+
         window.setTimeout(function () {
           s.stopForceAtlas2();
           dragListener = sigma.plugins.dragNodes(s, s.renderers[0]);
-          console.log('stopped force');
-        }, 3000);
+        }, duration);
       } else if (algorithm === 'fruchtermann') {
         // Start the Fruchterman-Reingold algorithm:
         sigma.layouts.fruchtermanReingold.start(s);

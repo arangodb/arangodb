@@ -32,10 +32,9 @@
 #include "Rest/HttpResponse.h"
 
 using namespace arangodb::basics;
-  
-static std::string const AllowedChars =
-  "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ01234567890. +-_=";
 
+static std::string const AllowedChars =
+    "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ01234567890. +-_=";
 
 namespace arangodb {
 namespace rest {
@@ -44,8 +43,9 @@ namespace rest {
 // constructors and destructors
 // -----------------------------------------------------------------------------
 
-PathHandler::PathHandler(HttpRequest* request, Options const* options)
-    : HttpHandler(request),
+PathHandler::PathHandler(GeneralRequest* request, GeneralResponse* response,
+                         Options const* options)
+    : RestHandler(request, response),
       path(options->path),
       contentType(options->contentType),
       allowSymbolicLink(options->allowSymbolicLink),
@@ -65,7 +65,14 @@ PathHandler::PathHandler(HttpRequest* request, Options const* options)
 // Handler methods
 // -----------------------------------------------------------------------------
 
-HttpHandler::status_t PathHandler::execute() {
+RestHandler::status PathHandler::execute() {
+  // TODO needs to generalized
+  auto response = dynamic_cast<HttpResponse*>(_response);
+
+  if (response == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+  }
+
   std::vector<std::string> const& names = _request->suffix();
   std::string name = path;
   std::string last;
@@ -78,20 +85,20 @@ HttpHandler::status_t PathHandler::execute() {
     }
     url += defaultFile;
 
-    createResponse(GeneralResponse::ResponseCode::MOVED_PERMANENTLY);
+    setResponseCode(GeneralResponse::ResponseCode::MOVED_PERMANENTLY);
 
-    _response->setHeaderNC(StaticStrings::Location, url);
-    _response->setContentType(HttpResponse::CONTENT_TYPE_HTML);
+    response->setHeaderNC(StaticStrings::Location, url);
+    response->setContentType(HttpResponse::ContentType::HTML);
 
-    _response->body().appendText(
+    response->body().appendText(
         "<html><head><title>Moved</title></head><body><h1>Moved</h1><p>This "
         "page has moved to <a href=\"");
-    _response->body().appendText(url);
-    _response->body().appendText(">");
-    _response->body().appendText(url);
-    _response->body().appendText("</a>.</p></body></html>");
+    response->body().appendText(url);
+    response->body().appendText(">");
+    response->body().appendText(url);
+    response->body().appendText("</a>.</p></body></html>");
 
-    return status_t(HANDLER_DONE);
+    return status::DONE;
   }
 
   for (std::vector<std::string>::const_iterator j = names.begin();
@@ -101,17 +108,17 @@ HttpHandler::status_t PathHandler::execute() {
     if (next == ".") {
       LOG(WARN) << "file '" << name << "' contains '.'";
 
-      createResponse(GeneralResponse::ResponseCode::FORBIDDEN);
-      _response->body().appendText("path contains '.'");
-      return status_t(HANDLER_DONE);
+      setResponseCode(GeneralResponse::ResponseCode::FORBIDDEN);
+      response->body().appendText("path contains '.'");
+      return status::DONE;
     }
 
     if (next == "..") {
       LOG(WARN) << "file '" << name << "' contains '..'";
 
-      createResponse(GeneralResponse::ResponseCode::FORBIDDEN);
-      _response->body().appendText("path contains '..'");
-      return status_t(HANDLER_DONE);
+      setResponseCode(GeneralResponse::ResponseCode::FORBIDDEN);
+      response->body().appendText("path contains '..'");
+      return status::DONE;
     }
 
     std::string::size_type sc = next.find_first_not_of(AllowedChars);
@@ -119,19 +126,19 @@ HttpHandler::status_t PathHandler::execute() {
     if (sc != std::string::npos) {
       LOG(WARN) << "file '" << name << "' contains illegal character";
 
-      createResponse(GeneralResponse::ResponseCode::FORBIDDEN);
-      _response->body().appendText("path contains illegal character '" +
-                                   std::string(1, next[sc]) + "'");
-      return status_t(HANDLER_DONE);
+      setResponseCode(GeneralResponse::ResponseCode::FORBIDDEN);
+      response->body().appendText("path contains illegal character '" +
+                                  std::string(1, next[sc]) + "'");
+      return status::DONE;
     }
 
     if (!path.empty()) {
       if (!FileUtils::isDirectory(path)) {
         LOG(WARN) << "file '" << name << "' not found";
 
-        createResponse(GeneralResponse::ResponseCode::NOT_FOUND);
-        _response->body().appendText("file not found");
-        return status_t(HANDLER_DONE);
+        setResponseCode(GeneralResponse::ResponseCode::NOT_FOUND);
+        response->body().appendText("file not found");
+        return status::DONE;
       }
     }
 
@@ -141,37 +148,37 @@ HttpHandler::status_t PathHandler::execute() {
     if (!allowSymbolicLink && FileUtils::isSymbolicLink(name)) {
       LOG(WARN) << "file '" << name << "' contains symbolic link";
 
-      createResponse(GeneralResponse::ResponseCode::FORBIDDEN);
-      _response->body().appendText("symbolic links are not allowed");
-      return status_t(HANDLER_DONE);
+      setResponseCode(GeneralResponse::ResponseCode::FORBIDDEN);
+      response->body().appendText("symbolic links are not allowed");
+      return status::DONE;
     }
   }
 
   if (!FileUtils::isRegularFile(name)) {
     LOG(WARN) << "file '" << name << "' not found";
 
-    createResponse(GeneralResponse::ResponseCode::NOT_FOUND);
-    _response->body().appendText("file not found");
-    return status_t(HANDLER_DONE);
+    setResponseCode(GeneralResponse::ResponseCode::NOT_FOUND);
+    response->body().appendText("file not found");
+    return status::DONE;
   }
 
-  createResponse(GeneralResponse::ResponseCode::OK);
+  setResponseCode(GeneralResponse::ResponseCode::OK);
 
   try {
-    FileUtils::slurp(name, _response->body());
+    FileUtils::slurp(name, response->body());
   } catch (...) {
     LOG(WARN) << "file '" << name << "' not readable";
 
-    createResponse(GeneralResponse::ResponseCode::NOT_FOUND);
-    _response->body().appendText("file not readable");
-    return status_t(HANDLER_DONE);
+    setResponseCode(GeneralResponse::ResponseCode::NOT_FOUND);
+    response->body().appendText("file not readable");
+    return status::DONE;
   }
 
   // check if we should use caching and this is an HTTP GET request
   if (cacheMaxAge > 0 &&
       _request->requestType() == GeneralRequest::RequestType::GET) {
     // yes, then set a pro-caching header
-    _response->setHeaderNC(StaticStrings::CacheControl, maxAgeHeader);
+    response->setHeaderNC(StaticStrings::CacheControl, maxAgeHeader);
   }
 
   std::string::size_type d = last.find_last_of('.');
@@ -184,9 +191,9 @@ HttpHandler::status_t PathHandler::execute() {
       char const* mimetype = TRI_GetMimetype(suffix.c_str());
 
       if (mimetype != nullptr) {
-        _response->setContentType(mimetype);
+        response->setContentType(mimetype);
 
-        return status_t(HANDLER_DONE);
+        return status::DONE;
       }
     } else {
       // note: changed the log level to debug. an unknown content-type does not
@@ -195,13 +202,13 @@ HttpHandler::status_t PathHandler::execute() {
     }
   }
 
-  _response->setContentType(contentType);
+  response->setContentType(contentType);
 
-  return status_t(HANDLER_DONE);
+  return status::DONE;
 }
 
 void PathHandler::handleError(Exception const&) {
-  createResponse(GeneralResponse::ResponseCode::SERVER_ERROR);
+  setResponseCode(GeneralResponse::ResponseCode::SERVER_ERROR);
 }
 }
 }

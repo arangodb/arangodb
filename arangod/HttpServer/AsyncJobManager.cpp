@@ -25,10 +25,10 @@
 
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
-#include "HttpServer/HttpHandler.h"
 #include "HttpServer/HttpServerJob.h"
+#include "HttpServer/RestHandler.h"
 #include "Logger/Logger.h"
-#include "Rest/HttpResponse.h"
+#include "Rest/GeneralResponse.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -67,7 +67,7 @@ class arangodb::rest::AsyncCallbackContext {
   /// @brief http response
   //////////////////////////////////////////////////////////////////////////////
 
-  HttpResponse* _response;
+  GeneralResponse* _response;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -85,7 +85,7 @@ AsyncJobResult::AsyncJobResult()
 /// @brief constructor for a specific job result
 ////////////////////////////////////////////////////////////////////////////////
 
-AsyncJobResult::AsyncJobResult(IdType jobId, HttpResponse* response,
+AsyncJobResult::AsyncJobResult(IdType jobId, GeneralResponse* response,
                                double stamp, Status status,
                                AsyncCallbackContext* ctx)
     : _jobId(jobId),
@@ -108,9 +108,9 @@ AsyncJobManager::~AsyncJobManager() {
 /// @brief returns the result of an async job
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpResponse* AsyncJobManager::getJobResult(AsyncJobResult::IdType jobId,
-                                            AsyncJobResult::Status& status,
-                                            bool removeFromList) {
+GeneralResponse* AsyncJobManager::getJobResult(AsyncJobResult::IdType jobId,
+                                               AsyncJobResult::Status& status,
+                                               bool removeFromList) {
   WRITE_LOCKER(writeLocker, _lock);
 
   auto it = _jobs.find(jobId);
@@ -120,7 +120,7 @@ HttpResponse* AsyncJobManager::getJobResult(AsyncJobResult::IdType jobId,
     return nullptr;
   }
 
-  HttpResponse* response = (*it).second._response;
+  GeneralResponse* response = (*it).second._response;
   status = (*it).second._status;
 
   if (status == AsyncJobResult::JOB_PENDING) {
@@ -149,7 +149,7 @@ bool AsyncJobManager::deleteJobResult(AsyncJobResult::IdType jobId) {
     return false;
   }
 
-  HttpResponse* response = (*it).second._response;
+  GeneralResponse* response = (*it).second._response;
 
   if (response != nullptr) {
     delete response;
@@ -170,7 +170,7 @@ void AsyncJobManager::deleteJobResults() {
   auto it = _jobs.begin();
 
   while (it != _jobs.end()) {
-    HttpResponse* response = (*it).second._response;
+    GeneralResponse* response = (*it).second._response;
 
     if (response != nullptr) {
       delete response;
@@ -195,7 +195,7 @@ void AsyncJobManager::deleteExpiredJobResults(double stamp) {
     AsyncJobResult ajr = (*it).second;
 
     if (ajr._stamp < stamp) {
-      HttpResponse* response = ajr._response;
+      GeneralResponse* response = ajr._response;
 
       if (response != nullptr) {
         delete response;
@@ -281,7 +281,7 @@ void AsyncJobManager::initAsyncJob(HttpServerJob* job, char const* hdr) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void AsyncJobManager::finishAsyncJob(AsyncJobResult::IdType jobId,
-                                     HttpResponse* response) {
+                                     GeneralResponse* response) {
   double const now = TRI_microtime();
   AsyncCallbackContext* ctx = nullptr;
 

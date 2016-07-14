@@ -36,11 +36,11 @@ namespace arangodb {
 
 class RestAgencyPrivHandler : public arangodb::RestBaseHandler {
  public:
-  explicit RestAgencyPrivHandler(HttpRequest*, consensus::Agent*);
+  RestAgencyPrivHandler(GeneralRequest*, GeneralResponse*, consensus::Agent*);
 
+ public:
   bool isDirect() const override;
-
-  status_t execute() override;
+  status execute() override;
 
  private:
   template <class T>
@@ -64,10 +64,10 @@ class RestAgencyPrivHandler : public arangodb::RestBaseHandler {
     return true;
   }
 
-  status_t reportErrorEmptyRequest();
-  status_t reportTooManySuffices();
-  status_t reportBadQuery();
-  status_t reportMethodNotAllowed();
+  status reportErrorEmptyRequest();
+  status reportTooManySuffices();
+  status reportBadQuery();
+  status reportMethodNotAllowed();
 
   consensus::Agent* _agent;
 };

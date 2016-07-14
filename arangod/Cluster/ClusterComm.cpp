@@ -25,6 +25,7 @@
 
 #include "Logger/Logger.h"
 #include "Basics/ConditionLocker.h"
+#include "Basics/HybridLogicalClock.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
@@ -41,7 +42,7 @@ using namespace arangodb;
 ////////////////////////////////////////////////////////////////////////////////
 
 void arangodb::ClusterCommRestCallback(std::string& coordinator,
-                                       arangodb::HttpResponse* response) {
+                                       GeneralResponse* response) {
   ClusterComm::instance()->asyncAnswer(coordinator, response);
 }
 
@@ -316,6 +317,9 @@ OperationID ClusterComm::asyncRequest(
     (*op->headerFields)["Authorization"] =
         ServerState::instance()->getAuthentication();
   }
+  TRI_voc_tick_t timeStamp = TRI_HybridLogicalClock();
+  (*op->headerFields)[StaticStrings::HLCHeader]
+      = arangodb::basics::HybridLogicalClock::encodeTimeStamp(timeStamp);
 
 #ifdef DEBUG_CLUSTER_COMM
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -444,6 +448,9 @@ std::unique_ptr<ClusterCommResult> ClusterComm::syncRequest(
     client->keepConnectionOnDestruction(true);
 
     headersCopy["Authorization"] = ServerState::instance()->getAuthentication();
+    TRI_voc_tick_t timeStamp = TRI_HybridLogicalClock();
+    headersCopy[StaticStrings::HLCHeader]
+        = arangodb::basics::HybridLogicalClock::encodeTimeStamp(timeStamp);
 #ifdef DEBUG_CLUSTER_COMM
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 #if ARANGODB_ENABLE_BACKTRACE
@@ -793,7 +800,14 @@ void ClusterComm::drop(ClientTransactionID const& clientTransactionID,
 ////////////////////////////////////////////////////////////////////////////////
 
 void ClusterComm::asyncAnswer(std::string& coordinatorHeader,
-                              arangodb::HttpResponse* responseToSend) {
+                              GeneralResponse* responseToSendGeneral) {
+  // TODO needs to generalized
+  auto responseToSend = dynamic_cast<HttpResponse*>(responseToSendGeneral);
+
+  if (responseToSend == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+  }
+  
   // First take apart the header to get the coordinatorID:
   ServerID coordinatorID;
   size_t start = 0;
@@ -801,16 +815,19 @@ void ClusterComm::asyncAnswer(std::string& coordinatorHeader,
 
   LOG(DEBUG) << "In asyncAnswer, seeing " << coordinatorHeader;
   pos = coordinatorHeader.find(":", start);
+
   if (pos == std::string::npos) {
     LOG(ERR) << "Could not find coordinator ID in X-Arango-Coordinator";
     return;
   }
+
   coordinatorID = coordinatorHeader.substr(start, pos - start);
 
   // Now find the connection to which the request goes from the coordinatorID:
   httpclient::ConnectionManager* cm = httpclient::ConnectionManager::instance();
   std::string endpoint =
       ClusterInfo::instance()->getServerEndpoint(coordinatorID);
+
   if (endpoint == "") {
     if (logConnectionErrors()) {
       LOG(ERR) << "asyncAnswer: cannot find endpoint for server '"
@@ -824,6 +841,7 @@ void ClusterComm::asyncAnswer(std::string& coordinatorHeader,
 
   httpclient::ConnectionManager::SingleServerConnection* connection =
       cm->leaseConnection(endpoint);
+
   if (nullptr == connection) {
     LOG(ERR) << "asyncAnswer: cannot create connection to server '"
              << coordinatorID << "'";
@@ -835,6 +853,9 @@ void ClusterComm::asyncAnswer(std::string& coordinatorHeader,
   headers["X-Arango-Response-Code"] =
       responseToSend->responseString(responseToSend->responseCode());
   headers["Authorization"] = ServerState::instance()->getAuthentication();
+  TRI_voc_tick_t timeStamp = TRI_HybridLogicalClock();
+  headers[StaticStrings::HLCHeader]
+      = arangodb::basics::HybridLogicalClock::encodeTimeStamp(timeStamp);
 
   char const* body = responseToSend->body().c_str();
   size_t len = responseToSend->body().length();
@@ -870,7 +891,14 @@ void ClusterComm::asyncAnswer(std::string& coordinatorHeader,
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string ClusterComm::processAnswer(std::string& coordinatorHeader,
-                                       arangodb::HttpRequest* answer) {
+                                       GeneralRequest* answerGeneral) {
+  // TODO needs to generalized
+  auto answer = dynamic_cast<HttpRequest*>(answerGeneral);
+
+  if (answer == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+  }
+  
   TRI_ASSERT(answer != nullptr);
   // First take apart the header to get the operaitonID:
   OperationID operationID;

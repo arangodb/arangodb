@@ -30,27 +30,27 @@
 using namespace arangodb;
 using namespace arangodb::rest;
 
-RestAqlFunctionsHandler::RestAqlFunctionsHandler(HttpRequest* request)
-    : RestVocbaseBaseHandler(request) {}
+RestAqlFunctionsHandler::RestAqlFunctionsHandler(GeneralRequest* request,
+                                                 GeneralResponse* response)
+    : RestVocbaseBaseHandler(request, response) {}
 
-HttpHandler::status_t RestAqlFunctionsHandler::execute() {
+RestHandler::status RestAqlFunctionsHandler::execute() {
   // extract the sub-request type
   auto const type = _request->requestType();
 
   if (type == GeneralRequest::RequestType::GET) {
     VPackBuilder builder;
-  
+
     builder.openObject();
     builder.add(VPackValue("functions"));
     aql::FunctionDefinitions::toVelocyPack(builder);
     builder.close();
-    
+
     generateResult(GeneralResponse::ResponseCode::OK, builder.slice());
-    return status_t(HANDLER_DONE);
+    return status::DONE;
   }
 
   generateError(GeneralResponse::ResponseCode::METHOD_NOT_ALLOWED,
                 TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
-  return status_t(HANDLER_DONE);
+  return status::DONE;
 }
-

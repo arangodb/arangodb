@@ -36,10 +36,11 @@
 using namespace arangodb;
 using namespace arangodb::rest;
 
-RestEdgesHandler::RestEdgesHandler(HttpRequest* request)
-    : RestVocbaseBaseHandler(request) {}
+RestEdgesHandler::RestEdgesHandler(GeneralRequest* request,
+                                   GeneralResponse* response)
+    : RestVocbaseBaseHandler(request, response) {}
 
-HttpHandler::status_t RestEdgesHandler::execute() {
+RestHandler::status RestEdgesHandler::execute() {
   // extract the sub-request type
   auto const type = _request->requestType();
 
@@ -73,7 +74,7 @@ HttpHandler::status_t RestEdgesHandler::execute() {
   }
 
   // this handler is done
-  return status_t(HANDLER_DONE);
+  return status::DONE;
 }
 
 bool RestEdgesHandler::getEdgesForVertexList(
@@ -498,8 +499,6 @@ bool RestEdgesHandler::readFilteredEdges() {
   if (!parseSuccess) {
     // We continue unfiltered
     // Filter could be done by caller
-    delete _response;
-    _response = nullptr;
     return readEdges(expressions);
   }
   VPackSlice body = parsedBody->slice();

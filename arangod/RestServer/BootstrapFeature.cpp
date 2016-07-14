@@ -26,7 +26,7 @@
 #include "Cluster/AgencyComm.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
-#include "HttpServer/HttpHandlerFactory.h"
+#include "HttpServer/RestHandlerFactory.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
@@ -151,7 +151,7 @@ void BootstrapFeature::start() {
   }
 
   // Start service properly:
-  arangodb::rest::HttpHandlerFactory::setMaintenance(false);
+  rest::RestHandlerFactory::setMaintenance(false);
   LOG(INFO) << "ArangoDB (version " << ARANGODB_VERSION_FULL
             << ") is ready for business. Have fun!";
 

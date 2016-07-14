@@ -31,7 +31,7 @@
 namespace arangodb {
 namespace rest {
 class AsyncJobManager;
-class HttpHandlerFactory;
+class RestHandlerFactory;
 class HttpServer;
 }
 
@@ -40,33 +40,35 @@ class RestServerThread;
 class RestServerFeature final
     : public application_features::ApplicationFeature {
  public:
+  static rest::RestHandlerFactory* HANDLER_FACTORY;
+  static rest::AsyncJobManager* JOB_MANAGER;
   static AuthInfo AUTH_INFO;
 
  public:
   static bool authenticationEnabled() {
-    return RESTSERVER != nullptr && RESTSERVER->authentication();
+    return REST_SERVER != nullptr && REST_SERVER->authentication();
   }
   
   static bool hasProxyCheck() {
-    return RESTSERVER != nullptr && RESTSERVER->proxyCheck();
+    return REST_SERVER != nullptr && REST_SERVER->proxyCheck();
   }
   
   static std::vector<std::string> getTrustedProxies() {
-    if (RESTSERVER == nullptr) {
+    if (REST_SERVER == nullptr) {
       return std::vector<std::string>();
     }
-    return RESTSERVER->trustedProxies();
+    return REST_SERVER->trustedProxies();
   }
 
   static std::string getJwtSecret() {
-    if (RESTSERVER == nullptr) {
+    if (REST_SERVER == nullptr) {
       return std::string();
     }
-    return RESTSERVER->jwtSecret();
+    return REST_SERVER->jwtSecret();
   }
 
  private:
-  static RestServerFeature* RESTSERVER;
+  static RestServerFeature* REST_SERVER;
   static const size_t _maxSecretLength = 64;
 
  public:
@@ -108,10 +110,9 @@ class RestServerFeature final
   void defineHandlers();
 
  private:
-  std::unique_ptr<rest::HttpHandlerFactory> _handlerFactory;
+  std::unique_ptr<rest::RestHandlerFactory> _handlerFactory;
   std::unique_ptr<rest::AsyncJobManager> _jobManager;
   std::vector<rest::HttpServer*> _servers;
-  RestActionHandler::action_options_t _httpOptions;
 };
 }
 

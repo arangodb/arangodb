@@ -63,12 +63,13 @@ using namespace arangodb::rest;
 uint64_t const RestReplicationHandler::defaultChunkSize = 128 * 1024;
 uint64_t const RestReplicationHandler::maxChunkSize = 128 * 1024 * 1024;
 
-RestReplicationHandler::RestReplicationHandler(HttpRequest* request)
-    : RestVocbaseBaseHandler(request) {}
+RestReplicationHandler::RestReplicationHandler(GeneralRequest* request,
+                                               GeneralResponse* response)
+    : RestVocbaseBaseHandler(request, response) {}
 
 RestReplicationHandler::~RestReplicationHandler() {}
 
-HttpHandler::status_t RestReplicationHandler::execute() {
+RestHandler::status RestReplicationHandler::execute() {
   // extract the request type
   auto const type = _request->requestType();
   auto const& suffix = _request->suffix();
@@ -88,7 +89,7 @@ HttpHandler::status_t RestReplicationHandler::execute() {
         goto BAD_CALL;
       }
       if (isCoordinatorError()) {
-        return status_t(HttpHandler::HANDLER_DONE);
+        return status::DONE;
       }
       handleCommandLoggerTickRanges();
     } else if (command == "logger-first-tick") {
@@ -96,7 +97,7 @@ HttpHandler::status_t RestReplicationHandler::execute() {
         goto BAD_CALL;
       }
       if (isCoordinatorError()) {
-        return status_t(HttpHandler::HANDLER_DONE);
+        return status::DONE;
       }
       handleCommandLoggerFirstTick();
     } else if (command == "logger-follow") {
@@ -105,7 +106,7 @@ HttpHandler::status_t RestReplicationHandler::execute() {
         goto BAD_CALL;
       }
       if (isCoordinatorError()) {
-        return status_t(HttpHandler::HANDLER_DONE);
+        return status::DONE;
       }
       handleCommandLoggerFollow();
     } else if (command == "determine-open-transactions") {
@@ -121,7 +122,7 @@ HttpHandler::status_t RestReplicationHandler::execute() {
       }
     } else if (command == "barrier") {
       if (isCoordinatorError()) {
-        return status_t(HttpHandler::HANDLER_DONE);
+        return status::DONE;
       }
       handleCommandBarrier();
     } else if (command == "inventory") {
@@ -142,7 +143,7 @@ HttpHandler::status_t RestReplicationHandler::execute() {
       }
 
       if (isCoordinatorError()) {
-        return status_t(HttpHandler::HANDLER_DONE);
+        return status::DONE;
       }
 
       if (type == GeneralRequest::RequestType::POST) {
@@ -192,7 +193,7 @@ HttpHandler::status_t RestReplicationHandler::execute() {
       }
 
       if (isCoordinatorError()) {
-        return status_t(HttpHandler::HANDLER_DONE);
+        return status::DONE;
       }
 
       handleCommandSync();
@@ -202,7 +203,7 @@ HttpHandler::status_t RestReplicationHandler::execute() {
       }
 
       if (isCoordinatorError()) {
-        return status_t(HttpHandler::HANDLER_DONE);
+        return status::DONE;
       }
 
       handleCommandMakeSlave();
@@ -226,7 +227,7 @@ HttpHandler::status_t RestReplicationHandler::execute() {
       }
 
       if (isCoordinatorError()) {
-        return status_t(HttpHandler::HANDLER_DONE);
+        return status::DONE;
       }
 
       handleCommandApplierStart();
@@ -236,7 +237,7 @@ HttpHandler::status_t RestReplicationHandler::execute() {
       }
 
       if (isCoordinatorError()) {
-        return status_t(HttpHandler::HANDLER_DONE);
+        return status::DONE;
       }
 
       handleCommandApplierStop();
@@ -301,7 +302,7 @@ HttpHandler::status_t RestReplicationHandler::execute() {
                     TRI_ERROR_HTTP_BAD_PARAMETER, "invalid command");
     }
 
-    return status_t(HttpHandler::HANDLER_DONE);
+    return status::DONE;
   }
 
 BAD_CALL:
@@ -314,7 +315,7 @@ BAD_CALL:
                   TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
   }
 
-  return status_t(HttpHandler::HANDLER_DONE);
+  return status::DONE;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -437,7 +438,8 @@ void RestReplicationHandler::handleCommandLoggerState() {
     builder.add("state", VPackValue(VPackValueType::Object));
     builder.add("running", VPackValue(true));
     builder.add("lastLogTick", VPackValue(std::to_string(s.lastCommittedTick)));
-    builder.add("lastUncommittedLogTick", VPackValue(std::to_string(s.lastAssignedTick)));
+    builder.add("lastUncommittedLogTick",
+                VPackValue(std::to_string(s.lastAssignedTick)));
     builder.add("totalEvents", VPackValue(s.numEvents + s.numEventsSync));
     builder.add("time", VPackValue(s.timeString));
     builder.close();
@@ -460,7 +462,8 @@ void RestReplicationHandler::handleCommandLoggerState() {
       TRI_GetTimeStampReplication(std::get<1>(it), &buffer[0], sizeof(buffer));
       builder.add("time", VPackValue(buffer));
 
-      builder.add("lastServedTick", VPackValue(std::to_string(std::get<2>(it))));
+      builder.add("lastServedTick",
+                  VPackValue(std::to_string(std::get<2>(it))));
 
       builder.close();
     }
@@ -553,16 +556,18 @@ void RestReplicationHandler::handleCommandBatch() {
 
   if (type == GeneralRequest::RequestType::POST) {
     // create a new blocker
-    std::shared_ptr<VPackBuilder> input = _request->toVelocyPack(&VPackOptions::Defaults);
+    std::shared_ptr<VPackBuilder> input =
+        _request->toVelocyPack(&VPackOptions::Defaults);
 
     if (input == nullptr || !input->slice().isObject()) {
-      generateError(GeneralResponse::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                    "invalid JSON");
+      generateError(GeneralResponse::ResponseCode::BAD,
+                    TRI_ERROR_HTTP_BAD_PARAMETER, "invalid JSON");
       return;
     }
 
     // extract ttl
-    double expires = VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", 0);
+    double expires =
+        VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", 0);
 
     TRI_voc_tick_t id;
     int res = TRI_InsertBlockerCompactorVocBase(_vocbase, expires, &id);
@@ -587,24 +592,27 @@ void RestReplicationHandler::handleCommandBatch() {
 
   if (type == GeneralRequest::RequestType::PUT && len >= 2) {
     // extend an existing blocker
-    TRI_voc_tick_t id = static_cast<TRI_voc_tick_t>(StringUtils::uint64(suffix[1]));
+    TRI_voc_tick_t id =
+        static_cast<TRI_voc_tick_t>(StringUtils::uint64(suffix[1]));
 
-    std::shared_ptr<VPackBuilder> input = _request->toVelocyPack(&VPackOptions::Defaults);
+    std::shared_ptr<VPackBuilder> input =
+        _request->toVelocyPack(&VPackOptions::Defaults);
 
     if (input == nullptr || !input->slice().isObject()) {
-      generateError(GeneralResponse::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                    "invalid JSON");
+      generateError(GeneralResponse::ResponseCode::BAD,
+                    TRI_ERROR_HTTP_BAD_PARAMETER, "invalid JSON");
       return;
     }
 
     // extract ttl
-    double expires = VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", 0);
+    double expires =
+        VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", 0);
 
     // now extend the blocker
     int res = TRI_TouchBlockerCompactorVocBase(_vocbase, id, expires);
 
     if (res == TRI_ERROR_NO_ERROR) {
-      createResponse(GeneralResponse::ResponseCode::NO_CONTENT);
+      setResponseCode(GeneralResponse::ResponseCode::NO_CONTENT);
     } else {
       generateError(GeneralResponse::responseCode(res), res);
     }
@@ -613,12 +621,13 @@ void RestReplicationHandler::handleCommandBatch() {
 
   if (type == GeneralRequest::RequestType::DELETE_REQ && len >= 2) {
     // delete an existing blocker
-    TRI_voc_tick_t id = static_cast<TRI_voc_tick_t>(StringUtils::uint64(suffix[1]));
+    TRI_voc_tick_t id =
+        static_cast<TRI_voc_tick_t>(StringUtils::uint64(suffix[1]));
 
     int res = TRI_RemoveBlockerCompactorVocBase(_vocbase, id);
 
     if (res == TRI_ERROR_NO_ERROR) {
-      createResponse(GeneralResponse::ResponseCode::NO_CONTENT);
+      setResponseCode(GeneralResponse::ResponseCode::NO_CONTENT);
     } else {
       generateError(GeneralResponse::responseCode(res), res);
     }
@@ -645,16 +654,18 @@ void RestReplicationHandler::handleCommandBarrier() {
   if (type == GeneralRequest::RequestType::POST) {
     // create a new barrier
 
-    std::shared_ptr<VPackBuilder> input = _request->toVelocyPack(&VPackOptions::Defaults);
+    std::shared_ptr<VPackBuilder> input =
+        _request->toVelocyPack(&VPackOptions::Defaults);
 
     if (input == nullptr || !input->slice().isObject()) {
-      generateError(GeneralResponse::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                    "invalid JSON");
+      generateError(GeneralResponse::ResponseCode::BAD,
+                    TRI_ERROR_HTTP_BAD_PARAMETER, "invalid JSON");
       return;
     }
 
     // extract ttl
-    double ttl = VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", 0);
+    double ttl =
+        VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", 0);
 
     TRI_voc_tick_t minTick = 0;
     VPackSlice const v = input->slice().get("tick");
@@ -693,16 +704,18 @@ void RestReplicationHandler::handleCommandBarrier() {
     // extend an existing barrier
     TRI_voc_tick_t id = StringUtils::uint64(suffix[1]);
 
-    std::shared_ptr<VPackBuilder> input = _request->toVelocyPack(&VPackOptions::Defaults);
+    std::shared_ptr<VPackBuilder> input =
+        _request->toVelocyPack(&VPackOptions::Defaults);
 
     if (input == nullptr || !input->slice().isObject()) {
-      generateError(GeneralResponse::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                    "invalid JSON");
+      generateError(GeneralResponse::ResponseCode::BAD,
+                    TRI_ERROR_HTTP_BAD_PARAMETER, "invalid JSON");
       return;
     }
 
     // extract ttl
-    double ttl = VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", 0);
+    double ttl =
+        VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", 0);
 
     TRI_voc_tick_t minTick = 0;
     VPackSlice const v = input->slice().get("tick");
@@ -715,7 +728,7 @@ void RestReplicationHandler::handleCommandBarrier() {
 
     if (arangodb::wal::LogfileManager::instance()->extendLogfileBarrier(
             id, ttl, minTick)) {
-      createResponse(GeneralResponse::ResponseCode::NO_CONTENT);
+      setResponseCode(GeneralResponse::ResponseCode::NO_CONTENT);
     } else {
       int res = TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
       generateError(GeneralResponse::responseCode(res), res);
@@ -728,7 +741,7 @@ void RestReplicationHandler::handleCommandBarrier() {
     TRI_voc_tick_t id = StringUtils::uint64(suffix[1]);
 
     if (arangodb::wal::LogfileManager::instance()->removeLogfileBarrier(id)) {
-      createResponse(GeneralResponse::ResponseCode::NO_CONTENT);
+      setResponseCode(GeneralResponse::ResponseCode::NO_CONTENT);
     } else {
       int res = TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
       generateError(GeneralResponse::responseCode(res), res);
@@ -765,6 +778,13 @@ void RestReplicationHandler::handleCommandBarrier() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleTrampolineCoordinator() {
+  // TODO needs to generalized
+  auto request = dynamic_cast<HttpRequest*>(_request);
+
+  if (request == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+  }
+
   // First check the DBserver component of the body json:
   ServerID DBserver = _request->value("DBserver");
 
@@ -801,7 +821,7 @@ void RestReplicationHandler::handleTrampolineCoordinator() {
                              _request->requestType(),
                              "/_db/" + StringUtils::urlEncode(dbname) +
                                  _request->requestPath() + params,
-                             _request->body(), *headers, 300.0);
+                             request->body(), *headers, 300.0);
 
   if (res->status == CL_COMM_TIMEOUT) {
     // No reply, we give up:
@@ -825,10 +845,19 @@ void RestReplicationHandler::handleTrampolineCoordinator() {
   }
 
   bool dummy;
-  createResponse(static_cast<GeneralResponse::ResponseCode>(
+  setResponseCode(static_cast<GeneralResponse::ResponseCode>(
       res->result->getHttpReturnCode()));
-  _response->setContentType(res->result->getHeaderField(StaticStrings::ContentTypeHeader, dummy));
-  _response->body().swap(&(res->result->getBody()));
+
+  // TODO needs to generalized
+  auto response = dynamic_cast<HttpResponse*>(_response);
+
+  if (response == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+  }
+
+  response->setContentType(
+      res->result->getHeaderField(StaticStrings::ContentTypeHeader, dummy));
+  response->body().swap(&(res->result->getBody()));
 
   auto const& resultHeaders = res->result->getHeaderFields();
   for (auto const& it : resultHeaders) {
@@ -929,8 +958,7 @@ void RestReplicationHandler::handleCommandLoggerFollow() {
   std::string const& value6 = _request->value("collection", found);
 
   if (found) {
-    TRI_vocbase_col_t* c =
-        TRI_LookupCollectionByNameVocBase(_vocbase, value6);
+    TRI_vocbase_col_t* c = TRI_LookupCollectionByNameVocBase(_vocbase, value6);
 
     if (c == nullptr) {
       generateError(GeneralResponse::ResponseCode::NOT_FOUND,
@@ -950,10 +978,12 @@ void RestReplicationHandler::handleCommandLoggerFollow() {
   int res = TRI_ERROR_NO_ERROR;
 
   try {
-    auto transactionContext = std::make_shared<StandaloneTransactionContext>(_vocbase);
+    auto transactionContext =
+        std::make_shared<StandaloneTransactionContext>(_vocbase);
 
     // initialize the dump container
-    TRI_replication_dump_t dump(transactionContext, static_cast<size_t>(determineChunkSize()),
+    TRI_replication_dump_t dump(transactionContext,
+                                static_cast<size_t>(determineChunkSize()),
                                 includeSystem, cid);
 
     // and dump
@@ -968,12 +998,19 @@ void RestReplicationHandler::handleCommandLoggerFollow() {
       size_t const length = TRI_LengthStringBuffer(dump._buffer);
 
       if (length == 0) {
-        createResponse(GeneralResponse::ResponseCode::NO_CONTENT);
+        setResponseCode(GeneralResponse::ResponseCode::NO_CONTENT);
       } else {
-        createResponse(GeneralResponse::ResponseCode::OK);
+        setResponseCode(GeneralResponse::ResponseCode::OK);
       }
 
-      _response->setContentType(HttpResponse::CONTENT_TYPE_DUMP);
+      // TODO needs to generalized
+      auto response = dynamic_cast<HttpResponse*>(_response);
+
+      if (response == nullptr) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+      }
+
+      response->setContentType(GeneralResponse::ContentType::DUMP);
 
       // set headers
       _response->setHeaderNC(TRI_REPLICATION_HEADER_CHECKMORE,
@@ -992,7 +1029,7 @@ void RestReplicationHandler::handleCommandLoggerFollow() {
 
       if (length > 0) {
         // transfer ownership of the buffer contents
-        _response->body().set(dump._buffer);
+        response->body().set(dump._buffer);
 
         // to avoid double freeing
         TRI_StealStringBuffer(dump._buffer);
@@ -1048,11 +1085,13 @@ void RestReplicationHandler::handleCommandDetermineOpenTransactions() {
   int res = TRI_ERROR_NO_ERROR;
 
   try {
-    auto transactionContext = std::make_shared<StandaloneTransactionContext>(_vocbase);
+    auto transactionContext =
+        std::make_shared<StandaloneTransactionContext>(_vocbase);
 
     // initialize the dump container
-    TRI_replication_dump_t dump(transactionContext, static_cast<size_t>(determineChunkSize()), false,
-                                0);
+    TRI_replication_dump_t dump(transactionContext,
+                                static_cast<size_t>(determineChunkSize()),
+                                false, 0);
 
     // and dump
     res = TRI_DetermineOpenTransactionsReplication(&dump, tickStart, tickEnd);
@@ -1062,12 +1101,19 @@ void RestReplicationHandler::handleCommandDetermineOpenTransactions() {
       size_t const length = TRI_LengthStringBuffer(dump._buffer);
 
       if (length == 0) {
-        createResponse(GeneralResponse::ResponseCode::NO_CONTENT);
+        setResponseCode(GeneralResponse::ResponseCode::NO_CONTENT);
       } else {
-        createResponse(GeneralResponse::ResponseCode::OK);
+        setResponseCode(GeneralResponse::ResponseCode::OK);
       }
 
-      _response->setContentType(HttpResponse::CONTENT_TYPE_DUMP);
+      // TODO needs to generalized
+      auto response = dynamic_cast<HttpResponse*>(_response);
+
+      if (response == nullptr) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+      }
+
+      response->setContentType(HttpResponse::ContentType::DUMP);
 
       _response->setHeaderNC(TRI_REPLICATION_HEADER_FROMPRESENT,
                              dump._fromTickIncluded ? "true" : "false");
@@ -1077,7 +1123,7 @@ void RestReplicationHandler::handleCommandDetermineOpenTransactions() {
 
       if (length > 0) {
         // transfer ownership of the buffer contents
-        _response->body().set(dump._buffer);
+        response->body().set(dump._buffer);
 
         // to avoid double freeing
         TRI_StealStringBuffer(dump._buffer);
@@ -1134,7 +1180,8 @@ void RestReplicationHandler::handleCommandInventory() {
 
     builder.add("running", VPackValue(true));
     builder.add("lastLogTick", VPackValue(std::to_string(s.lastCommittedTick)));
-    builder.add("lastUncommittedLogTick", VPackValue(std::to_string(s.lastAssignedTick)));
+    builder.add("lastUncommittedLogTick",
+                VPackValue(std::to_string(s.lastAssignedTick)));
     builder.add("totalEvents", VPackValue(s.numEvents + s.numEventsSync));
     builder.add("time", VPackValue(s.timeString));
     builder.close();  // state
@@ -1534,8 +1581,11 @@ int RestReplicationHandler::processRestoreCollection(
         // some collections must not be dropped
 
         // instead, truncate them
-        SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), col->_cid, TRI_TRANSACTION_WRITE);
-        trx.addHint(TRI_TRANSACTION_HINT_RECOVERY, false); // to turn off waitForSync!
+        SingleCollectionTransaction trx(
+            StandaloneTransactionContext::Create(_vocbase), col->_cid,
+            TRI_TRANSACTION_WRITE);
+        trx.addHint(TRI_TRANSACTION_HINT_RECOVERY,
+                    false);  // to turn off waitForSync!
 
         res = trx.begin();
         if (res != TRI_ERROR_NO_ERROR) {
@@ -1837,7 +1887,9 @@ int RestReplicationHandler::processRestoreIndexes(VPackSlice const& collection,
 
     TRI_document_collection_t* document = guard.collection()->_collection;
 
-    SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), document->_info.id(), TRI_TRANSACTION_WRITE);
+    SingleCollectionTransaction trx(
+        StandaloneTransactionContext::Create(_vocbase), document->_info.id(),
+        TRI_TRANSACTION_WRITE);
 
     int res = trx.begin();
 
@@ -1973,9 +2025,8 @@ int RestReplicationHandler::processRestoreIndexesCoordinator(
 
 int RestReplicationHandler::applyCollectionDumpMarker(
     arangodb::Transaction& trx, CollectionNameResolver const& resolver,
-    std::string const& collectionName, TRI_replication_operation_e type, 
+    std::string const& collectionName, TRI_replication_operation_e type,
     VPackSlice const& old, VPackSlice const& slice, std::string& errorMsg) {
-    
   if (type == REPLICATION_MARKER_DOCUMENT) {
     // {"type":2400,"key":"230274209405676","data":{"_key":"230274209405676","_rev":"230274209405676","foo":"bar"}}
 
@@ -1989,7 +2040,7 @@ int RestReplicationHandler::applyCollectionDumpMarker(
 
     try {
       OperationResult opRes = trx.insert(collectionName, slice, options);
-      
+
       if (opRes.code == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
         // must update
         opRes = trx.update(collectionName, slice, options);
@@ -2005,7 +2056,7 @@ int RestReplicationHandler::applyCollectionDumpMarker(
 
   else if (type == REPLICATION_MARKER_REMOVE) {
     // {"type":2402,"key":"592063"}
-    
+
     try {
       OperationOptions options;
       options.silent = true;
@@ -2035,8 +2086,8 @@ int RestReplicationHandler::applyCollectionDumpMarker(
 static int restoreDataParser(char const* ptr, char const* pos,
                              std::string const& invalidMsg, bool useRevision,
                              std::string& errorMsg, std::string& key,
-                             std::string& rev,
-                             VPackBuilder& builder, VPackSlice& doc,
+                             std::string& rev, VPackBuilder& builder,
+                             VPackSlice& doc,
                              TRI_replication_operation_e& type) {
   builder.clear();
 
@@ -2091,23 +2142,22 @@ static int restoreDataParser(char const* ptr, char const* pos,
     else if (attributeName == "data") {
       if (pair.value.isObject()) {
         doc = pair.value;
-    
+
         if (doc.hasKey(StaticStrings::KeyString)) {
           key = doc.get(StaticStrings::KeyString).copyString();
-        }
-        else if (useRevision && doc.hasKey(StaticStrings::RevString)) {
+        } else if (useRevision && doc.hasKey(StaticStrings::RevString)) {
           rev = doc.get(StaticStrings::RevString).copyString();
-        } 
+        }
       }
     }
-    
+
     else if (attributeName == "key") {
       if (key.empty()) {
         key = pair.value.copyString();
       }
     }
   }
-  
+
   if (type == REPLICATION_MARKER_DOCUMENT && !doc.isObject()) {
     errorMsg = "got document marker without contents";
     return TRI_ERROR_HTTP_BAD_PARAMETER;
@@ -2131,12 +2181,19 @@ int RestReplicationHandler::processRestoreDataBatch(
     arangodb::Transaction& trx, CollectionNameResolver const& resolver,
     std::string const& collectionName, bool useRevision, bool force,
     std::string& errorMsg) {
-  std::string const invalidMsg = "received invalid JSON data for collection " +
-                                 collectionName;
+  std::string const invalidMsg =
+      "received invalid JSON data for collection " + collectionName;
 
   VPackBuilder builder;
 
-  std::string const& bodyStr = _request->body();
+  // TODO needs to generalized
+  auto request = dynamic_cast<HttpRequest*>(_request);
+
+  if (request == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+  }
+
+  std::string const& bodyStr = request->body();
   char const* ptr = bodyStr.c_str();
   char const* end = ptr + bodyStr.size();
 
@@ -2337,8 +2394,11 @@ int RestReplicationHandler::processRestoreDataBatch(
 int RestReplicationHandler::processRestoreData(
     CollectionNameResolver const& resolver, TRI_voc_cid_t cid, bool useRevision,
     bool force, std::string& errorMsg) {
-  SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), cid, TRI_TRANSACTION_WRITE);
-  trx.addHint(TRI_TRANSACTION_HINT_RECOVERY, false); // to turn off waitForSync!
+  SingleCollectionTransaction trx(
+      StandaloneTransactionContext::Create(_vocbase), cid,
+      TRI_TRANSACTION_WRITE);
+  trx.addHint(TRI_TRANSACTION_HINT_RECOVERY,
+              false);  // to turn off waitForSync!
 
   int res = trx.begin();
 
@@ -2349,8 +2409,8 @@ int RestReplicationHandler::processRestoreData(
     return res;
   }
 
-  res = processRestoreDataBatch(trx, resolver, trx.name(), useRevision,
-                                force, errorMsg);
+  res = processRestoreDataBatch(trx, resolver, trx.name(), useRevision, force,
+                                errorMsg);
 
   res = trx.finish(res);
 
@@ -2468,7 +2528,14 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator() {
       std::string("received invalid JSON data for collection ") + name;
   VPackBuilder builder;
 
-  std::string const& bodyStr = _request->body();
+  // TODO needs to generalized
+  auto request = dynamic_cast<HttpRequest*>(_request);
+
+  if (request == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+  }
+
+  std::string const& bodyStr = request->body();
   char const* ptr = bodyStr.c_str();
   char const* end = ptr + bodyStr.size();
 
@@ -2479,7 +2546,7 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator() {
 
     if (pos == 0) {
       pos = end;
-    } 
+    }
 
     if (pos - ptr > 1) {
       // found something
@@ -2558,7 +2625,8 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator() {
         errorMsg = "cannot find shard";
         res = TRI_ERROR_INTERNAL;
       } else {
-        auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
+        auto headers =
+            std::make_unique<std::unordered_map<std::string, std::string>>();
         size_t j = it->second;
         auto body = std::make_shared<std::string const>(bufs[j]->c_str(),
                                                         bufs[j]->length());
@@ -2825,7 +2893,8 @@ void RestReplicationHandler::handleCommandGetKeys() {
           to = max;
         }
 
-        auto result = collectionKeys->hashChunk(static_cast<size_t>(from), static_cast<size_t>(to));
+        auto result = collectionKeys->hashChunk(static_cast<size_t>(from),
+                                                static_cast<size_t>(to));
 
         // Add a chunk
         b.add(VPackValue(VPackValueType::Object));
@@ -2861,7 +2930,7 @@ void RestReplicationHandler::handleCommandGetKeys() {
 
 void RestReplicationHandler::handleCommandFetchKeys() {
   std::vector<std::string> const& suffix = _request->suffix();
-  
+
   if (suffix.size() != 2) {
     generateError(GeneralResponse::ResponseCode::BAD,
                   TRI_ERROR_HTTP_BAD_PARAMETER,
@@ -2926,13 +2995,15 @@ void RestReplicationHandler::handleCommandFetchKeys() {
     }
 
     try {
-      std::shared_ptr<TransactionContext> transactionContext = StandaloneTransactionContext::Create(_vocbase);
+      std::shared_ptr<TransactionContext> transactionContext =
+          StandaloneTransactionContext::Create(_vocbase);
 
       VPackBuilder resultBuilder(transactionContext->getVPackOptions());
       resultBuilder.openArray();
 
       if (keys) {
-        collectionKeys->dumpKeys(resultBuilder, chunk, static_cast<size_t>(chunkSize));
+        collectionKeys->dumpKeys(resultBuilder, chunk,
+                                 static_cast<size_t>(chunkSize));
       } else {
         bool success;
         std::shared_ptr<VPackBuilder> parsedIds =
@@ -2942,14 +3013,17 @@ void RestReplicationHandler::handleCommandFetchKeys() {
           collectionKeys->release();
           return;
         }
-        collectionKeys->dumpDocs(resultBuilder, chunk, static_cast<size_t>(chunkSize), parsedIds->slice());
+        collectionKeys->dumpDocs(resultBuilder, chunk,
+                                 static_cast<size_t>(chunkSize),
+                                 parsedIds->slice());
       }
 
       resultBuilder.close();
 
       collectionKeys->release();
 
-      generateResult(GeneralResponse::ResponseCode::OK, resultBuilder.slice(), transactionContext);
+      generateResult(GeneralResponse::ResponseCode::OK, resultBuilder.slice(),
+                     transactionContext);
       return;
     } catch (...) {
       collectionKeys->release();
@@ -2994,12 +3068,15 @@ void RestReplicationHandler::handleCommandRemoveKeys() {
 
   VPackBuilder resultBuilder;
   resultBuilder.openObject();
-  resultBuilder.add("id", VPackValue(id)); // id as a string
+  resultBuilder.add("id", VPackValue(id));  // id as a string
   resultBuilder.add("error", VPackValue(false));
-  resultBuilder.add("code", VPackValue(static_cast<int>(GeneralResponse::ResponseCode::ACCEPTED)));
+  resultBuilder.add(
+      "code",
+      VPackValue(static_cast<int>(GeneralResponse::ResponseCode::ACCEPTED)));
   resultBuilder.close();
 
-  generateResult(GeneralResponse::ResponseCode::ACCEPTED, resultBuilder.slice());
+  generateResult(GeneralResponse::ResponseCode::ACCEPTED,
+                 resultBuilder.slice());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3111,17 +3188,20 @@ void RestReplicationHandler::handleCommandDump() {
     TRI_vocbase_col_t* col = guard.collection();
     TRI_ASSERT(col != nullptr);
 
-    auto transactionContext = std::make_shared<StandaloneTransactionContext>(_vocbase);
+    auto transactionContext =
+        std::make_shared<StandaloneTransactionContext>(_vocbase);
 
     // initialize the dump container
-    TRI_replication_dump_t dump(transactionContext, static_cast<size_t>(determineChunkSize()),
+    TRI_replication_dump_t dump(transactionContext,
+                                static_cast<size_t>(determineChunkSize()),
                                 includeSystem, 0);
     
     if (compat28) {
       dump._compat28 = true;
     }
 
-    res = TRI_DumpCollectionReplication(&dump, col, tickStart, tickEnd, withTicks);
+    res = TRI_DumpCollectionReplication(&dump, col, tickStart, tickEnd,
+                                        withTicks);
 
     if (res != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(res);
@@ -3131,12 +3211,19 @@ void RestReplicationHandler::handleCommandDump() {
     size_t const length = TRI_LengthStringBuffer(dump._buffer);
 
     if (length == 0) {
-      createResponse(GeneralResponse::ResponseCode::NO_CONTENT);
+      setResponseCode(GeneralResponse::ResponseCode::NO_CONTENT);
     } else {
-      createResponse(GeneralResponse::ResponseCode::OK);
+      setResponseCode(GeneralResponse::ResponseCode::OK);
     }
 
-    _response->setContentType(HttpResponse::CONTENT_TYPE_DUMP);
+    // TODO needs to generalized
+    auto response = dynamic_cast<HttpResponse*>(_response);
+
+    if (response == nullptr) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    }
+
+    response->setContentType(GeneralResponse::ContentType::DUMP);
 
     // set headers
     _response->setHeaderNC(
@@ -3147,7 +3234,7 @@ void RestReplicationHandler::handleCommandDump() {
                            StringUtils::itoa(dump._lastFoundTick));
 
     // transfer ownership of the buffer contents
-    _response->body().set(dump._buffer);
+    response->body().set(dump._buffer);
 
     // avoid double freeing
     TRI_StealStringBuffer(dump._buffer);
@@ -3357,7 +3444,7 @@ void RestReplicationHandler::handleCommandSync() {
     // error already created
     return;
   }
-  
+
   VPackSlice const body = parsedBody->slice();
 
   std::string const endpoint =
@@ -3476,7 +3563,8 @@ void RestReplicationHandler::handleCommandSync() {
     result.close();  // base
     generateResult(GeneralResponse::ResponseCode::OK, result.slice());
   } catch (arangodb::basics::Exception const& ex) {
-    generateError(HttpResponse::responseCode(ex.code()), ex.code(), ex.message());
+    generateError(HttpResponse::responseCode(ex.code()), ex.code(),
+                  ex.message());
   } catch (std::exception const& ex) {
     int res = TRI_ERROR_INTERNAL;
     generateError(HttpResponse::responseCode(res), res, ex.what());

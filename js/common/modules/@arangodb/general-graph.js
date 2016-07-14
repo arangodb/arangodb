@@ -1404,7 +1404,7 @@ Graph.prototype._commonProperties = function (vertex1Example, vertex2Example, op
       LET toZip = (
         ${transformExampleToAQL(vertex2Example, Object.keys(this.__vertexCollections), bindVars, "right")}
         FILTER right != left
-        LET shared = (FOR a IN ATTRIBUTES(left) FILTER
+        LET shared = (FOR a IN ATTRIBUTES(left) FILTER a != "_rev" FILTER
           (${options.hasOwnProperty("ignoreProperties") ? `a NOT IN ${JSON.stringify(options.ignoreProperties)} AND` : ""} left[a] == right[a])
           OR a == '_id' RETURN a)
           FILTER LENGTH(shared) > 1
@@ -1432,7 +1432,7 @@ Graph.prototype._countCommonProperties = function (vertex1Example, vertex2Exampl
       LET s = SUM(
         ${transformExampleToAQL(vertex2Example, Object.keys(this.__vertexCollections), bindVars, "right")}
         FILTER right != left
-        LET shared = (FOR a IN ATTRIBUTES(left) FILTER
+        LET shared = (FOR a IN ATTRIBUTES(left) FILTER a != "_rev" FILTER
           (${options.hasOwnProperty("ignoreProperties") ? `a NOT IN ${JSON.stringify(options.ignoreProperties)} AND` : ""} left[a] == right[a])
           OR a == '_id' RETURN a)
           FILTER LENGTH(shared) > 1

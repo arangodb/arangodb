@@ -29,7 +29,7 @@
 
 namespace arangodb {
 namespace rest {
-class HttpHandlerFactory;
+class RestHandlerFactory;
 class AsyncJobManager;
 }
 

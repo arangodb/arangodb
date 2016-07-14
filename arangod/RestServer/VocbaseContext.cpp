@@ -46,7 +46,7 @@ using namespace arangodb::rest;
 double VocbaseContext::ServerSessionTtl =
     60.0 * 60.0 * 24 * 60;  // 2 month session timeout
 
-VocbaseContext::VocbaseContext(HttpRequest* request, TRI_vocbase_t* vocbase,
+VocbaseContext::VocbaseContext(GeneralRequest* request, TRI_vocbase_t* vocbase,
                                std::string const& jwtSecret)
     : RequestContext(request), _vocbase(vocbase), _jwtSecret(jwtSecret) {
   TRI_ASSERT(_vocbase != nullptr);

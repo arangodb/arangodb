@@ -33,6 +33,9 @@
 #include "Rest/HttpResponse.h"
 #include "Rest/RequestContext.h"
 
+#include "Rest/GeneralRequest.h"
+#include "Rest/GeneralResponse.h"
+
 struct TRI_server_t;
 struct TRI_vocbase_t;
 
@@ -42,7 +45,7 @@ class VocbaseContext : public arangodb::RequestContext {
   static double ServerSessionTtl;
 
  public:
-  VocbaseContext(HttpRequest*, TRI_vocbase_t*, std::string const&);
+  VocbaseContext(GeneralRequest*, TRI_vocbase_t*, std::string const&);
   ~VocbaseContext();
 
  public:

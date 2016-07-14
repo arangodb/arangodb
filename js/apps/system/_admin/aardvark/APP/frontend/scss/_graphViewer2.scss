@@ -45,8 +45,19 @@
   position: fixed;
 
   svg {
-    path {
-      font-size: 2pt !important;
+    #wheelnav-nodeContextMenu-title-0 {
+      transform: translate(24px, 14px) scale(.7) !important;
+    }
+
+    #wheelnav-nodeContextMenu-title-0,
+    #wheelnav-nodeContextMenu-title-1,
+    #wheelnav-nodeContextMenu-title-2,
+    #wheelnav-nodeContextMenu-title-3 {
+      fill: $c-white;
+
+      &:hover {
+        fill: $c-positive;
+      }
     }
   }
 }

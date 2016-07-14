@@ -1048,8 +1048,8 @@ function ahuacatlQueryGeneralCommonTestSuite() {
                      RETURN ZIP([left._id], [(FOR right IN ${AQL_START_EVERYWHERE}
                        FILTER left != right
                        LET shared = (FOR a IN ATTRIBUTES(left) 
-                                       FILTER a == "_id"
-                                       OR left[a] == right[a]
+                                       FILTER a != "_rev" AND (a == "_id"
+                                       OR left[a] == right[a])
                                        RETURN a)
                        FILTER LENGTH(shared) > 1
                        RETURN KEEP(right, shared))]
@@ -1077,8 +1077,8 @@ function ahuacatlQueryGeneralCommonTestSuite() {
                        FILTER left != right
                        FILTER right.harald == "meier"
                        LET shared = (FOR a IN ATTRIBUTES(left) 
-                                       FILTER a == "_id"
-                                       OR left[a] == right[a]
+                                       FILTER a != "_rev" AND (a == "_id"
+                                       OR left[a] == right[a])
                                        RETURN a)
                        FILTER LENGTH(shared) > 1
                        RETURN KEEP(right, shared))]
@@ -1095,7 +1095,7 @@ function ahuacatlQueryGeneralCommonTestSuite() {
                      LET tmp = (FOR right IN ${AQL_START_EVERYWHERE}
                        FILTER left != right
                        LET shared = (FOR a IN ATTRIBUTES(left) 
-                                       FILTER a != "harald"
+                                       FILTER a != "_rev" AND a != "harald"
                                        AND (a == "_id" OR left[a] == right[a])
                                        RETURN a)
                        FILTER LENGTH(shared) > 1

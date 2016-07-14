@@ -29,10 +29,7 @@
 
 namespace arangodb {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief container for complete multipart message
-////////////////////////////////////////////////////////////////////////////////
-
+// container for complete multipart message
 struct MultipartMessage {
   MultipartMessage(char const* boundary, size_t const boundaryLength,
                    char const* messageStart, char const* messageEnd)
@@ -47,10 +44,7 @@ struct MultipartMessage {
   char const* messageEnd;
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief container for search data within multipart message
-////////////////////////////////////////////////////////////////////////////////
-
+// container for search data within multipart message
 struct SearchHelper {
   MultipartMessage* message;
   char const* searchStart;
@@ -61,42 +55,25 @@ struct SearchHelper {
   bool containsMore;
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief batch request handler
-////////////////////////////////////////////////////////////////////////////////
-
 class RestBatchHandler : public RestVocbaseBaseHandler {
  public:
-  explicit RestBatchHandler(HttpRequest*);
-
+  RestBatchHandler(GeneralRequest*, GeneralResponse*);
   ~RestBatchHandler();
 
  public:
-  HttpHandler::status_t execute() override;
+  RestHandler::status execute() override;
 
  private:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief extract the boundary from the body of a multipart message
-  //////////////////////////////////////////////////////////////////////////////
-
+  // extract the boundary from the body of a multipart message
   bool getBoundaryBody(std::string*);
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief extract the boundary from the HTTP header of a multipart message
-  //////////////////////////////////////////////////////////////////////////////
-
+  // extract the boundary from the HTTP header of a multipart message
   bool getBoundaryHeader(std::string*);
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief extract the boundary of a multipart message
-  //////////////////////////////////////////////////////////////////////////////
-
+  // extract the boundary of a multipart message
   bool getBoundary(std::string*);
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief extract the next part from a multipart message
-  //////////////////////////////////////////////////////////////////////////////
-
+  // extract the next part from a multipart message
   bool extractPart(SearchHelper*);
 };
 }

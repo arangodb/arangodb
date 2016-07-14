@@ -33,9 +33,9 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestActionHandler::RestActionHandler(HttpRequest* request,
-                                     action_options_t* data)
-    : RestVocbaseBaseHandler(request),
+RestActionHandler::RestActionHandler(GeneralRequest* request,
+                                     GeneralResponse* response)
+    : RestVocbaseBaseHandler(request, response),
       _action(nullptr),
       _dataLock(),
       _data(nullptr) {
@@ -44,7 +44,7 @@ RestActionHandler::RestActionHandler(HttpRequest* request,
 
 bool RestActionHandler::isDirect() const { return _action == nullptr; }
 
-HttpHandler::status_t RestActionHandler::execute() {
+RestHandler::status RestActionHandler::execute() {
   TRI_action_result_t result;
 
   // check the request path
@@ -85,7 +85,7 @@ HttpHandler::status_t RestActionHandler::execute() {
   }
 
   // handler has finished, generate result
-  return status_t(result.isValid ? HANDLER_DONE : HANDLER_FAILED);
+  return result.isValid ? status::DONE : status::FAILED;
 }
 
 bool RestActionHandler::cancel() { return _action->cancel(&_dataLock, &_data); }
@@ -96,21 +96,14 @@ bool RestActionHandler::cancel() { return _action->cancel(&_dataLock, &_data); }
 
 TRI_action_result_t RestActionHandler::executeAction() {
   TRI_action_result_t result =
-      _action->execute(_vocbase, _request, &_dataLock, &_data);
+      _action->execute(_vocbase, _request, _response, &_dataLock, &_data);
 
-  if (result.isValid) {
-    _response = result.response;
-    result.response = nullptr;
-  } else if (result.canceled) {
-    result.isValid = true;
-    generateCanceled();
-  } else {
-    result.isValid = true;
-    generateNotImplemented(_action->_url);
-  }
-
-  if (result.response != nullptr) {
-    delete result.response;
+  if (!result.isValid) {
+    if (result.canceled) {
+      generateCanceled();
+    } else {
+      generateNotImplemented(_action->_url);
+    }
   }
 
   return result;

@@ -30,23 +30,26 @@ namespace arangodb {
 class HttpRequest;
 
 namespace rest {
-class HttpHandler;
+class RestHandler;
 }
 
 template <typename H>
 class RestHandlerCreator : public H {
  public:
-  static rest::HttpHandler* create(HttpRequest* request, void* data) {
-    return new H(request, data);
+  static rest::RestHandler* create(GeneralRequest* request,
+                                   GeneralResponse* response, void* data) {
+    return new H(request, response, data);
   }
 
   template <typename D>
-  static rest::HttpHandler* createData(HttpRequest* request, void* data) {
-    return new H(request, (D)data);
+  static rest::RestHandler* createData(GeneralRequest* request,
+                                       GeneralResponse* response, void* data) {
+    return new H(request, response, (D)data);
   }
 
-  static rest::HttpHandler* createNoData(HttpRequest* request, void*) {
-    return new H(request);
+  static rest::RestHandler* createNoData(GeneralRequest* request,
+                                         GeneralResponse* response, void*) {
+    return new H(request, response);
   }
 };
 }

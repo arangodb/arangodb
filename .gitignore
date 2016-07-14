@@ -1,3 +1,7 @@
+tags
+build
+core.*
+
 .deps
 .dirstamp
 *.o
@@ -6,6 +10,7 @@
 *.pyc
 *.sdf
 *.suo
+*.log
 
 *.iml
 *.orig

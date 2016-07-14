@@ -292,10 +292,33 @@ authRouter.get('/graph/:name', function (req, res) {
 
   var graph = gm._graph(name);
   var vertexName = graph._vertexCollections()[0].name();
-  var startVertex = db[vertexName].any();
+
+  var startVertex;
+  var config;
+
+  try {
+    config = req.queryParams;
+  } catch (e) {
+    res.throw('bad request', e.message, {cause: e});
+  }
+
+  if (config.nodeStart) {
+    try {
+      startVertex = db._document(config.nodeStart);
+    } catch (e) {
+      res.throw('bad request', e.message, {cause: e});
+    }
+
+    console.log(startVertex);
+    if (!startVertex) {
+      startVertex = db[vertexName].any();
+    }
+  } else {
+    startVertex = db[vertexName].any();
+  }
 
   var aqlQuery =
-   'FOR v, e, p IN 1..3 ANY "' + startVertex._id + '" GRAPH "' + name + '"' +
+   'FOR v, e, p IN 1..' + (config.depth || '2') + ' ANY "' + startVertex._id + '" GRAPH "' + name + '"' +
    'RETURN p'
   ;
 
@@ -307,29 +330,53 @@ authRouter.get('/graph/:name', function (req, res) {
   var edgesArr = [];
 
   _.each(cursor.json, function (obj) {
+    var edgeLabel;
+
     _.each(obj.edges, function (edge) {
       if (edge._to && edge._from) {
+        if (config.edgeLabel) {
+          // configure edge labels
+          edgeLabel = edge[config.edgeLabel];
+
+          if (edgeLabel) {
+            edgeLabel = edgeLabel.toString();
+          }
+
+          if (!edgeLabel) {
+            edgeLabel = 'attribute ' + config.edgeLabel + ' not found';
+          }
+        }
+
         edgesObj[edge._from + edge._to] = {
           id: edge._id,
           source: edge._from,
-          color: '#cccccc',
+          label: edgeLabel,
+          color: config.edgeColor || '#cccccc',
           target: edge._to
         };
       }
     });
-    var label;
+
+    var nodeLabel;
+    var nodeSize;
+
     _.each(obj.vertices, function (node) {
-      if (node.label) {
-        label = node.label;
-      } else {
-        label = node._id;
+      if (config.nodeLabel) {
+        nodeLabel = node[config.nodeLabel];
+      }
+      if (!nodeLabel) {
+        nodeLabel = node._id;
+      }
+
+      if (config.nodeSize) {
+        nodeSize = node[config.nodeSize];
       }
 
       nodesObj[node._id] = {
         id: node._id,
-        label: label,
-        size: Math.random(),
-        color: '#2ecc71',
+        label: nodeLabel,
+        size: nodeSize || Math.random(),
+        color: config.nodeColor || '#2ecc71',
         x: Math.random(),
         y: Math.random()
       };

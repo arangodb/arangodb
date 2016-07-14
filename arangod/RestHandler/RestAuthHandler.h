@@ -37,23 +37,19 @@ namespace arangodb {
 
 class RestAuthHandler : public RestVocbaseBaseHandler {
  public:
-  RestAuthHandler(HttpRequest*, std::string const* jwtSecret);
+  RestAuthHandler(GeneralRequest*, GeneralResponse*,
+                  std::string const* jwtSecret);
 
   std::string generateJwt(std::string const&, std::string const&);
 
  public:
   bool isDirect() const override;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief returns the log files (inheritDoc)
-  //////////////////////////////////////////////////////////////////////////////
-
-  status_t execute() override;
+  status execute() override;
 
  private:
   std::string _jwtSecret;
   std::chrono::seconds _validFor;
-  status_t badRequest();
+  status badRequest();
 };
 }
 

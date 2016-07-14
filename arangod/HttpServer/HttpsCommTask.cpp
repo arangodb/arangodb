@@ -41,9 +41,8 @@ using namespace arangodb::rest;
 ////////////////////////////////////////////////////////////////////////////////
 
 HttpsCommTask::HttpsCommTask(HttpsServer* server, TRI_socket_t socket,
-                             ConnectionInfo&& info,
-                             double keepAliveTimeout, SSL_CTX* ctx,
-                             int verificationMode,
+                             ConnectionInfo&& info, double keepAliveTimeout,
+                             SSL_CTX* ctx, int verificationMode,
                              int (*verificationCallback)(int, X509_STORE_CTX*))
     : Task("HttpsCommTask"),
       HttpCommTask(server, socket, std::move(info), keepAliveTimeout),
@@ -85,8 +84,7 @@ bool HttpsCommTask::setup(Scheduler* scheduler, EventLoop loop) {
   _connectionInfo.sslContext = _ssl;
 
   if (_ssl == nullptr) {
-    LOG(DEBUG) << "cannot build new SSL connection: "
-               << lastSSLError();
+    LOG(DEBUG) << "cannot build new SSL connection: " << lastSSLError();
 
     shutdownSsl(false);
     return false;  // terminate ourselves, ssl is nullptr
@@ -202,8 +200,7 @@ bool HttpsCommTask::trySSLAccept() {
 
   // shutdown of connection
   if (res == 0) {
-    LOG(DEBUG) << "SSL_accept failed: "
-               << lastSSLError();
+    LOG(DEBUG) << "SSL_accept failed: " << lastSSLError();
 
     shutdownSsl(false);
     return false;
@@ -222,8 +219,7 @@ bool HttpsCommTask::trySSLAccept() {
     return true;
   }
 
-  LOG(TRACE) << "error in SSL handshake: "
-             << lastSSLError();
+  LOG(TRACE) << "error in SSL handshake: " << lastSSLError();
 
   shutdownSsl(false);
   return false;

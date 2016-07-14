@@ -33,8 +33,8 @@ using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::rest;
 
-RestShutdownHandler::RestShutdownHandler(HttpRequest* request)
-    : RestBaseHandler(request) {}
+RestShutdownHandler::RestShutdownHandler(GeneralRequest* request, GeneralResponse* response)
+  : RestBaseHandler(request, response) {}
 
 bool RestShutdownHandler::isDirect() const { return true; }
 
@@ -42,10 +42,10 @@ bool RestShutdownHandler::isDirect() const { return true; }
 /// @brief was docuBlock JSF_get_api_initiate
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpHandler::status_t RestShutdownHandler::execute() {
+RestHandler::status RestShutdownHandler::execute() {
   if (_request->requestType() != GeneralRequest::RequestType::DELETE_REQ) {
     generateError(GeneralResponse::ResponseCode::METHOD_NOT_ALLOWED, 405);
-    return HttpHandler::status_t(HANDLER_DONE);
+    return status::DONE;
   }
 
   bool found;
@@ -65,5 +65,5 @@ HttpHandler::status_t RestShutdownHandler::execute() {
     // Ignore the error
   }
 
-  return status_t(HANDLER_DONE);
+  return status::DONE;
 }

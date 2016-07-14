@@ -24,22 +24,12 @@
 #ifndef ARANGOD_HTTP_SERVER_PATH_HANDLER_H
 #define ARANGOD_HTTP_SERVER_PATH_HANDLER_H 1
 
-#include "Basics/Common.h"
-#include "HttpServer/HttpHandler.h"
+#include "HttpServer/RestHandler.h"
 
 namespace arangodb {
 namespace rest {
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief path handler
-////////////////////////////////////////////////////////////////////////////////
-
-class PathHandler : public HttpHandler {
+class PathHandler : public RestHandler {
  public:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief path options
-  //////////////////////////////////////////////////////////////////////////////
-
   struct Options {
     Options() : allowSymbolicLink(false), cacheMaxAge(0) {}
 
@@ -63,24 +53,18 @@ class PathHandler : public HttpHandler {
   };
 
  public:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief factory methods
-  //////////////////////////////////////////////////////////////////////////////
-
-  static HttpHandler* create(HttpRequest* request, void* data) {
+  static RestHandler* create(GeneralRequest* request, GeneralResponse* response, void* data) {
     Options* options = static_cast<Options*>(data);
 
-    return new PathHandler(request, options);
+    return new PathHandler(request, response, options);
   }
 
  public:
-  PathHandler(HttpRequest* request, Options const* options);
+  PathHandler(GeneralRequest*, GeneralResponse*, Options const*);
 
  public:
   bool isDirect() const override { return true; }
-
-  status_t execute() override;
-
+  status execute() override;
   void handleError(const basics::Exception&) override;
 
  private:
