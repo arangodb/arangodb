@@ -86,6 +86,10 @@ class RevisionCacheChunk {
   // garbage collects a chunk
   // this will prepare the chunk for reuse, but not free the chunk's underlying memory
   void garbageCollect(GarbageCollectionCallback const& callback);
+  
+  // remove an external reference to the chunk. the chunk cannot be deleted physically
+  // if the number of external references is greater than 0
+  void removeReference() noexcept;
 
   // return the physical size for a piece of data
   // this adds required padding plus the required size for the collection id
@@ -110,10 +114,6 @@ class RevisionCacheChunk {
   // if the number of external references is greater than 0
   void addReference() noexcept;
   
-  // remove an external reference to the chunk. the chunk cannot be deleted physically
-  // if the number of external references is greater than 0
-  void removeReference() noexcept;
-
   // stores the byte range [data...data+length) at the specified offset in the chunk
   // the data is prepended by the collection id passed
   void storeAtOffset(uint32_t offset, uint64_t collectionId, uint8_t const* data, size_t length) noexcept;

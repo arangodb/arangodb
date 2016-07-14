@@ -37,7 +37,7 @@ class RevisionCacheChunk;
 // the dtor will automatically free any acquired resources
 class RevisionReader {
  public:
-  RevisionReader() = delete;
+  RevisionReader();
   RevisionReader(RevisionCacheChunk* chunk, RevisionOffset offset, RevisionVersion version);
   ~RevisionReader();
   RevisionReader(RevisionReader const&) = delete;
@@ -48,11 +48,18 @@ class RevisionReader {
   arangodb::velocypack::Slice revision() const;
   uint64_t collectionId() const;
 
+  RevisionCacheChunk* chunk() const { return _chunk; }
+  RevisionOffset offset() const { return _offset; }
+  RevisionVersion version() const { return _version; }
+
+  void stealReference() { _ownsReference = false; }
+
  private:
   RevisionCacheChunk* _chunk;
   RevisionOffset      _offset;
   RevisionVersion     _version;
-  bool                _handled;
+  bool                _ownsReference;
+  bool                _ownsReader;
 };
 
 }

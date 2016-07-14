@@ -21,7 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "RevisionCache.h"
+#include "GlobalRevisionCache.h"
 #include "Basics/Exceptions.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
@@ -32,7 +32,7 @@
 using namespace arangodb;
 
 // the global read-cache for documents
-RevisionCache::RevisionCache(size_t defaultChunkSize, size_t totalTargetSize, GarbageCollectionCallback const& callback)
+GlobalRevisionCache::GlobalRevisionCache(size_t defaultChunkSize, size_t totalTargetSize, GarbageCollectionCallback const& callback)
     : _defaultChunkSize(defaultChunkSize), 
       _totalTargetSize(totalTargetSize), 
       _totalAllocated(0), 
@@ -44,7 +44,7 @@ RevisionCache::RevisionCache(size_t defaultChunkSize, size_t totalTargetSize, Ga
   _usedList.reserve(static_cast<size_t>(1.2 * (totalTargetSize / defaultChunkSize)));
 }
 
-RevisionCache::~RevisionCache() {
+GlobalRevisionCache::~GlobalRevisionCache() {
   // free all chunks
   WRITE_LOCKER(locker, _chunksLock);
   for (auto& chunk : _usedList) {
@@ -55,7 +55,7 @@ RevisionCache::~RevisionCache() {
   }
 }
 
-size_t RevisionCache::totalAllocated() {
+size_t GlobalRevisionCache::totalAllocated() {
   READ_LOCKER(locker, _chunksLock);
   return _totalAllocated;
 }
@@ -63,7 +63,7 @@ size_t RevisionCache::totalAllocated() {
 // stores a revision in the read-cache, acquiring a lease
 // the collection id is prepended to the actual data in order to quickly access
 // the shard-local hash for the revision when cleaning up the chunk 
-RevisionReader RevisionCache::storeAndLease(uint64_t collectionId, uint8_t const* data, size_t length) {
+RevisionReader GlobalRevisionCache::storeAndLease(uint64_t collectionId, uint8_t const* data, size_t length) {
   while (true) {
     RevisionCacheChunk* chunk = nullptr;
     {
@@ -101,7 +101,7 @@ RevisionReader RevisionCache::storeAndLease(uint64_t collectionId, uint8_t const
 // stores a revision in the read-cache, without acquiring a lease
 // the collection id is prepended to the actual data in order to quickly access
 // the shard-local hash for the revision when cleaning up the chunk 
-void RevisionCache::store(uint64_t collectionId, uint8_t const* data, size_t length) {
+void GlobalRevisionCache::store(uint64_t collectionId, uint8_t const* data, size_t length) {
   while (true) {
     RevisionCacheChunk* chunk = nullptr;
     {
@@ -133,7 +133,7 @@ void RevisionCache::store(uint64_t collectionId, uint8_t const* data, size_t len
 }
   
 // run the garbage collection with the intent to free unused chunks
-bool RevisionCache::garbageCollect() {
+bool GlobalRevisionCache::garbageCollect() {
   std::unique_ptr<RevisionCacheChunk> gcChunk;
 
   {
@@ -164,7 +164,7 @@ bool RevisionCache::garbageCollect() {
 }
 
 // garbage collect a single chunk
-bool RevisionCache::garbageCollect(std::unique_ptr<RevisionCacheChunk>& chunk) {
+bool GlobalRevisionCache::garbageCollect(std::unique_ptr<RevisionCacheChunk>& chunk) {
   if (chunk == nullptr) {
     return false;
   }
@@ -184,14 +184,14 @@ bool RevisionCache::garbageCollect(std::unique_ptr<RevisionCacheChunk>& chunk) {
 }
 
 // calculate the size for a new chunk
-size_t RevisionCache::newChunkSize(size_t dataLength) const noexcept {
+size_t GlobalRevisionCache::newChunkSize(size_t dataLength) const noexcept {
   return (std::max)(_defaultChunkSize, RevisionCacheChunk::physicalSize(dataLength));
 }
 
 // adds a new chunk, capable of storing at least dataLength
 // additionally this will move fullChunk into the used list if it is still
 // contained in the free list
-void RevisionCache::addChunk(size_t dataLength, RevisionCacheChunk* fullChunk) {
+void GlobalRevisionCache::addChunk(size_t dataLength, RevisionCacheChunk* fullChunk) {
   // create a new chunk with the required size
   size_t const targetSize = newChunkSize(dataLength);
   std::unique_ptr<RevisionCacheChunk> chunk(buildChunk(targetSize));
@@ -254,6 +254,6 @@ void RevisionCache::addChunk(size_t dataLength, RevisionCacheChunk* fullChunk) {
 }
 
 // creates a chunk
-RevisionCacheChunk* RevisionCache::buildChunk(size_t targetSize) {
+RevisionCacheChunk* GlobalRevisionCache::buildChunk(size_t targetSize) {
   return new RevisionCacheChunk(static_cast<uint32_t>(targetSize));
 }

@@ -21,32 +21,31 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_READ_CACHE_REVISION_CACHE_H
-#define ARANGOD_READ_CACHE_REVISION_CACHE_H 1
+#ifndef ARANGOD_READ_CACHE_GLOBAL_REVISION_CACHE_H
+#define ARANGOD_READ_CACHE_GLOBAL_REVISION_CACHE_H 1
 
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
 #include "ReadCache/RevisionReader.h"
 
 #include <velocypack/Slice.h>
-#include <list>
 
 namespace arangodb {
 
-class RevisionCacheChunk;
+class GlobalRevisionCacheChunk;
 
 // the global revision cache for documents
-class RevisionCache {
+class GlobalRevisionCache {
  public:
-  RevisionCache() = delete;
-  RevisionCache(RevisionCache const&) = delete;
-  RevisionCache& operator=(RevisionCache const&) = delete;
+  GlobalRevisionCache() = delete;
+  GlobalRevisionCache(GlobalRevisionCache const&) = delete;
+  GlobalRevisionCache& operator=(GlobalRevisionCache const&) = delete;
 
   // create the cache instance
-  RevisionCache(size_t defaultChunkSize, size_t totalTargetSize, GarbageCollectionCallback const& callback);
+  GlobalRevisionCache(size_t defaultChunkSize, size_t totalTargetSize, GarbageCollectionCallback const& callback);
 
   // destroy the cache instance
-  ~RevisionCache();
+  ~GlobalRevisionCache();
 
   // total number of bytes allocated by the cache
   size_t totalAllocated();

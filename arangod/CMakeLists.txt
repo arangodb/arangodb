@@ -205,7 +205,8 @@ add_executable(${BIN_ARANGOD}
   Indexes/PrimaryIndex.cpp
   Indexes/SimpleAttributeEqualityMatcher.cpp
   Indexes/SkiplistIndex.cpp
-  ReadCache/RevisionCache.cpp
+  ReadCache/CollectionRevisionCache.cpp
+  ReadCache/GlobalRevisionCache.cpp
   ReadCache/RevisionCacheChunk.cpp
   ReadCache/RevisionReader.cpp
   Replication/ContinuousSyncer.cpp
