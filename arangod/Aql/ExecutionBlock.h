@@ -156,7 +156,7 @@ class ExecutionBlock {
 
   // skip exactly <number> outputs, returns <true> if _done after
   // skipping, and <false> otherwise . . .
-  bool skip(size_t number);
+  bool skip(size_t number, size_t& numActuallySkipped);
 
   virtual bool hasMore();
 
