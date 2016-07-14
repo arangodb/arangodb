@@ -288,10 +288,8 @@ Remove a graph
 `graph_module._drop(graphName, dropCollections)`
 
 A graph can be dropped by its name.
-This will automatically drop all collections contained in the graph as
-long as they are not used within other graphs.
-To drop the collections, the optional parameter *drop-collections* can be set to *true*.
-
+This can drop all collections contained in the graph as long as they are not used within other graphs.
+To drop the collections only belonging to this graph, the optional parameter *drop-collections* has to be set to *true*.
 
 **Parameters**
 
