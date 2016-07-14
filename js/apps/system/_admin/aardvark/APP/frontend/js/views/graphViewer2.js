@@ -25,6 +25,9 @@
       'click #downloadPNG': 'downloadSVG'
     },
 
+    cursorX: 0,
+    cursorY: 0,
+
     initSigma: function () {
       // init sigma
       try {
@@ -70,7 +73,10 @@
       $('#content').append(
         '<div id="calculatingGraph" style="position: absolute; left: 25px; top: 130px;">' +
         '<i class="fa fa-circle-o-notch fa-spin" style="margin-right: 10px;"></i>' +
-        '<span id="calcText">Fetching graph data. Please wait ... </span></div>'
+        '<span id="calcText">Fetching graph data. Please wait ... </span></br></br></br>' +
+        '<span style="font-weight: 100; opacity: 0.6; font-size: 9pt;">If it`s taking too much time to draw the graph, please go to: </br>' +
+        '<a href="' + window.location.href + '/settings">' + window.location.href + '/settings </a></br> and adjust your settings.' +
+        'It is possible that the graph is too big to be handled by the browser.</span></div>'
       );
 
       var continueFetchGraph = function () {
@@ -158,23 +164,78 @@
         });
       }
 
+      // clear events
+      var c = document.getElementsByClassName('sigma-mouse')[0];
+      c.removeEventListener('mousemove', self.drawLine.bind(this), false);
+
       // clear info div
     },
 
+    trackCursorPosition: function (e) {
+      this.cursorX = e.x;
+      this.cursorY = e.y;
+    },
+
     createContextMenu: function (e) {
-      var x = e.data.captor.clientX;
-      var y = e.data.captor.clientX;
-      console.log('Context menu');
-      console.log(x);
-      console.log(y);
+      var self = this;
+      var x = self.cursorX - 50;
+      var y = self.cursorY - 50;
+      console.log(e);
       this.clearOldContextMenu();
+
+      var generateMenu = function (e) {
+        var hotaru = ['#364C4A', '#497C7F', '#92C5C0', '#858168', '#CCBCA5'];
+
+        var Wheelnav = wheelnav;
+
+        var wheel = new Wheelnav('nodeContextMenu');
+        wheel.maxPercent = 1.0;
+        wheel.wheelRadius = 50;
+        wheel.clockwise = false;
+        wheel.colors = hotaru;
+        wheel.multiSelect = true;
+        wheel.clickModeRotate = false;
+        wheel.slicePathFunction = slicePath().DonutSlice;
+        wheel.createWheel([icon.plus, icon.trash]);
+
+        wheel.navItems[0].selected = false;
+        wheel.navItems[0].hovered = false;
+        // add menu events
+
+        // function 0: edit
+        wheel.navItems[0].navigateFunction = function (e) {
+          self.clearOldContextMenu();
+        };
+
+        // function 1: delete
+        wheel.navItems[1].navigateFunction = function (e) {
+          self.clearOldContextMenu();
+        };
+
+        // deselect active default entry
+        wheel.navItems[0].selected = false;
+        wheel.navItems[0].hovered = false;
+      };
+
+      $('#nodeContextMenu').css('position', 'fixed');
+      $('#nodeContextMenu').css('left', x);
+      $('#nodeContextMenu').css('top', y);
+      $('#nodeContextMenu').width(100);
+      $('#nodeContextMenu').height(100);
+
+      generateMenu(e);
     },
 
     createNodeContextMenu: function (nodeId, e) {
       var self = this;
 
-      var x = e.data.node['renderer1:x'];
-      var y = e.data.node['renderer1:y'];
+      // var x = e.data.node['renderer1:x'];
+      // var y = e.data.node['renderer1:y'];
+      // better to use x,y from top, but sometimes values are not correct ...
+      console.log(e);
+      var x = e.data.captor.clientX - 52;
+      var y = e.data.captor.clientY - 52;
+      console.log(e.data);
 
       this.clearOldContextMenu();
 
@@ -233,8 +294,8 @@
         wheel.navItems[0].hovered = false;
       };
 
-      $('#nodeContextMenu').css('left', x + 115);
-      $('#nodeContextMenu').css('top', y + 72);
+      $('#nodeContextMenu').css('left', x);
+      $('#nodeContextMenu').css('top', y);
       $('#nodeContextMenu').width(100);
       $('#nodeContextMenu').height(100);
 
@@ -498,6 +559,11 @@
       }
       console.log(dragListener);
 
+      // add listener to keep track of cursor position
+      var c = document.getElementsByClassName('sigma-mouse')[0];
+      c.addEventListener('mousemove', self.trackCursorPosition.bind(this), false);
+
+      // clear up info div
       $('#calculatingGraph').remove();
     }
 
