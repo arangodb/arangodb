@@ -1,0 +1,79 @@
+{
+  "name": "readable-stream",
+  "version": "1.1.14",
+  "description": "Streams3, a user-land copy of the stream library from Node.js v0.11.x",
+  "main": "readable.js",
+  "dependencies": {
+    "core-util-is": "~1.0.0",
+    "isarray": "0.0.1",
+    "string_decoder": "~0.10.x",
+    "inherits": "~2.0.1"
+  },
+  "devDependencies": {
+    "tap": "~0.2.6"
+  },
+  "scripts": {
+    "test": "tap test/simple/*.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/isaacs/readable-stream.git"
+  },
+  "keywords": [
+    "readable",
+    "stream",
+    "pipe"
+  ],
+  "browser": {
+    "util": false
+  },
+  "author": {
+    "name": "Isaac Z. Schlueter",
+    "email": "i@izs.me",
+    "url": "http://blog.izs.me/"
+  },
+  "license": "MIT",
+  "gitHead": "52550840cb1d6e8a98ef9a909a4bea360bc6f7da",
+  "bugs": {
+    "url": "https://github.com/isaacs/readable-stream/issues"
+  },
+  "_id": "readable-stream@1.1.14",
+  "_shasum": "7cf4c54ef648e3813084c636dd2079e166c081d9",
+  "_from": "readable-stream@>=1.1.0 <1.2.0",
+  "_npmVersion": "3.8.3",
+  "_nodeVersion": "5.10.1",
+  "_npmUser": {
+    "name": "cwmma",
+    "email": "calvin.metcalf@gmail.com"
+  },
+  "dist": {
+    "shasum": "7cf4c54ef648e3813084c636dd2079e166c081d9",
+    "tarball": "https://registry.npmjs.org/readable-stream/-/readable-stream-1.1.14.tgz"
+  },
+  "maintainers": [
+    {
+      "name": "isaacs",
+      "email": "isaacs@npmjs.com"
+    },
+    {
+      "name": "tootallnate",
+      "email": "nathan@tootallnate.net"
+    },
+    {
+      "name": "rvagg",
+      "email": "rod@vagg.org"
+    },
+    {
+      "name": "cwmma",
+      "email": "calvin.metcalf@gmail.com"
+    }
+  ],
+  "_npmOperationalInternal": {
+    "host": "packages-16-east.internal.npmjs.com",
+    "tmp": "tmp/readable-stream-1.1.14.tgz_1460563293219_0.5682175166439265"
+  },
+  "directories": {},
+  "_resolved": "https://registry.npmjs.org/readable-stream/-/readable-stream-1.1.14.tgz",
+  "readme": "ERROR: No README data found!",
+  "homepage": "https://github.com/isaacs/readable-stream#readme"
+}
