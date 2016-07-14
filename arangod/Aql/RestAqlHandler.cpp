@@ -778,7 +778,8 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
         try {
           bool exhausted;
           if (shardId.empty()) {
-            exhausted = query->engine()->skip(number);
+            size_t numActuallySkipped = 0;
+            exhausted = query->engine()->skip(number, numActuallySkipped);
           } else {
             auto block =
                 static_cast<BlockWithClients*>(query->engine()->root());
