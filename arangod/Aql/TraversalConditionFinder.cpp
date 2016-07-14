@@ -157,8 +157,8 @@ static bool matchesPathAccessPattern(AstNode const* testee,
   return false;
 }
 
-static void transformCondition(AstNode const* node, Variable const* pvar, Ast* ast) {
-
+static void transformCondition(AstNode const* node, Variable const* pvar,
+                               Ast* ast, TraversalNode* tn) {
   // TODO REMOVE OUTPUT
   node->dump(0);
 
@@ -204,23 +204,34 @@ static void transformCondition(AstNode const* node, Variable const* pvar, Ast* a
       case NODE_TYPE_ATTRIBUTE_ACCESS:
         TRI_ASSERT(baseCondition->numMembers() == 1);
         break;
+      case NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ:
+      case NODE_TYPE_OPERATOR_BINARY_ARRAY_NE:
+      case NODE_TYPE_OPERATOR_BINARY_ARRAY_LT:
+      case NODE_TYPE_OPERATOR_BINARY_ARRAY_LE:
+      case NODE_TYPE_OPERATOR_BINARY_ARRAY_GT:
+      case NODE_TYPE_OPERATOR_BINARY_ARRAY_GE:
+      case NODE_TYPE_OPERATOR_BINARY_ARRAY_IN:
+      case NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN:
+        TRI_ASSERT(baseCondition->numMembers() == 3);
+        break;
       default:
         TRI_ASSERT(false);
         break;
     }
 #endif
 
-    // Navigate left side
-    // If we navigate over the side where access to path
-    // variable is we can only find an arbitrary
-    // amount of indexedAccess and attributeAccess.
-    // And the last 3 elements are:
-    // If we find something else we abort.
+    auto op = baseCondition->type;
+    if (op >= NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ &&
+        op <= NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN) {
+      // TODO
+      continue;
+    }
 
     bool foundVar = false;
     bool isEdge = false;
     size_t idx = 0;
     AstNode* top = baseCondition;
+    TRI_ASSERT(baseCondition->numMembers() == 2);
     for (size_t i = 0; i < 2; ++i) {
       AstNode* testee = baseCondition->getMemberUnchecked(i);
       // Special case directly compare documents:
@@ -229,6 +240,7 @@ static void transformCondition(AstNode const* node, Variable const* pvar, Ast* a
         TRI_ASSERT(!foundVar);
         foundVar = true;
         top->changeMember(i, varRefNode); 
+        tn->registerCondition(isEdge, idx, baseCondition);
         break;
       }
 
@@ -244,6 +256,7 @@ static void transformCondition(AstNode const* node, Variable const* pvar, Ast* a
           TRI_ASSERT(!foundVar);
           foundVar = true;
           top->changeMember(i, varRefNode); 
+          tn->registerCondition(isEdge, idx, baseCondition);
           break;
         }
       }
@@ -253,13 +266,11 @@ static void transformCondition(AstNode const* node, Variable const* pvar, Ast* a
       }
     }
   }
-
-  result->dump(0);
 }
 
 static bool extractSimplePathAccesses(AstNode const* node, TraversalNode* tn,
                                       Ast* ast) {
-  transformCondition(node, tn->pathOutVariable(), ast);
+  transformCondition(node, tn->pathOutVariable(), ast, tn);
   std::vector<AstNode const*> currentPath;
   std::vector<std::vector<AstNode const*>> paths;
   std::vector<std::vector<AstNode const*>> clonePath;
