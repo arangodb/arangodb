@@ -173,6 +173,11 @@ class GeneralRequest {
   virtual std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack(
       arangodb::velocypack::Options const*) = 0;
 
+  virtual std::string const& body() const = 0;
+  virtual int64_t contentLength() const = 0;
+
+  virtual std::unordered_map<std::string, std::string> cookieValues() const = 0;
+
  protected:
   void setValue(char const* key, char const* value);
   void setArrayValue(char* key, size_t length, char const* value);

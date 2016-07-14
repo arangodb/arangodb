@@ -220,7 +220,7 @@ OperationID ClusterComm::getOperationID() { return TRI_NewTickServer(); }
 /// here in the form of "server:" followed by a serverID. Furthermore,
 /// it is possible to specify the target endpoint directly using
 /// "tcp://..." or "ssl://..." endpoints, if `singleRequest` is true.
-/// 
+///
 /// There are two timeout arguments. `timeout` is the globale timeout
 /// specifying after how many seconds the complete operation must be
 /// completed. `initTimeout` is a second timeout, which is used to
@@ -228,7 +228,7 @@ OperationID ClusterComm::getOperationID() { return TRI_NewTickServer(); }
 /// is negative (as for example in the default value), then `initTimeout`
 /// is taken to be the same as `timeout`. The idea behind the two timeouts
 /// is to be able to specify correct behaviour for automatic failover.
-/// The idea is that if the initial request cannot be sent within 
+/// The idea is that if the initial request cannot be sent within
 /// `initTimeout`, one can retry after a potential failover.
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -793,14 +793,12 @@ void ClusterComm::drop(ClientTransactionID const& clientTransactionID,
 ////////////////////////////////////////////////////////////////////////////////
 
 void ClusterComm::asyncAnswer(std::string& coordinatorHeader,
-                              GeneralResponse* responseToSendGeneral) {
-  // TODO needs to generalized
-  auto responseToSend = dynamic_cast<HttpResponse*>(responseToSendGeneral);
+                              GeneralResponse* responseToSend) {
 
   if (responseToSend == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   }
-  
+
   // First take apart the header to get the coordinatorID:
   ServerID coordinatorID;
   size_t start = 0;
@@ -881,14 +879,11 @@ void ClusterComm::asyncAnswer(std::string& coordinatorHeader,
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string ClusterComm::processAnswer(std::string& coordinatorHeader,
-                                       GeneralRequest* answerGeneral) {
-  // TODO needs to generalized
-  auto answer = dynamic_cast<HttpRequest*>(answerGeneral);
-
+                                       GeneralRequest* answer) {
   if (answer == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   }
-  
+
   TRI_ASSERT(answer != nullptr);
   // First take apart the header to get the operaitonID:
   OperationID operationID;
@@ -981,7 +976,7 @@ bool ClusterComm::moveFromSendToReceived(OperationID operationID) {
   CONDITION_LOCKER(locker, somethingReceived);
   CONDITION_LOCKER(sendLocker, somethingToSend);
 
-  IndexIterator i = toSendByOpID.find(operationID);  // cannot fail 
+  IndexIterator i = toSendByOpID.find(operationID);  // cannot fail
   // TRI_ASSERT(i != toSendByOpID.end());
   //KV: Except the operation has been dropped in the meantime
 
@@ -1089,7 +1084,7 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
   for (size_t i = 0; i < requests.size(); ++i) {
     dueTime.push_back(startTime);
   }
-  
+
   nrDone = 0;
   size_t nrGood = 0;
 
@@ -1106,7 +1101,7 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
       for (size_t i = 0; i < requests.size(); i++) {
         if (!requests[i].done && now >= dueTime[i]) {
           if (requests[i].headerFields.get() == nullptr) {
-            requests[i].headerFields 
+            requests[i].headerFields
                 = std::make_unique<std::unordered_map<std::string, std::string>>();
           }
           LOG_TOPIC(TRACE, logTopic)
@@ -1181,7 +1176,7 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
           }
           LOG_TOPIC(TRACE, logTopic) << "ClusterComm::performRequests: "
               << "got answer from " << requests[index].destination << ":"
-              << requests[index].path << " with return code " 
+              << requests[index].path << " with return code "
               << (int) res.answer_code;
         } else if (res.status == CL_COMM_BACKEND_UNAVAILABLE ||
                    (res.status == CL_COMM_TIMEOUT && !res.sendWasComplete)) {
@@ -1226,7 +1221,7 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
   LOG_TOPIC(DEBUG, logTopic) << "ClusterComm::performRequests: "
       << "got timeout, this will be reported...";
 
-  // Forget about 
+  // Forget about
   drop("", coordinatorTransactionID, 0, "");
   return nrGood;
 }
