@@ -676,6 +676,8 @@
       }
       this.graphViewer2 = new window.GraphViewer2({
         name: name,
+        documentStore: this.arangoDocumentStore,
+        collection: new window.GraphCollection(),
         userConfig: this.userConfig
       });
       this.graphViewer2.render();
