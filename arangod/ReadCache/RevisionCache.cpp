@@ -32,8 +32,16 @@
 using namespace arangodb;
 
 // the global read-cache for documents
-RevisionCache::RevisionCache(size_t defaultChunkSize, size_t totalTargetSize)
-    : _defaultChunkSize(defaultChunkSize), _totalTargetSize(totalTargetSize), _totalAllocated(0) {
+RevisionCache::RevisionCache(size_t defaultChunkSize, size_t totalTargetSize, GarbageCollectionCallback const& callback)
+    : _defaultChunkSize(defaultChunkSize), 
+      _totalTargetSize(totalTargetSize), 
+      _totalAllocated(0), 
+      _callback(callback) { 
+
+  TRI_ASSERT(defaultChunkSize >= 1024);
+
+  _freeList.reserve(2);
+  _usedList.reserve(static_cast<size_t>(1.2 * (totalTargetSize / defaultChunkSize)));
 }
 
 RevisionCache::~RevisionCache() {
@@ -81,15 +89,10 @@ RevisionReader RevisionCache::storeAndLease(uint64_t collectionId, uint8_t const
       }
     }
 
-    if (chunk != nullptr) {
-      //LOG(ERR) << "MOVING CHUNK " << chunk << " TO USED LIST";
-      moveChunkToUsedList(chunk);
-    }
-    
     // no suitable chunk found...
     // add a new chunk capable of holding at least the target length
-    addChunk(length);
-
+    addChunk(length, chunk);
+    
     // and try insertion again in next iteration
     //LOG(ERR) << "REPEATING";
   }
@@ -121,25 +124,24 @@ void RevisionCache::store(uint64_t collectionId, uint8_t const* data, size_t len
       }
     }
     
-    if (chunk != nullptr) {
-      moveChunkToUsedList(chunk);
-    }
-
     // no suitable chunk found...
     // add a new chunk capable of holding at least the target length
-    addChunk(length);
+    addChunk(length, chunk);
 
     // and try insertion again in next iteration
   }
 }
   
 // run the garbage collection with the intent to free unused chunks
-// note: this needs some way to access the shard-local caches
-void RevisionCache::garbageCollect(GarbageCollectionCallback const& callback) {
-  RevisionCacheChunk* chunk = nullptr;
+bool RevisionCache::garbageCollect() {
+  std::unique_ptr<RevisionCacheChunk> gcChunk;
 
   {
     WRITE_LOCKER(locker, _chunksLock);
+
+    if (_totalAllocated < _totalTargetSize) {
+      return false;
+    }
 
     auto it = _usedList.begin();
 
@@ -151,21 +153,34 @@ void RevisionCache::garbageCollect(GarbageCollectionCallback const& callback) {
         // there are still external references for this chunk. must not clean it up
         ++it;
       } else {
-        chunk = (*it);
         _usedList.erase(it);
-        // adjust statistics
-        _totalAllocated -= chunk->size();
+        gcChunk.reset(*it);
         break;
       }
     }
   }
 
-  if (chunk != nullptr) {
-    // simply delete the chunk for now
-    // TODO: implement resetting and reusage for chunks
-    chunk->garbageCollect(callback);
-    delete chunk;
+  return garbageCollect(gcChunk);
+}
+
+// garbage collect a single chunk
+bool RevisionCache::garbageCollect(std::unique_ptr<RevisionCacheChunk>& chunk) {
+  if (chunk == nullptr) {
+    return false;
   }
+
+  uint32_t const chunkSize = chunk->size();
+  chunk->garbageCollect(_callback);
+  // TODO: implement resetting and reusage for chunks
+  chunk.reset(); // destroy the chunk
+       
+  { 
+    WRITE_LOCKER(locker, _chunksLock);
+    // adjust statistics
+    _totalAllocated -= chunkSize;
+  }
+
+  return true;
 }
 
 // calculate the size for a new chunk
@@ -174,39 +189,71 @@ size_t RevisionCache::newChunkSize(size_t dataLength) const noexcept {
 }
 
 // adds a new chunk, capable of storing at least dataLength
-void RevisionCache::addChunk(size_t dataLength) {
+// additionally this will move fullChunk into the used list if it is still
+// contained in the free list
+void RevisionCache::addChunk(size_t dataLength, RevisionCacheChunk* fullChunk) {
   // create a new chunk with the required size
   size_t const targetSize = newChunkSize(dataLength);
-  auto chunk = std::make_unique<RevisionCacheChunk>(static_cast<uint32_t>(targetSize));
+  std::unique_ptr<RevisionCacheChunk> chunk(buildChunk(targetSize));
+
+  std::unique_ptr<RevisionCacheChunk> gcChunk;
+
+  // perform operation under a mutex so concurrent create requests
+  // don't pile up here
   {
-    // add chunk to the list of free chunks
     WRITE_LOCKER(locker, _chunksLock);
-    _freeList.push_back(chunk.get());
-    chunk.release();
-    _totalAllocated += targetSize;
-  
-  //LOG(ERR) << "CREATED NEW CHUNK OF SIZE " << targetSize << ", TOTAL ALLOC: " << _totalAllocated;
-  }
-}
+ 
+    // start off by moving the full chunk to the used list, and by removing
+    // it from the free list 
+    if (fullChunk != nullptr) {
+      for (auto it = _freeList.crbegin(), end = _freeList.crend(); it != end; ++it) {
+        if ((*it) == fullChunk) {
+          // found it. move it to the used list
+          _usedList.emplace(fullChunk);
+          // and erase it from the free list
+          _freeList.erase(std::next(it).base()); // ugly workaround because we're using a reverse iterator
+          break;
+        }
+      }
+    }
 
-// moves a chunk from the free list to the used list
-// (but only if it's still contained in the free list)
-void RevisionCache::moveChunkToUsedList(RevisionCacheChunk* chunk) {
-  TRI_ASSERT(chunk != nullptr);
-      
-  // we have found a chunk but cannot use it because it is full
-  // now move it from the free list to the used list if it still
-  // is in the free list
-  WRITE_LOCKER(locker, _chunksLock);
-
-  for (size_t i = 0; i < _freeList.size(); ++i) {
-    if (_freeList[i] == chunk) {
-      // found it. move it to the used list
-      _usedList.emplace(chunk);
-      // and erase it from the free list
-      _freeList.erase(_freeList.begin() + i);
+    // we only need to add a new chunk if no one else has done this yet
+    if (!_freeList.empty()) {
+      // somebody else has added a chunk already
       return;
     }
+
+    // check if we need to garbage collect
+    if (_totalAllocated >= _totalTargetSize) {
+      // try garbage collecting another chunk
+      auto it = _usedList.begin();
+
+      while (it != _usedList.end()) {
+        if ((*it)->hasReaders()) {
+          // there are active readers for this chunk. cannot collect it now!
+          ++it;
+        } else if ((*it)->hasReferences()) {
+          // there are still external references for this chunk. must not clean it up
+          ++it;
+        } else {
+          _usedList.erase(it);
+          gcChunk.reset(*it);
+          break;
+        }
+      }
+    }
+
+    // add chunk to the list of free chunks
+    _freeList.push_back(chunk.get());
+    _totalAllocated += targetSize;
   }
+  chunk.release();
+ 
+  // garbage collect outside of lock 
+  garbageCollect(gcChunk);
 }
-    
+
+// creates a chunk
+RevisionCacheChunk* RevisionCache::buildChunk(size_t targetSize) {
+  return new RevisionCacheChunk(static_cast<uint32_t>(targetSize));
+}

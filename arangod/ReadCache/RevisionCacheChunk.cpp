@@ -40,11 +40,11 @@ RevisionCacheChunk::RevisionCacheChunk(uint32_t size)
     : _memory(nullptr), _currentUsers(0), _references(0), _version(0), _writePosition(0), _size(size) {
   // if this throws, no harm is done
   _memory = new char[size];
-  LOG(ERR) << "CREATING CHUNK OF SIZE " << _size << ", PTR: " << (void*) _memory;
+  //LOG(ERR) << "CREATING CHUNK OF SIZE " << _size << ", PTR: " << (void*) _memory;
 }
 
 RevisionCacheChunk::~RevisionCacheChunk() {
-  LOG(ERR) << "DESTROYING CHUNK OF SIZE " << _size << ", PTR: " << (void*) _memory;
+  //LOG(ERR) << "DESTROYING CHUNK OF SIZE " << _size << ", PTR: " << (void*) _memory;
   delete[] _memory;
 }
 

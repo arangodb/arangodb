@@ -43,7 +43,7 @@ class RevisionCache {
   RevisionCache& operator=(RevisionCache const&) = delete;
 
   // create the cache instance
-  RevisionCache(size_t defaultChunkSize, size_t totalTargetSize);
+  RevisionCache(size_t defaultChunkSize, size_t totalTargetSize, GarbageCollectionCallback const& callback);
 
   // destroy the cache instance
   ~RevisionCache();
@@ -72,19 +72,22 @@ class RevisionCache {
   } 
   
   // run the garbage collection with the intent to free unused chunks
-  // note: this needs some way to access the shard-local caches
-  void garbageCollect(GarbageCollectionCallback const& callback);
+  bool garbageCollect();
 
  private:
+  // garbage collects a single chunk
+  bool garbageCollect(std::unique_ptr<RevisionCacheChunk>& chunk);
+
   // calculate the size for a new chunk
   size_t newChunkSize(size_t dataLength) const noexcept;
 
   // adds a new chunk, capable of storing at least dataLength
-  void addChunk(size_t dataLength);
+  // additionally this will move fullChunk into the used list if it is still
+  // contained in the free list
+  void addChunk(size_t dataLength, RevisionCacheChunk* fullChunk);
 
-  // moves a chunk from the free list to the used list
-  // (but only if it's still contained in the free list)
-  void moveChunkToUsedList(RevisionCacheChunk* chunk);
+  // creates a chunk, or uses an existing one from the cache
+  RevisionCacheChunk* buildChunk(size_t targetSize);
 
  private:
   // lock for the lists of chunks
@@ -106,6 +109,9 @@ class RevisionCache {
 
   // total number of bytes allocated by chunks
   size_t                                  _totalAllocated;
+ 
+  // callback function for garbage collection 
+  GarbageCollectionCallback               _callback;
 };
 
 }
