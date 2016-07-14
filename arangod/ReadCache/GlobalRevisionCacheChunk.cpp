@@ -21,7 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "RevisionCacheChunk.h"
+#include "GlobalRevisionCacheChunk.h"
 #include "Basics/Exceptions.h"
 #include "Basics/MutexLocker.h"
 #include "ReadCache/RevisionTypes.h"
@@ -36,14 +36,14 @@ static constexpr inline uint32_t AlignSize(uint32_t value) {
 }
   
 // create a new chunk of the specified size
-RevisionCacheChunk::RevisionCacheChunk(uint32_t size) 
+GlobalRevisionCacheChunk::GlobalRevisionCacheChunk(uint32_t size) 
     : _memory(nullptr), _currentUsers(0), _references(0), _version(0), _writePosition(0), _size(size) {
   // if this throws, no harm is done
   _memory = new char[size];
   //LOG(ERR) << "CREATING CHUNK OF SIZE " << _size << ", PTR: " << (void*) _memory;
 }
 
-RevisionCacheChunk::~RevisionCacheChunk() {
+GlobalRevisionCacheChunk::~GlobalRevisionCacheChunk() {
   //LOG(ERR) << "DESTROYING CHUNK OF SIZE " << _size << ", PTR: " << (void*) _memory;
   delete[] _memory;
 }
@@ -51,7 +51,7 @@ RevisionCacheChunk::~RevisionCacheChunk() {
 // stores a revision in the cache, acquiring a lease
 // the collection id is prepended to the actual data in order to quickly access
 // the shard-local hash for the revision when cleaning up the chunk 
-RevisionReader RevisionCacheChunk::storeAndLease(uint64_t collectionId, uint8_t const* data, size_t length) {
+RevisionReader GlobalRevisionCacheChunk::storeAndLease(uint64_t collectionId, uint8_t const* data, size_t length) {
   //LOG(ERR) << "STORING AND LEASING ELEMENT OF LENGTH: " << length;
   if (!addReader()) {
     // chunk is being garbage-collected at the moment
@@ -75,7 +75,7 @@ RevisionReader RevisionCacheChunk::storeAndLease(uint64_t collectionId, uint8_t 
 // stores a revision in the cache, without acquiring a lease
 // the collection id is prepended to the actual data in order to quickly access
 // the shard-local hash for the revision when cleaning up the chunk 
-uint32_t RevisionCacheChunk::store(uint64_t collectionId, uint8_t const* data, size_t length) {
+uint32_t GlobalRevisionCacheChunk::store(uint64_t collectionId, uint8_t const* data, size_t length) {
   uint32_t const offset = adjustWritePosition(physicalSize(length));
 
   // we can copy the data into the chunk without the lock
@@ -85,13 +85,13 @@ uint32_t RevisionCacheChunk::store(uint64_t collectionId, uint8_t const* data, s
 
 // return the physical size for a piece of data
 // this adds required padding plus the required size for the collection id
-size_t RevisionCacheChunk::physicalSize(size_t dataLength) noexcept {
+size_t GlobalRevisionCacheChunk::physicalSize(size_t dataLength) noexcept {
   return AlignSize(sizeof(uint64_t) + dataLength);
 }
   
 // garbage collects a chunk
 // this will prepare the chunk for reuse, but not free the chunk's underlying memory
-void RevisionCacheChunk::garbageCollect(GarbageCollectionCallback const& callback) {
+void GlobalRevisionCacheChunk::garbageCollect(GarbageCollectionCallback const& callback) {
   // invalidates the chunk by simply increasing the version number
   // this will make subsequent client read requests fail
   ++_version;
@@ -118,7 +118,7 @@ void RevisionCacheChunk::garbageCollect(GarbageCollectionCallback const& callbac
 }
 
 // add a reader for the chunk, making it uneligible for garbage collection
-bool RevisionCacheChunk::addReader() noexcept {
+bool GlobalRevisionCacheChunk::addReader() noexcept {
   //LOG(ERR) << "ADDING READER. VALUE IS " << _currentUsers.load();
   // increase the reference count value by 2. we use the lowest bit of the
   // reference count to indicate that the chunk is going to be garbage-collected.
@@ -139,14 +139,14 @@ bool RevisionCacheChunk::addReader() noexcept {
 }
 
 // remove a reader for the chunk, making it eligible for garbage collection
-void RevisionCacheChunk::removeReader() noexcept {
+void GlobalRevisionCacheChunk::removeReader() noexcept {
   //LOG(ERR) << "REMOVING READER";
   _currentUsers -= 2;
 }
  
 // modifies the reference count so that after this method call there is only
 // a single writer (ourselves), and all readers are blocked 
-void RevisionCacheChunk::addWriter() noexcept {
+void GlobalRevisionCacheChunk::addWriter() noexcept {
   // wait until there are no more readers active
   //LOG(ERR) << "ADDING WRITER!";
   uint32_t expected = 0UL;
@@ -157,7 +157,7 @@ void RevisionCacheChunk::addWriter() noexcept {
 
 // modifies the reference count so that the exclusive writer bit is removed
 // from the reference count
-void RevisionCacheChunk::removeWriter() noexcept {
+void GlobalRevisionCacheChunk::removeWriter() noexcept {
   //LOG(ERR) << "REMOVING WRITER!";
   // wait until there are no more readers active
   uint32_t expected = 1UL;
@@ -168,19 +168,19 @@ void RevisionCacheChunk::removeWriter() noexcept {
   
 // add an external reference to the chunk. the chunk cannot be deleted physically
 // if the number of external references is greater than 0
-void RevisionCacheChunk::addReference() noexcept {
+void GlobalRevisionCacheChunk::addReference() noexcept {
   ++_references;
 }
   
 // remove an external reference to the chunk. the chunk cannot be deleted physically
 // if the number of external references is greater than 0
-void RevisionCacheChunk::removeReference() noexcept {
+void GlobalRevisionCacheChunk::removeReference() noexcept {
   --_references;
 }
 
 // stores the byte range [data...data+length) at the specified offset in the chunk
 // the data is prepended by the collection id passed
-void RevisionCacheChunk::storeAtOffset(uint32_t offset, uint64_t collectionId, uint8_t const* data, size_t length) noexcept {
+void GlobalRevisionCacheChunk::storeAtOffset(uint32_t offset, uint64_t collectionId, uint8_t const* data, size_t length) noexcept {
   // offset should always be evenly divisible by 8
   TRI_ASSERT(offset % 8 == 0);
 
@@ -193,7 +193,7 @@ void RevisionCacheChunk::storeAtOffset(uint32_t offset, uint64_t collectionId, u
 }
 
 // moves the write position of the chunk forward
-uint32_t RevisionCacheChunk::adjustWritePosition(uint32_t length) {
+uint32_t GlobalRevisionCacheChunk::adjustWritePosition(uint32_t length) {
   //LOG(ERR) << "ADJUSTWRITEPOSITION FOR LENGTH: " << length;
   // atomically check and move write pointer
   MUTEX_LOCKER(locker, _writeLock);

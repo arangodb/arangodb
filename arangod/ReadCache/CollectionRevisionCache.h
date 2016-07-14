@@ -37,7 +37,7 @@ namespace wal {
 class LogfileManager;
 }
 
-class RevisionCacheChunk;
+class GlobalRevisionCacheChunk;
 
 // the global revision cache for documents
 class CollectionRevisionCache {

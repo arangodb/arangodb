@@ -22,7 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RevisionReader.h"
-#include "ReadCache/RevisionCacheChunk.h"
+#include "ReadCache/GlobalRevisionCacheChunk.h"
 
 using namespace arangodb;
 
@@ -35,7 +35,7 @@ RevisionReader::RevisionReader()
       _ownsReader(false) {}
 
 // constructor for an existing revision
-RevisionReader::RevisionReader(RevisionCacheChunk* chunk, RevisionOffset offset, RevisionVersion version) 
+RevisionReader::RevisionReader(GlobalRevisionCacheChunk* chunk, RevisionOffset offset, RevisionVersion version) 
     : _chunk(chunk), 
       _offset(offset), 
       _version(version), 

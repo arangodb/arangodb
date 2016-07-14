@@ -207,7 +207,7 @@ add_executable(${BIN_ARANGOD}
   Indexes/SkiplistIndex.cpp
   ReadCache/CollectionRevisionCache.cpp
   ReadCache/GlobalRevisionCache.cpp
-  ReadCache/RevisionCacheChunk.cpp
+  ReadCache/GlobalRevisionCacheChunk.cpp
   ReadCache/RevisionReader.cpp
   Replication/ContinuousSyncer.cpp
   Replication/InitialSyncer.cpp

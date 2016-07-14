@@ -32,7 +32,7 @@
 
 namespace arangodb {
 
-class GlobalRevisionCacheChunk;
+class GlobalGlobalRevisionCacheChunk;
 
 // the global revision cache for documents
 class GlobalRevisionCache {
@@ -75,7 +75,7 @@ class GlobalRevisionCache {
 
  private:
   // garbage collects a single chunk
-  bool garbageCollect(std::unique_ptr<RevisionCacheChunk>& chunk);
+  bool garbageCollect(std::unique_ptr<GlobalRevisionCacheChunk>& chunk);
 
   // calculate the size for a new chunk
   size_t newChunkSize(size_t dataLength) const noexcept;
@@ -83,10 +83,10 @@ class GlobalRevisionCache {
   // adds a new chunk, capable of storing at least dataLength
   // additionally this will move fullChunk into the used list if it is still
   // contained in the free list
-  void addChunk(size_t dataLength, RevisionCacheChunk* fullChunk);
+  void addChunk(size_t dataLength, GlobalRevisionCacheChunk* fullChunk);
 
   // creates a chunk, or uses an existing one from the cache
-  RevisionCacheChunk* buildChunk(size_t targetSize);
+  GlobalRevisionCacheChunk* buildChunk(size_t targetSize);
 
  private:
   // lock for the lists of chunks
@@ -95,10 +95,10 @@ class GlobalRevisionCache {
   // filled chunks in a doubly-linked list, with most recently accessed
   // chunks at the head of the list. the chunks at the tail of the list
   // are subject to garbage collection!
-  std::unordered_set<RevisionCacheChunk*> _usedList;
+  std::unordered_set<GlobalRevisionCacheChunk*> _usedList;
   
   // completely (or partially unused) chunks that can still be written to
-  std::vector<RevisionCacheChunk*>        _freeList;
+  std::vector<GlobalRevisionCacheChunk*>        _freeList;
 
   // default size for new memory chunks
   size_t                                  _defaultChunkSize;

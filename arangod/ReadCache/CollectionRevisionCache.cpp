@@ -25,7 +25,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
-#include "ReadCache/RevisionCacheChunk.h"
+#include "ReadCache/GlobalRevisionCacheChunk.h"
 #include "Wal/LogfileManager.h"
     
 #include "Logger/Logger.h"

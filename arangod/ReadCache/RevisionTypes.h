@@ -31,7 +31,7 @@
 #include <functional>
 
 namespace arangodb {
-class RevisionCacheChunk;
+class GlobalRevisionCacheChunk;
 
 // type-safe wrapper for an offset inside a chunk
 struct RevisionOffset {
@@ -68,10 +68,10 @@ class RevisionLocation {
   };
 
   struct RevisionCacheLocation {
-    RevisionCacheLocation(RevisionCacheChunk* chunk, RevisionVersion version, RevisionOffset offset)
+    RevisionCacheLocation(GlobalRevisionCacheChunk* chunk, RevisionVersion version, RevisionOffset offset)
         : chunk(chunk), version(version.value), offset(offset.value) {}
 
-    RevisionCacheChunk*  chunk;
+    GlobalRevisionCacheChunk*  chunk;
     uint32_t             version;
     uint32_t             offset;
   };
@@ -86,7 +86,7 @@ class RevisionLocation {
     Location(TRI_voc_fid_t datafileId, RevisionOffset offset) 
         : walLocation(datafileId, offset) {}
     
-    Location(RevisionCacheChunk* chunk, RevisionOffset offset, RevisionVersion version)
+    Location(GlobalRevisionCacheChunk* chunk, RevisionOffset offset, RevisionVersion version)
         : revisionCacheLocation(chunk, version, offset) {}
   };
 
@@ -95,7 +95,7 @@ class RevisionLocation {
   RevisionLocation(TRI_voc_fid_t datafileId, RevisionOffset offset)
       : _location(datafileId, offset) {}
   
-  RevisionLocation(RevisionCacheChunk* chunk, RevisionOffset offset, RevisionVersion version)
+  RevisionLocation(GlobalRevisionCacheChunk* chunk, RevisionOffset offset, RevisionVersion version)
       : _location(chunk, offset, version) {} 
 
   inline bool isInWal() const {
@@ -113,7 +113,7 @@ class RevisionLocation {
     return _location.raw[sizeof(_location.raw) - 1] == 0;
   }
 
-  inline RevisionCacheChunk* chunk() const {
+  inline GlobalRevisionCacheChunk* chunk() const {
     TRI_ASSERT(isInRevisionCache());
     return _location.revisionCacheLocation.chunk;
   }

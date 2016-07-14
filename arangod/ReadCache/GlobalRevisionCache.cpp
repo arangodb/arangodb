@@ -25,7 +25,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
-#include "ReadCache/RevisionCacheChunk.h"
+#include "ReadCache/GlobalRevisionCacheChunk.h"
     
 #include "Logger/Logger.h"
 
@@ -65,7 +65,7 @@ size_t GlobalRevisionCache::totalAllocated() {
 // the shard-local hash for the revision when cleaning up the chunk 
 RevisionReader GlobalRevisionCache::storeAndLease(uint64_t collectionId, uint8_t const* data, size_t length) {
   while (true) {
-    RevisionCacheChunk* chunk = nullptr;
+    GlobalRevisionCacheChunk* chunk = nullptr;
     {
       READ_LOCKER(locker, _chunksLock);
 
@@ -103,7 +103,7 @@ RevisionReader GlobalRevisionCache::storeAndLease(uint64_t collectionId, uint8_t
 // the shard-local hash for the revision when cleaning up the chunk 
 void GlobalRevisionCache::store(uint64_t collectionId, uint8_t const* data, size_t length) {
   while (true) {
-    RevisionCacheChunk* chunk = nullptr;
+    GlobalRevisionCacheChunk* chunk = nullptr;
     {
       READ_LOCKER(locker, _chunksLock);
 
@@ -134,7 +134,7 @@ void GlobalRevisionCache::store(uint64_t collectionId, uint8_t const* data, size
   
 // run the garbage collection with the intent to free unused chunks
 bool GlobalRevisionCache::garbageCollect() {
-  std::unique_ptr<RevisionCacheChunk> gcChunk;
+  std::unique_ptr<GlobalRevisionCacheChunk> gcChunk;
 
   {
     WRITE_LOCKER(locker, _chunksLock);
@@ -164,7 +164,7 @@ bool GlobalRevisionCache::garbageCollect() {
 }
 
 // garbage collect a single chunk
-bool GlobalRevisionCache::garbageCollect(std::unique_ptr<RevisionCacheChunk>& chunk) {
+bool GlobalRevisionCache::garbageCollect(std::unique_ptr<GlobalRevisionCacheChunk>& chunk) {
   if (chunk == nullptr) {
     return false;
   }
@@ -185,18 +185,18 @@ bool GlobalRevisionCache::garbageCollect(std::unique_ptr<RevisionCacheChunk>& ch
 
 // calculate the size for a new chunk
 size_t GlobalRevisionCache::newChunkSize(size_t dataLength) const noexcept {
-  return (std::max)(_defaultChunkSize, RevisionCacheChunk::physicalSize(dataLength));
+  return (std::max)(_defaultChunkSize, GlobalRevisionCacheChunk::physicalSize(dataLength));
 }
 
 // adds a new chunk, capable of storing at least dataLength
 // additionally this will move fullChunk into the used list if it is still
 // contained in the free list
-void GlobalRevisionCache::addChunk(size_t dataLength, RevisionCacheChunk* fullChunk) {
+void GlobalRevisionCache::addChunk(size_t dataLength, GlobalRevisionCacheChunk* fullChunk) {
   // create a new chunk with the required size
   size_t const targetSize = newChunkSize(dataLength);
-  std::unique_ptr<RevisionCacheChunk> chunk(buildChunk(targetSize));
+  std::unique_ptr<GlobalRevisionCacheChunk> chunk(buildChunk(targetSize));
 
-  std::unique_ptr<RevisionCacheChunk> gcChunk;
+  std::unique_ptr<GlobalRevisionCacheChunk> gcChunk;
 
   // perform operation under a mutex so concurrent create requests
   // don't pile up here
@@ -254,6 +254,6 @@ void GlobalRevisionCache::addChunk(size_t dataLength, RevisionCacheChunk* fullCh
 }
 
 // creates a chunk
-RevisionCacheChunk* GlobalRevisionCache::buildChunk(size_t targetSize) {
-  return new RevisionCacheChunk(static_cast<uint32_t>(targetSize));
+GlobalRevisionCacheChunk* GlobalRevisionCache::buildChunk(size_t targetSize) {
+  return new GlobalRevisionCacheChunk(static_cast<uint32_t>(targetSize));
 }

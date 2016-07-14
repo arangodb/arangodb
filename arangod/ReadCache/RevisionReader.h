@@ -31,14 +31,14 @@
 
 namespace arangodb {
 
-class RevisionCacheChunk;
+class GlobalRevisionCacheChunk;
 
 // guard that ensures a revision can be read from the global revision cache
 // the dtor will automatically free any acquired resources
 class RevisionReader {
  public:
   RevisionReader();
-  RevisionReader(RevisionCacheChunk* chunk, RevisionOffset offset, RevisionVersion version);
+  RevisionReader(GlobalRevisionCacheChunk* chunk, RevisionOffset offset, RevisionVersion version);
   ~RevisionReader();
   RevisionReader(RevisionReader const&) = delete;
   RevisionReader& operator=(RevisionReader const&) = delete;
@@ -48,14 +48,14 @@ class RevisionReader {
   arangodb::velocypack::Slice revision() const;
   uint64_t collectionId() const;
 
-  RevisionCacheChunk* chunk() const { return _chunk; }
+  GlobalRevisionCacheChunk* chunk() const { return _chunk; }
   RevisionOffset offset() const { return _offset; }
   RevisionVersion version() const { return _version; }
 
   void stealReference() { _ownsReference = false; }
 
  private:
-  RevisionCacheChunk* _chunk;
+  GlobalRevisionCacheChunk* _chunk;
   RevisionOffset      _offset;
   RevisionVersion     _version;
   bool                _ownsReference;

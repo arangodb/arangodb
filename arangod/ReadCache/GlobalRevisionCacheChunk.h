@@ -21,8 +21,8 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_READ_CACHE_REVISION_CACHE_CHUNK_H
-#define ARANGOD_READ_CACHE_REVISION_CACHE_CHUNK_H 1
+#ifndef ARANGOD_READ_CACHE_GLOBAL_REVISION_CACHE_CHUNK_H
+#define ARANGOD_READ_CACHE_GLOBAL_REVISION_CACHE_CHUNK_H 1
 
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
@@ -34,19 +34,19 @@
 namespace arangodb {
 
 // chunk managed by the revision cache
-class RevisionCacheChunk {
+class GlobalRevisionCacheChunk {
  friend class RevisionReader;
 
  public:
-  RevisionCacheChunk() = delete;
-  RevisionCacheChunk(RevisionCacheChunk const&) = delete;
-  RevisionCacheChunk& operator=(RevisionCacheChunk const&) = delete;
+  GlobalRevisionCacheChunk() = delete;
+  GlobalRevisionCacheChunk(GlobalRevisionCacheChunk const&) = delete;
+  GlobalRevisionCacheChunk& operator=(GlobalRevisionCacheChunk const&) = delete;
 
   // create a new chunk of the specified size
-  explicit RevisionCacheChunk(uint32_t size);
+  explicit GlobalRevisionCacheChunk(uint32_t size);
 
   // destroy a chunk
-  ~RevisionCacheChunk();
+  ~GlobalRevisionCacheChunk();
 
   // return the byte size of the chunk
   inline uint32_t size() const { return _size; }
