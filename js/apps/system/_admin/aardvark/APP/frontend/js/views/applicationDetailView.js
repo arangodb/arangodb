@@ -262,7 +262,12 @@
             self.jsonEditor.setReadOnly(true);
             self.jsonEditor.getSession().setMode('ace/mode/json');
 
-            $.get(this.appUrl(db)).success(function () {
+            $.ajax({
+              url: this.appUrl(db),
+              headers: {
+                accept: 'text/html,*/*;q=0.9'
+              }
+            }).success(function () {
               $('.open', this.el).prop('disabled', false);
             }.bind(this));
 
