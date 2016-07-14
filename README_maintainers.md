@@ -715,6 +715,8 @@ The `global-style` option prevents newer versions of npm from unrolling nested
 dependencies inside the `node_modules` folder. Omitting this option results in
 exposing *all* dependencies of *all* modules to ArangoDB users.
 
+Finally add the module's licensing information to `LICENSES-OTHER-COMPONENTS.md`.
+
 When updating dependencies make sure that any mocked dependencies (like `glob`
 for `mocha`) match the versions required by the updated module and delete any
 duplicated nested dependencies if necessary (e.g. `mocha/node_modules/glob`)
