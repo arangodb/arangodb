@@ -291,7 +291,17 @@ authRouter.get('/graph/:name', function (req, res) {
   // var traversal = require("@arangodb/graph/traversal");
 
   var graph = gm._graph(name);
-  var vertexName = graph._vertexCollections()[0].name();
+
+  var vertices = graph._vertexCollections();
+  var vertexName = vertices[Math.floor(Math.random() * vertices.length)].name();
+
+  var vertexCollections = [];
+  _.each(graph._vertexCollections(), function (vertex) {
+    vertexCollections.push({
+      name: vertex.name(),
+      id: vertex._id
+    });
+  });
 
   var startVertex;
   var config;
@@ -309,7 +319,6 @@ authRouter.get('/graph/:name', function (req, res) {
       res.throw('bad request', e.message, {cause: e});
     }
 
-    console.log(startVertex);
     if (!startVertex) {
       startVertex = db[vertexName].any();
     }
@@ -363,8 +372,7 @@ authRouter.get('/graph/:name', function (req, res) {
     _.each(obj.vertices, function (node) {
       if (config.nodeLabel) {
         nodeLabel = node[config.nodeLabel];
-      }
-      if (!nodeLabel) {
+      } else {
         nodeLabel = node._id;
       }
 
@@ -393,7 +401,11 @@ authRouter.get('/graph/:name', function (req, res) {
 
   res.json({
     nodes: nodesArr,
-    edges: edgesArr
+    edges: edgesArr,
+    settings: {
+      vertexCollections: vertexCollections,
+      startVertex: startVertex
+    }
   });
 })
 .summary('Return vertices and edges of a graph.')
