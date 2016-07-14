@@ -42,8 +42,8 @@ key/value object with extra options for the query.
 
 @RESTSTRUCT{fullCount,JSF_post_api_cursor_opts,boolean,optional,}
 if set to *true* and the query contains a *LIMIT* clause, then the
-result will contain an extra attribute *extra* with a sub-attribute *fullCount*.
-This sub-attribute will contain the number of documents in the result before the
+result will a sub-attribute *fullCount* in the *extra.stats* sub-attribute.
+The *fullCount* sub-attribute will contain the number of documents in the result before the
 last LIMIT in the query was applied. It can be used to count the number of documents that
 match certain filter criteria, but only return a subset of them, in one go.
 It is thus similar to MySQL's *SQL_CALC_FOUND_ROWS* hint. Note that setting the option

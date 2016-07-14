@@ -391,4 +391,4 @@ build-books:
 	make check-docublocks
 	make book-check-dangling-anchors
 	echo "${STD_COLOR}Generating redirect index.html${RESET}"; \
-	@echo '<html><head><meta http-equiv="refresh" content="0; url=Manual/"></head><body></body></html>' > books/index.html
+	echo '<html><head><meta http-equiv="refresh" content="0; url=Manual/"></head><body></body></html>' > books/index.html
