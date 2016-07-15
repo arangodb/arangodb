@@ -268,6 +268,7 @@ add_executable(${BIN_ARANGOD}
   Scheduler/TimerTask.cpp
   Statistics/StatisticsFeature.cpp
   Statistics/statistics.cpp
+  StorageEngine/ArangoEngine.cpp
   Utils/AqlTransaction.cpp
   Utils/CollectionExport.cpp
   Utils/CollectionKeys.cpp
