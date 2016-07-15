@@ -27,6 +27,8 @@
 #include "Basics/Common.h"
 #include "StorageEngine/StorageEngine.h"
 
+#include <velocypack/Builder.h>
+
 namespace arangodb {
 
 class MMFilesEngine final : public StorageEngine {
@@ -192,8 +194,32 @@ class MMFilesEngine final : public StorageEngine {
   void removeDocumentRevision(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId,
                               arangodb::velocypack::Slice const& document) override;
 
+ private:
+  void verifyDirectories(); 
+  std::vector<std::string> getDatabaseNames() const;
+
+  /// @brief create a new database directory 
+  int createDatabaseDirectory(TRI_voc_tick_t id, std::string const& name);
+  
+  /// @brief save a parameter.json file for a database
+  int saveDatabaseParameters(TRI_voc_tick_t id, std::string const& name, bool deleted);
+  
+  arangodb::velocypack::Builder databaseToVelocyPack(TRI_voc_tick_t id, 
+                                                     std::string const& name, 
+                                                     bool deleted) const;
+
+  std::string databaseDirectory(TRI_voc_tick_t id) const;
+  std::string parametersFile(TRI_voc_tick_t id) const;
+  int openDatabases();
+
  public:
   static std::string const EngineName;
+
+ private:
+  std::string _basePath;
+  std::string _databasePath;
+  bool _iterateMarkersOnOpen;
+  bool _isUpgrade;
 };
 
 }

@@ -22,15 +22,45 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "MMFilesEngine.h"
+#include "Basics/FileUtils.h"
+#include "Basics/StringUtils.h"
+#include "Basics/VelocyPackHelper.h"
+#include "Basics/files.h"
+#include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "VocBase/server.h"
+#include "VocBase/vocbase.h"
+
+#ifdef ARANGODB_ENABLE_ROCKSDB
+#include "Indexes/RocksDBIndex.h"
+#endif
 
 using namespace arangodb;
 
 std::string const MMFilesEngine::EngineName("mmfiles");
 
+/// @brief extract the numeric part from a filename
+static uint64_t GetNumericFilenamePart(char const* filename) {
+  char const* pos = strrchr(filename, '-');
+
+  if (pos == nullptr) {
+    return 0;
+  }
+
+  return basics::StringUtils::uint64(pos + 1);
+}
+
+/// @brief compare two filenames, based on the numeric part contained in
+/// the filename. this is used to sort database filenames on startup
+static bool DatabaseIdStringComparator(std::string const& lhs, std::string const& rhs) {
+  return GetNumericFilenamePart(lhs.c_str()) < GetNumericFilenamePart(rhs.c_str());
+}
+
 // create the storage engine
 MMFilesEngine::MMFilesEngine(application_features::ApplicationServer* server)
-    : StorageEngine(server, "mmfilesEngine") {
+    : StorageEngine(server, "mmfilesEngine"), 
+      _iterateMarkersOnOpen(true),
+      _isUpgrade(false) {
 }
 
 MMFilesEngine::~MMFilesEngine() {
@@ -48,12 +78,55 @@ void MMFilesEngine::validateOptions(std::shared_ptr<options::ProgramOptions>) {
 // the storage engine must not start any threads here or write any files
 void MMFilesEngine::prepare() {
   TRI_ASSERT(EngineSelectorFeature::ENGINE = this);
+
+  LOG(INFO) << "MMFilesEngine::prepare()";
+ 
+  // get base path from DatabaseFeature 
+  DatabaseFeature* database = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
+  _basePath = database->databasePath();
+  TRI_ASSERT(!_basePath.empty());
+
+  _databasePath = basics::FileUtils::buildFilename(_basePath, "databases") + TRI_DIR_SEPARATOR_CHAR;
 }
-  
+
 // start the engine. now it's allowed to start engine-specific threads,
 // write files etc.
 void MMFilesEngine::start() {
   TRI_ASSERT(EngineSelectorFeature::ENGINE = this);
+  
+  LOG(INFO) << "MMFilesEngine::start()";
+
+  // test if the "databases" directory is present and writable
+  verifyDirectories();
+  
+  int res = TRI_ERROR_NO_ERROR;
+  
+  // get names of all databases
+  std::vector<std::string> names(getDatabaseNames());
+
+  if (names.empty()) {
+    // no databases found, i.e. there is no system database!
+    // create a database for the system database
+    res = createDatabaseDirectory(TRI_NewTickServer(), TRI_VOC_SYSTEM_DATABASE);
+    _iterateMarkersOnOpen = false;
+  }
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    LOG(ERR) << "unable to initialize databases: " << TRI_errno_string(res);
+    THROW_ARANGO_EXCEPTION(res);
+  }
+
+  // ...........................................................................
+  // open and scan all databases
+  // ...........................................................................
+
+  // scan all databases
+  res = openDatabases();
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    LOG(ERR) << "could not iterate over all databases: "  << TRI_errno_string(res);
+    THROW_ARANGO_EXCEPTION(res);
+  }
 }
 
 // stop the storage engine. this can be used to flush all data to disk,
@@ -61,6 +134,8 @@ void MMFilesEngine::start() {
 // write requests to the storage engine after this call
 void MMFilesEngine::stop() {
   TRI_ASSERT(EngineSelectorFeature::ENGINE = this);
+  
+  LOG(INFO) << "MMFilesEngine::stop()";
 }
 
 // fill the Builder object with an array of databases that were detected
@@ -194,4 +269,347 @@ void MMFilesEngine::addDocumentRevision(TRI_voc_tick_t databaseId, TRI_voc_cid_t
 void MMFilesEngine::removeDocumentRevision(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId,
                                            arangodb::velocypack::Slice const& document) {
 }
+  
+void MMFilesEngine::verifyDirectories() {
+  if (!TRI_IsDirectory(_basePath.c_str())) {
+    LOG(ERR) << "database path '" << _basePath << "' is not a directory";
 
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATADIR_INVALID);
+  }
+
+  if (!TRI_IsWritable(_basePath.c_str())) {
+    // database directory is not writable for the current user... bad luck
+    LOG(ERR) << "database directory '" << _basePath
+             << "' is not writable for current user";
+
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATADIR_NOT_WRITABLE);
+  }
+
+  // ...........................................................................
+  // verify existence of "databases" subdirectory
+  // ...........................................................................
+
+  if (!TRI_IsDirectory(_databasePath.c_str())) {
+    long systemError;
+    std::string errorMessage;
+    int res = TRI_CreateDirectory(_databasePath.c_str(), systemError, errorMessage);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      LOG(ERR) << "unable to create database directory '"
+               << _databasePath << "': " << errorMessage;
+
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATADIR_NOT_WRITABLE);
+    }
+  }
+
+  if (!TRI_IsWritable(_databasePath.c_str())) {
+    LOG(ERR) << "database directory '" << _databasePath << "' is not writable";
+
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATADIR_NOT_WRITABLE);
+  }
+}
+
+/// @brief get the names of all databases 
+std::vector<std::string> MMFilesEngine::getDatabaseNames() const {
+  std::vector<std::string> databases;
+
+  for (auto const& name : TRI_FilesDirectory(_databasePath.c_str())) {
+    TRI_ASSERT(!name.empty());
+
+    if (!basics::StringUtils::isPrefix(name, "database-")) {
+      // found some other file
+      continue;
+    }
+
+    // found a database name
+    std::string const dname(arangodb::basics::FileUtils::buildFilename(_databasePath, name));
+
+    if (TRI_IsDirectory(dname.c_str())) {
+      databases.emplace_back(name);
+    }
+  }
+
+  // sort by id
+  std::sort(databases.begin(), databases.end(), DatabaseIdStringComparator);
+
+  return databases;
+}
+
+/// @brief create a new database directory 
+int MMFilesEngine::createDatabaseDirectory(TRI_voc_tick_t id,
+                                           std::string const& name) {
+  std::string const dirname = databaseDirectory(id);
+
+  // use a temporary directory first. otherwise, if creation fails, the server
+  // might be left with an empty database directory at restart, and abort.
+
+  std::string const tmpname(dirname + ".tmp");
+
+  if (TRI_IsDirectory(tmpname.c_str())) {
+    TRI_RemoveDirectory(tmpname.c_str());
+  }
+
+  std::string errorMessage;
+  long systemError;
+
+  int res = TRI_CreateDirectory(tmpname.c_str(), systemError, errorMessage);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    if (res != TRI_ERROR_FILE_EXISTS) {
+      LOG(ERR) << "failed to create database directory: " << errorMessage;
+    }
+    return res;
+  }
+
+  TRI_IF_FAILURE("CreateDatabase::tempDirectory") { return TRI_ERROR_DEBUG; }
+
+  std::string const tmpfile(
+      arangodb::basics::FileUtils::buildFilename(tmpname, ".tmp"));
+  res = TRI_WriteFile(tmpfile.c_str(), "", 0);
+
+  TRI_IF_FAILURE("CreateDatabase::tempFile") { return TRI_ERROR_DEBUG; }
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_RemoveDirectory(tmpname.c_str());
+    return res;
+  }
+
+  // finally rename
+  res = TRI_RenameFile(tmpname.c_str(), dirname.c_str());
+
+  TRI_IF_FAILURE("CreateDatabase::renameDirectory") { return TRI_ERROR_DEBUG; }
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_RemoveDirectory(tmpname.c_str());  // clean up
+    return res;
+  }
+
+  // now everything is valid
+
+  res = saveDatabaseParameters(id, name, false);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return res;
+  }
+
+  // finally remove the .tmp file
+  {
+    std::string const tmpfile(arangodb::basics::FileUtils::buildFilename(dirname, ".tmp"));
+    TRI_UnlinkFile(tmpfile.c_str());
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+/// @brief save a parameter.json file for a database
+int MMFilesEngine::saveDatabaseParameters(TRI_voc_tick_t id, 
+                                          std::string const& name,
+                                          bool deleted) {
+  TRI_ASSERT(id > 0);
+  TRI_ASSERT(!name.empty());
+
+  VPackBuilder builder = databaseToVelocyPack(id, name, deleted);
+  std::string const file = parametersFile(id);
+
+  if (!arangodb::basics::VelocyPackHelper::velocyPackToFile(
+          file.c_str(), builder.slice(), true)) {
+    LOG(ERR) << "cannot save database information in file '" << file << "'";
+    return TRI_ERROR_INTERNAL;
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
+  
+VPackBuilder MMFilesEngine::databaseToVelocyPack(TRI_voc_tick_t id, 
+                                                 std::string const& name, 
+                                                 bool deleted) const {
+  TRI_ASSERT(id > 0);
+  TRI_ASSERT(!name.empty());
+
+  VPackBuilder builder;
+  builder.openObject();
+  builder.add("id", VPackValue(std::to_string(id)));
+  builder.add("name", VPackValue(name));
+  builder.add("deleted", VPackValue(deleted));
+  builder.close();
+
+  return builder;
+}
+
+std::string MMFilesEngine::databaseDirectory(TRI_voc_tick_t id) const {
+  return _databasePath + "database-" + std::to_string(id);
+}
+
+std::string MMFilesEngine::parametersFile(TRI_voc_tick_t id) const {
+  return basics::FileUtils::buildFilename(databaseDirectory(id), TRI_VOC_PARAMETER_FILE);
+}
+
+/// @brief iterate over all databases in the databases directory and open them
+int MMFilesEngine::openDatabases() {
+  if (_iterateMarkersOnOpen) {
+    LOG(WARN) << "no shutdown info found. scanning datafiles for last tick...";
+  }
+
+  // open databases in defined order
+  std::vector<std::string> files = TRI_FilesDirectory(_databasePath.c_str());
+  std::sort(files.begin(), files.end(), DatabaseIdStringComparator);
+
+  for (auto const& name : files) {
+    TRI_ASSERT(!name.empty());
+    
+    TRI_voc_tick_t id = GetNumericFilenamePart(name.c_str());
+
+    if (id == 0) {
+      // invalid id
+      continue;
+    }
+
+    // .........................................................................
+    // construct and validate path
+    // .........................................................................
+
+    std::string const directory(basics::FileUtils::buildFilename(_databasePath, name));
+
+    if (!TRI_IsDirectory(directory.c_str())) {
+      continue;
+    }
+
+    if (!basics::StringUtils::isPrefix(name, "database-") ||
+        basics::StringUtils::isSuffix(name, ".tmp")) {
+      LOG_TOPIC(TRACE, Logger::DATAFILES) << "ignoring file '" << name << "'";
+      continue;
+    }
+
+    // we have a directory...
+
+    if (!TRI_IsWritable(directory.c_str())) {
+      // the database directory we found is not writable for the current user
+      // this can cause serious trouble so we will abort the server start if we
+      // encounter this situation
+      LOG(ERR) << "database directory '" << directory
+               << "' is not writable for current user";
+
+      return TRI_ERROR_ARANGO_DATADIR_NOT_WRITABLE;
+    }
+
+    // we have a writable directory...
+    std::string const tmpfile(basics::FileUtils::buildFilename(directory, ".tmp"));
+
+    if (TRI_ExistsFile(tmpfile.c_str())) {
+      // still a temporary... must ignore
+      LOG(TRACE) << "ignoring temporary directory '" << tmpfile << "'";
+      continue;
+    }
+
+    // a valid database directory
+
+    // .........................................................................
+    // read parameter.json file
+    // .........................................................................
+
+    // now read data from parameter.json file
+    std::string const file = parametersFile(id);
+
+    if (!TRI_ExistsFile(file.c_str())) {
+      // no parameter.json file
+      
+      if (TRI_FilesDirectory(directory.c_str()).empty()) {
+        // directory is otherwise empty, continue!
+        LOG(WARN) << "ignoring empty database directory '" << directory
+                  << "' without parameters file";
+        continue;
+      } 
+        
+      // abort
+      LOG(ERR) << "database directory '" << directory
+               << "' does not contain parameters file or parameters file cannot be read";
+      return TRI_ERROR_ARANGO_ILLEGAL_PARAMETER_FILE;
+    }
+
+    LOG(DEBUG) << "reading database parameters from file '" << file << "'";
+    std::shared_ptr<VPackBuilder> builder;
+    try {
+      builder = arangodb::basics::VelocyPackHelper::velocyPackFromFile(file);
+    } catch (...) {
+      LOG(ERR) << "database directory '" << directory
+               << "' does not contain a valid parameters file";
+
+      // abort
+      return TRI_ERROR_ARANGO_ILLEGAL_PARAMETER_FILE;
+    }
+
+    VPackSlice parameters = builder->slice();
+    std::string const parametersString = parameters.toJson();
+
+    LOG(DEBUG) << "database parameters: " << parametersString;
+      
+    VPackSlice idSlice = parameters.get("id");
+    
+    if (!idSlice.isString() ||
+        id != static_cast<TRI_voc_tick_t>(basics::StringUtils::uint64(idSlice.copyString()))) {
+      LOG(ERR) << "database directory '" << directory
+               << "' does not contain a valid parameters file";
+      return TRI_ERROR_ARANGO_ILLEGAL_PARAMETER_FILE;
+    }
+    
+    if (arangodb::basics::VelocyPackHelper::getBooleanValue(parameters, "deleted", false)) {
+      // database is deleted, skip it!
+      LOG(INFO) << "found dropped database in directory '" << directory << "'";
+      LOG(INFO) << "removing superfluous database directory '" << directory << "'";
+
+#ifdef ARANGODB_ENABLE_ROCKSDB
+      // delete persistent indexes for this database
+      TRI_voc_tick_t id = static_cast<TRI_voc_tick_t>(
+          basics::StringUtils::uint64(idSlice.copyString()));
+      RocksDBFeature::dropDatabase(id);
+#endif
+
+      TRI_RemoveDirectory(directory.c_str());
+      continue;
+    }
+
+    VPackSlice nameSlice = parameters.get("name");
+
+    if (!nameSlice.isString()) {
+      LOG(ERR) << "database directory '" << directory
+               << "' does not contain a valid parameters file";
+
+      return TRI_ERROR_ARANGO_ILLEGAL_PARAMETER_FILE;
+    }
+
+    std::string const databaseName = nameSlice.copyString();
+
+    // use defaults
+    //TRI_vocbase_defaults_t defaults;
+    //TRI_GetDatabaseDefaultsServer(server, &defaults);
+
+    // TODO: create app directories
+    // TODO: handle TRI_vocbase_defaults_t
+
+    // .........................................................................
+    // open the database and scan collections in it
+    // .........................................................................
+/*
+    // try to open this database
+    TRI_vocbase_t* vocbase = TRI_OpenVocBase(
+        server, databaseDirectory.c_str(), id, databaseName.c_str(), &defaults,
+        _isUpgrade, _iterateMarkersOnOpen);
+
+    if (vocbase == nullptr) {
+      // grab last error
+      int res = TRI_errno();
+
+      if (res == TRI_ERROR_NO_ERROR) {
+        // but we must have an error...
+        res = TRI_ERROR_INTERNAL;
+      }
+
+      LOG(ERR) << "could not process database directory '" << databaseDirectory
+               << "' for database '" << name << "': " << TRI_errno_string(res);
+      return res;
+    }
+*/
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
