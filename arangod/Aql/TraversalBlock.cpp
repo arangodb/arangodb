@@ -410,6 +410,8 @@ size_t TraversalBlock::skipSome(size_t atLeast, size_t atMost) {
 
 /// @brief optimized version of neighbors search, must properly implement this
 void TraversalBlock::neighbors(std::string const& startVertex) {
+#warning Needs to be rebuild
+  /*
   std::unordered_set<VPackSlice, arangodb::basics::VelocyPackHelper::VPackStringHash, arangodb::basics::VelocyPackHelper::VPackStringEqual> visited;
 
   std::vector<VPackSlice> result;
@@ -451,6 +453,7 @@ void TraversalBlock::neighbors(std::string const& startVertex) {
 
     _vertices.emplace_back(AqlValue(mptr.vpack(), AqlValueFromMasterPointer()));
   }
+  */
 }
 
 /// @brief worker for neighbors() function
@@ -459,6 +462,7 @@ void TraversalBlock::runNeighbors(std::vector<VPackSlice> const& startVertices,
                                   std::vector<VPackSlice>& distinct,
                                   TRI_edge_direction_e direction,
                                   uint64_t depth) {
+  /*
   std::vector<VPackSlice> nextDepth;
   bool initialized = false;
   TraversalNode const* node = static_cast<TraversalNode const*>(getPlanNode());
@@ -538,4 +542,5 @@ void TraversalBlock::runNeighbors(std::vector<VPackSlice> const& startVertices,
   if (!nextDepth.empty()) {
     runNeighbors(nextDepth, visited, distinct, direction, depth + 1);
   }
+  */
 }

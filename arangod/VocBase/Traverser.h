@@ -39,6 +39,10 @@ namespace velocypack {
 class Builder;
 class Slice;
 }
+
+namespace aql {
+class TraversalNode;
+}
 namespace traverser {
 
 class TraverserExpression {
@@ -197,13 +201,17 @@ class TraversalPath {
 };
 
 struct TraverserOptions {
+  friend class arangodb::aql::TraversalNode;
+
   enum UniquenessLevel { NONE, PATH, GLOBAL };
 
  private:
   arangodb::Transaction* _trx;
   std::vector<std::string> _collections;
   std::vector<TRI_edge_direction_e> _directions;
-  std::vector<arangodb::Transaction::IndexHandle> _indexHandles;
+  std::vector<arangodb::Transaction::IndexHandle> _baseIndexHandles;
+  std::unordered_map<size_t, std::vector<arangodb::Transaction::IndexHandle>>
+      _depthIndexHandles;
 
  public:
   uint64_t minDepth;
@@ -227,10 +235,7 @@ struct TraverserOptions {
         uniqueEdges(UniquenessLevel::PATH) {
   }
 
-  void setCollections(std::vector<std::string> const&, TRI_edge_direction_e);
-  void setCollections(std::vector<std::string> const&,
-                      std::vector<TRI_edge_direction_e> const&);
-
+  /*
   size_t collectionCount() const;
 
   bool getCollection(size_t, std::string&, TRI_edge_direction_e&) const;
@@ -238,7 +243,8 @@ struct TraverserOptions {
   bool getCollectionAndSearchValue(size_t, std::string const&, std::string&,
                                    arangodb::Transaction::IndexHandle&,
                                    arangodb::velocypack::Builder&) const;
-
+  */
+  
   bool evaluateEdgeExpression(arangodb::velocypack::Slice, size_t) const;
 
   bool evaluateVertexExpression(arangodb::velocypack::Slice, size_t) const;

@@ -27,6 +27,7 @@
 #include "Aql/TraversalNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Ast.h"
+#include "Aql/SortCondition.h"
 #include "Aql/TraversalOptions.h"
 #include "Indexes/Index.h"
 
@@ -49,14 +50,17 @@ static uint64_t checkTraversalDepthValue(AstNode const* node) {
   return static_cast<uint64_t>(v);
 }
 
-TraversalNode::EdgeConditionBuilder::EdgeConditionBuilder(TraversalNode const* tn,
-                                           AstNode* modCondition)
+TraversalNode::EdgeConditionBuilder::EdgeConditionBuilder(
+    TraversalNode const* tn)
     : _tn(tn), _containsCondition(false) {
       _modCondition = _tn->_ast->createNodeNaryOperator(NODE_TYPE_OPERATOR_NARY_AND);
-      _modCondition->addMember(modCondition);
     }
 
-AstNode const* TraversalNode::EdgeConditionBuilder::getOutboundCondition() {
+void TraversalNode::EdgeConditionBuilder::addConditionPart(AstNode const* part) {
+  _modCondition->addMember(part);
+}
+
+AstNode* TraversalNode::EdgeConditionBuilder::getOutboundCondition() {
   if (_containsCondition) {
     _modCondition->changeMember(_modCondition->numMembers() - 1, _tn->_fromCondition);
   } else {
@@ -69,7 +73,7 @@ AstNode const* TraversalNode::EdgeConditionBuilder::getOutboundCondition() {
   return _modCondition;
 };
 
-AstNode const* TraversalNode::EdgeConditionBuilder::getInboundCondition() {
+AstNode* TraversalNode::EdgeConditionBuilder::getInboundCondition() {
   if (_containsCondition) {
     _modCondition->changeMember(_modCondition->numMembers() - 1, _tn->_toCondition);
   } else {
@@ -616,7 +620,101 @@ void TraversalNode::fillTraversalOptions(
     arangodb::traverser::TraverserOptions& opts) const {
   opts.minDepth = _minDepth;
   opts.maxDepth = _maxDepth;
-  opts.setCollections(_edgeColls, _directions);
+
+  // This is required by trx api.
+  // But we do not use it here.
+  SortCondition sort;
+
+  size_t numEdgeColls = _edgeColls.size();
+  AstNode* condition = nullptr;
+  Transaction* trx = _ast->query()->trx();
+  bool res = false;
+  EdgeConditionBuilder globalEdgeConditionBuilder(this);
+
+  opts._baseIndexHandles.reserve(numEdgeColls);
+  // Compute Edge Indexes. First default indexes:
+  for (size_t i = 0; i < numEdgeColls; ++i) {
+    auto dir = _directions[i];
+    switch (dir) {
+      case TRI_EDGE_IN:
+        condition = globalEdgeConditionBuilder.getInboundCondition();
+        break;
+      case TRI_EDGE_OUT:
+        condition = globalEdgeConditionBuilder.getOutboundCondition();
+        break;
+      case TRI_EDGE_ANY:
+        condition = globalEdgeConditionBuilder.getInboundCondition();
+        res = trx->getBestIndexHandleForFilterCondition(
+            _edgeColls[i], condition, _tmpObjVariable, &sort, 1000,
+            opts._baseIndexHandles);
+        TRI_ASSERT(res);  // Right now we have an enforced edge index which wil
+                          // always fit.
+        condition = globalEdgeConditionBuilder.getOutboundCondition();
+        break;
+    }
+#warning hard-coded nrItems.
+    res = trx->getBestIndexHandleForFilterCondition(
+        _edgeColls[i], condition, _tmpObjVariable, &sort, 1000,
+        opts._baseIndexHandles);
+    TRI_ASSERT(res);  // We have an enforced edge index which wil always fit.
+  }
+
+  for (std::pair<size_t, EdgeConditionBuilder> it : _edgeConditions) {
+    auto ins = opts._depthIndexHandles.emplace(
+        it.first, std::vector<Transaction::IndexHandle>());
+    TRI_ASSERT(ins.second);
+
+    auto& idxList = ins.first->second;
+    idxList.reserve(numEdgeColls);
+    // Compute Edge Indexes. First default indexes:
+    for (size_t i = 0; i < numEdgeColls; ++i) {
+      auto dir = _directions[i];
+      switch (dir) {
+        case TRI_EDGE_IN:
+          condition = it.second.getInboundCondition();
+          break;
+        case TRI_EDGE_OUT:
+          condition = it.second.getOutboundCondition();
+          break;
+        case TRI_EDGE_ANY:
+          condition = it.second.getInboundCondition();
+          res = trx->getBestIndexHandleForFilterCondition(
+              _edgeColls[i], condition, _tmpObjVariable, &sort, 1000, idxList);
+          TRI_ASSERT(res);  // Right now we have an enforced edge index which wil
+                            // always fit.
+          condition = it.second.getOutboundCondition();
+          break;
+      }
+#warning hard-coded nrItems.
+      res = trx->getBestIndexHandleForFilterCondition(
+          _edgeColls[i], condition, _tmpObjVariable, &sort, 1000, idxList);
+      TRI_ASSERT(res);  // We have an enforced edge index which wil always fit.
+    }
+  }
+
+  VPackBuilder ulf;
+  ulf.openObject();
+  ulf.add(VPackValue("base"));
+  ulf.openArray();
+  for (auto const& idx : opts._baseIndexHandles) {
+    ulf.openObject();
+    idx.toVelocyPack(ulf, false);
+    ulf.close();
+  }
+  ulf.close();
+  for (auto const& it : opts._depthIndexHandles) {
+    ulf.add(VPackValue(std::to_string(it.first)));
+    ulf.openArray();
+    for (auto const& idx : it.second) {
+      ulf.openObject();
+      idx.toVelocyPack(ulf, false);
+      ulf.close();
+    }
+    ulf.close();
+  }
+  ulf.close();
+  LOG(ERR) << ulf.toJson();
+  
   opts.useBreadthFirst = _options.useBreadthFirst;
   opts.uniqueVertices = _options.uniqueVertices;
   opts.uniqueEdges = _options.uniqueEdges;
@@ -643,11 +741,17 @@ void TraversalNode::setCondition(arangodb::aql::Condition* condition) {
 
 void TraversalNode::registerCondition(bool isConditionOnEdge,
                                       size_t conditionLevel,
-                                      AstNode* condition) {
+                                      AstNode const* condition) {
 
   if (isConditionOnEdge) {
-    TRI_ASSERT(_edgeConditions.find(conditionLevel) == _edgeConditions.end());
-    _edgeConditions.emplace(conditionLevel, EdgeConditionBuilder(this, condition));
+    auto const& it = _edgeConditions.find(conditionLevel);
+    if (it == _edgeConditions.end()) {
+      EdgeConditionBuilder builder(this);
+      builder.addConditionPart(condition);
+      _edgeConditions.emplace(conditionLevel, builder);
+    } else {
+      it->second.addConditionPart(condition);
+    }
   } else {
     auto const& it = _vertexConditions.find(conditionLevel);
     if (it == _vertexConditions.end()) {
@@ -664,7 +768,7 @@ void TraversalNode::registerCondition(bool isConditionOnEdge,
 }
 
 void TraversalNode::registerGlobalCondition(bool isConditionOnEdge,
-                                            AstNode* condition) {
+                                            AstNode const* condition) {
   std::cout << "Registering global condition for edges: " << isConditionOnEdge << std::endl;
   if (isConditionOnEdge) {
     _globalEdgeCondition = condition;
@@ -673,4 +777,8 @@ void TraversalNode::registerGlobalCondition(bool isConditionOnEdge,
   }
 
   condition->dump(0);
+}
+
+AstNode* TraversalNode::getTemporaryRefNode() const {
+  return _tmpObjVarNode;
 }

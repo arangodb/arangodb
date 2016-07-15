@@ -101,6 +101,8 @@ void ClusterTraverser::UniqueVertexGetter::reset() {
 void ClusterTraverser::ClusterEdgeGetter::getEdge(
     std::string const& startVertex, std::vector<std::string>& result,
     size_t*& last, size_t& eColIdx) {
+#warning This path fetches Edges from DBServer, honoring conditions. Has to be rewritten.
+  /*
   std::string collName;
   TRI_edge_direction_e dir;
   if (!_traverser->_opts.getCollection(eColIdx, collName, dir)) {
@@ -116,8 +118,6 @@ void ClusterTraverser::ClusterEdgeGetter::getEdge(
 
     VPackBuilder resultEdges;
     resultEdges.openObject();
-#warning This path fetches Edges from DBServer, honoring conditions. Has to be rewritten.
-    /*
     auto found = _traverser->_opts.expressions->find(depth);
     if (found != _traverser->_opts.expressions->end()) {
       expEdges = found->second;
@@ -129,7 +129,6 @@ void ClusterTraverser::ClusterEdgeGetter::getEdge(
     if (res != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(res);
     }
-*/
     resultEdges.close();
     VPackSlice resSlice = resultEdges.slice();
     VPackSlice edgesSlice = resSlice.get("edges");
@@ -225,6 +224,7 @@ void ClusterTraverser::ClusterEdgeGetter::getEdge(
       result.push_back(std::move(next));
     }
   }
+*/
 }
 
 void ClusterTraverser::ClusterEdgeGetter::getAllEdges(

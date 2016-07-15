@@ -546,6 +546,17 @@ class Transaction {
       arangodb::aql::Variable const*, arangodb::aql::SortCondition const*,
       size_t, std::vector<IndexHandle>&, bool&);
 
+  /// @brief Gets the best fitting index for one specific condition.
+  ///        Difference to IndexHandles: Condition is only one NARY_AND
+  ///        and the Condition stays unmodified. Also does not care for sorting
+  ///        Returns false if no index could be found.
+
+  bool getBestIndexHandleForFilterCondition(std::string const&,
+                                            arangodb::aql::AstNode const*,
+                                            arangodb::aql::Variable const*,
+                                            arangodb::aql::SortCondition const*,
+                                            size_t, std::vector<IndexHandle>&);
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Checks if the index supports the filter condition.
   /// note: the caller must have read-locked the underlying collection when
@@ -584,10 +595,10 @@ class Transaction {
   /// calling this method
   //////////////////////////////////////////////////////////////////////////////
 
-  OperationCursor* indexScanForCondition(
-      std::string const& collectionName, IndexHandle const& indexId,
-      arangodb::aql::AstNode const*, arangodb::aql::Variable const*, uint64_t,
-      uint64_t, bool);
+  OperationCursor* indexScanForCondition(IndexHandle const&,
+                                         arangodb::aql::AstNode const*,
+                                         arangodb::aql::Variable const*,
+                                         uint64_t, uint64_t, bool);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief factory for OperationCursor objects
@@ -810,7 +821,7 @@ class Transaction {
       arangodb::aql::SortCondition const* sortCondition,
       size_t itemsInCollection,
       std::vector<Transaction::IndexHandle>& usedIndexes,
-      arangodb::aql::AstNode*& specializedCondition,
+      bool computeSpecialisation, arangodb::aql::AstNode*& specializedCondition,
       bool& isSparse) const;
 
   //////////////////////////////////////////////////////////////////////////////

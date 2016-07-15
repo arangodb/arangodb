@@ -170,21 +170,9 @@ static void transformCondition(AstNode const* node, Variable const* pvar,
 
   AstNode* result = node->clone(ast);
 
-  auto tmpVar = ast->variables()->createTemporaryVariable();
+  AstNode* varRefNode = tn->getTemporaryRefNode();
 
   size_t const n = result->numMembers();
-
-  // replace the path variable access by a variable access to edge/vertex
-  // (then current to the iteration)
-  auto varRefNode = new AstNode(NODE_TYPE_REFERENCE);
-  try {
-    ast->query()->addNode(varRefNode);
-  } catch (...) {
-    // prevent leak
-    delete varRefNode;
-    throw;
-  }
-  varRefNode->setData(tmpVar);
 
   for (size_t i = 0; i < n; ++i) {
     AstNode* baseCondition = result->getMemberUnchecked(i);

@@ -568,6 +568,10 @@ struct AstNode {
     }
     members.erase(members.begin() + i, members.end());
   }
+  
+  inline void clearMembers() {
+    members.clear();
+  }
 
   /// @brief set the node's value type
   inline void setValueType(AstNodeValueType type) { value.type = type; }

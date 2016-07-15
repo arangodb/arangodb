@@ -294,6 +294,9 @@ aql::AqlValue SingleServerTraverser::pathToAqlValue(VPackBuilder& builder) {
 bool SingleServerTraverser::EdgeGetter::nextCursor(std::string const& startVertex,
                                                    size_t& eColIdx,
                                                    size_t*& last) {
+#warning Reimplement
+  return false;
+  /*
   std::string eColName;
 
   while (true) {
@@ -327,6 +330,7 @@ bool SingleServerTraverser::EdgeGetter::nextCursor(std::string const& startVerte
     _results.emplace();
     return true;
   }
+  */
 }
 
 void SingleServerTraverser::EdgeGetter::nextEdge(
@@ -424,6 +428,8 @@ void SingleServerTraverser::EdgeGetter::getAllEdges(
     std::string const& startVertex, std::unordered_set<std::string>& edges,
     size_t depth) {
 
+#warning reimplement
+/*
   size_t idxId = 0;
   std::string eColName;
   arangodb::Transaction::IndexHandle indexHandle;
@@ -476,5 +482,6 @@ void SingleServerTraverser::EdgeGetter::getAllEdges(
       }
     }
   }
+  */
 }
 

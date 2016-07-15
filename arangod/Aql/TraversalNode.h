@@ -49,13 +49,15 @@ class TraversalNode : public ExecutionNode {
       bool _containsCondition;
 
     public:
-     EdgeConditionBuilder(TraversalNode const*, AstNode*);
+     EdgeConditionBuilder(TraversalNode const*);
 
       ~EdgeConditionBuilder() {}
 
-      AstNode const* getOutboundCondition();
+      void addConditionPart(AstNode const*);
 
-      AstNode const* getInboundCondition();
+      AstNode* getOutboundCondition();
+
+      AstNode* getInboundCondition();
   };
 
 
@@ -211,12 +213,12 @@ class TraversalNode : public ExecutionNode {
   /// @brief register a filter condition on a given search depth.
   ///        If this condition is not fulfilled a traversal will abort.
   ///        The condition will contain the local variable for it's accesses.
-  void registerCondition(bool, size_t, AstNode*);
+  void registerCondition(bool, size_t, AstNode const*);
 
   /// @brief register a filter condition for all search depths
   ///        If this condition is not fulfilled a traversal will abort.
   ///        The condition will contain the local variable for it's accesses.
-  void registerGlobalCondition(bool, AstNode*);
+  void registerGlobalCondition(bool, AstNode const*);
 
   bool allDirectionsEqual() const;
 
@@ -226,6 +228,8 @@ class TraversalNode : public ExecutionNode {
   uint64_t maxDepth() const { return _maxDepth; }
 
   TraversalOptions const* options() const { return &_options; }
+
+  AstNode* getTemporaryRefNode() const;
 
  private:
   /// @brief the database
@@ -299,10 +303,10 @@ class TraversalNode : public ExecutionNode {
 
   /// @brief The global edge condition. Does not contain
   ///        _from and _to checks
-  AstNode* _globalEdgeCondition;
+  AstNode const* _globalEdgeCondition;
 
   /// @brief The global vertex condition
-  AstNode* _globalVertexCondition;
+  AstNode const* _globalVertexCondition;
 
   /// @brief List of all depth specific conditions for edges
   std::unordered_map<size_t, EdgeConditionBuilder> _edgeConditions;

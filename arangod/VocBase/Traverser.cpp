@@ -71,34 +71,8 @@ void arangodb::traverser::ShortestPath::vertexToVelocyPack(Transaction* trx, siz
   }
 }
 
-void arangodb::traverser::TraverserOptions::setCollections(
-    std::vector<std::string> const& colls, TRI_edge_direction_e dir) {
-  // We do not allow to reset the collections.
-  TRI_ASSERT(_collections.empty());
-  TRI_ASSERT(_directions.empty());
-  TRI_ASSERT(!colls.empty());
-  _collections = colls;
-  _directions.emplace_back(dir);
-  for (auto const& it : colls) {
-    _indexHandles.emplace_back(_trx->edgeIndexHandle(it));
-  }
-}
-
-void arangodb::traverser::TraverserOptions::setCollections(
-    std::vector<std::string> const& colls,
-    std::vector<TRI_edge_direction_e> const& dirs) {
-  // We do not allow to reset the collections.
-  TRI_ASSERT(_collections.empty());
-  TRI_ASSERT(_directions.empty());
-  TRI_ASSERT(!colls.empty());
-  TRI_ASSERT(colls.size() == dirs.size());
-  _collections = colls;
-  _directions = dirs;
-  for (auto const& it : colls) {
-    _indexHandles.emplace_back(_trx->edgeIndexHandle(it));
-  }
-}
-
+#warning TODO remove
+/*
 size_t arangodb::traverser::TraverserOptions::collectionCount () const {
   return _collections.size();
 }
@@ -144,6 +118,7 @@ bool arangodb::traverser::TraverserOptions::getCollectionAndSearchValue(
   arangodb::EdgeIndex::buildSearchValue(dir, vertexId, builder);
   return true;
 }
+*/
 
 bool arangodb::traverser::TraverserOptions::evaluateEdgeExpression(arangodb::velocypack::Slice edge, size_t depth) const {
 #warning This has to be implemented.

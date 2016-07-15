@@ -380,10 +380,9 @@ bool Transaction::sortOrs(arangodb::aql::Ast* ast,
 std::pair<bool, bool> Transaction::findIndexHandleForAndNode(
     std::vector<std::shared_ptr<Index>> indexes, arangodb::aql::AstNode* node,
     arangodb::aql::Variable const* reference,
-    arangodb::aql::SortCondition const* sortCondition,
-    size_t itemsInCollection,
+    arangodb::aql::SortCondition const* sortCondition, size_t itemsInCollection,
     std::vector<Transaction::IndexHandle>& usedIndexes,
-    arangodb::aql::AstNode*& specializedCondition,
+    bool computeSpecialisation, arangodb::aql::AstNode*& specializedCondition,
     bool& isSparse) const {
   std::shared_ptr<Index> bestIndex;
   double bestCost = 0.0;
@@ -461,7 +460,9 @@ std::pair<bool, bool> Transaction::findIndexHandleForAndNode(
     return std::make_pair(false, false);
   }
 
-  specializedCondition = bestIndex->specializeCondition(node, reference);
+  if (computeSpecialisation) {
+    specializedCondition = bestIndex->specializeCondition(node, reference);
+  }
 
   usedIndexes.emplace_back(bestIndex);
   isSparse = bestIndex->sparse();
@@ -2694,7 +2695,7 @@ std::pair<bool, bool> Transaction::getBestIndexHandlesForFilterCondition(
     arangodb::aql::AstNode* specializedCondition = nullptr;
     auto canUseIndex = findIndexHandleForAndNode(
         indexes, node, reference, sortCondition, itemsInCollection, usedIndexes,
-        specializedCondition, isSparse);
+        true, specializedCondition, isSparse);
 
     if (canUseIndex.second && !canUseIndex.first) {
       // index can be used for sorting only
@@ -2730,6 +2731,41 @@ std::pair<bool, bool> Transaction::getBestIndexHandlesForFilterCondition(
   // has absolutely no indexes
   return std::make_pair(canUseForFilter, canUseForSort);
 }
+
+
+/// @brief Gets the best fitting index for one specific condition.
+///        Difference to IndexHandles: Condition is only one NARY_AND
+///        and the Condition stays unmodified. Also does not care for sorting
+///        Returns false if no index could be found.
+
+bool Transaction::getBestIndexHandleForFilterCondition(
+    std::string const& collectionName, 
+    arangodb::aql::AstNode const* node,
+    arangodb::aql::Variable const* reference,
+    arangodb::aql::SortCondition const* sortCondition,
+    size_t itemsInCollection,
+    std::vector<IndexHandle>& usedIndexes) {
+  // We can only start after DNF transformation and only a single AND
+  TRI_ASSERT(node->type ==
+             arangodb::aql::AstNodeType::NODE_TYPE_OPERATOR_NARY_AND);
+  if (node->numMembers() == 0) {
+    // Well no index can serve no condition.
+    return false;
+  }
+
+  auto indexes = indexesForCollection(collectionName);
+  bool isSparse = false;
+
+  arangodb::aql::AstNode* specializedCondition = nullptr;
+  // Const cast is save here. Giving computeSpecialisation == false
+  // Makes sure node is NOT modified.
+  auto canUseIndex = findIndexHandleForAndNode(
+      indexes, const_cast<aql::AstNode*>(node), reference, sortCondition,
+      itemsInCollection, usedIndexes, false, specializedCondition, isSparse);
+
+  return canUseIndex.first;
+}
+
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief Checks if the index supports the filter condition.
@@ -2832,7 +2868,7 @@ std::pair<bool, bool> Transaction::getIndexForSortCondition(
 //////////////////////////////////////////////////////////////////////////////
 
 OperationCursor* Transaction::indexScanForCondition(
-    std::string const& collectionName, IndexHandle const& indexId,
+    IndexHandle const& indexId,
     arangodb::aql::AstNode const* condition, arangodb::aql::Variable const* var,
     uint64_t limit, uint64_t batchSize, bool reverse) {
   if (ServerState::isCoordinator(_serverRole)) {
