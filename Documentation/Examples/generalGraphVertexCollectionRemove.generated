@@ -4,7 +4,7 @@ arangosh&gt; graph.male.save({name: <span class="hljs-string">"Kermit"</span>, _
 { 
   <span class="hljs-string">"_id"</span> : <span class="hljs-string">"male/kermit"</span>, 
   <span class="hljs-string">"_key"</span> : <span class="hljs-string">"kermit"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"20552"</span> 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"20478"</span> 
 }
 arangosh&gt; db._exists(<span class="hljs-string">"male/kermit"</span>)
 <span class="hljs-literal">true</span>

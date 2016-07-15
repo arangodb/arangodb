@@ -320,6 +320,23 @@ function ahuacatlCallUserDefinedTestSuite () {
     testThrows : function () {
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_RUNTIME_ERROR.code, "RETURN CALL('UNITTESTS::FUNC::THROWING')"); 
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_RUNTIME_ERROR.code, "RETURN APPLY('UNITTESTS::FUNC::THROWING', [ ])"); 
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test function name passed from the outside
+////////////////////////////////////////////////////////////////////////////////
+
+    testFunctionName : function () {
+      aqlfunctions.register("UnitTests::func::call", function () { return this.name; });
+
+      var actual = getQueryResults("RETURN UnitTests::func::call()");
+      assertEqual("UNITTESTS::FUNC::CALL", actual[0]);
+      
+      actual = getQueryResults("RETURN CALL('UNITTESTS::FUNC::CALL', [])");
+      assertEqual("UNITTESTS::FUNC::CALL", actual[0]);
+      
+      actual = getQueryResults("RETURN CALL('unittests::func::call', [])");
+      assertEqual("UNITTESTS::FUNC::CALL", actual[0]);
     }
 
   };

@@ -128,6 +128,12 @@ class TransactionContext {
   arangodb::velocypack::Options* getVPackOptions();
   
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief get velocypack options for dumping
+  //////////////////////////////////////////////////////////////////////////////
+
+  arangodb::velocypack::Options* getVPackOptionsForDump();
+  
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief unregister the transaction
   /// this will save the transaction's id and status locally
   //////////////////////////////////////////////////////////////////////////////
@@ -194,6 +200,7 @@ class TransactionContext {
   std::unique_ptr<arangodb::basics::StringBuffer> _stringBuffer;
 
   arangodb::velocypack::Options _options;
+  arangodb::velocypack::Options _dumpOptions;
 
   struct {
     TRI_voc_tid_t id; 

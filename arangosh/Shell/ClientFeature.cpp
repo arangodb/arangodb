@@ -152,7 +152,8 @@ void ClientFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     }
 
     std::cout << "Please specify a password: " << std::flush;
-    std::getline(std::cin, _password);
+    _password = ConsoleFeature::readPassword();
+    std::cout << std::endl << std::flush;
   }
 
   SimpleHttpClient::setMaxPacketSize(_maxPacketSize);

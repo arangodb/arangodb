@@ -486,6 +486,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
               options.recoveryMarker = envelope;
               options.isRestore = true;
               options.waitForSync = false;
+              options.ignoreRevs = true;
 
               // try an insert first
               TRI_ASSERT(VPackSlice(ptr).isObject());
@@ -547,16 +548,26 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
               options.silent = true;
               options.recoveryMarker = envelope;
               options.waitForSync = false;
+              options.ignoreRevs = true;
 
-              OperationResult opRes = trx->remove(collectionName, VPackSlice(ptr), options);
-              int res = opRes.code;
+              int res = TRI_ERROR_INTERNAL;
+              try {
+                OperationResult opRes = trx->remove(collectionName, VPackSlice(ptr), options);
+                res = opRes.code;
+              } catch (arangodb::basics::Exception const& ex) {
+                res = ex.code();
+              } catch (...) {
+                // unable to determine the error code
+                res = TRI_ERROR_INTERNAL;
+              }
 
               return res;
             });
 
         if (res != TRI_ERROR_NO_ERROR && res != TRI_ERROR_ARANGO_CONFLICT &&
             res != TRI_ERROR_ARANGO_DATABASE_NOT_FOUND &&
-            res != TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
+            res != TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND &&
+            res != TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
           LOG(WARN) << "unable to remove document in collection " << collectionId << " of database " << databaseId << ": " << TRI_errno_string(res);
           ++state->errorCount;
           return state->canContinue();
@@ -835,7 +846,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
         VPackSlice isSystem = bx.slice();
         VPackBuilder b2 = VPackCollection::merge(payloadSlice, isSystem, false);
 
-        arangodb::VocbaseCollectionInfo info(vocbase, name.c_str(), b2.slice());
+        arangodb::VocbaseCollectionInfo info(vocbase, name.c_str(), b2.slice(), isSystemValue);
 
         if (state->willBeDropped(collectionId)) {
           // in case we detect that this collection is going to be deleted anyway,

@@ -108,7 +108,6 @@ build/bin/arangod \
     --server.threads $NATH \
     --log.force-direct true \
     > cluster/$(( $BASE + $aid )).stdout 2>&1 &
-sleep 5
 
 start() {
     if [ "$1" == "dbserver" ]; then

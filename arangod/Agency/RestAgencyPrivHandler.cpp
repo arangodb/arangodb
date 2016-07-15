@@ -50,13 +50,13 @@ RestAgencyPrivHandler::RestAgencyPrivHandler(HttpRequest* request, Agent* agent)
 bool RestAgencyPrivHandler::isDirect() const { return false; }
 
 inline HttpHandler::status_t RestAgencyPrivHandler::reportErrorEmptyRequest() {
-  LOG(WARN) << "Empty request to agency!";
+  LOG_TOPIC(WARN, Logger::AGENCY) << "Empty request to agency!";
   generateError(GeneralResponse::ResponseCode::NOT_FOUND, 404);
   return HttpHandler::status_t(HANDLER_DONE);
 }
 
 inline HttpHandler::status_t RestAgencyPrivHandler::reportTooManySuffices() {
-  LOG(WARN) << "Agency handles a single suffix: vote, log or configure";
+  LOG_TOPIC(WARN, Logger::AGENCY) << "Agency handles a single suffix: vote, log or configure";
   generateError(GeneralResponse::ResponseCode::NOT_FOUND, 404);
   return HttpHandler::status_t(HANDLER_DONE);
 }

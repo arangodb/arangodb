@@ -418,27 +418,56 @@ AqlValue AqlValue::get(arangodb::AqlTransaction* trx,
                        std::vector<std::string> const& names, 
                        bool& mustDestroy, bool doCopy) const {
   mustDestroy = false;
+  if (names.empty()) {
+    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+  }
+
   switch (type()) {
     case VPACK_SLICE_POINTER:
       doCopy = false; 
+      // fall-through intentional
     case VPACK_INLINE:
       // fall-through intentional
     case VPACK_MANAGED: {
       VPackSlice s(slice());
       if (s.isObject()) {
-        VPackSlice found(s.get(names, true));
-        if (found.isCustom()) { 
-          // _id needs special treatment
-          mustDestroy = true;
-          return AqlValue(trx->extractIdString(s));
+        if (s.isExternal()) {
+          s = s.resolveExternal();
         }
-        if (!found.isNone()) {
+        VPackSlice prev;
+        size_t const n = names.size();
+        for (size_t i = 0; i < n; ++i) {
+          // fetch subattribute
+          prev = s;
+          s = s.get(names[i]);
+          if (s.isExternal()) {
+            s = s.resolveExternal();
+          }
+      
+          if (s.isNone()) {
+            // not found
+            return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+          } else if (s.isCustom()) {
+            // _id needs special treatment
+            if (i + 1 == n) {
+              // x.y._id
+              mustDestroy = true;
+              return AqlValue(trx->extractIdString(trx->resolver(), s, prev));
+            }
+            // x._id.y
+            return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+          } else if (i + 1 < n && !s.isObject()) {
+            return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+          }
+        }
+
+        if (!s.isNone()) {
           if (doCopy) {
             mustDestroy = true;
-            return AqlValue(found);
+            return AqlValue(s);
           }
           // return a reference to an existing slice
-          return AqlValue(found.begin());
+          return AqlValue(s.begin());
         }
       }
       // fall-through intentional

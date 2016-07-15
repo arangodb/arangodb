@@ -5,10 +5,10 @@
 
 @RESTHEADER{POST /_api/user, Create User}
 
--RESTBODYPARAM{user,string,required,string}
+@RESTBODYPARAM{user,string,required,string}
 The name of the user as a string. This is mandatory.
 
--RESTBODYPARAM{passwd,string,required,string}
+@RESTBODYPARAM{passwd,string,required,string}
 The user password as a string. If no password is specified, the empty
 string will be used. If you pass the special value
 *ARANGODB_DEFAULT_ROOT_PASSWORD*, the password will be set the value
@@ -17,11 +17,11 @@ stored in the environment variable
 variable into ArangoDB. For example, the instance identifier from
 Amazon.
 
--RESTBODYPARAM{active,boolean,optional,boolean}
+@RESTBODYPARAM{active,boolean,optional,boolean}
 An optional flag that specifies whether the user is active.  If not
 specified, this will default to true
 
--RESTBODYPARAM{extra,object,optional,}
+@RESTBODYPARAM{extra,object,optional,}
 An optional JSON object with arbitrary extra data about the user.
 
 @RESTDESCRIPTION
@@ -43,7 +43,7 @@ from the request.
 
 @EXAMPLE_ARANGOSH_RUN{RestCreateUser}
     var url = "/_api/user";
-    var data = { user: "admin@example", password: "secure" };
+    var data = { user: "admin@example", passwd: "secure" };
     var response = logCurlRequest('POST', url, data);
 
     assert(response.code === 201);
@@ -60,7 +60,7 @@ from the request.
 
 @RESTHEADER{PUT /_api/user/{user}/database/{dbname}, Grant or revoke database access}
 
--RESTBODYPARAM{grant,string,required,string}
+@RESTBODYPARAM{grant,string,required,string}
 Use "rw" to grant access right and "none" to revoke.
 
 @RESTURLPARAMETERS
@@ -115,15 +115,15 @@ from the request.
 @RESTURLPARAM{user,string,required}
 The name of the user
 
--RESTBODYPARAM{passwd,string,required,string}
+@RESTBODYPARAM{passwd,string,required,string}
 The user password as a string. Specifying a password is mandatory, but
 the empty string is allowed for passwords
 
--RESTBODYPARAM{active,boolean,optional,boolean}
+@RESTBODYPARAM{active,boolean,optional,boolean}
 An optional flag that specifies whether the user is active.  If not
 specified, this will default to true
 
--RESTBODYPARAM{extra,object,optional,}
+@RESTBODYPARAM{extra,object,optional,}
 An optional JSON object with arbitrary extra data about the user.
 
 @RESTDESCRIPTION
@@ -151,7 +151,7 @@ The specified user does not exist
     users.save("admin@myapp", "secret")
 
     var url = "/_api/user/admin@myapp";
-    var data = { password: "secure" };
+    var data = { passwd: "secure" };
     var response = logCurlRequest('PUT', url, data);
 
     assert(response.code === 200);
@@ -173,15 +173,15 @@ The specified user does not exist
 @RESTURLPARAM{user,string,required}
 The name of the user
 
--RESTBODYPARAM{passwd,string,required,string}
+@RESTBODYPARAM{passwd,string,required,string}
 The user password as a string. Specifying a password is mandatory, but
 the empty string is allowed for passwords
 
--RESTBODYPARAM{active,boolean,optional,boolean}
+@RESTBODYPARAM{active,boolean,optional,boolean}
 An optional flag that specifies whether the user is active.  If not
 specified, this will default to true
 
--RESTBODYPARAM{extra,object,optional,}
+@RESTBODYPARAM{extra,object,optional,}
 An optional JSON object with arbitrary extra data about the user.
 
 @RESTDESCRIPTION
@@ -209,7 +209,7 @@ The specified user does not exist
     users.save("admin@yourapp", "secret")
 
     var url = "/_api/user/admin@yourapp";
-    var data = { password: "secure" };
+    var data = { passwd: "secure" };
     var response = logCurlRequest('PATCH', url, data);
 
     assert(response.code === 200);

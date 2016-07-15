@@ -115,8 +115,9 @@
 #
 * [Deployment](Deployment/README.md)
   * [Single instance](Deployment/Single.md)
+  * [Cluster: Mesos, DC/OS](Deployment/Mesos.md)
   * [Cluster: Local test](Deployment/Local.md)
-  * [Cluster: DC/OS](Deployment/Mesos.md)
+  * [Cluster: Processes](Deployment/Distributed.md)
   * [Cluster: Docker](Deployment/Docker.md)
 #
 * [Administration](Administration/README.md)

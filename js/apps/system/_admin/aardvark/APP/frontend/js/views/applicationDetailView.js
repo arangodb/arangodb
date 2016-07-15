@@ -263,7 +263,7 @@
           else {
             $(this.el).html(this.template.render({
               app: this.model,
-              db: db,
+              baseUrl: arangoHelper.databaseUrl('', db),
               mode: mode
             }));
 
@@ -272,7 +272,12 @@
             self.jsonEditor.setReadOnly(true);
             self.jsonEditor.getSession().setMode("ace/mode/json");
 
-            $.get(this.appUrl(db)).success(function () {
+            $.ajax({
+              url: this.appUrl(db),
+              headers: {
+                accept: 'text/html,*/*;q=0.9'
+              }
+            }).success(function () {
               $(".open", this.el).prop('disabled', false);
             }.bind(this));
 
@@ -387,9 +392,7 @@
     },
 
     appUrl: function (currentDB) {
-      return window.location.origin + '/_db/'
-      + encodeURIComponent(currentDB)
-      + this.model.get('mount');
+      return arangoHelper.databaseUrl(this.model.get('mount'), currentDB);
     },
 
     applyConfig: function() {

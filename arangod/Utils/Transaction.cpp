@@ -761,12 +761,15 @@ VPackSlice Transaction::extractKeyFromDocument(VPackSlice slice) {
     slice = slice.resolveExternal();
   }
   TRI_ASSERT(slice.isObject());
+
+  if (slice.isEmptyObject()) {
+    return VPackSlice();
+  }
   // a regular document must have at least the three attributes 
   // _key, _id and _rev (in this order). _key must be the first attribute
   // however this method may also be called for remove markers, which only
   // have _key and _rev. therefore the only assertion that we can make
   // here is that the document at least has two attributes 
-  TRI_ASSERT(slice.length() >= 2); 
 
   uint8_t const* p = slice.begin() + slice.findDataOffset(slice.head());
 
@@ -792,9 +795,12 @@ VPackSlice Transaction::extractIdFromDocument(VPackSlice slice) {
     slice = slice.resolveExternal();
   }
   TRI_ASSERT(slice.isObject());
+  
+  if (slice.isEmptyObject()) {
+    return VPackSlice();
+  }
   // a regular document must have at least the three attributes 
   // _key, _id and _rev (in this order). _id must be the second attribute
-  TRI_ASSERT(slice.length() >= 2); 
 
   uint8_t const* p = slice.begin() + slice.findDataOffset(slice.head());
 
@@ -825,9 +831,12 @@ VPackSlice Transaction::extractFromFromDocument(VPackSlice slice) {
     slice = slice.resolveExternal();
   }
   TRI_ASSERT(slice.isObject());
+  
+  if (slice.isEmptyObject()) {
+    return VPackSlice();
+  }
   // this method must only be called on edges
   // this means we must have at least the attributes  _key, _id, _from, _to and _rev
-  TRI_ASSERT(slice.length() >= 5); 
 
   uint8_t const* p = slice.begin() + slice.findDataOffset(slice.head());
   VPackValueLength count = 0;
@@ -858,9 +867,12 @@ VPackSlice Transaction::extractToFromDocument(VPackSlice slice) {
   if (slice.isExternal()) {
     slice = slice.resolveExternal();
   }
+  
+  if (slice.isEmptyObject()) {
+    return VPackSlice();
+  }
   // this method must only be called on edges
   // this means we must have at least the attributes  _key, _id, _from, _to and _rev
-  TRI_ASSERT(slice.length() >= 5); 
 
   uint8_t const* p = slice.begin() + slice.findDataOffset(slice.head());
   VPackValueLength count = 0;
@@ -892,7 +904,10 @@ VPackSlice Transaction::extractRevFromDocument(VPackSlice slice) {
     slice = slice.resolveExternal();
   }
   TRI_ASSERT(slice.isObject());
-  TRI_ASSERT(slice.length() >= 2); 
+  
+  if (slice.isEmptyObject()) {
+    return VPackSlice();
+  }
 
   uint8_t const* p = slice.begin() + slice.findDataOffset(slice.head());
   VPackValueLength count = 0;
@@ -3236,6 +3251,10 @@ std::vector<std::shared_ptr<Index>> Transaction::indexesForCollectionCoordinator
         idx.reset(new arangodb::HashIndex(v));
       } else if (indexType  == arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX) {
         idx.reset(new arangodb::SkiplistIndex(v));
+#ifdef ARANGODB_ENABLE_ROCKSDB
+      } else if (indexType  == arangodb::Index::TRI_IDX_TYPE_ROCKSDB_INDEX) {
+        idx.reset(new arangodb::RocksDBIndex(v));
+#endif
       }
       if (idx != nullptr) {
         indexes.push_back(idx);

@@ -1285,7 +1285,7 @@ int RestReplicationHandler::createCollection(VPackSlice const& slice,
     return TRI_ERROR_NO_ERROR;
   }
 
-  VocbaseCollectionInfo params(_vocbase, name.c_str(), slice);
+  VocbaseCollectionInfo params(_vocbase, name.c_str(), slice, true);
   /* Temporary ASSERTS to prove correctness of new constructor */
   TRI_ASSERT(params.doCompact() ==
              arangodb::basics::VelocyPackHelper::getBooleanValue(
@@ -1379,12 +1379,20 @@ void RestReplicationHandler::handleCommandRestoreCollection() {
     numberOfShards = StringUtils::uint64(value4);
   }
 
+  uint64_t replicationFactor = 1;
+  std::string const& value5 = _request->value("replicationFactor", found);
+
+  if (found) {
+    replicationFactor = StringUtils::uint64(value5);
+  }
+
   std::string errorMsg;
   int res;
 
   if (ServerState::instance()->isCoordinator()) {
     res = processRestoreCollectionCoordinator(slice, overwrite, recycleIds,
-                                              force, numberOfShards, errorMsg);
+                                              force, numberOfShards, errorMsg,
+                                              replicationFactor);
   } else {
     res =
         processRestoreCollection(slice, overwrite, recycleIds, force, errorMsg);
@@ -1584,7 +1592,7 @@ int RestReplicationHandler::processRestoreCollection(
 
 int RestReplicationHandler::processRestoreCollectionCoordinator(
     VPackSlice const& collection, bool dropExisting, bool reuseId, bool force,
-    uint64_t numberOfShards, std::string& errorMsg) {
+    uint64_t numberOfShards, std::string& errorMsg, uint64_t replicationFactor) {
   if (!collection.isObject()) {
     errorMsg = "collection declaration is invalid";
 
@@ -1652,20 +1660,34 @@ int RestReplicationHandler::processRestoreCollectionCoordinator(
   }
 
   // now re-create the collection
-  // dig out number of shards:
-  VPackSlice const shards = parameters.get("shards");
-  if (shards.isObject()) {
-    numberOfShards = static_cast<uint64_t>(shards.length());
+  // dig out number of shards, explicit attribute takes precedence:
+  VPackSlice const numberOfShardsSlice = parameters.get("numberOfShards");
+  if (numberOfShardsSlice.isInteger()) {
+    numberOfShards = numberOfShardsSlice.getNumericValue<uint64_t>();
   } else {
-    // "shards" not specified
-    // now check if numberOfShards property was given
-    if (numberOfShards == 0) {
-      // We take one shard if no value was given
-      numberOfShards = 1;
+    VPackSlice const shards = parameters.get("shards");
+    if (shards.isObject()) {
+      numberOfShards = static_cast<uint64_t>(shards.length());
+    } else {
+      // "shards" not specified
+      // now check if numberOfShards property was given
+      if (numberOfShards == 0) {
+        // We take one shard if no value was given
+        numberOfShards = 1;
+      }
     }
   }
 
   TRI_ASSERT(numberOfShards > 0);
+
+  VPackSlice const replFactorSlice = parameters.get("replicationFactor");
+  if (replFactorSlice.isInteger()) {
+    replicationFactor = replFactorSlice.getNumericValue
+                            <decltype(replicationFactor)>();
+  }
+  if (replicationFactor == 0) {
+    replicationFactor = 1;
+  }
 
   try {
     TRI_voc_tick_t newIdTick = ci->uniqid(1);
@@ -1684,31 +1706,29 @@ int RestReplicationHandler::processRestoreCollectionCoordinator(
     }
 
     // shards
-    if (!shards.isObject()) {
-      // if no shards were given, create a random list of shards
-      auto dbServers = ci->getCurrentDBServers();
-
-      if (dbServers.empty()) {
-        errorMsg = "no database servers found in cluster";
-        return TRI_ERROR_INTERNAL;
-      }
-
-      std::random_shuffle(dbServers.begin(), dbServers.end());
-
-      uint64_t const id = ci->uniqid(1 + numberOfShards);
-      toMerge.add("shards", VPackValue(VPackValueType::Object));
-      for (uint64_t i = 0; i < numberOfShards; ++i) {
-        // shard id
-        toMerge.add(
-            VPackValue(std::string("s" + StringUtils::itoa(id + 1 + i))));
-
-        // server ids
-        toMerge.add(VPackValue(VPackValueType::Array));
-        toMerge.add(VPackValue(dbServers[i % dbServers.size()]));
-        toMerge.close();  // server ids
-      }
-      toMerge.close();  // end of shards
+    std::vector<std::string> dbServers;  // will be filled
+    std::map<std::string, std::vector<std::string>> shardDistribution
+        = arangodb::distributeShards(numberOfShards, replicationFactor,
+                                     dbServers);
+    if (shardDistribution.empty()) {
+      errorMsg = "no database servers found in cluster";
+      return TRI_ERROR_INTERNAL;
     }
+
+    toMerge.add(VPackValue("shards"));
+    {
+      VPackObjectBuilder guard(&toMerge);
+      for (auto const& p : shardDistribution) {
+        toMerge.add(VPackValue(p.first));
+        {
+          VPackArrayBuilder guard2(&toMerge);
+          for (std::string const& s : p.second) {
+            toMerge.add(VPackValue(s));
+          }
+        }
+      }
+    }
+    toMerge.add("replicationFactor", VPackValue(replicationFactor));
 
     // Now put in the primary and an edge index if needed:
     toMerge.add("indexes", VPackValue(VPackValueType::Array));
@@ -1934,6 +1954,12 @@ int RestReplicationHandler::processRestoreIndexesCoordinator(
 
   int res = TRI_ERROR_NO_ERROR;
   for (VPackSlice const& idxDef : VPackArrayIterator(indexes)) {
+    VPackSlice type = idxDef.get("type");
+    if (type.isString() && (type.copyString() == "primary" || type.copyString() == "edge")) {
+      // must ignore these types of indexes during restore
+      continue;
+    }
+
     VPackBuilder tmp;
     res = ci->ensureIndexCoordinator(dbName, col->id_as_string(), idxDef, true,
                                      arangodb::Index::Compare, tmp, errorMsg,
@@ -2116,48 +2142,197 @@ int RestReplicationHandler::processRestoreDataBatch(
                                  collectionName;
 
   VPackBuilder builder;
-  VPackBuilder oldBuilder;
 
   std::string const& bodyStr = _request->body();
   char const* ptr = bodyStr.c_str();
   char const* end = ptr + bodyStr.size();
 
-  while (ptr < end) {
-    char const* pos = strchr(ptr, '\n');
+  VPackBuilder allMarkers;
+  VPackValueLength currentPos = 0;
+  std::unordered_map<std::string, VPackValueLength> latest;
 
-    if (pos == nullptr) {
-      pos = end;
-    } else {
-      *((char*)pos) = '\0';
+  // First parse and collect all markers, we assemble everything in one
+  // large builder holding an array. We keep for each key the latest
+  // entry.
+
+  {
+    VPackArrayBuilder guard(&allMarkers);
+    while (ptr < end) {
+      char const* pos = strchr(ptr, '\n');
+
+      if (pos == nullptr) {
+        pos = end;
+      } else {
+        *((char*)pos) = '\0';
+      }
+
+      if (pos - ptr > 1) {
+        // found something
+        std::string key;
+        std::string rev;
+        VPackSlice doc;
+        TRI_replication_operation_e type = REPLICATION_INVALID;
+
+        int res = restoreDataParser(ptr, pos, invalidMsg, useRevision, errorMsg,
+                                    key, rev, builder, doc, type);
+        if (res != TRI_ERROR_NO_ERROR) {
+          return res;
+        }
+
+        // Put into array of all parsed markers:
+        allMarkers.add(builder.slice());
+        auto it = latest.find(key);
+        if (it != latest.end()) {
+          // Already found, overwrite:
+          it->second = currentPos;
+        } else {
+          latest.emplace(std::make_pair(key, currentPos));
+        }
+        ++currentPos;
+      }
+
+      ptr = pos + 1;
     }
+  }
 
-    if (pos - ptr > 1) {
-      // found something
-      std::string key;
-      std::string rev;
-      VPackSlice doc;
+  // First remove all keys of which the last marker we saw was a deletion
+  // marker:
+  VPackSlice allMarkersSlice = allMarkers.slice();
+  VPackBuilder oldBuilder;
+  {
+    VPackArrayBuilder guard(&oldBuilder);
+
+    for (auto const& p : latest) {
+      VPackSlice const marker = allMarkersSlice.at(p.second);
+      VPackSlice const typeSlice = marker.get("type");
       TRI_replication_operation_e type = REPLICATION_INVALID;
-
-      int res = restoreDataParser(ptr, pos, invalidMsg, useRevision, errorMsg,
-                                  key, rev, builder, doc, type);
-      if (res != TRI_ERROR_NO_ERROR) {
-        return res;
+      if (typeSlice.isNumber()) {
+        int typeInt = typeSlice.getNumericValue<int>();
+        if (typeInt == 2301) {  // pre-3.0 type for edges
+          type = REPLICATION_MARKER_DOCUMENT;
+        } else {
+          type = static_cast<TRI_replication_operation_e>(typeInt);
+        }
       }
-
-      oldBuilder.clear();
-      oldBuilder.openObject();
-      oldBuilder.add(StaticStrings::KeyString, VPackValue(key));
-      oldBuilder.close();
-
-      res = applyCollectionDumpMarker(trx, resolver, collectionName, type,
-                                      oldBuilder.slice(), doc, errorMsg);
-
-      if (res != TRI_ERROR_NO_ERROR && !force) {
-        return res;
+      if (type == REPLICATION_MARKER_REMOVE) {
+        oldBuilder.add(VPackValue(p.first));  // Add _key
+      } else if (type != REPLICATION_MARKER_DOCUMENT) {
+        errorMsg = "unexpected marker type " + StringUtils::itoa(type);
+        return TRI_ERROR_REPLICATION_UNEXPECTED_MARKER;
       }
     }
+  }
 
-    ptr = pos + 1;
+  // Note that we ignore individual errors here, as long as the main
+  // operation did not fail. In particular, we intentionally ignore
+  // individual "DOCUMENT NOT FOUND" errors, because they can happen!
+  try {
+    OperationOptions options;
+    options.silent = true;
+    options.ignoreRevs = true;
+    options.isRestore = true;
+    options.waitForSync = false;
+    OperationResult opRes = trx.remove(collectionName, oldBuilder.slice(),
+                                       options);
+    if (!opRes.successful()) {
+      return opRes.code;
+    }
+  } catch (arangodb::basics::Exception const& ex) {
+    return ex.code();
+  } catch (...) {
+    return TRI_ERROR_INTERNAL;
+  }
+
+  // Now try to insert all keys for which the last marker was a document
+  // marker, note that these could still be replace markers!
+  std::vector<VPackValueLength> insertTried;
+  builder.clear();
+  {
+    VPackArrayBuilder guard(&builder);
+
+    for (auto const& p : latest) {
+      VPackSlice const marker = allMarkersSlice.at(p.second);
+      VPackSlice const typeSlice = marker.get("type");
+      TRI_replication_operation_e type = REPLICATION_INVALID;
+      if (typeSlice.isNumber()) {
+        int typeInt = typeSlice.getNumericValue<int>();
+        if (typeInt == 2301) {  // pre-3.0 type for edges
+          type = REPLICATION_MARKER_DOCUMENT;
+        } else {
+          type = static_cast<TRI_replication_operation_e>(typeInt);
+        }
+      }
+      if (type == REPLICATION_MARKER_DOCUMENT) {
+        VPackSlice const doc = marker.get("data");
+        TRI_ASSERT(doc.isObject());
+        builder.add(doc);
+      }
+    }
+  }
+
+  VPackSlice requestSlice = builder.slice();
+  OperationResult opRes;
+  try {
+    OperationOptions options;
+    options.silent = false;
+    options.ignoreRevs = true;
+    options.isRestore = true;
+    options.waitForSync = false;
+    opRes = trx.insert(collectionName, requestSlice, options);
+    if (!opRes.successful()) {
+      return opRes.code;
+    }
+  } catch (arangodb::basics::Exception const& ex) {
+    return ex.code();
+  } catch (...) {
+    return TRI_ERROR_INTERNAL;
+  }
+
+  // Now go through the individual results and check each error, if it was
+  // TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED, then we have to call
+  // replace on the document:
+  VPackSlice resultSlice = opRes.slice();
+  VPackBuilder replBuilder;  // documents for replace operation
+  {
+    VPackArrayBuilder guard(&oldBuilder);
+    VPackArrayBuilder guard2(&replBuilder);
+    VPackArrayIterator itRequest(requestSlice);
+    VPackArrayIterator itResult(resultSlice);
+
+    while (itRequest.valid()) {
+      VPackSlice result = *itResult;
+      VPackSlice error = result.get("error");
+      if (error.isTrue()) {
+        error = result.get("errorNum");
+        if (error.isNumber()) {
+          int code = error.getNumericValue<int>();
+          if (code == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
+            replBuilder.add(*itRequest);
+          } else {
+            return code;
+          }
+        } else {
+          return TRI_ERROR_INTERNAL;
+        }
+      }
+      itRequest.next();
+      itResult.next();
+    }
+  }
+  try {
+    OperationOptions options;
+    options.silent = true;
+    options.ignoreRevs = true;
+    options.isRestore = true;
+    options.waitForSync = false;
+    opRes = trx.replace(collectionName, replBuilder.slice(), options);
+    if (!opRes.successful()) {
+      return opRes.code;
+    }
+  } catch (arangodb::basics::Exception const& ex) {
+    return ex.code();
+  } catch (...) {
+    return TRI_ERROR_INTERNAL;
   }
 
   return TRI_ERROR_NO_ERROR;

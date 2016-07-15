@@ -62,6 +62,7 @@ class RestoreFeature final
   bool _force;
   bool _clusterMode;
   uint64_t _defaultNumberOfShards;
+  uint64_t _defaultReplicationFactor;
 
  private:
   int tryCreateDatabase(ClientFeature*, std::string const& name);

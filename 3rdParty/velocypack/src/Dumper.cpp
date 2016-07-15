@@ -108,6 +108,23 @@ void Dumper::appendDouble(double v) {
   _sink->append(&temp[0], static_cast<ValueLength>(len));
 }
 
+void Dumper::dumpUnicodeCharacter(uint16_t value) {
+  _sink->append("\\u", 2);
+  
+  uint16_t p;
+  p = (value & 0xf000U) >> 12;
+  _sink->push_back((p < 10) ? ('0' + p) : ('A' + p - 10));
+
+  p = (value & 0x0f00U) >> 8;
+  _sink->push_back((p < 10) ? ('0' + p) : ('A' + p - 10));
+
+  p = (value & 0x00f0U) >> 4;
+  _sink->push_back((p < 10) ? ('0' + p) : ('A' + p - 10));
+  
+  p = (value & 0x000fU);
+  _sink->push_back((p < 10) ? ('0' + p) : ('A' + p - 10));
+}
+
 void Dumper::dumpInteger(Slice const* slice) {
   VELOCYPACK_ASSERT(slice->isInteger());
 
@@ -233,7 +250,7 @@ void Dumper::dumpString(char const* src, ValueLength len) {
   while (p < e) {
     uint8_t c = *p;
 
-    if ((c & 0x80) == 0) {
+    if ((c & 0x80U) == 0) {
       // check for control characters
       char esc = EscapeTable[c];
 
@@ -245,8 +262,8 @@ void Dumper::dumpString(char const* src, ValueLength len) {
         _sink->push_back(static_cast<char>(esc));
 
         if (esc == 'u') {
-          uint16_t i1 = (((uint16_t)c) & 0xf0) >> 4;
-          uint16_t i2 = (((uint16_t)c) & 0x0f);
+          uint16_t i1 = (((uint16_t)c) & 0xf0U) >> 4;
+          uint16_t i2 = (((uint16_t)c) & 0x0fU);
 
           _sink->append("00", 2);
           _sink->push_back(
@@ -257,29 +274,49 @@ void Dumper::dumpString(char const* src, ValueLength len) {
       } else {
         _sink->push_back(static_cast<char>(c));
       }
-    } else if ((c & 0xe0) == 0xc0) {
+    } else if ((c & 0xe0U) == 0xc0U) {
       // two-byte sequence
       if (p + 1 >= e) {
         throw Exception(Exception::InvalidUtf8Sequence);
       }
-
-      _sink->append(reinterpret_cast<char const*>(p), 2);
+      
+      if (options->escapeUnicode) {
+        uint16_t value = ((((uint16_t) *p & 0x1fU) << 6) | ((uint16_t) *(p + 1) & 0x3fU));
+        dumpUnicodeCharacter(value);
+      } else {
+        _sink->append(reinterpret_cast<char const*>(p), 2);
+      }
       ++p;
-    } else if ((c & 0xf0) == 0xe0) {
+    } else if ((c & 0xf0U) == 0xe0U) {
       // three-byte sequence
       if (p + 2 >= e) {
         throw Exception(Exception::InvalidUtf8Sequence);
       }
 
-      _sink->append(reinterpret_cast<char const*>(p), 3);
+      if (options->escapeUnicode) {
+        uint16_t value = ((((uint16_t) *p & 0x0fU) << 12) | (((uint16_t) *(p + 1) & 0x3fU) << 6) | ((uint16_t) *(p + 2) & 0x3fU));
+        dumpUnicodeCharacter(value);
+      } else {
+        _sink->append(reinterpret_cast<char const*>(p), 3);
+      }
       p += 2;
-    } else if ((c & 0xf8) == 0xf0) {
+    } else if ((c & 0xf8U) == 0xf0U) {
       // four-byte sequence
       if (p + 3 >= e) {
         throw Exception(Exception::InvalidUtf8Sequence);
       }
 
-      _sink->append(reinterpret_cast<char const*>(p), 4);
+      if (options->escapeUnicode) {
+        uint32_t value = ((((uint32_t) *p & 0x0fU) << 18) | (((uint32_t) *(p + 1) & 0x3fU) << 12) | (((uint32_t) *(p + 2) & 0x3fU) << 6) | ((uint32_t) *(p + 3) & 0x3fU));
+        // construct the surrogate pairs
+        value -= 0x10000U;
+        uint16_t high = (uint16_t) (((value & 0xffc00U) >> 10) + 0xd800);
+        dumpUnicodeCharacter(high);
+        uint16_t low = (value & 0x3ffU) + 0xdc00U;
+        dumpUnicodeCharacter(low);
+      } else {
+        _sink->append(reinterpret_cast<char const*>(p), 4);
+      }
       p += 3;
     }
 

@@ -497,7 +497,7 @@ int Syncer::createCollection(VPackSlice const& slice, TRI_vocbase_col_t** dst) {
 
   VPackBuilder merged = VPackCollection::merge(s.slice(), slice, true);
 
-  VocbaseCollectionInfo params(_vocbase, name.c_str(), merged.slice());
+  VocbaseCollectionInfo params(_vocbase, name.c_str(), merged.slice(), true);
 
   col = TRI_CreateCollectionVocBase(_vocbase, params, cid, true);
 
