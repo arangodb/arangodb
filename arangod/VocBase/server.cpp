@@ -1212,7 +1212,7 @@ int TRI_StartServer(TRI_server_t* server, bool checkVersion,
   // read the server id
   // ...........................................................................
 
-  res = DetermineServerId(server, checkVersion);
+  int res = DetermineServerId(server, checkVersion);
 
   if (res == TRI_ERROR_ARANGO_EMPTY_DATADIR) {
     return res;
