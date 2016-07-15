@@ -31,6 +31,8 @@
 using namespace arangodb;
 using namespace arangodb::options;
 
+StorageEngine* EngineSelectorFeature::ENGINE = nullptr;
+
 EngineSelectorFeature::EngineSelectorFeature(
     application_features::ApplicationServer* server)
     : ApplicationFeature(server, "EngineSelector"), _engine(MMFilesEngine::EngineName) {
@@ -54,15 +56,25 @@ void EngineSelectorFeature::prepare() {
       // this is the selected engine
       LOG(TRACE) << "enabling storage engine " << engine;
       e->enable();
+
+      // register storage engine
+      ENGINE = e;
     } else {
       // turn off all other storage engines
       LOG(TRACE) << "disabling storage engine " << engine;
       e->disable();
     }
   }
+
+  TRI_ASSERT(ENGINE != nullptr);
 }
 
-// all available storage engines
+void EngineSelectorFeature::unprepare() {
+  // unregister storage engine
+  ENGINE = nullptr;
+}
+
+// return all available storage engines
 std::unordered_set<std::string> EngineSelectorFeature::availableEngines() { 
   return std::unordered_set<std::string>{
     MMFilesEngine::EngineName, 

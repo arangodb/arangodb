@@ -27,6 +27,8 @@
 #include "ProgramOptions/ProgramOptions.h"
 
 namespace arangodb {
+class StorageEngine;
+
 class EngineSelectorFeature final : public application_features::ApplicationFeature {
  public:
   explicit EngineSelectorFeature(application_features::ApplicationServer* server);
@@ -34,8 +36,15 @@ class EngineSelectorFeature final : public application_features::ApplicationFeat
  public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
+  void unprepare() override final;
   
+  // return the names of all available storage engines
   static std::unordered_set<std::string> availableEngines();
+  
+ public:
+  // selected storage engine. this will contain a pointer to the storage engine after
+  // prepare() and before unprepare()
+  static StorageEngine* ENGINE;
 
  private:
   std::string _engine;

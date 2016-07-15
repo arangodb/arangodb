@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "MMFilesEngine.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 
 using namespace arangodb;
 
@@ -46,17 +47,20 @@ void MMFilesEngine::validateOptions(std::shared_ptr<options::ProgramOptions>) {
 // preparation phase for storage engine. can be used for internal setup.
 // the storage engine must not start any threads here or write any files
 void MMFilesEngine::prepare() {
+  TRI_ASSERT(EngineSelectorFeature::ENGINE = this);
 }
   
 // start the engine. now it's allowed to start engine-specific threads,
 // write files etc.
 void MMFilesEngine::start() {
+  TRI_ASSERT(EngineSelectorFeature::ENGINE = this);
 }
 
 // stop the storage engine. this can be used to flush all data to disk,
 // shutdown threads etc. it is guaranteed that there will be no read and
 // write requests to the storage engine after this call
 void MMFilesEngine::stop() {
+  TRI_ASSERT(EngineSelectorFeature::ENGINE = this);
 }
 
 // fill the Builder object with an array of databases that were detected
