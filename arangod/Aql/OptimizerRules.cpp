@@ -1881,6 +1881,7 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
               (isSorted || fields.size() == sortCondition.numAttributes())) {
             // no need to sort
             _plan->unlinkNode(_plan->getNodeById(_sortNode->id()));
+            indexNode->reverse(sortCondition.isDescending());
             _modified = true;
           }
         }

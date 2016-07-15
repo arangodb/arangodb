@@ -25,6 +25,7 @@
       'keyup #graphManagementSearchInput': 'search',
       'click #graphManagementSearchSubmit': 'search',
       'click .tile-graph': 'redirectToGraphViewer',
+      'click #gv2': 'redirectToGraphViewer2',
       'click #graphManagementToggle': 'toggleGraphDropdown',
       'click .css-label': 'checkBoxes',
       'change #graphSortDesc': 'sorting'
@@ -47,6 +48,15 @@
       var name = $(e.currentTarget).attr('id');
       name = name.substr(0, name.length - 5);
       window.location = window.location + '/' + encodeURIComponent(name);
+    },
+
+    // please remove this when gv2 is launched
+    redirectToGraphViewer2: function (e) {
+      e.preventDefault();
+      var name = $(e.currentTarget).parent().parent().attr('id');
+      name = name.substr(0, name.length - 5);
+      console.log(name);
+      window.App.navigate('graph2/' + encodeURIComponent(name), {trigger: true});
     },
 
     loadGraphViewer: function (graphName, refetch) {

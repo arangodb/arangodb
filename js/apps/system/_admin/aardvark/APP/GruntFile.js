@@ -65,6 +65,9 @@
             "frontend/js/lib/sigma.plugins.fullScreen.js",
             "frontend/js/lib/sigma.layout.fruchtermanReingold.js",
             "frontend/js/lib/sigma.exporters.svg.js",
+            "frontend/js/lib/sigma.canvas.edges.labels.curve.js",
+            "frontend/js/lib/sigma.canvas.edges.labels.curvedArrow.js",
+            "frontend/js/lib/sigma.canvas.edges.labels.def.js",
             "frontend/js/lib/worker.js",
             "frontend/js/lib/supervisor.js",
             // END SIGMA LIBRARIES

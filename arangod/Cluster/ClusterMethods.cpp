@@ -398,7 +398,8 @@ std::unordered_map<std::string, std::string> getForwardableRequestHeaders(
     // ignore the following headers
     if (key != "x-arango-async" && key != "authorization" &&
         key != "content-length" && key != "connection" && key != "expect" &&
-        key != "host" && key != "origin" && key != StaticStrings::ErrorCodes &&
+        key != "host" && key != "origin" && key != StaticStrings::HLCHeader &&
+        key != StaticStrings::ErrorCodes &&
         key.substr(0, 14) != "access-control") {
       result.emplace(key, (*it).second);
     }
