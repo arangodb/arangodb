@@ -65,7 +65,7 @@ SingleCollectionTransaction::SingleCollectionTransaction(
   // add the (sole) collection
   if (setupState() == TRI_ERROR_NO_ERROR) {
     _cid = resolver()->getCollectionId(name);
-    addCollection(_cid, _accessType);
+    addCollection(_cid, name.c_str(), _accessType);
   }
 }
 
