@@ -67,6 +67,9 @@
 #include "Ssl/SslFeature.h"
 #include "Ssl/SslServerFeature.h"
 #include "Statistics/StatisticsFeature.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/MMFilesEngine.h"
+#include "StorageEngine/OtherEngine.h"
 #include "V8Server/FoxxQueuesFeature.h"
 #include "V8Server/V8DealerFeature.h"
 #include "Wal/LogfileManager.h"
@@ -116,6 +119,7 @@ static int runServer(int argc, char** argv) {
   server.addFeature(new DatabaseServerFeature(&server));
   server.addFeature(new DispatcherFeature(&server));
   server.addFeature(new EndpointFeature(&server));
+  server.addFeature(new EngineSelectorFeature(&server));
   server.addFeature(new FileDescriptorsFeature(&server));
   server.addFeature(new FoxxQueuesFeature(&server));
   server.addFeature(new FrontendFeature(&server));
@@ -158,15 +162,21 @@ static int runServer(int argc, char** argv) {
   server.addFeature(supervisor.release());
 #endif
 
+  // storage engines
+  server.addFeature(new MMFilesEngine(&server));
+  server.addFeature(new OtherEngine(&server));
+
   try {
     server.run(argc, argv);
   } catch (std::exception const& ex) {
     LOG(ERR) << "arangod terminated because of an unhandled exception: "
              << ex.what();
+    Logger::flush();
     ret = EXIT_FAILURE;
   } catch (...) {
     LOG(ERR) << "arangod terminated because of an unhandled exception of "
                 "unknown type";
+    Logger::flush();
     ret = EXIT_FAILURE;
   }
 

@@ -21,21 +21,21 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_STORAGE_ENGINE_ARANGO_ENGINE_H
-#define ARANGOD_STORAGE_ENGINE_ARANGO_ENGINE_H 1
+#ifndef ARANGOD_STORAGE_ENGINE_MMFILES_ENGINE_H
+#define ARANGOD_STORAGE_ENGINE_MMFILES_ENGINE_H 1
 
 #include "Basics/Common.h"
 #include "StorageEngine/StorageEngine.h"
 
 namespace arangodb {
 
-class ArangoEngine final : public StorageEngine {
+class MMFilesEngine final : public StorageEngine {
  public:
 
   // create the storage engine
-  explicit ArangoEngine(application_features::ApplicationServer*);
+  explicit MMFilesEngine(application_features::ApplicationServer*);
 
-  ~ArangoEngine();
+  ~MMFilesEngine();
 
   // inherited from ApplicationFeature
   // ---------------------------------
@@ -63,11 +63,8 @@ class ArangoEngine final : public StorageEngine {
   // --------------------
 
   // return the name of the storage engine
-  char const* typeName() const override { return "arango"; }
+  char const* typeName() const override { return EngineName.c_str(); }
   
-  // return the version string of the storage engine
-  char const* versionString() const override { return "arango-0.0.1"; }
-
   // inventory functionality
   // -----------------------
 
@@ -194,6 +191,9 @@ class ArangoEngine final : public StorageEngine {
   // from the storage engine's realm
   void removeDocumentRevision(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId,
                               arangodb::velocypack::Slice const& document) override;
+
+ public:
+  static std::string const EngineName;
 };
 
 }

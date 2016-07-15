@@ -21,57 +21,59 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ArangoEngine.h"
+#include "OtherEngine.h"
 
 using namespace arangodb;
 
+std::string const OtherEngine::EngineName("other");
+
 // create the storage engine
-ArangoEngine::ArangoEngine(application_features::ApplicationServer* server)
-    : StorageEngine(server, "ArangoEngine") {
+OtherEngine::OtherEngine(application_features::ApplicationServer* server)
+    : StorageEngine(server, "otherEngine") {
 }
 
-ArangoEngine::~ArangoEngine() {
+OtherEngine::~OtherEngine() {
 }
 
 // add the storage engine's specifc options to the global list of options
-void ArangoEngine::collectOptions(std::shared_ptr<options::ProgramOptions>) {
+void OtherEngine::collectOptions(std::shared_ptr<options::ProgramOptions>) {
 }
   
 // validate the storage engine's specific options
-void ArangoEngine::validateOptions(std::shared_ptr<options::ProgramOptions>) {
+void OtherEngine::validateOptions(std::shared_ptr<options::ProgramOptions>) {
 }
 
 // preparation phase for storage engine. can be used for internal setup.
 // the storage engine must not start any threads here or write any files
-void ArangoEngine::prepare() {
+void OtherEngine::prepare() {
 }
   
 // start the engine. now it's allowed to start engine-specific threads,
 // write files etc.
-void ArangoEngine::start() {
+void OtherEngine::start() {
 }
 
 // stop the storage engine. this can be used to flush all data to disk,
 // shutdown threads etc. it is guaranteed that there will be no read and
 // write requests to the storage engine after this call
-void ArangoEngine::stop() {
+void OtherEngine::stop() {
 }
 
 // fill the Builder object with an array of databases that were detected
 // by the storage engine. this method must sort out databases that were not
 // fully created (see "createDatabase" below). called at server start only
-void ArangoEngine::getDatabases(arangodb::velocypack::Builder& result) {
+void OtherEngine::getDatabases(arangodb::velocypack::Builder& result) {
 }
 
 // fill the Builder object with an array of collections (and their corresponding
 // indexes) that were detected by the storage engine. called at server start only
-void ArangoEngine::getCollectionsAndIndexes(arangodb::velocypack::Builder& result) {
+void OtherEngine::getCollectionsAndIndexes(arangodb::velocypack::Builder& result) {
 }
 
 // determine the maximum revision id previously handed out by the storage
 // engine. this value is used as a lower bound for further HLC values handed out by
 // the server. called at server start only, after getDatabases() and getCollectionsAndIndexes()
-uint64_t ArangoEngine::getMaxRevision() {
+uint64_t OtherEngine::getMaxRevision() {
   return 0; // TODO
 }
 
@@ -83,7 +85,7 @@ uint64_t ArangoEngine::getMaxRevision() {
 // so that subsequent database creation requests will not fail.
 // the WAL entry for the database creation will be written *after* the call
 // to "createDatabase" returns
-void ArangoEngine::createDatabase(TRI_voc_tick_t id, arangodb::velocypack::Slice const& data) {
+void OtherEngine::createDatabase(TRI_voc_tick_t id, arangodb::velocypack::Slice const& data) {
 }
 
 // asks the storage engine to drop the specified database and persist the 
@@ -95,7 +97,7 @@ void ArangoEngine::createDatabase(TRI_voc_tick_t id, arangodb::velocypack::Slice
 // check whether the physical deletion of the database is possible.
 // the WAL entry for database deletion will be written *after* the call
 // to "dropDatabase" returns
-void ArangoEngine::dropDatabase(TRI_voc_tick_t id, std::function<bool()> const& canRemovePhysically) {
+void OtherEngine::dropDatabase(TRI_voc_tick_t id, std::function<bool()> const& canRemovePhysically) {
 }
 
 // asks the storage engine to create a collection as specified in the VPack
@@ -106,8 +108,8 @@ void ArangoEngine::dropDatabase(TRI_voc_tick_t id, std::function<bool()> const& 
 // and throw only then, so that subsequent collection creation requests will not fail.
 // the WAL entry for the collection creation will be written *after* the call
 // to "createCollection" returns
-void ArangoEngine::createCollection(TRI_voc_tick_t databaseId, TRI_voc_cid_t id,
-                                    arangodb::velocypack::Slice const& data) {
+void OtherEngine::createCollection(TRI_voc_tick_t databaseId, TRI_voc_cid_t id,
+                                   arangodb::velocypack::Slice const& data) {
 }
 
 // asks the storage engine to drop the specified collection and persist the 
@@ -118,8 +120,8 @@ void ArangoEngine::createCollection(TRI_voc_tick_t databaseId, TRI_voc_cid_t id,
 // the actual deletion.
 // the WAL entry for collection deletion will be written *after* the call
 // to "dropCollection" returns
-void ArangoEngine::dropCollection(TRI_voc_tick_t databaseId, TRI_voc_cid_t id, 
-                                  std::function<bool()> const& canRemovePhysically) {
+void OtherEngine::dropCollection(TRI_voc_tick_t databaseId, TRI_voc_cid_t id, 
+                                 std::function<bool()> const& canRemovePhysically) {
 }
 
 // asks the storage engine to rename the collection as specified in the VPack
@@ -130,8 +132,8 @@ void ArangoEngine::dropCollection(TRI_voc_tick_t databaseId, TRI_voc_cid_t id,
 // and throw only then, so that subsequent collection creation/rename requests will 
 // not fail. the WAL entry for the rename will be written *after* the call
 // to "renameCollection" returns
-void ArangoEngine::renameCollection(TRI_voc_tick_t databaseId, TRI_voc_cid_t id,
-                                    arangodb::velocypack::Slice const& data) {
+void OtherEngine::renameCollection(TRI_voc_tick_t databaseId, TRI_voc_cid_t id,
+                                   arangodb::velocypack::Slice const& data) {
 }
 
 // asks the storage engine to change properties of the collection as specified in 
@@ -140,8 +142,8 @@ void ArangoEngine::renameCollection(TRI_voc_tick_t databaseId, TRI_voc_cid_t id,
 // property changes and throw only then, so that subsequent operations will not fail.
 // the WAL entry for the propery change will be written *after* the call
 // to "changeCollection" returns
-void ArangoEngine::changeCollection(TRI_voc_tick_t databaseId, TRI_voc_cid_t id,
-                                    arangodb::velocypack::Slice const& data) {
+void OtherEngine::changeCollection(TRI_voc_tick_t databaseId, TRI_voc_cid_t id,
+                                   arangodb::velocypack::Slice const& data) {
 }
 
 // asks the storage engine to create an index as specified in the VPack
@@ -153,8 +155,8 @@ void ArangoEngine::changeCollection(TRI_voc_tick_t databaseId, TRI_voc_cid_t id,
 // creation requests will not fail.
 // the WAL entry for the index creation will be written *after* the call
 // to "createIndex" returns
-void ArangoEngine::createIndex(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId,
-                               TRI_idx_iid_t id, arangodb::velocypack::Slice const& data) {
+void OtherEngine::createIndex(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId,
+                              TRI_idx_iid_t id, arangodb::velocypack::Slice const& data) {
 }
 
 // asks the storage engine to drop the specified index and persist the deletion 
@@ -164,28 +166,28 @@ void ArangoEngine::createIndex(TRI_voc_tick_t databaseId, TRI_voc_cid_t collecti
 // the actual deletion.
 // the WAL entry for index deletion will be written *after* the call
 // to "dropIndex" returns
-void ArangoEngine::dropIndex(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId,
-                             TRI_idx_iid_t id) {
+void OtherEngine::dropIndex(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId,
+                            TRI_idx_iid_t id) {
 }
 
 // iterate all documents of the underlying collection
 // this is called when a collection is openend, and all its documents need to be added to
 // indexes etc.
-void ArangoEngine::iterateDocuments(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId,
-                                    std::function<void(arangodb::velocypack::Slice const&)> const& cb) {
+void OtherEngine::iterateDocuments(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId,
+                                   std::function<void(arangodb::velocypack::Slice const&)> const& cb) {
 }
 
 // adds a document to the storage engine
 // this will be called by the WAL collector when surviving documents are being moved
 // into the storage engine's realm
-void ArangoEngine::addDocumentRevision(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId,
-                                       arangodb::velocypack::Slice const& document) {
+void OtherEngine::addDocumentRevision(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId,
+                                      arangodb::velocypack::Slice const& document) {
 }
 
 // removes a document from the storage engine
 // this will be called by the WAL collector when non-surviving documents are being removed
 // from the storage engine's realm
-void ArangoEngine::removeDocumentRevision(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId,
-                                          arangodb::velocypack::Slice const& document) {
+void OtherEngine::removeDocumentRevision(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId,
+                                         arangodb::velocypack::Slice const& document) {
 }
 

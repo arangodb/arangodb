@@ -268,7 +268,9 @@ add_executable(${BIN_ARANGOD}
   Scheduler/TimerTask.cpp
   Statistics/StatisticsFeature.cpp
   Statistics/statistics.cpp
-  StorageEngine/ArangoEngine.cpp
+  StorageEngine/EngineSelectorFeature.cpp
+  StorageEngine/MMFilesEngine.cpp
+  StorageEngine/OtherEngine.cpp
   Utils/AqlTransaction.cpp
   Utils/CollectionExport.cpp
   Utils/CollectionKeys.cpp
