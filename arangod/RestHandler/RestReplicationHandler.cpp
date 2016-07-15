@@ -557,7 +557,7 @@ void RestReplicationHandler::handleCommandBatch() {
   if (type == GeneralRequest::RequestType::POST) {
     // create a new blocker
     std::shared_ptr<VPackBuilder> input =
-        _request->toVelocyPack(&VPackOptions::Defaults);
+        _request->toVelocyPackBuilderPtr(&VPackOptions::Defaults);
 
     if (input == nullptr || !input->slice().isObject()) {
       generateError(GeneralResponse::ResponseCode::BAD,
@@ -566,8 +566,7 @@ void RestReplicationHandler::handleCommandBatch() {
     }
 
     // extract ttl
-    double expires =
-        VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", 0);
+    double expires = VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", 0);
 
     TRI_voc_tick_t id;
     int res = TRI_InsertBlockerCompactorVocBase(_vocbase, expires, &id);
@@ -595,18 +594,16 @@ void RestReplicationHandler::handleCommandBatch() {
     TRI_voc_tick_t id =
         static_cast<TRI_voc_tick_t>(StringUtils::uint64(suffix[1]));
 
-    std::shared_ptr<VPackBuilder> input =
-        _request->toVelocyPack(&VPackOptions::Defaults);
+    auto input = _request->toVelocyPackBuilderPtr(&VPackOptions::Defaults);
 
-    if (input == nullptr || !input->slice().isObject()) {
+    if (input == nullptr || !input->slice().isObject()){
       generateError(GeneralResponse::ResponseCode::BAD,
                     TRI_ERROR_HTTP_BAD_PARAMETER, "invalid JSON");
       return;
     }
 
     // extract ttl
-    double expires =
-        VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", 0);
+    double expires = VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", 0);
 
     // now extend the blocker
     int res = TRI_TouchBlockerCompactorVocBase(_vocbase, id, expires);
@@ -655,7 +652,7 @@ void RestReplicationHandler::handleCommandBarrier() {
     // create a new barrier
 
     std::shared_ptr<VPackBuilder> input =
-        _request->toVelocyPack(&VPackOptions::Defaults);
+        _request->toVelocyPackBuilderPtr(&VPackOptions::Defaults);
 
     if (input == nullptr || !input->slice().isObject()) {
       generateError(GeneralResponse::ResponseCode::BAD,
@@ -705,7 +702,7 @@ void RestReplicationHandler::handleCommandBarrier() {
     TRI_voc_tick_t id = StringUtils::uint64(suffix[1]);
 
     std::shared_ptr<VPackBuilder> input =
-        _request->toVelocyPack(&VPackOptions::Defaults);
+        _request->toVelocyPackBuilderPtr(&VPackOptions::Defaults);
 
     if (input == nullptr || !input->slice().isObject()) {
       generateError(GeneralResponse::ResponseCode::BAD,
@@ -922,7 +919,7 @@ void RestReplicationHandler::handleCommandLoggerFollow() {
     options.checkAttributeUniqueness = true;
     std::shared_ptr<VPackBuilder> parsedRequest;
     try {
-      parsedRequest = _request->toVelocyPack(&options);
+      parsedRequest = _request->toVelocyPackBuilderPtr(&options);
     } catch (...) {
       generateError(GeneralResponse::ResponseCode::BAD,
                     TRI_ERROR_HTTP_BAD_PARAMETER,
@@ -1370,7 +1367,7 @@ void RestReplicationHandler::handleCommandRestoreCollection() {
   options.checkAttributeUniqueness = true;
 
   try {
-    parsedRequest = _request->toVelocyPack(&options);
+    parsedRequest = _request->toVelocyPackBuilderPtr(&options);
   } catch (...) {
     generateError(GeneralResponse::ResponseCode::BAD,
                   TRI_ERROR_HTTP_BAD_PARAMETER, "invalid JSON");
@@ -1454,7 +1451,7 @@ void RestReplicationHandler::handleCommandRestoreIndexes() {
   options.checkAttributeUniqueness = true;
 
   try {
-    parsedRequest = _request->toVelocyPack(&options);
+    parsedRequest = _request->toVelocyPackBuilderPtr(&options);
   } catch (...) {
     generateError(GeneralResponse::ResponseCode::BAD,
                   TRI_ERROR_HTTP_BAD_PARAMETER, "invalid JSON");
@@ -2634,16 +2631,16 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator() {
           // copy default options
           VPackOptions options = VPackOptions::Defaults;
           options.checkAttributeUniqueness = true;
-          std::shared_ptr<VPackBuilder> parsedAnswer;
+
+          VPackSlice answer;
           try {
-            parsedAnswer = result.answer->toVelocyPack(&options);
+            answer = result.answer->toVelocyPack(&options);
           } catch (VPackException const& e) {
             // Only log this error and try the next doc
             LOG(DEBUG) << "failed to parse json object: '" << e.what() << "'";
             continue;
           }
 
-          VPackSlice const answer = parsedAnswer->slice();
           if (answer.isObject()) {
             VPackSlice const result = answer.get("result");
             if (result.isBoolean()) {

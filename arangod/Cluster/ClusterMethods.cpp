@@ -821,7 +821,7 @@ int createDocumentOnCoordinator(
 
     responseCode = res.answer_code;
     TRI_ASSERT(res.answer != nullptr);
-    auto parsedResult = res.answer->toVelocyPack(&VPackOptions::Defaults);
+    auto parsedResult = res.answer->toVelocyPackBuilderPtr(&VPackOptions::Defaults);
     resultBody.swap(parsedResult);
     return TRI_ERROR_NO_ERROR;
   }
@@ -978,7 +978,7 @@ int deleteDocumentOnCoordinator(
 
       responseCode = res.answer_code;
       TRI_ASSERT(res.answer != nullptr);
-      auto parsedResult = res.answer->toVelocyPack(&VPackOptions::Defaults);
+      auto parsedResult = res.answer->toVelocyPackBuilderPtr(&VPackOptions::Defaults);
       resultBody.swap(parsedResult);
       return TRI_ERROR_NO_ERROR;
     }
@@ -1030,7 +1030,7 @@ int deleteDocumentOnCoordinator(
 
           responseCode = res.answer_code;
           TRI_ASSERT(res.answer != nullptr);
-          auto parsedResult = res.answer->toVelocyPack(&VPackOptions::Defaults);
+          auto parsedResult = res.answer->toVelocyPackBuilderPtr(&VPackOptions::Defaults);
           resultBody.swap(parsedResult);
         }
       }
@@ -1262,7 +1262,8 @@ int getDocumentOnCoordinator(
 
       responseCode = res.answer_code;
       TRI_ASSERT(res.answer != nullptr);
-      auto parsedResult = res.answer->toVelocyPack(&VPackOptions::Defaults);
+
+      auto parsedResult = res.answer->toVelocyPackBuilderPtr(&VPackOptions::Defaults);
       resultBody.swap(parsedResult);
       return TRI_ERROR_NO_ERROR;
     }
@@ -1334,7 +1335,7 @@ int getDocumentOnCoordinator(
           nrok++;
           responseCode = res.answer_code;
           TRI_ASSERT(res.answer != nullptr);
-          auto parsedResult = res.answer->toVelocyPack(&VPackOptions::Defaults);
+          auto parsedResult = res.answer->toVelocyPackBuilderPtr(&VPackOptions::Defaults);
           resultBody.swap(parsedResult);
         }
       } else {
@@ -1497,9 +1498,7 @@ int getFilteredDocumentsOnCoordinator(
   for (auto const& req : requests) {
     auto& res = req.result;
     if (res.status == CL_COMM_RECEIVED) {
-      std::shared_ptr<VPackBuilder> resultBody =
-          res.answer->toVelocyPack(&VPackOptions::Defaults);
-      VPackSlice resSlice = resultBody->slice();
+      VPackSlice resSlice = res.answer->toVelocyPack(&VPackOptions::Defaults);
 
       if (!resSlice.isObject()) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -1608,7 +1607,7 @@ int getFilteredEdgesOnCoordinator(
       return error;
     }
     TRI_ASSERT(res.answer != nullptr);
-    std::shared_ptr<VPackBuilder> shardResult = res.answer->toVelocyPack(&VPackOptions::Defaults);
+    std::shared_ptr<VPackBuilder> shardResult = res.answer->toVelocyPackBuilderPtr(&VPackOptions::Defaults);
 
     if (shardResult == nullptr) {
       return TRI_ERROR_INTERNAL;
@@ -1817,7 +1816,7 @@ int modifyDocumentOnCoordinator(
 
       responseCode = res.answer_code;
       TRI_ASSERT(res.answer != nullptr);
-      auto parsedResult = res.answer->toVelocyPack(&VPackOptions::Defaults);
+      auto parsedResult = res.answer->toVelocyPackBuilderPtr(&VPackOptions::Defaults);
       resultBody.swap(parsedResult);
       return TRI_ERROR_NO_ERROR;
     }
@@ -1874,7 +1873,7 @@ int modifyDocumentOnCoordinator(
           nrok++;
           responseCode = res.answer_code;
           TRI_ASSERT(res.answer != nullptr);
-          auto parsedResult = res.answer->toVelocyPack(&VPackOptions::Defaults);
+          auto parsedResult = res.answer->toVelocyPackBuilderPtr(&VPackOptions::Defaults);
           resultBody.swap(parsedResult);
         }
       } else {

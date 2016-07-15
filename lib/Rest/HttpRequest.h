@@ -72,7 +72,7 @@ class HttpRequest : public GeneralRequest {
   void setBody(char const* body, size_t length);
 
   // the request body as VelocyPackBuilder
-  std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack(
+  VPackSlice toVelocyPack(
       arangodb::velocypack::Options const*) override final;
 
   /// @brief sets a key/value header
@@ -96,6 +96,7 @@ class HttpRequest : public GeneralRequest {
   //  whether or not overriding the HTTP method via custom headers
   // (x-http-method, x-method-override or x-http-method-override) is allowed
   bool _allowMethodOverride;
+  std::shared_ptr<velocypack::Builder> _vpackBuilder;
 };
 }
 

@@ -691,9 +691,11 @@ void HttpRequest::setBody(char const* body, size_t length) {
   _body[length] = '\0';
 }
 
-std::shared_ptr<VPackBuilder> HttpRequest::toVelocyPack(
-    VPackOptions const* options) {
+VPackSlice HttpRequest::toVelocyPack(
+  VPackOptions const* options) {
+  TRI_ASSERT(_vpackBuilder != nullptr);
   VPackParser parser(options);
   parser.parse(body());
-  return parser.steal();
+  _vpackBuilder = parser.steal();
+  return VPackSlice(_vpackBuilder->slice());
 }

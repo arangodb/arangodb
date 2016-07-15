@@ -28,6 +28,11 @@
 #include "Basics/Common.h"
 #include "Endpoint/ConnectionInfo.h"
 
+#include <velocypack/Builder.h>
+#include <velocypack/Dumper.h>
+#include <velocypack/Options.h>
+#include <velocypack/velocypack-aliases.h>
+
 namespace arangodb {
 namespace velocypack {
 class Builder;
@@ -170,8 +175,15 @@ class GeneralRequest {
   bool velocyPackResponse() const;
 
   // the request body as VelocyPackBuilder
-  virtual std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack(
-      arangodb::velocypack::Options const*) = 0;
+  virtual VPackSlice
+  toVelocyPack(arangodb::velocypack::Options const*) = 0;
+
+  std::shared_ptr<VPackBuilder>
+  toVelocyPackBuilderPtr(arangodb::velocypack::Options const* options){
+    auto rv = std::make_shared<VPackBuilder>();
+    rv->add(toVelocyPack(options));
+    return rv;
+  };
 
   virtual std::string const& body() const = 0;
   virtual int64_t contentLength() const = 0;

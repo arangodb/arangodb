@@ -651,18 +651,18 @@ std::shared_ptr<VPackBuilder> RestVocbaseBaseHandler::parseVelocyPackBody(
     std::string const& contentType =
         _request->header(StaticStrings::ContentTypeHeader, found);
 
+    auto builder = std::make_shared<VPackBuilder>(options);
     if (found && contentType.size() == StaticStrings::MimeTypeVPack.size() &&
         contentType == StaticStrings::MimeTypeVPack) {
 
       VPackValidator validator;
       validator.validate(_request->body().c_str() ,_request->body().length());
       VPackSlice slice{_request->body().c_str()};
-      auto builder = std::make_shared<VPackBuilder>(options);
       builder->add(slice);
-      return builder;
     } else {
-      return _request->toVelocyPack(options);
+      builder->add(_request->toVelocyPack(options));
     }
+    return builder;
 
   } catch (std::bad_alloc const&) {
     generateOOMError();
