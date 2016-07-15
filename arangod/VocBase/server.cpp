@@ -306,39 +306,35 @@ static int CreateBaseApplicationDirectory(char const* basePath,
 /// @brief create app subdirectory for a database
 ////////////////////////////////////////////////////////////////////////////////
 
-static int CreateApplicationDirectory(char const* name, char const* basePath) {
-  if (basePath == nullptr || strlen(basePath) == 0) {
+static int CreateApplicationDirectory(std::string const& name, std::string const& basePath) {
+  if (basePath.empty()) {
     return TRI_ERROR_NO_ERROR;
   }
 
+  std::string const path = basics::FileUtils::buildFilename(basics::FileUtils::buildFilename(basePath, "db"), name);
   int res = TRI_ERROR_NO_ERROR;
-  char* path = TRI_Concatenate3File(basePath, "_db", name);
 
-  if (path != nullptr) {
-    if (!TRI_IsDirectory(path)) {
-      long systemError;
-      std::string errorMessage;
-      res = TRI_CreateRecursiveDirectory(path, systemError, errorMessage);
+  if (!TRI_IsDirectory(path.c_str())) {
+    long systemError;
+    std::string errorMessage;
+    res = TRI_CreateRecursiveDirectory(path.c_str(), systemError, errorMessage);
 
-      if (res == TRI_ERROR_NO_ERROR) {
-        if (arangodb::wal::LogfileManager::instance()->isInRecovery()) {
-          LOG(TRACE) << "created application directory '" << path
-                     << "' for database '" << name << "'";
-        } else {
-          LOG(INFO) << "created application directory '" << path
+    if (res == TRI_ERROR_NO_ERROR) {
+      if (arangodb::wal::LogfileManager::instance()->isInRecovery()) {
+        LOG(TRACE) << "created application directory '" << path
                     << "' for database '" << name << "'";
-        }
-      } else if (res == TRI_ERROR_FILE_EXISTS) {
-        LOG(INFO) << "unable to create application directory '" << path
-                  << "' for database '" << name << "': " << errorMessage;
-        res = TRI_ERROR_NO_ERROR;
       } else {
-        LOG(ERR) << "unable to create application directory '" << path
-                 << "' for database '" << name << "': " << errorMessage;
+        LOG(INFO) << "created application directory '" << path
+                  << "' for database '" << name << "'";
       }
+    } else if (res == TRI_ERROR_FILE_EXISTS) {
+      LOG(INFO) << "unable to create application directory '" << path
+                << "' for database '" << name << "': " << errorMessage;
+      res = TRI_ERROR_NO_ERROR;
+    } else {
+      LOG(ERR) << "unable to create application directory '" << path
+                << "' for database '" << name << "': " << errorMessage;
     }
-
-    TRI_Free(TRI_CORE_MEM_ZONE, path);
   }
 
   return res;
@@ -520,7 +516,7 @@ static int OpenDatabases(TRI_server_t* server, bool isUpgrade) {
         ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
     auto appPath = dealer->appPath();
 
-    res = CreateApplicationDirectory(databaseName.c_str(), appPath.c_str());
+    res = CreateApplicationDirectory(databaseName, appPath);
 
     if (res != TRI_ERROR_NO_ERROR) {
       break;
@@ -1149,19 +1145,9 @@ int TRI_InitServer(TRI_server_t* server,
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  server->_lockFilename = TRI_Concatenate2File(server->_basePath, "LOCK");
-
-  if (server->_lockFilename == nullptr) {
-    TRI_Free(TRI_CORE_MEM_ZONE, server->_databasePath);
-    TRI_Free(TRI_CORE_MEM_ZONE, server->_basePath);
-
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
-
   server->_serverIdFilename = TRI_Concatenate2File(server->_basePath, "SERVER");
 
   if (server->_serverIdFilename == nullptr) {
-    TRI_Free(TRI_CORE_MEM_ZONE, server->_lockFilename);
     TRI_Free(TRI_CORE_MEM_ZONE, server->_databasePath);
     TRI_Free(TRI_CORE_MEM_ZONE, server->_basePath);
 
@@ -1208,11 +1194,8 @@ TRI_server_id_t TRI_GetIdServer() { return ServerId; }
 
 int TRI_StartServer(TRI_server_t* server, bool checkVersion,
                     bool performUpgrade) {
-  int res;
-
   if (!TRI_IsDirectory(server->_basePath)) {
-    LOG(ERR) << "database path '" << server->_basePath
-             << "' is not a directory";
+    LOG(ERR) << "database path '" << server->_basePath << "' is not a directory";
 
     return TRI_ERROR_ARANGO_DATADIR_INVALID;
   }
@@ -1223,33 +1206,6 @@ int TRI_StartServer(TRI_server_t* server, bool checkVersion,
              << "' is not writable for current user";
 
     return TRI_ERROR_ARANGO_DATADIR_NOT_WRITABLE;
-  }
-
-  // ...........................................................................
-  // check that the database is not locked and lock it
-  // ...........................................................................
-
-  res = TRI_VerifyLockFile(server->_lockFilename);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    LOG(ERR) << "database is locked, please check the lock file '"
-             << server->_lockFilename << "'";
-
-    return TRI_ERROR_ARANGO_DATADIR_LOCKED;
-  }
-
-  if (TRI_ExistsFile(server->_lockFilename)) {
-    TRI_UnlinkFile(server->_lockFilename);
-  }
-
-  res = TRI_CreateLockFile(server->_lockFilename);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    LOG(ERR)
-        << "cannot lock the database directory, please check the lock file '"
-        << server->_lockFilename << "': " << TRI_errno_string(res);
-
-    return TRI_ERROR_ARANGO_DATADIR_UNLOCKABLE;
   }
 
   // ...........................................................................
@@ -1420,8 +1376,6 @@ int TRI_StopServer(TRI_server_t* server) {
   }
 
   CloseDatabases(server);
-
-  TRI_DestroyLockFile(server->_lockFilename);
 
   return res;
 }
@@ -1628,7 +1582,7 @@ int TRI_CreateDatabaseServer(TRI_server_t* server, TRI_voc_tick_t databaseId,
         ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
     auto appPath = dealer->appPath();
 
-    CreateApplicationDirectory(vocbase->_name, appPath.c_str());
+    CreateApplicationDirectory(vocbase->_name, appPath);
 
     if (!arangodb::wal::LogfileManager::instance()->isInRecovery()) {
       TRI_StartCompactorVocBase(vocbase);
@@ -2155,7 +2109,6 @@ TRI_server_t::TRI_server_t()
       _queryRegistry(nullptr),
       _basePath(nullptr),
       _databasePath(nullptr),
-      _lockFilename(nullptr),
       _serverIdFilename(nullptr),
       _disableReplicationAppliers(false),
       _disableCompactor(false),
@@ -2171,7 +2124,6 @@ TRI_server_t::~TRI_server_t() {
     delete p;
 
     TRI_Free(TRI_CORE_MEM_ZONE, _serverIdFilename);
-    TRI_Free(TRI_CORE_MEM_ZONE, _lockFilename);
     TRI_Free(TRI_CORE_MEM_ZONE, _databasePath);
     TRI_Free(TRI_CORE_MEM_ZONE, _basePath);
   }

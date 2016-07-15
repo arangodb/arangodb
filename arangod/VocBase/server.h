@@ -75,7 +75,6 @@ struct TRI_server_t {
 
   char* _basePath;
   char* _databasePath;
-  char* _lockFilename;
   char* _serverIdFilename;
 
   bool _disableReplicationAppliers;

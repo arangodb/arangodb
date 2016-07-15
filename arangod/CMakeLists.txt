@@ -247,6 +247,7 @@ add_executable(${BIN_ARANGOD}
   RestServer/FileDescriptorsFeature.cpp
   RestServer/FrontendFeature.cpp
   RestServer/InitDatabaseFeature.cpp
+  RestServer/LockfileFeature.cpp
   RestServer/QueryRegistryFeature.cpp
   RestServer/RestServerFeature.cpp
   RestServer/ScriptFeature.cpp

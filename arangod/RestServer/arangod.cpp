@@ -57,6 +57,7 @@
 #include "RestServer/FileDescriptorsFeature.h"
 #include "RestServer/FrontendFeature.h"
 #include "RestServer/InitDatabaseFeature.h"
+#include "RestServer/LockfileFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/RestServerFeature.h"
 #include "RestServer/ScriptFeature.h"
@@ -125,6 +126,7 @@ static int runServer(int argc, char** argv) {
   server.addFeature(new FrontendFeature(&server));
   server.addFeature(new InitDatabaseFeature(&server, nonServerFeatures));
   server.addFeature(new LanguageFeature(&server));
+  server.addFeature(new LockfileFeature(&server));
   server.addFeature(new LogfileManager(&server));
   server.addFeature(new LoggerBufferFeature(&server));
   server.addFeature(new LoggerFeature(&server, true));

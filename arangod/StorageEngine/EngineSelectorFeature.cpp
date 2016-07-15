@@ -38,7 +38,8 @@ EngineSelectorFeature::EngineSelectorFeature(
     : ApplicationFeature(server, "EngineSelector"), _engine(MMFilesEngine::EngineName) {
   setOptional(false);
   requiresElevatedPrivileges(false);
-  startsAfter("Logger");
+  startsAfter("Database");
+  startsAfter("LogfileManager");
 }
 
 void EngineSelectorFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
