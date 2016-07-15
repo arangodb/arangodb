@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "TraversalBlock.h"
-#include "Aql/Ast.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"
@@ -50,42 +49,10 @@ TraversalBlock::TraversalBlock(ExecutionEngine* engine, TraversalNode const* ep)
       _edgeVar(nullptr),
       _edgeReg(0),
       _pathVar(nullptr),
-      _pathReg(0),
-      _expressions(ep->expressions()),
-      _hasV8Expression(false) {
-  arangodb::traverser::TraverserOptions opts(_trx, _expressions);
+      _pathReg(0) {
+#warning FIXME
+  arangodb::traverser::TraverserOptions opts(_trx);
   ep->fillTraversalOptions(opts);
-  auto ast = ep->_plan->getAst();
-
-  for (auto& map : *_expressions) {
-    for (size_t i = 0; i < map.second.size(); ++i) {
-      SimpleTraverserExpression* it =
-          dynamic_cast<SimpleTraverserExpression*>(map.second.at(i));
-      if (it == nullptr) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE,
-                                       std::string("invalid expression map"));
-      }
-      auto e = std::make_unique<Expression>(ast, it->compareToNode);
-      _hasV8Expression |= e->isV8();
-      std::unordered_set<Variable const*> inVars;
-      e->variables(inVars);
-      it->expression = e.release();
-
-      // Prepare _inVars and _inRegs:
-      _inVars.emplace_back();
-      std::vector<Variable const*>& inVarsCur = _inVars.back();
-      _inRegs.emplace_back();
-      std::vector<RegisterId>& inRegsCur = _inRegs.back();
-
-      for (auto const& v : inVars) {
-        inVarsCur.emplace_back(v);
-        auto it = ep->getRegisterPlan()->varInfo.find(v->id);
-        TRI_ASSERT(it != ep->getRegisterPlan()->varInfo.end());
-        TRI_ASSERT(it->second.registerId < ExecutionNode::MaxRegisterId);
-        inRegsCur.emplace_back(it->second.registerId);
-      }
-    }
-  }
 
   if (arangodb::ServerState::instance()->isCoordinator()) {
     _traverser.reset(new arangodb::traverser::ClusterTraverser(
@@ -164,95 +131,6 @@ int TraversalBlock::initialize() {
   }
 
   return res;
-  DEBUG_END_BLOCK();
-}
-
-void TraversalBlock::executeExpressions() {
-  DEBUG_BEGIN_BLOCK();
-  AqlItemBlock* cur = _buffer.front();
-  for (auto& map : *_expressions) {
-    for (size_t i = 0; i < map.second.size(); ++i) {
-      // Right now no inVars are allowed.
-      SimpleTraverserExpression* it =
-          dynamic_cast<SimpleTraverserExpression*>(map.second.at(i));
-      if (it != nullptr && it->expression != nullptr) {
-        // inVars and inRegs needs fixx
-        bool mustDestroy;
-        AqlValue a = it->expression->execute(_trx, cur, _pos, _inVars[i],
-                                             _inRegs[i], mustDestroy);
-
-        AqlValueGuard guard(a, mustDestroy);
-        
-        AqlValueMaterializer materializer(_trx);
-        VPackSlice slice = materializer.slice(a, false);
-
-        VPackBuilder* builder = new VPackBuilder;
-        try {
-          builder->add(slice);
-        } catch (...) {
-          delete builder;
-          throw;
-        }
-
-        it->compareTo.reset(builder);
-      }
-    }
-  }
-  throwIfKilled();  // check if we were aborted
-  DEBUG_END_BLOCK();
-}
-
-void TraversalBlock::executeFilterExpressions() {
-  DEBUG_BEGIN_BLOCK();
-  if (!_expressions->empty()) {
-    if (_hasV8Expression) {
-      bool const isRunningInCluster =
-          arangodb::ServerState::instance()->isRunningInCluster();
-
-      // must have a V8 context here to protect Expression::execute()
-      auto engine = _engine;
-      arangodb::basics::ScopeGuard guard{
-          [&engine]() -> void { engine->getQuery()->enterContext(); },
-          [&]() -> void {
-            if (isRunningInCluster) {
-              // must invalidate the expression now as we might be called from
-              // different threads
-              for (auto const& map : *_expressions) {
-                for (auto const& e : map.second) {
-                  auto casted = dynamic_cast<SimpleTraverserExpression*>(e);
-                  if (casted != nullptr) {
-                    casted->expression->invalidate();
-                  }
-                }
-              }
-
-              engine->getQuery()->exitContext();
-            }
-          }};
-
-      ISOLATE;
-      v8::HandleScope scope(isolate);  // do not delete this!
-
-      executeExpressions();
-      TRI_IF_FAILURE("TraversalBlock::executeV8") {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-      }
-    } else {
-      // no V8 context required!
-
-      Functions::InitializeThreadContext();
-      try {
-        executeExpressions();
-        TRI_IF_FAILURE("TraversalBlock::executeExpression") {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-        }
-        Functions::DestroyThreadContext();
-      } catch (...) {
-        Functions::DestroyThreadContext();
-        throw;
-      }
-    }
-  }
   DEBUG_END_BLOCK();
 }
 
@@ -406,7 +284,6 @@ AqlItemBlock* TraversalBlock::getSome(size_t,  // atLeast,
       return nullptr;
     }
     _pos = 0;  // this is in the first block
-    executeFilterExpressions();
   }
 
   // If we get here, we do have _buffer.front()
@@ -503,7 +380,6 @@ size_t TraversalBlock::skipSome(size_t atLeast, size_t atMost) {
       return skipped;
     }
     _pos = 0;  // this is in the first block
-    executeFilterExpressions();
   }
 
   // If we get here, we do have _buffer.front()

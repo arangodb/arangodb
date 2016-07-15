@@ -47,22 +47,10 @@ bool ClusterTraverser::VertexGetter::getVertex(std::string const& edgeId,
       std::string to = slice.get(StaticStrings::ToString).copyString();
       result = std::move(to);
     }
-    auto exp = _traverser->_opts.expressions->find(depth);
-    if (exp != _traverser->_opts.expressions->end()) {
-      auto v = _traverser->_vertices.find(result);
-      if (v == _traverser->_vertices.end()) {
-        // If the vertex ist not in list it means it has not passed any
-        // filtering up to now
-        ++_traverser->_filteredPaths;
-        result = "";
-        return false;
-      }
-      if (!_traverser->vertexMatchesCondition(VPackSlice(v->second->data()), exp->second)) {
-        result = "";
-        return false;
-      }
-    }
-    return true;
+#warning Here we have to execute VertexFilter
+    /// If the vertex is not cached in _traverser->_vertices => incr. _filteredPath return false;
+    /// Else check condition if ok => return true, else return false.
+    /// When returning false set result = ""
   }
   // This should never be reached
   result = "";
@@ -95,23 +83,11 @@ bool ClusterTraverser::UniqueVertexGetter::getVertex(
       return false;
     }
 
-    auto exp = _traverser->_opts.expressions->find(depth);
-    if (exp != _traverser->_opts.expressions->end()) {
-      auto v = _traverser->_vertices.find(result);
-      if (v == _traverser->_vertices.end()) {
-        // If the vertex ist not in list it means it has not passed any
-        // filtering up to now
-        ++_traverser->_filteredPaths;
-        result = "";
-        return false;
-      }
-      if (!_traverser->vertexMatchesCondition(VPackSlice(v->second->data()), exp->second)) {
-        result = "";
-        return false;
-      }
-    }
-    _returnedVertices.emplace(result);
-    return true;
+#warning Here we have to execute VertexFilter
+    /// If the vertex is not cached in _traverser->_vertices => incr. _filteredPath return false;
+    /// Else check condition if ok => return true, else return false.
+    /// When returning false set result = ""
+    /// When returning true: _returnedVertices.emplace(result)
   }
   // This should never be reached
   result = "";
@@ -137,19 +113,23 @@ void ClusterTraverser::ClusterEdgeGetter::getEdge(
     // We have to request the next level
     arangodb::GeneralResponse::ResponseCode responseCode;
     std::vector<TraverserExpression*> expEdges;
+
+    VPackBuilder resultEdges;
+    resultEdges.openObject();
+#warning This path fetches Edges from DBServer, honoring conditions. Has to be rewritten.
+    /*
     auto found = _traverser->_opts.expressions->find(depth);
     if (found != _traverser->_opts.expressions->end()) {
       expEdges = found->second;
     }
 
-    VPackBuilder resultEdges;
-    resultEdges.openObject();
     int res = getFilteredEdgesOnCoordinator(
         _traverser->_dbname, collName, startVertex, dir,
         expEdges, responseCode, resultEdges);
     if (res != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(res);
     }
+*/
     resultEdges.close();
     VPackSlice resSlice = resultEdges.slice();
     VPackSlice edgesSlice = resSlice.get("edges");
@@ -253,6 +233,9 @@ void ClusterTraverser::ClusterEdgeGetter::getAllEdges(
   std::string collName;
   TRI_edge_direction_e dir;
   size_t eColIdx = 0;
+#warning This path fetches Edges from DBServer, honoring conditions. Has to be rewritten.
+  std::unordered_set<std::string> verticesToFetch;
+  /*
   std::vector<TraverserExpression*> expEdges;
   auto found = _traverser->_opts.expressions->find(depth);
   if (found != _traverser->_opts.expressions->end()) {
@@ -261,7 +244,6 @@ void ClusterTraverser::ClusterEdgeGetter::getAllEdges(
 
   arangodb::GeneralResponse::ResponseCode responseCode;
   VPackBuilder resultEdges;
-  std::unordered_set<std::string> verticesToFetch;
   while (_traverser->_opts.getCollection(eColIdx++, collName, dir)) {
     resultEdges.clear();
     resultEdges.openObject();
@@ -312,6 +294,7 @@ void ClusterTraverser::ClusterEdgeGetter::getAllEdges(
       result.emplace(std::move(edgeId));
     }
   }
+  */
   _traverser->fetchVertices(verticesToFetch, depth + 1);
 }
 
@@ -348,9 +331,7 @@ void ClusterTraverser::setStartVertex(std::string const& id) {
     }
   }
 
-  auto exp = _opts.expressions->find(0);
-  if (exp != _opts.expressions->end() &&
-      !vertexMatchesCondition(VPackSlice(it->second->data()), exp->second)) {
+  if (_opts.evaluateVertexExpression(VPackSlice(it->second->data()), 0)) {
     // We can stop here. The start vertex does not match condition
     _done = true;
   }
@@ -377,6 +358,8 @@ bool ClusterTraverser::getVertex(std::string const& edgeId,
 void ClusterTraverser::fetchVertices(std::unordered_set<std::string>& verticesToFetch, size_t depth) {
   _readDocuments += verticesToFetch.size();
 
+#warning Reimplement this. Fetching Documents Coordinator-Case
+  /*
   std::vector<TraverserExpression*> expVertices;
   auto found = _opts.expressions->find(depth);
   if (found != _opts.expressions->end()) {
@@ -398,6 +381,7 @@ void ClusterTraverser::fetchVertices(std::unordered_set<std::string>& verticesTo
     builder.add(VPackValue(VPackValueType::Null));
     _vertices.emplace(it, builder.steal());
   }
+  */
 }
 
 bool ClusterTraverser::vertexMatchesCondition(

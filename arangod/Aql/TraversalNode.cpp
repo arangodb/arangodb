@@ -30,6 +30,8 @@
 #include "Aql/TraversalOptions.h"
 #include "Indexes/Index.h"
 
+#include <iostream>
+
 using namespace arangodb::basics;
 using namespace arangodb::aql;
 
@@ -47,63 +49,38 @@ static uint64_t checkTraversalDepthValue(AstNode const* node) {
   return static_cast<uint64_t>(v);
 }
 
-SimpleTraverserExpression::SimpleTraverserExpression(arangodb::aql::Ast* ast,
-                                                     arangodb::basics::Json const& j)
-    : TraverserExpression(), expression(nullptr) {
-  isEdgeAccess =
-      basics::JsonHelper::checkAndGetBooleanValue(j.json(), "isEdgeAccess");
+TraversalNode::EdgeConditionBuilder::EdgeConditionBuilder(TraversalNode const* tn,
+                                           AstNode* modCondition)
+    : _tn(tn), _containsCondition(false) {
+      _modCondition = _tn->_ast->createNodeNaryOperator(NODE_TYPE_OPERATOR_NARY_AND);
+      _modCondition->addMember(modCondition);
+    }
 
-  comparisonType = static_cast<aql::AstNodeType>(
-      basics::JsonHelper::checkAndGetNumericValue<uint32_t>(j.json(),
-                                                            "comparisonType"));
-
-  varAccess = new AstNode(ast, j.get("varAccess"));
-  compareToNode = new AstNode(ast, j.get("compareTo"));
-}
-
-SimpleTraverserExpression::~SimpleTraverserExpression() {
-  if (expression != nullptr) {
-    delete expression;
+AstNode const* TraversalNode::EdgeConditionBuilder::getOutboundCondition() {
+  if (_containsCondition) {
+    _modCondition->changeMember(_modCondition->numMembers() - 1, _tn->_fromCondition);
+  } else {
+    if (_tn->_globalEdgeCondition != nullptr) {
+      _modCondition->addMember(_tn->_globalEdgeCondition);
+    }
+    _modCondition->addMember(_tn->_fromCondition);
+    _containsCondition = true;
   }
-}
+  return _modCondition;
+};
 
-void SimpleTraverserExpression::toJson(arangodb::basics::Json& json,
-                                       TRI_memory_zone_t* zone) const {
-  auto op = arangodb::aql::AstNode::Operators.find(comparisonType);
-
-  if (op == arangodb::aql::AstNode::Operators.end()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_QUERY_PARSE,
-        "invalid operator for simpleTraverserExpression");
+AstNode const* TraversalNode::EdgeConditionBuilder::getInboundCondition() {
+  if (_containsCondition) {
+    _modCondition->changeMember(_modCondition->numMembers() - 1, _tn->_toCondition);
+  } else {
+    if (_tn->_globalEdgeCondition != nullptr) {
+      _modCondition->addMember(_tn->_globalEdgeCondition);
+    }
+    _modCondition->addMember(_tn->_toCondition);
+    _containsCondition = true;
   }
-  std::string const operatorStr = op->second;
-
-  json("isEdgeAccess", arangodb::basics::Json(isEdgeAccess))(
-      "comparisonTypeStr", arangodb::basics::Json(operatorStr))(
-      "comparisonType",
-      arangodb::basics::Json(static_cast<int32_t>(comparisonType)))(
-      "varAccess", varAccess->toJson(zone, true))(
-      "compareTo", compareToNode->toJson(zone, true));
-}
-
-void SimpleTraverserExpression::toVelocyPack(VPackBuilder& builder) const {
-  TRI_ASSERT(builder.isOpenObject());
-  auto op = arangodb::aql::AstNode::Operators.find(comparisonType);
-
-  if (op == arangodb::aql::AstNode::Operators.end()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_QUERY_PARSE,
-        "invalid operator for simpleTraverserExpression");
-  }
-  std::string const operatorStr = op->second;
-  builder.add("isEdgeAccess", VPackValue(isEdgeAccess));
-  builder.add("comparisonTypeStr", VPackValue(operatorStr));
-  builder.add("comparisonType", VPackValue(comparisonType));
-  builder.add(VPackValue("varAccess"));
-  varAccess->toVelocyPack(builder, true);
-  builder.add(VPackValue("compareTo"));
-  compareToNode->toVelocyPack(builder, true);
-}
+  return _modCondition;
+};
 
 static TRI_edge_direction_e parseDirection (AstNode const* node) {
   TRI_ASSERT(node->isIntValue());
@@ -136,12 +113,37 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id,
       _graphObj(nullptr),
       _condition(nullptr),
       _options(options),
-      _specializedNeighborsSearch(false) {
-
+      _specializedNeighborsSearch(false),
+      _ast(plan->getAst()),
+      _tmpObjVariable(_ast->variables()->createTemporaryVariable()),
+      _tmpObjVarNode(_ast->createNodeReference(_tmpObjVariable)),
+      _tmpIdNode(_ast->createNodeValueString("", 0)),
+      _globalEdgeCondition(nullptr),
+      _globalVertexCondition(nullptr) {
   TRI_ASSERT(_vocbase != nullptr);
   TRI_ASSERT(direction != nullptr);
   TRI_ASSERT(start != nullptr);
   TRI_ASSERT(graph != nullptr);
+
+  // Let us build the conditions on _from and _to. Just in case we need them.
+  {
+    auto const* access = _ast->createNodeAttributeAccess(
+        _tmpObjVarNode, StaticStrings::FromString.c_str(),
+        StaticStrings::FromString.length());
+    _fromCondition = _ast->createNodeBinaryOperator(
+        NODE_TYPE_OPERATOR_BINARY_EQ, access, _tmpIdNode);
+  }
+  TRI_ASSERT(_fromCondition != nullptr);
+
+  {
+    auto const* access = _ast->createNodeAttributeAccess(
+        _tmpObjVarNode, StaticStrings::ToString.c_str(),
+        StaticStrings::ToString.length());
+    _toCondition = _ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ,
+                                                  access, _tmpIdNode);
+  }
+  TRI_ASSERT(_toCondition != nullptr);
+
   auto resolver = std::make_unique<CollectionNameResolver>(vocbase);
 
   // Parse Steps and direction
@@ -403,65 +405,6 @@ TraversalNode::TraversalNode(ExecutionPlan* plan,
     }
   }
 
-  if (base.has("simpleExpressions")) {
-    auto simpleExpSet = base.get("simpleExpressions");
-
-    if (!simpleExpSet.isObject()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_BAD_JSON_PLAN,
-                                     "simpleExpressions has to be an array.");
-    }
-    size_t nExpressionSets = simpleExpSet.members();
-    // List of edge collection names
-    for (size_t i = 0; i < nExpressionSets; i += 2) {
-      auto key = static_cast<TRI_json_t const*>(
-          TRI_AddressVector(&simpleExpSet.json()->_value._objects, i));
-
-      if (!TRI_IsStringJson(key)) {
-        // no string, should not happen
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_BAD_JSON_PLAN,
-                                       "simpleExpressions object: key wrong.");
-      }
-
-      std::string const k(key->_value._string.data,
-                          key->_value._string.length - 1);
-
-      auto value = static_cast<TRI_json_t const*>(
-          TRI_AtVector(&simpleExpSet.json()->_value._objects, i + 1));
-
-      if (value == nullptr) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(
-            TRI_ERROR_QUERY_BAD_JSON_PLAN,
-            "simpleExpressions object: value wrong.");
-      }
-
-      Json oneExpressionSetJson(TRI_UNKNOWN_MEM_ZONE, value);
-      size_t oneSetLength = oneExpressionSetJson.size();
-      if (oneSetLength == 0) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(
-            TRI_ERROR_QUERY_BAD_JSON_PLAN,
-            "simpleExpressions one expression set has to be an array.");
-      }
-
-      std::vector<arangodb::traverser::TraverserExpression*> oneExpressionSet;
-      oneExpressionSet.reserve(oneSetLength);
-      size_t n = static_cast<size_t>(std::stoull(k));
-      _expressions.emplace(n, oneExpressionSet);
-      auto it = _expressions.find(n);
-
-      for (size_t j = 0; j < oneSetLength; j++) {
-        auto sx = oneExpressionSetJson.at(j);
-        std::unique_ptr<SimpleTraverserExpression> oneX(
-            new SimpleTraverserExpression(plan->getAst(), sx));
-        it->second.emplace_back(oneX.get());
-        oneX.release();
-      }
-    }
-    if (_expressions.empty()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_BAD_JSON_PLAN,
-                                     "simpleExpressions has to be non empty.");
-    }
-  }
-
   // Out variables
   if (base.has("vertexOutVariable")) {
     _vertexOutVariable = varFromJson(plan->getAst(), base, "vertexOutVariable");
@@ -478,6 +421,8 @@ TraversalNode::TraversalNode(ExecutionPlan* plan,
     _options = TraversalOptions(base);
   }
 
+  // TODO PARSE CONDITIONS
+  
   _specializedNeighborsSearch = arangodb::basics::JsonHelper::getBooleanValue(base.json(), "specializedNeighborsSearch", false);
 }
 
@@ -572,24 +517,6 @@ void TraversalNode::toVelocyPackHelper(arangodb::velocypack::Builder& nodes,
     nodes.add(VPackValue("pathOutVariable"));
     pathOutVariable()->toVelocyPack(nodes);
   }
-
-  if (!_expressions.empty()) {
-    nodes.add(VPackValue("simpleExpressions"));
-    VPackObjectBuilder guard(&nodes);
-    for (auto const& map : _expressions) {
-      nodes.add(VPackValue(std::to_string(map.first)));
-      VPackArrayBuilder guard2(&nodes);
-      for (auto const& x : map.second) {
-        VPackObjectBuilder guard3(&nodes);
-        auto tmp = dynamic_cast<SimpleTraverserExpression*>(x);
-        if (tmp != nullptr) {
-          tmp->toVelocyPack(nodes);
-        }
-      }
-    }
-  }
-    
-  nodes.add("specializedNeighborsSearch", VPackValue(_specializedNeighborsSearch));
 
   nodes.add(VPackValue("traversalFlags"));
   _options.toVelocyPack(nodes);
@@ -714,24 +641,36 @@ void TraversalNode::setCondition(arangodb::aql::Condition* condition) {
   _condition = condition;
 }
 
-void TraversalNode::storeSimpleExpression(bool isEdgeAccess, size_t indexAccess,
-                                          AstNodeType comparisonType,
-                                          AstNode const* varAccess,
-                                          AstNode* compareToNode) {
-  auto it = _expressions.find(indexAccess);
-
-  if (it == _expressions.end()) {
-    std::vector<arangodb::traverser::TraverserExpression*> sec;
-    _expressions.emplace(indexAccess, sec);
-    it = _expressions.find(indexAccess);
-  }
-
-  auto e = std::make_unique<SimpleTraverserExpression>(
-      isEdgeAccess, comparisonType, varAccess, compareToNode);
-  it->second.push_back(e.get());
-  e.release();
-}
-
 void TraversalNode::registerCondition(bool isConditionOnEdge,
                                       size_t conditionLevel,
-                                      AstNode const* condition) {}
+                                      AstNode* condition) {
+
+  if (isConditionOnEdge) {
+    TRI_ASSERT(_edgeConditions.find(conditionLevel) == _edgeConditions.end());
+    _edgeConditions.emplace(conditionLevel, EdgeConditionBuilder(this, condition));
+  } else {
+    auto const& it = _vertexConditions.find(conditionLevel);
+    if (it == _vertexConditions.end()) {
+      auto cond = _ast->createNodeNaryOperator(NODE_TYPE_OPERATOR_NARY_AND);
+      if (_globalVertexCondition != nullptr) {
+        cond->addMember(_globalVertexCondition);
+      }
+      cond->addMember(condition);
+      _vertexConditions.emplace(conditionLevel, cond);
+    } else {
+      it->second->addMember(condition);
+    }
+  }
+}
+
+void TraversalNode::registerGlobalCondition(bool isConditionOnEdge,
+                                            AstNode* condition) {
+  std::cout << "Registering global condition for edges: " << isConditionOnEdge << std::endl;
+  if (isConditionOnEdge) {
+    _globalEdgeCondition = condition;
+  } else {
+    _globalVertexCondition = condition;
+  }
+
+  condition->dump(0);
+}

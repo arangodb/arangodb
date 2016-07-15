@@ -110,14 +110,6 @@ class TraversalBlock : public ExecutionBlock {
   /// @brief Register for the full path output
   RegisterId _pathReg;
 
-  /// @brief reference to the conditions that might be executed locally
-  std::unordered_map<
-      size_t, std::vector<arangodb::traverser::TraverserExpression*>> const*
-      _expressions;
-
-  /// @brief whether or not one of the bounds expressions requires V8
-  bool _hasV8Expression;
-
   /// @brief _inVars, a vector containing for each expression above
   /// a vector of Variable*, used to execute the expression
   std::vector<std::vector<Variable const*>> _inVars;
@@ -143,13 +135,6 @@ class TraversalBlock : public ExecutionBlock {
 
   /// @brief Checks if we output the path
   bool usesPathOutput() { return _pathVar != nullptr; }
-
-  /// @brief Executes the path-local filter expressions
-  void executeExpressions();
-
-  /// @brief Executes the path-local filter expressions
-  ///        Also determines the context
-  void executeFilterExpressions();
 
   /// @brief optimized version of neighbors search, must properly implement this
   void neighbors(std::string const& startVertex);

@@ -145,6 +145,16 @@ bool arangodb::traverser::TraverserOptions::getCollectionAndSearchValue(
   return true;
 }
 
+bool arangodb::traverser::TraverserOptions::evaluateEdgeExpression(arangodb::velocypack::Slice edge, size_t depth) const {
+#warning This has to be implemented.
+  return true;
+}
+
+bool arangodb::traverser::TraverserOptions::evaluateVertexExpression(arangodb::velocypack::Slice vertex, size_t depth) const {
+#warning This has to be implemented.
+  return true;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Creates an expression from a VelocyPackSlice
 ////////////////////////////////////////////////////////////////////////////////

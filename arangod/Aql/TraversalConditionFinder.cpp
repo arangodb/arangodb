@@ -377,21 +377,6 @@ static bool extractSimplePathAccesses(AstNode const* node, TraversalNode* tn,
         // for serialisation. However the content of this variable is never used.
         varRefNode->setData(tn->vertexOutVariable());
         firstRefNode->changeMember(0, varRefNode);
-
-        auto expressionOperator = compareNode->type;
-        if (flipOperator) {
-          if (expressionOperator == NODE_TYPE_OPERATOR_BINARY_LT) {
-            expressionOperator = NODE_TYPE_OPERATOR_BINARY_GT;
-          } else if (expressionOperator == NODE_TYPE_OPERATOR_BINARY_LE) {
-            expressionOperator = NODE_TYPE_OPERATOR_BINARY_GE;
-          } else if (expressionOperator == NODE_TYPE_OPERATOR_BINARY_GT) {
-            expressionOperator = NODE_TYPE_OPERATOR_BINARY_LT;
-          } else if (expressionOperator == NODE_TYPE_OPERATOR_BINARY_GE) {
-            expressionOperator = NODE_TYPE_OPERATOR_BINARY_LE;
-          }
-        }
-        tn->storeSimpleExpression(isEdgeAccess, attrAccessTo,
-                                  expressionOperator, newNode, filterByNode);
       }
     }
   }

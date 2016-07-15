@@ -216,42 +216,15 @@ struct TraverserOptions {
 
   UniquenessLevel uniqueEdges;
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief a vector containing all information for early pruning
-  //////////////////////////////////////////////////////////////////////////////
+#warning TODO We need a way to evaluate the expressions
 
-  std::unordered_map<size_t, std::vector<TraverserExpression*>> const* expressions;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief whether or not we have valid expressions
-  //////////////////////////////////////////////////////////////////////////////
-
-  bool hasEdgeConditions;
-
-  bool hasVertexConditions;
-
-  explicit TraverserOptions(
-      arangodb::Transaction* trx,
-      std::unordered_map<size_t, std::vector<TraverserExpression*>> const* expr)
+  explicit TraverserOptions(arangodb::Transaction* trx)
       : _trx(trx),
         minDepth(1),
         maxDepth(1),
         useBreadthFirst(false),
         uniqueVertices(UniquenessLevel::NONE),
-        uniqueEdges(UniquenessLevel::PATH),
-        expressions(expr),
-        hasEdgeConditions(false),
-        hasVertexConditions(false) {
-    TRI_ASSERT(expressions != nullptr);
-    for (auto& it : *expressions) {
-      for (auto& it2 : it.second) {
-        if (it2->isEdgeAccess) {
-          hasEdgeConditions = true;
-        } else {
-          hasVertexConditions = true;
-        }
-      }
-    }
+        uniqueEdges(UniquenessLevel::PATH) {
   }
 
   void setCollections(std::vector<std::string> const&, TRI_edge_direction_e);
@@ -265,6 +238,10 @@ struct TraverserOptions {
   bool getCollectionAndSearchValue(size_t, std::string const&, std::string&,
                                    arangodb::Transaction::IndexHandle&,
                                    arangodb::velocypack::Builder&) const;
+
+  bool evaluateEdgeExpression(arangodb::velocypack::Slice, size_t) const;
+
+  bool evaluateVertexExpression(arangodb::velocypack::Slice, size_t) const;
 };
 
 class Traverser {

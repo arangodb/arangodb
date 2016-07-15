@@ -70,48 +70,20 @@ SingleServerTraverser::SingleServerTraverser(TraverserOptions& opts,
 SingleServerTraverser::~SingleServerTraverser() {}
 
 bool SingleServerTraverser::edgeMatchesConditions(VPackSlice e, size_t depth) {
-  if (_opts.hasEdgeConditions) {
-    TRI_ASSERT(_opts.expressions != nullptr);
-    auto it = _opts.expressions->find(depth);
-
-    if (it != _opts.expressions->end()) {
-      for (auto const& exp : it->second) {
-        TRI_ASSERT(exp != nullptr);
-
-        if (exp->isEdgeAccess && !exp->matchesCheck(_trx, e)) {
-          ++_filteredPaths;
-          return false;
-        }
-      }
-    }
+  if (_opts.evaluateEdgeExpression(e, depth)) {
+    ++_filteredPaths;
+    return false;
   }
   return true;
 }
 
 bool SingleServerTraverser::vertexMatchesConditions(std::string const& v,
                                                     size_t depth) {
-  if (_opts.hasVertexConditions) {
-    TRI_ASSERT(_opts.expressions != nullptr);
-    auto it = _opts.expressions->find(depth);
-
-    if (it != _opts.expressions->end()) {
-      bool fetchVertex = true;
-      aql::AqlValue vertex;
-      for (auto const& exp : it->second) {
-        TRI_ASSERT(exp != nullptr);
-
-        if (!exp->isEdgeAccess) {
-          if (fetchVertex) {
-            fetchVertex = false;
-            vertex = fetchVertexData(v);
-          }
-          if (!exp->matchesCheck(_trx, vertex.slice())) {
-            ++_filteredPaths;
-            return false;
-          }
-        }
-      }
-    }
+#warning it is possible to not fetch the vertex if no check is required.
+  aql::AqlValue vertex = fetchVertexData(v);
+  if (!_opts.evaluateVertexExpression(vertex.slice(), depth)) {
+    ++_filteredPaths;
+    return false;
   }
   return true;
 }
@@ -226,40 +198,23 @@ void SingleServerTraverser::UniqueVertexGetter::reset(std::string const& startVe
 void SingleServerTraverser::setStartVertex(std::string const& v) {
   _pruneNext = false;
 
-  TRI_ASSERT(_opts.expressions != nullptr);
+  TRI_doc_mptr_t vertex;
+  int result = FetchDocumentById(_trx, v, &vertex);
+  ++_readDocuments;
 
-  auto it = _opts.expressions->find(0);
-
-  if (it != _opts.expressions->end()) {
-    if (!it->second.empty()) {
-      TRI_doc_mptr_t vertex;
-      bool fetchVertex = true;
-      for (auto const& exp : it->second) {
-        TRI_ASSERT(exp != nullptr);
-
-        if (!exp->isEdgeAccess) {
-          if (fetchVertex) {
-            fetchVertex = false;
-            int result = FetchDocumentById(_trx, v, &vertex);
-            ++_readDocuments;
-            if (result != TRI_ERROR_NO_ERROR) {
-              // Vertex does not exist
-              _done = true;
-              return;
-            }
-
-            _vertices.emplace(v, vertex.vpack());
-          }
-          if (!exp->matchesCheck(_trx, VPackSlice(vertex.vpack()))) {
-            ++_filteredPaths;
-            _done = true;
-            return;
-          }
-        }
-      }
-    }
+  if (result != TRI_ERROR_NO_ERROR) {
+    // Vertex does not exist
+    _done = true;
+    return;
   }
 
+  _vertices.emplace(v, vertex.vpack());
+  if (!_opts.evaluateVertexExpression(VPackSlice(vertex.vpack()), 0)) {
+    // Start vertex invalid
+    ++_filteredPaths;
+    _done = true;
+    return;
+  }
   _vertexGetter->reset(v);
   if (_opts.useBreadthFirst) {
     _enumerator.reset(new BreadthFirstEnumerator(this, v, &_opts));

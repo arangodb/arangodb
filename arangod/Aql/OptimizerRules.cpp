@@ -3674,10 +3674,12 @@ void arangodb::aql::optimizeTraversalsRule(Optimizer* opt,
         continue;
       }
 
+      /*
       if (!traversal->expressions()->empty()) {
         // traversal has filter expressions
         continue;
       }
+      */
       
       if (!traversal->allDirectionsEqual()) {
         // not all directions are equal
