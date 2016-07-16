@@ -299,7 +299,7 @@ void RestVocbaseBaseHandler::generatePreconditionFailed(
   builder.add(StaticStrings::IdString,
               VPackValue(assembleDocumentId(collectionName, key, false)));
   builder.add(StaticStrings::KeyString, VPackValue(key));
-  builder.add(StaticStrings::RevString, VPackValue(std::to_string(rev)));
+  builder.add(StaticStrings::RevString, VPackValue(TRI_RidToString(rev)));
   builder.close();
 
   generatePreconditionFailed(builder.slice());
@@ -312,7 +312,7 @@ void RestVocbaseBaseHandler::generatePreconditionFailed(
 void RestVocbaseBaseHandler::generateNotModified(TRI_voc_rid_t rid) {
   setResponseCode(GeneralResponse::ResponseCode::NOT_MODIFIED);
   _response->setHeaderNC(StaticStrings::Etag,
-                         "\"" + StringUtils::itoa(rid) + "\"");
+                         "\"" + TRI_RidToString(rid) + "\"");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -592,12 +592,9 @@ TRI_voc_rid_t RestVocbaseBaseHandler::extractRevision(char const* header,
 
     TRI_voc_rid_t rid = 0;
 
-    try {
-      rid = StringUtils::uint64_check(s, e - s);
-      isValid = true;
-    } catch (...) {
-      isValid = false;
-    }
+    bool isOld;
+    rid = TRI_StringToRidWithCheck(s, e-s, isOld);
+    isValid = (rid != 0);
 
     return rid;
   }
@@ -608,12 +605,9 @@ TRI_voc_rid_t RestVocbaseBaseHandler::extractRevision(char const* header,
     if (found) {
       TRI_voc_rid_t rid = 0;
 
-      try {
-        rid = StringUtils::uint64_check(etag2);
-        isValid = true;
-      } catch (...) {
-        isValid = false;
-      }
+      bool isOld;
+      rid = TRI_StringToRidWithCheck(etag2, isOld);
+      isValid = (rid != 0);
 
       return rid;
     }

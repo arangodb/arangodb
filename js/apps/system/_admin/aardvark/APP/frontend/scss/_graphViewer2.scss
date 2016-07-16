@@ -45,8 +45,51 @@
   position: fixed;
 
   svg {
-    path {
-      font-size: 2pt !important;
+    #wheelnav-nodeContextMenu-title-0 {
+      transform: translate(24px, 14px) scale(.7) !important;
     }
+
+    #wheelnav-nodeContextMenu-title-0,
+    #wheelnav-nodeContextMenu-title-1,
+    #wheelnav-nodeContextMenu-title-2,
+    #wheelnav-nodeContextMenu-title-3 {
+      fill: $c-white;
+
+      &:hover {
+        fill: $c-positive;
+      }
+    }
+  }
+}
+
+#graphSettingsView {
+  background-color: rgba(64, 74, 83, .9);
+  border: 0;
+  border-radius: 0;
+  height: 100%;
+}
+
+#graphSettingsContent {
+  height: 100%;
+  max-width: 50%;
+  min-width: 400px;
+  position: fixed;
+  right: -1px;
+  top: 103px;
+  width: 400px;
+
+  .pure-g {
+    .left {
+      color: $c-white;
+    }
+
+    .pure-u-2-3 {
+      text-align: right;
+    }
+  }
+
+  .pure-table {
+    padding-left: 10px;
+    padding-right: 10px;
   }
 }

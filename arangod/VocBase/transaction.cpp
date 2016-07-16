@@ -1115,7 +1115,7 @@ int TRI_AddOperationTransaction(TRI_transaction_t* trx,
     copy->handle();
   }
 
-  document->setLastRevision(static_cast<TRI_voc_tick_t>(operation.tick), false);
+  document->setLastRevision(operation.rid, false);
 
   TRI_IF_FAILURE("TransactionOperationAtEnd") { return TRI_ERROR_DEBUG; }
 

@@ -291,11 +291,43 @@ authRouter.get('/graph/:name', function (req, res) {
   // var traversal = require("@arangodb/graph/traversal");
 
   var graph = gm._graph(name);
-  var vertexName = graph._vertexCollections()[0].name();
-  var startVertex = db[vertexName].any();
+
+  var vertices = graph._vertexCollections();
+  var vertexName = vertices[Math.floor(Math.random() * vertices.length)].name();
+
+  var vertexCollections = [];
+  _.each(graph._vertexCollections(), function (vertex) {
+    vertexCollections.push({
+      name: vertex.name(),
+      id: vertex._id
+    });
+  });
+
+  var startVertex;
+  var config;
+
+  try {
+    config = req.queryParams;
+  } catch (e) {
+    res.throw('bad request', e.message, {cause: e});
+  }
+
+  if (config.nodeStart) {
+    try {
+      startVertex = db._document(config.nodeStart);
+    } catch (e) {
+      res.throw('bad request', e.message, {cause: e});
+    }
+
+    if (!startVertex) {
+      startVertex = db[vertexName].any();
+    }
+  } else {
+    startVertex = db[vertexName].any();
+  }
 
   var aqlQuery =
-   'FOR v, e, p IN 1..3 ANY "' + startVertex._id + '" GRAPH "' + name + '"' +
+   'FOR v, e, p IN 1..' + (config.depth || '2') + ' ANY "' + startVertex._id + '" GRAPH "' + name + '"' +
    'RETURN p'
   ;
 
@@ -307,29 +339,52 @@ authRouter.get('/graph/:name', function (req, res) {
   var edgesArr = [];
 
   _.each(cursor.json, function (obj) {
+    var edgeLabel;
+
     _.each(obj.edges, function (edge) {
       if (edge._to && edge._from) {
+        if (config.edgeLabel) {
+          // configure edge labels
+          edgeLabel = edge[config.edgeLabel];
+
+          if (edgeLabel) {
+            edgeLabel = edgeLabel.toString();
+          }
+
+          if (!edgeLabel) {
+            edgeLabel = 'attribute ' + config.edgeLabel + ' not found';
+          }
+        }
+
         edgesObj[edge._from + edge._to] = {
           id: edge._id,
           source: edge._from,
-          color: '#cccccc',
+          label: edgeLabel,
+          color: config.edgeColor || '#cccccc',
           target: edge._to
         };
       }
     });
-    var label;
+
+    var nodeLabel;
+    var nodeSize;
+
     _.each(obj.vertices, function (node) {
-      if (node.label) {
-        label = node.label;
+      if (config.nodeLabel) {
+        nodeLabel = node[config.nodeLabel];
       } else {
-        label = node._id;
+        nodeLabel = node._id;
+      }
+
+      if (config.nodeSize) {
+        nodeSize = node[config.nodeSize];
       }
 
       nodesObj[node._id] = {
         id: node._id,
-        label: label,
-        size: Math.random(),
-        color: '#2ecc71',
+        label: nodeLabel,
+        size: nodeSize || Math.random(),
+        color: config.nodeColor || '#2ecc71',
         x: Math.random(),
         y: Math.random()
       };
@@ -346,7 +401,11 @@ authRouter.get('/graph/:name', function (req, res) {
 
   res.json({
     nodes: nodesArr,
-    edges: edgesArr
+    edges: edgesArr,
+    settings: {
+      vertexCollections: vertexCollections,
+      startVertex: startVertex
+    }
   });
 })
 .summary('Return vertices and edges of a graph.')

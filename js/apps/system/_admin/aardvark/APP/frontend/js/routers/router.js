@@ -671,8 +671,13 @@
         this.waitForInit(this.graph2.bind(this), name);
         return;
       }
+      if (this.graphViewer2) {
+        this.graphViewer2.remove();
+      }
       this.graphViewer2 = new window.GraphViewer2({
         name: name,
+        documentStore: this.arangoDocumentStore,
+        collection: new window.GraphCollection(),
         userConfig: this.userConfig
       });
       this.graphViewer2.render();
@@ -683,6 +688,9 @@
       if (!initialized) {
         this.waitForInit(this.graph2settings.bind(this), name);
         return;
+      }
+      if (this.graphSettingsView) {
+        this.graphSettingsView.remove();
       }
       this.graphSettingsView = new window.GraphSettingsView({
         name: name,

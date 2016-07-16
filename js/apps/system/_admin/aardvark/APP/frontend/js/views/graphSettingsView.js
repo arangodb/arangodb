@@ -5,9 +5,25 @@
   'use strict';
 
   window.GraphSettingsView = Backbone.View.extend({
-    el: '#content',
+    el: '#graphSettingsContent',
+
+    remove: function () {
+      this.$el.empty().off(); /* off to unbind the events */
+      this.stopListening();
+      return this;
+    },
 
     general: {
+      'graph': {
+        type: 'divider',
+        name: 'Graph'
+      },
+      'nodeStart': {
+        type: 'string',
+        name: 'Starting node',
+        desc: 'A valid node id. If empty, a random node will be chosen.',
+        value: 2
+      },
       'layout': {
         type: 'select',
         name: 'Layout algorithm',
@@ -37,58 +53,73 @@
         }
       },
       'depth': {
-        type: 'numeric',
+        type: 'number',
         name: 'Search depth',
         value: 2
       }
     },
 
     specific: {
+      'nodes': {
+        type: 'divider',
+        name: 'Nodes'
+      },
       'nodeLabel': {
         type: 'string',
-        name: 'Node label',
+        name: 'Label',
         desc: 'Default node color. RGB or HEX value.',
         default: '_key'
       },
       'nodeColor': {
         type: 'color',
-        name: 'Node color',
+        name: 'Color',
         desc: 'Default node color. RGB or HEX value.',
         default: '#2ecc71'
       },
       'nodeSize': {
         type: 'string',
-        name: 'Node size',
-        desc: 'Default node size. Numeric value > 0.',
-        value: undefined
+        name: 'Sizing attribute',
+        desc: 'Default node size. Numeric value > 0.'
+      },
+      'edges': {
+        type: 'divider',
+        name: 'Edges'
       },
       'edgeLabel': {
         type: 'string',
-        name: 'Edge label',
-        desc: 'Default edge label.',
-        value: undefined
+        name: 'Label',
+        desc: 'Default edge label.'
       },
       'edgeColor': {
         type: 'color',
-        name: 'Edge color',
+        name: 'Color',
         desc: 'Default edge color. RGB or HEX value.',
         default: '#cccccc'
       },
       'edgeSize': {
-        type: 'string',
-        name: 'Edge thickness',
-        desc: 'Default edge thickness. Numeric value > 0.',
-        value: undefined
+        type: 'number',
+        name: 'Sizing',
+        desc: 'Default edge thickness. Numeric value > 0.'
       },
       'edgeType': {
         type: 'select',
-        name: 'Edge type',
+        name: 'Type',
         desc: 'The type of the edge',
-        canvas: {
-          name: 'Straight'
+        line: {
+          name: 'Line',
+          val: 'line'
         },
-        webgl: {
-          name: 'Curved'
+        curve: {
+          name: 'Curve',
+          val: 'curve'
+        },
+        arrow: {
+          name: 'Arrow',
+          val: 'arrow'
+        },
+        curvedArrow: {
+          name: 'Curved Arrow',
+          val: 'curvedArrow'
         }
       }
     },
@@ -98,11 +129,28 @@
     initialize: function (options) {
       this.name = options.name;
       this.userConfig = options.userConfig;
+      this.saveCallback = options.saveCallback;
     },
 
     events: {
       'click #saveGraphSettings': 'saveGraphSettings',
-      'click #restoreGraphSettings': 'restoreGraphSettings'
+      'click #restoreGraphSettings': 'restoreGraphSettings',
+      'keyup #graphSettingsView input': 'checkEnterKey',
+      'keyup #graphSettingsView select': 'checkEnterKey',
+      'focus #graphSettingsView input': 'lastFocus',
+      'focus #graphSettingsView select': 'lastFocus'
+    },
+
+    lastFocus: function (e) {
+      console.log(e.currentTarget.id);
+      console.log(e.currentTarget);
+      this.lastFocussed = e.currentTarget.id;
+    },
+
+    checkEnterKey: function (e) {
+      if (e.keyCode === 13) {
+        this.saveGraphSettings();
+      }
     },
 
     getGraphSettings: function (render) {
@@ -112,7 +160,6 @@
       this.userConfig.fetch({
         success: function (data) {
           self.graphConfig = data.toJSON().graphs[combinedName];
-
           if (render) {
             self.continueRender();
           }
@@ -121,24 +168,53 @@
     },
 
     saveGraphSettings: function () {
+      var self = this;
       var combinedName = window.App.currentDB.toJSON().name + '_' + this.name;
 
       var config = {};
       config[combinedName] = {
         layout: $('#g_layout').val(),
         renderer: $('#g_renderer').val(),
-        depth: $('#g_depth').val()
+        depth: $('#g_depth').val(),
+        nodeColor: $('#g_nodeColor').val(),
+        edgeColor: $('#g_edgeColor').val(),
+        nodeLabel: $('#g_nodeLabel').val(),
+        edgeLabel: $('#g_edgeLabel').val(),
+        edgeType: $('#g_edgeType').val(),
+        nodeSize: $('#g_nodeSize').val(),
+        edgeSize: $('#g_edgeSize').val(),
+        nodeStart: $('#g_nodeStart').val()
       };
 
       var callback = function () {
-        window.arangoHelper.arangoNotification('Graph ' + this.name, 'Configuration saved.');
+        if (window.App.graphViewer2) {
+          window.App.graphViewer2.render(self.lastFocussed);
+        } else {
+          arangoHelper.arangoNotification('Graph ' + this.name, 'Configuration saved.');
+        }
       }.bind(this);
 
       this.userConfig.setItem('graphs', config, callback);
     },
 
     setDefaults: function () {
+      console.log('implement me!');
+    },
 
+    toggle: function () {
+      if ($(this.el).is(':visible')) {
+        this.hide();
+      } else {
+        this.show();
+      }
+    },
+
+    show: function () {
+      $(this.el).show('slide', {direction: 'right'}, 250);
+    },
+
+    hide: function () {
+      $(this.el).hide('slide', {direction: 'right'}, 250);
     },
 
     render: function () {
@@ -159,7 +235,7 @@
         this.setDefaults();
       }
 
-      arangoHelper.buildGraphSubNav(this.name, 'Settings');
+      // arangoHelper.buildGraphSubNav(this.name, 'Settings');
 
       // load graph settings from local storage
       // apply those values to view then

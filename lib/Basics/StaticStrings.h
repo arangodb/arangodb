@@ -85,6 +85,7 @@ class StaticStrings {
   static std::string const Etag;
   static std::string const Expect;
   static std::string const ExposedCorsHeaders;
+  static std::string const HLCHeader;
   static std::string const KeepAlive;
   static std::string const Location;
   static std::string const MultiPartContentType;

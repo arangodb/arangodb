@@ -343,11 +343,14 @@ int LimitBlock::getOrSkipSome(size_t atLeast, size_t atMost, bool skipping,
       if (_engine->_stats.fullCount == -1) {
         _engine->_stats.fullCount = 0;
       }
-      _engine->_stats.fullCount += static_cast<int64_t>(_offset);
     }
 
     if (_offset > 0) {
-      ExecutionBlock::_dependencies[0]->skip(_offset);
+      size_t numActuallySkipped = 0;
+      ExecutionBlock::_dependencies[0]->skip(_offset, numActuallySkipped);
+      if (_fullCount) {
+        _engine->_stats.fullCount += static_cast<int64_t>(numActuallySkipped);
+      }
     }
     _state = 1;
     _count = 0;
