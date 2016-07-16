@@ -60,15 +60,15 @@ class HttpRequest : public GeneralRequest {
 
  public:
   // the content length
-  int64_t contentLength() const { return _contentLength; }
+  int64_t contentLength() const override { return _contentLength; }
 
   std::string const& cookieValue(std::string const& key) const;
   std::string const& cookieValue(std::string const& key, bool& found) const;
-  std::unordered_map<std::string, std::string> cookieValues() const {
+  std::unordered_map<std::string, std::string> cookieValues() const override {
     return _cookies;
   }
 
-  std::string const& body() const;
+  std::string const& body() const override;
   void setBody(char const* body, size_t length);
 
   // the request body as VelocyPackBuilder

@@ -46,17 +46,12 @@ RestBatchHandler::~RestBatchHandler() {}
 ////////////////////////////////////////////////////////////////////////////////
 
 RestHandler::status RestBatchHandler::execute() {
-  // TODO needs to generalized
-  auto response = dynamic_cast<HttpResponse*>(_response);
-
-  if (response == nullptr) {
+  // TODO OBI - generalize function
+  if (_response == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   }
 
-  // TODO needs to generalized
-  auto httpRequest = dynamic_cast<HttpRequest*>(_request);
-
-  if (httpRequest == nullptr) {
+  if (_request == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   }
 
@@ -86,15 +81,15 @@ RestHandler::status RestBatchHandler::execute() {
 
   // get authorization header. we will inject this into the subparts
   std::string const& authorization =
-      httpRequest->header(StaticStrings::Authorization);
+      _request->header(StaticStrings::Authorization);
 
   // create the response
   setResponseCode(GeneralResponse::ResponseCode::OK);
-  response->setContentType(
-      httpRequest->header(StaticStrings::ContentTypeHeader));
+  _response->setContentType(
+      _request->header(StaticStrings::ContentTypeHeader));
 
   // setup some auxiliary structures to parse the multipart message
-  std::string const& bodyStr = httpRequest->body();
+  std::string const& bodyStr = _request->body();
   MultipartMessage message(boundary.c_str(), boundary.size(), bodyStr.c_str(),
                            bodyStr.c_str() + bodyStr.size());
 
@@ -148,7 +143,7 @@ RestHandler::status RestBatchHandler::execute() {
 
     // set up request object for the part
     LOG(TRACE) << "part header is: " << std::string(headerStart, headerLength);
-    HttpRequest* request = new HttpRequest(httpRequest->connectionInfo(),
+    HttpRequest* request = new HttpRequest(_request->connectionInfo(),
                                            headerStart, headerLength, false);
 
     // we do not have a client task id here
@@ -204,8 +199,7 @@ RestHandler::status RestBatchHandler::execute() {
         return status::FAILED;
       }
 
-      HttpResponse* partResponse =
-          dynamic_cast<HttpResponse*>(handler->response());
+      GeneralResponse* partResponse = handler->response();
 
       if (partResponse == nullptr) {
         generateError(GeneralResponse::ResponseCode::BAD, TRI_ERROR_INTERNAL,
@@ -222,28 +216,28 @@ RestHandler::status RestBatchHandler::execute() {
       }
 
       // append the boundary for this subpart
-      response->body().appendText(boundary + "\r\nContent-Type: ");
-      response->body().appendText(StaticStrings::BatchContentType);
+      _response->body().appendText(boundary + "\r\nContent-Type: ");
+      _response->body().appendText(StaticStrings::BatchContentType);
 
       // append content-id if it is present
       if (helper.contentId != 0) {
-        response->body().appendText(
+        _response->body().appendText(
             "\r\nContent-Id: " +
             std::string(helper.contentId, helper.contentIdLength));
       }
 
-      response->body().appendText(TRI_CHAR_LENGTH_PAIR("\r\n\r\n"));
+      _response->body().appendText(TRI_CHAR_LENGTH_PAIR("\r\n\r\n"));
 
       // remove some headers we don't need
       partResponse->setConnectionType(HttpResponse::CONNECTION_NONE);
       partResponse->setHeaderNC(StaticStrings::Server, "");
 
       // append the part response header
-      partResponse->writeHeader(&response->body());
+      partResponse->writeHeader(&_response->body());
 
       // append the part response body
-      response->body().appendText(partResponse->body());
-      response->body().appendText(TRI_CHAR_LENGTH_PAIR("\r\n"));
+      _response->body().appendText(partResponse->body());
+      _response->body().appendText(TRI_CHAR_LENGTH_PAIR("\r\n"));
     }
 
     // we've read the last part
@@ -253,10 +247,10 @@ RestHandler::status RestBatchHandler::execute() {
   }
 
   // append final boundary + "--"
-  response->body().appendText(boundary + "--");
+  _response->body().appendText(boundary + "--");
 
   if (errors > 0) {
-    response->setHeaderNC(StaticStrings::Errors, StringUtils::itoa(errors));
+    _response->setHeaderNC(StaticStrings::Errors, StringUtils::itoa(errors));
   }
 
   // success
@@ -268,14 +262,12 @@ RestHandler::status RestBatchHandler::execute() {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestBatchHandler::getBoundaryBody(std::string* result) {
-  // TODO needs to generalized
-  auto request = dynamic_cast<HttpRequest*>(_request);
 
-  if (request == nullptr) {
+  if (_request == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   }
 
-  std::string const& bodyStr = request->body();
+  std::string const& bodyStr = _request->body();
   char const* p = bodyStr.c_str();
   char const* e = p + bodyStr.size();
 

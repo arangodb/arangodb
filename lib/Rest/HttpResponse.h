@@ -49,12 +49,6 @@ class HttpResponse : public GeneralResponse {
  public:
   bool isHeadResponse() const { return _isHeadResponse; }
 
-  enum ConnectionType {
-    CONNECTION_NONE,
-    CONNECTION_KEEP_ALIVE,
-    CONNECTION_CLOSE
-  };
-
  public:
   void setCookie(std::string const& name, std::string const& value,
                  int lifeTimeSeconds, std::string const& path,
@@ -69,30 +63,30 @@ class HttpResponse : public GeneralResponse {
   // information to the string buffer. Note that adding data to the body
   // invalidates any previously returned header. You must call header
   // again.
-  basics::StringBuffer& body() { return _body; }
+  basics::StringBuffer& body() override { return _body; }
   size_t bodySize() const;
 
   /// @brief set type of connection
-  void setConnectionType(ConnectionType type) { _connectionType = type; }
+  void setConnectionType(ConnectionType type) override { _connectionType = type; }
 
   /// @brief set content-type
-  void setContentType(ContentType type) { _contentType = type; }
+  void setContentType(ContentType type) override { _contentType = type; }
 
   /// @brief set content-type from a string. this should only be used in
   /// cases when the content-type is user-defined
-  void setContentType(std::string const& contentType) {
+  void setContentType(std::string const& contentType) override {
     _headers[arangodb::StaticStrings::ContentTypeHeader] = contentType;
     _contentType = ContentType::CUSTOM;
   }
 
-  void setContentType(std::string&& contentType) {
+  void setContentType(std::string&& contentType) override {
     _headers[arangodb::StaticStrings::ContentTypeHeader] =
         std::move(contentType);
     _contentType = ContentType::CUSTOM;
   }
 
   // you should call writeHeader only after the body has been created
-  void writeHeader(basics::StringBuffer*);
+  void writeHeader(basics::StringBuffer*) override;
 
  public:
   void reset(ResponseCode code) override final;

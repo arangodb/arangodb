@@ -649,12 +649,8 @@ std::shared_ptr<VPackBuilder> RestVocbaseBaseHandler::parseVelocyPackBody(
         contentType == StaticStrings::MimeTypeVPack) {
 
       VPackValidator validator;
-      //FIXME broken casts!!
-      validator.validate(static_cast<HttpRequest*>(_request)->body().c_str()
-                        ,static_cast<HttpRequest*>(_request)->body().length()
-                        );
-
-      VPackSlice slice{ static_cast<HttpRequest*>(_request)->body().c_str()};
+      validator.validate(_request->body().c_str() ,_request->body().length());
+      VPackSlice slice{_request->body().c_str()};
       auto builder = std::make_shared<VPackBuilder>(options);
       builder->add(slice);
       return builder;
