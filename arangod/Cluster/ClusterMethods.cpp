@@ -372,7 +372,7 @@ static void collectResultsFromAllShards(
     } else {
       TRI_ASSERT(res.answer != nullptr);
       resultMap.emplace(res.shardID,
-                        res.answer->toVelocyPack(&VPackOptions::Defaults));
+                        res.answer->toVelocyPackBuilderPtr(&VPackOptions::Defaults));
       extractErrorCodes(res, errorCounter, true);
       responseCode = res.answer_code;
     }
@@ -1061,7 +1061,7 @@ int deleteDocumentOnCoordinator(
       responseCode = res.answer_code;
     }
     TRI_ASSERT(res.answer != nullptr);
-    allResults.emplace_back(res.answer->toVelocyPack(&VPackOptions::Defaults));
+    allResults.emplace_back(res.answer->toVelocyPackBuilderPtr(&VPackOptions::Defaults));
     extractErrorCodes(res, errorCounter, false);
   }
   // If we get here we get exactly one result for every shard.
@@ -1370,7 +1370,7 @@ int getDocumentOnCoordinator(
       responseCode = res.answer_code;
     }
     TRI_ASSERT(res.answer != nullptr);
-    allResults.emplace_back(res.answer->toVelocyPack(&VPackOptions::Defaults));
+    allResults.emplace_back(res.answer->toVelocyPackBuilderPtr(&VPackOptions::Defaults));
     extractErrorCodes(res, errorCounter, false);
   }
   // If we get here we get exactly one result for every shard.
@@ -1908,7 +1908,7 @@ int modifyDocumentOnCoordinator(
       responseCode = res.answer_code;
     }
     TRI_ASSERT(res.answer != nullptr);
-    allResults.emplace_back(res.answer->toVelocyPack(&VPackOptions::Defaults));
+    allResults.emplace_back(res.answer->toVelocyPackBuilderPtr(&VPackOptions::Defaults));
     extractErrorCodes(res, errorCounter, false);
   }
   // If we get here we get exactly one result for every shard.

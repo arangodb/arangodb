@@ -2664,16 +2664,15 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator() {
           // copy default options
           VPackOptions options = VPackOptions::Defaults;
           options.checkAttributeUniqueness = true;
-          std::shared_ptr<VPackBuilder> parsedAnswer;
+          VPackSlice answer;
           try {
-            parsedAnswer = result.answer->toVelocyPack(&options);
+            answer = result.answer->toVelocyPack(&options);
           } catch (VPackException const& e) {
             // Only log this error and try the next doc
             LOG(DEBUG) << "failed to parse json object: '" << e.what() << "'";
             continue;
           }
 
-          VPackSlice const answer = parsedAnswer->slice();
           if (answer.isObject()) {
             VPackSlice const errorMessage = answer.get("errorMessage");
             if (errorMessage.isString()) {
