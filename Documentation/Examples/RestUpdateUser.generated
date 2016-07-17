@@ -1,6 +1,6 @@
-shell> curl -X PATCH --data-binary @- --dump - http://localhost:8529/_api/user/admin@yourapp &lt;&lt;EOF
+shell> curl -X PATCH --data-binary @- --dump - http://localhost:8529/_api/user/admin@myapp &lt;&lt;EOF
 { 
-  <span class="hljs-string">"password"</span> : <span class="hljs-string">"secure"</span> 
+  <span class="hljs-string">"passwd"</span> : <span class="hljs-string">"secure"</span> 
 }
 EOF
 
@@ -8,7 +8,7 @@ HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> O
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
 
 { 
-  <span class="hljs-string">"user"</span> : <span class="hljs-string">"admin@yourapp"</span>, 
+  <span class="hljs-string">"user"</span> : <span class="hljs-string">"admin@myapp"</span>, 
   <span class="hljs-string">"active"</span> : <span class="hljs-literal">true</span>, 
   <span class="hljs-string">"extra"</span> : { 
   }, 
