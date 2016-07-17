@@ -179,6 +179,7 @@ pack-arm-cmake:
 		-D "CMAKE_CXX_FLAGS_RELEASE:STRING=-O2 -DNDEBUG" \
 		-D "CMAKE_C_FLAGS_RELEASE:STRING=-O2 -DNDEBUG" \
 		-D "CMAKE_INSTALL_PREFIX=${prefix}" \
+		-D "CMAKE_INSTALL_DATADIR=${prefix}/share" \
 		-D "ETCDIR=${sysconfdir}" \
 		-D "VARDIR=${localstatedir}" \
 		$(MOREOPTS) \
@@ -200,6 +201,7 @@ pack-deb-cmake:
 		-D "CMAKE_CXX_FLAGS_RELEASE:STRING=-O2 -DNDEBUG" \
 		-D "CMAKE_C_FLAGS_RELEASE:STRING=-O2 -DNDEBUG" \
 		-D "CMAKE_INSTALL_PREFIX=${prefix}" \
+		-D "CMAKE_INSTALL_DATADIR=${prefix}/share" \
 		-D "ETCDIR=${sysconfdir}" \
 		-D "VARDIR=${localstatedir}" \
 		$(MOREOPTS) \
