@@ -27,8 +27,18 @@ devel
   `@arangodb/foxx/graphql` module and the bundled `graphql-sync` dependency
 
 
-v3.0.3 (XXXX-XX-XX)
+v3.0.4 (XXXX-XX-XX)
 -------------------
+
+* fixed segfault in V8, by backporting https://bugs.chromium.org/p/v8/issues/detail?id=5033
+
+
+v3.0.3 (2016-07-17)
+-------------------
+
+* fixed issue #1942
+
+* fixed issue #1941
 
 * fixed array index batch insertion issues for hash indexes that caused problems when 
   no elements remained for insertion
