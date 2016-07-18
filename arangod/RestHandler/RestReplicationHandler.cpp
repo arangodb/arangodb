@@ -778,10 +778,8 @@ void RestReplicationHandler::handleCommandBarrier() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleTrampolineCoordinator() {
-  // TODO needs to generalized
-  auto request = dynamic_cast<HttpRequest*>(_request);
 
-  if (request == nullptr) {
+  if (_request == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   }
 
@@ -821,7 +819,7 @@ void RestReplicationHandler::handleTrampolineCoordinator() {
                              _request->requestType(),
                              "/_db/" + StringUtils::urlEncode(dbname) +
                                  _request->requestPath() + params,
-                             request->body(), *headers, 300.0);
+                             _request->body(), *headers, 300.0);
 
   if (res->status == CL_COMM_TIMEOUT) {
     // No reply, we give up:
@@ -848,16 +846,13 @@ void RestReplicationHandler::handleTrampolineCoordinator() {
   setResponseCode(static_cast<GeneralResponse::ResponseCode>(
       res->result->getHttpReturnCode()));
 
-  // TODO needs to generalized
-  auto response = dynamic_cast<HttpResponse*>(_response);
-
-  if (response == nullptr) {
+  if (_response == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   }
 
-  response->setContentType(
+  _response->setContentType(
       res->result->getHeaderField(StaticStrings::ContentTypeHeader, dummy));
-  response->body().swap(&(res->result->getBody()));
+  _response->body().swap(&(res->result->getBody()));
 
   auto const& resultHeaders = res->result->getHeaderFields();
   for (auto const& it : resultHeaders) {
@@ -1003,14 +998,11 @@ void RestReplicationHandler::handleCommandLoggerFollow() {
         setResponseCode(GeneralResponse::ResponseCode::OK);
       }
 
-      // TODO needs to generalized
-      auto response = dynamic_cast<HttpResponse*>(_response);
-
-      if (response == nullptr) {
+      if (_response == nullptr) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
       }
 
-      response->setContentType(GeneralResponse::ContentType::DUMP);
+      _response->setContentType(GeneralResponse::ContentType::DUMP);
 
       // set headers
       _response->setHeaderNC(TRI_REPLICATION_HEADER_CHECKMORE,
@@ -1029,7 +1021,7 @@ void RestReplicationHandler::handleCommandLoggerFollow() {
 
       if (length > 0) {
         // transfer ownership of the buffer contents
-        response->body().set(dump._buffer);
+        _response->body().set(dump._buffer);
 
         // to avoid double freeing
         TRI_StealStringBuffer(dump._buffer);
@@ -1106,14 +1098,11 @@ void RestReplicationHandler::handleCommandDetermineOpenTransactions() {
         setResponseCode(GeneralResponse::ResponseCode::OK);
       }
 
-      // TODO needs to generalized
-      auto response = dynamic_cast<HttpResponse*>(_response);
-
-      if (response == nullptr) {
+      if (_response == nullptr) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
       }
 
-      response->setContentType(HttpResponse::ContentType::DUMP);
+      _response->setContentType(HttpResponse::ContentType::DUMP);
 
       _response->setHeaderNC(TRI_REPLICATION_HEADER_FROMPRESENT,
                              dump._fromTickIncluded ? "true" : "false");
@@ -1123,7 +1112,7 @@ void RestReplicationHandler::handleCommandDetermineOpenTransactions() {
 
       if (length > 0) {
         // transfer ownership of the buffer contents
-        response->body().set(dump._buffer);
+        _response->body().set(dump._buffer);
 
         // to avoid double freeing
         TRI_StealStringBuffer(dump._buffer);
@@ -1215,10 +1204,10 @@ void RestReplicationHandler::handleCommandClusterInventory() {
 
   AgencyComm _agency;
   AgencyCommResult result;
-  
+
   std::string prefix("Plan/Collections/");
   prefix.append(dbName);
-  
+
   result = _agency.getValues(prefix);
   if (!result.successful()) {
     generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
@@ -1258,7 +1247,7 @@ void RestReplicationHandler::handleCommandClusterInventory() {
                      resultBuilder.slice());
     }
   }
-  
+
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2186,14 +2175,12 @@ int RestReplicationHandler::processRestoreDataBatch(
 
   VPackBuilder builder;
 
-  // TODO needs to generalized
-  auto request = dynamic_cast<HttpRequest*>(_request);
 
-  if (request == nullptr) {
+  if (_request == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   }
 
-  std::string const& bodyStr = request->body();
+  std::string const& bodyStr = _request->body();
   char const* ptr = bodyStr.c_str();
   char const* end = ptr + bodyStr.size();
 
@@ -2528,14 +2515,11 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator() {
       std::string("received invalid JSON data for collection ") + name;
   VPackBuilder builder;
 
-  // TODO needs to generalized
-  auto request = dynamic_cast<HttpRequest*>(_request);
-
-  if (request == nullptr) {
+  if (_request == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   }
 
-  std::string const& bodyStr = request->body();
+  std::string const& bodyStr = _request->body();
   char const* ptr = bodyStr.c_str();
   char const* end = ptr + bodyStr.size();
 
@@ -3153,7 +3137,7 @@ void RestReplicationHandler::handleCommandDump() {
 
   bool compat28 = false;
   std::string const& value8 = _request->value("compat28", found);
-  
+
   if (found) {
     compat28 = StringUtils::boolean(value8);
   }
@@ -3195,7 +3179,7 @@ void RestReplicationHandler::handleCommandDump() {
     TRI_replication_dump_t dump(transactionContext,
                                 static_cast<size_t>(determineChunkSize()),
                                 includeSystem, 0);
-    
+
     if (compat28) {
       dump._compat28 = true;
     }
@@ -3507,7 +3491,7 @@ void RestReplicationHandler::handleCommandSync() {
   config._includeSystem = includeSystem;
   config._verbose = verbose;
   config._useCollectionId = useCollectionId;
-        
+
   // wait until all data in current logfile got synced
   arangodb::wal::LogfileManager::instance()->waitForSync(5.0);
 
@@ -4018,7 +4002,7 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
   double now = TRI_microtime();
   double startTime = now;
   double endTime = startTime + ttl;
-  
+
   {
     CONDITION_LOCKER(locker, _condVar);
     while (now < endTime) {

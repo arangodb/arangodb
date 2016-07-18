@@ -42,10 +42,8 @@ RestUploadHandler::RestUploadHandler(GeneralRequest* request,
 RestUploadHandler::~RestUploadHandler() {}
 
 RestHandler::status RestUploadHandler::execute() {
-  // TODO needs to generalized
-  auto request = dynamic_cast<HttpRequest*>(_request);
 
-  if (request == nullptr) {
+  if (_request == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   }
 
@@ -73,7 +71,7 @@ RestHandler::status RestUploadHandler::execute() {
 
   char* relative = TRI_GetFilename(filename);
 
-  std::string const& bodyStr = request->body();
+  std::string const& bodyStr = _request->body();
   char const* body = bodyStr.c_str();
   size_t bodySize = bodyStr.size();
 
@@ -135,14 +133,12 @@ RestHandler::status RestUploadHandler::execute() {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestUploadHandler::parseMultiPart(char const*& body, size_t& length) {
-  // TODO needs to generalized
-  auto request = dynamic_cast<HttpRequest*>(_request);
 
-  if (request == nullptr) {
+  if (_request == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   }
 
-  std::string const& bodyStr = request->body();
+  std::string const& bodyStr = _request->body();
   char const* beg = bodyStr.c_str();
   char const* end = beg + bodyStr.size();
 

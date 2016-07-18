@@ -1,6 +1,7 @@
 tags
 build
 core.*
+build.sh
 
 .deps
 .dirstamp
