@@ -394,7 +394,7 @@ def walk_on_files(inDirPath, outDirPath):
 
 def findStartCode(fd,full_path):
     inFD = open(full_path, "r")
-    textFile =inFD.read()
+    textFile = inFD.read()
     inFD.close()
     #print "-" * 80
     #print textFile
@@ -453,7 +453,7 @@ def replaceTextInline(text, pathOfFile, searchText):
       print >> sys.stderr, '*' * 80
       print >> sys.stderr, text
       exit(1)
-  rePattern = r'(?s)\s*@startDocuBlockInline\s+'+ searchText +'.*@endDocuBlock\s' + searchText
+  rePattern = r'(?s)\s*@startDocuBlockInline\s+'+ searchText +'\s.*?@endDocuBlock\s' + searchText
   # (?s) is equivalent to flags=re.DOTALL but works in Python 2.6
   match = re.search(rePattern, text)
 
