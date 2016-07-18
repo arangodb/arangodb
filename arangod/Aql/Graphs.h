@@ -86,8 +86,3 @@ class Graph {
 }  // namespace arangodb
 
 #endif
-
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
