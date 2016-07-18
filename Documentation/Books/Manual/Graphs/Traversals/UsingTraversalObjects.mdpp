@@ -481,7 +481,7 @@ the traversal start vertex to the current vertex. The path consists of an array 
 and an array of vertices. We could also filter everything but capitals by checking the
 length of the path from the start vertex to the current vertex. Capitals will have a
 distance of 3 from the *v/world* start vertex
-(capital -> is-in -> country -> is-in -> continent -> is-in -> world):
+(capital → is-in → country → is-in → continent → is-in → world):
 
 ```js
 var config = {
@@ -695,6 +695,7 @@ in the same traversal. However, edges will by default only be followed if they a
 present in the current path.
 
 Imagine the following graph which contains a cycle:
+
 ```
 A -> B -> C -> A
 ```
@@ -815,7 +816,7 @@ configuration can consist of the following attributes:
   sub-attribute can have one of the following values:
   - *"none"*: no uniqueness constraints
   - *"path"*: element is excluded if it is already contained in the current path. This setting may be
-    sensible for graphs that contain cycles (e.g. A -> B -> C -> A).
+    sensible for graphs that contain cycles (e.g. A → B → C → A).
   - *"global"*: element is excluded if it was already found/visited at any point during the traversal.
 - *buildVertices*: this attribute controls whether vertices encountered during the traversal will be
   looked up in the database and will be made available to visitor, filter, and expandFilter functions.
