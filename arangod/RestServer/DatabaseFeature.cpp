@@ -30,7 +30,7 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "Rest/Version.h"
-#include "RestServer/DatabaseServerFeature.h"
+#include "RestServer/DatabasePathFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/RestServerFeature.h"
 #include "V8Server/V8DealerFeature.h"
@@ -63,7 +63,7 @@ DatabaseFeature::DatabaseFeature(ApplicationServer* server)
       _upgrade(false) {
   setOptional(false);
   requiresElevatedPrivileges(false);
-  startsAfter("DatabaseServer");
+  startsAfter("DatabasePath");
   startsAfter("LogfileManager");
   startsAfter("InitDatabase");
   startsAfter("IndexPool");
@@ -148,7 +148,7 @@ void DatabaseFeature::start() {
 
   // active deadlock detection in case we're not running in cluster mode
   if (!arangodb::ServerState::instance()->isRunningInCluster()) {
-    TRI_EnableDeadlockDetectionDatabasesServer(DatabaseServerFeature::SERVER);
+    TRI_EnableDeadlockDetectionDatabasesServer(DatabasePathFeature::SERVER);
   }
 }
 
@@ -161,7 +161,7 @@ void DatabaseFeature::unprepare() {
 }
 
 void DatabaseFeature::updateContexts() {
-  _vocbase = TRI_UseDatabaseServer(DatabaseServerFeature::SERVER,
+  _vocbase = TRI_UseDatabaseServer(DatabasePathFeature::SERVER,
                                    TRI_VOC_SYSTEM_DATABASE);
 
   if (_vocbase == nullptr) {
@@ -173,7 +173,7 @@ void DatabaseFeature::updateContexts() {
   auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY;
   TRI_ASSERT(queryRegistry != nullptr);
 
-  auto server = DatabaseServerFeature::SERVER;
+  auto server = DatabasePathFeature::SERVER;
   TRI_ASSERT(server != nullptr);
 
   auto vocbase = _vocbase;
@@ -193,8 +193,8 @@ void DatabaseFeature::updateContexts() {
 }
 
 void DatabaseFeature::shutdownCompactor() {
-  auto unuser = DatabaseServerFeature::SERVER->_databasesProtector.use();
-  auto theLists = DatabaseServerFeature::SERVER->_databasesLists.load();
+  auto unuser = DatabasePathFeature::SERVER->_databasesProtector.use();
+  auto theLists = DatabasePathFeature::SERVER->_databasesLists.load();
 
   for (auto& p : theLists->_databases) {
     TRI_vocbase_t* vocbase = p.second;
@@ -235,8 +235,8 @@ void DatabaseFeature::openDatabases() {
       !wal::LogfileManager::instance()->hasFoundLastTick();
 
   int res = TRI_InitServer(
-      DatabaseServerFeature::SERVER,
-      application_features::ApplicationServer::getFeature<DatabaseServerFeature>("DatabaseServer")->directory().c_str(), 
+      DatabasePathFeature::SERVER,
+      application_features::ApplicationServer::getFeature<DatabasePathFeature>("DatabasePath")->directory().c_str(), 
       &defaults, !_replicationApplier, _disableCompactor,
       iterateMarkersOnOpen);
 
@@ -245,7 +245,7 @@ void DatabaseFeature::openDatabases() {
     FATAL_ERROR_EXIT();
   }
 
-  res = TRI_StartServer(DatabaseServerFeature::SERVER, _checkVersion, _upgrade);
+  res = TRI_StartServer(DatabasePathFeature::SERVER, _checkVersion, _upgrade);
 
   if (res != TRI_ERROR_NO_ERROR) {
     if (res == TRI_ERROR_ARANGO_EMPTY_DATADIR) {
@@ -267,6 +267,6 @@ void DatabaseFeature::openDatabases() {
 void DatabaseFeature::closeDatabases() {
   // stop the replication appliers so all replication transactions can end
   if (_replicationApplier) {
-    TRI_StopReplicationAppliersServer(DatabaseServerFeature::SERVER);
+    TRI_StopReplicationAppliersServer(DatabasePathFeature::SERVER);
   }
 }

@@ -36,7 +36,7 @@
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
-#include "RestServer/DatabaseServerFeature.h"
+#include "RestServer/DatabasePathFeature.h"
 #include "SimpleHttpClient/ConnectionManager.h"
 #include "VocBase/server.h"
 
@@ -398,7 +398,7 @@ void ClusterFeature::start() {
     }
     
     // start heartbeat thread
-    _heartbeatThread = new HeartbeatThread(DatabaseServerFeature::SERVER,
+    _heartbeatThread = new HeartbeatThread(DatabasePathFeature::SERVER,
                                            _agencyCallbackRegistry.get(),
                                            _heartbeatInterval * 1000, 5);
     

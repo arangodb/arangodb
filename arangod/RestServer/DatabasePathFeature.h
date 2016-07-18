@@ -20,8 +20,8 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef APPLICATION_FEATURES_DATABASE_SERVER_FEATURE_H
-#define APPLICATION_FEATURES_DATABASE_SERVER_FEATURE_H 1
+#ifndef APPLICATION_FEATURES_DATABASE_PATH_FEATURE_H
+#define APPLICATION_FEATURES_DATABASE_PATH_FEATURE_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 
@@ -29,13 +29,13 @@ struct TRI_server_t;
 
 namespace arangodb {
 
-class DatabaseServerFeature final
+class DatabasePathFeature final
     : public application_features::ApplicationFeature {
  public:
   static TRI_server_t* SERVER;
 
  public:
-  explicit DatabaseServerFeature(
+  explicit DatabasePathFeature(
       application_features::ApplicationServer* server);
 
  public:

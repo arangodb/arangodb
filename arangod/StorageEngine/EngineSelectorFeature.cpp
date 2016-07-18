@@ -23,6 +23,7 @@
 #include "EngineSelectorFeature.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ProgramOptions/ProgramOptions.h"
+#include "ProgramOptions/Section.h"
 #include "StorageEngine/MMFilesEngine.h"
 #include "StorageEngine/OtherEngine.h"
 #include "StorageEngine/StorageEngine.h"
@@ -42,6 +43,8 @@ EngineSelectorFeature::EngineSelectorFeature(
 }
 
 void EngineSelectorFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
+  options->addSection("server", "Server features");
+
   options->addOption("--server.storage-engine", 
                      "storage engine type",
                      new DiscreteValuesParameter<StringParameter>(&_engine, availableEngines()));

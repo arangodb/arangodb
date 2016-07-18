@@ -242,7 +242,7 @@ add_executable(${BIN_ARANGOD}
   RestServer/ConsoleFeature.cpp
   RestServer/ConsoleThread.cpp
   RestServer/DatabaseFeature.cpp
-  RestServer/DatabaseServerFeature.cpp
+  RestServer/DatabasePathFeature.cpp
   RestServer/EndpointFeature.cpp
   RestServer/FileDescriptorsFeature.cpp
   RestServer/FrontendFeature.cpp

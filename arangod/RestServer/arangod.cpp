@@ -53,7 +53,7 @@
 #include "RestServer/CheckVersionFeature.h"
 #include "RestServer/ConsoleFeature.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RestServer/DatabaseServerFeature.h"
+#include "RestServer/DatabasePathFeature.h"
 #include "RestServer/EndpointFeature.h"
 #include "RestServer/FileDescriptorsFeature.h"
 #include "RestServer/FrontendFeature.h"
@@ -120,7 +120,7 @@ static int runServer(int argc, char** argv) {
   server.addFeature(new ConfigFeature(&server, name));
   server.addFeature(new ConsoleFeature(&server));
   server.addFeature(new DatabaseFeature(&server));
-  server.addFeature(new DatabaseServerFeature(&server));
+  server.addFeature(new DatabasePathFeature(&server));
   server.addFeature(new DispatcherFeature(&server));
   server.addFeature(new EndpointFeature(&server));
   server.addFeature(new EngineSelectorFeature(&server));
@@ -176,17 +176,19 @@ static int runServer(int argc, char** argv) {
 
   try {
     server.run(argc, argv);
+    // done
+    LOG(INFO) << "ArangoDB has been shut down";
+
   } catch (std::exception const& ex) {
     LOG(ERR) << "arangod terminated because of an unhandled exception: "
              << ex.what();
-    Logger::flush();
     ret = EXIT_FAILURE;
   } catch (...) {
     LOG(ERR) << "arangod terminated because of an unhandled exception of "
                 "unknown type";
-    Logger::flush();
     ret = EXIT_FAILURE;
   }
+  Logger::flush();
 
   return context.exit(ret);
 }

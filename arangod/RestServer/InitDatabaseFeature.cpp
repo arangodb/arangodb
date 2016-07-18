@@ -27,7 +27,7 @@
 #include "Logger/LoggerFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
-#include "RestServer/DatabaseServerFeature.h"
+#include "RestServer/DatabasePathFeature.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -134,7 +134,7 @@ std::string InitDatabaseFeature::readPassword(std::string const& message) {
 }
 
 void InitDatabaseFeature::checkEmptyDatabase() {
-  auto database = ApplicationServer::getFeature<DatabaseServerFeature>("DatabaseServer");
+  auto database = ApplicationServer::getFeature<DatabasePathFeature>("DatabasePath");
   std::string path = database->directory();
   std::string journals = FileUtils::buildFilename(path, "journals");
 

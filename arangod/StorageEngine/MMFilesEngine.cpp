@@ -26,7 +26,7 @@
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/files.h"
-#include "RestServer/DatabaseServerFeature.h"
+#include "RestServer/DatabasePathFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "VocBase/server.h"
 #include "VocBase/vocbase.h"
@@ -82,7 +82,7 @@ void MMFilesEngine::prepare() {
   LOG(INFO) << "MMFilesEngine::prepare()";
  
   // get base path from DatabaseServerFeature 
-  auto database = application_features::ApplicationServer::getFeature<DatabaseServerFeature>("DatabaseServer");
+  auto database = application_features::ApplicationServer::getFeature<DatabasePathFeature>("DatabasePath");
   _basePath = database->directory();
   TRI_ASSERT(!_basePath.empty());
 

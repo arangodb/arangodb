@@ -33,7 +33,7 @@
 #include "Rest/GeneralResponse.h"
 #include "Rest/Version.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RestServer/DatabaseServerFeature.h"
+#include "RestServer/DatabasePathFeature.h"
 #include "V8Server/V8DealerFeature.h"
 #include "VocBase/server.h"
 
@@ -163,7 +163,7 @@ void BootstrapFeature::start() {
 }
 
 void BootstrapFeature::unprepare() {
-  auto server = ApplicationServer::getFeature<DatabaseServerFeature>("DatabaseServer");
+  auto server = ApplicationServer::getFeature<DatabasePathFeature>("DatabasePath");
 
   TRI_server_t* s = server->SERVER; 
 

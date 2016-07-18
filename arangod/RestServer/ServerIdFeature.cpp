@@ -28,7 +28,7 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "Random/RandomGenerator.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RestServer/DatabaseServerFeature.h"
+#include "RestServer/DatabasePathFeature.h"
 
 using namespace arangodb;
 using namespace arangodb::options;
@@ -44,7 +44,7 @@ ServerIdFeature::ServerIdFeature(
 }
 
 void ServerIdFeature::start() {
-  auto databaseServer = application_features::ApplicationServer::getFeature<DatabaseServerFeature>("DatabaseServer");
+  auto databaseServer = application_features::ApplicationServer::getFeature<DatabasePathFeature>("DatabasePath");
   _idFilename = basics::FileUtils::buildFilename(databaseServer->directory(), "SERVER");
 
   auto database = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");

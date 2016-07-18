@@ -38,7 +38,7 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RestServer/DatabaseServerFeature.h"
+#include "RestServer/DatabasePathFeature.h"
 #include "VocBase/server.h"
 #include "Wal/AllocatorThread.h"
 #include "Wal/CollectorThread.h"
@@ -115,7 +115,7 @@ LogfileManager::LogfileManager(ApplicationServer* server)
 
   setOptional(false);
   requiresElevatedPrivileges(false);
-  startsAfter("DatabaseServer");
+  startsAfter("DatabasePath");
   startsAfter("QueryRegistry");
 
   _transactions.reserve(32);
@@ -241,7 +241,7 @@ void LogfileManager::validateOptions(std::shared_ptr<options::ProgramOptions> op
 }
   
 void LogfileManager::prepare() {
-  auto database = ApplicationServer::getFeature<DatabaseServerFeature>("DatabaseServer");
+  auto database = ApplicationServer::getFeature<DatabasePathFeature>("DatabasePath");
   _databasePath = database->directory();
 
   std::string const shutdownFile = shutdownFilename();
@@ -265,7 +265,7 @@ void LogfileManager::prepare() {
 void LogfileManager::start() {
   Instance = this;
 
-  _server = DatabaseServerFeature::SERVER;
+  _server = DatabasePathFeature::SERVER;
   TRI_ASSERT(_server != nullptr);
 
   // needs server initialized

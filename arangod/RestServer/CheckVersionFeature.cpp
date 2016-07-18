@@ -26,7 +26,7 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RestServer/DatabaseServerFeature.h"
+#include "RestServer/DatabasePathFeature.h"
 #include "V8Server/V8Context.h"
 #include "V8Server/V8DealerFeature.h"
 #include "V8Server/v8-query.h"
@@ -134,7 +134,7 @@ void CheckVersionFeature::checkVersion() {
         LOG(DEBUG) << "running database version check";
 
         // can do this without a lock as this is the startup
-        auto server = DatabaseServerFeature::SERVER;
+        auto server = DatabasePathFeature::SERVER;
         auto unuser = server->_databasesProtector.use();
         auto theLists = server->_databasesLists.load();
 

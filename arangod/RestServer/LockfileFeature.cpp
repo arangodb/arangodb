@@ -24,7 +24,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
 #include "Basics/files.h"
-#include "RestServer/DatabaseServerFeature.h"
+#include "RestServer/DatabasePathFeature.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -34,12 +34,12 @@ LockfileFeature::LockfileFeature(
     : ApplicationFeature(server, "Lockfile") {
   setOptional(false);
   requiresElevatedPrivileges(false);
-  startsAfter("DatabaseServer");
+  startsAfter("DatabasePath");
 }
 
 void LockfileFeature::start() {
   // build lockfile name
-  DatabaseServerFeature* database = application_features::ApplicationServer::getFeature<DatabaseServerFeature>("DatabaseServer");
+  auto database = application_features::ApplicationServer::getFeature<DatabasePathFeature>("DatabasePath");
   std::string basePath = database->directory();
   TRI_ASSERT(!basePath.empty());
   
@@ -50,8 +50,8 @@ void LockfileFeature::start() {
   int res = TRI_VerifyLockFile(_lockFilename.c_str());
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG(ERR) << "database is locked, please check the lock file '" << _lockFilename << "'";
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATADIR_LOCKED);
+    LOG(FATAL) << "database is locked, please check the lock file '" << _lockFilename << "'";
+    FATAL_ERROR_EXIT();
   }
   
   if (TRI_ExistsFile(_lockFilename.c_str())) {
@@ -59,21 +59,19 @@ void LockfileFeature::start() {
   }
   
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG(ERR)
+    LOG(FATAL)
         << "cannot lock the database directory, please check the lock file '"
         << _lockFilename << "': " << TRI_errno_string(res);
-
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATADIR_UNLOCKABLE);
+    FATAL_ERROR_EXIT();
   }
   
   res = TRI_CreateLockFile(_lockFilename.c_str());
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG(ERR)
+    LOG(FATAL)
         << "cannot lock the database directory, please check the lock file '"
         << _lockFilename << "': " << TRI_errno_string(res);
-
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATADIR_UNLOCKABLE);
+    FATAL_ERROR_EXIT();
   }
 }
 

@@ -20,7 +20,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "DatabaseServerFeature.h"
+#include "DatabasePathFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
@@ -35,10 +35,10 @@ using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
-TRI_server_t* DatabaseServerFeature::SERVER;
+TRI_server_t* DatabasePathFeature::SERVER;
 
-DatabaseServerFeature::DatabaseServerFeature(ApplicationServer* server)
-    : ApplicationFeature(server, "DatabaseServer"),
+DatabasePathFeature::DatabasePathFeature(ApplicationServer* server)
+    : ApplicationFeature(server, "DatabasePath"),
       _server(nullptr) {
   setOptional(false);
   requiresElevatedPrivileges(false);
@@ -52,7 +52,7 @@ DatabaseServerFeature::DatabaseServerFeature(ApplicationServer* server)
   startsAfter("Statistics");
 }
 
-void DatabaseServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
+void DatabasePathFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection("database", "Configure the database");
   
   options->addOption("--database.directory", "path to the database directory",
@@ -60,7 +60,7 @@ void DatabaseServerFeature::collectOptions(std::shared_ptr<ProgramOptions> optio
 
 }
 
-void DatabaseServerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
+void DatabasePathFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   auto const& positionals = options->processingResult()._positionals;
 
   if (1 == positionals.size()) {
@@ -81,13 +81,13 @@ void DatabaseServerFeature::validateOptions(std::shared_ptr<ProgramOptions> opti
   _directory = StringUtils::rTrim(_directory, TRI_DIR_SEPARATOR_STR);
 }
 
-void DatabaseServerFeature::prepare() {
+void DatabasePathFeature::prepare() {
   // create the server
   _server.reset(new TRI_server_t());
   SERVER = _server.get();
 }
 
-void DatabaseServerFeature::start() {
+void DatabasePathFeature::start() {
   // create base directory if it does not exist 
   if (!basics::FileUtils::isDirectory(_directory)) {
     std::string systemErrorStr;
@@ -105,12 +105,9 @@ void DatabaseServerFeature::start() {
   }
 }
 
-void DatabaseServerFeature::unprepare() {
+void DatabasePathFeature::unprepare() {
   // delete the server
   TRI_StopServer(_server.get());
   SERVER = nullptr;
   _server.reset(nullptr);
-
-  // done
-  LOG(INFO) << "ArangoDB has been shut down";
 }

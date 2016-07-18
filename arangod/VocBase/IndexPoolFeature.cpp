@@ -36,7 +36,7 @@ IndexPoolFeature::IndexPoolFeature(ApplicationServer* server)
       _indexThreads(2) {
   setOptional(false);
   requiresElevatedPrivileges(false);
-  startsAfter("DatabaseServer");
+  startsAfter("DatabasePath");
 }
 
 void IndexPoolFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
