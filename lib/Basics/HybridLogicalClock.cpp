@@ -26,7 +26,7 @@
 char arangodb::basics::HybridLogicalClock::encodeTable[65] 
     = "-_ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
 
-char arangodb::basics::HybridLogicalClock::decodeTable[256]
+signed char arangodb::basics::HybridLogicalClock::decodeTable[256]
     = {-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,        //   0 - 15
        -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,        //  16 - 31
        -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1, 0,-1,-1,        //  32 - 47
