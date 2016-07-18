@@ -46,7 +46,6 @@ class DatabasePathFeature final
   void unprepare() override final;
 
  public:
-  TRI_server_t* server() const { return _server.get(); }
   std::string const& directory() const { return _directory; }
 
  private:
