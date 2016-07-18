@@ -71,19 +71,23 @@ def unwrapPostJson(reference, layer):
         elif thisParam['type'] == 'object':
             rc += ' ' * layer + " - **" + param + "**: " + TrimThisParam(brTrim(thisParam['description']), layer) + "\n"
         elif swagger['definitions'][reference]['properties'][param]['type'] == 'array':
-            rc += ' ' * layer + " - **" + param + "**: " + TrimThisParam(brTrim(thisParam['description']), layer)
+            rc += ' ' * layer + " - **" + param + "**"
+            trySubStruct = False
             if 'type' in thisParam['items']:
-                rc += " of type " + thisParam['items']['type']  + "\n"
+                rc += " (" + thisParam['items']['type']  + ")"
             else:
                 if len(thisParam['items']) == 0:
-                    rc += "anonymous json object\n"
+                    rc += " (anonymous json object)"
                 else:
-                    try:
-                        subStructRef = getReference(thisParam['items'], reference, None)
-                    except:
-                        print >>sys.stderr, "while analyzing: " + param
-                        print >>sys.stderr, thisParam
-                    rc += "\n" + unwrapPostJson(subStructRef, layer + 1)
+                    trySubStruct = True
+            rc += ": " + TrimThisParam(brTrim(thisParam['description']), layer)
+            if trySubStruct:
+                try:
+                    subStructRef = getReference(thisParam['items'], reference, None)
+                except:
+                    print >>sys.stderr, "while analyzing: " + param
+                    print >>sys.stderr, thisParam
+                rc += "\n" + unwrapPostJson(subStructRef, layer + 1)
         else:
             rc += ' ' * layer + " - **" + param + "**: " + TrimThisParam(thisParam['description'], layer) + '\n'
     return rc
