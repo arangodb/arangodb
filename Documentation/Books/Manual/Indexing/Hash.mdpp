@@ -14,10 +14,11 @@ of `null`.
 
 !SECTION Accessing Hash Indexes from the Shell
 
+!SUBSECTION Unique Hash Indexes
+
 <!-- js/server/modules/@arangodb/arango-collection.js-->
 
-
-ensures that a unique constraint exists
+Ensures that a unique constraint exists:
 `collection.ensureIndex({ type: "hash", fields: [ "field1", ..., "fieldn" ], unique: true })`
 
 Creates a unique hash index on all documents using *field1*, ... *fieldn*
@@ -57,11 +58,11 @@ details, including the index-identifier, is returned.
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock ensureUniqueConstraint
 
+!SUBSECTION Non-unique Hash Indexes
 
 <!-- js/server/modules/@arangodb/arango-collection.js-->
 
-
-ensures that a non-unique hash index exists
+Ensures that a non-unique hash index exists:
 `collection.ensureIndex({ type: "hash", fields: [ "field1", ..., "fieldn" ] })`
 
 Creates a non-unique hash index on all documents using  *field1*, ... *fieldn*
@@ -85,6 +86,34 @@ details, including the index-identifier, is returned.
     ~db._drop("test");
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock ensureHashIndex
+
+!SUBSECTION Hash Array Indexes
+
+Ensures that a hash array index exists (non-unique):
+`collection.ensureIndex({ type: "hash", fields: [ "field1[*]", ..., "fieldn[*]" ] })`
+
+Creates a non-unique hash array index for the individual elements of the array
+attributes <i>field1[*]</i>, ... <i>fieldn[*]</i> found in the documents. At least
+one attribute path has to be given. The index always treats the indexed arrays as
+sparse.
+
+It is possible to combine array indexing with standard indexing:
+`collection.ensureIndex({ type: "hash", fields: [ "field1[*]", "field2" ] })`
+
+In case that the index was successfully created, an object with the index
+details, including the index-identifier, is returned.
+
+    @startDocuBlockInline ensureHashIndexArray
+    @EXAMPLE_ARANGOSH_OUTPUT{ensureHashIndexArray}
+    ~db._create("test");
+    db.test.ensureIndex({ type: "hash", fields: [ "a[*]" ] });
+    db.test.save({ a : [ 1, 2 ] });
+    db.test.save({ a : [ 1, 3 ] });
+    db.test.save({ a : null });
+    ~db._drop("test");
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock ensureHashIndexArray
+
 
 !SECTION Ensure uniqueness of relations in edge collections
 
