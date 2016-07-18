@@ -52,6 +52,7 @@ class HttpRequest : public GeneralRequest {
   ~HttpRequest();
 
  public:
+  enum class ContentType { UNSET, VPACK, JSON };
   // HTTP protocol version is 1.0
   bool isHttp10() const { return _version == ProtocolVersion::HTTP_1_0; }
 
@@ -75,7 +76,13 @@ class HttpRequest : public GeneralRequest {
   VPackSlice toVelocyPack(
       arangodb::velocypack::Options const*) override final;
 
+  VPackSlice payload(arangodb::velocypack::Options const* options) override final;
+
   /// @brief sets a key/value header
+  //  this function is called by setHeaders and get offsets to
+  //  the found key / value with respective lengths.
+  //  the function sets member variables like _contentType. All
+  //  key that do not get special treatment end um in the _headers map.
   void setHeader(char const* key, size_t keyLength, char const* value,
                  size_t valueLength);
   /// @brief sets a key-only header
@@ -97,6 +104,8 @@ class HttpRequest : public GeneralRequest {
   // (x-http-method, x-method-override or x-http-method-override) is allowed
   bool _allowMethodOverride;
   std::shared_ptr<velocypack::Builder> _vpackBuilder;
+  ContentType _contentType;
+  ContentType _contentTypeResponse;
 };
 }
 

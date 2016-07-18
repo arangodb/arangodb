@@ -298,9 +298,9 @@ void HttpResponse::writeHeader(StringBuffer* output) {
   // end of header, body to follow
 }
 
-void HttpResponse::fillBody(GeneralRequest const* request,
-                            arangodb::velocypack::Slice const& slice,
-                            bool generateBody, VPackOptions const& options) {
+void HttpResponse::setPayload(GeneralRequest const* request,
+                              arangodb::velocypack::Slice const& slice,
+                              bool generateBody, VPackOptions const& options){
   // VELOCYPACK
   if (request != nullptr && request->velocyPackResponse()) {
     setContentType(HttpResponse::ContentType::VPACK);
@@ -335,4 +335,4 @@ void HttpResponse::fillBody(GeneralRequest const* request,
       headResponse(tmp.length());
     }
   }
-}
+};

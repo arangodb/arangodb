@@ -91,9 +91,10 @@ class HttpResponse : public GeneralResponse {
  public:
   void reset(ResponseCode code) override final;
 
-  void fillBody(GeneralRequest const*, arangodb::velocypack::Slice const&,
-                bool generateBody,
-                arangodb::velocypack::Options const&) override final;
+  void setPayload(GeneralRequest const*, arangodb::velocypack::Slice const&,
+                  bool generateBody,
+                  arangodb::velocypack::Options const&) override final;
+
 
  private:
   // the body must already be set. deflate is then run on the existing body

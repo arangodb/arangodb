@@ -177,6 +177,8 @@ class GeneralRequest {
   // the request body as VelocyPackBuilder
   virtual VPackSlice
   toVelocyPack(arangodb::velocypack::Options const*) = 0;
+  //should toVelocyPack be renamed to payload?
+  virtual VPackSlice payload(arangodb::velocypack::Options const* options) = 0;
 
   std::shared_ptr<VPackBuilder>
   toVelocyPackBuilderPtr(arangodb::velocypack::Options const* options){
@@ -214,7 +216,7 @@ class GeneralRequest {
   std::string _requestPath;
   std::string _prefix;
   std::vector<std::string> _suffix;
-  std::unordered_map<std::string, std::string> _headers;
+  std::unordered_map<std::string, std::string> _headers; //gets set by httpRequest: parseHeaders -> setHeaders
   std::unordered_map<std::string, std::string> _values;
   std::unordered_map<std::string, std::vector<std::string>> _arrayValues;
 };
