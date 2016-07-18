@@ -48,7 +48,7 @@ static double const CL_DEFAULT_TIMEOUT = 60.0;
 namespace arangodb {
 
 static int handleGeneralCommErrors(ClusterCommResult const* res) {
-  // This function creates an error code from a ClusterCommResult, 
+  // This function creates an error code from a ClusterCommResult,
   // but only if it is a communication error. If the communication
   // was successful and there was an HTTP error code, this function
   // returns TRI_ERROR_NO_ERROR.
@@ -406,10 +406,8 @@ std::unordered_map<std::string, std::string> getForwardableRequestHeaders(
     ++it;
   }
 
-  auto httpRequest = dynamic_cast<HttpRequest*>(request);
-
-  if (httpRequest != nullptr) {
-    result["content-length"] = StringUtils::itoa(httpRequest->contentLength());
+  if (request != nullptr) {
+    result["content-length"] = StringUtils::itoa(request->contentLength());
   }
 
   return result;
@@ -672,7 +670,7 @@ int countOnCoordinator(std::string const& dbname, std::string const& collname,
   for (auto const& p : *shards) {
     requests.emplace_back("shard:" + p.first,
                           arangodb::GeneralRequest::RequestType::GET,
-                          "/_db/" + StringUtils::urlEncode(dbname) + 
+                          "/_db/" + StringUtils::urlEncode(dbname) +
                           "/_api/collection/" +
                           StringUtils::urlEncode(p.first) + "/count", body);
   }
@@ -700,7 +698,7 @@ int countOnCoordinator(std::string const& dbname, std::string const& collname,
       return TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE;
     }
   }
-  
+
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -973,7 +971,7 @@ int deleteDocumentOnCoordinator(
       TRI_ASSERT(requests.size() == 1);
       auto const& req = requests[0];
       auto& res = req.result;
-      
+
       int commError = handleGeneralCommErrors(&res);
       if (commError != TRI_ERROR_NO_ERROR) {
         return commError;
@@ -1219,7 +1217,7 @@ int getDocumentOnCoordinator(
           headers->emplace("if-match",
                            slice.get(StaticStrings::RevString).copyString());
         }
-      
+
         VPackSlice keySlice = slice;
         if (slice.isObject()) {
           keySlice = slice.get(StaticStrings::KeyString);
@@ -1965,7 +1963,7 @@ int flushWalOnAllDBServers(bool waitForSync, bool waitForCollector) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief compute a shard distribution for a new collection, the list
-/// dbServers must be a list of DBserver ids to distribute across. 
+/// dbServers must be a list of DBserver ids to distribute across.
 /// If this list is empty, the complete current list of DBservers is
 /// fetched from ClusterInfo and with random_shuffle to mix it up.
 ////////////////////////////////////////////////////////////////////////////////
@@ -2009,7 +2007,7 @@ std::map<std::string, std::vector<std::string>> distributeShards(
           found = false;
           break;
         }
-      } while (std::find(serverIds.begin(), serverIds.end(), candidate) != 
+      } while (std::find(serverIds.begin(), serverIds.end(), candidate) !=
                serverIds.end());
       if (found) {
         serverIds.push_back(candidate);

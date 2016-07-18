@@ -66,7 +66,7 @@ int HttpServer::sendChunk(uint64_t taskId, std::string const& data) {
 ////////////////////////////////////////////////////////////////////////////////
 
 HttpServer::HttpServer(
-    double keepAliveTimeout, 
+    double keepAliveTimeout,
     bool allowMethodOverride,
     std::vector<std::string> const& accessControlAllowOrigins)
     : _listenTasks(),

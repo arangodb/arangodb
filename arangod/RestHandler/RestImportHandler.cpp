@@ -161,7 +161,7 @@ std::string RestImportHandler::buildParseError(size_t i,
 
 int RestImportHandler::handleSingleDocument(
     SingleCollectionTransaction& trx, RestImportResult& result,
-    VPackBuilder& babies, char const* lineStart, VPackSlice slice, 
+    VPackBuilder& babies, char const* lineStart, VPackSlice slice,
     bool isEdgeCollection, size_t i) {
 
   if (!slice.isObject()) {
@@ -188,7 +188,7 @@ int RestImportHandler::handleSingleDocument(
     // add prefixes to _from and _to
     if (!_fromPrefix.empty() || !_toPrefix.empty()) {
       TransactionBuilderLeaser tempBuilder(&trx);
-      
+
       tempBuilder->openObject();
       if (!_fromPrefix.empty()) {
         VPackSlice from = slice.get(StaticStrings::FromString);
@@ -253,10 +253,8 @@ int RestImportHandler::handleSingleDocument(
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestImportHandler::createFromJson(std::string const& type) {
-  // TODO needs to generalized
-  auto request = dynamic_cast<HttpRequest*>(_request);
 
-  if (request == nullptr) {
+  if (_request == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   }
 
@@ -300,15 +298,12 @@ bool RestImportHandler::createFromJson(std::string const& type) {
   } else if (type == "auto") {
     linewise = true;
 
-      // TODO generalize
-      auto* httpResponse = dynamic_cast<HttpResponse*>(_response);
-
-      if (httpResponse == nullptr) {
+      if (_response == nullptr) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
       }
 
     // auto detect import type by peeking at first non-whitespace character
-    std::string const& body = request->body();
+    std::string const& body = _request->body();
     char const* ptr = body.c_str();
     char const* end = ptr + body.size();
 
@@ -361,7 +356,7 @@ bool RestImportHandler::createFromJson(std::string const& type) {
 
   if (linewise) {
     // each line is a separate JSON document
-    std::string const& body = request->body();
+    std::string const& body = _request->body();
     char const* ptr = body.c_str();
     char const* end = ptr + body.size();
     size_t i = 0;
@@ -395,8 +390,8 @@ bool RestImportHandler::createFromJson(std::string const& type) {
         ptr = pos + 1;
         ++result._numEmpty;
         continue;
-      } 
-      
+      }
+
       if (pos != nullptr) {
         // non-empty line
         *(const_cast<char*>(pos)) = '\0';
@@ -442,7 +437,7 @@ bool RestImportHandler::createFromJson(std::string const& type) {
     // the entire request body is one JSON document
     std::shared_ptr<VPackBuilder> parsedDocuments;
     try {
-      parsedDocuments = VPackParser::fromJson(request->body());
+      parsedDocuments = VPackParser::fromJson(_request->body());
     } catch (VPackException const&) {
       generateError(GeneralResponse::ResponseCode::BAD,
                     TRI_ERROR_HTTP_BAD_PARAMETER,
@@ -477,14 +472,14 @@ bool RestImportHandler::createFromJson(std::string const& type) {
       }
     }
   }
-  
+
   babies.close();
-  
+
   if (res == TRI_ERROR_NO_ERROR) {
     // no error so far. go on and perform the actual insert
     res = performImport(trx, result, collectionName, babies, complete, opOptions);
   }
-   
+
   res = trx.finish(res);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -500,10 +495,7 @@ bool RestImportHandler::createFromJson(std::string const& type) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestImportHandler::createFromKeyValueList() {
-  // TODO needs to generalized
-  auto* request = dynamic_cast<HttpRequest*>(_request);
-
-  if (request == nullptr) {
+  if (_request == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   }
 
@@ -544,7 +536,7 @@ bool RestImportHandler::createFromKeyValueList() {
     lineNumber = StringUtils::int64(lineNumValue);
   }
 
-  std::string const& bodyStr = request->body();
+  std::string const& bodyStr = _request->body();
   char const* current = bodyStr.c_str();
   char const* bodyEnd = current + bodyStr.size();
 
@@ -702,12 +694,12 @@ bool RestImportHandler::createFromKeyValueList() {
   }
 
   babies.close();
-  
+
   if (res == TRI_ERROR_NO_ERROR) {
     // no error so far. go on and perform the actual insert
     res = performImport(trx, result, collectionName, babies, complete, opOptions);
   }
-  
+
   res = trx.finish(res);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -723,7 +715,7 @@ bool RestImportHandler::createFromKeyValueList() {
 ////////////////////////////////////////////////////////////////////////////////
 
 int RestImportHandler::performImport(SingleCollectionTransaction& trx,
-                                     RestImportResult& result, 
+                                     RestImportResult& result,
                                      std::string const& collectionName,
                                      VPackBuilder const& babies,
                                      bool complete,
@@ -767,10 +759,10 @@ int RestImportHandler::performImport(SingleCollectionTransaction& trx,
         // special behavior in case of unique constraint violation . . .
         if (errorCode == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED && _onDuplicateAction != DUPLICATE_ERROR) {
           VPackSlice const keySlice = which.get(StaticStrings::KeyString);
-    
+
           if (keySlice.isString()) {
             // insert failed. now try an update/replace
-            if (_onDuplicateAction == DUPLICATE_UPDATE || 
+            if (_onDuplicateAction == DUPLICATE_UPDATE ||
                 _onDuplicateAction == DUPLICATE_REPLACE) {
               // update/replace
               updateReplace.add(which);
@@ -795,7 +787,7 @@ int RestImportHandler::performImport(SingleCollectionTransaction& trx,
             break;
           }
         }
-      } 
+      }
 
       ++pos;
     }
@@ -803,14 +795,14 @@ int RestImportHandler::performImport(SingleCollectionTransaction& trx,
     updateReplace.close();
 
     if (res == TRI_ERROR_NO_ERROR && updateReplace.slice().length() > 0) {
-      if (_onDuplicateAction == DUPLICATE_UPDATE) { 
+      if (_onDuplicateAction == DUPLICATE_UPDATE) {
         opResult = trx.update(collectionName, updateReplace.slice(), opOptions);
       } else {
         opResult = trx.replace(collectionName, updateReplace.slice(), opOptions);
       }
-   
+
       VPackSlice resultSlice = opResult.slice();
-      size_t pos = 0; 
+      size_t pos = 0;
       for (auto const& it : VPackArrayIterator(resultSlice)) {
         if (!it.hasKey("error") || !it.get("error").getBool()) {
           ++result._numUpdated;
@@ -827,7 +819,7 @@ int RestImportHandler::performImport(SingleCollectionTransaction& trx,
       ++pos;
     }
   }
-  
+
   return res;
 }
 

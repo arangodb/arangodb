@@ -290,11 +290,11 @@ static void AddCookie(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
 
 static v8::Handle<v8::Object> RequestCppToV8(v8::Isolate* isolate,
                                              TRI_v8_global_t const* v8g,
-                                             GeneralRequest* generalRequest) {
+                                             GeneralRequest* request) {
   // setup the request
   v8::Handle<v8::Object> req = v8::Object::New(isolate);
 
-  auto request = dynamic_cast<HttpRequest*>(generalRequest);
+  //auto request = dynamic_cast<HttpRequest*>(generalRequest);
 
   // TODO generalize
   if (request == nullptr) {

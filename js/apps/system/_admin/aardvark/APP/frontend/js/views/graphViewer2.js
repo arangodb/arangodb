@@ -33,7 +33,8 @@
 
     events: {
       'click #downloadPNG': 'downloadSVG',
-      'click #reloadGraph': 'reloadGraph'
+      'click #reloadGraph': 'reloadGraph',
+      'click #settingsMenu': 'toggleSettings'
     },
 
     cursorX: 0,
@@ -80,16 +81,29 @@
       $('#graph-container').height($('.centralRow').height() - 150);
     },
 
-    render: function () {
+    toggleSettings: function () {
+      this.graphSettingsView.toggle();
+    },
+
+    render: function (toFocus) {
       this.$el.html(this.template.render({}));
 
+      // render navigation
+      $('#subNavigationBar .breadcrumb').html(
+        'Graph: ' + this.name
+      );
+
       this.resize();
+      this.fetchGraph(toFocus);
+    },
+
+    rerender: function () {
       this.fetchGraph();
     },
 
-    fetchGraph: function () {
+    fetchGraph: function (toFocus) {
       var self = this;
-      arangoHelper.buildGraphSubNav(self.name, 'Content');
+      // arangoHelper.buildGraphSubNav(self.name, 'Content');
       $('#content').append(
         '<div id="calculatingGraph" style="position: absolute; left: 25px; top: 130px;">' +
         '<i class="fa fa-circle-o-notch fa-spin" style="margin-right: 10px;"></i>' +
@@ -119,8 +133,8 @@
           data: ajaxData,
           success: function (data) {
             $('#calcText').html('Calculating layout. Please wait ... ');
-            arangoHelper.buildGraphSubNav(self.name, 'Content');
-            self.renderGraph(data);
+            // arangoHelper.buildGraphSubNav(self.name, 'Content');
+            self.renderGraph(data, toFocus);
           },
           error: function (e) {
             try {
@@ -216,7 +230,6 @@
         if (error) {
           arangoHelper.arangoError('Error', 'Could not create node');
         } else {
-          console.log(id);
           self.currentGraph.graph.addNode({
             id: id,
             label: self.graphConfig.nodeLabel,
@@ -318,7 +331,7 @@
           // rerender graph
           self.currentGraph.refresh();
         } else {
-          console.log('could not create edge');
+          arangoHelper.arangoError('Graph', 'Could not create edge.');
         }
 
         // then clear states
@@ -568,6 +581,17 @@
         success: function (data) {
           self.graphConfig = data.toJSON().graphs[combinedName];
 
+          // init settings view
+          if (self.graphSettingsView) {
+            self.graphSettingsView.remove();
+          }
+          self.graphSettingsView = new window.GraphSettingsView({
+            name: self.name,
+            userConfig: self.userConfig,
+            saveCallback: self.render
+          });
+          self.graphSettingsView.render();
+
           if (callback) {
             callback(self.graphConfig);
           }
@@ -603,7 +627,7 @@
       return array;
     },
 
-    renderGraph: function (graph) {
+    renderGraph: function (graph, toFocus) {
       var self = this;
 
       this.graphSettings = graph.settings;
@@ -821,6 +845,10 @@
       var c = document.getElementsByClassName('sigma-mouse')[0];
       c.addEventListener('mousemove', self.trackCursorPosition.bind(this), false);
 
+      // focus last input box if available
+      if (toFocus) {
+        $('#' + toFocus).focus();
+      }
       // clear up info div
       $('#calculatingGraph').remove();
     }
