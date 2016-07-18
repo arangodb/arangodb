@@ -464,10 +464,7 @@ int MMFilesEngine::openDatabases() {
       continue;
     }
 
-    // .........................................................................
     // construct and validate path
-    // .........................................................................
-
     std::string const directory(basics::FileUtils::buildFilename(_databasePath, name));
 
     if (!TRI_IsDirectory(directory.c_str())) {
@@ -502,10 +499,6 @@ int MMFilesEngine::openDatabases() {
     }
 
     // a valid database directory
-
-    // .........................................................................
-    // read parameter.json file
-    // .........................................................................
 
     // now read data from parameter.json file
     std::string const file = parametersFile(id);
@@ -554,8 +547,8 @@ int MMFilesEngine::openDatabases() {
     
     if (arangodb::basics::VelocyPackHelper::getBooleanValue(parameters, "deleted", false)) {
       // database is deleted, skip it!
-      LOG(INFO) << "found dropped database in directory '" << directory << "'";
-      LOG(INFO) << "removing superfluous database directory '" << directory << "'";
+      LOG(DEBUG) << "found dropped database in directory '" << directory << "'";
+      LOG(DEBUG) << "removing superfluous database directory '" << directory << "'";
 
 #ifdef ARANGODB_ENABLE_ROCKSDB
       // delete persistent indexes for this database
@@ -571,8 +564,7 @@ int MMFilesEngine::openDatabases() {
     VPackSlice nameSlice = parameters.get("name");
 
     if (!nameSlice.isString()) {
-      LOG(ERR) << "database directory '" << directory
-               << "' does not contain a valid parameters file";
+      LOG(ERR) << "database directory '" << directory << "' does not contain a valid parameters file";
 
       return TRI_ERROR_ARANGO_ILLEGAL_PARAMETER_FILE;
     }
@@ -604,7 +596,7 @@ int MMFilesEngine::openDatabases() {
         res = TRI_ERROR_INTERNAL;
       }
 
-      LOG(ERR) << "could not process database directory '" << databaseDirectory
+      LOG(ERR) << "could not process database directory '" << directory
                << "' for database '" << name << "': " << TRI_errno_string(res);
       return res;
     }
