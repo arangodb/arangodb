@@ -29,8 +29,7 @@
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
-#include "Rest/Version.h"
-#include "RestServer/DatabasesFeature.h"
+#include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/RestServerFeature.h"
@@ -47,6 +46,8 @@ using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
+TRI_server_t* DatabaseFeature::SERVER = nullptr;
+
 uint32_t const DatabaseFeature::DefaultIndexBuckets = 8;
 
 DatabaseFeature* DatabaseFeature::DATABASE = nullptr;
@@ -58,6 +59,7 @@ DatabaseFeature::DatabaseFeature(ApplicationServer* server)
       _forceSyncProperties(true),
       _ignoreDatafileErrors(false),
       _throwCollectionNotLoadedError(false),
+      _server(),
       _vocbase(nullptr),
       _isInitiallyEmpty(false),
       _replicationApplier(true),
@@ -66,7 +68,6 @@ DatabaseFeature::DatabaseFeature(ApplicationServer* server)
       _upgrade(false) {
   setOptional(false);
   requiresElevatedPrivileges(false);
-  startsAfter("Databases");
   startsAfter("DatabasePath");
   startsAfter("LogfileManager");
   startsAfter("InitDatabase");
@@ -120,9 +121,13 @@ void DatabaseFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   }
 }
 
-void DatabaseFeature::start() {
-  LOG(INFO) << "" << rest::Version::getVerboseVersionString();
+void DatabaseFeature::prepare() {
+  // create the server
+  _server.reset(new TRI_server_t());
+  SERVER = _server.get();
+}
 
+void DatabaseFeature::start() {
   // sanity check
   if (_checkVersion && _upgrade) {
     LOG(FATAL) << "cannot specify both '--database.check-version' and "
@@ -152,7 +157,7 @@ void DatabaseFeature::start() {
 
   // active deadlock detection in case we're not running in cluster mode
   if (!arangodb::ServerState::instance()->isRunningInCluster()) {
-    TRI_EnableDeadlockDetectionDatabasesServer(DatabasesFeature::SERVER);
+    TRI_EnableDeadlockDetectionDatabasesServer(DatabaseFeature::SERVER);
   }
 }
 
@@ -162,10 +167,15 @@ void DatabaseFeature::unprepare() {
 
   // clear singleton
   DATABASE = nullptr;
+  
+  // delete the server
+  TRI_StopServer(_server.get());
+  SERVER = nullptr;
+  _server.reset(nullptr);
 }
 
 void DatabaseFeature::updateContexts() {
-  _vocbase = TRI_UseDatabaseServer(DatabasesFeature::SERVER,
+  _vocbase = TRI_UseDatabaseServer(DatabaseFeature::SERVER,
                                    TRI_VOC_SYSTEM_DATABASE);
 
   if (_vocbase == nullptr) {
@@ -177,7 +187,7 @@ void DatabaseFeature::updateContexts() {
   auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY;
   TRI_ASSERT(queryRegistry != nullptr);
 
-  auto server = DatabasesFeature::SERVER;
+  auto server = DatabaseFeature::SERVER;
   TRI_ASSERT(server != nullptr);
 
   auto vocbase = _vocbase;
@@ -197,8 +207,8 @@ void DatabaseFeature::updateContexts() {
 }
 
 void DatabaseFeature::shutdownCompactor() {
-  auto unuser = DatabasesFeature::SERVER->_databasesProtector.use();
-  auto theLists = DatabasesFeature::SERVER->_databasesLists.load();
+  auto unuser = DatabaseFeature::SERVER->_databasesProtector.use();
+  auto theLists = DatabaseFeature::SERVER->_databasesLists.load();
 
   for (auto& p : theLists->_databases) {
     TRI_vocbase_t* vocbase = p.second;
@@ -223,7 +233,7 @@ void DatabaseFeature::openDatabases() {
       !wal::LogfileManager::instance()->hasFoundLastTick();
 
   int res = TRI_InitServer(
-      DatabasesFeature::SERVER,
+      DatabaseFeature::SERVER,
       application_features::ApplicationServer::getFeature<DatabasePathFeature>("DatabasePath")->directory().c_str(), 
       !_replicationApplier, _disableCompactor,
       iterateMarkersOnOpen);
@@ -233,7 +243,7 @@ void DatabaseFeature::openDatabases() {
     FATAL_ERROR_EXIT();
   }
 
-  res = TRI_StartServer(DatabasesFeature::SERVER, _checkVersion, _upgrade);
+  res = TRI_StartServer(DatabaseFeature::SERVER, _checkVersion, _upgrade);
 
   if (res != TRI_ERROR_NO_ERROR) {
     if (res == TRI_ERROR_ARANGO_EMPTY_DATADIR) {
@@ -255,6 +265,6 @@ void DatabaseFeature::openDatabases() {
 void DatabaseFeature::closeDatabases() {
   // stop the replication appliers so all replication transactions can end
   if (_replicationApplier) {
-    TRI_StopReplicationAppliersServer(DatabasesFeature::SERVER);
+    TRI_StopReplicationAppliersServer(DatabaseFeature::SERVER);
   }
 }

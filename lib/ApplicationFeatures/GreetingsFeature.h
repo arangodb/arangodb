@@ -17,38 +17,26 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
+/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "DatabasesFeature.h"
+#ifndef ARANGODB_APPLICATION_FEATURES_GREETINGS_FEATURE_H
+#define ARANGODB_APPLICATION_FEATURES_GREETINGS_FEATURE_H 1
 
-#include "ApplicationFeatures/ApplicationServer.h"
-#include "RestServer/DatabaseFeature.h"
-#include "VocBase/server.h"
+#include "ApplicationFeatures/ApplicationFeature.h"
 
-using namespace arangodb;
-using namespace arangodb::application_features;
-using namespace arangodb::basics;
+namespace arangodb {
+class GreetingsFeature final : public application_features::ApplicationFeature {
+ public:
+  GreetingsFeature(application_features::ApplicationServer* server, char const* progname);
 
-TRI_server_t* DatabasesFeature::SERVER;
+ public:
+  void prepare() override final;
+  void unprepare() override final;
 
-DatabasesFeature::DatabasesFeature(ApplicationServer* server)
-    : ApplicationFeature(server, "Databases"),
-      _server(nullptr) {
-  setOptional(false);
-  requiresElevatedPrivileges(false);
-  startsAfter("DatabasePath");
+ private:
+  char const* _progname;
+};
 }
 
-void DatabasesFeature::prepare() {
-  // create the server
-  _server.reset(new TRI_server_t());
-  SERVER = _server.get();
-}
-
-void DatabasesFeature::unprepare() {
-  // delete the server
-  TRI_StopServer(_server.get());
-  SERVER = nullptr;
-  _server.reset(nullptr);
-}
+#endif

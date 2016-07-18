@@ -24,6 +24,7 @@
 #include "Basics/Common.h"
 
 #include "ApplicationFeatures/ConfigFeature.h"
+#include "ApplicationFeatures/GreetingsFeature.h"
 #include "ApplicationFeatures/ShutdownFeature.h"
 #include "ApplicationFeatures/TempFeature.h"
 #include "ApplicationFeatures/VersionFeature.h"
@@ -54,6 +55,7 @@ int main(int argc, char* argv[]) {
   server.addFeature(new BenchFeature(&server, &ret));
   server.addFeature(new ClientFeature(&server));
   server.addFeature(new ConfigFeature(&server, "arangobench"));
+  server.addFeature(new GreetingsFeature(&server, "arangobench"));
   server.addFeature(new LoggerFeature(&server, false));
   server.addFeature(new RandomFeature(&server));
   server.addFeature(new ShutdownFeature(&server, {"Bench"}));

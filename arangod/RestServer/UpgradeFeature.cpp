@@ -26,7 +26,6 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RestServer/DatabasesFeature.h"
 #include "RestServer/InitDatabaseFeature.h"
 #include "V8/v8-globals.h"
 #include "V8Server/V8Context.h"
@@ -183,7 +182,7 @@ void UpgradeFeature::changeAdminPassword(std::string const& defaultPassword) {
 void UpgradeFeature::upgradeDatabase(std::string const& defaultPassword) {
   LOG(TRACE) << "starting database init/upgrade";
 
-  auto* server = DatabasesFeature::SERVER;
+  auto* server = DatabaseFeature::SERVER;
   auto* systemVocbase = DatabaseFeature::DATABASE->systemDatabase();
 
   // enter context and isolate

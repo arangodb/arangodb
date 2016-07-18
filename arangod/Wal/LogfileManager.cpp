@@ -38,7 +38,6 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RestServer/DatabasesFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "VocBase/server.h"
 #include "Wal/AllocatorThread.h"
@@ -116,9 +115,7 @@ LogfileManager::LogfileManager(ApplicationServer* server)
 
   setOptional(false);
   requiresElevatedPrivileges(false);
-  startsAfter("Databases");
   startsAfter("DatabasePath");
-  startsAfter("QueryRegistry");
 
   _transactions.reserve(32);
   _failedTransactions.reserve(32);
@@ -267,7 +264,7 @@ void LogfileManager::prepare() {
 void LogfileManager::start() {
   Instance = this;
 
-  _server = DatabasesFeature::SERVER;
+  _server = DatabaseFeature::SERVER;
   TRI_ASSERT(_server != nullptr);
 
   // needs server initialized

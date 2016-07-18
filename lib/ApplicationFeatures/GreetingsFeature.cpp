@@ -17,34 +17,30 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
+/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef APPLICATION_FEATURES_DATABASES_FEATURE_H
-#define APPLICATION_FEATURES_DATABASES_FEATURE_H 1
+#include "GreetingsFeature.h"
+#include "Rest/Version.h"
 
-#include "ApplicationFeatures/ApplicationFeature.h"
+using namespace arangodb;
 
-struct TRI_server_t;
-
-namespace arangodb {
-
-class DatabasesFeature final
-    : public application_features::ApplicationFeature {
- public:
-  static TRI_server_t* SERVER;
-
- public:
-  explicit DatabasesFeature(
-      application_features::ApplicationServer* server);
-
- public:
-  void prepare() override final;
-  void unprepare() override final;
-
- private:
-  std::unique_ptr<TRI_server_t> _server;
-};
+GreetingsFeature::GreetingsFeature(
+    application_features::ApplicationServer* server, char const* progname)
+    : ApplicationFeature(server, "Greetings"), _progname(progname) {
+  setOptional(false);
+  requiresElevatedPrivileges(false);
+  startsAfter("Logger");
 }
 
-#endif
+void GreetingsFeature::prepare() {
+  if (strcmp(_progname, "arangod") == 0) {
+    LOG(INFO) << "" << rest::Version::getVerboseVersionString();
+  }
+}
+
+void GreetingsFeature::unprepare() {
+  if (strcmp(_progname, "arangod") == 0) {
+    LOG(INFO) << "ArangoDB has been shut down";
+  }
+}

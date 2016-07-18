@@ -31,6 +31,7 @@
 #endif
 #include "ApplicationFeatures/ConfigFeature.h"
 #include "ApplicationFeatures/DaemonFeature.h"
+#include "ApplicationFeatures/GreetingsFeature.h"
 #include "ApplicationFeatures/LanguageFeature.h"
 #include "ApplicationFeatures/NonceFeature.h"
 #include "ApplicationFeatures/PageSizeFeature.h"
@@ -53,7 +54,6 @@
 #include "RestServer/CheckVersionFeature.h"
 #include "RestServer/ConsoleFeature.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RestServer/DatabasesFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/EndpointFeature.h"
 #include "RestServer/FileDescriptorsFeature.h"
@@ -121,7 +121,6 @@ static int runServer(int argc, char** argv) {
   server.addFeature(new ConfigFeature(&server, name));
   server.addFeature(new ConsoleFeature(&server));
   server.addFeature(new DatabaseFeature(&server));
-  server.addFeature(new DatabasesFeature(&server));
   server.addFeature(new DatabasePathFeature(&server));
   server.addFeature(new DispatcherFeature(&server));
   server.addFeature(new EndpointFeature(&server));
@@ -129,6 +128,7 @@ static int runServer(int argc, char** argv) {
   server.addFeature(new FileDescriptorsFeature(&server));
   server.addFeature(new FoxxQueuesFeature(&server));
   server.addFeature(new FrontendFeature(&server));
+  server.addFeature(new GreetingsFeature(&server, "arangod"));
   server.addFeature(new IndexPoolFeature(&server));
   server.addFeature(new InitDatabaseFeature(&server, nonServerFeatures));
   server.addFeature(new LanguageFeature(&server));
@@ -174,13 +174,10 @@ static int runServer(int argc, char** argv) {
 
   // storage engines
   server.addFeature(new MMFilesEngine(&server));
-  server.addFeature(new OtherEngine(&server));
+  server.addFeature(new OtherEngine(&server)); // TODO: just for testing - remove this!
 
   try {
     server.run(argc, argv);
-    // done
-    LOG(INFO) << "ArangoDB has been shut down";
-
   } catch (std::exception const& ex) {
     LOG(ERR) << "arangod terminated because of an unhandled exception: "
              << ex.what();

@@ -137,6 +137,7 @@ SslFeature::SslFeature(application_features::ApplicationServer* server)
   setOptional(true);
   requiresElevatedPrivileges(false);
   startsAfter("Logger");
+  startsAfter("Greetings");
 }
 
 void SslFeature::prepare() {

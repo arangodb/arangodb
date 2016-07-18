@@ -26,7 +26,7 @@
 #include "Aql/QueryRegistry.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
-#include "RestServer/DatabasesFeature.h"
+#include "RestServer/DatabaseFeature.h"
 #include "VocBase/server.h"
 
 using namespace arangodb;
@@ -45,6 +45,7 @@ QueryRegistryFeature::QueryRegistryFeature(ApplicationServer* server)
   setOptional(false);
   requiresElevatedPrivileges(false);
   startsAfter("DatabasePath");
+  startsAfter("Database");
 }
 
 void QueryRegistryFeature::collectOptions(
@@ -92,11 +93,11 @@ void QueryRegistryFeature::prepare() {
 }
 
 void QueryRegistryFeature::start() {
-  DatabasesFeature::SERVER->_queryRegistry = _queryRegistry.get();
+  DatabaseFeature::SERVER->_queryRegistry = _queryRegistry.get();
 }
 
 void QueryRegistryFeature::unprepare() {
   // clear the query registery
-  DatabasesFeature::SERVER->_queryRegistry = nullptr;
+  DatabaseFeature::SERVER->_queryRegistry = nullptr;
   // TODO: reset QUERY_REGISTRY as well?
 }

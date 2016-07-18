@@ -33,7 +33,6 @@
 #include "Rest/GeneralResponse.h"
 #include "Rest/Version.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RestServer/DatabasesFeature.h"
 #include "V8Server/V8DealerFeature.h"
 #include "VocBase/server.h"
 
@@ -164,7 +163,7 @@ void BootstrapFeature::start() {
 
 void BootstrapFeature::unprepare() {
   // notify all currently running queries about the shutdown
-  TRI_server_t* s = DatabasesFeature::SERVER;
+  TRI_server_t* s = DatabaseFeature::SERVER;
   if (ServerState::instance()->isCoordinator()) {
     std::vector<TRI_voc_tick_t> ids = TRI_GetIdsCoordinatorDatabaseServer(s, true);
     for (auto& id : ids) {

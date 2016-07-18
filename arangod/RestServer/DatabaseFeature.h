@@ -26,6 +26,7 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 
 struct TRI_vocbase_t;
+struct TRI_server_t;
 
 namespace arangodb {
 class DatabaseFeature final : public application_features::ApplicationFeature {
@@ -38,6 +39,7 @@ class DatabaseFeature final : public application_features::ApplicationFeature {
  public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
+  void prepare() override final;
   void start() override final;
   void unprepare() override final;
 
@@ -56,6 +58,9 @@ class DatabaseFeature final : public application_features::ApplicationFeature {
   void enableCheckVersion() { _checkVersion = true; }
   void enableUpgrade() { _upgrade = true; }
  
+ public:
+  static TRI_server_t* SERVER;
+ 
  private:
   void openDatabases();
   void closeDatabases();
@@ -69,6 +74,7 @@ class DatabaseFeature final : public application_features::ApplicationFeature {
   bool _ignoreDatafileErrors;
   bool _throwCollectionNotLoadedError;
 
+  std::unique_ptr<TRI_server_t> _server;
   TRI_vocbase_t* _vocbase;
   bool _isInitiallyEmpty;
   bool _replicationApplier;
