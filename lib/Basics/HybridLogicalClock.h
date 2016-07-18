@@ -127,7 +127,7 @@ class HybridLogicalClock {
     }
     uint64_t r = 0;
     for (size_t i = 0; i < len; i++) {
-      char c = decodeTable[static_cast<uint8_t>(p[i])];
+      signed char c = decodeTable[static_cast<uint8_t>(p[i])];
       if (c < 0) {
         return 0;
       }
@@ -159,7 +159,7 @@ class HybridLogicalClock {
 
   static char encodeTable[65];
 
-  static char decodeTable[256];
+  static signed char decodeTable[256];
 
 };
 
