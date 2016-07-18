@@ -15,10 +15,25 @@ For example, given a fulltext index on the `translations` attribute and the foll
 documents, then searching for `лиса` using the fulltext index would return only the 
 first document. Searching for the index for the exact string `Fox` would return the first 
 two documents, and searching for `prefix:Fox` would return all three documents:
-     
-    { translations: { en: "fox", de: "Fuchs", fr: "renard", ru: "лиса" } }
-    { translations: "Fox is the English translation of the German word Fuchs" }
-    { translations: [ "ArangoDB", "document", "database", "Foxx" ] }
+
+```js
+{ translations: { en: "fox", de: "Fuchs", fr: "renard", ru: "лиса" } }
+{ translations: "Fox is the English translation of the German word Fuchs" }
+{ translations: [ "ArangoDB", "document", "database", "Foxx" ] }
+```
+
+Note that deeper nested objects are ignored. For example, a fulltext index on
+*translations* would index *Fuchs*, but not *fox*, given the following document
+structure:
+
+```js
+{ translations: { en: { US: "fox" }, de: "Fuchs" }
+```
+
+If you need to search across multiple fields and/or nested objects, you may write
+all the strings into a special attribute, which you then create the index on
+(it might be necessary to clean the strings first, e.g. remove line breaks and
+strip certain words).
 
 If the index attribute is neither a string, an object or an array, its contents will 
 not be indexed. When indexing the contents of an array attribute, an array member will 
@@ -30,8 +45,7 @@ Other data types are ignored and not indexed.
 
 <!-- js/server/modules/@arangodb/arango-collection.js -->
 
-
-ensures that a fulltext index exists
+Ensures that a fulltext index exists:
 `collection.ensureIndex({ type: "fulltext", fields: [ "field" ], minLength: minLength })`
 
 Creates a fulltext index on all documents on attribute *field*.
@@ -69,7 +83,7 @@ details is returned.
     @endDocuBlock ensureFulltextIndex
 
 
-looks up a fulltext index
+Looks up a fulltext index:
 `collection.lookupFulltextIndex(attribute, minLength)`
 
 Checks whether a fulltext index on the given attribute *attribute* exists.
