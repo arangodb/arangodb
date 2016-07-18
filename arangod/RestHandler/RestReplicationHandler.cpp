@@ -1331,7 +1331,7 @@ int RestReplicationHandler::createCollection(VPackSlice const& slice,
   TRI_ASSERT(params.isSystem() == (name[0] == '_'));
   TRI_ASSERT(params.indexBuckets() ==
              arangodb::basics::VelocyPackHelper::getNumericValue<uint32_t>(
-                 slice, "indexBuckets", TRI_DEFAULT_INDEX_BUCKETS));
+                 slice, "indexBuckets", DatabaseFeature::DefaultIndexBuckets));
   TRI_voc_cid_t planId = 0;
   VPackSlice const planIdSlice = slice.get("planId");
   if (planIdSlice.isNumber()) {

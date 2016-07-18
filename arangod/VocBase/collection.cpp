@@ -1344,7 +1344,7 @@ VocbaseCollectionInfo::VocbaseCollectionInfo(TRI_vocbase_t* vocbase,
       _planId(0),
       _maximalSize(32 * 1024 * 1024), // just to have a default
       _initialCount(-1),
-      _indexBuckets(TRI_DEFAULT_INDEX_BUCKETS),
+      _indexBuckets(DatabaseFeature::DefaultIndexBuckets),
       _keyOptions(nullptr),
       _isSystem(false),
       _deleted(false),
@@ -1390,7 +1390,7 @@ VocbaseCollectionInfo::VocbaseCollectionInfo(TRI_vocbase_t* vocbase,
       _planId(0),
       _maximalSize(32 * 1024 * 1024), // just to have a default
       _initialCount(-1),
-      _indexBuckets(TRI_DEFAULT_INDEX_BUCKETS),
+      _indexBuckets(DatabaseFeature::DefaultIndexBuckets),
       _keyOptions(nullptr),
       _isSystem(false),
       _deleted(false),
@@ -1441,7 +1441,7 @@ VocbaseCollectionInfo::VocbaseCollectionInfo(TRI_vocbase_t* vocbase,
         options, "isVolatile", false);
     _indexBuckets =
         arangodb::basics::VelocyPackHelper::getNumericValue<uint32_t>(
-            options, "indexBuckets", TRI_DEFAULT_INDEX_BUCKETS);
+            options, "indexBuckets", DatabaseFeature::DefaultIndexBuckets);
     _type = static_cast<TRI_col_type_e>(
         arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(
             options, "type", _type));
@@ -1720,9 +1720,6 @@ void VocbaseCollectionInfo::update(VPackSlice const& slice, bool preferDefaults,
         _maximalSize = arangodb::basics::VelocyPackHelper::getNumericValue<int>(
             slice, "maximalSize", database->maximalJournalSize());
       }
-      _indexBuckets =
-          arangodb::basics::VelocyPackHelper::getNumericValue<uint32_t>(
-              slice, "indexBuckets", TRI_DEFAULT_INDEX_BUCKETS);
     } else {
       _doCompact = arangodb::basics::VelocyPackHelper::getBooleanValue(
           slice, "doCompact", true);
@@ -1737,10 +1734,10 @@ void VocbaseCollectionInfo::update(VPackSlice const& slice, bool preferDefaults,
             arangodb::basics::VelocyPackHelper::getNumericValue<TRI_voc_size_t>(
                 slice, "maximalSize", TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE);
       }
-      _indexBuckets =
-          arangodb::basics::VelocyPackHelper::getNumericValue<uint32_t>(
-              slice, "indexBuckets", TRI_DEFAULT_INDEX_BUCKETS);
     }
+    _indexBuckets =
+        arangodb::basics::VelocyPackHelper::getNumericValue<uint32_t>(
+            slice, "indexBuckets", DatabaseFeature::DefaultIndexBuckets);
   } else {
     _doCompact = arangodb::basics::VelocyPackHelper::getBooleanValue(
         slice, "doCompact", _doCompact);

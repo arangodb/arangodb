@@ -55,6 +55,12 @@ class DatabaseFeature final : public application_features::ApplicationFeature {
   void disableCompactor() { _disableCompactor = true; }
   void enableCheckVersion() { _checkVersion = true; }
   void enableUpgrade() { _upgrade = true; }
+ 
+ private:
+  void openDatabases();
+  void closeDatabases();
+  void updateContexts();
+  void shutdownCompactor();
 
  private:
   uint64_t _maximalJournalSize;
@@ -63,19 +69,15 @@ class DatabaseFeature final : public application_features::ApplicationFeature {
   bool _ignoreDatafileErrors;
   bool _throwCollectionNotLoadedError;
 
- private:
-  void openDatabases();
-  void closeDatabases();
-  void updateContexts();
-  void shutdownCompactor();
-
- private:
   TRI_vocbase_t* _vocbase;
   bool _isInitiallyEmpty;
   bool _replicationApplier;
   bool _disableCompactor;
   bool _checkVersion;
   bool _upgrade;
+
+ public:
+  static uint32_t const DefaultIndexBuckets;
 };
 }
 
