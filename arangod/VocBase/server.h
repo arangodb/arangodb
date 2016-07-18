@@ -30,7 +30,6 @@
 #include "Basics/threads.h"
 #include "Basics/DataProtector.h"
 #include "VocBase/voc-types.h"
-#include "VocBase/vocbase-defaults.h"
 
 struct TRI_vocbase_t;
 
@@ -66,7 +65,6 @@ struct TRI_server_t {
   TRI_thread_t _databaseManager;
   bool _databaseManagerStarted;
 
-  TRI_vocbase_defaults_t _defaults;
   std::atomic<arangodb::aql::QueryRegistry*> _queryRegistry;
 
   char* _basePath;
@@ -84,7 +82,7 @@ struct TRI_server_t {
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_InitServer(TRI_server_t*, char const*,
-                   TRI_vocbase_defaults_t const*, bool, bool, bool);
+                   bool, bool, bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief start the server
@@ -116,7 +114,6 @@ void TRI_StopReplicationAppliersServer(TRI_server_t*);
 
 int TRI_CreateCoordinatorDatabaseServer(TRI_server_t*, TRI_voc_tick_t,
                                         char const*,
-                                        TRI_vocbase_defaults_t const*,
                                         TRI_vocbase_t**);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -124,7 +121,7 @@ int TRI_CreateCoordinatorDatabaseServer(TRI_server_t*, TRI_voc_tick_t,
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_CreateDatabaseServer(TRI_server_t*, TRI_voc_tick_t, char const*,
-                             TRI_vocbase_defaults_t const*, TRI_vocbase_t**,
+                             TRI_vocbase_t**,
                              bool);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -213,12 +210,6 @@ int TRI_GetUserDatabasesServer(TRI_server_t*, char const*,
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_GetDatabaseNamesServer(TRI_server_t*, std::vector<std::string>&);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief copies the defaults into the target
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_GetDatabaseDefaultsServer(TRI_server_t*, TRI_vocbase_defaults_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a new tick

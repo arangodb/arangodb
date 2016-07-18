@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "v8-collection.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
 #include "Basics/Timers.h"
 #include "Basics/Utf8Helper.h"
@@ -32,6 +33,7 @@
 #include "Basics/WriteLocker.h"
 #include "Cluster/ClusterMethods.h"
 #include "Indexes/PrimaryIndex.h"
+#include "RestServer/DatabaseFeature.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/OperationResult.h"
 #include "Utils/SingleCollectionTransaction.h"
@@ -1408,7 +1410,7 @@ static void JS_PropertiesVocbaseCol(
       }  // Leave the scope and free the lock
 
       // try to write new parameter to file
-      bool doSync = document->_vocbase->_settings.forceSyncProperties;
+      bool doSync = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database")->forceSyncProperties();
       res = document->updateCollectionInfo(document->_vocbase, slice, doSync);
 
       if (res != TRI_ERROR_NO_ERROR) {

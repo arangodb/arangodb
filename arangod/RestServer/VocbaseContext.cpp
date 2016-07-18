@@ -28,7 +28,7 @@
 #include <velocypack/Parser.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include "Basics/MutexLocker.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/tri-strings.h"
 #include "Cluster/ServerState.h"
 #include "Endpoint/ConnectionInfo.h"
@@ -83,7 +83,9 @@ bool VocbaseContext::useClusterAuthentication() const {
 GeneralResponse::ResponseCode VocbaseContext::authenticate() {
   TRI_ASSERT(_vocbase != nullptr);
 
-  if (!_vocbase->_settings.requireAuthentication) {
+  auto restServer = application_features::ApplicationServer::getFeature<RestServerFeature>("RestServer");
+
+  if (!restServer->authentication()) {
     // no authentication required at all
     return GeneralResponse::ResponseCode::OK;
   }
@@ -127,13 +129,15 @@ GeneralResponse::ResponseCode VocbaseContext::authenticate() {
 
 GeneralResponse::ResponseCode VocbaseContext::authenticateRequest(
     bool* forceOpen) {
+  
+  auto restServer = application_features::ApplicationServer::getFeature<RestServerFeature>("RestServer");
 #ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
   // check if we need to run authentication for this type of
   // endpoint
   ConnectionInfo const& ci = _request->connectionInfo();
 
   if (ci.endpointType == Endpoint::DomainType::UNIX &&
-      !_vocbase->_settings.requireAuthenticationUnixSockets) {
+      !restServer->authenticationUnixSockets()) {
     // no authentication required for unix socket domain connections
     return GeneralResponse::ResponseCode::OK;
   }
@@ -141,7 +145,7 @@ GeneralResponse::ResponseCode VocbaseContext::authenticateRequest(
 
   std::string const& path = _request->requestPath();
 
-  if (_vocbase->_settings.authenticateSystemOnly) {
+  if (restServer->authenticationSystemOnly()) {
     // authentication required, but only for /_api, /_admin etc.
 
     if (!path.empty()) {

@@ -215,29 +215,24 @@ void DatabaseFeature::shutdownCompactor() {
 }
 
 void DatabaseFeature::openDatabases() {
-  TRI_vocbase_defaults_t defaults;
-
+  /*
   // override with command-line options
   defaults.defaultMaximalSize =
       static_cast<TRI_voc_size_t>(_maximalJournalSize);
   defaults.defaultWaitForSync = _defaultWaitForSync;
   defaults.forceSyncProperties = _forceSyncProperties;
-
   // get authentication (if available)
-  RestServerFeature* rest =
-      ApplicationServer::getFeature<RestServerFeature>("RestServer");
-
   defaults.requireAuthentication = rest->authentication();
   defaults.requireAuthenticationUnixSockets = rest->authenticationUnixSockets();
   defaults.authenticateSystemOnly = rest->authenticationSystemOnly();
-
+  */
   bool const iterateMarkersOnOpen =
       !wal::LogfileManager::instance()->hasFoundLastTick();
 
   int res = TRI_InitServer(
       DatabasePathFeature::SERVER,
       application_features::ApplicationServer::getFeature<DatabasePathFeature>("DatabasePath")->directory().c_str(), 
-      &defaults, !_replicationApplier, _disableCompactor,
+      !_replicationApplier, _disableCompactor,
       iterateMarkersOnOpen);
 
   if (res != TRI_ERROR_NO_ERROR) {

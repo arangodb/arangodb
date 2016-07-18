@@ -572,11 +572,6 @@ int MMFilesEngine::openDatabases() {
     std::string const databaseName = nameSlice.copyString();
 
     // use defaults
-    //TRI_vocbase_defaults_t defaults;
-    //TRI_GetDatabaseDefaultsServer(server, &defaults);
-
-    // TODO: create app directories
-    // TODO: handle TRI_vocbase_defaults_t
 
     // .........................................................................
     // open the database and scan collections in it
@@ -584,7 +579,7 @@ int MMFilesEngine::openDatabases() {
 /*
     // try to open this database
     TRI_vocbase_t* vocbase = TRI_OpenVocBase(
-        server, databaseDirectory.c_str(), id, databaseName.c_str(), &defaults,
+        server, databaseDirectory.c_str(), id, databaseName.c_str(),
         _isUpgrade, _iterateMarkersOnOpen);
 
     if (vocbase == nullptr) {

@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RecoverState.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
 #include "Basics/conversions.h"
 #include "Basics/files.h"
@@ -29,13 +30,17 @@
 #include "Basics/memory-map.h"
 #include "Basics/tri-strings.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Indexes/RocksDBFeature.h"
+#include "RestServer/DatabaseFeature.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utils/StandaloneTransactionContext.h"
 #include "VocBase/collection.h"
 #include "VocBase/DatafileHelper.h"
 #include "Wal/LogfileManager.h"
 #include "Wal/Slots.h"
+
+#ifdef ARANGODB_ENABLE_ROCKSDB
+#include "Indexes/RocksDBFeature.h"
+#endif
 
 #include <velocypack/Collection.h>
 #include <velocypack/Parser.h>
@@ -854,14 +859,12 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
 
         if (state->willBeDropped(collectionId)) {
           // in case we detect that this collection is going to be deleted anyway,
-          // set
-          // the sync properties to false temporarily
-          bool oldSync = vocbase->_settings.forceSyncProperties;
-          vocbase->_settings.forceSyncProperties = false;
-          collection =
-              TRI_CreateCollectionVocBase(vocbase, info, collectionId, false);
-          vocbase->_settings.forceSyncProperties = oldSync;
-
+          // set the sync properties to false temporarily
+          auto database = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
+          bool oldSync = database->forceSyncProperties();
+          database->forceSyncProperties(false);
+          collection = TRI_CreateCollectionVocBase(vocbase, info, collectionId, false);
+          database->forceSyncProperties(oldSync);
         } else {
           // collection will be kept
           collection =
@@ -922,14 +925,11 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
           WaitForDeletion(state->server, otherId, statusCode);
         }
 
-        TRI_vocbase_defaults_t defaults;
-        TRI_GetDatabaseDefaultsServer(state->server, &defaults);
-
         vocbase = nullptr;
         WaitForDeletion(state->server, databaseId,
                         TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
         int res = TRI_CreateDatabaseServer(state->server, databaseId,
-                                          nameString.c_str(), &defaults,
+                                          nameString.c_str(),
                                           &vocbase, false);
 
         if (res != TRI_ERROR_NO_ERROR) {

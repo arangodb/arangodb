@@ -356,10 +356,6 @@ static int OpenDatabases(TRI_server_t* server, bool isUpgrade) {
 
     std::string const databaseName = nameSlice.copyString();
 
-    // use defaults
-    TRI_vocbase_defaults_t defaults;
-    TRI_GetDatabaseDefaultsServer(server, &defaults);
-
     // .........................................................................
     // create app directories
     // .........................................................................
@@ -380,8 +376,7 @@ static int OpenDatabases(TRI_server_t* server, bool isUpgrade) {
 
     // try to open this database
     TRI_vocbase_t* vocbase = TRI_OpenVocBase(
-        server, databaseDirectory.c_str(), id, databaseName.c_str(), &defaults,
-        isUpgrade, server->_iterateMarkersOnOpen);
+        server, databaseDirectory.c_str(), id, databaseName.c_str(), isUpgrade, server->_iterateMarkersOnOpen);
 
     if (vocbase == nullptr) {
       // grab last error
@@ -533,7 +528,6 @@ static int CloseDroppedDatabases(TRI_server_t* server) {
 
 static int SaveDatabaseParameters(TRI_voc_tick_t id, char const* name,
                                   bool deleted,
-                                  TRI_vocbase_defaults_t const* defaults,
                                   char const* directory) {
   TRI_ASSERT(id > 0);
   TRI_ASSERT(name != nullptr);
@@ -570,7 +564,6 @@ static int SaveDatabaseParameters(TRI_voc_tick_t id, char const* name,
 
 static int CreateDatabaseDirectory(TRI_server_t* server, TRI_voc_tick_t tick,
                                    char const* databaseName,
-                                   TRI_vocbase_defaults_t const* defaults,
                                    std::string& name) {
   TRI_ASSERT(server != nullptr);
   TRI_ASSERT(databaseName != nullptr);
@@ -625,8 +618,7 @@ static int CreateDatabaseDirectory(TRI_server_t* server, TRI_voc_tick_t tick,
 
   // now everything is valid
 
-  res = SaveDatabaseParameters(tick, databaseName, false, defaults,
-                               dirname.c_str());
+  res = SaveDatabaseParameters(tick, databaseName, false, dirname.c_str());
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
@@ -874,7 +866,7 @@ static void DatabaseManager(void* data) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_InitServer(TRI_server_t* server,
-                   char const* basePath, TRI_vocbase_defaults_t const* defaults,
+                   char const* basePath, 
                    bool disableAppliers, bool disableCompactor,
                    bool iterateMarkersOnOpen) {
   TRI_ASSERT(server != nullptr);
@@ -901,12 +893,6 @@ int TRI_InitServer(TRI_server_t* server,
 
     return TRI_ERROR_OUT_OF_MEMORY;
   }
-
-  // ...........................................................................
-  // server defaults
-  // ...........................................................................
-
-  memcpy(&server->_defaults, defaults, sizeof(TRI_vocbase_defaults_t));
 
   // ...........................................................................
   // database hashes and vectors
@@ -1065,7 +1051,6 @@ void TRI_StopReplicationAppliersServer(TRI_server_t* server) {
 
 int TRI_CreateCoordinatorDatabaseServer(TRI_server_t* server,
                                         TRI_voc_tick_t tick, char const* name,
-                                        TRI_vocbase_defaults_t const* defaults,
                                         TRI_vocbase_t** database) {
   if (!TRI_IsAllowedNameVocBase(true, name)) {
     return TRI_ERROR_ARANGO_DATABASE_NAME_INVALID;
@@ -1087,7 +1072,7 @@ int TRI_CreateCoordinatorDatabaseServer(TRI_server_t* server,
   // name not yet in use, release the read lock
 
   TRI_vocbase_t* vocbase = TRI_CreateInitialVocBase(
-      server, TRI_VOCBASE_TYPE_COORDINATOR, "none", tick, name, defaults);
+      server, TRI_VOCBASE_TYPE_COORDINATOR, "none", tick, name);
 
   if (vocbase == nullptr) {
     // grab last error
@@ -1147,7 +1132,6 @@ int TRI_CreateCoordinatorDatabaseServer(TRI_server_t* server,
 
 int TRI_CreateDatabaseServer(TRI_server_t* server, TRI_voc_tick_t databaseId,
                              char const* name,
-                             TRI_vocbase_defaults_t const* defaults,
                              TRI_vocbase_t** database, bool writeMarker) {
   if (!TRI_IsAllowedNameVocBase(false, name)) {
     return TRI_ERROR_ARANGO_DATABASE_NAME_INVALID;
@@ -1182,16 +1166,13 @@ int TRI_CreateDatabaseServer(TRI_server_t* server, TRI_voc_tick_t databaseId,
       try {
         builder.openObject();
         builder.add("database", VPackValue(databaseId));
-
-        // name not yet in use
-        defaults->toVelocyPack(builder);
       } catch (...) {
         return TRI_ERROR_OUT_OF_MEMORY;
       }
     }
 
     std::string dirname;
-    res = CreateDatabaseDirectory(server, databaseId, name, defaults, dirname);
+    res = CreateDatabaseDirectory(server, databaseId, name, dirname);
 
     if (res != TRI_ERROR_NO_ERROR) {
       return res;
@@ -1208,8 +1189,7 @@ int TRI_CreateDatabaseServer(TRI_server_t* server, TRI_voc_tick_t databaseId,
                 << "'";
     }
 
-    vocbase = TRI_OpenVocBase(server, path.c_str(), databaseId, name, defaults,
-                              false, false);
+    vocbase = TRI_OpenVocBase(server, path.c_str(), databaseId, name, false, false);
 
     if (vocbase == nullptr) {
       // grab last error
@@ -1445,8 +1425,7 @@ int TRI_DropDatabaseServer(TRI_server_t* server, char const* name,
                 << vocbase->_path << "'";
     }
 
-    res = SaveDatabaseParameters(vocbase->_id, vocbase->_name, true,
-                                 &vocbase->_settings, vocbase->_path);
+    res = SaveDatabaseParameters(vocbase->_id, vocbase->_name, true, vocbase->_path);
     // TODO: what to do here in case of error?
 
     if (writeMarker) {
@@ -1663,16 +1642,6 @@ int TRI_GetDatabaseNamesServer(TRI_server_t* server,
       [](std::string const& l, std::string const& r) -> bool { return l < r; });
 
   return res;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief copies the defaults into the target
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_GetDatabaseDefaultsServer(TRI_server_t* server,
-                                   TRI_vocbase_defaults_t* target) {
-  // copy defaults into target
-  memcpy(target, &server->_defaults, sizeof(TRI_vocbase_defaults_t));
 }
 
 ////////////////////////////////////////////////////////////////////////////////

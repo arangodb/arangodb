@@ -526,12 +526,9 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
           id = ClusterInfo::instance()->uniqid();
         }
 
-        TRI_vocbase_defaults_t defaults;
-        TRI_GetDatabaseDefaultsServer(_server, &defaults);
-
         // create a local database object...
         TRI_CreateCoordinatorDatabaseServer(_server, id, name.c_str(),
-                                            &defaults, &vocbase);
+                                            &vocbase);
         HasRunOnce = true;
       } else {
         TRI_ReleaseVocBase(vocbase);

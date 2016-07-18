@@ -31,7 +31,7 @@
 #include "Basics/threads.h"
 #include "Basics/vector.h"
 #include "Basics/voc-errors.h"
-#include "VocBase/vocbase-defaults.h"
+#include "VocBase/voc-types.h"
 
 #include "velocypack/Slice.h"
 #include "velocypack/Builder.h"
@@ -41,7 +41,6 @@ struct TRI_document_collection_t;
 class TRI_replication_applier_t;
 struct TRI_server_t;
 class TRI_vocbase_col_t;
-struct TRI_vocbase_defaults_t;
 
 namespace arangodb {
 namespace velocypack {
@@ -228,7 +227,7 @@ enum TRI_vocbase_type_e {
 
 struct TRI_vocbase_t {
   TRI_vocbase_t(TRI_server_t*, TRI_vocbase_type_e, char const*, TRI_voc_tick_t,
-                char const*, struct TRI_vocbase_defaults_t const*);
+                char const*);
 
   ~TRI_vocbase_t();
 
@@ -240,7 +239,6 @@ struct TRI_vocbase_t {
   std::atomic<uint64_t> _refCount;
 
   TRI_server_t* _server;
-  TRI_vocbase_defaults_t _settings;
 
   arangodb::basics::DeadlockDetector<TRI_document_collection_t>
       _deadlockDetector;
@@ -411,17 +409,14 @@ class TRI_vocbase_col_t {
 
 TRI_vocbase_t* TRI_CreateInitialVocBase(TRI_server_t*, TRI_vocbase_type_e,
                                         char const*, TRI_voc_tick_t,
-                                        char const*,
-                                        struct TRI_vocbase_defaults_t const*);
+                                        char const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief opens an existing database, loads all collections
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_vocbase_t* TRI_OpenVocBase(TRI_server_t*, char const*, TRI_voc_tick_t,
-                               char const*,
-                               struct TRI_vocbase_defaults_t const*, bool,
-                               bool);
+                               char const*, bool, bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief closes a database and all collections

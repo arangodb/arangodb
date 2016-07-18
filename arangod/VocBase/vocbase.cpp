@@ -28,6 +28,7 @@
 #include <velocypack/Parser.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryCache.h"
 #include "Aql/QueryList.h"
 #include "Basics/Exceptions.h"
@@ -56,7 +57,6 @@
 #include "VocBase/replication-applier.h"
 #include "VocBase/server.h"
 #include "VocBase/transaction.h"
-#include "VocBase/vocbase-defaults.h"
 #include "Wal/LogfileManager.h"
 
 #ifdef ARANGODB_ENABLE_ROCKSDB
@@ -592,8 +592,8 @@ static int RenameCollection(TRI_vocbase_t* vocbase,
             arangodb::VocbaseCollectionInfo::fromFile(collection->pathc_str(),
                                                       vocbase, newName, true);
 
-        int res = info.saveToFile(collection->pathc_str(),
-                                  vocbase->_settings.forceSyncProperties);
+        bool doSync = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database")->forceSyncProperties();
+        int res = info.saveToFile(collection->pathc_str(), doSync);
 
         if (res != TRI_ERROR_NO_ERROR) {
           return TRI_set_errno(res);
@@ -801,8 +801,7 @@ static int ScanPath(TRI_vocbase_t* vocbase, char const* path, bool isUpgrade,
         if (TRI_ExistsFile(tmpfile.c_str())) {
           LOG(TRACE) << "ignoring temporary directory '" << tmpfile << "'";
           // temp file still exists. this means the collection was not created
-          // fully
-          // and needs to be ignored
+          // fully and needs to be ignored
           continue;  // ignore this directory
         }
 
@@ -1024,9 +1023,8 @@ static int DropCollection(TRI_vocbase_t* vocbase, TRI_vocbase_col_t* collection,
         info.setDeleted(true);
 
         // we don't need to fsync if we are in the recovery phase
-        bool doSync =
-            (vocbase->_settings.forceSyncProperties &&
-             !arangodb::wal::LogfileManager::instance()->isInRecovery());
+        bool doSync = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database")->forceSyncProperties();
+        doSync = (doSync && !arangodb::wal::LogfileManager::instance()->isInRecovery());
 
         int res = info.saveToFile(collection->pathc_str(), doSync);
 
@@ -1078,8 +1076,8 @@ static int DropCollection(TRI_vocbase_t* vocbase, TRI_vocbase_col_t* collection,
            collection->_status == TRI_VOC_COL_STATUS_UNLOADING) {
     collection->_collection->_info.setDeleted(true);
 
-    bool doSync = (vocbase->_settings.forceSyncProperties &&
-                   !arangodb::wal::LogfileManager::instance()->isInRecovery());
+    bool doSync = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database")->forceSyncProperties();
+    doSync = (doSync && !arangodb::wal::LogfileManager::instance()->isInRecovery());
     VPackSlice slice;
     int res = collection->_collection->updateCollectionInfo(vocbase, slice, doSync);
 
@@ -1237,11 +1235,10 @@ std::shared_ptr<VPackBuilder> TRI_vocbase_col_t::toVelocyPackIndexes(
 
 TRI_vocbase_t* TRI_CreateInitialVocBase(
     TRI_server_t* server, TRI_vocbase_type_e type, char const* path,
-    TRI_voc_tick_t id, char const* name,
-    TRI_vocbase_defaults_t const* defaults) {
+    TRI_voc_tick_t id, char const* name) {
   try {
     auto vocbase =
-        std::make_unique<TRI_vocbase_t>(server, type, path, id, name, defaults);
+        std::make_unique<TRI_vocbase_t>(server, type, path, id, name);
 
     return vocbase.release();
   } catch (...) {
@@ -1257,14 +1254,12 @@ TRI_vocbase_t* TRI_CreateInitialVocBase(
 
 TRI_vocbase_t* TRI_OpenVocBase(TRI_server_t* server, char const* path,
                                TRI_voc_tick_t id, char const* name,
-                               TRI_vocbase_defaults_t const* defaults,
                                bool isUpgrade, bool iterateMarkers) {
   TRI_ASSERT(name != nullptr);
   TRI_ASSERT(path != nullptr);
-  TRI_ASSERT(defaults != nullptr);
 
   TRI_vocbase_t* vocbase = TRI_CreateInitialVocBase(
-      server, TRI_VOCBASE_TYPE_NORMAL, path, id, name, defaults);
+      server, TRI_VOCBASE_TYPE_NORMAL, path, id, name);
 
   if (vocbase == nullptr) {
     return nullptr;
@@ -2141,8 +2136,7 @@ void TRI_SetThrowCollectionNotLoadedVocBase(bool value) {
 
 TRI_vocbase_t::TRI_vocbase_t(TRI_server_t* server, TRI_vocbase_type_e type,
                              char const* path, TRI_voc_tick_t id,
-                             char const* name,
-                             TRI_vocbase_defaults_t const* defaults)
+                             char const* name)
     : _id(id),
       _path(nullptr),
       _name(nullptr),
@@ -2163,9 +2157,6 @@ TRI_vocbase_t::TRI_vocbase_t(TRI_server_t* server, TRI_vocbase_type_e type,
 
   _path = TRI_DuplicateString(TRI_CORE_MEM_ZONE, path);
   _name = TRI_DuplicateString(TRI_CORE_MEM_ZONE, name);
-
-  // use the defaults provided
-  defaults->applyToVocBase(this);
 
   // init collections
   _collections.reserve(32);

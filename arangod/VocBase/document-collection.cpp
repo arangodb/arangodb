@@ -47,6 +47,7 @@
 #include "Indexes/PrimaryIndex.h"
 #include "Indexes/SkiplistIndex.h"
 #include "Logger/Logger.h"
+#include "RestServer/DatabaseFeature.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/CollectionReadLocker.h"
 #include "Utils/CollectionWriteLocker.h"
@@ -1252,7 +1253,7 @@ TRI_document_collection_t* TRI_CreateDocumentCollection(
   document->_keyGenerator = keyGenerator;
 
   // save the parameters block (within create, no need to lock)
-  bool doSync = vocbase->_settings.forceSyncProperties;
+  bool doSync = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database")->forceSyncProperties();
   int res = parameters.saveToFile(collection->_directory, doSync);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -1675,7 +1676,7 @@ int TRI_CloseDocumentCollection(TRI_document_collection_t* document,
       document->_info.initialCount() != static_cast<int64_t>(idxSize)) {
     document->_info.updateCount(idxSize);
 
-    bool doSync = document->_vocbase->_settings.forceSyncProperties;
+    bool doSync = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database")->forceSyncProperties();
     // Ignore the error?
     document->_info.saveToFile(document->_directory, doSync);
   }
@@ -2140,8 +2141,9 @@ int TRI_SaveIndex(TRI_document_collection_t* document, arangodb::Index* idx,
 
   VPackSlice const idxSlice = builder->slice();
   // and save
+  bool doSync = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database")->forceSyncProperties();
   bool ok = arangodb::basics::VelocyPackHelper::velocyPackToFile(
-      filename.c_str(), idxSlice, document->_vocbase->_settings.forceSyncProperties);
+      filename.c_str(), idxSlice, doSync);
 
   if (!ok) {
     LOG(ERR) << "cannot save index definition: " << TRI_last_error();

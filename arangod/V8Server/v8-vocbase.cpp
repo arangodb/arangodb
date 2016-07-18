@@ -2355,56 +2355,10 @@ static void JS_CreateDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_voc_tick_t id = 0;
 
   // get database defaults from server
-  TRI_vocbase_defaults_t defaults;
-  TRI_GetDatabaseDefaultsServer(static_cast<TRI_server_t*>(v8g->_server),
-                                &defaults);
-
-  v8::Local<v8::String> keyDefaultMaximalSize =
-      TRI_V8_ASCII_STRING("defaultMaximalSize");
-  v8::Local<v8::String> keyDefaultWaitForSync =
-      TRI_V8_ASCII_STRING("defaultWaitForSync");
-  v8::Local<v8::String> keyRequireAuthentication =
-      TRI_V8_ASCII_STRING("requireAuthentication");
-  v8::Local<v8::String> keyRequireAuthenticationUnixSockets =
-      TRI_V8_ASCII_STRING("requireAuthenticationUnixSockets");
-  v8::Local<v8::String> keyAuthenticateSystemOnly =
-      TRI_V8_ASCII_STRING("authenticateSystemOnly");
-  v8::Local<v8::String> keyForceSyncProperties =
-      TRI_V8_ASCII_STRING("forceSyncProperties");
 
   // overwrite database defaults from args[2]
   if (args.Length() > 1 && args[1]->IsObject()) {
     v8::Handle<v8::Object> options = args[1]->ToObject();
-
-    if (options->Has(keyDefaultMaximalSize)) {
-      defaults.defaultMaximalSize =
-          (TRI_voc_size_t)options->Get(keyDefaultMaximalSize)->IntegerValue();
-    }
-
-    if (options->Has(keyDefaultWaitForSync)) {
-      defaults.defaultWaitForSync =
-          options->Get(keyDefaultWaitForSync)->BooleanValue();
-    }
-
-    if (options->Has(keyRequireAuthentication)) {
-      defaults.requireAuthentication =
-          options->Get(keyRequireAuthentication)->BooleanValue();
-    }
-
-    if (options->Has(keyRequireAuthenticationUnixSockets)) {
-      defaults.requireAuthenticationUnixSockets =
-          options->Get(keyRequireAuthenticationUnixSockets)->BooleanValue();
-    }
-
-    if (options->Has(keyAuthenticateSystemOnly)) {
-      defaults.authenticateSystemOnly =
-          options->Get(keyAuthenticateSystemOnly)->BooleanValue();
-    }
-
-    if (options->Has(keyForceSyncProperties)) {
-      defaults.forceSyncProperties =
-          options->Get(keyForceSyncProperties)->BooleanValue();
-    }
 
     TRI_GET_GLOBAL_STRING(IdKey);
     if (options->Has(IdKey)) {
@@ -2418,7 +2372,7 @@ static void JS_CreateDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_vocbase_t* database;
   int res =
       TRI_CreateDatabaseServer(static_cast<TRI_server_t*>(v8g->_server), id,
-                               name.c_str(), &defaults, &database, true);
+                               name.c_str(), &database, true);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION(res);

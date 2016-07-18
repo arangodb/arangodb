@@ -23,6 +23,7 @@
 
 #include "collection.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/PageSizeFeature.h"
 #include "Basics/FileUtils.h"
 #include "Basics/ReadLocker.h"
@@ -34,6 +35,7 @@
 #include "Basics/tri-strings.h"
 #include "Logger/Logger.h"
 #include "Random/RandomGenerator.h"
+#include "RestServer/DatabaseFeature.h"
 #include "VocBase/DatafileHelper.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/server.h"
@@ -1340,7 +1342,7 @@ VocbaseCollectionInfo::VocbaseCollectionInfo(TRI_vocbase_t* vocbase,
       _revision(0),
       _cid(0),
       _planId(0),
-      _maximalSize(vocbase->_settings.defaultMaximalSize),
+      _maximalSize(32 * 1024 * 1024), // just to have a default
       _initialCount(-1),
       _indexBuckets(TRI_DEFAULT_INDEX_BUCKETS),
       _keyOptions(nullptr),
@@ -1348,7 +1350,11 @@ VocbaseCollectionInfo::VocbaseCollectionInfo(TRI_vocbase_t* vocbase,
       _deleted(false),
       _doCompact(true),
       _isVolatile(false),
-      _waitForSync(vocbase->_settings.defaultWaitForSync) {
+      _waitForSync(false) {
+
+  auto database = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
+  _maximalSize = database->maximalJournalSize();
+  _waitForSync = database->waitForSync();
 
   size_t pageSize = PageSizeFeature::getPageSize();
   _maximalSize =
@@ -1382,7 +1388,7 @@ VocbaseCollectionInfo::VocbaseCollectionInfo(TRI_vocbase_t* vocbase,
       _revision(0),
       _cid(0),
       _planId(0),
-      _maximalSize(vocbase->_settings.defaultMaximalSize),
+      _maximalSize(32 * 1024 * 1024), // just to have a default
       _initialCount(-1),
       _indexBuckets(TRI_DEFAULT_INDEX_BUCKETS),
       _keyOptions(nullptr),
@@ -1390,7 +1396,12 @@ VocbaseCollectionInfo::VocbaseCollectionInfo(TRI_vocbase_t* vocbase,
       _deleted(false),
       _doCompact(true),
       _isVolatile(false),
-      _waitForSync(vocbase->_settings.defaultWaitForSync) {
+      _waitForSync(false) {
+  
+  auto database = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
+  _maximalSize = database->maximalJournalSize();
+  _waitForSync = database->waitForSync();
+
   memset(_name, 0, sizeof(_name));
 
   if (name != nullptr && *name != '\0') {
@@ -1402,11 +1413,11 @@ VocbaseCollectionInfo::VocbaseCollectionInfo(TRI_vocbase_t* vocbase,
     if (options.hasKey("journalSize")) {
       maximalSize =
           arangodb::basics::VelocyPackHelper::getNumericValue<TRI_voc_size_t>(
-              options, "journalSize", vocbase->_settings.defaultMaximalSize);
+              options, "journalSize", _maximalSize);
     } else {
       maximalSize =
           arangodb::basics::VelocyPackHelper::getNumericValue<TRI_voc_size_t>(
-              options, "maximalSize", vocbase->_settings.defaultMaximalSize);
+              options, "maximalSize", _maximalSize);
     }
 
     size_t pageSize = PageSizeFeature::getPageSize();
@@ -1425,7 +1436,7 @@ VocbaseCollectionInfo::VocbaseCollectionInfo(TRI_vocbase_t* vocbase,
     _doCompact = arangodb::basics::VelocyPackHelper::getBooleanValue(
         options, "doCompact", true);
     _waitForSync = arangodb::basics::VelocyPackHelper::getBooleanValue(
-        options, "waitForSync", vocbase->_settings.defaultWaitForSync);
+        options, "waitForSync", _waitForSync);
     _isVolatile = arangodb::basics::VelocyPackHelper::getBooleanValue(
         options, "isVolatile", false);
     _indexBuckets =
@@ -1696,16 +1707,18 @@ void VocbaseCollectionInfo::update(VPackSlice const& slice, bool preferDefaults,
 
   if (preferDefaults) {
     if (vocbase != nullptr) {
+      auto database = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
+
       _doCompact = arangodb::basics::VelocyPackHelper::getBooleanValue(
           slice, "doCompact", true);
       _waitForSync = arangodb::basics::VelocyPackHelper::getBooleanValue(
-          slice, "waitForSync", vocbase->_settings.defaultWaitForSync);
+          slice, "waitForSync", database->waitForSync());
       if (slice.hasKey("journalSize")) {
         _maximalSize = arangodb::basics::VelocyPackHelper::getNumericValue<int>(
-            slice, "journalSize", vocbase->_settings.defaultMaximalSize);
+            slice, "journalSize", database->maximalJournalSize());
       } else {
         _maximalSize = arangodb::basics::VelocyPackHelper::getNumericValue<int>(
-            slice, "maximalSize", vocbase->_settings.defaultMaximalSize);
+            slice, "maximalSize", database->maximalJournalSize());
       }
       _indexBuckets =
           arangodb::basics::VelocyPackHelper::getNumericValue<uint32_t>(

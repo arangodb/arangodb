@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestReplicationHandler.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/VelocyPackHelper.h"
@@ -37,6 +38,7 @@
 #include "Replication/InitialSyncer.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/Version.h"
+#include "RestServer/DatabaseFeature.h"
 #include "RestServer/ServerIdFeature.h"
 #include "Utils/CollectionGuard.h"
 #include "Utils/CollectionKeys.h"
@@ -1322,7 +1324,7 @@ int RestReplicationHandler::createCollection(VPackSlice const& slice,
                  slice, "doCompact", true));
   TRI_ASSERT(params.waitForSync() ==
              arangodb::basics::VelocyPackHelper::getBooleanValue(
-                 slice, "waitForSync", _vocbase->_settings.defaultWaitForSync));
+                 slice, "waitForSync", application_features::ApplicationServer::getFeature<DatabaseFeature>("Database")->waitForSync()));
   TRI_ASSERT(params.isVolatile() ==
              arangodb::basics::VelocyPackHelper::getBooleanValue(
                  slice, "isVolatile", false));

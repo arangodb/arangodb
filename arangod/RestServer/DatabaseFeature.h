@@ -46,6 +46,10 @@ class DatabaseFeature final : public application_features::ApplicationFeature {
   bool ignoreDatafileErrors() const { return _ignoreDatafileErrors; }
   bool isInitiallyEmpty() const { return _isInitiallyEmpty; }
   bool checkVersion() const { return _checkVersion; }
+  bool forceSyncProperties() const { return _forceSyncProperties; }
+  void forceSyncProperties(bool value) { _forceSyncProperties = value; }
+  bool waitForSync() const { return _defaultWaitForSync; }
+  uint64_t maximalJournalSize() const { return _maximalJournalSize; }
 
   void disableReplicationApplier() { _replicationApplier = false; }
   void disableCompactor() { _disableCompactor = true; }
