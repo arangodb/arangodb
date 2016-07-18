@@ -13,29 +13,44 @@ operator.
 An attribute name of the form *a.b* is interpreted as attribute path,
 not as attribute. If you use
 
-*{ a : { c : 1 } }*
+```json
+{ "a": { "c": 1 } }
+```
 
 as example, then you will find all documents, such that the attribute
-*a* contains a document of the form *{c : 1 }*. For example the document
+*a* contains a document of the form *{ "c": 1 }*. For example the document
 
-*{ a : { c : 1 }, b : 1 }*
+```json
+{ "a" : { "c" : 1 }, "b" : 1 }
+```
 
 will match, but the document
 
-*{ a : { c : 1, b : 1 } }*
+```json
+{ "a" : { "c" : 1, "b" : 1 } }
+```
 
 will not.
 
 However, if you use
 
-*{ a.c : 1 }*,
+```json
+{ "a.c" : 1 }
+```
 
 then you will find all documents, which contain a sub-document in *a*
-that has an attribute @LIT{c} of value *1*. Both the following documents
+that has an attribute *c* of value *1*. Both the following documents
 
-*{ a : { c : 1 }, b : 1 }*and
+```json
+{ "a" : { "c" : 1 }, "b" : 1 }
 
-*{ a : { c : 1, b : 1 } }*
+```
+
+and
+
+```json
+{ "a" : { "c" : 1, "b" : 1 } }
+```
 
 will match.
 

@@ -58,7 +58,8 @@ The supported wildcards are *_* to match a single arbitrary character, and *%* t
 match any number of arbitrary characters. Literal *%* and *_* need to be escaped
 with a backslash. Backslashes need to be escaped themselves, which effectively
 means that two reverse solidus characters need to preceed a literal percent sign
-or underscore.
+or underscore. In arangosh, additional escaping is required, making it four
+backslashes in total preceeding the to-be-escaped character.
 
 ```
 "abc" LIKE "a%"              // true
@@ -140,10 +141,12 @@ The result of the logical operators in AQL is defined as follows:
 
 Some examples for logical operations in AQL:
 
-    u.age > 15 && u.address.city != ""
-    true || false
-    ! u.isInvalid
-    1 || ! 0
+```js
+u.age > 15 && u.address.city != ""
+true || false
+NOT u.isInvalid
+1 || ! 0
+```
 
 Passing non-boolean values to a logical operator is allowed. Any non-boolean operands 
 will be casted to boolean implicitly by the operator, without making the query abort.
@@ -160,17 +163,20 @@ type and is not necessarily a boolean value.
 
 For example, the following logical operations will return boolean values:
 
-    25 > 1 && 42 != 7                          // true
-    22 IN [ 23, 42 ] || 23 NOT IN [ 22, 7 ]    // true
-    25 != 25                                   // false
+```js
+25 > 1 && 42 != 7                          // true
+22 IN [ 23, 42 ] || 23 NOT IN [ 22, 7 ]    // true
+25 != 25                                   // false
+```
 
 whereas the following logical operations will not return boolean values:
 
-    1 || 7                                     // 1
-    null || "foo"                              // "foo"
-    null && true                               // null
-    true && 23                                 // 23
-
+```js
+1 || 7                                     // 1
+null || "foo"                              // "foo"
+null && true                               // null
+true && 23                                 // 23
+```
    
 !SUBSUBSECTION Arithmetic operators
 
@@ -196,6 +202,7 @@ RETURN [-x, +y]
 ```
 
 For exponentiation, there is a [numeric function](Functions/Numeric.md#pow) *POW()*.
+The syntax `base ** exp` is not supported.
 
 For string concatenation, you must use the [string function](Functions/String.md#concat)
 *CONCAT()*. Combining two strings with a plus operator (`"foo" + "bar"`) will not work!
@@ -203,13 +210,15 @@ Also see [Common Errors](CommonErrors.md).
 
 Some example arithmetic operations:
 
-    1 + 1
-    33 - 99
-    12.4 * 4.5
-    13.0 / 0.1
-    23 % 7
-    -15
-    +9.99
+```
+1 + 1
+33 - 99
+12.4 * 4.5
+13.0 / 0.1
+23 % 7
+-15
++9.99
+```
 
 The arithmetic operators accept operands of any type. Passing non-numeric values to an 
 arithmetic operator will cast the operands to numbers using the type casting rules 
@@ -231,20 +240,21 @@ will also produce a result value of `null`.
 
 Here are a few examples:
 
-    1 + "a"                 // 1
-    1 + "99"                // 100
-    1 + null                // 1
-    null + 1                // 1
-    3 + [ ]                 // 3
-    24 + [ 2 ]              // 26
-    24 + [ 2, 4 ]           // 0
-    25 - null               // 25
-    17 - true               // 16
-    23 * { }                // 0
-    5 * [ 7 ]               // 35
-    24 / "12"               // 2
-    1 / 0                   // 0
-
+```
+1 + "a"                 // 1
+1 + "99"                // 100
+1 + null                // 1
+null + 1                // 1
+3 + [ ]                 // 3
+24 + [ 2 ]              // 26
+24 + [ 2, 4 ]           // 0
+25 - null               // 25
+17 - true               // 16
+23 * { }                // 0
+5 * [ 7 ]               // 35
+24 / "12"               // 2
+1 / 0                   // 0
+```
 
 !SUBSUBSECTION Ternary operator
 
@@ -255,7 +265,9 @@ evaluates to true, and the third operand otherwise.
 
 *Examples*
 
-    u.age > 15 || u.active == true ? u.userId : null
+```js
+u.age > 15 || u.active == true ? u.userId : null
+```
 
 !SUBSUBSECTION Range operator
 
@@ -268,18 +280,23 @@ both bounding values included.
 
 *Examples*
 
-    2010..2013
+```
+2010..2013
+```
 
 will produce the following result:
 
-    [ 2010, 2011, 2012, 2013 ]
+```json
+[ 2010, 2011, 2012, 2013 ]
+```
 
+There is also a [RANGE() function](Functions/Numeric.md#range).
 
 !SUBSUBSECTION Array operators 
 
-AQL provides [array operators](Advanced/ArrayOperators.md) <i>[\*]</i> for
-array variable expansion and <i>[\*\*]</i> for array contraction. 
-
+AQL provides array operators <i>[\*]</i> for
+[array variable expansion](Advanced/ArrayOperators.md#array-expansion) and
+<i>[\*\*]</i> for [array contraction](Advanced/ArrayOperators.md#array-contraction).
 
 !SUBSUBSECTION Operator precedence
 
