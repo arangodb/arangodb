@@ -1,3 +1,9 @@
+v3.0.4 (XXXX-XX-XX)
+-------------------
+
+* fixed segfault in V8, by backporting https://bugs.chromium.org/p/v8/issues/detail?id=5033
+
+
 v3.0.3 (2016-07-17)
 -------------------
 
