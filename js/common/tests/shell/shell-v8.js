@@ -1,5 +1,6 @@
 /*jshint globalstrict:false, strict:false */
 /*jshint -W034, -W098, -W016 */
+/*eslint no-useless-computed-key: "off"*/
 /*global assertTrue */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -62,6 +63,7 @@ function V8CrashSuite () {
     testTypeFeedbackOracle : function () {
       "use strict";
 
+      // code below is useless, but it triggered a segfault in V8 code optimization
       var test = function () {
         var t = Date.now();
         var o = {
@@ -74,6 +76,7 @@ function V8CrashSuite () {
         test();
       }
 
+      // simply need to survive the above code      
       assertTrue(true);
     },
 
@@ -84,6 +87,7 @@ function V8CrashSuite () {
     testTypeFeedbackOracle2 : function () {
       "use strict";
 
+      // code below is useless, but it triggered a segfault in V8 code optimization
       var test = function () {
         var random = 0 | Math.random() * 1000;
         var today = Date.now();
@@ -99,7 +103,8 @@ function V8CrashSuite () {
         test();
       }
       console.timeEnd('test');
-      
+
+      // simply need to survive the above code      
       assertTrue(true);
     }
   };
