@@ -10,55 +10,57 @@ garbage-collected logfiles will either be deleted or kept for the purpose of kee
 a replication backlog.
 
 !SUBSECTION Directory
+
 <!-- arangod/Wal/LogfileManager.h -->
 
-
-the WAL logfiles directory
-`--wal.directory`
+The WAL logfiles directory: `--wal.directory`
 
 Specifies the directory in which the write-ahead logfiles should be
 stored. If this option is not specified, it defaults to the subdirectory
 *journals* in the server's global database directory. If the directory is
 not present, it will be created.
 
-
 !SUBSECTION Logfile size
+
 <!-- arangod/Wal/LogfileManager.h -->
 @startDocuBlock WalLogfileSize
 
 !SUBSECTION Allow oversize entries
+
 <!-- arangod/Wal/LogfileManager.h -->
 @startDocuBlock WalLogfileAllowOversizeEntries
 
 !SUBSECTION Suppress shape information
+
 <!-- arangod/Wal/LogfileManager.h -->
 @startDocuBlock WalLogfileSuppressShapeInformation
 
 !SUBSECTION Number of reserve logfiles
+
 <!-- arangod/Wal/LogfileManager.h -->
 @startDocuBlock WalLogfileReserveLogfiles
 
 !SUBSECTION Number of historic logfiles
+
 <!-- arangod/Wal/LogfileManager.h -->
 @startDocuBlock WalLogfileHistoricLogfiles
 
 !SUBSECTION Sync interval
+
 <!-- arangod/Wal/LogfileManager.h -->
 @startDocuBlock WalLogfileSyncInterval
 
 !SUBSECTION Throttling
+
 <!-- arangod/Wal/LogfileManager.h -->
 
-
-throttle writes to WAL when at least such many operations are
-waiting for garbage collection
+Throttle writes to WAL when at least such many operations are
+waiting for garbage collection:
 `--wal.throttle-when-pending`
 
 The maximum value for the number of write-ahead log garbage-collection
-queue
-elements. If set to *0*, the queue size is unbounded, and no
-writtle-throttling will occur. If set to a non-zero value,
-writte-throttling
+queue elements. If set to *0*, the queue size is unbounded, and no
+write-throttling will occur. If set to a non-zero value, write-throttling
 will automatically kick in when the garbage-collection queue contains at
 least as many elements as specified by this option.
 While write-throttling is active, data-modification operations will
@@ -78,73 +80,62 @@ specified amount of time for the write-ahead log garbage-collection queue
 size to fall below the throttling threshold. If the queue size decreases
 before the maximum wait time is over, the operation will be executed
 normally. If the queue size does not decrease before the wait time is
-over,
-the operation will be aborted with an error.
+over, the operation will be aborted with an error.
 This option only has an effect if `--wal.throttle-when-pending` has a
 non-zero value, which is not the default.
 
-
 !SUBSECTION Number of slots
+
 <!-- arangod/Wal/LogfileManager.h -->
 
-
-maximum number of slots to be used in parallel
+Maximum number of slots to be used in parallel:
 `--wal.slots`
 
 Configures the amount of write slots the write-ahead log can give to write
 operations in parallel. Any write operation will lease a slot and return
-it
-to the write-ahead log when it is finished writing the data. A slot will
+it to the write-ahead log when it is finished writing the data. A slot will
 remain blocked until the data in it was synchronized to disk. After that,
 a slot becomes reusable by following operations. The required number of
 slots is thus determined by the parallelity of write operations and the
 disk synchronization speed. Slow disks probably need higher values, and
-fast
-disks may only require a value lower than the default.
-
+fast disks may only require a value lower than the default.
 
 !SUBSECTION Ignore logfile errors
+
 <!-- arangod/Wal/LogfileManager.h -->
 
-
-ignore logfile errors when opening logfiles
+Ignore logfile errors when opening logfiles:
 `--wal.ignore-logfile-errors`
 
 Ignores any recovery errors caused by corrupted logfiles on startup. When
 set to *false*, the recovery procedure on startup will fail with an error
 whenever it encounters a corrupted (that includes only half-written)
-logfile. This is a security precaution to prevent data loss in case of
-disk
+logfile. This is a security precaution to prevent data loss in case of disk
 errors etc. When the recovery procedure aborts because of corruption, any
 corrupted files can be inspected and fixed (or removed) manually and the
 server can be restarted afterwards.
 
-Setting the option to *true* will make the server continue with the
-recovery
+Setting the option to *true* will make the server continue with the recovery
 procedure even in case it detects corrupt logfile entries. In this case it
-will stop at the first corrupted logfile entry and ignore all others,
-which
+will stop at the first corrupted logfile entry and ignore all others, which
 might cause data loss.
 
-
 !SUBSECTION Ignore recovery errors
+
 <!-- arangod/Wal/LogfileManager.h -->
 
-
-ignore recovery errors
+Ignore recovery errors:
 `--wal.ignore-recovery-errors`
 
-Ignores any recovery errors not caused by corrupted logfiles but by
-logical
+Ignores any recovery errors not caused by corrupted logfiles but by logical
 errors. Logical errors can occur if logfiles or any other server datafiles
 have been manually edited or the server is somehow misconfigured.
 
-
 !SUBSECTION Ignore (non-WAL) datafile errors
+
 <!-- arangod/RestServer/ArangoServer.h -->
 
-
-ignore datafile errors when loading collections
+Ignore datafile errors when loading collections:
 `--database.ignore-datafile-errors boolean`
 
 If set to `false`, CRC mismatch and other errors in collection datafiles
@@ -171,9 +162,6 @@ will still abort when encountering a collection with a corrupted datafile,
 at least if `--wal.ignore-recovery-errors` is not set to `true`.
 
 The default value is *false*, so collections with corrupted datafiles will
-not be loaded at all, preventing partial loads and follow up errors.
-However,
+not be loaded at all, preventing partial loads and follow up errors. However,
 if such collection is required at server startup, during WAL recovery, the
 server will abort the recovery and refuse to start.
-
-

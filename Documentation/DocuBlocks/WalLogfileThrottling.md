@@ -5,10 +5,8 @@ waiting for garbage collection
 `--wal.throttle-when-pending`
 
 The maximum value for the number of write-ahead log garbage-collection
-queue
-elements. If set to *0*, the queue size is unbounded, and no
-writtle-throttling will occur. If set to a non-zero value,
-writte-throttling
+queue elements. If set to *0*, the queue size is unbounded, and no
+write-throttling will occur. If set to a non-zero value, write-throttling
 will automatically kick in when the garbage-collection queue contains at
 least as many elements as specified by this option.
 While write-throttling is active, data-modification operations will
@@ -28,8 +26,6 @@ specified amount of time for the write-ahead log garbage-collection queue
 size to fall below the throttling threshold. If the queue size decreases
 before the maximum wait time is over, the operation will be executed
 normally. If the queue size does not decrease before the wait time is
-over,
-the operation will be aborted with an error.
+over, the operation will be aborted with an error.
 This option only has an effect if `--wal.throttle-when-pending` has a
 non-zero value, which is not the default.
-

@@ -2,40 +2,51 @@
 
 !SUBSECTION Log levels and topics
 
-ArangoDB's log output is grouped into topics. The log verbosity and output files can
-be adjusted per log topic. For example
+ArangoDB's log output is grouped into topics. `--log.level` can be specified
+multiple times at startup, for as many topics as needed. The log verbosity
+and output files can be adjusted per log topic. For example
 
 ```
 --log.level startup=trace --log.level queries=trace --log.level info
 ```
 
-will log messages concerning startup at trace level, AQL queries at trace level and
-everything else at info level. `--log.level` can be specified multiple times at startup,
-for as many topics as needed.
+will log messages concerning startup at trace level, AQL queries at trace level
+and everything else at info level.
+
+In a configuration file, it is written like this:
+
+```
+[log]
+level = startup=trace
+level = queries=trace
+level = info
+```
+
+Note that there must not be any whitespace around the second `=`.
 
 The available log levels are:
 
-- *fatal*: only logs fatal errors
-- *error*: only logs errors
-- *warning*: only logs warnings and errors
-- *info*: logs information messages, warnings and errors
-- *debug*: logs debug and information messages, warnings and errors
-- *trace*: logs trace, debug and information messages, warnings and errors
+- `fatal`: only logs fatal errors
+- `error`: only logs errors
+- `warning`: only logs warnings and errors
+- `info`: logs information messages, warnings and errors
+- `debug`: logs debug and information messages, warnings and errors
+- `trace`: logs trace, debug and information messages, warnings and errors
 
-Note that levels *debug* and *trace* will be very verbose.
+Note that levels `debug` and `trace` will be very verbose.
 
 Some relevant log topics available in 3.0 are:
 
-- *collector*: information about the WAL collector's state
-- *compactor*: information about the collection datafile compactor
-- *datafiles*: datafile-related operations
-- *mmap*: information about memory-mapping operations (including msync)
-- *performance*: performance-releated messages
-- *queries*: executed AQL queries, slow queries
-- *replication*: replication-related info
-- *requests*: HTTP requests
-- *startup*: information about server startup and shutdown
-- *threads*: information about threads
+- `collector`: information about the WAL collector's state
+- `compactor`: information about the collection datafile compactor
+- `datafiles`: datafile-related operations
+- `mmap`: information about memory-mapping operations (including msync)
+- `performance`: performance-releated messages
+- `queries`: executed AQL queries, slow queries
+- `replication`: replication-related info
+- `requests`: HTTP requests
+- `startup`: information about server startup and shutdown
+- `threads`: information about threads
 
 The old option `--log.performance` is still available in 3.0. It is now a shortcut
 for the more general option `--log.level performance=trace`.
@@ -43,14 +54,14 @@ for the more general option `--log.level performance=trace`.
 !SUBSECTION Log outputs
 
 The log option `--log.output <definition>` allows directing the global
-or per-topic log output to different outputs. The output definition "<definition>" 
+or per-topic log output to different outputs. The output definition `<definition>`
 can be one of
 
-- "-" for stdin
-- "+" for stderr
-- "syslog://<syslog-facility>"
-- "syslog://<syslog-facility>/<application-name>"
-- "file://<relative-path>"
+- `-` for stdin
+- `+` for stderr
+- `syslog://<syslog-facility>`
+- `syslog://<syslog-facility>/<application-name>`
+- `file://<relative-path>`
 
 The option can be specified multiple times in order to configure the output
 for different log topics. To set up a per-topic output configuration, use
@@ -87,12 +98,10 @@ logging thread. If set to `true`, any log messages are immediately printed in th
 thread that triggered the log message. This is non-optimal for performance but
 can aid debugging. If set to `false`, log messages are handed off to an extra
 logging thread, which asynchronously writes the log messages.
-       
 
 !SUBSECTION Local time
 
-log dates and times in local time zone
-`--log.use-local-time`
+Log dates and times in local time zone: `--log.use-local-time`
 
 If specified, all dates and times in log messages will use the server's
 local time-zone. If not specified, all dates and times in log messages
@@ -100,33 +109,24 @@ will be printed in UTC / Zulu time. The date and time format used in logs
 is always `YYYY-MM-DD HH:MM:SS`, regardless of this setting. If UTC time
 is used, a `Z` will be appended to indicate Zulu time.
 
-
 !SUBSECTION Line number
 
-
-log line number
-`--log.line-number`
+Log line number: `--log.line-number`
 
 Normally, if an human readable fatal, error, warning or info message is
 logged, no information about the file and line number is provided. The
 file and line number is only logged for debug and trace message. This option
 can be use to always log these pieces of information.
 
-
 !SUBSECTION Prefix
 
-
-log prefix
-`--log.prefix prefix`
+Log prefix: `--log.prefix prefix`
 
 This option is used specify an prefix to logged text.
 
-
 !SUBSECTION Thread
 
-
-log thread identifier
-`--log.thread`
+Log thread identifier: `--log.thread`
 
 Whenever log output is generated, the process ID is written as part of the
 log information. Setting this option appends the thread id of the calling

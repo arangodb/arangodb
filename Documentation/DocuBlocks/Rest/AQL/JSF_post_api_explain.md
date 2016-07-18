@@ -12,7 +12,7 @@ these must also be passed in the attribute *bindVars*. Additional
 options for the query can be passed in the *options* attribute.
 
 @RESTBODYPARAM{bindVars,array,optional,object}
-key/value pairs representing the bind values
+key/value pairs representing the bind parameters.
 
 @RESTBODYPARAM{options,object,optional,explain_options}
 Options for the query
