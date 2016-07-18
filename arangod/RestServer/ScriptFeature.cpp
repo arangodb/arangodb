@@ -70,7 +70,7 @@ int ScriptFeature::runScript(std::vector<std::string> const& scripts) {
 
   auto database = ApplicationServer::getFeature<DatabaseFeature>("Database");
   V8Context* context =
-      V8DealerFeature::DEALER->enterContext(database->vocbase(), true);
+      V8DealerFeature::DEALER->enterContext(database->systemDatabase(), true);
 
   if (context == nullptr) {
     LOG(FATAL) << "cannot acquire V8 context";

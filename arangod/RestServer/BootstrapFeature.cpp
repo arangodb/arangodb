@@ -113,7 +113,7 @@ static void raceForClusterBootstrap() {
 
     LOG_TOPIC(DEBUG, Logger::STARTUP) 
         << "raceForClusterBootstrap: race won, we do the bootstrap";
-    auto vocbase = DatabaseFeature::DATABASE->vocbase();
+    auto vocbase = DatabaseFeature::DATABASE->systemDatabase();
     V8DealerFeature::DEALER->loadJavascriptFiles(vocbase, "server/bootstrap/cluster-bootstrap.js", 0);
 
     LOG_TOPIC(DEBUG, Logger::STARTUP) 
@@ -134,7 +134,7 @@ static void raceForClusterBootstrap() {
 }
 
 void BootstrapFeature::start() {
-  auto vocbase = DatabaseFeature::DATABASE->vocbase();
+  auto vocbase = DatabaseFeature::DATABASE->systemDatabase();
 
   auto ss = ServerState::instance();
   if (ss->isCoordinator()) {

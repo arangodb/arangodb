@@ -97,7 +97,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
   DatabaseFeature* database = 
     ApplicationServer::getFeature<DatabaseFeature>("Database");
 
-  TRI_vocbase_t* const vocbase = database->vocbase();
+  TRI_vocbase_t* const vocbase = database->systemDatabase();
 
   DBServerAgencySyncResult result;
   if (vocbase == nullptr) {

@@ -339,7 +339,7 @@ bool Agent::load() {
   DatabaseFeature* database =
       ApplicationServer::getFeature<DatabaseFeature>("Database");
 
-  auto vocbase = database->vocbase();
+  auto vocbase = database->systemDatabase();
   if (vocbase == nullptr) {
     LOG_TOPIC(FATAL, Logger::AGENCY) << "could not determine _system database";
     FATAL_ERROR_EXIT();

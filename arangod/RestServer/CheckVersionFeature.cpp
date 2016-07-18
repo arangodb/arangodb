@@ -107,7 +107,7 @@ void CheckVersionFeature::checkVersion() {
   // run version check
   LOG(TRACE) << "starting version check";
 
-  auto* vocbase = DatabaseFeature::DATABASE->vocbase();
+  auto* vocbase = DatabaseFeature::DATABASE->systemDatabase();
 
   // enter context and isolate
   {

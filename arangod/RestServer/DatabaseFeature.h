@@ -42,7 +42,7 @@ class DatabaseFeature final : public application_features::ApplicationFeature {
   void unprepare() override final;
 
  public:
-  TRI_vocbase_t* vocbase() const { return _vocbase; }
+  TRI_vocbase_t* systemDatabase() const { return _vocbase; }
   bool ignoreDatafileErrors() const { return _ignoreDatafileErrors; }
   bool isInitiallyEmpty() const { return _isInitiallyEmpty; }
   bool checkVersion() const { return _checkVersion; }

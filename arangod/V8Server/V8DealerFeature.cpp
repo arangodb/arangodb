@@ -219,7 +219,7 @@ void V8DealerFeature::start() {
   DatabaseFeature* database =
       ApplicationServer::getFeature<DatabaseFeature>("Database");
 
-  loadJavascript(database->vocbase(), "server/initialize.js");
+  loadJavascript(database->systemDatabase(), "server/initialize.js");
 
   startGarbageCollection();
 }
@@ -681,7 +681,7 @@ void V8DealerFeature::applyContextUpdates() {
       auto vocbase = p.second;
 
       if (vocbase == nullptr) {
-        vocbase = DatabaseFeature::DATABASE->vocbase();
+        vocbase = DatabaseFeature::DATABASE->systemDatabase();
       }
 
       V8Context* context = V8DealerFeature::DEALER->enterContext(

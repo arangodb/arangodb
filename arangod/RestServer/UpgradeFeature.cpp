@@ -124,7 +124,7 @@ void UpgradeFeature::start() {
 void UpgradeFeature::changeAdminPassword(std::string const& defaultPassword) {
   LOG(TRACE) << "starting to restore admin user";
 
-  auto* systemVocbase = DatabaseFeature::DATABASE->vocbase();
+  auto* systemVocbase = DatabaseFeature::DATABASE->systemDatabase();
 
   // enter context and isolate
   {
@@ -184,7 +184,7 @@ void UpgradeFeature::upgradeDatabase(std::string const& defaultPassword) {
   LOG(TRACE) << "starting database init/upgrade";
 
   auto* server = DatabasesFeature::SERVER;
-  auto* systemVocbase = DatabaseFeature::DATABASE->vocbase();
+  auto* systemVocbase = DatabaseFeature::DATABASE->systemDatabase();
 
   // enter context and isolate
   {
