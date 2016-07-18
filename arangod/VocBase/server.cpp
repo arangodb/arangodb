@@ -873,7 +873,6 @@ int TRI_InitServer(TRI_server_t* server,
   TRI_ASSERT(basePath != nullptr);
 
   server->_iterateMarkersOnOpen = iterateMarkersOnOpen;
-  server->_hasCreatedSystemDatabase = false;
   server->_databaseManagerStarted = false;
 
   // ...........................................................................
@@ -1693,30 +1692,6 @@ void TRI_UpdateTickServer(TRI_voc_tick_t tick) {
 TRI_voc_tick_t TRI_CurrentTickServer() { return CurrentTick; }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief msyncs a memory block between begin (incl) and end (excl)
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_MSync(int fd, char const* begin, char const* end) {
-  size_t pageSize = PageSizeFeature::getPageSize();
-  uintptr_t p = (intptr_t)begin;
-  uintptr_t q = (intptr_t)end;
-  uintptr_t g = (intptr_t)pageSize;
-
-  char* b = (char*)((p / g) * g);
-  char* e = (char*)(((q + g - 1) / g) * g);
-
-  int res = TRI_FlushMMFile(fd, b, e - b, MS_SYNC);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_set_errno(res);
-
-    return false;
-  }
-
-  return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief sets the current operation mode of the server
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1741,7 +1716,6 @@ TRI_server_t::TRI_server_t()
       _disableReplicationAppliers(false),
       _disableCompactor(false),
       _iterateMarkersOnOpen(false),
-      _hasCreatedSystemDatabase(false),
       _initialized(false) {}
 
 TRI_server_t::~TRI_server_t() {

@@ -23,6 +23,7 @@
 
 #include "SynchronizerThread.h"
 
+#include "Basics/memory-map.h"
 #include "Logger/Logger.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/Exceptions.h"

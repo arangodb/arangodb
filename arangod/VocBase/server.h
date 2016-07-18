@@ -72,7 +72,6 @@ struct TRI_server_t {
   bool _disableReplicationAppliers;
   bool _disableCompactor;
   bool _iterateMarkersOnOpen;
-  bool _hasCreatedSystemDatabase;
   bool _initialized;
 };
 
@@ -214,13 +213,13 @@ int TRI_GetDatabaseNamesServer(TRI_server_t*, std::vector<std::string>&);
 /// @brief create a new tick
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_voc_tick_t TRI_NewTickServer(void);
+TRI_voc_tick_t TRI_NewTickServer();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a new tick, using a hybrid logical clock
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_voc_tick_t TRI_HybridLogicalClock(void);
+TRI_voc_tick_t TRI_HybridLogicalClock();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a new tick, using a hybrid logical clock, this variant
@@ -240,13 +239,7 @@ void TRI_UpdateTickServer(TRI_voc_tick_t);
 /// @brief returns the current tick counter
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_voc_tick_t TRI_CurrentTickServer(void);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief msyncs a memory block between begin (incl) and end (excl)
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_MSync(int, char const*, char const*);
+TRI_voc_tick_t TRI_CurrentTickServer();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets the current operation mode of the server
