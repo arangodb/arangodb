@@ -311,6 +311,7 @@ add_executable(${BIN_ARANGOD}
   VocBase/Ditch.cpp
   VocBase/EdgeCollectionInfo.cpp
   VocBase/Graphs.cpp
+  VocBase/IndexPoolFeature.cpp
   VocBase/KeyGenerator.cpp
   VocBase/MasterPointers.cpp
   VocBase/PathEnumerator.cpp

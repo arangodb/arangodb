@@ -23,6 +23,7 @@
 
 #include "document-collection.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryCache.h"
 #include "Basics/Barrier.h"
 #include "Basics/conversions.h"
@@ -53,6 +54,7 @@
 #include "Utils/StandaloneTransactionContext.h"
 #include "VocBase/DatafileHelper.h"
 #include "VocBase/Ditch.h"
+#include "VocBase/IndexPoolFeature.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/MasterPointers.h"
 #include "VocBase/server.h"
@@ -1454,7 +1456,7 @@ int TRI_FillIndexesDocumentCollection(arangodb::Transaction* trx,
   {
     arangodb::basics::Barrier barrier(n - 1);
 
-    auto indexPool = document->_vocbase->_server->_indexPool;
+    auto indexPool = application_features::ApplicationServer::getFeature<IndexPoolFeature>("IndexPool")->getThreadPool();
 
     auto callback = [&barrier, &result](int res) -> void {
       // update the error code
@@ -1714,8 +1716,7 @@ static VPackSlice ExtractFields(VPackSlice const& slice, TRI_idx_iid_t iid) {
 static int FillIndexBatch(arangodb::Transaction* trx,
                           TRI_document_collection_t* document,
                           arangodb::Index* idx) {
-  auto indexPool = document->_vocbase->_server->_indexPool;
-  TRI_ASSERT(indexPool != nullptr);
+  auto indexPool = application_features::ApplicationServer::getFeature<IndexPoolFeature>("IndexPool")->getThreadPool();
 
   double start = TRI_microtime();
 
@@ -1868,7 +1869,7 @@ static int FillIndex(arangodb::Transaction* trx,
 
   try {
     size_t nrUsed = document->primaryIndex()->size();
-    auto indexPool = document->_vocbase->_server->_indexPool;
+    auto indexPool = application_features::ApplicationServer::getFeature<IndexPoolFeature>("IndexPool")->getThreadPool();
 
     int res;
 

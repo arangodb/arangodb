@@ -874,7 +874,6 @@ static void DatabaseManager(void* data) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_InitServer(TRI_server_t* server,
-                   arangodb::basics::ThreadPool* indexPool,
                    char const* basePath, TRI_vocbase_defaults_t const* defaults,
                    bool disableAppliers, bool disableCompactor,
                    bool iterateMarkersOnOpen) {
@@ -883,7 +882,6 @@ int TRI_InitServer(TRI_server_t* server,
 
   server->_iterateMarkersOnOpen = iterateMarkersOnOpen;
   server->_hasCreatedSystemDatabase = false;
-  server->_indexPool = indexPool;
   server->_databaseManagerStarted = false;
 
   // ...........................................................................
@@ -1768,7 +1766,6 @@ TRI_vocbase_operationmode_e TRI_GetOperationModeServer() { return Mode; }
 TRI_server_t::TRI_server_t()
     : _databasesLists(new DatabasesLists()),
       _databaseManagerStarted(false),
-      _indexPool(nullptr),
       _queryRegistry(nullptr),
       _basePath(nullptr),
       _databasePath(nullptr),

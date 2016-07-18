@@ -24,7 +24,6 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
-#include "Basics/ThreadPool.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "RestServer/DatabaseFeature.h"
@@ -37,11 +36,9 @@ using namespace arangodb::basics;
 using namespace arangodb::options;
 
 TRI_server_t* DatabaseServerFeature::SERVER;
-basics::ThreadPool* DatabaseServerFeature::INDEX_POOL;
 
 DatabaseServerFeature::DatabaseServerFeature(ApplicationServer* server)
     : ApplicationFeature(server, "DatabaseServer"),
-      _indexThreads(2),
       _server(nullptr) {
   setOptional(false);
   requiresElevatedPrivileges(false);
@@ -61,18 +58,9 @@ void DatabaseServerFeature::collectOptions(std::shared_ptr<ProgramOptions> optio
   options->addOption("--database.directory", "path to the database directory",
                      new StringParameter(&_directory));
 
-  options->addHiddenOption(
-      "--database.index-threads",
-      "threads to start for parallel background index creation",
-      new UInt64Parameter(&_indexThreads));
 }
 
 void DatabaseServerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
-  // some arbitrary limit
-  if (_indexThreads > 128) {
-    _indexThreads = 128;
-  }
-  
   auto const& positionals = options->processingResult()._positionals;
 
   if (1 == positionals.size()) {
@@ -100,12 +88,6 @@ void DatabaseServerFeature::prepare() {
 }
 
 void DatabaseServerFeature::start() {
-  // create the index thread pool
-  if (_indexThreads > 0) {
-    _indexPool.reset(new ThreadPool(static_cast<size_t>(_indexThreads), "IndexBuilder"));
-    INDEX_POOL = _indexPool.get();
-  }
-
   // create base directory if it does not exist 
   if (!basics::FileUtils::isDirectory(_directory)) {
     std::string systemErrorStr;
@@ -124,10 +106,6 @@ void DatabaseServerFeature::start() {
 }
 
 void DatabaseServerFeature::unprepare() {
-  // turn off index threads
-  INDEX_POOL = nullptr;
-  _indexPool.reset();
-
   // delete the server
   TRI_StopServer(_server.get());
   SERVER = nullptr;

@@ -38,9 +38,6 @@ namespace arangodb {
 namespace aql {
 class QueryRegistry;
 }
-namespace basics {
-class ThreadPool;
-}
 namespace rest {
 class ApplicationEndpointServer;
 }
@@ -70,7 +67,6 @@ struct TRI_server_t {
   bool _databaseManagerStarted;
 
   TRI_vocbase_defaults_t _defaults;
-  arangodb::basics::ThreadPool* _indexPool;
   std::atomic<arangodb::aql::QueryRegistry*> _queryRegistry;
 
   char* _basePath;
@@ -87,7 +83,7 @@ struct TRI_server_t {
 /// @brief initialize a server instance with configuration
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_InitServer(TRI_server_t*, arangodb::basics::ThreadPool*, char const*,
+int TRI_InitServer(TRI_server_t*, char const*,
                    TRI_vocbase_defaults_t const*, bool, bool, bool);
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -66,6 +66,7 @@ DatabaseFeature::DatabaseFeature(ApplicationServer* server)
   startsAfter("DatabaseServer");
   startsAfter("LogfileManager");
   startsAfter("InitDatabase");
+  startsAfter("IndexPool");
 }
 
 void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -234,7 +235,7 @@ void DatabaseFeature::openDatabases() {
       !wal::LogfileManager::instance()->hasFoundLastTick();
 
   int res = TRI_InitServer(
-      DatabaseServerFeature::SERVER, DatabaseServerFeature::INDEX_POOL,
+      DatabaseServerFeature::SERVER,
       application_features::ApplicationServer::getFeature<DatabaseServerFeature>("DatabaseServer")->directory().c_str(), 
       &defaults, !_replicationApplier, _disableCompactor,
       iterateMarkersOnOpen);

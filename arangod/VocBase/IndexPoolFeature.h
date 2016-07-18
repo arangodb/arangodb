@@ -17,41 +17,34 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
+/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef APPLICATION_FEATURES_DATABASE_SERVER_FEATURE_H
-#define APPLICATION_FEATURES_DATABASE_SERVER_FEATURE_H 1
+#ifndef APPLICATION_FEATURES_INDEX_POOL_FEATURE_H
+#define APPLICATION_FEATURES_INDEX_POOL_FEATURE_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 
-struct TRI_server_t;
-
 namespace arangodb {
+namespace basics {
+class ThreadPool;
+}
 
-class DatabaseServerFeature final
-    : public application_features::ApplicationFeature {
+class IndexPoolFeature final : public application_features::ApplicationFeature {
  public:
-  static TRI_server_t* SERVER;
-
- public:
-  explicit DatabaseServerFeature(
-      application_features::ApplicationServer* server);
+  explicit IndexPoolFeature(application_features::ApplicationServer* server);
 
  public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void prepare() override final;
   void start() override final;
   void unprepare() override final;
 
- public:
-  TRI_server_t* server() const { return _server.get(); }
-  std::string const& directory() const { return _directory; }
+  basics::ThreadPool* getThreadPool() const { return _indexPool.get(); }
 
  private:
-  std::unique_ptr<TRI_server_t> _server;
-  std::string _directory;
+  uint64_t _indexThreads;
+  std::unique_ptr<basics::ThreadPool> _indexPool;
 };
 }
 
