@@ -22,9 +22,12 @@
 
 #include "DatabaseServerFeature.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/FileUtils.h"
 #include "Basics/ThreadPool.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
+#include "RestServer/DatabaseFeature.h"
 #include "VocBase/server.h"
 #include "Wal/LogfileManager.h"
 
@@ -45,6 +48,7 @@ DatabaseServerFeature::DatabaseServerFeature(ApplicationServer* server)
   startsAfter("FileDescriptors");
   startsAfter("Language");
   startsAfter("Logger");
+  startsAfter("PageSize");
   startsAfter("Random");
   startsAfter("Temp");
   startsAfter("WorkMonitor");
@@ -53,6 +57,9 @@ DatabaseServerFeature::DatabaseServerFeature(ApplicationServer* server)
 
 void DatabaseServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection("database", "Configure the database");
+  
+  options->addOption("--database.directory", "path to the database directory",
+                     new StringParameter(&_directory));
 
   options->addHiddenOption(
       "--database.index-threads",
@@ -65,11 +72,29 @@ void DatabaseServerFeature::validateOptions(std::shared_ptr<ProgramOptions> opti
   if (_indexThreads > 128) {
     _indexThreads = 128;
   }
+  
+  auto const& positionals = options->processingResult()._positionals;
+
+  if (1 == positionals.size()) {
+    _directory = positionals[0];
+  } else if (1 < positionals.size()) {
+    LOG(FATAL) << "expected at most one database directory, got '"
+               << StringUtils::join(positionals, ",") << "'";
+    FATAL_ERROR_EXIT();
+  }
+
+  if (_directory.empty()) {
+    LOG(FATAL) << "no database path has been supplied, giving up, please use "
+                  "the '--database.directory' option";
+    FATAL_ERROR_EXIT();
+  }
+
+  // strip trailing separators
+  _directory = StringUtils::rTrim(_directory, TRI_DIR_SEPARATOR_STR);
 }
 
 void DatabaseServerFeature::prepare() {
   // create the server
-  TRI_InitServerGlobals();
   _server.reset(new TRI_server_t());
   SERVER = _server.get();
 }
@@ -79,6 +104,22 @@ void DatabaseServerFeature::start() {
   if (_indexThreads > 0) {
     _indexPool.reset(new ThreadPool(static_cast<size_t>(_indexThreads), "IndexBuilder"));
     INDEX_POOL = _indexPool.get();
+  }
+
+  // create base directory if it does not exist 
+  if (!basics::FileUtils::isDirectory(_directory)) {
+    std::string systemErrorStr;
+    long errorNo;
+
+    int res = TRI_CreateRecursiveDirectory(_directory.c_str(), errorNo,
+                                           systemErrorStr);
+
+    if (res == TRI_ERROR_NO_ERROR) {
+      LOG(INFO) << "created database directory '" << _directory << "'.";
+    } else {
+      LOG(FATAL) << "unable to create database directory '" << _directory << "': " << systemErrorStr;
+      FATAL_ERROR_EXIT();
+    }
   }
 }
 

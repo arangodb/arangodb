@@ -20,23 +20,22 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_APPLICATION_FEATURES_LOCK_FILE_FEATURE_H
-#define ARANGODB_APPLICATION_FEATURES_LOCK_FILE_FEATURE_H 1
+#include "PageSizeFeature.h"
 
-#include "ApplicationFeatures/ApplicationFeature.h"
+using namespace arangodb;
+using namespace arangodb::basics;
 
-namespace arangodb {
-class LockfileFeature final : public application_features::ApplicationFeature {
- public:
-  explicit LockfileFeature(application_features::ApplicationServer* server);
+size_t PageSizeFeature::PageSize = 0;
 
- public:
-  void start() override final;
-  void unprepare() override final;
-
- private:
-  std::string _lockFilename;
-};
+PageSizeFeature::PageSizeFeature(
+    application_features::ApplicationServer* server)
+    : ApplicationFeature(server, "PageSize") {
+  setOptional(false);
+  requiresElevatedPrivileges(false);
+  startsAfter("Logger");
 }
 
-#endif
+void PageSizeFeature::prepare() {
+  PageSize = static_cast<size_t>(getpagesize());
+  LOG(TRACE) << "page size is " << PageSize;
+}

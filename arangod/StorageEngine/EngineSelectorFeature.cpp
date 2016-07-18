@@ -17,13 +17,12 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
+/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "EngineSelectorFeature.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "ProgramOptions/Section.h"
 #include "StorageEngine/MMFilesEngine.h"
 #include "StorageEngine/OtherEngine.h"
 #include "StorageEngine/StorageEngine.h"

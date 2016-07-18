@@ -126,6 +126,7 @@ add_library(${LIB_ARANGO} STATIC
   ApplicationFeatures/ConfigFeature.cpp
   ApplicationFeatures/LanguageFeature.cpp
   ApplicationFeatures/NonceFeature.cpp
+  ApplicationFeatures/PageSizeFeature.cpp
   ApplicationFeatures/PrivilegeFeature.cpp
   ApplicationFeatures/ShutdownFeature.cpp
   ApplicationFeatures/TempFeature.cpp

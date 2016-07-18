@@ -20,46 +20,43 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef APPLICATION_FEATURES_DATABASE_SERVER_FEATURE_H
-#define APPLICATION_FEATURES_DATABASE_SERVER_FEATURE_H 1
+#ifndef ARANGODB_REST_SERVER_SERVER_ID_FEATURE_H
+#define ARANGODB_REST_SERVER_SERVER_ID_FEATURE_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
-
-struct TRI_server_t;
+#include "ProgramOptions/ProgramOptions.h"
+#include "VocBase/voc-types.h"
 
 namespace arangodb {
-namespace basics {
-class ThreadPool;
-}
-
-class DatabaseServerFeature final
-    : public application_features::ApplicationFeature {
+class ServerIdFeature final : public application_features::ApplicationFeature {
  public:
-  static TRI_server_t* SERVER;
-  static basics::ThreadPool* INDEX_POOL;
+  explicit ServerIdFeature(application_features::ApplicationServer* server);
 
  public:
-  explicit DatabaseServerFeature(
-      application_features::ApplicationServer* server);
-
- public:
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void prepare() override final;
   void start() override final;
-  void unprepare() override final;
+
+  static TRI_server_id_t getId() {
+    TRI_ASSERT(SERVERID != 0);
+    return SERVERID;
+  }
 
  private:
-  uint64_t _indexThreads = 2;
+  /// @brief generates a new server id
+  void generateId();
+  
+  /// @brief reads server id from file
+  int readId();
 
- public:
-  TRI_server_t* server() const { return _server.get(); }
-  std::string const& directory() const { return _directory; }
+  /// @brief writes server id to file
+  int writeId();
 
+  /// @brief read / create the server id on startup
+  int determineId(bool checkVersion);
+  
  private:
-  std::unique_ptr<TRI_server_t> _server;
-  std::unique_ptr<basics::ThreadPool> _indexPool;
-  std::string _directory;
+  std::string _idFilename;
+
+  static TRI_server_id_t SERVERID;
 };
 }
 

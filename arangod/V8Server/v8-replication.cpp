@@ -25,6 +25,7 @@
 #include "Basics/ReadLocker.h"
 #include "Replication/InitialSyncer.h"
 #include "Rest/Version.h"
+#include "RestServer/ServerIdFeature.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
@@ -69,7 +70,7 @@ static void JS_StateLoggerReplication(
   server->Set(TRI_V8_ASCII_STRING("version"),
               TRI_V8_ASCII_STRING(ARANGODB_VERSION));
   server->Set(TRI_V8_ASCII_STRING("serverId"),
-              TRI_V8_STD_STRING(StringUtils::itoa(TRI_GetIdServer())));
+              TRI_V8_STD_STRING(StringUtils::itoa(ServerIdFeature::getId())));
   result->Set(TRI_V8_ASCII_STRING("server"), server);
 
   v8::Handle<v8::Object> clients = v8::Object::New(isolate);
@@ -378,7 +379,7 @@ static void JS_ServerIdReplication(
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  std::string const serverId = StringUtils::itoa(TRI_GetIdServer());
+  std::string const serverId = StringUtils::itoa(ServerIdFeature::getId());
   TRI_V8_RETURN_STD_STRING(serverId);
   TRI_V8_TRY_CATCH_END
 }

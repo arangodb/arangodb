@@ -25,6 +25,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Rest/HttpRequest.h"
+#include "RestServer/ServerIdFeature.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
@@ -75,7 +76,7 @@ Syncer::Syncer(TRI_vocbase_t* vocbase,
   }
 
   // get our own server-id
-  _localServerId = TRI_GetIdServer();
+  _localServerId = ServerIdFeature::getId();
   _localServerIdString = StringUtils::itoa(_localServerId);
 
   _configuration.update(configuration);

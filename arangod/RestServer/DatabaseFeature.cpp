@@ -22,6 +22,7 @@
 
 #include "DatabaseFeature.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/v8-cluster.h"
@@ -49,7 +50,6 @@ DatabaseFeature* DatabaseFeature::DATABASE = nullptr;
 
 DatabaseFeature::DatabaseFeature(ApplicationServer* server)
     : ApplicationFeature(server, "Database"),
-      _directory(""),
       _maximalJournalSize(TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE),
       _defaultWaitForSync(false),
       _forceSyncProperties(true),
@@ -73,9 +73,6 @@ void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options->addOldOption("server.disable-replication-applier",
                         "database.replication-applier");
-
-  options->addOption("--database.directory", "path to the database directory",
-                     new StringParameter(&_directory));
 
   options->addOption("--database.maximal-journal-size",
                      "default maximal journal size, can be overwritten when "
@@ -110,25 +107,6 @@ void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 }
 
 void DatabaseFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
-  auto const& positionals = options->processingResult()._positionals;
-
-  if (1 == positionals.size()) {
-    _directory = positionals[0];
-  } else if (1 < positionals.size()) {
-    LOG(FATAL) << "expected at most one database directory, got '"
-               << StringUtils::join(positionals, ",") << "'";
-    FATAL_ERROR_EXIT();
-  }
-
-  if (_directory.empty()) {
-    LOG(FATAL) << "no database path has been supplied, giving up, please use "
-                  "the '--database.directory' option";
-    FATAL_ERROR_EXIT();
-  }
-
-  // strip trailing separators
-  _databasePath = StringUtils::rTrim(_directory, TRI_DIR_SEPARATOR_STR);
-
   if (_maximalJournalSize < TRI_JOURNAL_MINIMAL_SIZE) {
     LOG(FATAL) << "invalid value for '--database.maximal-journal-size'. "
                   "expected at least "
@@ -257,7 +235,8 @@ void DatabaseFeature::openDatabases() {
 
   int res = TRI_InitServer(
       DatabaseServerFeature::SERVER, DatabaseServerFeature::INDEX_POOL,
-      _databasePath.c_str(), &defaults, !_replicationApplier, _disableCompactor,
+      application_features::ApplicationServer::getFeature<DatabaseServerFeature>("DatabaseServer")->directory().c_str(), 
+      &defaults, !_replicationApplier, _disableCompactor,
       iterateMarkersOnOpen);
 
   if (res != TRI_ERROR_NO_ERROR) {

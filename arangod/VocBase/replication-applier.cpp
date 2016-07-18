@@ -36,6 +36,7 @@
 #include "Logger/Logger.h"
 #include "Replication/ContinuousSyncer.h"
 #include "Rest/Version.h"
+#include "RestServer/ServerIdFeature.h"
 #include "VocBase/collection.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/server.h"
@@ -1284,9 +1285,9 @@ void TRI_replication_applier_t::toVelocyPack(VPackBuilder& builder) const {
   // add server info
   builder.add("server", VPackValue(VPackValueType::Object));
   builder.add("version", VPackValue(ARANGODB_VERSION));
-  builder.add("serverId", VPackValue(std::to_string(TRI_GetIdServer())));
+  builder.add("serverId", VPackValue(std::to_string(ServerIdFeature::getId())));
   builder.close();  // server
-
+  
   if (!config._endpoint.empty()) {
     builder.add("endpoint", VPackValue(config._endpoint));
   }

@@ -43,19 +43,16 @@ class DatabaseFeature final : public application_features::ApplicationFeature {
 
  public:
   TRI_vocbase_t* vocbase() const { return _vocbase; }
-  std::string databasePath() const { return _databasePath; }
   bool ignoreDatafileErrors() const { return _ignoreDatafileErrors; }
   bool isInitiallyEmpty() const { return _isInitiallyEmpty; }
+  bool checkVersion() const { return _checkVersion; }
 
   void disableReplicationApplier() { _replicationApplier = false; }
   void disableCompactor() { _disableCompactor = true; }
   void enableCheckVersion() { _checkVersion = true; }
   void enableUpgrade() { _upgrade = true; }
 
-  std::string const& directory() { return _directory; }
-
  private:
-  std::string _directory;
   uint64_t _maximalJournalSize;
   bool _defaultWaitForSync;
   bool _forceSyncProperties;
@@ -70,7 +67,6 @@ class DatabaseFeature final : public application_features::ApplicationFeature {
 
  private:
   TRI_vocbase_t* _vocbase;
-  std::string _databasePath;
   bool _isInitiallyEmpty;
   bool _replicationApplier;
   bool _disableCompactor;

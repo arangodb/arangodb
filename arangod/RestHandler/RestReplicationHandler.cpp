@@ -37,6 +37,7 @@
 #include "Replication/InitialSyncer.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/Version.h"
+#include "RestServer/ServerIdFeature.h"
 #include "Utils/CollectionGuard.h"
 #include "Utils/CollectionKeys.h"
 #include "Utils/CollectionKeysRepository.h"
@@ -447,7 +448,7 @@ void RestReplicationHandler::handleCommandLoggerState() {
     // "server" part
     builder.add("server", VPackValue(VPackValueType::Object));
     builder.add("version", VPackValue(ARANGODB_VERSION));
-    builder.add("serverId", VPackValue(std::to_string(TRI_GetIdServer())));
+    builder.add("serverId", VPackValue(std::to_string(ServerIdFeature::getId())));
     builder.close();
 
     // "clients" part
@@ -3566,7 +3567,7 @@ void RestReplicationHandler::handleCommandServerId() {
   try {
     VPackBuilder result;
     result.add(VPackValue(VPackValueType::Object));
-    std::string const serverId = StringUtils::itoa(TRI_GetIdServer());
+    std::string const serverId = StringUtils::itoa(ServerIdFeature::getId());
     result.add("serverId", VPackValue(serverId));
     result.close();
     generateResult(GeneralResponse::ResponseCode::OK, result.slice());

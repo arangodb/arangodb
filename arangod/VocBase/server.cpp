@@ -27,6 +27,7 @@
 #include "Basics/win-utils.h"
 #endif
 
+#include "ApplicationFeatures/PageSizeFeature.h"
 #include "Aql/QueryCache.h"
 #include "Aql/QueryRegistry.h"
 #include "Basics/Exceptions.h"
@@ -60,18 +61,6 @@ using namespace arangodb::application_features;
 using namespace arangodb::basics;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief page size
-////////////////////////////////////////////////////////////////////////////////
-
-size_t PageSize;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief mask value for significant bits of server id
-////////////////////////////////////////////////////////////////////////////////
-
-#define SERVER_ID_MASK 0x0000FFFFFFFFFFFFULL
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief interval for database manager activity
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -96,12 +85,6 @@ static std::atomic<bool> ServerShutdown;
 static TRI_vocbase_operationmode_e Mode = TRI_VOCBASE_MODE_NORMAL;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief random server identifier (16 bit)
-////////////////////////////////////////////////////////////////////////////////
-
-static uint16_t ServerIdentifier = 0;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief current tick identifier (48 bit)
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -112,133 +95,6 @@ static std::atomic<uint64_t> CurrentTick(0);
 ////////////////////////////////////////////////////////////////////////////////
 
 static HybridLogicalClock hybridLogicalClock;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the server's global id
-////////////////////////////////////////////////////////////////////////////////
-
-static TRI_server_id_t ServerId;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief generates a new server id
-////////////////////////////////////////////////////////////////////////////////
-
-static int GenerateServerId(void) {
-  do {
-    ServerId = RandomGenerator::interval((uint64_t)SERVER_ID_MASK);
-  } while (ServerId == 0);
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief reads server id from file
-////////////////////////////////////////////////////////////////////////////////
-
-static int ReadServerId(char const* filename) {
-  TRI_ASSERT(filename != nullptr);
-
-  if (!TRI_ExistsFile(filename)) {
-    return TRI_ERROR_FILE_NOT_FOUND;
-  }
-
-  TRI_server_id_t foundId;
-  try {
-    std::string filenameString(filename);
-    std::shared_ptr<VPackBuilder> builder =
-        arangodb::basics::VelocyPackHelper::velocyPackFromFile(filenameString);
-    VPackSlice content = builder->slice();
-    if (!content.isObject()) {
-      return TRI_ERROR_INTERNAL;
-    }
-    VPackSlice idSlice = content.get("serverId");
-    if (!idSlice.isString()) {
-      return TRI_ERROR_INTERNAL;
-    }
-    foundId = StringUtils::uint64(idSlice.copyString());
-  } catch (...) {
-    // Nothing to free
-    return TRI_ERROR_INTERNAL;
-  }
-
-  LOG(TRACE) << "using existing server id: " << foundId;
-
-  if (foundId == 0) {
-    return TRI_ERROR_INTERNAL;
-  }
-
-  ServerId = foundId;
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief writes server id to file
-////////////////////////////////////////////////////////////////////////////////
-
-static int WriteServerId(char const* filename) {
-  TRI_ASSERT(filename != nullptr);
-  // create a VelocyPackObject
-  VPackBuilder builder;
-  try {
-    builder.openObject();
-
-    TRI_ASSERT(ServerId != 0);
-    builder.add("serverId", VPackValue(std::to_string(ServerId)));
-
-    time_t tt = time(0);
-    struct tm tb;
-    TRI_gmtime(tt, &tb);
-    char buffer[32];
-    size_t len = strftime(buffer, sizeof(buffer), "%Y-%m-%dT%H:%M:%SZ", &tb);
-    builder.add("createdTime", VPackValue(std::string(buffer, len)));
-
-    builder.close();
-  } catch (...) {
-    // out of memory
-    LOG(ERR) << "cannot save server id in file '" << filename
-             << "': out of memory";
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
-
-  // save json info to file
-  LOG(DEBUG) << "Writing server id to file '" << filename << "'";
-  bool ok = arangodb::basics::VelocyPackHelper::velocyPackToFile(
-      filename, builder.slice(), true);
-
-  if (!ok) {
-    LOG(ERR) << "could not save server id in file '" << filename
-             << "': " << TRI_last_error();
-
-    return TRI_ERROR_INTERNAL;
-  }
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief read / create the server id on startup
-////////////////////////////////////////////////////////////////////////////////
-
-static int DetermineServerId(TRI_server_t* server, bool checkVersion) {
-  int res = ReadServerId(server->_serverIdFilename);
-
-  if (res == TRI_ERROR_FILE_NOT_FOUND) {
-    if (checkVersion) {
-      return TRI_ERROR_ARANGO_EMPTY_DATADIR;
-    }
-
-    // id file does not yet exist. now create it
-    res = GenerateServerId();
-
-    if (res == TRI_ERROR_NO_ERROR) {
-      // id was generated. now save it
-      res = WriteServerId(server->_serverIdFilename);
-    }
-  }
-
-  return res;
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extract the numeric part from a filename
@@ -345,10 +201,6 @@ static int CreateApplicationDirectory(std::string const& name, std::string const
 ////////////////////////////////////////////////////////////////////////////////
 
 static int OpenDatabases(TRI_server_t* server, bool isUpgrade) {
-  if (server->_iterateMarkersOnOpen && !server->_hasCreatedSystemDatabase) {
-    LOG(WARN) << "no shutdown info found. scanning datafiles for last tick...";
-  }
-
   std::vector<std::string> files = TRI_FilesDirectory(server->_databasePath);
 
   int res = TRI_ERROR_NO_ERROR;
@@ -676,65 +528,6 @@ static int CloseDroppedDatabases(TRI_server_t* server) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get the names of all databases in the ArangoDB 1.4 layout
-////////////////////////////////////////////////////////////////////////////////
-
-static int GetDatabases(TRI_server_t* server,
-                        std::vector<std::string>& databases) {
-  TRI_ASSERT(server != nullptr);
-
-  std::vector<std::string> files = TRI_FilesDirectory(server->_databasePath);
-
-  int res = TRI_ERROR_NO_ERROR;
-
-  for (auto const& name : files) {
-    TRI_ASSERT(!name.empty());
-
-    if (!StringUtils::isPrefix(name, "database-")) {
-      // found some other file
-      continue;
-    }
-
-    // found a database name
-    std::string const dname(arangodb::basics::FileUtils::buildFilename(
-        server->_databasePath, name.c_str()));
-
-    if (TRI_IsDirectory(dname.c_str())) {
-      databases.push_back(name);
-    }
-  }
-
-  // sort by id
-  std::sort(databases.begin(), databases.end(), DatabaseIdStringComparator);
-
-  return res;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief check if there are "old" collections
-////////////////////////////////////////////////////////////////////////////////
-
-static bool HasOldCollections(TRI_server_t* server) {
-  TRI_ASSERT(server != nullptr);
-
-  bool found = false;
-  std::vector<std::string> files = TRI_FilesDirectory(server->_basePath);
-
-  for (auto const& name : files) {
-    TRI_ASSERT(!name.empty());
-
-    if (StringUtils::isPrefix(name, "collection-") &&
-        !StringUtils::isSuffix(name, ".tmp")) {
-      // found "collection-xxxx". we can ignore the rest
-      found = true;
-      break;
-    }
-  }
-
-  return found;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief save a parameter.json file for a database
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -850,40 +643,6 @@ static int CreateDatabaseDirectory(TRI_server_t* server, TRI_voc_tick_t tick,
   name = dname;
 
   return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief initialize the list of databases
-////////////////////////////////////////////////////////////////////////////////
-
-static int InitDatabases(TRI_server_t* server, bool checkVersion,
-                         bool performUpgrade) {
-  TRI_ASSERT(server != nullptr);
-
-  std::vector<std::string> names;
-  int res = GetDatabases(server, names);
-
-  if (res == TRI_ERROR_NO_ERROR) {
-    if (names.empty()) {
-      if (!performUpgrade && HasOldCollections(server)) {
-        LOG(ERR) << "no databases found. Please start the server with the "
-                    "--database.auto-upgrade option";
-
-        return TRI_ERROR_ARANGO_DATADIR_INVALID;
-      }
-
-      // no databases found, i.e. there is no system database!
-      // create a database for the system database
-      std::string dirname;
-      res = CreateDatabaseDirectory(server, TRI_NewTickServer(),
-                                    TRI_VOC_SYSTEM_DATABASE, &server->_defaults,
-                                    dirname);
-
-      server->_hasCreatedSystemDatabase = true;
-    }
-  }
-
-  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1145,15 +904,6 @@ int TRI_InitServer(TRI_server_t* server,
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  server->_serverIdFilename = TRI_Concatenate2File(server->_basePath, "SERVER");
-
-  if (server->_serverIdFilename == nullptr) {
-    TRI_Free(TRI_CORE_MEM_ZONE, server->_databasePath);
-    TRI_Free(TRI_CORE_MEM_ZONE, server->_basePath);
-
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
-
   // ...........................................................................
   // server defaults
   // ...........................................................................
@@ -1173,99 +923,11 @@ int TRI_InitServer(TRI_server_t* server,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialize globals
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_InitServerGlobals() {
-  ServerIdentifier = RandomGenerator::interval((uint16_t)UINT16_MAX);
-  PageSize = (size_t)getpagesize();
-  memset(&ServerId, 0, sizeof(TRI_server_id_t));
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the global server id
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_server_id_t TRI_GetIdServer() { return ServerId; }
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief start the server
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_StartServer(TRI_server_t* server, bool checkVersion,
                     bool performUpgrade) {
-  if (!TRI_IsDirectory(server->_basePath)) {
-    LOG(ERR) << "database path '" << server->_basePath << "' is not a directory";
-
-    return TRI_ERROR_ARANGO_DATADIR_INVALID;
-  }
-
-  if (!TRI_IsWritable(server->_basePath)) {
-    // database directory is not writable for the current user... bad luck
-    LOG(ERR) << "database directory '" << server->_basePath
-             << "' is not writable for current user";
-
-    return TRI_ERROR_ARANGO_DATADIR_NOT_WRITABLE;
-  }
-
-  // ...........................................................................
-  // read the server id
-  // ...........................................................................
-
-  int res = DetermineServerId(server, checkVersion);
-
-  if (res == TRI_ERROR_ARANGO_EMPTY_DATADIR) {
-    return res;
-  }
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    LOG(ERR) << "reading/creating server file failed: "
-             << TRI_errno_string(res);
-
-    return res;
-  }
-
-  // ...........................................................................
-  // verify existence of "databases" subdirectory
-  // ...........................................................................
-
-  if (!TRI_IsDirectory(server->_databasePath)) {
-    long systemError;
-    std::string errorMessage;
-    res = TRI_CreateDirectory(server->_databasePath, systemError, errorMessage);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      LOG(ERR) << "unable to create database directory '"
-               << server->_databasePath << "': " << errorMessage;
-
-      return TRI_ERROR_ARANGO_DATADIR_NOT_WRITABLE;
-    }
-
-    server->_iterateMarkersOnOpen = false;
-  }
-
-  if (!TRI_IsWritable(server->_databasePath)) {
-    LOG(ERR) << "database directory '" << server->_databasePath
-             << "' is not writable";
-
-    return TRI_ERROR_ARANGO_DATADIR_NOT_WRITABLE;
-  }
-
-  // ...........................................................................
-  // perform an eventual migration of the databases.
-  // ...........................................................................
-
-  res = InitDatabases(server, checkVersion, performUpgrade);
-
-  if (res == TRI_ERROR_ARANGO_EMPTY_DATADIR) {
-    return res;
-  }
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    LOG(ERR) << "unable to initialize databases: " << TRI_errno_string(res);
-    return res;
-  }
-
   // ...........................................................................
   // create shared application directories
   // ...........................................................................
@@ -1291,7 +953,7 @@ int TRI_StartServer(TRI_server_t* server, bool checkVersion,
   }
 
   // create subdirectories if not yet present
-  res = CreateBaseApplicationDirectory(appPath.c_str(), "_db");
+  int res = CreateBaseApplicationDirectory(appPath.c_str(), "_db");
 
   if (res != TRI_ERROR_NO_ERROR) {
     LOG(ERR) << "unable to initialize databases: " << TRI_errno_string(res);
@@ -2068,9 +1730,10 @@ TRI_voc_tick_t TRI_CurrentTickServer() { return CurrentTick; }
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_MSync(int fd, char const* begin, char const* end) {
+  size_t pageSize = PageSizeFeature::getPageSize();
   uintptr_t p = (intptr_t)begin;
   uintptr_t q = (intptr_t)end;
-  uintptr_t g = (intptr_t)PageSize;
+  uintptr_t g = (intptr_t)pageSize;
 
   char* b = (char*)((p / g) * g);
   char* e = (char*)(((q + g - 1) / g) * g);
@@ -2109,7 +1772,6 @@ TRI_server_t::TRI_server_t()
       _queryRegistry(nullptr),
       _basePath(nullptr),
       _databasePath(nullptr),
-      _serverIdFilename(nullptr),
       _disableReplicationAppliers(false),
       _disableCompactor(false),
       _iterateMarkersOnOpen(false),
@@ -2123,7 +1785,6 @@ TRI_server_t::~TRI_server_t() {
     auto p = _databasesLists.load();
     delete p;
 
-    TRI_Free(TRI_CORE_MEM_ZONE, _serverIdFilename);
     TRI_Free(TRI_CORE_MEM_ZONE, _databasePath);
     TRI_Free(TRI_CORE_MEM_ZONE, _basePath);
   }

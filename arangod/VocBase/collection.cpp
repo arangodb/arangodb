@@ -23,6 +23,7 @@
 
 #include "collection.h"
 
+#include "ApplicationFeatures/PageSizeFeature.h"
 #include "Basics/FileUtils.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StringUtils.h"
@@ -1348,10 +1349,12 @@ VocbaseCollectionInfo::VocbaseCollectionInfo(TRI_vocbase_t* vocbase,
       _doCompact(true),
       _isVolatile(false),
       _waitForSync(vocbase->_settings.defaultWaitForSync) {
+
+  size_t pageSize = PageSizeFeature::getPageSize();
   _maximalSize =
-      static_cast<TRI_voc_size_t>((maximalSize / PageSize) * PageSize);
+      static_cast<TRI_voc_size_t>((maximalSize / pageSize) * pageSize);
   if (_maximalSize == 0 && maximalSize != 0) {
-    _maximalSize = static_cast<TRI_voc_size_t>(PageSize);
+    _maximalSize = static_cast<TRI_voc_size_t>(pageSize);
   }
   memset(_name, 0, sizeof(_name));
   TRI_CopyString(_name, name, sizeof(_name) - 1);
@@ -1406,10 +1409,11 @@ VocbaseCollectionInfo::VocbaseCollectionInfo(TRI_vocbase_t* vocbase,
               options, "maximalSize", vocbase->_settings.defaultMaximalSize);
     }
 
+    size_t pageSize = PageSizeFeature::getPageSize();
     _maximalSize =
-        static_cast<TRI_voc_size_t>((maximalSize / PageSize) * PageSize);
+        static_cast<TRI_voc_size_t>((maximalSize / pageSize) * pageSize);
     if (_maximalSize == 0 && maximalSize != 0) {
-      _maximalSize = static_cast<TRI_voc_size_t>(PageSize);
+      _maximalSize = static_cast<TRI_voc_size_t>(pageSize);
     }
    
     if (options.hasKey("count")) { 

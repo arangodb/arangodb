@@ -24,7 +24,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
 #include "Basics/files.h"
-#include "RestServer/DatabaseFeature.h"
+#include "RestServer/DatabaseServerFeature.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -34,16 +34,16 @@ LockfileFeature::LockfileFeature(
     : ApplicationFeature(server, "Lockfile") {
   setOptional(false);
   requiresElevatedPrivileges(false);
-  startsAfter("Logger");
+  startsAfter("DatabaseServer");
 }
 
-void LockfileFeature::prepare() {
+void LockfileFeature::start() {
   // build lockfile name
-  DatabaseFeature* database = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
-  std::string databasePath = database->databasePath();
-  TRI_ASSERT(!databasePath.empty());
+  DatabaseServerFeature* database = application_features::ApplicationServer::getFeature<DatabaseServerFeature>("DatabaseServer");
+  std::string basePath = database->directory();
+  TRI_ASSERT(!basePath.empty());
   
-  _lockFilename = basics::FileUtils::buildFilename(databasePath, "LOCK");
+  _lockFilename = basics::FileUtils::buildFilename(basePath, "LOCK");
 
   TRI_ASSERT(!_lockFilename.empty());
 

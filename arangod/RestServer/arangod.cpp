@@ -33,6 +33,7 @@
 #include "ApplicationFeatures/DaemonFeature.h"
 #include "ApplicationFeatures/LanguageFeature.h"
 #include "ApplicationFeatures/NonceFeature.h"
+#include "ApplicationFeatures/PageSizeFeature.h"
 #include "ApplicationFeatures/PrivilegeFeature.h"
 #include "ApplicationFeatures/ShutdownFeature.h"
 #include "ApplicationFeatures/SupervisorFeature.h"
@@ -62,6 +63,7 @@
 #include "RestServer/RestServerFeature.h"
 #include "RestServer/ScriptFeature.h"
 #include "RestServer/ServerFeature.h"
+#include "RestServer/ServerIdFeature.h"
 #include "RestServer/UnitTestsFeature.h"
 #include "RestServer/UpgradeFeature.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -131,6 +133,7 @@ static int runServer(int argc, char** argv) {
   server.addFeature(new LoggerBufferFeature(&server));
   server.addFeature(new LoggerFeature(&server, true));
   server.addFeature(new NonceFeature(&server));
+  server.addFeature(new PageSizeFeature(&server));
   server.addFeature(new PrivilegeFeature(&server));
   server.addFeature(new QueryRegistryFeature(&server));
   server.addFeature(new RandomFeature(&server));
@@ -139,6 +142,7 @@ static int runServer(int argc, char** argv) {
   server.addFeature(new SchedulerFeature(&server));
   server.addFeature(new ScriptFeature(&server, &ret));
   server.addFeature(new ServerFeature(&server, &ret));
+  server.addFeature(new ServerIdFeature(&server));
   server.addFeature(new ShutdownFeature(&server, {"UnitTests", "Script"}));
   server.addFeature(new SslFeature(&server));
   server.addFeature(new SslServerFeature(&server));

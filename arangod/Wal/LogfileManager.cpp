@@ -23,6 +23,7 @@
 
 #include "LogfileManager.h"
 
+#include "ApplicationFeatures/PageSizeFeature.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
 #include "Basics/MutexLocker.h"
@@ -240,7 +241,7 @@ void LogfileManager::validateOptions(std::shared_ptr<options::ProgramOptions> op
 }
   
 void LogfileManager::prepare() {
-  DatabaseFeature* database = ApplicationServer::getFeature<DatabaseFeature>("Database");
+  auto database = ApplicationServer::getFeature<DatabaseServerFeature>("DatabaseServer");
   _databasePath = database->directory();
 
   std::string const shutdownFile = shutdownFilename();
@@ -268,26 +269,12 @@ void LogfileManager::start() {
   TRI_ASSERT(_server != nullptr);
 
   // needs server initialized
-  _filesize = static_cast<uint32_t>(((_filesize + PageSize - 1) / PageSize) * PageSize);
+  size_t pageSize = PageSizeFeature::getPageSize();
+  _filesize = static_cast<uint32_t>(((_filesize + pageSize - 1) / pageSize) * pageSize);
 
   if (_directory.empty()) {
     // use global configuration variable
     _directory = _databasePath;
-
-    if (!basics::FileUtils::isDirectory(_directory)) {
-      std::string systemErrorStr;
-      long errorNo;
-
-      int res = TRI_CreateRecursiveDirectory(_directory.c_str(), errorNo,
-                                             systemErrorStr);
-
-      if (res == TRI_ERROR_NO_ERROR) {
-        LOG(INFO) << "created database directory '" << _directory << "'.";
-      } else {
-        LOG(FATAL) << "unable to create database directory: " << systemErrorStr;
-        FATAL_ERROR_EXIT();
-      }
-    }
 
     // append "/journals"
     if (_directory[_directory.size() - 1] != TRI_DIR_SEPARATOR_CHAR) {
