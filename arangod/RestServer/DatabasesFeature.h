@@ -20,29 +20,30 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef APPLICATION_FEATURES_DATABASE_PATH_FEATURE_H
-#define APPLICATION_FEATURES_DATABASE_PATH_FEATURE_H 1
+#ifndef APPLICATION_FEATURES_DATABASES_FEATURE_H
+#define APPLICATION_FEATURES_DATABASES_FEATURE_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 
+struct TRI_server_t;
+
 namespace arangodb {
 
-class DatabasePathFeature final
+class DatabasesFeature final
     : public application_features::ApplicationFeature {
  public:
-  explicit DatabasePathFeature(
+  static TRI_server_t* SERVER;
+
+ public:
+  explicit DatabasesFeature(
       application_features::ApplicationServer* server);
 
  public:
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void start() override final;
-
- public:
-  std::string const& directory() const { return _directory; }
+  void prepare() override final;
+  void unprepare() override final;
 
  private:
-  std::string _directory;
+  std::unique_ptr<TRI_server_t> _server;
 };
 }
 

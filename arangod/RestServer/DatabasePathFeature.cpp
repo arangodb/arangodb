@@ -24,22 +24,17 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
+#include "Basics/StringUtils.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
-#include "RestServer/DatabaseFeature.h"
-#include "VocBase/server.h"
-#include "Wal/LogfileManager.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
-TRI_server_t* DatabasePathFeature::SERVER;
-
 DatabasePathFeature::DatabasePathFeature(ApplicationServer* server)
-    : ApplicationFeature(server, "DatabasePath"),
-      _server(nullptr) {
+    : ApplicationFeature(server, "DatabasePath") {
   setOptional(false);
   requiresElevatedPrivileges(false);
   startsAfter("FileDescriptors");
@@ -78,13 +73,7 @@ void DatabasePathFeature::validateOptions(std::shared_ptr<ProgramOptions> option
   }
 
   // strip trailing separators
-  _directory = StringUtils::rTrim(_directory, TRI_DIR_SEPARATOR_STR);
-}
-
-void DatabasePathFeature::prepare() {
-  // create the server
-  _server.reset(new TRI_server_t());
-  SERVER = _server.get();
+  _directory = basics::StringUtils::rTrim(_directory, TRI_DIR_SEPARATOR_STR);
 }
 
 void DatabasePathFeature::start() {
@@ -105,9 +94,3 @@ void DatabasePathFeature::start() {
   }
 }
 
-void DatabasePathFeature::unprepare() {
-  // delete the server
-  TRI_StopServer(_server.get());
-  SERVER = nullptr;
-  _server.reset(nullptr);
-}

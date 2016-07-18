@@ -20,30 +20,35 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef APPLICATION_FEATURES_DATABASE_PATH_FEATURE_H
-#define APPLICATION_FEATURES_DATABASE_PATH_FEATURE_H 1
+#include "DatabasesFeature.h"
 
-#include "ApplicationFeatures/ApplicationFeature.h"
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/DatabaseFeature.h"
+#include "VocBase/server.h"
 
-namespace arangodb {
+using namespace arangodb;
+using namespace arangodb::application_features;
+using namespace arangodb::basics;
 
-class DatabasePathFeature final
-    : public application_features::ApplicationFeature {
- public:
-  explicit DatabasePathFeature(
-      application_features::ApplicationServer* server);
+TRI_server_t* DatabasesFeature::SERVER;
 
- public:
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void start() override final;
-
- public:
-  std::string const& directory() const { return _directory; }
-
- private:
-  std::string _directory;
-};
+DatabasesFeature::DatabasesFeature(ApplicationServer* server)
+    : ApplicationFeature(server, "Databases"),
+      _server(nullptr) {
+  setOptional(false);
+  requiresElevatedPrivileges(false);
+  startsAfter("DatabasePath");
 }
 
-#endif
+void DatabasesFeature::prepare() {
+  // create the server
+  _server.reset(new TRI_server_t());
+  SERVER = _server.get();
+}
+
+void DatabasesFeature::unprepare() {
+  // delete the server
+  TRI_StopServer(_server.get());
+  SERVER = nullptr;
+  _server.reset(nullptr);
+}

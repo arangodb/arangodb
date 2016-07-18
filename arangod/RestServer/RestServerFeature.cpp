@@ -65,7 +65,7 @@
 #include "RestHandler/RestVersionHandler.h"
 #include "RestHandler/WorkMonitorHandler.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RestServer/DatabasePathFeature.h"
+#include "RestServer/DatabasesFeature.h"
 #include "RestServer/EndpointFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/ServerFeature.h"
@@ -286,7 +286,7 @@ void RestServerFeature::start() {
   JOB_MANAGER = _jobManager.get();
 
   _handlerFactory.reset(new RestHandlerFactory(&SetRequestContext,
-                                               DatabasePathFeature::SERVER));
+                                               DatabasesFeature::SERVER));
 
   HANDLER_FACTORY = _handlerFactory.get();
 
