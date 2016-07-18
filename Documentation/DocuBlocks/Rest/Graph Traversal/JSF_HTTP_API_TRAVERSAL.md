@@ -92,10 +92,10 @@ traversal order can be *"preorder"*, *"postorder"* or *"preorder-expander"*
 item iteration order can be *"forward"* or *"backward"*
 
 @RESTBODYPARAM{uniqueness,string,optional,string}
-specifies uniqueness for vertices and edges visited
-if set, must be an object like this:
+specifies uniqueness for vertices and edges visited.
+If set, must be an object like this:
 
-*"uniqueness": {"vertices": "none"|"global"|"path", "edges": "none"|"global"|"path"}*
+`"uniqueness": {"vertices": "none"|"global"|"path", "edges": "none"|"global"|"path"}`
 
 @RESTBODYPARAM{maxIterations,string,optional,string}
 Maximum number of iterations in each traversal. This number can be
@@ -155,11 +155,12 @@ traversal or if a traversal performs more than *maxIterations* iterations.
 In the following examples the underlying graph will contain five persons
 *Alice*, *Bob*, *Charlie*, *Dave* and *Eve*.
 We will have the following directed relations:
-    - *Alice* knows *Bob*
-    - *Bob* knows *Charlie*
-    - *Bob* knows *Dave*
-    - *Eve* knows *Alice*
-    - *Eve* knows *Bob*
+
+- *Alice* knows *Bob*
+- *Bob* knows *Charlie*
+- *Bob* knows *Dave*
+- *Eve* knows *Alice*
+- *Eve* knows *Bob*
 
 The starting vertex will always be Alice.
 
@@ -480,8 +481,9 @@ If the underlying graph is cyclic, *maxIterations* should be set
 
 The underlying graph has two vertices *Alice* and *Bob*.
 With the directed edges:
+
 - *Alice* knows *Bob*
-_ *Bob* knows *Alice*
+- *Bob* knows *Alice*
 
 
 @EXAMPLE_ARANGOSH_RUN{RestTraversalMaxIterations}

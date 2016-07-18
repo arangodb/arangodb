@@ -190,7 +190,7 @@ Circles have unique numeric labels. Edges have two boolean attributes (*theFalse
 
 !SUBSUBSECTION The World Graph
 
-The world country graph structures its nodes like that: world -> continent -> country -> capital. In some cases edge directions aren't forward (therefore it will be displayed disjunct in the graph viewer). It has two ways of creating it. One using the named graph utilities (*worldCountry*), one without (*worldCountryUnManaged*). 
+The world country graph structures its nodes like that: world → continent → country → capital. In some cases edge directions aren't forward (therefore it will be displayed disjunct in the graph viewer). It has two ways of creating it. One using the named graph utilities (*worldCountry*), one without (*worldCountryUnManaged*). 
 It is used to demonstrate raw traversal operations.
 
     @startDocuBlockInline graph_create_world_sample

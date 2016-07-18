@@ -35,7 +35,7 @@ for the query. If set to *true*, it will lead to the query cache being checked
 for the query if the query cache mode is either *on* or *demand*.
 
 @RESTBODYPARAM{bindVars,array,optional,object}
-list of bind parameters.
+key/value pairs representing the bind parameters.
 
 @RESTBODYPARAM{options,object,optional,JSF_post_api_cursor_opts}
 key/value object with extra options for the query.
