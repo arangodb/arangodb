@@ -41,11 +41,12 @@ ServerIdFeature::ServerIdFeature(
   setOptional(false);
   requiresElevatedPrivileges(false);
   startsAfter("Database");
+  startsAfter("DatabasePath");
 }
 
 void ServerIdFeature::start() {
-  auto databaseServer = application_features::ApplicationServer::getFeature<DatabasePathFeature>("DatabasePath");
-  _idFilename = basics::FileUtils::buildFilename(databaseServer->directory(), "SERVER");
+  auto databasePath = application_features::ApplicationServer::getFeature<DatabasePathFeature>("DatabasePath");
+  _idFilename = databasePath->subdirectoryName("SERVER");
 
   auto database = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
   

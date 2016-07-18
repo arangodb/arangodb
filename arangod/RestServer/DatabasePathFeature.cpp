@@ -94,3 +94,8 @@ void DatabasePathFeature::start() {
   }
 }
 
+std::string DatabasePathFeature::subdirectoryName(std::string const& subDirectory) const {
+  TRI_ASSERT(!_directory.empty());
+  return basics::FileUtils::buildFilename(_directory, subDirectory);
+}
+

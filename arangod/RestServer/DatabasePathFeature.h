@@ -40,6 +40,7 @@ class DatabasePathFeature final
 
  public:
   std::string const& directory() const { return _directory; }
+  std::string subdirectoryName(std::string const& subDirectory) const;
 
  private:
   std::string _directory;

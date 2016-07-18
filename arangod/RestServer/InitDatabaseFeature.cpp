@@ -41,6 +41,7 @@ InitDatabaseFeature::InitDatabaseFeature(ApplicationServer* server,
   setOptional(false);
   requiresElevatedPrivileges(false);
   startsAfter("Logger");
+  startsAfter("DatabasePath");
 }
 
 void InitDatabaseFeature::collectOptions(
@@ -73,12 +74,12 @@ void InitDatabaseFeature::validateOptions(
 void InitDatabaseFeature::prepare() {
   if (!_seenPassword) {
     std::string env = "ARANGODB_DEFAULT_ROOT_PASSWORD";
-    char const* passworde = getenv(env.c_str());
+    char const* password = getenv(env.c_str());
 
-    if (passworde != nullptr && *passworde != '\0') {
+    if (password != nullptr && *password != '\0') {
       env += "=";
       putenv(const_cast<char*>(env.c_str()));
-      _password = passworde;
+      _password = password;
       _seenPassword = true;
     }
   }
@@ -136,7 +137,7 @@ std::string InitDatabaseFeature::readPassword(std::string const& message) {
 void InitDatabaseFeature::checkEmptyDatabase() {
   auto database = ApplicationServer::getFeature<DatabasePathFeature>("DatabasePath");
   std::string path = database->directory();
-  std::string journals = FileUtils::buildFilename(path, "journals");
+  std::string journals = database->subdirectoryName("journals");
 
   bool empty = false;
   std::string message;

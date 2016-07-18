@@ -40,10 +40,7 @@ LockfileFeature::LockfileFeature(
 void LockfileFeature::start() {
   // build lockfile name
   auto database = application_features::ApplicationServer::getFeature<DatabasePathFeature>("DatabasePath");
-  std::string basePath = database->directory();
-  TRI_ASSERT(!basePath.empty());
-  
-  _lockFilename = basics::FileUtils::buildFilename(basePath, "LOCK");
+  _lockFilename = database->subdirectoryName("LOCK");
 
   TRI_ASSERT(!_lockFilename.empty());
 

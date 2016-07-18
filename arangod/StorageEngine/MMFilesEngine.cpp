@@ -84,9 +84,10 @@ void MMFilesEngine::prepare() {
   // get base path from DatabaseServerFeature 
   auto database = application_features::ApplicationServer::getFeature<DatabasePathFeature>("DatabasePath");
   _basePath = database->directory();
+  _databasePath += database->subdirectoryName("databases") + TRI_DIR_SEPARATOR_CHAR;
+  
   TRI_ASSERT(!_basePath.empty());
-
-  _databasePath = basics::FileUtils::buildFilename(_basePath, "databases") + TRI_DIR_SEPARATOR_CHAR;
+  TRI_ASSERT(!_databasePath.empty());
 }
 
 // start the engine. now it's allowed to start engine-specific threads,

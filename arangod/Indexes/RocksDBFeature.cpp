@@ -65,6 +65,7 @@ RocksDBFeature::RocksDBFeature(
   setOptional(true);
   requiresElevatedPrivileges(false);
   startsAfter("LogfileManager");
+  startsAfter("DatabasePath");
 }
 
 RocksDBFeature::~RocksDBFeature() {
@@ -208,7 +209,7 @@ void RocksDBFeature::start() {
 
   // set the database sub-directory for RocksDB
   auto database = ApplicationServer::getFeature<DatabasePathFeature>("DatabasePath");
-  _path = arangodb::basics::FileUtils::buildFilename(database->directory(), "rocksdb");
+  _path = database->subdirectoryName("rocksdb");
   
   LOG(TRACE) << "initializing rocksdb, path: " << _path;
   

@@ -219,17 +219,6 @@ void DatabaseFeature::shutdownCompactor() {
 }
 
 void DatabaseFeature::openDatabases() {
-  /*
-  // override with command-line options
-  defaults.defaultMaximalSize =
-      static_cast<TRI_voc_size_t>(_maximalJournalSize);
-  defaults.defaultWaitForSync = _defaultWaitForSync;
-  defaults.forceSyncProperties = _forceSyncProperties;
-  // get authentication (if available)
-  defaults.requireAuthentication = rest->authentication();
-  defaults.requireAuthenticationUnixSockets = rest->authenticationUnixSockets();
-  defaults.authenticateSystemOnly = rest->authenticationSystemOnly();
-  */
   bool const iterateMarkersOnOpen =
       !wal::LogfileManager::instance()->hasFoundLastTick();
 
