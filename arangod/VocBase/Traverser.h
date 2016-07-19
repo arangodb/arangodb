@@ -41,10 +41,24 @@ class Slice;
 }
 
 namespace aql {
+struct AstNode;
 class TraversalNode;
 }
 namespace traverser {
 
+/// @brief Abstract class used in the traversals
+/// to abstract away access to indexes / DBServers.
+/// Returns edges as VelocyPack.
+
+class EdgeCursor {
+ public:
+  EdgeCursor() {}
+  virtual ~EdgeCursor() {}
+
+  virtual bool next(std::vector<arangodb::velocypack::Slice>&) = 0;
+};
+
+#warning Deprecated
 class TraverserExpression {
  public:
   bool isEdgeAccess;
@@ -207,11 +221,11 @@ struct TraverserOptions {
 
  private:
   arangodb::Transaction* _trx;
-  std::vector<std::string> _collections;
-  std::vector<TRI_edge_direction_e> _directions;
   std::vector<arangodb::Transaction::IndexHandle> _baseIndexHandles;
-  std::unordered_map<size_t, std::vector<arangodb::Transaction::IndexHandle>>
-      _depthIndexHandles;
+  std::vector<aql::AstNode const*> _baseConditions;
+  std::unordered_map<size_t,
+                     std::pair<std::vector<arangodb::Transaction::IndexHandle>,
+                               std::vector<aql::AstNode const*>>> _depthIndexHandles;
 
  public:
   uint64_t minDepth;
@@ -235,19 +249,11 @@ struct TraverserOptions {
         uniqueEdges(UniquenessLevel::PATH) {
   }
 
-  /*
-  size_t collectionCount() const;
-
-  bool getCollection(size_t, std::string&, TRI_edge_direction_e&) const;
-
-  bool getCollectionAndSearchValue(size_t, std::string const&, std::string&,
-                                   arangodb::Transaction::IndexHandle&,
-                                   arangodb::velocypack::Builder&) const;
-  */
-  
   bool evaluateEdgeExpression(arangodb::velocypack::Slice, size_t) const;
 
   bool evaluateVertexExpression(arangodb::velocypack::Slice, size_t) const;
+
+  EdgeCursor* nextCursor(arangodb::velocypack::Slice, size_t) const;
 };
 
 class Traverser {
@@ -313,17 +319,24 @@ class Traverser {
   /// @brief Function to load all edges for a list of nodes
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual void getAllEdges(std::string const&, std::unordered_set<std::string>&,
+  virtual void getAllEdges(arangodb::velocypack::Slice,
+                           std::unordered_set<arangodb::velocypack::Slice>&,
                            size_t) = 0;
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief Function to load the other sides vertex of an edge
   ///        Returns true if the vertex passes filtering conditions
-  //////////////////////////////////////////////////////////////////////////////
+  ///        Also apppends the _id value of the vertex in the given vector
 
-  virtual bool getVertex(std::string const&, std::string const&, size_t,
-                         std::string&) = 0;
+  virtual bool getVertex(arangodb::velocypack::Slice,
+                         std::vector<arangodb::velocypack::Slice>&) = 0;
 
+  /// @brief Function to load the other sides vertex of an edge
+  ///        Returns true if the vertex passes filtering conditions
+
+  virtual bool getSingleVertex(arangodb::velocypack::Slice,
+                               arangodb::velocypack::Slice, size_t,
+                               arangodb::velocypack::Slice&) = 0;
+ 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Builds only the last vertex as AQLValue
   //////////////////////////////////////////////////////////////////////////////
@@ -419,26 +432,26 @@ class Traverser {
   /// @brief Function to fetch the real data of a vertex into an AQLValue
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual aql::AqlValue fetchVertexData(std::string const&) = 0;
+  virtual aql::AqlValue fetchVertexData(arangodb::velocypack::Slice) = 0;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Function to fetch the real data of an edge into an AQLValue
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual aql::AqlValue fetchEdgeData(std::string const&) = 0;
+  virtual aql::AqlValue fetchEdgeData(arangodb::velocypack::Slice) = 0;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Function to add the real data of a vertex into a velocypack builder
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual void addVertexToVelocyPack(std::string const&,
+  virtual void addVertexToVelocyPack(arangodb::velocypack::Slice,
                                      arangodb::velocypack::Builder&) = 0;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Function to add the real data of an edge into a velocypack builder
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual void addEdgeToVelocyPack(std::string const&,
+  virtual void addEdgeToVelocyPack(arangodb::velocypack::Slice,
                                    arangodb::velocypack::Builder&) = 0;
 };
 }  // traverser

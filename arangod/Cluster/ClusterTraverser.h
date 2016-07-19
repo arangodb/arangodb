@@ -56,7 +56,7 @@ class ClusterTraverser final : public Traverser {
   ~ClusterTraverser() {
   }
 
-  void setStartVertex(std::string const&) override;
+  void setStartVertex(std::string const& id) override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Function to load edges for a node
@@ -69,16 +69,22 @@ class ClusterTraverser final : public Traverser {
   /// @brief Function to load all edges for a list of nodes
   //////////////////////////////////////////////////////////////////////////////
 
-  void getAllEdges(std::string const&, std::unordered_set<std::string>&,
+  void getAllEdges(arangodb::velocypack::Slice,
+                   std::unordered_set<arangodb::velocypack::Slice>&,
                    size_t) override;
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief Function to load the other sides vertex of an edge
   ///        Returns true if the vertex passes filtering conditions
-  //////////////////////////////////////////////////////////////////////////////
+  ///        Also apppends the _id value of the vertex in the given vector
 
-  bool getVertex(std::string const&, std::string const&, size_t,
-                 std::string&) override;
+  bool getVertex(arangodb::velocypack::Slice,
+                 std::vector<arangodb::velocypack::Slice>&) override;
+
+  /// @brief Function to load the other sides vertex of an edge
+  ///        Returns true if the vertex passes filtering conditions
+
+  bool getSingleVertex(arangodb::velocypack::Slice, arangodb::velocypack::Slice,
+                       size_t, arangodb::velocypack::Slice&) override;
 
   bool next() override;
 
@@ -111,26 +117,26 @@ class ClusterTraverser final : public Traverser {
   /// @brief Function to fetch the real data of a vertex into an AQLValue
   //////////////////////////////////////////////////////////////////////////////
 
-  aql::AqlValue fetchVertexData(std::string const&) override;
+  aql::AqlValue fetchVertexData(arangodb::velocypack::Slice) override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Function to fetch the real data of an edge into an AQLValue
   //////////////////////////////////////////////////////////////////////////////
 
-  aql::AqlValue fetchEdgeData(std::string const&) override;
+  aql::AqlValue fetchEdgeData(arangodb::velocypack::Slice) override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Function to add the real data of a vertex into a velocypack builder
   //////////////////////////////////////////////////////////////////////////////
 
-  void addVertexToVelocyPack(std::string const&,
+  void addVertexToVelocyPack(arangodb::velocypack::Slice,
                              arangodb::velocypack::Builder&) override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Function to add the real data of an edge into a velocypack builder
   //////////////////////////////////////////////////////////////////////////////
 
-  void addEdgeToVelocyPack(std::string const&,
+  void addEdgeToVelocyPack(arangodb::velocypack::Slice,
                            arangodb::velocypack::Builder&) override;
 
  private:
@@ -147,11 +153,15 @@ class ClusterTraverser final : public Traverser {
 
     virtual ~VertexGetter() = default;
 
-    virtual bool getVertex(std::string const&, std::string const&, size_t,
-                           std::string&);
+    virtual bool getVertex(arangodb::velocypack::Slice,
+                           std::vector<arangodb::velocypack::Slice>&);
+
+    virtual bool getSingleVertex(arangodb::velocypack::Slice,
+                                 arangodb::velocypack::Slice, size_t,
+                                 arangodb::velocypack::Slice&);
     virtual void reset();
 
-    virtual void setStartVertex(std::string const&) {}
+    virtual void setStartVertex(arangodb::velocypack::Slice) {}
 
    protected:
     ClusterTraverser* _traverser;
@@ -164,17 +174,21 @@ class ClusterTraverser final : public Traverser {
 
     ~UniqueVertexGetter() = default;
 
-    bool getVertex(std::string const&, std::string const&, size_t,
-                    std::string&) override;
+    bool getVertex(arangodb::velocypack::Slice,
+                   std::vector<arangodb::velocypack::Slice>&) override;
+
+    bool getSingleVertex(arangodb::velocypack::Slice,
+                         arangodb::velocypack::Slice, size_t,
+                         arangodb::velocypack::Slice&) override;
 
     void reset() override;
 
-    void setStartVertex(std::string const& id) override {
+    void setStartVertex(arangodb::velocypack::Slice id) override {
       _returnedVertices.emplace(id);
     }
 
    private:
-    std::unordered_set<std::string> _returnedVertices;
+    std::unordered_set<arangodb::velocypack::Slice> _returnedVertices;
   };
 
   class ClusterEdgeGetter  {
@@ -185,7 +199,9 @@ class ClusterTraverser final : public Traverser {
     void getEdge(std::string const&, std::vector<std::string>&, size_t*&,
                  size_t&);
 
-    void getAllEdges(std::string const&, std::unordered_set<std::string>&, size_t depth);
+    void getAllEdges(arangodb::velocypack::Slice,
+                     std::unordered_set<arangodb::velocypack::Slice>&,
+                     size_t depth);
 
    private:
     ClusterTraverser* _traverser;
@@ -197,7 +213,7 @@ class ClusterTraverser final : public Traverser {
                      std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
       _edges;
 
-  std::unordered_map<std::string,
+  std::unordered_map<arangodb::velocypack::Slice,
                      std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
       _vertices;
 

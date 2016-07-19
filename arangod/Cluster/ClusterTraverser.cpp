@@ -32,67 +32,102 @@ using namespace arangodb;
 
 using ClusterTraverser = arangodb::traverser::ClusterTraverser;
 
-bool ClusterTraverser::VertexGetter::getVertex(std::string const& edgeId,
-                                               std::string const& vertexId,
-                                               size_t depth,
-                                               std::string& result) {
-
-  auto it = _traverser->_edges.find(edgeId);
-  if (it != _traverser->_edges.end()) {
-    VPackSlice slice(it->second->data());
-    std::string from = slice.get(StaticStrings::FromString).copyString();
-    if (from != vertexId) {
-      result = std::move(from);
-    } else {
-      std::string to = slice.get(StaticStrings::ToString).copyString();
-      result = std::move(to);
-    }
+bool ClusterTraverser::VertexGetter::getVertex(
+    VPackSlice edge, std::vector<VPackSlice>& result) {
+  VPackSlice cmp = result.back();
+  VPackSlice from = edge.get(StaticStrings::FromString);
 #warning Here we have to execute VertexFilter
-    /// If the vertex is not cached in _traverser->_vertices => incr. _filteredPath return false;
-    /// Else check condition if ok => return true, else return false.
-    /// When returning false set result = ""
+  /// If the vertex is not cached in _traverser->_vertices => incr. _filteredPath return false;
+  /// Else check condition if ok => return true, else return false.
+  /// When returning false set result = ""
+  if (arangodb::basics::VelocyPackHelper::compare(cmp, from, false) != 0) {
+    result.emplace_back(from);
+  } else {
+    result.emplace_back(edge.get(StaticStrings::ToString));
   }
-  // This should never be reached
-  result = "";
-  return false;
+  return true;
 }
+
+bool ClusterTraverser::VertexGetter::getSingleVertex(VPackSlice edge,
+                                                     VPackSlice cmp,
+                                                     size_t depth,
+                                                     VPackSlice& result) {
+  VPackSlice from = edge.get(StaticStrings::FromString);
+#warning Here we have to execute VertexFilter
+  /// If the vertex is not cached in _traverser->_vertices => incr. _filteredPath return false;
+  /// Else check condition if ok => return true, else return false.
+  /// When returning false set result = ""
+  if (arangodb::basics::VelocyPackHelper::compare(cmp, from, false) != 0) {
+    result = from;
+  } else {
+    result = edge.get(StaticStrings::ToString);
+  }
+  return true;
+}
+
+
 
 void ClusterTraverser::VertexGetter::reset() {
   // Nothing to do here. Subclass has to clear list of already returned vertices.
 }
 
 bool ClusterTraverser::UniqueVertexGetter::getVertex(
-    std::string const& edgeId, std::string const& vertexId, size_t depth,
-    std::string& result) {
+    VPackSlice edge, std::vector<VPackSlice>& result) {
+  VPackSlice toAdd = edge.get(StaticStrings::FromString);
+  VPackSlice cmp = result.back();
 
-  auto it = _traverser->_edges.find(edgeId);
-  if (it != _traverser->_edges.end()) {
-    VPackSlice slice(it->second->data());
-    std::string from = slice.get(StaticStrings::FromString).copyString();
-    if (from != vertexId) {
-      result = std::move(from);
-    } else {
-      std::string to = slice.get(StaticStrings::ToString).copyString();
-      result = std::move(to);
-    }
-    
-    if (_returnedVertices.find(result) != _returnedVertices.end()) {
-      // This vertex is not unique.
-      ++_traverser->_filteredPaths;
-      result = "";
-      return false;
-    }
-
+  if (arangodb::basics::VelocyPackHelper::compare(toAdd, cmp, false) == 0) {
+    toAdd = edge.get(StaticStrings::ToString);
+  }
+  
 #warning Here we have to execute VertexFilter
     /// If the vertex is not cached in _traverser->_vertices => incr. _filteredPath return false;
     /// Else check condition if ok => return true, else return false.
     /// When returning false set result = ""
     /// When returning true: _returnedVertices.emplace(result)
+
+  if (_returnedVertices.find(toAdd) != _returnedVertices.end()) {
+    // This vertex is not unique.
+    ++_traverser->_filteredPaths;
+    return false;
+  } else {
+    _returnedVertices.emplace(toAdd);
+    result.emplace_back(toAdd);
   }
+
   // This should never be reached
-  result = "";
   return false;
 }
+
+bool ClusterTraverser::UniqueVertexGetter::getSingleVertex(
+    VPackSlice edge, VPackSlice cmp, size_t depth, VPackSlice& result) {
+
+  result = edge.get(StaticStrings::FromString);
+
+  if (arangodb::basics::VelocyPackHelper::compare(result, cmp, false) == 0) {
+    result = edge.get(StaticStrings::ToString);
+  }
+  
+#warning Here we have to execute VertexFilter
+    /// If the vertex is not cached in _traverser->_vertices => incr. _filteredPath return false;
+    /// Else check condition if ok => return true, else return false.
+    /// When returning false set result = ""
+    /// When returning true: _returnedVertices.emplace(result)
+
+  if (_returnedVertices.find(result) != _returnedVertices.end()) {
+    // This vertex is not unique.
+    ++_traverser->_filteredPaths;
+    return false;
+  } else {
+    _returnedVertices.emplace(result);
+    return true;
+  }
+
+  // This should never be reached
+  return false;
+}
+
+
 
 void ClusterTraverser::UniqueVertexGetter::reset() {
   _returnedVertices.clear();
@@ -228,7 +263,7 @@ void ClusterTraverser::ClusterEdgeGetter::getEdge(
 }
 
 void ClusterTraverser::ClusterEdgeGetter::getAllEdges(
-    std::string const& startVertex, std::unordered_set<std::string>& result,
+    VPackSlice startVertex, std::unordered_set<VPackSlice>& result,
     size_t depth) {
   std::string collName;
   TRI_edge_direction_e dir;
@@ -300,16 +335,14 @@ void ClusterTraverser::ClusterEdgeGetter::getAllEdges(
 
 void ClusterTraverser::setStartVertex(std::string const& id) {
   _vertexGetter->reset();
-  if (_opts.useBreadthFirst) {
-    _enumerator.reset(
-        new arangodb::traverser::BreadthFirstEnumerator(this, id, &_opts));
-    _vertexGetter->setStartVertex(id);
-  } else {
-    _enumerator.reset(
-        new arangodb::traverser::DepthFirstEnumerator(this, id, &_opts));
-  }
   _done = false;
-  auto it = _vertices.find(id);
+#warning Arraaghghh Who is responsible for the Builder and Slice?
+
+  VPackBuilder tmp;
+  tmp.add(VPackValue(id));
+  VPackSlice idSlice = tmp.slice();
+
+  auto it = _vertices.find(idSlice);
   if (it == _vertices.end()) {
     size_t firstSlash = id.find("/");
     if (firstSlash == std::string::npos ||
@@ -322,7 +355,7 @@ void ClusterTraverser::setStartVertex(std::string const& id) {
     std::unordered_set<std::string> vertexToFetch;
     vertexToFetch.emplace(id);
     fetchVertices(vertexToFetch, 0); // this inserts the vertex
-    it = _vertices.find(id);
+    it = _vertices.find(idSlice);
     if (it == _vertices.end()) {
       // We can stop here. The start vertex does not match condition.
       ++_filteredPaths;
@@ -334,6 +367,16 @@ void ClusterTraverser::setStartVertex(std::string const& id) {
   if (_opts.evaluateVertexExpression(VPackSlice(it->second->data()), 0)) {
     // We can stop here. The start vertex does not match condition
     _done = true;
+    return;
+  }
+  VPackSlice startId(it->second->data());
+  if (_opts.useBreadthFirst) {
+    _enumerator.reset(
+        new arangodb::traverser::BreadthFirstEnumerator(this, startId, &_opts));
+    _vertexGetter->setStartVertex(startId);
+  } else {
+    _enumerator.reset(
+        new arangodb::traverser::DepthFirstEnumerator(this, startId, &_opts));
   }
 }
 
@@ -344,16 +387,21 @@ void ClusterTraverser::getEdge(std::string const& startVertex,
 }
 
 void ClusterTraverser::getAllEdges(
-    std::string const& startVertex, std::unordered_set<std::string>& result,
+    VPackSlice startVertex, std::unordered_set<VPackSlice>& result,
     size_t depth) {
   return _edgeGetter->getAllEdges(startVertex, result, depth);
 }
 
-bool ClusterTraverser::getVertex(std::string const& edgeId,
-                                 std::string const& vertexId, size_t depth,
-                                 std::string& result) {
-  return _vertexGetter->getVertex(edgeId, vertexId, depth, result);
+bool ClusterTraverser::getVertex(VPackSlice edge,
+                                 std::vector<VPackSlice>& result) {
+  return _vertexGetter->getVertex(edge, result);
 }
+
+bool ClusterTraverser::getSingleVertex(VPackSlice edge, VPackSlice comp,
+                                       size_t depth, VPackSlice& result) {
+  return _vertexGetter->getSingleVertex(edge, comp, depth, result);
+}
+
 
 void ClusterTraverser::fetchVertices(std::unordered_set<std::string>& verticesToFetch, size_t depth) {
   _readDocuments += verticesToFetch.size();
@@ -400,11 +448,6 @@ bool ClusterTraverser::vertexMatchesCondition(
 
 bool ClusterTraverser::next() {
   TRI_ASSERT(!_done);
-  if (_pruneNext) {
-    _pruneNext = false;
-    _enumerator->prune();
-  }
-  TRI_ASSERT(!_pruneNext);
   return _enumerator->next();
   /*
   if (_opts.useBreadthFirst &&
@@ -430,26 +473,25 @@ bool ClusterTraverser::next() {
   */
 }
 
-aql::AqlValue ClusterTraverser::fetchVertexData(std::string const& id) {
-  auto cached = _vertices.find(id);
+aql::AqlValue ClusterTraverser::fetchVertexData(VPackSlice idString) {
+  TRI_ASSERT(idString.isString());
+  auto cached = _vertices.find(idString);
   // All vertices are cached!!
   TRI_ASSERT(cached != _vertices.end());
   return aql::AqlValue((*cached).second->data());
 }
 
-aql::AqlValue ClusterTraverser::fetchEdgeData(std::string const& id) {
-  auto cached = _edges.find(id);
-  // All edges are cached!!
-  TRI_ASSERT(cached != _edges.end());
-  return aql::AqlValue((*cached).second->data());
+aql::AqlValue ClusterTraverser::fetchEdgeData(VPackSlice edge) {
+  return aql::AqlValue(edge);
 }
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief Function to add the real data of a vertex into a velocypack builder
 //////////////////////////////////////////////////////////////////////////////
 
-void ClusterTraverser::addVertexToVelocyPack(std::string const& id,
-                           arangodb::velocypack::Builder& result) {
+void ClusterTraverser::addVertexToVelocyPack(VPackSlice id,
+                                             VPackBuilder& result) {
+  TRI_ASSERT(id.isString());
   auto cached = _vertices.find(id);
   // All vertices are cached!!
   TRI_ASSERT(cached != _vertices.end());
@@ -460,12 +502,9 @@ void ClusterTraverser::addVertexToVelocyPack(std::string const& id,
 /// @brief Function to add the real data of an edge into a velocypack builder
 //////////////////////////////////////////////////////////////////////////////
 
-void ClusterTraverser::addEdgeToVelocyPack(std::string const& id,
+void ClusterTraverser::addEdgeToVelocyPack(arangodb::velocypack::Slice edge,
                          arangodb::velocypack::Builder& result) {
-  auto cached = _edges.find(id);
-  // All edges are cached!!
-  TRI_ASSERT(cached != _edges.end());
-  result.add(VPackSlice((*cached).second->data()));
+  result.add(edge);
 }
 
 aql::AqlValue ClusterTraverser::lastVertexToAqlValue() {

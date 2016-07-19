@@ -37,8 +37,20 @@ namespace traverser {
 
 class PathEnumerator;
 
-class SingleServerTraverser final : public Traverser {
+class SingleServerEdgeCursor : public EdgeCursor {
+ private:
+  std::vector<OperationCursor> _cursors;
+  size_t _currentCursor;
 
+ public:
+  SingleServerEdgeCursor();
+
+  ~SingleServerEdgeCursor() {}
+
+  bool next(std::vector<arangodb::velocypack::Slice>&);
+};
+
+class SingleServerTraverser final : public Traverser {
  private:
 
   class VertexGetter {
@@ -48,9 +60,14 @@ class SingleServerTraverser final : public Traverser {
 
     virtual ~VertexGetter() = default;
 
-    virtual bool getVertex(std::string const&, std::string const&, size_t,
-                           std::string&);
-    virtual void reset(std::string const&);
+    virtual bool getVertex(arangodb::velocypack::Slice,
+                           std::vector<arangodb::velocypack::Slice>&);
+
+    virtual bool getSingleVertex(arangodb::velocypack::Slice,
+                                 arangodb::velocypack::Slice, size_t,
+                                 arangodb::velocypack::Slice&);
+
+    virtual void reset(arangodb::velocypack::Slice);
 
    protected:
     SingleServerTraverser* _traverser;
@@ -63,13 +80,17 @@ class SingleServerTraverser final : public Traverser {
 
     ~UniqueVertexGetter() = default;
 
-    bool getVertex(std::string const&, std::string const&, size_t,
-                    std::string&) override;
+    bool getVertex(arangodb::velocypack::Slice,
+                   std::vector<arangodb::velocypack::Slice>&) override;
 
-    void reset(std::string const&) override;
+    bool getSingleVertex(arangodb::velocypack::Slice,
+                         arangodb::velocypack::Slice, size_t,
+                         arangodb::velocypack::Slice&) override;
+
+    void reset(arangodb::velocypack::Slice) override;
 
    private:
-    std::unordered_set<std::string> _returnedVertices;
+    std::unordered_set<arangodb::velocypack::Slice> _returnedVertices;
   };
 
   //////////////////////////////////////////////////////////////////////////////
@@ -91,7 +112,8 @@ class SingleServerTraverser final : public Traverser {
     void getEdge(std::string const&, std::vector<std::string>&,
                  size_t*&, size_t&);
 
-    void getAllEdges(std::string const&, std::unordered_set<std::string>&, size_t);
+    void getAllEdges(arangodb::velocypack::Slice,
+                     std::unordered_set<arangodb::velocypack::Slice>&, size_t);
 
    private:
 
@@ -193,16 +215,22 @@ public:
   /// @brief Function to load all edges for a list of nodes
   //////////////////////////////////////////////////////////////////////////////
 
-  void getAllEdges(std::string const&, std::unordered_set<std::string>&,
+  void getAllEdges(arangodb::velocypack::Slice,
+                   std::unordered_set<arangodb::velocypack::Slice>&,
                    size_t) override;
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief Function to load the other sides vertex of an edge
   ///        Returns true if the vertex passes filtering conditions
-  //////////////////////////////////////////////////////////////////////////////
+  ///        Adds the _id of the vertex into the given vector
 
-  bool getVertex(std::string const&, std::string const&, size_t,
-                 std::string&) override;
+  bool getVertex(arangodb::velocypack::Slice,
+                 std::vector<arangodb::velocypack::Slice>&) override;
+
+  /// @brief Function to load the other sides vertex of an edge
+  ///        Returns true if the vertex passes filtering conditions
+
+  bool getSingleVertex(arangodb::velocypack::Slice, arangodb::velocypack::Slice,
+                       size_t depth, arangodb::velocypack::Slice&) override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Get the next possible path in the graph.
@@ -239,32 +267,32 @@ public:
   /// @brief Function to fetch the real data of a vertex into an AQLValue
   //////////////////////////////////////////////////////////////////////////////
 
-  aql::AqlValue fetchVertexData(std::string const&) override;
+  aql::AqlValue fetchVertexData(arangodb::velocypack::Slice) override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Function to fetch the real data of an edge into an AQLValue
   //////////////////////////////////////////////////////////////////////////////
 
-  aql::AqlValue fetchEdgeData(std::string const&) override;
+  aql::AqlValue fetchEdgeData(arangodb::velocypack::Slice) override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Function to add the real data of a vertex into a velocypack builder
   //////////////////////////////////////////////////////////////////////////////
 
-  void addVertexToVelocyPack(std::string const&,
+  void addVertexToVelocyPack(arangodb::velocypack::Slice,
                              arangodb::velocypack::Builder&) override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Function to add the real data of an edge into a velocypack builder
   //////////////////////////////////////////////////////////////////////////////
 
-  void addEdgeToVelocyPack(std::string const&,
+  void addEdgeToVelocyPack(arangodb::velocypack::Slice,
                            arangodb::velocypack::Builder&) override;
 
  private:
   bool edgeMatchesConditions(arangodb::velocypack::Slice, size_t);
 
-  bool vertexMatchesConditions(std::string const&, size_t);
+  bool vertexMatchesConditions(arangodb::velocypack::Slice, size_t);
 
   std::vector<TRI_document_collection_t*> _edgeCols;
 
@@ -279,7 +307,7 @@ public:
   /// document VPack value (in datafiles)
   //////////////////////////////////////////////////////////////////////////////
 
-  std::unordered_map<std::string, uint8_t const*> _vertices;
+  std::unordered_map<arangodb::velocypack::Slice, uint8_t const*> _vertices;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Cache for edge documents, points from _id to start of edge

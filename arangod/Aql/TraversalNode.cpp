@@ -632,6 +632,7 @@ void TraversalNode::fillTraversalOptions(
   EdgeConditionBuilder globalEdgeConditionBuilder(this);
 
   opts._baseIndexHandles.reserve(numEdgeColls);
+  opts._baseConditions.reserve(numEdgeColls);
   // Compute Edge Indexes. First default indexes:
   for (size_t i = 0; i < numEdgeColls; ++i) {
     auto dir = _directions[i];
@@ -649,6 +650,7 @@ void TraversalNode::fillTraversalOptions(
             opts._baseIndexHandles);
         TRI_ASSERT(res);  // Right now we have an enforced edge index which wil
                           // always fit.
+        opts._baseConditions.emplace_back(condition->clone(_ast));
         condition = globalEdgeConditionBuilder.getOutboundCondition();
         break;
     }
@@ -657,15 +659,19 @@ void TraversalNode::fillTraversalOptions(
         _edgeColls[i], condition, _tmpObjVariable, &sort, 1000,
         opts._baseIndexHandles);
     TRI_ASSERT(res);  // We have an enforced edge index which wil always fit.
+    opts._baseConditions.emplace_back(condition->clone(_ast));
   }
 
   for (std::pair<size_t, EdgeConditionBuilder> it : _edgeConditions) {
     auto ins = opts._depthIndexHandles.emplace(
-        it.first, std::vector<Transaction::IndexHandle>());
+        it.first, std::make_pair(std::vector<Transaction::IndexHandle>(),
+                                 std::vector<AstNode const*>()));
     TRI_ASSERT(ins.second);
 
-    auto& idxList = ins.first->second;
+    auto& idxList = ins.first->second.first;
+    auto& condList = ins.first->second.second;
     idxList.reserve(numEdgeColls);
+    condList.reserve(numEdgeColls);
     // Compute Edge Indexes. First default indexes:
     for (size_t i = 0; i < numEdgeColls; ++i) {
       auto dir = _directions[i];
@@ -682,6 +688,7 @@ void TraversalNode::fillTraversalOptions(
               _edgeColls[i], condition, _tmpObjVariable, &sort, 1000, idxList);
           TRI_ASSERT(res);  // Right now we have an enforced edge index which wil
                             // always fit.
+          condList.emplace_back(condition);
           condition = it.second.getOutboundCondition();
           break;
       }
@@ -689,32 +696,10 @@ void TraversalNode::fillTraversalOptions(
       res = trx->getBestIndexHandleForFilterCondition(
           _edgeColls[i], condition, _tmpObjVariable, &sort, 1000, idxList);
       TRI_ASSERT(res);  // We have an enforced edge index which wil always fit.
+      condList.emplace_back(condition);
     }
   }
 
-  VPackBuilder ulf;
-  ulf.openObject();
-  ulf.add(VPackValue("base"));
-  ulf.openArray();
-  for (auto const& idx : opts._baseIndexHandles) {
-    ulf.openObject();
-    idx.toVelocyPack(ulf, false);
-    ulf.close();
-  }
-  ulf.close();
-  for (auto const& it : opts._depthIndexHandles) {
-    ulf.add(VPackValue(std::to_string(it.first)));
-    ulf.openArray();
-    for (auto const& idx : it.second) {
-      ulf.openObject();
-      idx.toVelocyPack(ulf, false);
-      ulf.close();
-    }
-    ulf.close();
-  }
-  ulf.close();
-  LOG(ERR) << ulf.toJson();
-  
   opts.useBreadthFirst = _options.useBreadthFirst;
   opts.uniqueVertices = _options.uniqueVertices;
   opts.uniqueEdges = _options.uniqueEdges;

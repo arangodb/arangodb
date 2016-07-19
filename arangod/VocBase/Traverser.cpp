@@ -71,55 +71,6 @@ void arangodb::traverser::ShortestPath::vertexToVelocyPack(Transaction* trx, siz
   }
 }
 
-#warning TODO remove
-/*
-size_t arangodb::traverser::TraverserOptions::collectionCount () const {
-  return _collections.size();
-}
-
-bool arangodb::traverser::TraverserOptions::getCollection(
-    size_t index, std::string& name, TRI_edge_direction_e& dir) const {
-  if (index >= _collections.size()) {
-    // No more collections stop now
-    return false;
-  }
-  if (_directions.size() == 1) {
-    dir = _directions.at(0);
-  } else {
-    dir = _directions.at(index);
-  }
-  name = _collections.at(index);
-
-  return true;
-}
-
-bool arangodb::traverser::TraverserOptions::getCollectionAndSearchValue(
-    size_t index, std::string const& vertexId, std::string& name,
-    Transaction::IndexHandle& indexHandle, VPackBuilder& builder) const {
-  if (index >= _collections.size()) {
-    // No more collections stop now
-    return false;
-  }
-  TRI_edge_direction_e dir;
-  TRI_ASSERT(!_directions.empty());
-  if (_directions.size() == 1) {
-    dir = _directions.at(0);
-  } else {
-    dir = _directions.at(index);
-  }
-
-  TRI_ASSERT(!_collections.empty());
-  name = _collections.at(index);
-  
-  TRI_ASSERT(!_indexHandles.empty());
-  indexHandle = _indexHandles.at(index);
-
-  builder.clear();
-  arangodb::EdgeIndex::buildSearchValue(dir, vertexId, builder);
-  return true;
-}
-*/
-
 bool arangodb::traverser::TraverserOptions::evaluateEdgeExpression(arangodb::velocypack::Slice edge, size_t depth) const {
 #warning This has to be implemented.
   return true;
@@ -128,6 +79,11 @@ bool arangodb::traverser::TraverserOptions::evaluateEdgeExpression(arangodb::vel
 bool arangodb::traverser::TraverserOptions::evaluateVertexExpression(arangodb::velocypack::Slice vertex, size_t depth) const {
 #warning This has to be implemented.
   return true;
+}
+
+arangodb::traverser::EdgeCursor* arangodb::traverser::TraverserOptions::nextCursor(VPackSlice vertex, size_t depth) const {
+#warning This has to be implemented.
+  return nullptr;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -32,78 +32,53 @@ using TraverserOptions = arangodb::traverser::TraverserOptions;
 bool DepthFirstEnumerator::next() {
   if (_isFirst) {
     _isFirst = false;
+    // Initialze the first cursor
+    _opts->nextCursor(_enumeratedPath.vertices.back(), 0);
     if (_opts->minDepth == 0) {
       return true;
     }
   }
-  if (_enumeratedPath.edges.size() == _opts->maxDepth) {
-    // we have reached the maximal search depth.
-    // We can prune this path and go to the next.
-    prune();
+  if (_enumeratedPath.vertices.empty()) {
+    // We are done;
+    return false;
+  }
+  if (_enumeratedPath.edges.size() < _opts->maxDepth) {
+    // We are not done with this path, so
+    // we reserve the cursor for next depth
+    auto cursor = _opts->nextCursor(_enumeratedPath.vertices.back(),
+                                    _enumeratedPath.vertices.size());
+    if (cursor != nullptr) {
+      _edgeCursors.emplace(cursor);
+    }
+  } else {
+    // This path is at the end. cut the last step
+    _enumeratedPath.vertices.pop_back();
+    _enumeratedPath.edges.pop_back();
   }
 
-  // Avoid tail recursion. May crash on high search depth
-  while (true) {
-    if (_lastEdges.empty()) {
-      _enumeratedPath.edges.clear();
-      _enumeratedPath.vertices.clear();
-      return false;
-    }
-    _traverser->getEdge(_enumeratedPath.vertices.back(), _enumeratedPath.edges,
-                        _lastEdges.top(), _lastEdgesIdx.top());
-    if (_lastEdges.top() != nullptr) {
-      // Could continue the path in the next depth.
-      _lastEdges.push(nullptr);
-      _lastEdgesIdx.push(0);
-      std::string v;
-      bool isValid = _traverser->getVertex(_enumeratedPath.edges.back(),
-                                           _enumeratedPath.vertices.back(),
-                                           _enumeratedPath.vertices.size(), v);
-      _enumeratedPath.vertices.push_back(v);
-      TRI_ASSERT(_enumeratedPath.vertices.size() ==
-                 _enumeratedPath.edges.size() + 1);
-      if (isValid) {
-        if (_enumeratedPath.edges.size() < _opts->minDepth) {
-          // The path is ok as a prefix. But to short to be returned.
-          continue;
-        }
-        if (_opts->uniqueVertices == TraverserOptions::UniquenessLevel::PATH) {
-          // it is sufficient to check if any of the vertices on the path is equal to the end.
-          // Then we prune and any intermediate equality cannot happen.
-          auto& last = _enumeratedPath.vertices.back();
-          auto found = std::find(_enumeratedPath.vertices.begin(), _enumeratedPath.vertices.end(), last);
-          TRI_ASSERT(found != _enumeratedPath.vertices.end()); // We have to find it once, it is at least the last!
-          if ((++found) != _enumeratedPath.vertices.end()) {
-            // Test if we found the last element. That is ok.
-            prune();
-            continue;
-          }
-        }
+  while (!_edgeCursors.empty()) {
+    auto cursor = _edgeCursors.top();
+    if (cursor->next(_enumeratedPath.edges)) {
+#warning not yet finished
+      // TODO UNIQUE_PATH
+      // We have to check if edge and vertex is valid
+      if (_traverser->getVertex(_enumeratedPath.edges.back(),
+                                _enumeratedPath.vertices)) {
+        // case both are valid.
+        // TODO UNIQUE_PATH
         return true;
       }
-    } else {
-      if (_enumeratedPath.edges.empty()) {
-        // We are done with enumerating paths
-        _enumeratedPath.edges.clear();
-        _enumeratedPath.vertices.clear();
-        return false;
-      }
-    }
-    // This either modifies the stack or _lastEdges is empty.
-    // This will return in next depth
-    prune();
-  }
-}
-
-void DepthFirstEnumerator::prune() {
-  if (!_lastEdges.empty()) {
-    _lastEdges.pop();
-    _lastEdgesIdx.pop();
-    if (!_enumeratedPath.edges.empty()) {
+      // Vertex Invalid. Revoke edge
       _enumeratedPath.edges.pop_back();
-      _enumeratedPath.vertices.pop_back();
+    } else {
+      // cursor is empty.
+      _edgeCursors.pop();
     }
   }
+  // If we get here all cursors are exhausted.
+  _enumeratedPath.edges.clear();
+  _enumeratedPath.vertices.clear();
+  return false;
 }
 
 arangodb::aql::AqlValue DepthFirstEnumerator::lastVertexToAqlValue() {
@@ -137,7 +112,7 @@ arangodb::aql::AqlValue DepthFirstEnumerator::pathToAqlValue(arangodb::velocypac
 }
 
 BreadthFirstEnumerator::BreadthFirstEnumerator(Traverser* traverser,
-                                               std::string const& startVertex,
+                                               VPackSlice startVertex,
                                                TraverserOptions const* opts)
     : PathEnumerator(traverser, startVertex, opts),
       _schreierIndex(1),
@@ -213,10 +188,10 @@ bool BreadthFirstEnumerator::next() {
     bool shouldReturnPath = _currentDepth + 1 >= _opts->minDepth;
     if (!_tmpEdges.empty()) {
       bool didInsert = false;
-      std::string v;
+      VPackSlice v;
       for (auto const& e : _tmpEdges) {
         bool valid =
-            _traverser->getVertex(e, nextVertex, _currentDepth, v);
+            _traverser->getSingleVertex(e, nextVertex, _currentDepth, v);
         if (valid) {
           auto step = std::make_unique<PathStep>(nextIdx, e, v);
           _schreier.emplace_back(step.get());
@@ -249,12 +224,6 @@ bool BreadthFirstEnumerator::next() {
   // to the next free position.
   computeEnumeratedPath(_lastReturned++);
   return true;
-}
-
-void BreadthFirstEnumerator::prune() {
-  if (!_nextDepth.empty()) {
-    _nextDepth.pop_back();
-  }
 }
 
 // TODO Optimize this. Remove enumeratedPath

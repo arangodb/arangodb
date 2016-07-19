@@ -25,6 +25,7 @@
 #define ARANGODB_VOCBASE_PATHENUMERATOR_H 1
 
 #include "Basics/Common.h"
+#include <velocypack/Slice.h>
 #include <stack>
 
 namespace arangodb {
@@ -37,12 +38,13 @@ class Builder;
 }
 
 namespace traverser {
+class EdgeCursor;
 class Traverser;
 struct TraverserOptions;
 
 struct EnumeratedPath {
-  std::vector<std::string> edges;
-  std::vector<std::string> vertices;
+  std::vector<arangodb::velocypack::Slice> edges;
+  std::vector<arangodb::velocypack::Slice> vertices;
   EnumeratedPath() {}
 };
 
@@ -79,7 +81,7 @@ class PathEnumerator {
   EnumeratedPath _enumeratedPath;
 
  public:
-  PathEnumerator(Traverser* traverser, std::string const& startVertex,
+  PathEnumerator(Traverser* traverser, arangodb::velocypack::Slice startVertex,
                  TraverserOptions const* opts)
       : _traverser(traverser), _isFirst(true), _opts(opts) {
     _enumeratedPath.vertices.push_back(startVertex);
@@ -96,13 +98,6 @@ class PathEnumerator {
 
   virtual bool next() = 0;
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Prunes the current path prefix, the next function should not return
-  ///        any path having this prefix anymore.
-  //////////////////////////////////////////////////////////////////////////////
-
-  virtual void prune() = 0;
-
   virtual aql::AqlValue lastVertexToAqlValue() = 0;
   virtual aql::AqlValue lastEdgeToAqlValue() = 0;
   virtual aql::AqlValue pathToAqlValue(arangodb::velocypack::Builder&) = 0;
@@ -111,30 +106,20 @@ class PathEnumerator {
 class DepthFirstEnumerator final : public PathEnumerator {
  private:
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief The pointers returned for edge indexes on this path. Used to
-  /// continue
-  ///        the search on respective levels.
+  /// @brief The stack of EdgeCursors to walk through.
   //////////////////////////////////////////////////////////////////////////////
 
-  std::stack<size_t*> _lastEdges;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief An internal index for the edge collection used at each depth level
-  //////////////////////////////////////////////////////////////////////////////
-
-  std::stack<size_t> _lastEdgesIdx;
+  std::stack<EdgeCursor*> _edgeCursors;
 
  public:
-  DepthFirstEnumerator(
-      Traverser* traverser,
-      std::string const& startVertex, TraverserOptions const* opts)
-    : PathEnumerator(traverser, startVertex, opts) {
-    _lastEdges.push(nullptr);
-    _lastEdgesIdx.push(0);
-    TRI_ASSERT(_lastEdges.size() == 1);
-  }
+  DepthFirstEnumerator(Traverser* traverser,
+                       arangodb::velocypack::Slice startVertex,
+                       TraverserOptions const* opts)
+      : PathEnumerator(traverser, startVertex, opts) {}
 
-  ~DepthFirstEnumerator() {}
+  ~DepthFirstEnumerator() {
+#warning Who is responsible for the cursors? Traverser or this class? Maybe they are just leased.
+  }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Get the next Path element from the traversal.
@@ -146,8 +131,6 @@ class DepthFirstEnumerator final : public PathEnumerator {
   /// @brief Prunes the current path prefix, the next function should not return
   ///        any path having this prefix anymore.
   //////////////////////////////////////////////////////////////////////////////
-
-  void prune() override;
 
   aql::AqlValue lastVertexToAqlValue() override;
 
@@ -166,17 +149,17 @@ class BreadthFirstEnumerator final : public PathEnumerator {
 
   struct PathStep {
     size_t sourceIdx;
-    std::string edge;
-    std::string vertex;
+    arangodb::velocypack::Slice edge;
+    arangodb::velocypack::Slice vertex;
 
    private:
     PathStep() {}
 
    public:
-    explicit PathStep(std::string const& vertex) : sourceIdx(0), vertex(vertex) {}
+    explicit PathStep(arangodb::velocypack::Slice vertex) : sourceIdx(0), vertex(vertex) {}
 
-    PathStep(size_t sourceIdx, std::string const& edge,
-             std::string const& vertex)
+    PathStep(size_t sourceIdx, arangodb::velocypack::Slice edge,
+             arangodb::velocypack::Slice vertex)
         : sourceIdx(sourceIdx), edge(edge), vertex(vertex) {}
   };
 
@@ -230,7 +213,7 @@ class BreadthFirstEnumerator final : public PathEnumerator {
   /// @brief Vector storing the position at current search depth
   //////////////////////////////////////////////////////////////////////////////
 
-   std::unordered_set<std::string> _tmpEdges;
+   std::unordered_set<arangodb::velocypack::Slice> _tmpEdges;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Marker for the search depth. Used to abort searching.
@@ -247,7 +230,8 @@ class BreadthFirstEnumerator final : public PathEnumerator {
 
  public:
   BreadthFirstEnumerator(Traverser* traverser,
-                         std::string const& startVertex, TraverserOptions const* opts);
+                         arangodb::velocypack::Slice startVertex,
+                         TraverserOptions const* opts);
 
   ~BreadthFirstEnumerator() {
     for (auto& it : _schreier) {
@@ -265,8 +249,6 @@ class BreadthFirstEnumerator final : public PathEnumerator {
   /// @brief Prunes the current path prefix, the next function should not return
   ///        any path having this prefix anymore.
   //////////////////////////////////////////////////////////////////////////////
-
-  void prune() override;
 
   aql::AqlValue lastVertexToAqlValue() override;
 
