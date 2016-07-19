@@ -811,12 +811,17 @@ void RestReplicationHandler::handleTrampolineCoordinator() {
   // Set a few variables needed for our work:
   ClusterComm* cc = ClusterComm::instance();
 
+  HttpRequest* httpRequest = dynamic_cast<HttpRequest*>(_request);
+  if(httpRequest == nullptr){
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+  }
+
   // Send a synchronous request to that shard using ClusterComm:
   auto res = cc->syncRequest("", TRI_NewTickServer(), "server:" + DBserver,
                              _request->requestType(),
                              "/_db/" + StringUtils::urlEncode(dbname) +
                                  _request->requestPath() + params,
-                             _request->body(), *headers, 300.0);
+                             httpRequest->body(), *headers, 300.0);
 
   if (res->status == CL_COMM_TIMEOUT) {
     // No reply, we give up:
@@ -2172,12 +2177,12 @@ int RestReplicationHandler::processRestoreDataBatch(
 
   VPackBuilder builder;
 
-
-  if (_request == nullptr) {
+  HttpRequest* httpRequest = dynamic_cast<HttpRequest*>(_request);
+  if (httpRequest == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   }
 
-  std::string const& bodyStr = _request->body();
+  std::string const& bodyStr = httpRequest->body();
   char const* ptr = bodyStr.c_str();
   char const* end = ptr + bodyStr.size();
 
@@ -2516,7 +2521,12 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator() {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   }
 
-  std::string const& bodyStr = _request->body();
+  HttpRequest* httpRequest = dynamic_cast<HttpRequest*>(_request);
+  if (httpRequest == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+  }
+
+  std::string const& bodyStr = httpRequest->body();
   char const* ptr = bodyStr.c_str();
   char const* end = ptr + bodyStr.size();
 
@@ -2634,7 +2644,7 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator() {
 
           VPackSlice answer;
           try {
-            answer = result.answer->toVelocyPack(&options);
+            answer = result.answer->payload(&options);
           } catch (VPackException const& e) {
             // Only log this error and try the next doc
             LOG(DEBUG) << "failed to parse json object: '" << e.what() << "'";
@@ -2666,7 +2676,7 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator() {
           options.checkAttributeUniqueness = true;
           VPackSlice answer;
           try {
-            answer = result.answer->toVelocyPack(&options);
+            answer = result.answer->payload(&options);
           } catch (VPackException const& e) {
             // Only log this error and try the next doc
             LOG(DEBUG) << "failed to parse json object: '" << e.what() << "'";

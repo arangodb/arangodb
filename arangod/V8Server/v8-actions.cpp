@@ -294,13 +294,6 @@ static v8::Handle<v8::Object> RequestCppToV8(v8::Isolate* isolate,
   // setup the request
   v8::Handle<v8::Object> req = v8::Object::New(isolate);
 
-  //auto request = dynamic_cast<HttpRequest*>(generalRequest);
-
-  // TODO generalize
-  if (request == nullptr) {
-    return req;
-  }
-
   // Example:
   //      {
   //        path : "/full/path/suffix1/suffix2",
@@ -410,26 +403,48 @@ static v8::Handle<v8::Object> RequestCppToV8(v8::Isolate* isolate,
   TRI_GET_GLOBAL_STRING(RequestTypeKey);
   TRI_GET_GLOBAL_STRING(RequestBodyKey);
 
+  auto set_request_body_json_or_vpack = [&](){
+      if (GeneralRequest::ContentType::JSON == request->contentType()) {
+        auto httpreq = dynamic_cast<HttpRequest*>(request);
+        if (httpreq == nullptr) {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+        }
+        std::string const& body = httpreq->body();
+        req->ForceSet(RequestBodyKey, TRI_V8_STD_STRING(body));
+      } else {
+        VPackSlice slice = request->payload();
+        V8Buffer* buffer = V8Buffer::New(
+            //TODO FIXME - BAD CAST
+            isolate, reinterpret_cast<const char*>(slice.begin()), std::distance(slice.begin(), slice.end()));
+        v8::Local<v8::Object> bufferObject =
+            v8::Local<v8::Object>::New(isolate, buffer->_handle);
+        req->ForceSet(RequestBodyKey, bufferObject);
+      }
+  };
+
   // copy request type
   switch (request->requestType()) {
     case GeneralRequest::RequestType::POST: {
       TRI_GET_GLOBAL_STRING(PostConstant);
       req->ForceSet(RequestTypeKey, PostConstant);
-      req->ForceSet(RequestBodyKey, TRI_V8_STD_STRING(request->body()));
+      //req->ForceSet(RequestBodyKey, TRI_V8_STD_STRING(request->body()));
+      set_request_body_json_or_vpack();
       break;
     }
 
     case GeneralRequest::RequestType::PUT: {
       TRI_GET_GLOBAL_STRING(PutConstant);
       req->ForceSet(RequestTypeKey, PutConstant);
-      req->ForceSet(RequestBodyKey, TRI_V8_STD_STRING(request->body()));
+      //req->ForceSet(RequestBodyKey, TRI_V8_STD_STRING(request->body()));
+      set_request_body_json_or_vpack();
       break;
     }
 
     case GeneralRequest::RequestType::PATCH: {
       TRI_GET_GLOBAL_STRING(PatchConstant);
       req->ForceSet(RequestTypeKey, PatchConstant);
-      req->ForceSet(RequestBodyKey, TRI_V8_STD_STRING(request->body()));
+      //req->ForceSet(RequestBodyKey, TRI_V8_STD_STRING(request->body()));
+      set_request_body_json_or_vpack();
       break;
     }
     case GeneralRequest::RequestType::OPTIONS: {

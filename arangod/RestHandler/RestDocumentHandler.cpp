@@ -613,7 +613,7 @@ bool RestDocumentHandler::readManyDocuments() {
   }
 
   TRI_ASSERT(_request != nullptr);
-  VPackSlice search = _request->toVelocyPack(transactionContext->getVPackOptions());
+  VPackSlice search = _request->payload(transactionContext->getVPackOptions());
 
   OperationResult result = trx.document(collectionName, search, opOptions);
 

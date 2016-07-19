@@ -46,10 +46,10 @@ HttpRequest::HttpRequest(ConnectionInfo const& connectionInfo,
       _contentLength(0),
       _header(nullptr),
       _allowMethodOverride(allowMethodOverride),
-      _vpackBuilder(nullptr),
-      _contentType(ContentType::JSON),
-      _contentTypeResponse(ContentType::JSON) {
+      _vpackBuilder(nullptr){
   if (0 < length) {
+    _contentType = ContentType::JSON;
+    _contentTypeResponse = ContentType::JSON;
     _header = new char[length + 1];
     memcpy(_header, header, length);
     _header[length] = 0;
@@ -527,8 +527,9 @@ void HttpRequest::setHeader(char const* key, size_t keyLength,
     return;
   }
 
-  if (keyLength == 6 && memcmp(key, "accept", keyLength) == 0){
-    if(valueLength == 24 && memcmp(value, "application/x-velocypack", valueLength) == 0 ){
+  if (keyLength == 6 && memcmp(key, "accept", keyLength) == 0) {
+    if (valueLength == 24 &&
+        memcmp(value, "application/x-velocypack", valueLength) == 0) {
       _contentTypeResponse = ContentType::VPACK;
       return;
     }
@@ -536,10 +537,9 @@ void HttpRequest::setHeader(char const* key, size_t keyLength,
 
   if (keyLength == 12 && valueLength == 24 &&
       memcmp(key, "content-type", keyLength) == 0 &&
-      memcmp(value, "application/x-velocypack", valueLength) == 0
-     ){
-       _contentType = ContentType::VPACK;
-       return;
+      memcmp(value, "application/x-velocypack", valueLength) == 0) {
+    _contentType = ContentType::VPACK;
+    return;
   }
 
   if (keyLength == 6 &&
@@ -710,20 +710,16 @@ void HttpRequest::setBody(char const* body, size_t length) {
   _body[length] = '\0';
 }
 
-VPackSlice HttpRequest::toVelocyPack(
-  VPackOptions const* options) {
-  TRI_ASSERT(_vpackBuilder != nullptr);
-  //check options for nullptr?
-  VPackParser parser(options);
-  parser.parse(body());
-  _vpackBuilder = parser.steal();
-  return VPackSlice(_vpackBuilder->slice());
-}
+VPackSlice HttpRequest::payload(VPackOptions const* options) {
+  TRI_ASSERT(_vpackBuilder == nullptr);
+  // check options for nullptr?
 
-VPackSlice HttpRequest::payload(VPackOptions const* options = nullptr) {
-  if (_contentType == ContentType::JSON){
-    return toVelocyPack(options);
-  } else /*VPACK*/ {
+  if( _contentType == ContentType::JSON) {
+    VPackParser parser(options);
+    parser.parse(body());
+    _vpackBuilder = parser.steal();
+    return VPackSlice(_vpackBuilder->slice());
+  } else /*VPACK*/{
     VPackValidator validator;
     validator.validate(body().c_str(), body().length());
     return VPackSlice(body().c_str());

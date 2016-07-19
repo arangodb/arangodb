@@ -98,12 +98,9 @@ static T ExtractFigure(VPackSlice const& slice, char const* group,
 
 static std::shared_ptr<VPackBuilder> ExtractAnswer(
     ClusterCommResult const& res) {
-  try {
-    return VPackParser::fromJson(res.answer->body());
-  } catch (...) {
-    // Return an empty Builder
-    return std::make_shared<VPackBuilder>();
-  }
+  auto rv = std::make_shared<VPackBuilder>();
+  rv->add(res.answer->payload());
+  return rv;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1499,7 +1496,7 @@ int getFilteredDocumentsOnCoordinator(
   for (auto const& req : requests) {
     auto& res = req.result;
     if (res.status == CL_COMM_RECEIVED) {
-      VPackSlice resSlice = res.answer->toVelocyPack(&VPackOptions::Defaults);
+      VPackSlice resSlice = res.answer->payload(&VPackOptions::Defaults);
 
       if (!resSlice.isObject()) {
         THROW_ARANGO_EXCEPTION_MESSAGE(

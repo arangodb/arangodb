@@ -536,12 +536,11 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
           // query instantiated without problems
           nrok++;
 
-          // pick up query id from response
-          arangodb::basics::Json response(
-              TRI_UNKNOWN_MEM_ZONE,
-              arangodb::basics::JsonHelper::fromString(res.answer->body()));
-          std::string queryId = arangodb::basics::JsonHelper::getStringValue(
-              response.json(), "queryId", "");
+          VPackSlice tmp = res.answer->payload().get("queryId");
+          std::string queryId;
+          if(tmp.isString()){
+            queryId = tmp.copyString();
+          }
 
           // std::cout << "DB SERVER ANSWERED WITHOUT ERROR: " <<
           // res.answer->body() << ", REMOTENODEID: " << info.idOfRemoteNode <<
@@ -556,7 +555,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
           }
         } else {
           error += "DB SERVER ANSWERED WITH ERROR: ";
-          error += res.answer->body();
+          error += res.answer->payload().toJson();
           error += "\n";
         }
       } else {
@@ -825,7 +824,7 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
   bool const isCoordinator =
       arangodb::ServerState::instance()->isCoordinator(role);
   bool const isDBServer = arangodb::ServerState::instance()->isDBServer(role);
-      
+
   TRI_ASSERT(queryRegistry != nullptr);
 
   ExecutionEngine* engine = nullptr;
@@ -849,7 +848,7 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
 #if 0
       // Just for debugging
       for (auto& ei : inst->engines) {
-        std::cout << "EngineInfo: id=" << ei.id 
+        std::cout << "EngineInfo: id=" << ei.id
                   << " Location=" << ei.location << std::endl;
         for (auto& n : ei.nodes) {
           std::cout << "Node: type=" << n->getTypeString() << std::endl;

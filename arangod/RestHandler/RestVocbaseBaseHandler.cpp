@@ -640,23 +640,7 @@ std::shared_ptr<VPackBuilder> RestVocbaseBaseHandler::parseVelocyPackBody(
     VPackOptions const* options, bool& success) {
   try {
     success = true;
-
-    bool found;
-    std::string const& contentType =
-        _request->header(StaticStrings::ContentTypeHeader, found);
-
-    auto builder = std::make_shared<VPackBuilder>(options);
-    if (found && contentType.size() == StaticStrings::MimeTypeVPack.size() &&
-        contentType == StaticStrings::MimeTypeVPack) {
-
-      VPackValidator validator;
-      validator.validate(_request->body().c_str() ,_request->body().length());
-      VPackSlice slice{_request->body().c_str()};
-      builder->add(slice);
-    } else {
-      builder->add(_request->toVelocyPack(options));
-    }
-    return builder;
+    return _request->toVelocyPackBuilderPtr(options);
 
   } catch (std::bad_alloc const&) {
     generateOOMError();

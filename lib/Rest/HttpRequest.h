@@ -43,7 +43,7 @@ struct Options;
 
 class HttpRequest : public GeneralRequest {
   friend class rest::HttpCommTask;
-  friend class RestBatchHandler; // TODO must be removed
+  friend class RestBatchHandler;  // TODO must be removed
 
  private:
   HttpRequest(ConnectionInfo const&, char const*, size_t, bool);
@@ -52,7 +52,6 @@ class HttpRequest : public GeneralRequest {
   ~HttpRequest();
 
  public:
-  enum class ContentType { UNSET, VPACK, JSON };
   // HTTP protocol version is 1.0
   bool isHttp10() const { return _version == ProtocolVersion::HTTP_1_0; }
 
@@ -69,14 +68,12 @@ class HttpRequest : public GeneralRequest {
     return _cookies;
   }
 
-  std::string const& body() const override;
+  std::string const& body() const;
   void setBody(char const* body, size_t length);
 
-  // the request body as VelocyPackBuilder
-  VPackSlice toVelocyPack(
-      arangodb::velocypack::Options const*) override final;
+  // Payload
+  VPackSlice payload(arangodb::velocypack::Options const*) override final;
 
-  VPackSlice payload(arangodb::velocypack::Options const* options) override final;
 
   /// @brief sets a key/value header
   //  this function is called by setHeaders and get offsets to
@@ -104,8 +101,6 @@ class HttpRequest : public GeneralRequest {
   // (x-http-method, x-method-override or x-http-method-override) is allowed
   bool _allowMethodOverride;
   std::shared_ptr<velocypack::Builder> _vpackBuilder;
-  ContentType _contentType;
-  ContentType _contentTypeResponse;
 };
 }
 

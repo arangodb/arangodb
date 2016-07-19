@@ -73,6 +73,7 @@ class GeneralRequest {
   };
 
   enum class ProtocolVersion { HTTP_1_0, HTTP_1_1, VSTREAM_1_0, UNKNOWN };
+  enum class ContentType { UNSET, VPACK, JSON };
 
  public:
   // translate the HTTP protocol version
@@ -174,23 +175,22 @@ class GeneralRequest {
 
   bool velocyPackResponse() const;
 
-  // the request body as VelocyPackBuilder
-  virtual VPackSlice
-  toVelocyPack(arangodb::velocypack::Options const*) = 0;
-  //should toVelocyPack be renamed to payload?
-  virtual VPackSlice payload(arangodb::velocypack::Options const* options) = 0;
+  // should toVelocyPack be renamed to payload?
+  virtual VPackSlice payload(arangodb::velocypack::Options const* options = &VPackOptions::Defaults) = 0;
 
-  std::shared_ptr<VPackBuilder>
-  toVelocyPackBuilderPtr(arangodb::velocypack::Options const* options){
+  std::shared_ptr<VPackBuilder> toVelocyPackBuilderPtr(
+      arangodb::velocypack::Options const* options) {
     auto rv = std::make_shared<VPackBuilder>();
-    rv->add(toVelocyPack(options));
+    rv->add(payload(options));
     return rv;
   };
 
-  virtual std::string const& body() const = 0;
+  //  virtual std::string const& body() const = 0;
   virtual int64_t contentLength() const = 0;
 
   virtual std::unordered_map<std::string, std::string> cookieValues() const = 0;
+
+  ContentType contentType() const { return _contentType; }
 
  protected:
   void setValue(char const* key, char const* value);
@@ -216,9 +216,12 @@ class GeneralRequest {
   std::string _requestPath;
   std::string _prefix;
   std::vector<std::string> _suffix;
-  std::unordered_map<std::string, std::string> _headers; //gets set by httpRequest: parseHeaders -> setHeaders
+  std::unordered_map<std::string, std::string>
+      _headers;  // gets set by httpRequest: parseHeaders -> setHeaders
   std::unordered_map<std::string, std::string> _values;
   std::unordered_map<std::string, std::vector<std::string>> _arrayValues;
+  ContentType _contentType;
+  ContentType _contentTypeResponse;
 };
 }
 
