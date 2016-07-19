@@ -163,10 +163,12 @@ static int runServer(int argc, char** argv) {
   } catch (std::exception const& ex) {
     LOG(ERR) << "arangod terminated because of an unhandled exception: "
              << ex.what();
+    Logger::flush();
     ret = EXIT_FAILURE;
   } catch (...) {
     LOG(ERR) << "arangod terminated because of an unhandled exception of "
                 "unknown type";
+    Logger::flush();
     ret = EXIT_FAILURE;
   }
 

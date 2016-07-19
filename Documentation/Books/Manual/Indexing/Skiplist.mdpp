@@ -1,6 +1,5 @@
 !CHAPTER Skiplists
 
-
 !SECTION Introduction to Skiplist Indexes
 
 This is an introduction to ArangoDB's skiplists.
@@ -17,10 +16,11 @@ of `null`.
 
 !SECTION Accessing Skiplist Indexes from the Shell
 
+!SUBSECTION Unique Skiplist Index
+
 <!-- js/server/modules/@arangodb/arango-collection.js-->
 
-
-ensures that a unique skiplist index exists
+Ensures that a unique skiplist index exists:
 `collection.ensureIndex({ type: "skiplist", fields: [ "field1", ..., "fieldn" ], unique: true })`
 
 Creates a unique skiplist index on all documents using *field1*, ... *fieldn*
@@ -72,11 +72,11 @@ details, including the index-identifier, is returned.
     @endDocuBlock ensureUniqueSkiplistMultiColumn
 
 
+!SUBSECTION Non-unique Skiplist Index
 
 <!-- js/server/modules/@arangodb/arango-collection.js-->
 
-
-ensures that a non-unique skiplist index exists
+Ensures that a non-unique skiplist index exists:
 `collection.ensureIndex({ type: "skiplist", fields: [ "field1", ..., "fieldn" ] })`
 
 Creates a non-unique skiplist index on all documents using *field1*, ...
@@ -101,11 +101,36 @@ details, including the index-identifier, is returned.
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock ensureSkiplist
 
+!SUBSECTION Skiplist Array Index
+
+Ensures that a skiplist array index exists (non-unique):
+`collection.ensureIndex({ type: "skiplist", fields: [ "field1[*]", ..., "fieldn[*]" ] })`
+
+Creates a non-unique skiplist array index for the individual elements of the array
+attributes <i>field1[*]</i>, ... <i>fieldn[*]</i> found in the documents. At least
+one attribute path has to be given. The index always treats the indexed arrays as
+sparse.
+
+It is possible to combine array indexing with standard indexing:
+`collection.ensureIndex({ type: "skiplist", fields: [ "field1[*]", "field2" ] })`
+
+In case that the index was successfully created, an object with the index
+details, including the index-identifier, is returned.
+
+    @startDocuBlockInline ensureSkiplistArray
+    @EXAMPLE_ARANGOSH_OUTPUT{ensureSkiplistArray}
+    ~db._create("test");
+    db.test.ensureIndex({ type: "skiplist", fields: [ "a[*]" ] });
+    db.test.save({ a : [ 1, 2 ] });
+    db.test.save({ a : [ 1, 3 ] });
+    db.test.save({ a : null });
+    ~db._drop("test");
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock ensureSkiplistArray
 
 !SUBSECTION Query by example using a skiplist index
 
-
-constructs a query-by-example using a skiplist index
+Constructs a query-by-example using a skiplist index:
 `collection.byExample(example)`
 
 Selects all documents from the collection that match the specified example 
@@ -119,20 +144,20 @@ An attribute name of the form *a.b* is interpreted as attribute path,
 not as attribute. If you use
 
 ```json
-{ a : { c : 1 } }
+{ "a" : { "c" : 1 } }
 ```
 
 as example, then you will find all documents, such that the attribute
 *a* contains a document of the form *{c : 1 }*. For example the document
 
 ```json
-{ a : { c : 1 }, b : 1 }
+{ "a" : { "c" : 1 }, "b" : 1 }
 ```
 
 will match, but the document
 
 ```json
-{ a : { c : 1, b : 1 } }*
+{ "a" : { "c" : 1, "b" : 1 } }
 ```
 
 will not.
@@ -140,18 +165,18 @@ will not.
 However, if you use
 
 ```json
-{ a.c : 1 }*,
+{ "a.c" : 1 },
 ```
 
 then you will find all documents, which contain a sub-document in *a*
 that has an attribute *c* of value *1*. Both the following documents
 
 ```json
-{ a : { c : 1 }, b : 1 }
+{ "a" : { "c" : 1 }, "b" : 1 }
 ```
 and
 
 ```json
-{ a : { c : 1, b : 1 } }
+{ "a" : { "c" : 1, "b" : 1 } }
 ```
 will match.

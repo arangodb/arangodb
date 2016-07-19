@@ -24,12 +24,14 @@
 
 #include "SimpleHttpClient.h"
 
-#include "Basics/JsonHelper.h"
 #include "Basics/StringUtils.h"
 #include "Logger/Logger.h"
 #include "Rest/HttpResponse.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
+
+#include <velocypack/Parser.h>
+#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;

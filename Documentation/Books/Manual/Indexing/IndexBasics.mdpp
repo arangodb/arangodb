@@ -90,7 +90,7 @@ value(s) in the indexed attribute(s). Hash indexes can optionally be sparse.
 
 The different types of hash indexes have the following characteristics:
 
-* **unique hash index**: all documents in the collection must have different values for 
+- **unique hash index**: all documents in the collection must have different values for 
   the attributes covered by the unique index. Trying to insert a document with the same 
   key value as an already existing document will lead to a unique constraint 
   violation. 
@@ -104,7 +104,7 @@ The different types of hash indexes have the following characteristics:
   [no duplicate edges](Hash.md#ensure-uniqueness-of-relations-in-edge-collections) are
   created, by adding a combined index for the fields `_from` and `_to` to an edge collection.
 
-* **unique, sparse hash index**: all documents in the collection must have different 
+- **unique, sparse hash index**: all documents in the collection must have different 
   values for the attributes covered by the unique index. Documents in which at least one
   of the index attributes is not set or has a value of `null` are not included in the 
   index. This type of index can be used to ensure that there are no duplicate keys in
@@ -112,12 +112,12 @@ The different types of hash indexes have the following characteristics:
   exclude documents for which the indexed attributes are `null` or not set, it can be
   used for optional attributes.
 
-* **non-unique hash index**: all documents in the collection will be indexed. This type
+- **non-unique hash index**: all documents in the collection will be indexed. This type
   of index is not sparse. Documents that do not contain the index attributes or that have 
   a value of `null` in the index attribute(s) will still be indexed. Duplicate key values 
   can occur and do not lead to unique constraint violations.
  
-* **non-unique, sparse hash index**: only those documents will be indexed that have all
+- **non-unique, sparse hash index**: only those documents will be indexed that have all
   the indexed attributes set to a value other than `null`. It can be used for optional
   attributes.
 
@@ -131,15 +131,15 @@ low cardinality.
 If a hash index is created on an attribute that is missing in all or many of the documents,
 the behavior is as follows:
 
-* if the index is sparse, the documents missing the attribute will not be indexed and not
+- if the index is sparse, the documents missing the attribute will not be indexed and not
   use index memory. These documents will not influence the update or removal performance
   for the index.
 
-* if the index is non-sparse, the documents missing the attribute will be contained in the
+- if the index is non-sparse, the documents missing the attribute will be contained in the
   index with a key value of `null`. 
 
-Hash indexes support indexing array values if the index attribute name is extended with
-a <i>[\*]</i>`. 
+Hash indexes support [indexing array values](#indexing-array-values) if the index
+attribute name is extended with a <i>[\*]</i>.
 
 
 !SUBSECTION Skiplist Index
@@ -157,14 +157,16 @@ For example, if a skiplist index is created on attributes `value1` and `value2`,
 following filter conditions can use the index (note: the `<=` and `>=` operators are 
 intentionally omitted here for the sake of brevity):
 
-    FILTER doc.value1 == ...
-    FILTER doc.value1 < ...
-    FILTER doc.value1 > ...
-    FILTER doc.value1 > ... && doc.value1 < ...
+```js
+FILTER doc.value1 == ...
+FILTER doc.value1 < ...
+FILTER doc.value1 > ...
+FILTER doc.value1 > ... && doc.value1 < ...
 
-    FILTER doc.value1 == ... && doc.value2 == ...
-    FILTER doc.value1 == ... && doc.value2 > ...
-    FILTER doc.value1 == ... && doc.value2 > ... && doc.value2 < ...
+FILTER doc.value1 == ... && doc.value2 == ...
+FILTER doc.value1 == ... && doc.value2 > ...
+FILTER doc.value1 == ... && doc.value2 > ... && doc.value2 < ...
+```
 
 In order to use a skiplist index for sorting, the index attributes must be specified in
 the `SORT` clause of the query in the same order as they appear in the index definition.
@@ -177,18 +179,18 @@ as ascending is the default) or all descending.
 For example, if the skiplist index is created on attributes `value1` and `value2` 
 (in this order), then the following sorts clauses can use the index for sorting:
 
-* `SORT value1 ASC, value2 ASC` (and its equivalent `SORT value1, value2`)
-* `SORT value1 DESC, value2 DESC`
-* `SORT value1 ASC` (and its equivalent `SORT value1`)
-* `SORT value1 DESC`
+- `SORT value1 ASC, value2 ASC` (and its equivalent `SORT value1, value2`)
+- `SORT value1 DESC, value2 DESC`
+- `SORT value1 ASC` (and its equivalent `SORT value1`)
+- `SORT value1 DESC`
 
 The following sort clauses cannot make use of the index order, and require an extra
 sort step:
 
-* `SORT value1 ASC, value2 DESC`
-* `SORT value1 DESC, value2 ASC`
-* `SORT value2` (and its equivalent `SORT value2 ASC`)
-* `SORT value2 DESC` (because first indexed attribute `value1` is not used in sort clause)
+- `SORT value1 ASC, value2 DESC`
+- `SORT value1 DESC, value2 ASC`
+- `SORT value2` (and its equivalent `SORT value2 ASC`)
+- `SORT value2 DESC` (because first indexed attribute `value1` is not used in sort clause)
 
 Note: the latter two sort clauses cannot use the index because the sort clause does not
 refer to a leftmost prefix of the index attributes.
@@ -198,7 +200,7 @@ attribute. They can be sparse or non-sparse.
 
 The different types of skiplist indexes have the following characteristics:
 
-* **unique skiplist index**: all documents in the collection must have different values for 
+- **unique skiplist index**: all documents in the collection must have different values for 
   the attributes covered by the unique index. Trying to insert a document with the same 
   key value as an already existing document will lead to a unique constraint 
   violation. 
@@ -208,7 +210,7 @@ The different types of skiplist indexes have the following characteristics:
   A key value of `null` may only occur once in the index, so this type of index cannot 
   be used for optional attributes.
 
-* **unique, sparse skiplist index**: all documents in the collection must have different 
+- **unique, sparse skiplist index**: all documents in the collection must have different 
   values for the attributes covered by the unique index. Documents in which at least one
   of the index attributes is not set or has a value of `null` are not included in the 
   index. This type of index can be used to ensure that there are no duplicate keys in
@@ -216,20 +218,20 @@ The different types of skiplist indexes have the following characteristics:
   exclude documents for which the indexed attributes are `null` or not set, it can be
   used for optional attributes.
 
-* **non-unique skiplist index**: all documents in the collection will be indexed. This type
+- **non-unique skiplist index**: all documents in the collection will be indexed. This type
   of index is not sparse. Documents that do not contain the index attributes or that have 
   a value of `null` in the index attribute(s) will still be indexed. Duplicate key values 
   can occur and do not lead to unique constraint violations.
  
-* **non-unique, sparse skiplist index**: only those documents will be indexed that have all
+- **non-unique, sparse skiplist index**: only those documents will be indexed that have all
   the indexed attributes set to a value other than `null`. It can be used for optional
   attributes.
 
 The operational amortized complexity for skiplist indexes is logarithmically correlated
 with the number of documents in the index.
 
-Skiplist indexes support indexing array values if the index attribute name is extended with
-a <i>[\*]</i>`. 
+Skiplist indexes support [indexing array values](#indexing-array-values) if the index
+attribute name is extended with a <i>[\*]</i>`.
 
 
 !SUBSECTION Persistent Index
@@ -291,6 +293,27 @@ minimum length will be included in the index.
 The fulltext index is used via dedicated functions in AQL or the simple queries, but will
 not be enabled for other types of queries or conditions.
 
+!SUBSECTION Indexing attributes and sub-attributes
+
+Top-level as well as nested attributes can be indexed. For attributes at the top level,
+the attribute names alone are required. To index a single field, pass an array with a
+single element (string of the attribute key) to the *fields* parameter of the
+[ensureIndex() method](WorkingWithIndexes.md#creating-an-index). To create a
+combined index over multiple fields, simply add more members to the *fields* array:
+
+```js
+// { name: "Smith", age: 35 }
+db.posts.ensureIndex({ type: "hash", fields: [ "name" ] })
+db.posts.ensureIndex({ type: "hash", fields: [ "name", "age" ] })
+```
+
+To index sub-attributes, specify the attribute path using the dot notation:
+
+```js
+// { name: {last: "Smith", first: "John" } }
+db.posts.ensureIndex({ type: "hash", fields: [ "name.last" ] })
+db.posts.ensureIndex({ type: "hash", fields: [ "name.last", "name.first" ] })
+```
 
 !SUBSECTION Indexing array values
 
@@ -313,18 +336,33 @@ db.posts.insert({ tags: [ "foobar", "baz", "quux" ] });
 ```
 
 This array index can then be used for looking up individual `tags` values from AQL queries via 
-the `IN` operator and the attribute name extension <i>[\*]</i>:
+the `IN` operator:
 
-    FOR doc IN posts
-      FILTER 'foobar' IN doc.tags[*]
-      RETURN doc
-    
+```js
+FOR doc IN posts
+  FILTER 'foobar' IN doc.tags
+  RETURN doc
+```
+
+It is possible to add the [array expansion operator](../../AQL/Advanced/ArrayOperators.html#array-expansion)
+<i>[\*]</i>, but it is not mandatory. You may use it to indicate that an array index is used,
+it is purely cosmetic however:
+
+```js
+FOR doc IN posts
+  FILTER 'foobar' IN doc.tags[*]
+  RETURN doc
+```
+
 The following FILTER conditions will not use the array index:
-      
-    FILTER 'foobar' IN doc.tags
-    FILTER doc.tags IN 'foobar'
-    FILTER doc.tags == 'foobar'
-    FILTER 'foobar' == doc.tags
+
+```js
+FILTER doc.tags ANY == 'foobar'
+FILTER doc.tags ANY IN 'foobar'
+FILTER doc.tags IN 'foobar'
+FILTER doc.tags == 'foobar'
+FILTER 'foobar' == doc.tags
+```
 
 It is also possible to create an index on subattributes of array values. This makes sense
 when the index attribute is an array of objects, e.g.
@@ -334,18 +372,21 @@ db.posts.ensureIndex({ type: "hash", fields: [ "tags[*].name" ] });
 db.posts.insert({ tags: [ { name: "foobar" }, { name: "baz" }, { name: "quux" } ] });
 ```
 
-The following query will then use the array index:
+The following query will then use the array index (this does require the
+[array expansion operator](../../AQL/Advanced/ArrayOperators.html#array-expansion)):
 
-    FOR doc IN posts
-      FILTER 'foobar' IN doc.tags[*].name
-      RETURN doc
+```js
+FOR doc IN posts
+  FILTER 'foobar' IN doc.tags[*].name
+  RETURN doc
+```
 
 If you store a document having the array which does contain elements not having
 the subattributes this document will also be indexed with the value `null`, which
 in ArangoDB is equal to attribute not existing.
 
 ArangoDB supports creating array indexes with a single <i>[\*]</i> operator per index 
-attribute. For example, creating an index as follows is not supported:
+attribute. For example, creating an index as follows is **not supported**:
 
 ```js
 db.posts.ensureIndex({ type: "hash", fields: [ "tags[*].name[*].value" ] });
@@ -405,5 +446,5 @@ db.posts.insert({tags: [null], name: "bob"})
 
 Please note that filtering using array indexes only works from within AQL queries and
 only if the query filters on the indexed attribute using the `IN` operator. The other
-comparison operators (`==`, `!=`, `>`, `>=`, `<`, `<=`) currently cannot use array
-indexes.
+comparison operators (`==`, `!=`, `>`, `>=`, `<`, `<=`, `ANY`, `ALL`, `NONE`) currently
+cannot use array indexes.

@@ -32,7 +32,6 @@
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include "Basics/JsonHelper.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/gcd.h"
 #include "Basics/memory-map.h"

@@ -30,7 +30,6 @@
 #include "Aql/ModificationOptions.h"
 #include "Aql/types.h"
 #include "Aql/Variable.h"
-#include "Basics/JsonHelper.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 

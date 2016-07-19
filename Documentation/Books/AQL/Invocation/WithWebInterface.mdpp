@@ -18,9 +18,9 @@ application code.
 Here is an example: 
 
 ```js
-FOR doc IN @@collection 
-FILTER CONTAINS(LOWER(doc.author), @search, false)
-RETURN { "name": doc.name, "descr": doc.description, "author": doc.author }
+FOR doc IN @@collection
+  FILTER CONTAINS(LOWER(doc.author), @search, false)
+  RETURN { "name": doc.name, "descr": doc.description, "author": doc.author }
 ```
 
 Bind parameters (table view mode):
