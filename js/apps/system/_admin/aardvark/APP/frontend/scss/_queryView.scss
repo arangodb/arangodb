@@ -365,6 +365,18 @@
     right: -24px;
     top: 45px;
     z-index: 10;
+
+    span {
+      top: 0;
+
+      &.active {
+        color: $c-positive;
+      }
+
+      &.disabled {
+        cursor: not-allowed;
+      }
+    }
   }
 
   .ace_editor {
