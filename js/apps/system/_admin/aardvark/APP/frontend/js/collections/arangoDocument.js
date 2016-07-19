@@ -92,7 +92,7 @@ window.ArangoDocument = Backbone.Collection.extend({
         }
       },
       error: function (data) {
-        callback(true, data._id);
+        callback(true, data._id, data.responseJSON);
       }
     });
   },

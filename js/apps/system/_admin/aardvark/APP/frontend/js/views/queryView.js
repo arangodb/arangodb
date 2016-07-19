@@ -1473,15 +1473,6 @@
                 );
               }
             }
-            if (data.extra.stats.scannedFull > 0) {
-              appendSpan(
-                'full collection scan', 'fa-exclamation-circle warning', 'additional'
-              );
-            } else {
-              appendSpan(
-                'no full collection scan', 'fa-check-circle positive', 'additional'
-              );
-            }
           }
         }
 

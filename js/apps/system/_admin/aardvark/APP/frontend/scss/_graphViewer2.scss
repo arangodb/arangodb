@@ -1,5 +1,7 @@
 .graphContent {
 
+  margin-top: 3px;
+
   #graph-container {
     background-color: $c-white;
     z-index: 5;
@@ -40,6 +42,22 @@
   }
 }
 
+.nodeInfoDiv {
+  left: 25px;
+  overflow: hidden;
+  position: absolute;
+  top: 130px;
+
+  pre {
+    background-color: rgba(64, 74, 83, .9);
+    border-radius: 2px;
+    color: $c-white;
+    max-height: 400px;
+    max-width: 330px;
+    overflow: hidden;
+  }
+}
+
 .nodeContextMenu {
 
   position: fixed;
@@ -67,6 +85,11 @@
   border: 0;
   border-radius: 0;
   height: 100%;
+  overflow-y: scroll;
+
+  button {
+    margin-bottom: 125px;
+  }
 }
 
 #graphSettingsContent {
@@ -79,13 +102,29 @@
   width: 400px;
 
   .pure-g {
+
+    font-size: 10pt;
+
+    input,
+    select {
+      color: $c-black;
+    }
+
     .left {
       color: $c-white;
+      height: 40px;
     }
 
     .pure-u-2-3 {
       text-align: right;
     }
+
+    .heading {
+      border-bottom: 1px solid $c-white;
+      height: 10px;
+      margin-bottom: 15px;
+    }
+
   }
 
   .pure-table {
