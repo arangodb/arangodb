@@ -26,11 +26,15 @@ devel
 * Foxx now provides an easy way to directly serve GraphQL requests using the
   `@arangodb/foxx/graphql` module and the bundled `graphql-sync` dependency
 
+* Foxx OAuth2 module now correctly passes the `access_token` to the OAuth2 server
+
 
 v3.0.4 (XXXX-XX-XX)
 -------------------
 
 * fixed segfault in V8, by backporting https://bugs.chromium.org/p/v8/issues/detail?id=5033
+
+* Foxx OAuth2 module now correctly passes the `access_token` to the OAuth2 server
 
 
 v3.0.3 (2016-07-17)
