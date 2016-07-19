@@ -414,8 +414,7 @@ static v8::Handle<v8::Object> RequestCppToV8(v8::Isolate* isolate,
       } else {
         VPackSlice slice = request->payload();
         V8Buffer* buffer = V8Buffer::New(
-            //TODO FIXME - BAD CAST
-            isolate, reinterpret_cast<const char*>(slice.begin()), std::distance(slice.begin(), slice.end()));
+            isolate, slice.startAs<char>(), std::distance(slice.begin(), slice.end()));
         v8::Local<v8::Object> bufferObject =
             v8::Local<v8::Object>::New(isolate, buffer->_handle);
         req->ForceSet(RequestBodyKey, bufferObject);
