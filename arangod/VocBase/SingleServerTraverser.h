@@ -39,15 +39,22 @@ class PathEnumerator;
 
 class SingleServerEdgeCursor : public EdgeCursor {
  private:
-  std::vector<OperationCursor> _cursors;
+  std::vector<OperationCursor*> _cursors;
   size_t _currentCursor;
+  std::vector<TRI_doc_mptr_t*> _cache;
+  size_t _cachePos;
 
  public:
-  SingleServerEdgeCursor();
+  explicit SingleServerEdgeCursor(size_t);
 
-  ~SingleServerEdgeCursor() {}
+  ~SingleServerEdgeCursor() {
+  }
 
   bool next(std::vector<arangodb::velocypack::Slice>&);
+
+  std::vector<OperationCursor*>& getCursors() {
+    return _cursors;
+  }
 };
 
 class SingleServerTraverser final : public Traverser {
@@ -188,9 +195,9 @@ class SingleServerTraverser final : public Traverser {
 
   std::unique_ptr<VertexGetter> _vertexGetter;
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief a vector containing all required edge collection structures
-  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Builder for the start value slice. Leased from transaction
+
+  TransactionBuilderLeaser _startIdBuilder;
 
 public:
  SingleServerTraverser(TraverserOptions&, Transaction*);

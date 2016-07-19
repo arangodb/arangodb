@@ -56,18 +56,47 @@ static int FetchDocumentById(arangodb::Transaction* trx,
   return res;
 }
 
-SingleServerEdgeCursor::SingleServerEdgeCursor() {
-#warning TODO Implement
+SingleServerEdgeCursor::SingleServerEdgeCursor(size_t nrCursors)
+    : _cursors(), _currentCursor(0), _cachePos(0) {
+  _cursors.reserve(nrCursors);
+  _cache.reserve(1000);
 };
 
 bool SingleServerEdgeCursor::next(std::vector<VPackSlice>& result) {
-#warning TODO Implement
-  return false;
+  if (_currentCursor == _cursors.size()) {
+    return false;
+  }
+  _cachePos++;
+  if (_cachePos < _cache.size()) {
+    result.emplace_back(_cache[_cachePos]->vpack());
+    return true;
+  }
+  // We need to refill the cache.
+  _cachePos = 0;
+  auto& cursor = _cursors[_currentCursor];
+  // NOTE: We cannot clear the cache,
+  // because the cursor expect's it to be filled.
+  do {
+    if (!cursor->hasMore()) {
+      // This one is exhausted, next
+      ++_currentCursor;
+      if (_currentCursor == _cursors.size()) {
+        // We are done, all cursors exhausted.
+        return false;
+      }
+      cursor = _cursors[_currentCursor];
+    } else {
+      cursor->getMoreMptr(_cache);
+    }
+  } while (_cache.empty());
+  TRI_ASSERT(_cachePos < _cache.size());
+  result.emplace_back(_cache[_cachePos]->vpack());
+  return true;
 }
 
 SingleServerTraverser::SingleServerTraverser(TraverserOptions& opts,
                                              arangodb::Transaction* trx)
-    : Traverser(opts), _trx(trx) {
+    : Traverser(opts), _trx(trx), _startIdBuilder(trx) {
   _edgeGetter = std::make_unique<EdgeGetter>(this, opts, trx);
   if (opts.uniqueVertices == TraverserOptions::UniquenessLevel::GLOBAL) {
     _vertexGetter = std::make_unique<UniqueVertexGetter>(this);
@@ -260,10 +289,9 @@ void SingleServerTraverser::UniqueVertexGetter::reset(VPackSlice startVertex) {
 void SingleServerTraverser::setStartVertex(std::string const& v) {
   _pruneNext = false;
 
-#warning Who is responsible for this builder?!
-  VPackBuilder tmp;
-  tmp.add(VPackValue(v));
-  VPackSlice idSlice = tmp.slice();
+  _startIdBuilder->clear();
+  _startIdBuilder->add(VPackValue(v));
+  VPackSlice idSlice = _startIdBuilder->slice();
 
   TRI_doc_mptr_t vertex;
   int result = FetchDocumentById(_trx, v, &vertex);
@@ -284,9 +312,9 @@ void SingleServerTraverser::setStartVertex(std::string const& v) {
   }
   _vertexGetter->reset(idSlice);
   if (_opts.useBreadthFirst) {
-    _enumerator.reset(new BreadthFirstEnumerator(this, vertexSlice, &_opts));
+    _enumerator.reset(new BreadthFirstEnumerator(this, idSlice, &_opts));
   } else {
-    _enumerator.reset(new DepthFirstEnumerator(this, vertexSlice, &_opts));
+    _enumerator.reset(new DepthFirstEnumerator(this, idSlice, &_opts));
   }
   _done = false;
 }

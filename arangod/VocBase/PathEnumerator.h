@@ -84,6 +84,7 @@ class PathEnumerator {
   PathEnumerator(Traverser* traverser, arangodb::velocypack::Slice startVertex,
                  TraverserOptions const* opts)
       : _traverser(traverser), _isFirst(true), _opts(opts) {
+    TRI_ASSERT(startVertex.isString());
     _enumeratedPath.vertices.push_back(startVertex);
     TRI_ASSERT(_enumeratedPath.vertices.size() == 1);
   }

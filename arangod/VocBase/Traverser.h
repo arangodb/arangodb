@@ -222,10 +222,11 @@ struct TraverserOptions {
  private:
   arangodb::Transaction* _trx;
   std::vector<arangodb::Transaction::IndexHandle> _baseIndexHandles;
-  std::vector<aql::AstNode const*> _baseConditions;
+  std::vector<aql::AstNode*> _baseConditions;
   std::unordered_map<size_t,
                      std::pair<std::vector<arangodb::Transaction::IndexHandle>,
-                               std::vector<aql::AstNode const*>>> _depthIndexHandles;
+                               std::vector<aql::AstNode*>>> _depthIndexHandles;
+  aql::Variable const* _tmpVar;
 
  public:
   uint64_t minDepth;
@@ -237,8 +238,6 @@ struct TraverserOptions {
   UniquenessLevel uniqueVertices;
 
   UniquenessLevel uniqueEdges;
-
-#warning TODO We need a way to evaluate the expressions
 
   explicit TraverserOptions(arangodb::Transaction* trx)
       : _trx(trx),
@@ -254,6 +253,7 @@ struct TraverserOptions {
   bool evaluateVertexExpression(arangodb::velocypack::Slice, size_t) const;
 
   EdgeCursor* nextCursor(arangodb::velocypack::Slice, size_t) const;
+
 };
 
 class Traverser {

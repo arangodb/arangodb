@@ -620,6 +620,7 @@ void TraversalNode::fillTraversalOptions(
     arangodb::traverser::TraverserOptions& opts) const {
   opts.minDepth = _minDepth;
   opts.maxDepth = _maxDepth;
+  opts._tmpVar = _tmpObjVariable;
 
   // This is required by trx api.
   // But we do not use it here.
@@ -665,7 +666,7 @@ void TraversalNode::fillTraversalOptions(
   for (std::pair<size_t, EdgeConditionBuilder> it : _edgeConditions) {
     auto ins = opts._depthIndexHandles.emplace(
         it.first, std::make_pair(std::vector<Transaction::IndexHandle>(),
-                                 std::vector<AstNode const*>()));
+                                 std::vector<AstNode*>()));
     TRI_ASSERT(ins.second);
 
     auto& idxList = ins.first->second.first;
