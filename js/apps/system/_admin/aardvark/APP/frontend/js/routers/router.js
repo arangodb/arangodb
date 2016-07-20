@@ -676,6 +676,9 @@
         return;
       }
       if (this.graphViewer2) {
+        if (this.graphViewer2.graphSettingsView) {
+          this.graphViewer2.graphSettingsView.remove();
+        }
         this.graphViewer2.remove();
       }
       this.graphViewer2 = new window.GraphViewer2({
