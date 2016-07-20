@@ -7,9 +7,9 @@ I'm using the latest ArangoDB of the respective release series:
 On this operating system:
 - [ ] DCOS on
   - [ ] AWS
-  - [ ] Azzure
+  - [ ] Azure
   - [ ] own infrastructure
-- [ ] Linux [ ] other
+- [ ] Linux 
   - [ ] Debian .deb
   - [ ] Ubuntu .deb
   - [ ] SUSE   .rpm
@@ -17,6 +17,7 @@ On this operating system:
   - [ ] Fedora .rpm
   - [ ] Gentoo
   - [ ] docker - official docker library
+  - [ ] other:
 - [ ] Windows, version: 
 - [ ] MacOS, version:
 
@@ -24,7 +25,6 @@ On this operating system:
 [ ] I'm using graph features
 
 I'm issuing AQL via:
-
 - [ ] web interface with this browser:     running on this OS:
 - [ ] arangosh
 - [ ] this Driver:
