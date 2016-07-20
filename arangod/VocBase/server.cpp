@@ -1093,7 +1093,6 @@ TRI_vocbase_operationmode_e TRI_GetOperationModeServer() { return Mode; }
 
 TRI_server_t::TRI_server_t()
     : _databasesLists(new DatabasesLists()),
-      _databaseManagerStarted(false),
       _queryRegistry(nullptr),
       _basePath(nullptr),
       _databasePath(nullptr),

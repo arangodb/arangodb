@@ -26,7 +26,6 @@
 
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
-#include "Basics/threads.h"
 #include "Basics/DataProtector.h"
 #include "VocBase/voc-types.h"
 
@@ -60,9 +59,6 @@ struct TRI_server_t {
   // arangodb::basics::DataProtector<64>
   arangodb::basics::DataProtector _databasesProtector;
   arangodb::Mutex _databasesMutex;
-
-  TRI_thread_t _databaseManager;
-  bool _databaseManagerStarted;
 
   std::atomic<arangodb::aql::QueryRegistry*> _queryRegistry;
 
