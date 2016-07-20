@@ -1475,13 +1475,19 @@
         var result = self.analyseQuery(data.result);
         console.log('Using ' + result.defaultType + ' as data format.');
         if (result.defaultType === 'table') {
-          $('#outputEditorWrapper' + counter).append('<div id="outputTable' + counter + '"></div>');
+          $('#outputEditorWrapper' + counter + ' .arangoToolbarTop').after('<div id="outputTable' + counter + '"></div>');
           $('#outputTable' + counter).show();
+          self.renderOutputTable(result, counter);
+
+          // apply max height for table output dynamically
+          var maxHeight = $('.centralRow').height() - 250;
+          $('.outputEditorWrapper .tableWrapper').css('max-height', maxHeight);
 
           $('#outputEditor' + counter).hide();
         } else if (result.defaultType === 'graph') {
-          $('#outputEditorWrapper' + counter).append('<div id="outputGraph' + counter + '"></div>');
+          $('#outputEditorWrapper' + counter + ' .arangoToolbarTop').after('<div id="outputGraph' + counter + '"></div>');
           $('#outputGraph' + counter).show();
+          self.renderOutputGraph(result, data);
 
           $('#outputEditor' + counter).hide();
         }
@@ -1618,82 +1624,92 @@
 
       // check if result could be displayed as graph
       // case a) result has keys named vertices and edges
-      if (result[0].vertices && result[0].edges) {
-        var hitsa = 0;
-        var totala = 0;
+      if (result[0]) {
+        if (result[0].vertices && result[0].edges) {
+          var hitsa = 0;
+          var totala = 0;
 
-        _.each(result, function (obj) {
-          if (obj.edges) {
-            totala += obj.edges.length;
+          _.each(result, function (obj) {
+            if (obj.edges) {
+              totala += obj.edges.length;
 
-            _.each(obj.edges, function (edge) {
-              if (edge._from && edge._to) {
-                hitsa++;
-              }
-            });
+              _.each(obj.edges, function (edge) {
+                if (edge._from && edge._to) {
+                  hitsa++;
+                }
+              });
+            }
+          });
+
+          var percentagea = hitsa / totala * 100;
+
+          if (percentagea >= 95) {
+            found = true;
+            toReturn.defaultType = 'graph';
           }
-        });
+        } else {
+          // case b) 95% have _from and _to attribute
+          var hitsb = 0;
+          var totalb = result.length;
 
-        var percentagea = hitsa / totala * 100;
+          _.each(result, function (obj) {
+            if (obj._from && obj._to) {
+              hitsb++;
+            }
+          });
 
-        if (percentagea >= 95) {
-          found = true;
-          toReturn.defaultType = 'graph';
-        }
-      } else {
-        // case b) 95% have _from and _to attribute
-        var hitsb = 0;
-        var totalb = result.length;
+          var percentageb = hitsb / totalb * 100;
 
-        _.each(result, function (obj) {
-          if (obj._from && obj._to) {
-            hitsb++;
+          if (percentageb >= 95) {
+            found = true;
+            toReturn.defaultType = 'graph';
+            // then display as graph
           }
-        });
-
-        var percentageb = hitsb / totalb * 100;
-
-        if (percentageb >= 95) {
-          found = true;
-          toReturn.defaultType = 'graph';
-          // then display as graph
         }
       }
 
       // check if result could be displayed as table
       if (!found) {
         var maxAttributeCount = 0;
+        var check = true;
         var length;
         var attributes = {};
 
-        _.each(result, function (obj) {
-          length = _.keys(obj).length;
+        if (result.length <= 1) {
+          check = false;
+        }
 
-          if (length > maxAttributeCount) {
-            maxAttributeCount = length;
-          }
+        if (check) {
+          _.each(result, function (obj) {
+            length = _.keys(obj).length;
 
-          _.each(obj, function (value, key) {
-            if (attributes[key]) {
-              attributes[key] = attributes[key] + 1;
-            } else {
-              attributes[key] = 1;
+            if (length > maxAttributeCount) {
+              maxAttributeCount = length;
+            }
+
+            _.each(obj, function (value, key) {
+              if (attributes[key]) {
+                attributes[key] = attributes[key] + 1;
+              } else {
+                attributes[key] = 1;
+              }
+            });
+          });
+
+          var rate;
+
+          console.log(attributes);
+          _.each(attributes, function (val, key) {
+            rate = (val / result.length) * 100;
+
+            console.log(rate);
+            if (check !== false) {
+              if (rate <= 95) {
+                check = false;
+              }
             }
           });
-        });
-
-        var rate;
-        var check = true;
-
-        _.each(attributes, function (val, key) {
-          rate = (val / result.length) * 100;
-
-          if (check !== false) {
-            if (rate <= 95) {
-              check = false;
-            }
-          }
-        });
+        }
 
         if (check) {
           found = true;
@@ -1782,6 +1798,42 @@
           parameter: model.get('parameter')
         });
       });
+    },
+
+    renderOutputTable: function (data, counter) {
+      var tableDescription = {
+        id: 'outputTableData' + counter,
+        titles: [],
+        rows: []
+      };
+
+      var first = true;
+      var part = [];
+      // self.tableDescription.rows.push(;
+      _.each(data.original, function (obj) {
+        if (first === true) {
+          tableDescription.titles = Object.keys(obj);
+          first = false;
+        }
+        _.each(obj, function (val) {
+          if (typeof val === 'object') {
+            val = JSON.stringify(val);
+          }
+          part.push(val);
+        });
+        tableDescription.rows.push(part);
+        part = [];
+      });
+
+      console.log(counter);
+      $('#outputTable' + counter).append(this.table.render({content: tableDescription}));
+
+      console.log(tableDescription.titles);
+      console.log(tableDescription.rows);
+    },
+
+    renderOutputGraph: function () {
+
     },
 
     getAQL: function (originCallback) {
