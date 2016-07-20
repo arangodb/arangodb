@@ -140,7 +140,7 @@ void RestBaseHandler::writeResult(arangodb::velocypack::Slice const& slice,
                                   VPackOptions const& options) {
   try {
     TRI_ASSERT(options.escapeUnicode);
-    _response->fillBody(_request, slice, true, options);
+    _response->setPayload(_request, slice, true, options);
   } catch (std::exception const& ex) {
     generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
                   TRI_ERROR_INTERNAL, ex.what());

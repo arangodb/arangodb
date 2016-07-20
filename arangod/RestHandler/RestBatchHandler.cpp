@@ -85,11 +85,15 @@ RestHandler::status RestBatchHandler::execute() {
 
   // create the response
   setResponseCode(GeneralResponse::ResponseCode::OK);
-  _response->setContentType(
-      _request->header(StaticStrings::ContentTypeHeader));
+  _response->setContentType(_request->header(StaticStrings::ContentTypeHeader));
 
+  // http required here
+  HttpRequest* req = dynamic_cast<HttpRequest*>(_request);
+  if (req == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+  }
+  std::string const& bodyStr = req->body();
   // setup some auxiliary structures to parse the multipart message
-  std::string const& bodyStr = _request->body();
   MultipartMessage message(boundary.c_str(), boundary.size(), bodyStr.c_str(),
                            bodyStr.c_str() + bodyStr.size());
 
@@ -262,12 +266,12 @@ RestHandler::status RestBatchHandler::execute() {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestBatchHandler::getBoundaryBody(std::string* result) {
-
-  if (_request == nullptr) {
+  HttpRequest* req = dynamic_cast<HttpRequest*>(_request);
+  if (req == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   }
 
-  std::string const& bodyStr = _request->body();
+  std::string const& bodyStr = req->body();
   char const* p = bodyStr.c_str();
   char const* e = p + bodyStr.size();
 

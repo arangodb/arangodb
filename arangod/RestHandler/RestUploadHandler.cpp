@@ -42,13 +42,14 @@ RestUploadHandler::RestUploadHandler(GeneralRequest* request,
 RestUploadHandler::~RestUploadHandler() {}
 
 RestHandler::status RestUploadHandler::execute() {
-
-  if (_request == nullptr) {
+  // cast is ok because http requst is required
+  HttpRequest* request = dynamic_cast<HttpRequest*>(_request);
+  if (request == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   }
 
   // extract the request type
-  auto const type = _request->requestType();
+  auto const type = request->requestType();
 
   if (type != GeneralRequest::RequestType::POST) {
     generateError(GeneralResponse::ResponseCode::METHOD_NOT_ALLOWED,
@@ -71,7 +72,7 @@ RestHandler::status RestUploadHandler::execute() {
 
   char* relative = TRI_GetFilename(filename);
 
-  std::string const& bodyStr = _request->body();
+  std::string const& bodyStr = request->body();
   char const* body = bodyStr.c_str();
   size_t bodySize = bodyStr.size();
 
@@ -79,7 +80,7 @@ RestHandler::status RestUploadHandler::execute() {
              << filename << "', relative '" << relative << "'";
 
   bool found;
-  std::string const& value = _request->value("multipart", found);
+  std::string const& value = request->value("multipart", found);
 
   if (found) {
     bool multiPart = arangodb::basics::StringUtils::boolean(value);
@@ -133,12 +134,13 @@ RestHandler::status RestUploadHandler::execute() {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestUploadHandler::parseMultiPart(char const*& body, size_t& length) {
-
-  if (_request == nullptr) {
+  // cast is ok because http requst is required
+  HttpRequest* request = dynamic_cast<HttpRequest*>(_request);
+  if (request == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   }
 
-  std::string const& bodyStr = _request->body();
+  std::string const& bodyStr = request->body();
   char const* beg = bodyStr.c_str();
   char const* end = beg + bodyStr.size();
 

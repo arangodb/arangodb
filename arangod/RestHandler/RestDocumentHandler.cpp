@@ -439,7 +439,7 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
     generateTransactionError(collectionName, res, "");
     return false;
   }
-    
+
   OperationResult result(TRI_ERROR_NO_ERROR);
   if (isPatch) {
     // patching an existing document
@@ -533,8 +533,7 @@ bool RestDocumentHandler::deleteDocument() {
   } else {
     try {
       TRI_ASSERT(_request != nullptr);
-      builderPtr =
-          _request->toVelocyPack(transactionContext->getVPackOptions());
+      builderPtr = _request->toVelocyPackBuilderPtr(transactionContext->getVPackOptions());
     } catch (...) {
       // If an error occurs here the body is not parsable. Fail with bad
       // parameter
@@ -614,9 +613,7 @@ bool RestDocumentHandler::readManyDocuments() {
   }
 
   TRI_ASSERT(_request != nullptr);
-  auto builderPtr =
-      _request->toVelocyPack(transactionContext->getVPackOptions());
-  VPackSlice search = builderPtr->slice();
+  VPackSlice search = _request->payload(transactionContext->getVPackOptions());
 
   OperationResult result = trx.document(collectionName, search, opOptions);
 

@@ -30,6 +30,8 @@
 #include "Basics/StringUtils.h"
 #include "Basics/StringBuffer.h"
 
+#include "GeneralRequest.h"
+
 namespace arangodb {
 namespace velocypack {
 struct Options;
@@ -132,7 +134,6 @@ class GeneralResponse {
   virtual void setConnectionType(ConnectionType type) = 0;
   virtual void writeHeader(basics::StringBuffer*) = 0;
 
-
  protected:
   explicit GeneralResponse(ResponseCode);
 
@@ -169,9 +170,9 @@ class GeneralResponse {
 
   // generates the response body, sets the content type; this might
   // throw an error
-  virtual void fillBody(GeneralRequest const*,
-                        arangodb::velocypack::Slice const&, bool generateBody,
-                        arangodb::velocypack::Options const&) = 0;
+  virtual void setPayload(GeneralRequest const*,
+                          arangodb::velocypack::Slice const&, bool generateBody,
+                          arangodb::velocypack::Options const&) = 0;
 
  protected:
   ResponseCode _responseCode;

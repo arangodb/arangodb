@@ -469,6 +469,12 @@ function removeClusterNodes (nodeTypes) {
   });
 }
 
+function removeClusterNodesFromPlan (nodes) {
+  return nodes.filter(function (node) {
+    return ([ 'ScatterNode', 'GatherNode', 'DistributeNode', 'RemoteNode' ].indexOf(node.type) === -1);
+  });
+}
+
 exports.isEqual = isEqual;
 exports.getParseResults = getParseResults;
 exports.assertParseError = assertParseError;
@@ -487,3 +493,4 @@ exports.findReferencedNodes = findReferencedNodes;
 exports.getQueryMultiplePlansAndExecutions = getQueryMultiplePlansAndExecutions;
 exports.removeAlwaysOnClusterRules = removeAlwaysOnClusterRules;
 exports.removeClusterNodes = removeClusterNodes;
+exports.removeClusterNodesFromPlan = removeClusterNodesFromPlan;

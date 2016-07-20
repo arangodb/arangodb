@@ -147,7 +147,7 @@ void HttpCommTask::handleSimpleError(GeneralResponse::ResponseCode responseCode,
   builder.close();
 
   try {
-    response.fillBody(_request, builder.slice(), true, VPackOptions::Defaults);
+    response.setPayload(_request, builder.slice(), true, VPackOptions::Defaults);
 
     clearRequest();
     handleResponse(&response);
@@ -318,11 +318,11 @@ bool HttpCommTask::processRead() {
         if (found) {
           // default is to allow nothing
           _denyCredentials = true;
-         
+
           // if the request asks to allow credentials, we'll check against the
           // configured whitelist of origins
           std::vector<std::string> const& accessControlAllowOrigins = _server->trustedOrigins();
-          
+
           if (StringUtils::boolean(allowCredentials) &&
               !accessControlAllowOrigins.empty())  {
             if (accessControlAllowOrigins[0] == "*") {
@@ -871,14 +871,14 @@ void HttpCommTask::processRequest() {
   response.release();
 
   if (_request != nullptr) {
-    bool found; 
+    bool found;
     std::string const& startThread = _request->header(StaticStrings::StartThread, found);
 
     if (found) {
       _startThread = StringUtils::boolean(startThread);
     }
   }
-  
+
   handler->setTaskId(_taskId, _loop);
 
   // clear request object
@@ -1034,7 +1034,7 @@ void HttpCommTask::signalTask(TaskData* data) {
     HttpResponse response(GeneralResponse::ResponseCode::OK);
 
     velocypack::Slice slice(data->_buffer->data());
-    response.fillBody(_request, slice, true, VPackOptions::Defaults);
+    response.setPayload(_request, slice, true, VPackOptions::Defaults);
 
     handleResponse(&response);
     processRead();
