@@ -2,7 +2,7 @@
 I'm using the latest Arangodb of the respective release series:
 - [ ] 2.8
 - [ ] 3.0
-- [ ] self compiled devel branch
+- [ ] self-compiled devel branch
 
 On this operating system:
 - [ ] DCOS on
@@ -17,41 +17,43 @@ On this operating system:
   - [ ] Fedora .rpm
   - [ ] Gentoo
   - [ ] docker - official docker library
-- [ ] Windows Version: 
-- [ ] Macos Version:
+- [ ] Windows, version: 
+- [ ] MacOS, version:
 
-### this is an AQL related issue:
+### this is an AQL-related issue:
 [ ] I'm using graph features
 
-I'm issuing AQL Via:
+I'm issuing AQL via:
 
-- [ ] webinterface with this browser:     running on this os:
+- [ ] web interface with this browser:     running on this OS:
 - [ ] arangosh
 - [ ] this Driver:
 
 I've run `db._explain("<my aql query>")` and it didn't shed more light on this.
 The AQL query in question is:
 
-You can reproduce this using this dataset:
+The issue can be reproduced using this dataset:
 
-Please provied a way to create the dataset to run the above query on; either by a gist with an arangodump, or `db.collection.save({my: "values"}) statements. If it can be reproduced with one of the ArangoDB example datasets, its a plus.
+Please provide a way to create the dataset to run the above query on; either by a gist with an arangodump, or `db.collection.save({my: "values"}) statements. If it can be reproduced with one of the ArangoDB example datasets, it's a plus.
 
-### FOXX
+### Foxx
 
 
 
-### this is a Webinterface related issue:
-I'm using the webinterface with this browser:     running on this os:
+### this is a web interface-related issue:
+I'm using the web interface with this browser:     running on this OS:
 
 These are the steps to reproduce:
-1) open the Browser on http://127.0.0.1:8529
+1) open the browser on http://127.0.0.1:8529
 2) log in as ...
-3) to the database [ ] `_system` [ ] other: 
+3) use database [ ] `_system` [ ] other: 
 4) click to ...
 ...
 
-Then this happenes: [Screenshot?] I would be expecting: 
+The following problem occurs: [Screenshot?] 
+Instead I would be expecting: 
 
 
-### this is Installation related issue:
-Describe what you did, what happened, what you would have expected to happen.
+### this is an installation-related issue:
+Describe which steps you carried out, what you expected to happen and what actually happened.
+
