@@ -30,6 +30,7 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Dispatcher/DispatcherThread.h"
+#include "Rest/FakeRequest.h"
 #include "SimpleHttpClient/ConnectionManager.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "Utils/Transaction.h"
@@ -1084,6 +1085,10 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
     return 0;
   }
 
+  if (requests.size() == 1) {
+    return performSingleRequest(requests, timeout, nrDone, logTopic);
+  }
+
   CoordTransactionID coordinatorTransactionID = TRI_NewTickServer();
 
   ClusterCommTimeout startTime = TRI_microtime();
@@ -1234,6 +1239,57 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
   // Forget about
   drop("", coordinatorTransactionID, 0, "");
   return nrGood;
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief this is the fast path method for performRequests for the case
+/// of only a single request in the vector. In this case we can use a single
+/// syncRequest, which saves a network roundtrip. This is an important
+/// optimization for the single document operation case.
+/// Exact same semantics as performRequests.
+//////////////////////////////////////////////////////////////////////////////
+
+size_t ClusterComm::performSingleRequest(
+                         std::vector<ClusterCommRequest>& requests,
+                         ClusterCommTimeout timeout,
+                         size_t& nrDone,
+                         arangodb::LogTopic const& logTopic) {
+  CoordTransactionID coordinatorTransactionID = TRI_NewTickServer();
+  ClusterCommRequest& req(requests[0]);
+  if (req.headerFields.get() == nullptr) {
+    req.headerFields
+        = std::make_unique<std::unordered_map<std::string, std::string>>();
+  }
+  if (req.body == nullptr) {
+    req.result = *syncRequest("", coordinatorTransactionID, req.destination,
+                              req.requestType, req.path, "",
+                              *(req.headerFields), timeout);
+  } else {
+    req.result = *syncRequest("", coordinatorTransactionID, req.destination,
+                              req.requestType, req.path, *(req.body),
+                              *(req.headerFields), timeout);
+  }
+  req.result.status = CL_COMM_RECEIVED;  // a fake, but a good one
+  req.done = true;
+  nrDone = 1;
+  // This was it, except for a small problem: syncRequest reports back in
+  // req.result.result of type httpclient::SimpleHttpResult rather than
+  // req.result.answer of type GeneralRequest, so we have to translate.
+  // Additionally, GeneralRequest is a virtual base class, so we actually
+  // have to create an HttpRequest instance:
+  GeneralRequest::ContentType type
+    = req.result.result->isJson() ? GeneralRequest::ContentType::JSON
+                                  : GeneralRequest::ContentType::VPACK;
+  basics::StringBuffer& buffer = req.result.result->getBody();
+  auto answer = new FakeRequest(type, buffer.c_str(),
+                                static_cast<int64_t>(buffer.length()));
+  req.result.answer.reset(static_cast<GeneralRequest*>(answer));
+  req.result.answer_code = static_cast<GeneralResponse::ResponseCode>(
+      req.result.result->getHttpReturnCode());
+  return (req.result.answer_code == GeneralResponse::ResponseCode::OK ||
+          req.result.answer_code == GeneralResponse::ResponseCode::CREATED ||
+          req.result.answer_code == GeneralResponse::ResponseCode::ACCEPTED)
+         ? 1 : 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

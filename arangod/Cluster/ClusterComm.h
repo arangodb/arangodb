@@ -449,7 +449,20 @@ class ClusterComm {
                          size_t& nrDone,
                          arangodb::LogTopic const& logTopic);
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief this is the fast path method for performRequests for the case
+  /// of only a single request in the vector. In this case we can use a single
+  /// syncRequest, which saves a network roundtrip. This is an important
+  /// optimization for the single document operation case.
+  /// Exact same semantics as performRequests.
+  //////////////////////////////////////////////////////////////////////////////
+
  private:
+  size_t performSingleRequest(std::vector<ClusterCommRequest>& requests,
+                         ClusterCommTimeout timeout,
+                         size_t& nrDone,
+                         arangodb::LogTopic const& logTopic);
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the pointer to the singleton instance
   //////////////////////////////////////////////////////////////////////////////
