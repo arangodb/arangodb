@@ -28,6 +28,9 @@
 #include "Basics/Mutex.h"
 #include "Basics/Thread.h"
 
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
+
 struct TRI_vocbase_t;
 struct TRI_server_t;
 
@@ -92,7 +95,6 @@ class DatabaseFeature final : public application_features::ApplicationFeature {
   static TRI_server_t* SERVER;
  
  private:
-  void openDatabases();
   void closeDatabases();
   void updateContexts();
   void shutdownCompactor();
@@ -104,7 +106,7 @@ class DatabaseFeature final : public application_features::ApplicationFeature {
   int createApplicationDirectory(std::string const& name, std::string const& basePath);
 
   /// @brief iterate over all databases in the databases directory and open them
-  int iterateDatabases();
+  int iterateDatabases(arangodb::velocypack::Slice const& databases);
 
   /// @brief close all opened databases
   void closeOpenDatabases();

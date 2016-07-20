@@ -53,6 +53,8 @@
 #include "Indexes/RocksDBIndex.h"
 #endif
 
+#include <velocypack/velocypack-aliases.h>
+
 using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
@@ -63,29 +65,6 @@ TRI_server_t* DatabaseFeature::SERVER = nullptr;
 uint32_t const DatabaseFeature::DefaultIndexBuckets = 8;
 
 DatabaseFeature* DatabaseFeature::DATABASE = nullptr;
-
-// TODO
-/// @brief extract the numeric part from a filename
-static uint64_t GetNumericFilenamePart(char const* filename) {
-  char const* pos = strrchr(filename, '-');
-
-  if (pos == nullptr) {
-    return 0;
-  }
-
-  return StringUtils::uint64(pos + 1);
-}
-
-// TODO
-/// @brief compare two filenames, based on the numeric part contained in
-/// the filename. this is used to sort database filenames on startup
-static bool DatabaseIdStringComparator(std::string const& lhs,
-                                       std::string const& rhs) {
-  uint64_t const numLeft = GetNumericFilenamePart(lhs.c_str());
-  uint64_t const numRight = GetNumericFilenamePart(rhs.c_str());
-
-  return numLeft < numRight;
-}
 
 /// @brief database manager thread main loop
 /// the purpose of this thread is to physically remove directories of databases
@@ -348,11 +327,75 @@ void DatabaseFeature::start() {
   // init key generator
   KeyGenerator::Initialize();
 
-  // open all databases
+  // initialize storage engine
   StorageEngine* engine = ApplicationServer::getFeature<EngineSelectorFeature>("EngineSelector")->ENGINE;
   engine->initialize();
 
-  openDatabases();
+  _iterateMarkersOnOpen = !wal::LogfileManager::instance()->hasFoundLastTick();
+
+  // create shared application directory js/apps
+  V8DealerFeature* dealer = ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
+  auto appPath = dealer->appPath();
+
+  if (!appPath.empty() && !TRI_IsDirectory(appPath.c_str())) {
+    long systemError;
+    std::string errorMessage;
+    int res = TRI_CreateRecursiveDirectory(appPath.c_str(), systemError,
+                                           errorMessage);
+
+    if (res == TRI_ERROR_NO_ERROR) {
+      LOG(INFO) << "created --javascript.app-path directory '" << appPath << "'";
+    } else {
+      LOG(ERR) << "unable to create --javascript.app-path directory '"
+               << appPath << "': " << errorMessage;
+      THROW_ARANGO_EXCEPTION(res);
+    }
+  }
+  
+  // create subdirectory js/apps/_db if not yet present
+  int res = createBaseApplicationDirectory(appPath, "_db");
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    LOG(ERR) << "unable to initialize databases: " << TRI_errno_string(res);
+    THROW_ARANGO_EXCEPTION(res);
+  }
+
+  // scan all databases
+  VPackBuilder builder;
+  engine->getDatabases(builder);
+
+  TRI_ASSERT(builder.slice().isArray());
+
+  res = iterateDatabases(builder.slice());
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    LOG(ERR) << "could not iterate over all databases: " << TRI_errno_string(res);
+    THROW_ARANGO_EXCEPTION(res);
+  }
+
+  // start database manager thread
+  _databaseManager = new DatabaseManagerThread;
+    
+  if (!_databaseManager->start()) {
+    LOG(FATAL) << "could not start database manager thread";
+    FATAL_ERROR_EXIT();
+  }
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    if (res == TRI_ERROR_ARANGO_EMPTY_DATADIR) {
+      LOG_TOPIC(TRACE, Logger::STARTUP) << "database is empty";
+      _isInitiallyEmpty = true;
+    }
+
+    if (! _checkVersion || ! _isInitiallyEmpty) {
+      LOG(FATAL) << "cannot start server: " << TRI_errno_string(res);
+      FATAL_ERROR_EXIT();
+    }
+  }
+
+  if (!_isInitiallyEmpty) {
+    LOG_TOPIC(TRACE, Logger::STARTUP) << "found system database";
+  }
 
   if (_isInitiallyEmpty && _checkVersion) {
     LOG(DEBUG) << "checking version on an empty database";
@@ -445,69 +488,6 @@ void DatabaseFeature::shutdownCompactor() {
       LOG(ERR) << "unable to join database threads for database '"
                << vocbase->_name << "'";
     }
-  }
-}
-
-void DatabaseFeature::openDatabases() {
-  _iterateMarkersOnOpen = !wal::LogfileManager::instance()->hasFoundLastTick();
-
-  // create shared application directories
-  V8DealerFeature* dealer = ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
-  auto appPath = dealer->appPath();
-
-  if (!appPath.empty() && !TRI_IsDirectory(appPath.c_str())) {
-    long systemError;
-    std::string errorMessage;
-    int res = TRI_CreateRecursiveDirectory(appPath.c_str(), systemError,
-                                           errorMessage);
-
-    if (res == TRI_ERROR_NO_ERROR) {
-      LOG(INFO) << "created --javascript.app-path directory '" << appPath << "'";
-    } else {
-      LOG(ERR) << "unable to create --javascript.app-path directory '"
-               << appPath << "': " << errorMessage;
-      THROW_ARANGO_EXCEPTION(res);
-    }
-  }
-  
-  // create subdirectories if not yet present
-  int res = createBaseApplicationDirectory(appPath, "_db");
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    LOG(ERR) << "unable to initialize databases: " << TRI_errno_string(res);
-    THROW_ARANGO_EXCEPTION(res);
-  }
-
-  // scan all databases
-  res = iterateDatabases();
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    LOG(ERR) << "could not iterate over all databases: " << TRI_errno_string(res);
-    THROW_ARANGO_EXCEPTION(res);
-  }
-
-  // start database manager thread
-  _databaseManager = new DatabaseManagerThread;
-    
-  if (!_databaseManager->start()) {
-    LOG(FATAL) << "could not start database manager thread";
-    FATAL_ERROR_EXIT();
-  }
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    if (res == TRI_ERROR_ARANGO_EMPTY_DATADIR) {
-      LOG_TOPIC(TRACE, Logger::STARTUP) << "database is empty";
-      _isInitiallyEmpty = true;
-    }
-
-    if (! _checkVersion || ! _isInitiallyEmpty) {
-      LOG(FATAL) << "cannot start server: " << TRI_errno_string(res);
-      FATAL_ERROR_EXIT();
-    }
-  }
-
-  if (!_isInitiallyEmpty) {
-    LOG_TOPIC(TRACE, Logger::STARTUP) << "found system database";
   }
 }
 
@@ -636,13 +616,12 @@ int DatabaseFeature::createApplicationDirectory(std::string const& name, std::st
 }
 
 /// @brief iterate over all databases in the databases directory and open them
-int DatabaseFeature::iterateDatabases() {
+int DatabaseFeature::iterateDatabases(VPackSlice const& databases) {
   V8DealerFeature* dealer = ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
   std::string const appPath = dealer->appPath();
   std::string const databasePath = ApplicationServer::getFeature<DatabasePathFeature>("DatabasePath")->subdirectoryName("databases");
-
-  std::vector<std::string> files = TRI_FilesDirectory(databasePath.c_str());
-  std::sort(files.begin(), files.end(), DatabaseIdStringComparator);
+  
+  StorageEngine* engine = ApplicationServer::getFeature<EngineSelectorFeature>("EngineSelector")->ENGINE;
 
   int res = TRI_ERROR_NO_ERROR;
 
@@ -653,138 +632,12 @@ int DatabaseFeature::iterateDatabases() {
   auto newLists = new DatabasesLists(*oldLists);
   // No try catch here, if we crash here because out of memory...
 
-  for (auto const& name : files) {
-    TRI_ASSERT(!name.empty());
+  for (auto const& it : VPackArrayIterator(databases)) {
+    TRI_ASSERT(it.isObject());
 
-    // construct and validate path
-    std::string const databaseDirectory(
-        arangodb::basics::FileUtils::buildFilename(databasePath, name));
+    std::string const databaseName = it.get("name").copyString();
 
-    if (!TRI_IsDirectory(databaseDirectory.c_str())) {
-      continue;
-    }
-
-    if (!basics::StringUtils::isPrefix(name, "database-") ||
-        basics::StringUtils::isSuffix(name, ".tmp")) {
-      LOG_TOPIC(TRACE, Logger::DATAFILES) << "ignoring file '" << name << "'";
-      continue;
-    }
-
-    // we have a directory...
-
-    if (!TRI_IsWritable(databaseDirectory.c_str())) {
-      // the database directory we found is not writable for the current user
-      // this can cause serious trouble so we will abort the server start if we
-      // encounter this situation
-      LOG(ERR) << "database directory '" << databaseDirectory
-               << "' is not writable for current user";
-
-      res = TRI_ERROR_ARANGO_DATADIR_NOT_WRITABLE;
-      break;
-    }
-
-    // we have a writable directory...
-    std::string const tmpfile(arangodb::basics::FileUtils::buildFilename(
-        databaseDirectory, ".tmp"));
-
-    if (TRI_ExistsFile(tmpfile.c_str())) {
-      // still a temporary... must ignore
-      LOG(TRACE) << "ignoring temporary directory '" << tmpfile << "'";
-      continue;
-    }
-
-    // a valid database directory
-
-    // now read data from parameter.json file
-    std::string const parametersFile(arangodb::basics::FileUtils::buildFilename(
-        databaseDirectory, TRI_VOC_PARAMETER_FILE));
-
-    if (!TRI_ExistsFile(parametersFile.c_str())) {
-      // no parameter.json file
-      
-      if (TRI_FilesDirectory(databaseDirectory.c_str()).empty()) {
-        // directory is otherwise empty, continue!
-        LOG(WARN) << "ignoring empty database directory '" << databaseDirectory
-                  << "' without parameters file";
-
-        res = TRI_ERROR_NO_ERROR;
-      } else {
-        // abort
-        LOG(ERR) << "database directory '" << databaseDirectory
-                 << "' does not contain parameters file or parameters file "
-                    "cannot be read";
-
-        res = TRI_ERROR_ARANGO_ILLEGAL_PARAMETER_FILE;
-      }
-      break;
-    }
-
-    LOG(DEBUG) << "reading database parameters from file '" << parametersFile
-               << "'";
-    std::shared_ptr<VPackBuilder> builder;
-    try {
-      builder = arangodb::basics::VelocyPackHelper::velocyPackFromFile(
-          parametersFile);
-    } catch (...) {
-      LOG(ERR) << "database directory '" << databaseDirectory
-               << "' does not contain a valid parameters file";
-
-      // abort
-      res = TRI_ERROR_ARANGO_ILLEGAL_PARAMETER_FILE;
-      break;
-    }
-    VPackSlice parameters = builder->slice();
-    std::string parametersString = parameters.toJson();
-
-    LOG(DEBUG) << "database parameters: " << parametersString;
-
-    if (arangodb::basics::VelocyPackHelper::getBooleanValue(parameters,
-                                                            "deleted", false)) {
-      // database is deleted, skip it!
-      LOG(INFO) << "found dropped database in directory '" << databaseDirectory
-                << "'";
-
-      LOG(INFO) << "removing superfluous database directory '"
-                << databaseDirectory << "'";
-
-#ifdef ARANGODB_ENABLE_ROCKSDB
-      VPackSlice idSlice = parameters.get("id");
-      if (idSlice.isString()) {
-        // delete persistent indexes for this database
-        TRI_voc_tick_t id = static_cast<TRI_voc_tick_t>(
-            StringUtils::uint64(idSlice.copyString()));
-        RocksDBFeature::dropDatabase(id);
-      }
-#endif
-
-      TRI_RemoveDirectory(databaseDirectory.c_str());
-      continue;
-    }
-    VPackSlice idSlice = parameters.get("id");
-
-    if (!idSlice.isString()) {
-      LOG(ERR) << "database directory '" << databaseDirectory
-               << "' does not contain a valid parameters file";
-      res = TRI_ERROR_ARANGO_ILLEGAL_PARAMETER_FILE;
-      break;
-    }
-
-    TRI_voc_tick_t id =
-        static_cast<TRI_voc_tick_t>(StringUtils::uint64(idSlice.copyString()));
-
-    VPackSlice nameSlice = parameters.get("name");
-
-    if (!nameSlice.isString()) {
-      LOG(ERR) << "database directory '" << databaseDirectory
-               << "' does not contain a valid parameters file";
-
-      res = TRI_ERROR_ARANGO_ILLEGAL_PARAMETER_FILE;
-      break;
-    }
-
-    std::string const databaseName = nameSlice.copyString();
-
-    // create app directories
+    // create app directory for database if it does not exist
     res = createApplicationDirectory(databaseName, appPath);
 
     if (res != TRI_ERROR_NO_ERROR) {
@@ -794,43 +647,11 @@ int DatabaseFeature::iterateDatabases() {
     // open the database and scan collections in it
 
     // try to open this database
-    TRI_vocbase_t* vocbase = TRI_OpenVocBase(
-        _server.get(), databaseDirectory.c_str(), id, databaseName.c_str(), _upgrade, _iterateMarkersOnOpen);
-
-    if (vocbase == nullptr) {
-    LOG(ERR) << "GOT A NULLPTR";
-      // grab last error
-      res = TRI_errno();
-
-      if (res == TRI_ERROR_NO_ERROR) {
-        // but we must have an error...
-        res = TRI_ERROR_INTERNAL;
-      }
-
-      LOG(ERR) << "could not process database directory '" << databaseDirectory
-               << "' for database '" << name << "': " << TRI_errno_string(res);
-      break;
-    }
-
+    TRI_vocbase_t* vocbase = engine->openDatabase(it, _upgrade);
     // we found a valid database
-    void const* TRI_UNUSED found = nullptr;
+    TRI_ASSERT(vocbase != nullptr);
 
-    try {
-      auto pair = newLists->_databases.insert(
-          std::make_pair(std::string(vocbase->_name), vocbase));
-      if (!pair.second) {
-        found = pair.first->second;
-      }
-    } catch (...) {
-      res = TRI_ERROR_OUT_OF_MEMORY;
-      LOG(ERR) << "could not add database '" << name << "': out of memory";
-      break;
-    }
-
-    TRI_ASSERT(found == nullptr);
-
-    LOG(INFO) << "loaded database '" << vocbase->_name << "' from '"
-              << vocbase->_path << "'";
+    newLists->_databases.insert(std::make_pair(std::string(vocbase->_name), vocbase));
   }
 
   _databasesLists = newLists;

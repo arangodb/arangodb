@@ -31,6 +31,8 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
+struct TRI_vocbase_t;
+
 namespace arangodb {
 
 class StorageEngine : public application_features::ApplicationFeature {
@@ -79,6 +81,8 @@ class StorageEngine : public application_features::ApplicationFeature {
   // engine. this value is used as a lower bound for further HLC values handed out by
   // the server. called at server start only, after getDatabases() and getCollectionsAndIndexes()
   virtual uint64_t getMaxRevision() = 0;
+
+  virtual TRI_vocbase_t* openDatabase(arangodb::velocypack::Slice const& parameters, bool isUpgrade) = 0;
 
   // database, collection and index management
   // -----------------------------------------

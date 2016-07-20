@@ -72,6 +72,10 @@ class OtherEngine final : public StorageEngine {
   // engine. this value is used as a lower bound for further HLC values handed out by
   // the server. called at server start only, after getDatabases() and getCollectionsAndIndexes()
   uint64_t getMaxRevision() override;
+  
+  TRI_vocbase_t* openDatabase(arangodb::velocypack::Slice const& parameters, bool isUpgrade) override { 
+    return nullptr; 
+  }
 
   // database, collection and index management
   // -----------------------------------------
