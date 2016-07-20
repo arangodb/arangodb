@@ -18,18 +18,29 @@
     initialize: function (options) {
       var self = this;
 
+      if (options.id) {
+        // dynamically set id if available
+        this.setElement(options.id);
+        this.graphData = options.data;
+        this.aqlMode = true;
+      }
+
       this.name = options.name;
       this.userConfig = options.userConfig;
       this.documentStore = options.documentStore;
       this.initSigma();
 
-      this.collection.fetch({
-        cache: false,
-        success: function (data) {
-          self.model = self.collection.findWhere({_key: options.name}).toJSON();
-        }
-      });
+      if (this.name !== undefined) {
+        this.collection.fetch({
+          cache: false,
+          success: function (data) {
+            self.model = self.collection.findWhere({_key: options.name}).toJSON();
+          }
+        });
+      }
     },
+
+    aqlMode: false,
 
     events: {
       'click #downloadPNG': 'downloadSVG',
@@ -110,6 +121,91 @@
       this.fetchGraph(toFocus);
     },
 
+    renderAQL: function (data) {
+      this.$el.html(this.template.render({}));
+
+      // remove not needed elements
+      this.$el.find('.headerBar').remove();
+
+      // set graph box height
+      var height = $('.centralRow').height() - 250;
+      this.$el.find('#graph-container').css('height', height);
+
+      // render
+      this.graphData.modified = this.parseData(this.graphData.original, this.graphData.graphInfo);
+      this.renderGraph(this.graphData.modified);
+    },
+
+    parseData: function (data, type) {
+      var vertices = {}; var edges = {};
+      var returnObj = {
+        nodes: [],
+        edges: [],
+        settings: {}
+      };
+
+      if (type === 'object') {
+        _.each(data, function (obj) {
+          if (obj.edges && obj.vertices) {
+            _.each(obj.edges, function (edge) {
+              edges[edge._id] = {
+                id: edge._id,
+                source: edge._from,
+                label: edge._key,
+                color: '#cccccc',
+                target: edge._to
+              };
+            });
+
+            _.each(obj.vertices, function (node) {
+              vertices[node._id] = {
+                id: node._id,
+                label: node._key,
+                size: 10,
+                color: '#2ecc71',
+                x: Math.random(),
+                y: Math.random()
+              };
+            });
+          }
+        });
+
+        _.each(vertices, function (node) {
+          returnObj.nodes.push(node);
+        });
+
+        _.each(edges, function (edge) {
+          returnObj.edges.push(edge);
+        });
+      } else if (type === 'array') {
+        _.each(data, function (edge) {
+          vertices[edge._from] = null;
+          vertices[edge._to] = null;
+
+          returnObj.edges.push({
+            id: edge._id,
+            source: edge._from,
+            label: edge._key,
+            color: '#cccccc',
+            target: edge._to
+          });
+        });
+
+        _.each(vertices, function (val, key) {
+          returnObj.nodes.push({
+            id: key,
+            label: key,
+            size: 10,
+            color: '#2ecc71',
+            x: Math.random(),
+            y: Math.random()
+          });
+        });
+      }
+
+      return returnObj;
+    },
+
     rerender: function () {
       this.fetchGraph();
     },
@@ -117,7 +213,7 @@
     fetchGraph: function (toFocus) {
       var self = this;
       // arangoHelper.buildGraphSubNav(self.name, 'Content');
-      $('#content').append(
+      $(this.el).append(
         '<div id="calculatingGraph" style="position: absolute; left: 25px; top: 130px;">' +
         '<i class="fa fa-circle-o-notch fa-spin" style="margin-right: 10px;"></i>' +
         '<span id="calcText">Fetching graph data. Please wait ... </span></br></br></br>' +
@@ -795,8 +891,13 @@
         );
         return;
       } else {
-        $('#content').append(
-          '<div style="position: absolute; right: 25px; bottom: 45px;">' +
+        var style = 'right: 25px; bottom: 45px;';
+        if (this.aqlMode) {
+          style = 'position: absolute; left: 30px; margin-top: -37px;';
+        }
+
+        $(this.el).append(
+          '<div style="' + style + '">' +
           '<span style="margin-right: 10px" class="arangoState">' + graph.nodes.length + ' nodes</span>' +
           '<span class="arangoState">' + graph.edges.length + ' edges</span>' +
           '</div>'
@@ -806,7 +907,7 @@
       this.Sigma = sigma;
 
       // defaults
-      var algorithm = 'noverlap';
+      var algorithm = 'force';
       var renderer = 'canvas';
 
       if (this.graphConfig) {
@@ -880,10 +981,12 @@
       });
       this.currentGraph = s;
 
-      sigma.plugins.fullScreen({
-        container: 'graph-container',
-        btnId: 'graph-fullscreen-btn'
-      });
+      if (!this.aqlMode) {
+        sigma.plugins.fullScreen({
+          container: 'graph-container',
+          btnId: 'graph-fullscreen-btn'
+        });
+      }
 
       if (algorithm === 'noverlap') {
         var noverlapListener = s.configNoverlap({
@@ -919,10 +1022,12 @@
 
       // for canvas renderer allow graph editing
       if (renderer === 'canvas') {
-        s.bind('rightClickStage', function (e) {
-          self.createContextMenu(e);
-          self.clearMouseCanvas();
-        });
+        if (!self.aqlMode) {
+          s.bind('rightClickStage', function (e) {
+            self.createContextMenu(e);
+            self.clearMouseCanvas();
+          });
+        }
 
         s.bind('overNode', function (e) {
           $('.nodeInfoDiv').remove();
@@ -958,7 +1063,7 @@
                   string += '</pre></div>';
                 }
 
-                $('#content').append(string);
+                $(self.el).append(string);
               }
             };
 

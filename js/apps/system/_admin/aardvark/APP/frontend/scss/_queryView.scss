@@ -365,6 +365,13 @@
     }
   }
 
+  .graphContent {
+    border-left: 1px solid $c-content-border;
+    border-right: 1px solid $c-content-border;
+    margin-right: -2px;
+    margin-top: 0;
+  }
+
   .switchAce {
     background-color: rgba(0, 0, 0, .6);
     border-radius: 3px;

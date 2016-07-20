@@ -28,6 +28,8 @@
       }
     },
 
+    graphs: [],
+
     settings: {
       aqlWidth: undefined
     },
@@ -1487,7 +1489,7 @@
         } else if (result.defaultType === 'graph') {
           $('#outputEditorWrapper' + counter + ' .arangoToolbarTop').after('<div id="outputGraph' + counter + '"></div>');
           $('#outputGraph' + counter).show();
-          self.renderOutputGraph(result, data);
+          self.renderOutputGraph(result, counter);
 
           $('#outputEditor' + counter).hide();
         }
@@ -1646,6 +1648,7 @@
           if (percentagea >= 95) {
             found = true;
             toReturn.defaultType = 'graph';
+            toReturn.graphInfo = 'object';
           }
         } else {
           // case b) 95% have _from and _to attribute
@@ -1663,6 +1666,7 @@
           if (percentageb >= 95) {
             found = true;
             toReturn.defaultType = 'graph';
+            toReturn.graphInfo = 'array';
             // then display as graph
           }
         }
@@ -1698,11 +1702,9 @@
 
           var rate;
 
-          console.log(attributes);
           _.each(attributes, function (val, key) {
             rate = (val / result.length) * 100;
 
-            console.log(rate);
             if (check !== false) {
               if (rate <= 95) {
                 check = false;
@@ -1825,15 +1827,19 @@
         part = [];
       });
 
-      console.log(counter);
       $('#outputTable' + counter).append(this.table.render({content: tableDescription}));
-
-      console.log(tableDescription.titles);
-      console.log(tableDescription.rows);
     },
 
-    renderOutputGraph: function () {
-
+    renderOutputGraph: function (data, counter) {
+      this.graphViewer2 = new window.GraphViewer2({
+        name: undefined,
+        documentStore: window.App.arangoDocumentStore,
+        collection: new window.GraphCollection(),
+        userConfig: window.App.userConfig,
+        id: '#outputGraph' + counter,
+        data: data
+      });
+      this.graphViewer2.renderAQL();
     },
 
     getAQL: function (originCallback) {
