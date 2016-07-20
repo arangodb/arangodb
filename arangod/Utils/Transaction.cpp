@@ -382,7 +382,7 @@ std::pair<bool, bool> Transaction::findIndexHandleForAndNode(
     arangodb::aql::Variable const* reference,
     arangodb::aql::SortCondition const* sortCondition, size_t itemsInCollection,
     std::vector<Transaction::IndexHandle>& usedIndexes,
-    bool computeSpecialisation, arangodb::aql::AstNode*& specializedCondition,
+    arangodb::aql::AstNode*& specializedCondition,
     bool& isSparse) const {
   std::shared_ptr<Index> bestIndex;
   double bestCost = 0.0;
@@ -460,15 +460,60 @@ std::pair<bool, bool> Transaction::findIndexHandleForAndNode(
     return std::make_pair(false, false);
   }
 
-  if (computeSpecialisation) {
-    specializedCondition = bestIndex->specializeCondition(node, reference);
-  }
+  specializedCondition = bestIndex->specializeCondition(node, reference);
 
   usedIndexes.emplace_back(bestIndex);
   isSparse = bestIndex->sparse();
 
   return std::make_pair(bestSupportsFilter, bestSupportsSort);
 }
+
+bool Transaction::findIndexHandleForAndNode(
+    std::vector<std::shared_ptr<Index>> indexes,
+    arangodb::aql::AstNode*& node,
+    arangodb::aql::Variable const* reference,
+    size_t itemsInCollection,
+    Transaction::IndexHandle& usedIndex) const {
+  std::shared_ptr<Index> bestIndex;
+  double bestCost = 0.0;
+  size_t coveredAttributes = 0;
+
+  for (auto const& idx : indexes) {
+    double filterCost = 0.0;
+    double sortCost = 0.0;
+    size_t itemsInIndex = itemsInCollection;
+
+    // check if the index supports the filter expression
+    double estimatedCost;
+    size_t estimatedItems;
+    if (!idx->supportsFilterCondition(node, reference, itemsInIndex,
+                                     estimatedItems, estimatedCost)) {
+      continue;
+    }
+    // index supports the filter condition
+    filterCost = estimatedCost;
+    // this reduces the number of items left
+    itemsInIndex = estimatedItems;
+
+    double const totalCost = filterCost + sortCost;
+    if (bestIndex == nullptr || totalCost < bestCost) {
+      bestIndex = idx;
+      bestCost = totalCost;
+    }
+  }
+
+  if (bestIndex == nullptr) {
+    return false;
+  }
+
+  node = bestIndex->specializeCondition(node, reference);
+
+  usedIndex = IndexHandle(bestIndex);
+
+  return true;
+}
+
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief if this pointer is set to an actual set, then for each request
@@ -2695,7 +2740,7 @@ std::pair<bool, bool> Transaction::getBestIndexHandlesForFilterCondition(
     arangodb::aql::AstNode* specializedCondition = nullptr;
     auto canUseIndex = findIndexHandleForAndNode(
         indexes, node, reference, sortCondition, itemsInCollection, usedIndexes,
-        true, specializedCondition, isSparse);
+        specializedCondition, isSparse);
 
     if (canUseIndex.second && !canUseIndex.first) {
       // index can be used for sorting only
@@ -2739,12 +2784,9 @@ std::pair<bool, bool> Transaction::getBestIndexHandlesForFilterCondition(
 ///        Returns false if no index could be found.
 
 bool Transaction::getBestIndexHandleForFilterCondition(
-    std::string const& collectionName, 
-    arangodb::aql::AstNode const* node,
-    arangodb::aql::Variable const* reference,
-    arangodb::aql::SortCondition const* sortCondition,
-    size_t itemsInCollection,
-    std::vector<IndexHandle>& usedIndexes) {
+    std::string const& collectionName, arangodb::aql::AstNode*& node,
+    arangodb::aql::Variable const* reference, size_t itemsInCollection,
+    IndexHandle& usedIndex) {
   // We can only start after DNF transformation and only a single AND
   TRI_ASSERT(node->type ==
              arangodb::aql::AstNodeType::NODE_TYPE_OPERATOR_NARY_AND);
@@ -2754,16 +2796,12 @@ bool Transaction::getBestIndexHandleForFilterCondition(
   }
 
   auto indexes = indexesForCollection(collectionName);
-  bool isSparse = false;
 
-  arangodb::aql::AstNode* specializedCondition = nullptr;
   // Const cast is save here. Giving computeSpecialisation == false
   // Makes sure node is NOT modified.
-  auto canUseIndex = findIndexHandleForAndNode(
-      indexes, const_cast<aql::AstNode*>(node), reference, sortCondition,
-      itemsInCollection, usedIndexes, false, specializedCondition, isSparse);
-
-  return canUseIndex.first;
+  return findIndexHandleForAndNode(
+      indexes, node, reference,
+      itemsInCollection, usedIndex);
 }
 
 

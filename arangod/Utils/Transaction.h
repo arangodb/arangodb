@@ -548,14 +548,14 @@ class Transaction {
 
   /// @brief Gets the best fitting index for one specific condition.
   ///        Difference to IndexHandles: Condition is only one NARY_AND
-  ///        and the Condition stays unmodified. Also does not care for sorting
+  ///        and the Condition stays unmodified. Also does not care for sorting.
   ///        Returns false if no index could be found.
+  ///        If it returned true, the AstNode contains the specialized condition
 
   bool getBestIndexHandleForFilterCondition(std::string const&,
-                                            arangodb::aql::AstNode const*,
+                                            arangodb::aql::AstNode*&,
                                             arangodb::aql::Variable const*,
-                                            arangodb::aql::SortCondition const*,
-                                            size_t, std::vector<IndexHandle>&);
+                                            size_t, IndexHandle&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Checks if the index supports the filter condition.
@@ -821,8 +821,18 @@ class Transaction {
       arangodb::aql::SortCondition const* sortCondition,
       size_t itemsInCollection,
       std::vector<Transaction::IndexHandle>& usedIndexes,
-      bool computeSpecialisation, arangodb::aql::AstNode*& specializedCondition,
+      arangodb::aql::AstNode*& specializedCondition,
       bool& isSparse) const;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief findIndexHandleForAndNode, Shorthand which does not support Sort
+  //////////////////////////////////////////////////////////////////////////////
+
+  bool findIndexHandleForAndNode(std::vector<std::shared_ptr<Index>> indexes,
+                                 arangodb::aql::AstNode*& node,
+                                 arangodb::aql::Variable const* reference,
+                                 size_t itemsInCollection,
+                                 Transaction::IndexHandle& usedIndex) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Get one index by id for a collection name, coordinator case

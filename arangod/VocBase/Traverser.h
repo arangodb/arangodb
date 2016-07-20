@@ -217,15 +217,26 @@ class TraversalPath {
 struct TraverserOptions {
   friend class arangodb::aql::TraversalNode;
 
+ public:
   enum UniquenessLevel { NONE, PATH, GLOBAL };
 
  private:
+
+  struct LookupInfo {
+    // This struct does not take responsibility for anything.
+    arangodb::Transaction::IndexHandle idxHandle;
+    aql::AstNode* nonIndexCondition;
+    aql::AstNode* indexCondition;
+
+    LookupInfo() : nonIndexCondition(nullptr), indexCondition(nullptr){};
+    ~LookupInfo() {};
+  };
+
+ private:
   arangodb::Transaction* _trx;
-  std::vector<arangodb::Transaction::IndexHandle> _baseIndexHandles;
-  std::vector<aql::AstNode*> _baseConditions;
-  std::unordered_map<size_t,
-                     std::pair<std::vector<arangodb::Transaction::IndexHandle>,
-                               std::vector<aql::AstNode*>>> _depthIndexHandles;
+  std::vector<LookupInfo> _baseLookupInfos;
+  std::unordered_map<size_t, std::vector<LookupInfo>> _depthLookupInfo;
+
   aql::Variable const* _tmpVar;
 
  public:

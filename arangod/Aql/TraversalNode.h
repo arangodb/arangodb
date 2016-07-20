@@ -236,6 +236,10 @@ class TraversalNode : public ExecutionNode {
 
   AstNode* getTemporaryRefNode() const;
 
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+  void checkConditionsDefined() const;
+#endif
+
  private:
   /// @brief the database
   TRI_vocbase_t* _vocbase;

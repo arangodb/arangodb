@@ -301,6 +301,10 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id,
   }
 
   // Parse options node
+
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+  checkConditionsDefined();
+#endif
 }
 
 /// @brief Internal constructor to clone the node.
@@ -325,7 +329,6 @@ TraversalNode::TraversalNode(
       _specializedNeighborsSearch(false),
       _fromCondition(nullptr),
       _toCondition(nullptr) {
-TRI_ASSERT(false);
   _graphJson = arangodb::basics::Json(arangodb::basics::Json::Array, edgeColls.size());
 
   for (auto& it : edgeColls) {
@@ -473,13 +476,9 @@ TraversalNode::TraversalNode(ExecutionPlan* plan,
   // Filter Condition Parts
   TRI_ASSERT(base.has("fromCondition"));
   _fromCondition = new AstNode(plan->getAst(), base.get("fromCondition"));
-  TRI_ASSERT(_fromCondition != nullptr);
-  TRI_ASSERT(_fromCondition->type == NODE_TYPE_OPERATOR_BINARY_EQ);
 
   TRI_ASSERT(base.has("toCondition"));
   _toCondition = new AstNode(plan->getAst(), base.get("toCondition"));
-  TRI_ASSERT(_toCondition != nullptr);
-  TRI_ASSERT(_toCondition->type == NODE_TYPE_OPERATOR_BINARY_EQ);
 
   if (base.has("globalEdgeCondition")) {
     _globalEdgeCondition = new AstNode(plan->getAst(), base.get("globalEdgeCondition"));
@@ -519,6 +518,10 @@ TraversalNode::TraversalNode(ExecutionPlan* plan,
   }
    
   _specializedNeighborsSearch = arangodb::basics::JsonHelper::getBooleanValue(base.json(), "specializedNeighborsSearch", false);
+
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+  checkConditionsDefined();
+#endif
 }
 
 int TraversalNode::checkIsOutVariable(size_t variableId) const {
@@ -714,6 +717,40 @@ ExecutionNode* TraversalNode::clone(ExecutionPlan* plan, bool withDependencies,
     c->specializeToNeighborsSearch();
   }
 
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+  checkConditionsDefined();
+#endif
+
+  // Temporary Filter Objects
+  c->_tmpObjVariable = _tmpObjVariable;
+  c->_tmpObjVarNode = _tmpObjVarNode;
+  c->_tmpIdNode = _tmpIdNode;
+
+  // Filter Condition Parts
+  c->_fromCondition = _fromCondition->clone(_plan->getAst());
+  c->_toCondition = _toCondition->clone(_plan->getAst());
+  if (c->_globalEdgeCondition != nullptr) {
+    c->_globalEdgeCondition = _globalEdgeCondition;
+  }
+
+  if (c->_globalVertexCondition != nullptr) {
+    c->_globalVertexCondition = _globalVertexCondition;
+  }
+
+  for (auto const& it : _edgeConditions) {
+    c->_edgeConditions.emplace(it.first, it.second);
+  }
+
+  for (auto const& it : _vertexConditions) {
+    c->_vertexConditions.emplace(it.first, it.second->clone(_plan->getAst()));
+  }
+
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+  c->checkConditionsDefined();
+#endif
+
+
+
   cloneHelper(c, plan, withDependencies, withProperties);
 
   return static_cast<ExecutionNode*>(c);
@@ -767,81 +804,111 @@ void TraversalNode::fillTraversalOptions(
   opts.maxDepth = _maxDepth;
   opts._tmpVar = _tmpObjVariable;
 
-  // This is required by trx api.
-  // But we do not use it here.
-  SortCondition sort;
-
   size_t numEdgeColls = _edgeColls.size();
   AstNode* condition = nullptr;
   bool res = false;
   EdgeConditionBuilder globalEdgeConditionBuilder(this);
 
-  opts._baseIndexHandles.reserve(numEdgeColls);
-  opts._baseConditions.reserve(numEdgeColls);
+  opts._baseLookupInfos.reserve(numEdgeColls);
   // Compute Edge Indexes. First default indexes:
   for (size_t i = 0; i < numEdgeColls; ++i) {
     auto dir = _directions[i];
+    // TODO we can optimize here. indexCondition and nonIndexCondition could be
+    // made non-overlapping.
+    traverser::TraverserOptions::LookupInfo info;
     switch (dir) {
       case TRI_EDGE_IN:
-        condition = globalEdgeConditionBuilder.getInboundCondition();
+        info.indexCondition =
+            globalEdgeConditionBuilder.getInboundCondition()->clone(
+                _plan->getAst());
         break;
       case TRI_EDGE_OUT:
-        condition = globalEdgeConditionBuilder.getOutboundCondition();
+        info.indexCondition =
+            globalEdgeConditionBuilder.getOutboundCondition()->clone(
+                _plan->getAst());
         break;
       case TRI_EDGE_ANY:
-        condition = globalEdgeConditionBuilder.getInboundCondition();
+        info.indexCondition =
+            globalEdgeConditionBuilder.getOutboundCondition()->clone(
+                _plan->getAst());
+
+        traverser::TraverserOptions::LookupInfo infoIn;
+        infoIn.indexCondition =
+            globalEdgeConditionBuilder.getInboundCondition()->clone(
+                _plan->getAst());
+        infoIn.nonIndexCondition =
+            infoIn.indexCondition->clone(_plan->getAst());
+#warning hard-coded nrItems.
         res = trx->getBestIndexHandleForFilterCondition(
-            _edgeColls[i], condition, _tmpObjVariable, &sort, 1000,
-            opts._baseIndexHandles);
-        TRI_ASSERT(res);  // Right now we have an enforced edge index which wil
+            _edgeColls[i], infoIn.indexCondition, _tmpObjVariable, 1000,
+            infoIn.idxHandle);
+        TRI_ASSERT(res);  // Right now we have an enforced edge index which will
                           // always fit.
-        opts._baseConditions.emplace_back(condition->clone(_plan->getAst()));
-        condition = globalEdgeConditionBuilder.getOutboundCondition();
+        opts._baseLookupInfos.emplace_back(std::move(infoIn));
+
         break;
     }
+    info.nonIndexCondition = info.indexCondition->clone(_plan->getAst());
 #warning hard-coded nrItems.
     res = trx->getBestIndexHandleForFilterCondition(
-        _edgeColls[i], condition, _tmpObjVariable, &sort, 1000,
-        opts._baseIndexHandles);
-    TRI_ASSERT(res);  // We have an enforced edge index which wil always fit.
-    opts._baseConditions.emplace_back(condition->clone(_plan->getAst()));
+        _edgeColls[i], info.indexCondition, _tmpObjVariable, 1000,
+        info.idxHandle);
+    TRI_ASSERT(res);  // Right now we have an enforced edge index which will
+                      // always fit.
+    opts._baseLookupInfos.emplace_back(std::move(info));
   }
 
   for (std::pair<size_t, EdgeConditionBuilder> it : _edgeConditions) {
-    auto ins = opts._depthIndexHandles.emplace(
-        it.first, std::make_pair(std::vector<Transaction::IndexHandle>(),
-                                 std::vector<AstNode*>()));
+    auto ins = opts._depthLookupInfo.emplace(it.first, std::vector<traverser::TraverserOptions::LookupInfo>());
     TRI_ASSERT(ins.second);
+    auto& infos = ins.first->second;
+    infos.reserve(numEdgeColls);
 
-    auto& idxList = ins.first->second.first;
-    auto& condList = ins.first->second.second;
-    idxList.reserve(numEdgeColls);
-    condList.reserve(numEdgeColls);
-    // Compute Edge Indexes. First default indexes:
     for (size_t i = 0; i < numEdgeColls; ++i) {
       auto dir = _directions[i];
+      // TODO we can optimize here. indexCondition and nonIndexCondition could be
+      // made non-overlapping.
+      traverser::TraverserOptions::LookupInfo info;
       switch (dir) {
         case TRI_EDGE_IN:
-          condition = it.second.getInboundCondition();
+          info.indexCondition =
+              globalEdgeConditionBuilder.getInboundCondition()->clone(
+                  _plan->getAst());
           break;
         case TRI_EDGE_OUT:
-          condition = it.second.getOutboundCondition();
+          info.indexCondition =
+              globalEdgeConditionBuilder.getOutboundCondition()->clone(
+                  _plan->getAst());
           break;
         case TRI_EDGE_ANY:
-          condition = it.second.getInboundCondition();
+          info.indexCondition =
+              globalEdgeConditionBuilder.getOutboundCondition()->clone(
+                  _plan->getAst());
+
+          traverser::TraverserOptions::LookupInfo infoIn;
+          infoIn.indexCondition =
+              globalEdgeConditionBuilder.getInboundCondition()->clone(
+                  _plan->getAst());
+          infoIn.nonIndexCondition =
+              infoIn.indexCondition->clone(_plan->getAst());
+#warning hard-coded nrItems.
           res = trx->getBestIndexHandleForFilterCondition(
-              _edgeColls[i], condition, _tmpObjVariable, &sort, 1000, idxList);
-          TRI_ASSERT(res);  // Right now we have an enforced edge index which wil
+              _edgeColls[i], infoIn.indexCondition, _tmpObjVariable, 1000,
+              infoIn.idxHandle);
+          TRI_ASSERT(res);  // Right now we have an enforced edge index which will
                             // always fit.
-          condList.emplace_back(condition);
-          condition = it.second.getOutboundCondition();
+          infos.emplace_back(std::move(infoIn));
+
           break;
       }
+      info.nonIndexCondition = info.indexCondition->clone(_plan->getAst());
 #warning hard-coded nrItems.
       res = trx->getBestIndexHandleForFilterCondition(
-          _edgeColls[i], condition, _tmpObjVariable, &sort, 1000, idxList);
-      TRI_ASSERT(res);  // We have an enforced edge index which wil always fit.
-      condList.emplace_back(condition);
+          _edgeColls[i], info.indexCondition, _tmpObjVariable, 1000,
+          info.idxHandle);
+      TRI_ASSERT(res);  // Right now we have an enforced edge index which will
+                        // always fit.
+      infos.emplace_back(std::move(info));
     }
   }
 
@@ -912,3 +979,17 @@ void TraversalNode::registerGlobalCondition(bool isConditionOnEdge,
 AstNode* TraversalNode::getTemporaryRefNode() const {
   return _tmpObjVarNode;
 }
+
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+void checkConditionsDefined() const {
+  TRI_ASSERT(_tmpObjVariable != nullptr);
+  TRI_ASSERT(_tmpObjVarNode != nullptr);
+  TRI_ASSERT(_tmpIdNode != nullptr);
+
+  TRI_ASSERT(_fromCondition != nullptr);
+  TRI_ASSERT(_fromCondition->type == NODE_TYPE_OPERATOR_BINARY_EQ);
+
+  TRI_ASSERT(_toCondition != nullptr);
+  TRI_ASSERT(_toCondition->type == NODE_TYPE_OPERATOR_BINARY_EQ);
+}
+#endif

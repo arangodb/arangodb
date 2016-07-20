@@ -35,6 +35,7 @@ bool DepthFirstEnumerator::next() {
     // Initialze the first cursor
     _opts->nextCursor(_enumeratedPath.vertices.back(), 0);
     if (_opts->minDepth == 0) {
+
       return true;
     }
   }
@@ -42,43 +43,94 @@ bool DepthFirstEnumerator::next() {
     // We are done;
     return false;
   }
-  if (_enumeratedPath.edges.size() < _opts->maxDepth) {
-    // We are not done with this path, so
-    // we reserve the cursor for next depth
-    auto cursor = _opts->nextCursor(_enumeratedPath.vertices.back(),
-                                    _enumeratedPath.vertices.size());
-    if (cursor != nullptr) {
-      _edgeCursors.emplace(cursor);
-    }
-  } else {
-    // This path is at the end. cut the last step
-    _enumeratedPath.vertices.pop_back();
-    _enumeratedPath.edges.pop_back();
-  }
-
-  while (!_edgeCursors.empty()) {
-    auto cursor = _edgeCursors.top();
-    if (cursor->next(_enumeratedPath.edges)) {
-#warning not yet finished
-      // TODO UNIQUE_PATH
-      // We have to check if edge and vertex is valid
-      if (_traverser->getVertex(_enumeratedPath.edges.back(),
-                                _enumeratedPath.vertices)) {
-        // case both are valid.
-        // TODO UNIQUE_PATH
-        return true;
+  while (true) {
+    if (_enumeratedPath.edges.size() < _opts->maxDepth) {
+      // We are not done with this path, so
+      // we reserve the cursor for next depth
+      auto cursor = _opts->nextCursor(_enumeratedPath.vertices.back(),
+                                      _enumeratedPath.vertices.size());
+      if (cursor != nullptr) {
+        _edgeCursors.emplace(cursor);
       }
-      // Vertex Invalid. Revoke edge
-      _enumeratedPath.edges.pop_back();
     } else {
-      // cursor is empty.
-      _edgeCursors.pop();
+      // This path is at the end. cut the last step
+      _enumeratedPath.vertices.pop_back();
+      _enumeratedPath.edges.pop_back();
+    }
+
+    while (!_edgeCursors.empty()) {
+      TRI_ASSERT(_edgeCursors.size() == _enumeratedPath.edges.size() + 1);
+      auto cursor = _edgeCursors.top();
+      if (cursor->next(_enumeratedPath.edges)) {
+        if (_opts->uniqueEdges == TraverserOptions::UniquenessLevel::PATH) {
+          auto& e = _enumeratedPath.edges.back();
+          bool foundOnce = false;
+          for (auto const& it : _enumeratedPath.edges) {
+            if (foundOnce) {
+              foundOnce = false; // if we leave with foundOnce == false we found the edge earlier
+              break;
+            }
+            if (it == e) {
+              foundOnce = true;
+            }
+          }
+          if (!foundOnce) {
+            // We found it and it was not the last element (expected)
+            // This edge is allready on the path
+            _enumeratedPath.edges.pop_back();
+            continue;
+          }
+        }
+        
+#warning not yet finished
+        // We have to check if edge and vertex is valid
+        if (_traverser->getVertex(_enumeratedPath.edges.back(),
+                                  _enumeratedPath.vertices)) {
+          // case both are valid.
+          if (_opts->uniqueVertices == TraverserOptions::UniquenessLevel::PATH) {
+            auto& e = _enumeratedPath.vertices.back();
+            bool foundOnce = false;
+            for (auto const& it : _enumeratedPath.vertices) {
+              if (foundOnce) {
+                foundOnce = false;  // if we leave with foundOnce == false we
+                                    // found the edge earlier
+                break;
+              }
+              if (it == e) {
+                foundOnce = true;
+              }
+            }
+            if (!foundOnce) {
+              // We found it and it was not the last element (expected)
+              // This vertex is allready on the path
+              _enumeratedPath.vertices.pop_back();
+              _enumeratedPath.edges.pop_back();
+              continue;
+            }
+          }
+          if (_enumeratedPath.edges.size() < _opts->minDepth) {
+            // Do not return, but leave this loop. Continue with the outer.
+            break;
+          }
+
+          return true;
+        }
+        // Vertex Invalid. Revoke edge
+        _enumeratedPath.edges.pop_back();
+      } else {
+        // cursor is empty.
+        _edgeCursors.pop();
+        _enumeratedPath.edges.pop_back();
+        _enumeratedPath.vertices.pop_back();
+      }
+    }
+    if (_edgeCursors.empty()) {
+      // If we get here all cursors are exhausted.
+      _enumeratedPath.edges.clear();
+      _enumeratedPath.vertices.clear();
+      return false;
     }
   }
-  // If we get here all cursors are exhausted.
-  _enumeratedPath.edges.clear();
-  _enumeratedPath.vertices.clear();
-  return false;
 }
 
 arangodb::aql::AqlValue DepthFirstEnumerator::lastVertexToAqlValue() {

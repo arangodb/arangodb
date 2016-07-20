@@ -83,39 +83,32 @@ bool arangodb::traverser::TraverserOptions::evaluateVertexExpression(arangodb::v
 }
 
 arangodb::traverser::EdgeCursor* arangodb::traverser::TraverserOptions::nextCursor(VPackSlice vertex, size_t depth) const {
-  auto specific = _depthIndexHandles.find(depth);
-  std::vector<arangodb::Transaction::IndexHandle> idxHandles;
-  std::vector<aql::AstNode*> nodes;
-  if (specific != _depthIndexHandles.end()) {
-    auto lists = specific->second;
-    idxHandles = lists.first;
-    nodes = lists.second;
+  auto specific = _depthLookupInfo.find(depth);
+  std::vector<LookupInfo> list;
+  if (specific != _depthLookupInfo.end()) {
+    list = specific->second;
   } else {
-    idxHandles = _baseIndexHandles;
-    nodes = _baseConditions;
+    list = _baseLookupInfos;
   }
 
-  TRI_ASSERT(idxHandles.size() == nodes.size());
-
 #warning NOTE SINGLE SERVER CASE ONLY!
-  auto allCursor = std::make_unique<SingleServerEdgeCursor>(idxHandles.size());
+  auto allCursor = std::make_unique<SingleServerEdgeCursor>(list.size());
   auto& opCursors = allCursor->getCursors();
   VPackValueLength vidLength;
   char const* vid = vertex.getString(vidLength);
-
-  for (size_t i = 0; i < idxHandles.size(); ++i) {
-    auto node = nodes[i];
+  for (auto& info : list) {
+    auto& node = info.indexCondition;
     TRI_ASSERT(node->numMembers() > 0);
     auto dirCmp = node->getMemberUnchecked(node->numMembers() - 1);
     TRI_ASSERT(dirCmp->type == aql::NODE_TYPE_OPERATOR_BINARY_EQ); 
     TRI_ASSERT(dirCmp->numMembers() == 2);
+
     auto idNode = dirCmp->getMemberUnchecked(1);
     TRI_ASSERT(idNode->type == aql::NODE_TYPE_VALUE);
     TRI_ASSERT(idNode->isValueType(aql::VALUE_TYPE_STRING));
     idNode->setStringValue(vid, vidLength);
-    auto& idx = idxHandles[i];
     opCursors.emplace_back(_trx->indexScanForCondition(
-        idx, node, _tmpVar, UINT64_MAX, 1000, false));
+        info.idxHandle, node, _tmpVar, UINT64_MAX, 1000, false));
   }
   return allCursor.release();
 }
