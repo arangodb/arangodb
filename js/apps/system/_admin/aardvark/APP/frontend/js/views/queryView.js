@@ -1477,7 +1477,9 @@
         var result = self.analyseQuery(data.result);
         console.log('Using ' + result.defaultType + ' as data format.');
         if (result.defaultType === 'table') {
-          $('#outputEditorWrapper' + counter + ' .arangoToolbarTop').after('<div id="outputTable' + counter + '"></div>');
+          $('#outputEditorWrapper' + counter + ' .arangoToolbarTop').after(
+            '<div id="outputTable' + counter + '" class="outputTable"></div>'
+          );
           $('#outputTable' + counter).show();
           self.renderOutputTable(result, counter);
 

@@ -266,7 +266,7 @@
     }
 
     .aceAction {
-      background-color: rgb(133, 133, 133);
+      background-color: $c-bluegrey-dark;
       border-radius: 3px;
       color: $c-white;
       cursor: pointer;
@@ -365,6 +365,10 @@
     }
   }
 
+  .outputTable {
+    margin-right: -2px;
+  }
+
   .graphContent {
     border-left: 1px solid $c-content-border;
     border-right: 1px solid $c-content-border;
@@ -373,7 +377,7 @@
   }
 
   .switchAce {
-    background-color: rgba(0, 0, 0, .6);
+    background-color: $c-bluegrey-dark;
     border-radius: 3px;
     color: $c-white;
     cursor: pointer;
@@ -383,6 +387,8 @@
     z-index: 10;
 
     span {
+      margin-left: 0;
+      padding: 0 8px;
       top: 0;
 
       &.active {

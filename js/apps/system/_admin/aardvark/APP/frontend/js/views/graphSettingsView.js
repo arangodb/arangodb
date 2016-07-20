@@ -148,7 +148,7 @@
 
     events: {
       'click #saveGraphSettings': 'saveGraphSettings',
-      'click #restoreGraphSettings': 'restoreGraphSettings',
+      'click #restoreGraphSettings': 'setDefaults',
       'keyup #graphSettingsView input': 'checkEnterKey',
       'keyup #graphSettingsView select': 'checkEnterKey',
       'change input[type="range"]': 'saveGraphSettings',
@@ -183,31 +183,34 @@
     },
 
     checkColor: function () {
-      this.saveGraphSettings(true);
+      this.saveGraphSettings(null, true);
     },
 
-    saveGraphSettings: function (color, nodeStart) {
+    saveGraphSettings: function (event, color, nodeStart, overwrite) {
       var self = this;
-      console.log('CLICK');
       var combinedName = window.App.currentDB.toJSON().name + '_' + this.name;
 
       var config = {};
 
-      config[combinedName] = {
-        layout: $('#g_layout').val(),
-        renderer: $('#g_renderer').val(),
-        depth: $('#g_depth').val(),
-        nodeColor: $('#g_nodeColor').val(),
-        nodeLabelThreshold: $('#g_nodeLabelThreshold').val(),
-        edgeColor: $('#g_edgeColor').val(),
-        edgeLabelThreshold: $('#g_edgeLabelThreshold').val(),
-        nodeLabel: $('#g_nodeLabel').val(),
-        edgeLabel: $('#g_edgeLabel').val(),
-        edgeType: $('#g_edgeType').val(),
-        nodeSize: $('#g_nodeSize').val(),
-        edgeSize: $('#g_edgeSize').val(),
-        nodeStart: $('#g_nodeStart').val()
-      };
+      if (overwrite) {
+        config[combinedName] = overwrite;
+      } else {
+        config[combinedName] = {
+          layout: $('#g_layout').val(),
+          renderer: $('#g_renderer').val(),
+          depth: $('#g_depth').val(),
+          nodeColor: $('#g_nodeColor').val(),
+          nodeLabelThreshold: $('#g_nodeLabelThreshold').val(),
+          edgeColor: $('#g_edgeColor').val(),
+          edgeLabelThreshold: $('#g_edgeLabelThreshold').val(),
+          nodeLabel: $('#g_nodeLabel').val(),
+          edgeLabel: $('#g_edgeLabel').val(),
+          edgeType: $('#g_edgeType').val(),
+          nodeSize: $('#g_nodeSize').val(),
+          edgeSize: $('#g_edgeSize').val(),
+          nodeStart: $('#g_nodeStart').val()
+        };
+      }
 
       if (nodeStart) {
         config[combinedName].nodeStart = nodeStart;
@@ -215,7 +218,7 @@
 
       var callback = function () {
         if (window.App.graphViewer2) {
-          if (color) {
+          if (color !== '' && color !== undefined) {
             window.App.graphViewer2.updateColors();
           } else {
             window.App.graphViewer2.render(self.lastFocussed);
@@ -229,7 +232,22 @@
     },
 
     setDefaults: function () {
-      console.log('implement me!');
+      var obj = {
+        layout: 'force',
+        renderer: 'canvas',
+        depth: '2',
+        nodeColor: '#2ecc71',
+        nodeLabelThreshold: 10,
+        edgeColor: $('#g_edgeColor').val(),
+        edgeLabelThreshold: 10,
+        nodeLabel: '_key',
+        edgeLabel: '',
+        edgeType: 'line',
+        nodeSize: '',
+        edgeSize: '',
+        nodeStart: ''
+      };
+      this.saveGraphSettings(null, null, null, obj);
     },
 
     toggle: function () {
