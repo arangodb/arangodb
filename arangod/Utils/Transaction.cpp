@@ -3333,6 +3333,9 @@ int Transaction::addCollectionEmbedded(TRI_voc_cid_t cid, TRI_transaction_type_e
                                          false, _allowImplicitCollections);
 
   if (res != TRI_ERROR_NO_ERROR) {
+    if (res == TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(res, std::string(TRI_errno_string(res)) + ": " + resolver()->getCollectionNameCluster(cid));
+    }
     return registerError(res);
   }
 
@@ -3357,6 +3360,9 @@ int Transaction::addCollectionToplevel(TRI_voc_cid_t cid, TRI_transaction_type_e
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
+    if (res == TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(res, std::string(TRI_errno_string(res)) + ": " + resolver()->getCollectionNameCluster(cid));
+    }
     registerError(res);
   }
 

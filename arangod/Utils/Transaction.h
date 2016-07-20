@@ -392,6 +392,9 @@ class Transaction {
                                              type,
                                              this->nestingLevel(), true, true);
       if (res != TRI_ERROR_NO_ERROR) {
+        if (res == TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(res, std::string(TRI_errno_string(res)) + ": " + collectionName);
+        }
         THROW_ARANGO_EXCEPTION(res);
       }
       TRI_EnsureCollectionsTransaction(this->getInternals(), this->nestingLevel());
