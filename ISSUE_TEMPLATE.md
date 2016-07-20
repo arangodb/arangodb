@@ -42,6 +42,8 @@ Please provied a way to create the dataset to run the above query on; either by 
 
 ### this is a Webinterface related issue:
 I'm using the webinterface with this browser:     running on this os:
+- [ ] authentication enabled?
+- [ ] running cluster?
 
 These are the steps to reproduce:
 1) open the Browser on http://127.0.0.1:8529
