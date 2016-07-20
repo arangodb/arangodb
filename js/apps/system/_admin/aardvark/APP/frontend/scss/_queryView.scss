@@ -328,7 +328,6 @@
   .ui-resizable-e {
     cursor: ew-resize;
   }
-
 }
 
 .queryContent {
@@ -355,6 +354,16 @@
   height: 100px;
   padding-top: 20px;
   width: 100%;
+
+  .tableWrapper {
+    max-width: 100%;
+    overflow-x: scroll;
+
+    .arango-table {
+      border-left: 1px solid $c-content-border;
+      border-right: 1px solid $c-content-border;
+    }
+  }
 
   .switchAce {
     background-color: rgba(0, 0, 0, .6);

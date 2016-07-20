@@ -31,14 +31,14 @@
 var jsunity = require("jsunity");
 var helper = require("@arangodb/aql-helper");
 var isEqual = helper.isEqual;
+var db = require("@arangodb").db;
+var ruleName = "inline-subqueries";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
 function optimizerRuleTestSuite () {
-  var ruleName = "inline-subqueries";
-
   // various choices to control the optimizer: 
   var paramNone = { optimizer: { rules: [ "-all" ] } };
   var paramEnabled = { optimizer: { rules: [ "-all", "+" + ruleName ] }, inspectSimplePlans: true };
@@ -161,7 +161,72 @@ function optimizerRuleTestSuite () {
         result = AQL_EXECUTE(query[0]).json;
         assertEqual(query[1], result, query);
       });
+    }
+
+  };
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test suite
+////////////////////////////////////////////////////////////////////////////////
+
+function optimizerRuleCollectionTestSuite () {
+  var c = null;
+  var cn = "UnitTestsOptimizer";
+
+  return {
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief set up
+    ////////////////////////////////////////////////////////////////////////////////
+
+    setUp : function () {
+      db._drop(cn);
+      c = db._create(cn);
     },
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief tear down
+    ////////////////////////////////////////////////////////////////////////////////
+
+    tearDown : function () {
+      db._drop(cn);
+      c = null;
+    },
+
+    testSpecificPlan1 : function () {
+      var query = "LET x = (FOR doc IN @@cn RETURN doc) FOR doc2 IN x RETURN doc2";
+
+      var result = AQL_EXPLAIN(query, { "@cn" : cn });
+      assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query);
+      var nodes = helper.removeClusterNodesFromPlan(result.plan.nodes);
+      assertEqual(3, nodes.length);
+      assertEqual("ReturnNode", nodes[nodes.length - 1].type);
+      assertEqual("doc2", nodes[nodes.length - 1].inVariable.name);
+      assertEqual("EnumerateCollectionNode", nodes[nodes.length - 2].type);
+      assertEqual(cn, nodes[nodes.length - 2].collection);
+    },
+
+    testSpecificPlan2 : function () {
+      var query = "LET x = (FOR doc IN @@cn FILTER doc.foo == 'bar' RETURN doc) FOR doc2 IN x RETURN doc2";
+
+      var result = AQL_EXPLAIN(query, { "@cn" : cn });
+      assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query);
+      var nodes = helper.removeClusterNodesFromPlan(result.plan.nodes);
+      assertEqual(5, nodes.length);
+      assertEqual("ReturnNode", nodes[nodes.length - 1].type);
+      assertEqual("doc2", nodes[nodes.length - 1].inVariable.name);
+      assertEqual("FilterNode", nodes[nodes.length - 2].type);
+      assertEqual("CalculationNode", nodes[nodes.length - 3].type);
+      assertEqual("EnumerateCollectionNode", nodes[nodes.length - 4].type);
+      assertEqual(cn, nodes[nodes.length - 4].collection);
+    },
+
+    testSpecificPlan3 : function () {
+      var query = "LET x = (FOR doc IN @@cn RETURN doc) FOR doc2 IN x RETURN x";
+      var result = AQL_EXPLAIN(query, { "@cn" : cn });
+      assertEqual(-1, result.plan.rules.indexOf(ruleName), query); // no optimization
+    }
 
   };
 }
@@ -171,5 +236,6 @@ function optimizerRuleTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(optimizerRuleTestSuite);
+jsunity.run(optimizerRuleCollectionTestSuite);
 
 return jsunity.done();
