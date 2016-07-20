@@ -11,23 +11,58 @@
   <div id="graphSettingsView" class="innerContent">
     
     <div class="pure-g" style="margin-top: -15px">
+      <div class="pure-u-1-1 pure-u-md-1-1 pure-u-lg-1-1 pure-u-xl-1-1">
+    
+        <div class="pure-g pure-table pure-table-body">
+
+          <% _.each(general, function(val, key) { %>
+            <% if (val.type === 'divider') { %>
+              <div class="pure-u-1-1 left heading"><%=val.name%></div>
+            <% } else { %>
+            <div class="<%= genClass %> left"><%=val.name%></div>
+            <div class="<%= genClass2 %> left">
+
+              <% if (val.type === 'select') { %>
+                  <select id="g_<%=key%>">
+                    <% _.each(val, function(option, optKey) { %>
+                      <% if (option.name) { %>
+                        <option value="<%=option.val%>"> <%=option.name%> </option>
+                      <% } %>
+                    <% }); %>
+                  </select>
+              <% } %>
+
+              <% if (val.type === 'string') { %>
+                <input id="g_<%=key%>" type="text" placeholder="string"></input>
+              <% } %>
+
+              <% if (val.type === 'number') { %>
+                <input id="g_<%=key%>" type="text" id="<%=val %>" value="<%=val.value %>" placeholder=""></input>
+              <% } %>
+
+              <% if (val.type === 'range') { %>
+                <input id="g_<%=key%>" type='range' min="0" max="50" val="<%=VALUE%>"/>
+              <% } %>
+
+              <% if (val.type === 'color') { %>
+                <input id="g_<%=key%>" type='color' name='color' value="<%=VALUE%>"/>
+              <% } %>
+
+              </div>
+            <% } %>
+
+          <% }); %>
+        </div>
+
+      </div>
 
       <div class="pure-u-1-1 pure-u-md-1-1 pure-u-lg-1-1 pure-u-xl-1-1">
     
-        <div class="sectionHeader pure-g">
-          <div class="pure-u-1-1">
-            <div class="title">
-              Graph specific
-            </div>
-          </div>
-        </div>
-
         <div class="pure-g pure-table pure-table-body">
           <% _.each(specific, function(val, key) { %>
 
             <% if (val.type === 'divider') { %>
-              <div class="heading <%= genClass %> left"><%=val.name%></div>
-              <div class="<%= genClass2 %> left"></div>
+              <div class="pure-u-1-1 left heading"><%=val.name%></div>
             <% } else { %>
 
               <div class="<%= genClass %> left"><%=val.name%></div>
@@ -53,6 +88,10 @@
                   <input id="g_<%=key%>" type='color' name='color' value="<%=VALUE%>"/>
                 <% } %>
 
+                <% if (val.type === 'range') { %>
+                  <input id="g_<%=key%>" type='range' min="0" max="100" val="<%=VALUE%>"/>
+                <% } %>
+
                 <% if (val.type === 'select') { %>
                     <select id="g_<%=key%>">
                       <% _.each(val, function(option, optKey) { %>
@@ -70,50 +109,8 @@
 
       </div>
 
-      <div class="pure-u-1-1 pure-u-md-1-1 pure-u-lg-1-1 pure-u-xl-1-1">
-    
-        <div class="sectionHeader pure-g">
-          <div class="pure-u-1-1">
-            <div class="title">
-              General
-            </div>
-          </div>
-        </div>
 
-        <div class="pure-g pure-table pure-table-body">
-
-          <% _.each(general, function(val, key) { %>
-            <% if (val.type === 'divider') { %>
-              <div class="heading <%= genClass %> left"><%=val.name%></div>
-              <div class="<%= genClass2 %> left"></div>
-            <% } else { %>
-            <div class="<%= genClass %> left"><%=val.name%></div>
-
-              <% if (val.type === 'select') { %>
-                  <select id="g_<%=key%>">
-                    <% _.each(val, function(option, optKey) { %>
-                      <% if (option.name) { %>
-                        <option value="<%=option.val%>"> <%=option.name%> </option>
-                      <% } %>
-                    <% }); %>
-                  </select>
-              <% } %>
-
-              <% if (val.type === 'string') { %>
-                <input id="g_<%=key%>" type="text" placeholder="string"></input>
-              <% } %>
-
-              <% if (val.type === 'number') { %>
-                <input id="g_<%=key%>" type="text" id="<%=val %>" value="<%=val.value %>" placeholder=""></input>
-              <% } %>
-            <% } %>
-
-          <% }); %>
-        </div>
-
-      </div>
-
-    <button id="saveGraphSettings" style="margin-top: 20px;" class="button-success pull-right">Save</button>
+    <button id="saveGraphSettings" style="margin-top: 20px; margin-right: 10px;" class="button-success pull-right">Save</button>
     <button id="restoreGraphSettings" style="margin-top: 20px;" class="button-success pull-right">Restore defaults</button>
   </div>
 

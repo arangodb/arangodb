@@ -145,7 +145,7 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
     }
 
-    // TODO: generalize to calling handler fillBody
+    // TODO: generalize to calling handler setPayload
     response->setContentType(GeneralResponse::ContentType::JSON);
 
     std::shared_ptr<VPackBuilder> extra = buildExtra(queryResult);
@@ -486,7 +486,7 @@ void RestCursorHandler::modifyCursor() {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
     }
 
-    // TODO: generalize to calling handler fillBody
+    // TODO: generalize to calling handler setPayload
     response->setContentType(GeneralResponse::ContentType::JSON);
 
     response->body().appendChar('{');

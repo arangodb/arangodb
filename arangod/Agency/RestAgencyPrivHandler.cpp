@@ -98,7 +98,7 @@ RestHandler::status RestAgencyPrivHandler::execute() {
             readValue("leaderCommit", leaderCommit)) {  // found all values
           bool ret = _agent->recvAppendEntriesRPC(
               term, id, prevLogIndex, prevLogTerm, leaderCommit,
-              _request->toVelocyPack(&opts));
+              _request->toVelocyPackBuilderPtr(&opts));
           result.add("success", VPackValue(ret));
         } else {
           return reportBadQuery();  // bad query
@@ -118,7 +118,7 @@ RestHandler::status RestAgencyPrivHandler::execute() {
         }
         if (readValue("term", term) && readValue("agencyId", id)) {
           priv_rpc_ret_t ret = _agent->requestVote(
-              term, id, 0, 0, _request->toVelocyPack(&opts));
+              term, id, 0, 0, _request->toVelocyPackBuilderPtr(&opts));
           result.add("term", VPackValue(ret.term));
           result.add("voteGranted", VPackValue(ret.success));
         } else {

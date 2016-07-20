@@ -244,13 +244,13 @@ static void JS_GetAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Handle<v8::Object> l = v8::Object::New(isolate);
 
   // return just the value for each key
-  
+
   for (auto const& a : VPackArrayIterator(result.slice())) {
     for (auto const& o : VPackObjectIterator(a)) {
-      
+
       std::string const key = o.key.copyString();
       VPackSlice const slice = o.value;
-      
+
       if (!slice.isNone()) {
         l->ForceSet(TRI_V8_STD_STRING(key), TRI_VPackToV8(isolate, slice));
       }
@@ -971,7 +971,7 @@ static void JS_GetCoordinators(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-  
+
   ONLY_IN_CLUSTER
 
   if (args.Length() != 0) {
@@ -1643,11 +1643,17 @@ static void Return_PrepareClusterCommResultForJS(
       r->Set(TRI_V8_ASCII_STRING("headers"), h);
 
       // The body:
-      std::string const& body = res.answer->body();
+      auto httpRequest = std::dynamic_pointer_cast<HttpRequest>(res.answer);
+
+      if(httpRequest == nullptr){
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+      }
+      std::string const& body = httpRequest->body();
 
       if (!body.empty()) {
         r->Set(TRI_V8_ASCII_STRING("body"), TRI_V8_STD_STRING(body));
       }
+
     } else {
       TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                      "unknown ClusterComm result status");

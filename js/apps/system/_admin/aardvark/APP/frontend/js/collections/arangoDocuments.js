@@ -194,7 +194,7 @@
 
       // fetch just the first 25 attributes of the document
       // this number is arbitrary, but may reduce HTTP traffic a bit
-      query = 'FOR x IN @@collection LET att = SLICE(ATTRIBUTES(x), 0, 25)';
+      query = 'FOR x IN @@collection LET att = APPEND(SLICE(ATTRIBUTES(x), 0, 25), "_key", true)';
       query += this.setFiltersForQuery(bindVars);
       // Sort result, only useful for a small number of docs
       if (this.getTotal() < this.MAX_SORT) {

@@ -98,12 +98,9 @@ static T ExtractFigure(VPackSlice const& slice, char const* group,
 
 static std::shared_ptr<VPackBuilder> ExtractAnswer(
     ClusterCommResult const& res) {
-  try {
-    return VPackParser::fromJson(res.answer->body());
-  } catch (...) {
-    // Return an empty Builder
-    return std::make_shared<VPackBuilder>();
-  }
+  auto rv = std::make_shared<VPackBuilder>();
+  rv->add(res.answer->payload());
+  return rv;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -372,7 +369,7 @@ static void collectResultsFromAllShards(
     } else {
       TRI_ASSERT(res.answer != nullptr);
       resultMap.emplace(res.shardID,
-                        res.answer->toVelocyPack(&VPackOptions::Defaults));
+                        res.answer->toVelocyPackBuilderPtr(&VPackOptions::Defaults));
       extractErrorCodes(res, errorCounter, true);
       responseCode = res.answer_code;
     }
@@ -822,7 +819,7 @@ int createDocumentOnCoordinator(
 
     responseCode = res.answer_code;
     TRI_ASSERT(res.answer != nullptr);
-    auto parsedResult = res.answer->toVelocyPack(&VPackOptions::Defaults);
+    auto parsedResult = res.answer->toVelocyPackBuilderPtr(&VPackOptions::Defaults);
     resultBody.swap(parsedResult);
     return TRI_ERROR_NO_ERROR;
   }
@@ -979,7 +976,7 @@ int deleteDocumentOnCoordinator(
 
       responseCode = res.answer_code;
       TRI_ASSERT(res.answer != nullptr);
-      auto parsedResult = res.answer->toVelocyPack(&VPackOptions::Defaults);
+      auto parsedResult = res.answer->toVelocyPackBuilderPtr(&VPackOptions::Defaults);
       resultBody.swap(parsedResult);
       return TRI_ERROR_NO_ERROR;
     }
@@ -1031,7 +1028,7 @@ int deleteDocumentOnCoordinator(
 
           responseCode = res.answer_code;
           TRI_ASSERT(res.answer != nullptr);
-          auto parsedResult = res.answer->toVelocyPack(&VPackOptions::Defaults);
+          auto parsedResult = res.answer->toVelocyPackBuilderPtr(&VPackOptions::Defaults);
           resultBody.swap(parsedResult);
         }
       }
@@ -1062,7 +1059,7 @@ int deleteDocumentOnCoordinator(
       responseCode = res.answer_code;
     }
     TRI_ASSERT(res.answer != nullptr);
-    allResults.emplace_back(res.answer->toVelocyPack(&VPackOptions::Defaults));
+    allResults.emplace_back(res.answer->toVelocyPackBuilderPtr(&VPackOptions::Defaults));
     extractErrorCodes(res, errorCounter, false);
   }
   // If we get here we get exactly one result for every shard.
@@ -1263,7 +1260,8 @@ int getDocumentOnCoordinator(
 
       responseCode = res.answer_code;
       TRI_ASSERT(res.answer != nullptr);
-      auto parsedResult = res.answer->toVelocyPack(&VPackOptions::Defaults);
+
+      auto parsedResult = res.answer->toVelocyPackBuilderPtr(&VPackOptions::Defaults);
       resultBody.swap(parsedResult);
       return TRI_ERROR_NO_ERROR;
     }
@@ -1335,7 +1333,7 @@ int getDocumentOnCoordinator(
           nrok++;
           responseCode = res.answer_code;
           TRI_ASSERT(res.answer != nullptr);
-          auto parsedResult = res.answer->toVelocyPack(&VPackOptions::Defaults);
+          auto parsedResult = res.answer->toVelocyPackBuilderPtr(&VPackOptions::Defaults);
           resultBody.swap(parsedResult);
         }
       } else {
@@ -1370,7 +1368,7 @@ int getDocumentOnCoordinator(
       responseCode = res.answer_code;
     }
     TRI_ASSERT(res.answer != nullptr);
-    allResults.emplace_back(res.answer->toVelocyPack(&VPackOptions::Defaults));
+    allResults.emplace_back(res.answer->toVelocyPackBuilderPtr(&VPackOptions::Defaults));
     extractErrorCodes(res, errorCounter, false);
   }
   // If we get here we get exactly one result for every shard.
@@ -1498,9 +1496,7 @@ int getFilteredDocumentsOnCoordinator(
   for (auto const& req : requests) {
     auto& res = req.result;
     if (res.status == CL_COMM_RECEIVED) {
-      std::shared_ptr<VPackBuilder> resultBody =
-          res.answer->toVelocyPack(&VPackOptions::Defaults);
-      VPackSlice resSlice = resultBody->slice();
+      VPackSlice resSlice = res.answer->payload(&VPackOptions::Defaults);
 
       if (!resSlice.isObject()) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -1609,7 +1605,7 @@ int getFilteredEdgesOnCoordinator(
       return error;
     }
     TRI_ASSERT(res.answer != nullptr);
-    std::shared_ptr<VPackBuilder> shardResult = res.answer->toVelocyPack(&VPackOptions::Defaults);
+    std::shared_ptr<VPackBuilder> shardResult = res.answer->toVelocyPackBuilderPtr(&VPackOptions::Defaults);
 
     if (shardResult == nullptr) {
       return TRI_ERROR_INTERNAL;
@@ -1818,7 +1814,7 @@ int modifyDocumentOnCoordinator(
 
       responseCode = res.answer_code;
       TRI_ASSERT(res.answer != nullptr);
-      auto parsedResult = res.answer->toVelocyPack(&VPackOptions::Defaults);
+      auto parsedResult = res.answer->toVelocyPackBuilderPtr(&VPackOptions::Defaults);
       resultBody.swap(parsedResult);
       return TRI_ERROR_NO_ERROR;
     }
@@ -1875,7 +1871,7 @@ int modifyDocumentOnCoordinator(
           nrok++;
           responseCode = res.answer_code;
           TRI_ASSERT(res.answer != nullptr);
-          auto parsedResult = res.answer->toVelocyPack(&VPackOptions::Defaults);
+          auto parsedResult = res.answer->toVelocyPackBuilderPtr(&VPackOptions::Defaults);
           resultBody.swap(parsedResult);
         }
       } else {
@@ -1910,7 +1906,7 @@ int modifyDocumentOnCoordinator(
       responseCode = res.answer_code;
     }
     TRI_ASSERT(res.answer != nullptr);
-    allResults.emplace_back(res.answer->toVelocyPack(&VPackOptions::Defaults));
+    allResults.emplace_back(res.answer->toVelocyPackBuilderPtr(&VPackOptions::Defaults));
     extractErrorCodes(res, errorCounter, false);
   }
   // If we get here we get exactly one result for every shard.

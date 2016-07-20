@@ -892,7 +892,7 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
 std::shared_ptr<VPackBuilder> RestAqlHandler::parseVelocyPackBody() {
   try {
     std::shared_ptr<VPackBuilder> body =
-        _request->toVelocyPack(&VPackOptions::Defaults);
+        _request->toVelocyPackBuilderPtr(&VPackOptions::Defaults);
     if (body == nullptr) {
       LOG(ERR) << "cannot parse json object";
       generateError(GeneralResponse::ResponseCode::BAD,

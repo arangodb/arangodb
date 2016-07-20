@@ -109,7 +109,7 @@ RestHandler::status RestAgencyHandler::handleWrite() {
     query_t query;
 
     try {
-      query = _request->toVelocyPack(&options);
+      query = _request->toVelocyPackBuilderPtr(&options);
     } catch (std::exception const& e) {
       LOG_TOPIC(ERR, Logger::AGENCY) << e.what() << " " << __FILE__ << __LINE__;
       Builder body;
@@ -168,7 +168,7 @@ RestHandler::status RestAgencyHandler::handleWrite() {
           }
         }
         body.close();
-        
+
         // Wait for commit of highest except if it is 0?
         if (!ret.indices.empty() && call_mode == "waitForCommitted") {
           arangodb::consensus::index_t max_index = 0;
@@ -208,7 +208,7 @@ inline RestHandler::status RestAgencyHandler::handleRead() {
   if (_request->requestType() == GeneralRequest::RequestType::POST) {
     query_t query;
     try {
-      query = _request->toVelocyPack(&options);
+      query = _request->toVelocyPackBuilderPtr(&options);
     } catch (std::exception const& e) {
       LOG_TOPIC(WARN, Logger::AGENCY) << e.what() << " " << __FILE__ << __LINE__;
       generateError(GeneralResponse::ResponseCode::BAD, 400);
@@ -218,7 +218,7 @@ inline RestHandler::status RestAgencyHandler::handleRead() {
     while(_agent->size() > 1 && _agent->leaderID() > 100) {
       std::this_thread::sleep_for(duration_t(100));
     }
-        
+
     read_ret_t ret = _agent->read(query);
 
     if (ret.accepted) {  // I am leading

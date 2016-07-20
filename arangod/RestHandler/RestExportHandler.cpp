@@ -271,7 +271,7 @@ void RestExportHandler::createCursor() {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
       }
 
-      // TODO: generalize to calling handler fillBody
+      // TODO: generalize to calling handler setPayload
       response->setContentType(HttpResponse::ContentType::JSON);
 
       auto cursors =

@@ -328,7 +328,6 @@
   .ui-resizable-e {
     cursor: ew-resize;
   }
-
 }
 
 .queryContent {
@@ -356,6 +355,23 @@
   padding-top: 20px;
   width: 100%;
 
+  .tableWrapper {
+    max-width: 100%;
+    overflow-x: scroll;
+
+    .arango-table {
+      border-left: 1px solid $c-content-border;
+      border-right: 1px solid $c-content-border;
+    }
+  }
+
+  .graphContent {
+    border-left: 1px solid $c-content-border;
+    border-right: 1px solid $c-content-border;
+    margin-right: -2px;
+    margin-top: 0;
+  }
+
   .switchAce {
     background-color: rgba(0, 0, 0, .6);
     border-radius: 3px;
@@ -365,6 +381,18 @@
     right: -24px;
     top: 45px;
     z-index: 10;
+
+    span {
+      top: 0;
+
+      &.active {
+        color: $c-positive;
+      }
+
+      &.disabled {
+        cursor: not-allowed;
+      }
+    }
   }
 
   .ace_editor {

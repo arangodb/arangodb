@@ -67,7 +67,13 @@
       'nodeLabel': {
         type: 'string',
         name: 'Label',
-        desc: 'Default node color. RGB or HEX value.',
+        desc: 'Node label. Please choose a valid and available node attribute.',
+        default: '_key'
+      },
+      'nodeLabelThreshold': {
+        type: 'range',
+        name: 'Node label threshold',
+        desc: 'The minimum size a node must have on screen to see its label displayed. This does not affect hovering behavior.',
         default: '_key'
       },
       'nodeColor': {
@@ -89,6 +95,12 @@
         type: 'string',
         name: 'Label',
         desc: 'Default edge label.'
+      },
+      'edgeLabelThreshold': {
+        type: 'range',
+        name: 'Edge label threshold',
+        desc: 'The minimum size an edge must have on screen to see its label displayed. This does not affect hovering behavior.',
+        default: '_key'
       },
       'edgeColor': {
         type: 'color',
@@ -112,7 +124,8 @@
         curve: {
           name: 'Curve',
           val: 'curve'
-        },
+        }
+        /*
         arrow: {
           name: 'Arrow',
           val: 'arrow'
@@ -121,6 +134,7 @@
           name: 'Curved Arrow',
           val: 'curvedArrow'
         }
+        */
       }
     },
 
@@ -137,13 +151,14 @@
       'click #restoreGraphSettings': 'restoreGraphSettings',
       'keyup #graphSettingsView input': 'checkEnterKey',
       'keyup #graphSettingsView select': 'checkEnterKey',
+      'change input[type="range"]': 'saveGraphSettings',
+      'change input[type="color"]': 'checkColor',
+      'change select': 'saveGraphSettings',
       'focus #graphSettingsView input': 'lastFocus',
       'focus #graphSettingsView select': 'lastFocus'
     },
 
     lastFocus: function (e) {
-      console.log(e.currentTarget.id);
-      console.log(e.currentTarget);
       this.lastFocussed = e.currentTarget.id;
     },
 
@@ -167,17 +182,25 @@
       });
     },
 
-    saveGraphSettings: function () {
+    checkColor: function () {
+      this.saveGraphSettings(true);
+    },
+
+    saveGraphSettings: function (color, nodeStart) {
       var self = this;
+      console.log('CLICK');
       var combinedName = window.App.currentDB.toJSON().name + '_' + this.name;
 
       var config = {};
+
       config[combinedName] = {
         layout: $('#g_layout').val(),
         renderer: $('#g_renderer').val(),
         depth: $('#g_depth').val(),
         nodeColor: $('#g_nodeColor').val(),
+        nodeLabelThreshold: $('#g_nodeLabelThreshold').val(),
         edgeColor: $('#g_edgeColor').val(),
+        edgeLabelThreshold: $('#g_edgeLabelThreshold').val(),
         nodeLabel: $('#g_nodeLabel').val(),
         edgeLabel: $('#g_edgeLabel').val(),
         edgeType: $('#g_edgeType').val(),
@@ -186,9 +209,17 @@
         nodeStart: $('#g_nodeStart').val()
       };
 
+      if (nodeStart) {
+        config[combinedName].nodeStart = nodeStart;
+      }
+
       var callback = function () {
         if (window.App.graphViewer2) {
-          window.App.graphViewer2.render(self.lastFocussed);
+          if (color) {
+            window.App.graphViewer2.updateColors();
+          } else {
+            window.App.graphViewer2.render(self.lastFocussed);
+          }
         } else {
           arangoHelper.arangoNotification('Graph ' + this.name, 'Configuration saved.');
         }

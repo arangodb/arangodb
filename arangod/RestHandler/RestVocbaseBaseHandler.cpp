@@ -339,7 +339,7 @@ void RestVocbaseBaseHandler::generateDocument(VPackSlice const& input,
   }
 
   try {
-    _response->fillBody(_request, document, generateBody, *options);
+    _response->setPayload(_request, document, generateBody, *options);
   } catch (...) {
     generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
                   TRI_ERROR_INTERNAL, "cannot generate output");
@@ -640,23 +640,7 @@ std::shared_ptr<VPackBuilder> RestVocbaseBaseHandler::parseVelocyPackBody(
     VPackOptions const* options, bool& success) {
   try {
     success = true;
-
-    bool found;
-    std::string const& contentType =
-        _request->header(StaticStrings::ContentTypeHeader, found);
-
-    if (found && contentType.size() == StaticStrings::MimeTypeVPack.size() &&
-        contentType == StaticStrings::MimeTypeVPack) {
-
-      VPackValidator validator;
-      validator.validate(_request->body().c_str() ,_request->body().length());
-      VPackSlice slice{_request->body().c_str()};
-      auto builder = std::make_shared<VPackBuilder>(options);
-      builder->add(slice);
-      return builder;
-    } else {
-      return _request->toVelocyPack(options);
-    }
+    return _request->toVelocyPackBuilderPtr(options);
 
   } catch (std::bad_alloc const&) {
     generateOOMError();

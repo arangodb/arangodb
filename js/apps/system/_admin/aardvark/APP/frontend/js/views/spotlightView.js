@@ -41,14 +41,15 @@
 
     listenKey: function (e) {
       if (e.keyCode === 27) {
-        this.hide();
         if (this.callbackSuccess) {
           this.callbackCancel();
         }
+        this.hide();
       } else if (e.keyCode === 13) {
         if (this.callbackSuccess) {
+          var string = $(this.typeahead).val();
+          this.callbackSuccess(string);
           this.hide();
-          this.callbackSuccess($(this.typeahead).val());
         }
       }
     },
@@ -162,40 +163,40 @@
             },
             {
               name: 'Functions',
-              source: this.substringMatcher(this.aqlBuiltinFunctionsArray),
-              limit: this.displayLimit,
+              source: self.substringMatcher(self.aqlBuiltinFunctionsArray),
+              limit: self.displayLimit,
               templates: {
                 header: genHeader('Functions', 'fa-code', 'aql')
               }
             },
             {
               name: 'Keywords',
-              source: this.substringMatcher(this.aqlKeywordsArray),
-              limit: this.displayLimit,
+              source: self.substringMatcher(self.aqlKeywordsArray),
+              limit: self.displayLimit,
               templates: {
                 header: genHeader('Keywords', 'fa-code', 'aql')
               }
             },
             {
               name: 'Documents',
-              source: this.substringMatcher(this.collections.doc),
-              limit: this.displayLimit,
+              source: self.substringMatcher(self.collections.doc),
+              limit: self.displayLimit,
               templates: {
                 header: genHeader('Documents', 'fa-file-text-o', 'Collection')
               }
             },
             {
               name: 'Edges',
-              source: this.substringMatcher(this.collections.edge),
-              limit: this.displayLimit,
+              source: self.substringMatcher(self.collections.edge),
+              limit: self.displayLimit,
               templates: {
                 header: genHeader('Edges', 'fa-share-alt', 'Collection')
               }
             },
             {
               name: 'System',
-              limit: this.displayLimit,
-              source: this.substringMatcher(this.collections.system),
+              limit: self.displayLimit,
+              source: self.substringMatcher(self.collections.system),
               templates: {
                 header: genHeader('System', 'fa-cogs', 'Collection')
               }
@@ -210,24 +211,24 @@
             },
             {
               name: 'Documents',
-              source: this.substringMatcher(this.collections.doc),
-              limit: this.displayLimit,
+              source: self.substringMatcher(self.collections.doc),
+              limit: self.displayLimit,
               templates: {
                 header: genHeader('Documents', 'fa-file-text-o', 'Collection')
               }
             },
             {
               name: 'Edges',
-              source: this.substringMatcher(this.collections.edge),
-              limit: this.displayLimit,
+              source: self.substringMatcher(self.collections.edge),
+              limit: self.displayLimit,
               templates: {
                 header: genHeader('Edges', 'fa-share-alt', 'Collection')
               }
             },
             {
               name: 'System',
-              limit: this.displayLimit,
-              source: this.substringMatcher(this.collections.system),
+              limit: self.displayLimit,
+              source: self.substringMatcher(self.collections.system),
               templates: {
                 header: genHeader('System', 'fa-cogs', 'Collection')
               }

@@ -18,23 +18,35 @@
     initialize: function (options) {
       var self = this;
 
+      if (options.id) {
+        // dynamically set id if available
+        this.setElement(options.id);
+        this.graphData = options.data;
+        this.aqlMode = true;
+      }
+
       this.name = options.name;
       this.userConfig = options.userConfig;
       this.documentStore = options.documentStore;
       this.initSigma();
 
-      this.collection.fetch({
-        cache: false,
-        success: function (data) {
-          self.model = self.collection.findWhere({_key: options.name}).toJSON();
-        }
-      });
+      if (this.name !== undefined) {
+        this.collection.fetch({
+          cache: false,
+          success: function (data) {
+            self.model = self.collection.findWhere({_key: options.name}).toJSON();
+          }
+        });
+      }
     },
+
+    aqlMode: false,
 
     events: {
       'click #downloadPNG': 'downloadSVG',
       'click #reloadGraph': 'reloadGraph',
-      'click #settingsMenu': 'toggleSettings'
+      'click #settingsMenu': 'toggleSettings',
+      'click #noGraphToggle': 'toggleSettings'
     },
 
     cursorX: 0,
@@ -61,6 +73,18 @@
             neighbors[k] = this.nodesIndex[k];
           }
           return neighbors;
+        });
+
+        sigma.classes.graph.addMethod('getNodeEdges', function (nodeId) {
+          var edges = this.edges();
+          var edgesToReturn = [];
+
+          _.each(edges, function (edge) {
+            if (edge.source === nodeId || edge.target === nodeId) {
+              edgesToReturn.push(edge.id);
+            }
+          });
+          return edgesToReturn;
         });
       } catch (ignore) {}
     },
@@ -97,6 +121,91 @@
       this.fetchGraph(toFocus);
     },
 
+    renderAQL: function (data) {
+      this.$el.html(this.template.render({}));
+
+      // remove not needed elements
+      this.$el.find('.headerBar').remove();
+
+      // set graph box height
+      var height = $('.centralRow').height() - 250;
+      this.$el.find('#graph-container').css('height', height);
+
+      // render
+      this.graphData.modified = this.parseData(this.graphData.original, this.graphData.graphInfo);
+      this.renderGraph(this.graphData.modified);
+    },
+
+    parseData: function (data, type) {
+      var vertices = {}; var edges = {};
+      var returnObj = {
+        nodes: [],
+        edges: [],
+        settings: {}
+      };
+
+      if (type === 'object') {
+        _.each(data, function (obj) {
+          if (obj.edges && obj.vertices) {
+            _.each(obj.edges, function (edge) {
+              edges[edge._id] = {
+                id: edge._id,
+                source: edge._from,
+                label: edge._key,
+                color: '#cccccc',
+                target: edge._to
+              };
+            });
+
+            _.each(obj.vertices, function (node) {
+              vertices[node._id] = {
+                id: node._id,
+                label: node._key,
+                size: 10,
+                color: '#2ecc71',
+                x: Math.random(),
+                y: Math.random()
+              };
+            });
+          }
+        });
+
+        _.each(vertices, function (node) {
+          returnObj.nodes.push(node);
+        });
+
+        _.each(edges, function (edge) {
+          returnObj.edges.push(edge);
+        });
+      } else if (type === 'array') {
+        _.each(data, function (edge) {
+          vertices[edge._from] = null;
+          vertices[edge._to] = null;
+
+          returnObj.edges.push({
+            id: edge._id,
+            source: edge._from,
+            label: edge._key,
+            color: '#cccccc',
+            target: edge._to
+          });
+        });
+
+        _.each(vertices, function (val, key) {
+          returnObj.nodes.push({
+            id: key,
+            label: key,
+            size: 10,
+            color: '#2ecc71',
+            x: Math.random(),
+            y: Math.random()
+          });
+        });
+      }
+
+      return returnObj;
+    },
+
     rerender: function () {
       this.fetchGraph();
     },
@@ -104,7 +213,7 @@
     fetchGraph: function (toFocus) {
       var self = this;
       // arangoHelper.buildGraphSubNav(self.name, 'Content');
-      $('#content').append(
+      $(this.el).append(
         '<div id="calculatingGraph" style="position: absolute; left: 25px; top: 130px;">' +
         '<i class="fa fa-circle-o-notch fa-spin" style="margin-right: 10px;"></i>' +
         '<span id="calcText">Fetching graph data. Please wait ... </span></br></br></br>' +
@@ -220,19 +329,96 @@
       this.cursorY = e.y;
     },
 
+    deleteNode: function () {
+      var self = this;
+      var documentKey = $('#delete-node-attr-id').text();
+      var collectionId = documentKey.split('/')[0];
+      var documentId = documentKey.split('/')[1];
+
+      if ($('#delete-node-edges-attr').val() === 'yes') {
+        $.ajax({
+          cache: false,
+          type: 'DELETE',
+          contentType: 'application/json',
+          url: arangoHelper.databaseUrl(
+            '/_api/gharial/' + encodeURIComponent(self.name) + '/vertex/' + encodeURIComponent(documentKey.split('/')[0]) + '/' + encodeURIComponent(documentKey.split('/')[1])
+          ),
+          success: function (data) {
+            self.currentGraph.graph.dropNode(documentKey);
+            self.currentGraph.refresh();
+          },
+          error: function () {
+            arangoHelper.arangoError('Graph', 'Could not delete node.');
+          }
+        });
+      } else {
+        var callback = function (error) {
+          if (!error) {
+            self.currentGraph.graph.dropNode(documentKey);
+
+            // rerender graph
+            self.currentGraph.refresh();
+          } else {
+            arangoHelper.arangoError('Graph', 'Could not delete node.');
+          }
+        };
+
+        this.documentStore.deleteDocument(collectionId, documentId, callback);
+      }
+      window.modalView.hide();
+    },
+
+    deleteNodeModal: function (nodeId) {
+      var buttons = []; var tableContent = [];
+
+      tableContent.push(
+        window.modalView.createReadOnlyEntry('delete-node-attr-id', 'Really delete node', nodeId)
+      );
+
+      tableContent.push(
+        window.modalView.createSelectEntry(
+          'delete-node-edges-attr',
+          'Also delete edges?',
+          undefined,
+          undefined,
+          [
+            {
+              value: 'yes',
+              label: 'Yes'
+            },
+            {
+              value: 'no',
+              label: 'No'
+            }
+          ]
+        )
+      );
+
+      buttons.push(
+        window.modalView.createDeleteButton('Delete', this.deleteNode.bind(this))
+      );
+
+      window.modalView.show(
+        'modalTable.ejs',
+        'Delete node',
+        buttons,
+        tableContent
+      );
+    },
+
     addNode: function () {
       var self = this;
 
       var collectionId = $('.modal-body #new-node-collection-attr').val();
       var key = $('.modal-body #new-node-key-attr').last().val();
 
-      var callback = function (error, id) {
+      var callback = function (error, id, msg) {
         if (error) {
-          arangoHelper.arangoError('Error', 'Could not create node');
+          arangoHelper.arangoError('Could not create node', msg.errorMessage);
         } else {
           self.currentGraph.graph.addNode({
             id: id,
-            label: self.graphConfig.nodeLabel,
+            label: self.graphConfig.nodeLabel || '',
             size: self.graphConfig.nodeSize || Math.random(),
             color: self.graphConfig.nodeColor || '#2ecc71',
             x: self.cursorX,
@@ -412,6 +598,26 @@
       }
     },
 
+    updateColors: function () {
+      var combinedName = window.App.currentDB.toJSON().name + '_' + this.name;
+      var self = this;
+
+      this.userConfig.fetch({
+        success: function (data) {
+          self.graphConfig = data.toJSON().graphs[combinedName];
+          self.currentGraph.graph.nodes().forEach(function (n) {
+            n.color = self.graphConfig.nodeColor;
+          });
+
+          self.currentGraph.graph.edges().forEach(function (e) {
+            e.color = self.graphConfig.edgeColor;
+          });
+
+          self.currentGraph.refresh();
+        }
+      });
+    },
+
     // right click background context menu
     createContextMenu: function (e) {
       var self = this;
@@ -498,7 +704,7 @@
         wheel.multiSelect = true;
         wheel.clickModeRotate = false;
         wheel.slicePathFunction = slicePath().DonutSlice;
-        wheel.createWheel([icon.edit, icon.trash, icon.arrowleft2, icon.connect]);
+        wheel.createWheel([icon.edit, icon.trash, icon.play, icon.connect]);
 
         wheel.navItems[0].selected = false;
         wheel.navItems[0].hovered = false;
@@ -513,7 +719,7 @@
         // function 1: delete
         wheel.navItems[1].navigateFunction = function (e) {
           self.clearOldContextMenu();
-          self.deleteNode(nodeId);
+          self.deleteNodeModal(nodeId);
         };
 
         // function 2: mark as start node
@@ -599,6 +805,11 @@
       });
     },
 
+    setStartNode: function (id) {
+      this.graphConfig.nodeStart = id;
+      this.graphSettingsView.saveGraphSettings(null, id);
+    },
+
     editNode: function (id) {
       var callback = function () {};
 
@@ -627,6 +838,44 @@
       return array;
     },
 
+    initializeGraph: function (sigmaInstance, graph) {
+      var self = this;
+      // sigmaInstance.graph.read(graph);
+      sigmaInstance.refresh();
+
+      this.Sigma.plugins.Lasso = sigma.plugins.lasso;
+
+      var lasso = new this.Sigma.plugins.Lasso(sigmaInstance, sigmaInstance.renderers[0], {
+        'strokeStyle': 'black',
+        'lineWidth': 1,
+        'fillWhileDrawing': true,
+        'fillStyle': 'rgba(41, 41, 41, 0.2)',
+        'cursor': 'crosshair'
+      });
+
+      // Listen for selectedNodes event
+      lasso.bind('selectedNodes', function (event) {
+        // Do something with the selected nodes
+        var nodes = event.data;
+
+        console.log('nodes', nodes);
+
+        // For instance, reset all node size as their initial size
+        sigmaInstance.graph.nodes().forEach(function (node) {
+          node.color = self.graphConfig.nodeColor;
+        });
+
+        // Then increase the size of selected nodes...
+        nodes.forEach(function (node) {
+          node.color = 'red';
+        });
+
+        sigmaInstance.refresh();
+      });
+
+      return lasso;
+    },
+
     renderGraph: function (graph, toFocus) {
       var self = this;
 
@@ -634,20 +883,31 @@
 
       if (graph.edges.length === 0) {
         var string = 'No edges found for starting point: <span style="font-weight: 400">' + self.graphSettings.startVertex._id + '</span>';
-        arangoHelper.arangoError('Graph', string);
         $('#calculatingGraph').html(
           '<div style="font-weight: 300; font-size: 10.5pt"><span style="font-weight: 400">Stopped. </span></br></br>' +
           string +
-          '. Please <a style="color: #3498db" href="' + window.location.href +
-          '/settings">choose a different start node </a>or try to reload the graph. ' +
+          '. Please <span id="noGraphToggle" style="cursor: pointer; color: #3498db">choose a different start node </span>or try to reload the graph. ' +
           '<i id="reloadGraph" class="fa fa-refresh" style="cursor: pointer"></i></div>'
         );
         return;
+      } else {
+        var style = 'right: 25px; bottom: 45px;';
+        if (this.aqlMode) {
+          style = 'position: absolute; left: 30px; margin-top: -37px;';
+        }
+
+        $(this.el).append(
+          '<div style="' + style + '">' +
+          '<span style="margin-right: 10px" class="arangoState">' + graph.nodes.length + ' nodes</span>' +
+          '<span class="arangoState">' + graph.edges.length + ' edges</span>' +
+          '</div>'
+        );
       }
+
       this.Sigma = sigma;
 
       // defaults
-      var algorithm = 'noverlap';
+      var algorithm = 'force';
       var renderer = 'canvas';
 
       if (this.graphConfig) {
@@ -674,20 +934,34 @@
         defaultEdgeHoverColor: '#000',
         defaultEdgeType: 'line',
         edgeHoverSizeRatio: 2,
-        edgeHoverExtremities: true
+        edgeHoverExtremities: true,
+        // lasso settings
+        autoRescale: true,
+        mouseEnabled: true,
+        touchEnabled: true,
+        nodesPowRatio: 1,
+        edgesPowRatio: 1
       };
-
-      if (this.graphConfig) {
-        if (this.graphConfig.edgeType) {
-          settings.defaultEdgeType = this.graphConfig.edgeType;
-        }
-      }
 
       // adjust display settings for big graphs
       if (graph.nodes.length > 500) {
         // show node label if size is 15
         settings.labelThreshold = 15;
         settings.hideEdgesOnMove = true;
+      }
+
+      if (this.graphConfig) {
+        if (this.graphConfig.edgeType) {
+          settings.defaultEdgeType = this.graphConfig.edgeType;
+        }
+
+        if (this.graphConfig.nodeLabelThreshold) {
+          settings.labelThreshold = this.graphConfig.nodeLabelThreshold;
+        }
+
+        if (this.graphConfig.edgeLabelThreshold) {
+          settings.edgeLabelThreshold = this.graphConfig.edgeLabelThreshold;
+        }
       }
 
       // adjust display settings for webgl renderer
@@ -707,10 +981,12 @@
       });
       this.currentGraph = s;
 
-      sigma.plugins.fullScreen({
-        container: 'graph-container',
-        btnId: 'graph-fullscreen-btn'
-      });
+      if (!this.aqlMode) {
+        sigma.plugins.fullScreen({
+          container: 'graph-container',
+          btnId: 'graph-fullscreen-btn'
+        });
+      }
 
       if (algorithm === 'noverlap') {
         var noverlapListener = s.configNoverlap({
@@ -746,9 +1022,59 @@
 
       // for canvas renderer allow graph editing
       if (renderer === 'canvas') {
-        s.bind('rightClickStage', function (e) {
-          self.createContextMenu(e);
-          self.clearMouseCanvas();
+        if (!self.aqlMode) {
+          s.bind('rightClickStage', function (e) {
+            self.createContextMenu(e);
+            self.clearMouseCanvas();
+          });
+        }
+
+        s.bind('overNode', function (e) {
+          $('.nodeInfoDiv').remove();
+          if (self.contextState.createEdge === false) {
+            var callback = function (error, data) {
+              if (!error) {
+                var obj = {};
+                var counter = 0;
+                var more = false;
+
+                _.each(data, function (val, key) {
+                  if (counter < 15) {
+                    if (typeof val === 'string') {
+                      if (val.length > 10) {
+                        obj[key] = val.substr(0, 10) + ' ...';
+                      } else {
+                        obj[key] = val;
+                      }
+                    }
+                  } else {
+                    more = true;
+                  }
+                  counter++;
+                });
+
+                var string = '<div id="nodeInfoDiv" class="nodeInfoDiv">' +
+                  '<pre>' + JSON.stringify(obj, null, 2);
+
+                if (more) {
+                  string = string.substr(0, string.length - 2);
+                  string += ' \n\n  ... \n\n } </pre></div>';
+                } else {
+                  string += '</pre></div>';
+                }
+
+                $(self.el).append(string);
+              }
+            };
+
+            self.documentStore.getDocument(e.data.node.id.split('/')[0], e.data.node.id.split('/')[1], callback);
+          }
+        });
+
+        s.bind('outNode', function (e) {
+          if (self.contextState.createEdge === false) {
+            $('.nodeInfoDiv').remove();
+          }
         });
 
         s.bind('clickNode', function (e) {
@@ -831,6 +1157,7 @@
         window.setTimeout(function () {
           s.stopForceAtlas2();
           dragListener = sigma.plugins.dragNodes(s, s.renderers[0]);
+          console.log(dragListener);
         }, duration);
       } else if (algorithm === 'fruchtermann') {
         // Start the Fruchterman-Reingold algorithm:
@@ -839,7 +1166,6 @@
       } else {
         dragListener = sigma.plugins.dragNodes(s, s.renderers[0]);
       }
-      console.log(dragListener);
 
       // add listener to keep track of cursor position
       var c = document.getElementsByClassName('sigma-mouse')[0];
@@ -849,6 +1175,28 @@
       if (toFocus) {
         $('#' + toFocus).focus();
       }
+
+      // init graph lasso
+      self.graphLasso = self.initializeGraph(s, graph);
+      self.graphLasso.activate();
+      self.graphLasso.deactivate();
+
+      // add lasso event
+      // Toggle lasso activation on Alt + l
+      document.addEventListener('keyup', function (event) {
+        switch (event.keyCode) {
+          case 76:
+            if (event.altKey) {
+              if (self.graphLasso.isActive) {
+                self.graphLasso.deactivate();
+              } else {
+                self.graphLasso.activate();
+              }
+            }
+            break;
+        }
+      });
+
       // clear up info div
       $('#calculatingGraph').remove();
     }

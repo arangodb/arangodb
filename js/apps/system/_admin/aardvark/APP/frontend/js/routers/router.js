@@ -53,6 +53,10 @@
       if (callback) {
         callback.apply(this, args);
       }
+
+      if (this.graphViewer2) {
+        this.graphViewer2.graphSettingsView.hide();
+      }
     },
 
     checkUser: function () {
