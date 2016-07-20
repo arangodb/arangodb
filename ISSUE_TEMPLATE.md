@@ -1,5 +1,5 @@
 ## my environment running ArangoDB
-I'm using the latest Arangodb of the respective release series:
+I'm using the latest ArangoDB of the respective release series:
 - [ ] 2.8
 - [ ] 3.0
 - [ ] self-compiled devel branch
