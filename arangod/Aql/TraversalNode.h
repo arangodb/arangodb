@@ -51,6 +51,8 @@ class TraversalNode : public ExecutionNode {
     public:
      EdgeConditionBuilder(TraversalNode const*);
 
+     EdgeConditionBuilder(TraversalNode const*, arangodb::basics::Json const&); 
+
       ~EdgeConditionBuilder() {}
 
       void addConditionPart(AstNode const*);
@@ -58,6 +60,8 @@ class TraversalNode : public ExecutionNode {
       AstNode* getOutboundCondition();
 
       AstNode* getInboundCondition();
+
+      void toVelocyPack(arangodb::velocypack::Builder&, bool) const;
   };
 
 
@@ -186,7 +190,8 @@ class TraversalNode : public ExecutionNode {
 
   /// @brief Fill the traversal options with all values known to this node or
   ///        with default values.
-  void fillTraversalOptions(arangodb::traverser::TraverserOptions& opts) const;
+  void fillTraversalOptions(arangodb::traverser::TraverserOptions& opts,
+                            arangodb::Transaction*) const;
 
   std::vector<std::string> const edgeColls() const { return _edgeColls; }
 
@@ -282,9 +287,6 @@ class TraversalNode : public ExecutionNode {
   bool _specializedNeighborsSearch;
 
 #warning THIS IS ALL NEW STUFF
-
-  /// @brief Reference to to AST. Just a shorthand.
-  Ast* _ast;
 
   /// @brief Temporary pseudo variable for the currently traversed object.
   Variable const* _tmpObjVariable;

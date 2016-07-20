@@ -52,7 +52,7 @@ TraversalBlock::TraversalBlock(ExecutionEngine* engine, TraversalNode const* ep)
       _pathReg(0) {
 #warning FIXME
   arangodb::traverser::TraverserOptions opts(_trx);
-  ep->fillTraversalOptions(opts);
+  ep->fillTraversalOptions(opts, _trx);
 
   if (arangodb::ServerState::instance()->isCoordinator()) {
     _traverser.reset(new arangodb::traverser::ClusterTraverser(

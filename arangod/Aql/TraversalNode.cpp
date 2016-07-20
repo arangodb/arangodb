@@ -53,7 +53,15 @@ static uint64_t checkTraversalDepthValue(AstNode const* node) {
 TraversalNode::EdgeConditionBuilder::EdgeConditionBuilder(
     TraversalNode const* tn)
     : _tn(tn), _containsCondition(false) {
-      _modCondition = _tn->_ast->createNodeNaryOperator(NODE_TYPE_OPERATOR_NARY_AND);
+      _modCondition = _tn->_plan->getAst()->createNodeNaryOperator(NODE_TYPE_OPERATOR_NARY_AND);
+    }
+
+TraversalNode::EdgeConditionBuilder::EdgeConditionBuilder(
+    TraversalNode const* tn, arangodb::basics::Json const& condition)
+    : _tn(tn), _containsCondition(false) {
+      _modCondition = new AstNode(_tn->_plan->getAst(), condition);
+      TRI_ASSERT(_modCondition != nullptr);
+      TRI_ASSERT(_modCondition->type == NODE_TYPE_OPERATOR_NARY_AND);
     }
 
 void TraversalNode::EdgeConditionBuilder::addConditionPart(AstNode const* part) {
@@ -67,9 +75,12 @@ AstNode* TraversalNode::EdgeConditionBuilder::getOutboundCondition() {
     if (_tn->_globalEdgeCondition != nullptr) {
       _modCondition->addMember(_tn->_globalEdgeCondition);
     }
+    TRI_ASSERT(_tn->_fromCondition != nullptr);
+    TRI_ASSERT(_tn->_fromCondition->type == NODE_TYPE_OPERATOR_BINARY_EQ);
     _modCondition->addMember(_tn->_fromCondition);
     _containsCondition = true;
   }
+  TRI_ASSERT(_modCondition->numMembers() > 0);
   return _modCondition;
 };
 
@@ -80,11 +91,21 @@ AstNode* TraversalNode::EdgeConditionBuilder::getInboundCondition() {
     if (_tn->_globalEdgeCondition != nullptr) {
       _modCondition->addMember(_tn->_globalEdgeCondition);
     }
+    TRI_ASSERT(_tn->_toCondition != nullptr);
+    TRI_ASSERT(_tn->_toCondition->type == NODE_TYPE_OPERATOR_BINARY_EQ);
     _modCondition->addMember(_tn->_toCondition);
     _containsCondition = true;
   }
+  TRI_ASSERT(_modCondition->numMembers() > 0);
   return _modCondition;
 };
+
+void TraversalNode::EdgeConditionBuilder::toVelocyPack(VPackBuilder& builder, bool verbose) const {
+  if (_containsCondition) {
+    _modCondition->removeMemberUnchecked(_modCondition->numMembers() - 1);
+  }
+  _modCondition->toVelocyPack(builder, verbose);
+}
 
 static TRI_edge_direction_e parseDirection (AstNode const* node) {
   TRI_ASSERT(node->isIntValue());
@@ -118,10 +139,11 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id,
       _condition(nullptr),
       _options(options),
       _specializedNeighborsSearch(false),
-      _ast(plan->getAst()),
-      _tmpObjVariable(_ast->variables()->createTemporaryVariable()),
-      _tmpObjVarNode(_ast->createNodeReference(_tmpObjVariable)),
-      _tmpIdNode(_ast->createNodeValueString("", 0)),
+      _tmpObjVariable(_plan->getAst()->variables()->createTemporaryVariable()),
+      _tmpObjVarNode(_plan->getAst()->createNodeReference(_tmpObjVariable)),
+      _tmpIdNode(_plan->getAst()->createNodeValueString("", 0)),
+      _fromCondition(nullptr),
+      _toCondition(nullptr),
       _globalEdgeCondition(nullptr),
       _globalVertexCondition(nullptr) {
   TRI_ASSERT(_vocbase != nullptr);
@@ -129,24 +151,27 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id,
   TRI_ASSERT(start != nullptr);
   TRI_ASSERT(graph != nullptr);
 
+  auto ast = _plan->getAst();
   // Let us build the conditions on _from and _to. Just in case we need them.
   {
-    auto const* access = _ast->createNodeAttributeAccess(
+    auto const* access = ast->createNodeAttributeAccess(
         _tmpObjVarNode, StaticStrings::FromString.c_str(),
         StaticStrings::FromString.length());
-    _fromCondition = _ast->createNodeBinaryOperator(
+    _fromCondition = ast->createNodeBinaryOperator(
         NODE_TYPE_OPERATOR_BINARY_EQ, access, _tmpIdNode);
   }
   TRI_ASSERT(_fromCondition != nullptr);
+  TRI_ASSERT(_fromCondition->type == NODE_TYPE_OPERATOR_BINARY_EQ);
 
   {
-    auto const* access = _ast->createNodeAttributeAccess(
+    auto const* access = ast->createNodeAttributeAccess(
         _tmpObjVarNode, StaticStrings::ToString.c_str(),
         StaticStrings::ToString.length());
-    _toCondition = _ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ,
+    _toCondition = ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ,
                                                   access, _tmpIdNode);
   }
   TRI_ASSERT(_toCondition != nullptr);
+  TRI_ASSERT(_toCondition->type == NODE_TYPE_OPERATOR_BINARY_EQ);
 
   auto resolver = std::make_unique<CollectionNameResolver>(vocbase);
 
@@ -297,7 +322,10 @@ TraversalNode::TraversalNode(
       _graphObj(nullptr),
       _condition(nullptr),
       _options(options),
-      _specializedNeighborsSearch(false) {
+      _specializedNeighborsSearch(false),
+      _fromCondition(nullptr),
+      _toCondition(nullptr) {
+TRI_ASSERT(false);
   _graphJson = arangodb::basics::Json(arangodb::basics::Json::Array, edgeColls.size());
 
   for (auto& it : edgeColls) {
@@ -316,7 +344,14 @@ TraversalNode::TraversalNode(ExecutionPlan* plan,
       _inVariable(nullptr),
       _graphObj(nullptr),
       _condition(nullptr),
-      _specializedNeighborsSearch(false) {
+      _specializedNeighborsSearch(false),
+      _tmpObjVariable(nullptr),
+      _tmpObjVarNode(nullptr),
+      _tmpIdNode(nullptr),
+      _fromCondition(nullptr),
+      _toCondition(nullptr),
+      _globalEdgeCondition(nullptr),
+      _globalVertexCondition(nullptr) {
   _minDepth =
       arangodb::basics::JsonHelper::stringUInt64(base.json(), "minDepth");
   _maxDepth =
@@ -425,8 +460,64 @@ TraversalNode::TraversalNode(ExecutionPlan* plan,
     _options = TraversalOptions(base);
   }
 
-  // TODO PARSE CONDITIONS
-  
+  // Temporary Filter Objects
+  TRI_ASSERT(base.has("tmpObjVariable"));
+  _tmpObjVariable = varFromJson(plan->getAst(), base, "tmpObjVariable");
+
+  TRI_ASSERT(base.has("tmpObjVarNode"));
+  _tmpObjVarNode = new AstNode(plan->getAst(), base.get("tmpObjVarNode"));
+
+  TRI_ASSERT(base.has("tmpIdNode"));
+  _tmpIdNode = new AstNode(plan->getAst(), base.get("tmpIdNode"));
+
+  // Filter Condition Parts
+  TRI_ASSERT(base.has("fromCondition"));
+  _fromCondition = new AstNode(plan->getAst(), base.get("fromCondition"));
+  TRI_ASSERT(_fromCondition != nullptr);
+  TRI_ASSERT(_fromCondition->type == NODE_TYPE_OPERATOR_BINARY_EQ);
+
+  TRI_ASSERT(base.has("toCondition"));
+  _toCondition = new AstNode(plan->getAst(), base.get("toCondition"));
+  TRI_ASSERT(_toCondition != nullptr);
+  TRI_ASSERT(_toCondition->type == NODE_TYPE_OPERATOR_BINARY_EQ);
+
+  if (base.has("globalEdgeCondition")) {
+    _globalEdgeCondition = new AstNode(plan->getAst(), base.get("globalEdgeCondition"));
+  }
+
+  if (base.has("globalVertexCondition")) {
+    _globalVertexCondition = new AstNode(plan->getAst(), base.get("globalVertexCondition"));
+  }
+
+  if (base.has("vertexConditions")) {
+    auto list = base.get("vertexConditions").json();
+    size_t count = TRI_LengthVector(&list->_value._objects);
+    // List of edge collection names
+    for (size_t i = 0; i < count; i += 2) {
+      auto keyJson = static_cast<TRI_json_t const*>(TRI_AtVector(&list->_value._objects, i));
+      std::string key = JsonHelper::getStringValue(keyJson, "0");
+      auto value = Json(TRI_UNKNOWN_MEM_ZONE,
+                        static_cast<TRI_json_t const*>(
+                            TRI_AtVector(&list->_value._objects, i + 1)));
+      _vertexConditions.emplace(StringUtils::uint64(key), new AstNode(plan->getAst(), value));
+    }
+  }
+
+  if (base.has("edgeConditions")) {
+    auto list = base.get("edgeConditions").json();
+    size_t count = TRI_LengthVector(&list->_value._objects);
+    // List of edge collection names
+    for (size_t i = 0; i < count; i += 2) {
+      auto keyJson = static_cast<TRI_json_t const*>(TRI_AtVector(&list->_value._objects, i));
+      std::string key = JsonHelper::getStringValue(keyJson, "0");
+      auto value = Json(TRI_UNKNOWN_MEM_ZONE,
+                        static_cast<TRI_json_t const*>(
+                            TRI_AtVector(&list->_value._objects, i + 1)));
+      _edgeConditions.emplace(std::make_pair(
+          StringUtils::uint64(key), EdgeConditionBuilder(this, value)));
+    }
+  }
+   
   _specializedNeighborsSearch = arangodb::basics::JsonHelper::getBooleanValue(base.json(), "specializedNeighborsSearch", false);
 }
 
@@ -525,6 +616,59 @@ void TraversalNode::toVelocyPackHelper(arangodb::velocypack::Builder& nodes,
   nodes.add(VPackValue("traversalFlags"));
   _options.toVelocyPack(nodes);
 
+  // Traversal Filter Conditions
+
+  TRI_ASSERT(_tmpObjVariable != nullptr);
+  nodes.add(VPackValue("tmpObjVariable"));
+  _tmpObjVariable->toVelocyPack(nodes);
+
+  TRI_ASSERT(_tmpObjVarNode != nullptr);
+  nodes.add(VPackValue("tmpObjVarNode"));
+  _tmpObjVarNode->toVelocyPack(nodes, verbose);
+
+  TRI_ASSERT(_tmpIdNode != nullptr);
+  nodes.add(VPackValue("tmpIdNode"));
+  _tmpIdNode->toVelocyPack(nodes, verbose);
+
+  TRI_ASSERT(_fromCondition != nullptr);
+  nodes.add(VPackValue("fromCondition"));
+  _fromCondition->toVelocyPack(nodes, verbose);
+
+  TRI_ASSERT(_toCondition != nullptr);
+  nodes.add(VPackValue("toCondition"));
+  _toCondition->toVelocyPack(nodes, verbose);
+
+  if (_globalEdgeCondition) {
+    nodes.add(VPackValue("globalEdgeCondition"));
+    _globalEdgeCondition->toVelocyPack(nodes, verbose);
+  }
+
+  if (_globalVertexCondition) {
+    nodes.add(VPackValue("globalVertexCondition"));
+    _globalVertexCondition->toVelocyPack(nodes, verbose);
+  }
+
+  if (!_vertexConditions.empty()) {
+    nodes.add(VPackValue("vertexConditions"));
+    nodes.openObject();
+    for (auto const& it : _vertexConditions) {
+      nodes.add(VPackValue(basics::StringUtils::itoa(it.first)));
+      it.second->toVelocyPack(nodes, verbose);
+    }
+    nodes.close();
+  }
+
+  if (!_edgeConditions.empty()) {
+    nodes.add(VPackValue("edgeConditions"));
+    nodes.openObject();
+    for (auto const& it : _edgeConditions) {
+      nodes.add(VPackValue(basics::StringUtils::itoa(it.first)));
+      it.second.toVelocyPack(nodes, verbose);
+    }
+    nodes.close();
+  }
+
+
   // And close it:
   nodes.close();
 }
@@ -617,7 +761,8 @@ double TraversalNode::estimateCost(size_t& nrItems) const {
 }
 
 void TraversalNode::fillTraversalOptions(
-    arangodb::traverser::TraverserOptions& opts) const {
+    arangodb::traverser::TraverserOptions& opts,
+    arangodb::Transaction* trx) const {
   opts.minDepth = _minDepth;
   opts.maxDepth = _maxDepth;
   opts._tmpVar = _tmpObjVariable;
@@ -628,7 +773,6 @@ void TraversalNode::fillTraversalOptions(
 
   size_t numEdgeColls = _edgeColls.size();
   AstNode* condition = nullptr;
-  Transaction* trx = _ast->query()->trx();
   bool res = false;
   EdgeConditionBuilder globalEdgeConditionBuilder(this);
 
@@ -651,7 +795,7 @@ void TraversalNode::fillTraversalOptions(
             opts._baseIndexHandles);
         TRI_ASSERT(res);  // Right now we have an enforced edge index which wil
                           // always fit.
-        opts._baseConditions.emplace_back(condition->clone(_ast));
+        opts._baseConditions.emplace_back(condition->clone(_plan->getAst()));
         condition = globalEdgeConditionBuilder.getOutboundCondition();
         break;
     }
@@ -660,7 +804,7 @@ void TraversalNode::fillTraversalOptions(
         _edgeColls[i], condition, _tmpObjVariable, &sort, 1000,
         opts._baseIndexHandles);
     TRI_ASSERT(res);  // We have an enforced edge index which wil always fit.
-    opts._baseConditions.emplace_back(condition->clone(_ast));
+    opts._baseConditions.emplace_back(condition->clone(_plan->getAst()));
   }
 
   for (std::pair<size_t, EdgeConditionBuilder> it : _edgeConditions) {
@@ -741,7 +885,7 @@ void TraversalNode::registerCondition(bool isConditionOnEdge,
   } else {
     auto const& it = _vertexConditions.find(conditionLevel);
     if (it == _vertexConditions.end()) {
-      auto cond = _ast->createNodeNaryOperator(NODE_TYPE_OPERATOR_NARY_AND);
+      auto cond = _plan->getAst()->createNodeNaryOperator(NODE_TYPE_OPERATOR_NARY_AND);
       if (_globalVertexCondition != nullptr) {
         cond->addMember(_globalVertexCondition);
       }
