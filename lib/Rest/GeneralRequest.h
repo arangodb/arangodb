@@ -99,7 +99,9 @@ class GeneralRequest {
         _clientTaskId(0),
         _requestContext(nullptr),
         _isRequestContextOwner(false),
-        _type(RequestType::ILLEGAL) {}
+        _type(RequestType::ILLEGAL),
+        _contentType(ContentType::UNSET),
+        _contentTypeResponse(ContentType::UNSET){}
 
   virtual ~GeneralRequest();
 
