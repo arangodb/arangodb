@@ -90,12 +90,11 @@ void MMFilesEngine::prepare() {
   TRI_ASSERT(!_databasePath.empty());
 }
 
-// start the engine. now it's allowed to start engine-specific threads,
-// write files etc.
-void MMFilesEngine::start() {
+// initialize engine
+void MMFilesEngine::initialize() {
   TRI_ASSERT(EngineSelectorFeature::ENGINE = this);
   
-  LOG(INFO) << "MMFilesEngine::start()";
+  LOG(INFO) << "MMFilesEngine::initialize()";
 
   // test if the "databases" directory is present and writable
   verifyDirectories();
@@ -117,10 +116,6 @@ void MMFilesEngine::start() {
     THROW_ARANGO_EXCEPTION(res);
   }
 
-  // ...........................................................................
-  // open and scan all databases
-  // ...........................................................................
-
   // scan all databases
   res = openDatabases();
 
@@ -133,7 +128,7 @@ void MMFilesEngine::start() {
 // stop the storage engine. this can be used to flush all data to disk,
 // shutdown threads etc. it is guaranteed that there will be no read and
 // write requests to the storage engine after this call
-void MMFilesEngine::stop() {
+void MMFilesEngine::shutdown() {
   TRI_ASSERT(EngineSelectorFeature::ENGINE = this);
   
   LOG(INFO) << "MMFilesEngine::stop()";
@@ -286,10 +281,7 @@ void MMFilesEngine::verifyDirectories() {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATADIR_NOT_WRITABLE);
   }
 
-  // ...........................................................................
   // verify existence of "databases" subdirectory
-  // ...........................................................................
-
   if (!TRI_IsDirectory(_databasePath.c_str())) {
     long systemError;
     std::string errorMessage;

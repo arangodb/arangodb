@@ -50,19 +50,6 @@ void OtherEngine::prepare() {
   TRI_ASSERT(EngineSelectorFeature::ENGINE = this);
 }
   
-// start the engine. now it's allowed to start engine-specific threads,
-// write files etc.
-void OtherEngine::start() {
-  TRI_ASSERT(EngineSelectorFeature::ENGINE = this);
-}
-
-// stop the storage engine. this can be used to flush all data to disk,
-// shutdown threads etc. it is guaranteed that there will be no read and
-// write requests to the storage engine after this call
-void OtherEngine::stop() {
-  TRI_ASSERT(EngineSelectorFeature::ENGINE = this);
-}
-
 // fill the Builder object with an array of databases that were detected
 // by the storage engine. this method must sort out databases that were not
 // fully created (see "createDatabase" below). called at server start only

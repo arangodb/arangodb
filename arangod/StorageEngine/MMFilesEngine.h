@@ -52,14 +52,9 @@ class MMFilesEngine final : public StorageEngine {
   // the storage engine must not start any threads here or write any files
   void prepare() override;
   
-  // start the engine. now it's allowed to start engine-specific threads,
-  // write files etc.
-  void start() override;
-
-  // stop the storage engine. this can be used to flush all data to disk,
-  // shutdown threads etc. it is guaranteed that there will be no read and
-  // write requests to the storage engine after this call
-  void stop() override;
+  // initialize engine
+  void initialize() override;
+  void shutdown() override;
 
   // status functionality
   // --------------------

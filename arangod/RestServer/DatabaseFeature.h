@@ -24,17 +24,47 @@
 #define APPLICATION_FEATURES_DATABASE_FEATURE_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "Basics/DataProtector.h"
+#include "Basics/Mutex.h"
+#include "Basics/Thread.h"
 
 struct TRI_vocbase_t;
 struct TRI_server_t;
 
 namespace arangodb {
+class DatabaseManagerThread;
+
+namespace aql {
+class QueryRegistry;
+}
+
+/// @brief databases list structure
+struct DatabasesLists {
+  std::unordered_map<std::string, TRI_vocbase_t*> _databases;
+  std::unordered_map<std::string, TRI_vocbase_t*> _coordinatorDatabases;
+  std::unordered_set<TRI_vocbase_t*> _droppedDatabases;
+};
+
+class DatabaseManagerThread : public Thread {
+ public:
+  DatabaseManagerThread(DatabaseManagerThread const&) = delete;
+  DatabaseManagerThread& operator=(DatabaseManagerThread const&) = delete;
+
+  DatabaseManagerThread(); 
+  ~DatabaseManagerThread();
+
+  void run() override;
+};
+
 class DatabaseFeature final : public application_features::ApplicationFeature {
+ friend class DatabaseManagerThread;
+
  public:
   static DatabaseFeature* DATABASE;
 
  public:
   explicit DatabaseFeature(application_features::ApplicationServer* server);
+  ~DatabaseFeature();
 
  public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -67,6 +97,21 @@ class DatabaseFeature final : public application_features::ApplicationFeature {
   void updateContexts();
   void shutdownCompactor();
 
+  /// @brief create base app directory
+  int createBaseApplicationDirectory(std::string const& appPath, std::string const& type);
+  
+  /// @brief create app subdirectory for a database
+  int createApplicationDirectory(std::string const& name, std::string const& basePath);
+
+  /// @brief iterate over all databases in the databases directory and open them
+  int iterateDatabases();
+
+  /// @brief close all opened databases
+  void closeOpenDatabases();
+
+  /// @brief close all dropped databases
+  void closeDroppedDatabases();
+
  private:
   uint64_t _maximalJournalSize;
   bool _defaultWaitForSync;
@@ -74,12 +119,22 @@ class DatabaseFeature final : public application_features::ApplicationFeature {
   bool _ignoreDatafileErrors;
   bool _throwCollectionNotLoadedError;
 
-  std::unique_ptr<TRI_server_t> _server;
+  std::unique_ptr<TRI_server_t> _server; // TODO
   TRI_vocbase_t* _vocbase;
+  std::atomic<arangodb::aql::QueryRegistry*> _queryRegistry; // TODO
+  DatabaseManagerThread* _databaseManager;
+
+  std::atomic<DatabasesLists*> _databasesLists; // TODO
+  // TODO: Make this again a template once everybody has gcc >= 4.9.2
+  // arangodb::basics::DataProtector<64>
+  arangodb::basics::DataProtector _databasesProtector;
+  arangodb::Mutex _databasesMutex;
+
   bool _isInitiallyEmpty;
   bool _replicationApplier;
   bool _disableCompactor;
   bool _checkVersion;
+  bool _iterateMarkersOnOpen;
   bool _upgrade;
 
  public:

@@ -47,7 +47,15 @@ class StorageEngine : public application_features::ApplicationFeature {
     requiresElevatedPrivileges(false);
     // TODO: determine more sensible startup order for storage engine
     startsAfter("EngineSelector");
+    startsAfter("LogfileManager");
   }
+
+  // these methods must not be used in the storage engine implementations
+  void start() override final {}
+  void stop() override final {}
+
+  virtual void initialize() {}
+  virtual void shutdown() {}
 
   // status functionality
   // --------------------
