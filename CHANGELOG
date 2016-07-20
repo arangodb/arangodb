@@ -1,6 +1,8 @@
 v3.0.4 (XXXX-XX-XX)
 -------------------
 
+* fixed issue #1950
+
 * fixed segfault in V8, by backporting https://bugs.chromium.org/p/v8/issues/detail?id=5033
 
 * Foxx OAuth2 module now correctly passes the `access_token` to the OAuth2 server

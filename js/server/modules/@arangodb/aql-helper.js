@@ -481,24 +481,28 @@ function removeClusterNodes (nodeTypes) {
   });
 }
 
+function removeClusterNodesFromPlan (nodes) {
+  return nodes.filter(function (node) {
+    return ([ 'ScatterNode', 'GatherNode', 'DistributeNode', 'RemoteNode' ].indexOf(node.type) === -1);
+  });
+}
 
-exports.isEqual                            = isEqual;
-exports.getParseResults                    = getParseResults;
-exports.assertParseError                   = assertParseError;
-exports.getQueryExplanation                = getQueryExplanation;
-exports.getModifyQueryResults              = getModifyQueryResults;
-exports.getModifyQueryResultsRaw           = getModifyQueryResultsRaw;
-exports.getRawQueryResults                 = getRawQueryResults;
-exports.getQueryResults                    = getQueryResults;
-exports.assertQueryError                   = assertQueryError;
-exports.assertQueryWarningAndNull          = assertQueryWarningAndNull;
-exports.assertQueryWarningAndFalse         = assertQueryWarningAndFalse;
-exports.getLinearizedPlan                  = getLinearizedPlan;
-exports.getCompactPlan                     = getCompactPlan;
-exports.findExecutionNodes                 = findExecutionNodes;
-exports.findReferencedNodes                = findReferencedNodes;
+exports.isEqual = isEqual;
+exports.getParseResults = getParseResults;
+exports.assertParseError = assertParseError;
+exports.getQueryExplanation = getQueryExplanation;
+exports.getModifyQueryResults = getModifyQueryResults;
+exports.getModifyQueryResultsRaw = getModifyQueryResultsRaw;
+exports.getRawQueryResults = getRawQueryResults;
+exports.getQueryResults = getQueryResults;
+exports.assertQueryError = assertQueryError;
+exports.assertQueryWarningAndNull = assertQueryWarningAndNull;
+exports.assertQueryWarningAndFalse = assertQueryWarningAndFalse;
+exports.getLinearizedPlan = getLinearizedPlan;
+exports.getCompactPlan = getCompactPlan;
+exports.findExecutionNodes = findExecutionNodes;
+exports.findReferencedNodes = findReferencedNodes;
 exports.getQueryMultiplePlansAndExecutions = getQueryMultiplePlansAndExecutions;
-exports.removeAlwaysOnClusterRules         = removeAlwaysOnClusterRules;
-exports.removeClusterNodes                 = removeClusterNodes;
-
-
+exports.removeAlwaysOnClusterRules = removeAlwaysOnClusterRules;
+exports.removeClusterNodes = removeClusterNodes;
+exports.removeClusterNodesFromPlan = removeClusterNodesFromPlan;
