@@ -410,25 +410,6 @@ int TRI_InitDatabasesServer(TRI_server_t* server) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief stop the replication appliers
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_StopReplicationAppliersServer(TRI_server_t* server) {
-  MUTEX_LOCKER(mutexLocker,
-               server->_databasesMutex);  // Only one should do this at a time
-  // No need for the thread protector here, because we have the mutex
-
-  for (auto& p : server->_databasesLists.load()->_databases) {
-    TRI_vocbase_t* vocbase = p.second;
-    TRI_ASSERT(vocbase != nullptr);
-    TRI_ASSERT(vocbase->_type == TRI_VOCBASE_TYPE_NORMAL);
-    if (vocbase->_replicationApplier != nullptr) {
-      vocbase->_replicationApplier->stop(false);
-    }
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create a new database
 ////////////////////////////////////////////////////////////////////////////////
 

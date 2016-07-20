@@ -44,6 +44,7 @@
 #include "V8Server/v8-query.h"
 #include "V8Server/v8-vocbase.h"
 #include "VocBase/KeyGenerator.h"
+#include "VocBase/replication-applier.h"
 #include "VocBase/server.h"
 #include "VocBase/vocbase.h"
 #include "Wal/LogfileManager.h"
@@ -513,7 +514,17 @@ void DatabaseFeature::openDatabases() {
 void DatabaseFeature::closeDatabases() {
   // stop the replication appliers so all replication transactions can end
   if (_replicationApplier) {
-    TRI_StopReplicationAppliersServer(DatabaseFeature::SERVER);
+    MUTEX_LOCKER(mutexLocker, _databasesMutex);  // Only one should do this at a time
+    // No need for the thread protector here, because we have the mutex
+
+    for (auto& p : _databasesLists.load()->_databases) {
+      TRI_vocbase_t* vocbase = p.second;
+      TRI_ASSERT(vocbase != nullptr);
+      TRI_ASSERT(vocbase->_type == TRI_VOCBASE_TYPE_NORMAL);
+      if (vocbase->_replicationApplier != nullptr) {
+        vocbase->_replicationApplier->stop(false);
+      }
+    }
   }
 }
 
