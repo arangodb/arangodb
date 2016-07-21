@@ -190,7 +190,7 @@ function ahuacatlFailureSuite () {
     
     testSingletonBlock1 : function () {
       internal.debugSetFailAt("SingletonBlock::getOrSkipSome");
-      assertFailingQuery("FOR year IN [ 2010, 2011, 2012 ] LET quarters = ((FOR q IN [ 1, 2, 3, 4 ] RETURN q)) RETURN LENGTH(quarters)");
+      assertFailingQuery("FOR year IN [ 2010, 2011, 2012 ] LET quarters = ((FOR q IN [ 1, 2, 3, 4 ] RETURN q * year)) RETURN LENGTH(quarters)");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -199,7 +199,7 @@ function ahuacatlFailureSuite () {
     
     testSingletonBlock2 : function () {
       internal.debugSetFailAt("SingletonBlock::getOrSkipSomeSet");
-      assertFailingQuery("FOR year IN [ 2010, 2011, 2012 ] LET quarters = ((FOR q IN [ 1, 2, 3, 4 ] RETURN q)) RETURN LENGTH(quarters)");
+      assertFailingQuery("FOR year IN [ 2010, 2011, 2012 ] LET quarters = ((FOR q IN [ 1, 2, 3, 4 ] RETURN q * year)) RETURN LENGTH(quarters)");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
