@@ -997,7 +997,7 @@ function processQuery (query, explain) {
         collect += 
           (node.count ? " " + keyword("WITH COUNT") : "") + 
           (node.outVariable ? " " + keyword("INTO") + " " + variableName(node.outVariable) : "") + 
-          (node.expressionVariable ? " = " + variableName(node.expressionVariable) : "") + 
+          ((node.expressionVariable && node.outVariable) ? " = " + variableName(node.expressionVariable) : "") + 
           (node.keepVariables ? " " + keyword("KEEP") + " " + node.keepVariables.map(function(variable) { return variableName(variable.variable); }).join(", ") : "") +
           "   " + annotation("/* " + node.collectOptions.method + "*/");
         return collect;
