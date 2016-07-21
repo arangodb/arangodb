@@ -167,7 +167,7 @@ void ExecutionBlock::inheritRegisters(AqlItemBlock const* src,
   for (RegisterId i = 0; i < n; i++) {
     if (planNode->_regsToClear.find(i) == planNode->_regsToClear.end()) {
       auto const& value = src->getValueReference(srcRow, i);
-
+      
       if (!value.isEmpty()) {
         AqlValue a = value.clone();
         AqlValueGuard guard(a, true);
@@ -202,9 +202,23 @@ void ExecutionBlock::inheritRegisters(AqlItemBlock const* src,
 
         dst->setValue(0, i, a);
         guard.steal();
+      } else if (row > 0) {
+        auto const& value = src->getValueReference(0, i);
+        if (!value.isEmpty()) {
+          AqlValue a = value.clone();
+          AqlValueGuard guard(a, true);
+          
+          TRI_IF_FAILURE("ExecutionBlock::inheritRegisters") {
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+          }
+
+          dst->setValue(0, i, a);
+          guard.steal();
+        }
       }
     }
   }
+
   DEBUG_END_BLOCK();  
 }
 
