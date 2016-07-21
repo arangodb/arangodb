@@ -57,8 +57,6 @@ class ExplicitTransaction : public Transaction {
       this->setWaitForSync();
     }
 
-    this->setAllowImplicitCollections(allowImplicitCollections);
-
     for (auto const& it : writeCollections) {
       this->addCollection(it, TRI_TRANSACTION_WRITE);
     }
@@ -66,6 +64,8 @@ class ExplicitTransaction : public Transaction {
     for (auto const& it : readCollections) {
       this->addCollection(it, TRI_TRANSACTION_READ);
     }
+    
+    this->setAllowImplicitCollections(allowImplicitCollections);
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -94,6 +94,10 @@ class ExplicitTransaction : public Transaction {
     for (auto const& it : readCollections) {
       this->addCollection(it, TRI_TRANSACTION_READ);
     }
+=======
+    
+    this->setAllowImplicitCollections(allowImplicitCollections);
+>>>>>>> 5a4b946... fixed issue #1954
   }
 
   //////////////////////////////////////////////////////////////////////////////
