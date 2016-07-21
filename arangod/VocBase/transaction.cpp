@@ -789,6 +789,8 @@ int TRI_AddCollectionTransaction(TRI_transaction_t* trx, TRI_voc_cid_t cid,
                                  bool allowImplicitCollections) {
   LOG_TRX(trx, nestingLevel) << "adding collection " << cid;
 
+  allowImplicitCollections &= trx->_allowImplicit;
+
   // upgrade transaction type if required
   if (nestingLevel == 0) {
     if (!force) {
@@ -1291,6 +1293,7 @@ TRI_transaction_t::TRI_transaction_t(TRI_vocbase_t* vocbase, double timeout, boo
 #endif
       _hints(0),
       _nestingLevel(0), 
+      _allowImplicit(true),
       _hasOperations(false), 
       _waitForSync(waitForSync),
       _beginWritten(false), 
