@@ -126,14 +126,6 @@ AqlItemBlock* EnumerateListBlock::getSome(size_t, size_t atMost) {
       inheritRegisters(cur, res.get(), _pos);
 
       for (size_t j = 0; j < toSend; j++) {
-        if (j > 0) {
-          // re-use already copied AqlValues
-          for (RegisterId i = 0; i < cur->getNrRegs(); i++) {
-            res->setValue(j, i, res->getValueReference(0, i));
-            // Note that if this throws, all values will be
-            // deleted properly, since the first row is.
-          }
-        }
         // add the new register value . . .
         bool mustDestroy;
         AqlValue a = getAqlValue(inVarReg, mustDestroy);
@@ -147,6 +139,11 @@ AqlItemBlock* EnumerateListBlock::getSome(size_t, size_t atMost) {
         }
         res->setValue(j, cur->getNrRegs(), a);
         guard.steal(); // itemblock is now responsible for value
+        
+        if (j > 0) {
+          // re-use already copied AqlValues
+          res->copyValuesFromFirstRow(j, cur->getNrRegs());
+        }
       }
     }
 

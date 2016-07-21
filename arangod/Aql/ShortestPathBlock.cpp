@@ -592,14 +592,6 @@ AqlItemBlock* ShortestPathBlock::getSome(size_t, size_t atMost) {
   // TODO this might be optimized in favor of direct mptr.
   VPackBuilder resultBuilder;
   for (size_t j = 0; j < toSend; j++) {
-    if (j > 0) {
-      // re-use already copied aqlvalues
-      for (RegisterId i = 0; i < curRegs; i++) {
-        res->setValue(j, i, res->getValueReference(0, i));
-        // Note: if this throws, then all values will be deleted
-        // properly since the first one is.
-      }
-    }
     if (usesVertexOutput()) {
       // TODO this might be optimized in favor of direct mptr.
       resultBuilder.clear();
@@ -611,6 +603,10 @@ AqlItemBlock* ShortestPathBlock::getSome(size_t, size_t atMost) {
       resultBuilder.clear();
       _path->edgeToVelocyPack(_trx, _posInPath, resultBuilder);
       res->setValue(j, _edgeReg, AqlValue(resultBuilder.slice()));
+    }
+    if (j > 0) {
+      // re-use already copied aqlvalues
+      res->copyValuesFromFirstRow(j, static_cast<RegisterId>(curRegs));
     }
     ++_posInPath;
   }

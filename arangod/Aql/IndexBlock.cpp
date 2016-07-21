@@ -517,15 +517,6 @@ AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
       inheritRegisters(cur, res.get(), _pos);
 
       for (size_t j = 0; j < toSend; j++) {
-        if (j > 0) {
-          // re-use already copied aqlvalues
-          for (RegisterId i = 0; i < curRegs; i++) {
-            res->setValue(j, i, res->getValueReference(0, i));
-            // Note: if this throws, then all values will be deleted
-            // properly since the first one is.
-          }
-        }
-
         // The result is in the first variable of this depth,
         // we do not need to do a lookup in
         // getPlanNode()->_registerPlan->varInfo,
@@ -536,6 +527,11 @@ AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
         res->setValue(j, static_cast<arangodb::aql::RegisterId>(curRegs), 
                       AqlValue(doc.begin()));
         // No harm done, if the setValue throws!
+        
+        if (j > 0) {
+          // re-use already copied AqlValues
+          res->copyValuesFromFirstRow(j, static_cast<RegisterId>(curRegs));
+        }
       }
     }
 

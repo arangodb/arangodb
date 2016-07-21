@@ -202,20 +202,7 @@ void ExecutionBlock::inheritRegisters(AqlItemBlock const* src,
 
         dst->setValue(0, i, a);
         guard.steal();
-      } else if (row > 0) {
-        auto const& value = src->getValueReference(0, i);
-        if (!value.isEmpty()) {
-          AqlValue a = value.clone();
-          AqlValueGuard guard(a, true);
-          
-          TRI_IF_FAILURE("ExecutionBlock::inheritRegisters") {
-            THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-          }
-
-          dst->setValue(0, i, a);
-          guard.steal();
-        }
-      }
+      } 
     }
   }
 

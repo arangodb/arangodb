@@ -148,15 +148,35 @@ class AqlItemBlock {
 
     _valueCount.clear();
   }
+  
+  void copyColValuesFromFirstRow(size_t currentRow, RegisterId col) {
+    TRI_ASSERT(currentRow > 0);
+
+    if (_data[currentRow * _nrRegs + col].isEmpty()) {
+//        setValue(currentRow, i, _data[i]);
+      // First update the reference count, if this fails, the value is empty
+      if (_data[col].requiresDestruction()) {
+        ++_valueCount[_data[col]];
+      }
+      _data[currentRow * _nrRegs + col] = _data[col];
+    }
+  }
 
   void copyValuesFromFirstRow(size_t currentRow, RegisterId curRegs) {
     TRI_ASSERT(currentRow > 0);
 
     for (RegisterId i = 0; i < curRegs; i++) {
-      setValue(currentRow, i, _data[i]);
+      if (_data[currentRow * _nrRegs + i].isEmpty()) {
+//        setValue(currentRow, i, _data[i]);
+        // First update the reference count, if this fails, the value is empty
+        if (_data[i].requiresDestruction()) {
+          ++_valueCount[_data[i]];
+        }
+        _data[currentRow * _nrRegs + i] = _data[i];
+      }
     }
   }
-
+  
   /// @brief valueCount
   /// this is used if the value is stolen and later released from elsewhere
   uint32_t valueCount(AqlValue const& v) const {

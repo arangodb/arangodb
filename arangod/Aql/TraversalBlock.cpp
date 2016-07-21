@@ -456,10 +456,6 @@ AqlItemBlock* TraversalBlock::getSome(size_t,  // atLeast,
   inheritRegisters(cur, res.get(), _pos);
 
   for (size_t j = 0; j < toSend; j++) {
-    if (j > 0) {
-      // re-use already copied aqlvalues
-      res->copyValuesFromFirstRow(j, static_cast<RegisterId>(curRegs));
-    }
     if (usesVertexOutput()) {
       res->setValue(j, _vertexReg, _vertices[_posInPaths].clone());
     }
@@ -468,6 +464,10 @@ AqlItemBlock* TraversalBlock::getSome(size_t,  // atLeast,
     }
     if (usesPathOutput()) {
       res->setValue(j, _pathReg, _paths[_posInPaths].clone());
+    }
+    if (j > 0) {
+      // re-use already copied AqlValues
+      res->copyValuesFromFirstRow(j, static_cast<RegisterId>(curRegs));
     }
     ++_posInPaths;
   }
