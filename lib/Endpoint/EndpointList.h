@@ -43,8 +43,9 @@ class EndpointList {
   bool remove(std::string const&, Endpoint**);
   std::vector<std::string> all() const;
   std::vector<std::string> all(Endpoint::TransportType transport) const;
-  std::map<std::string, Endpoint*> matching(Endpoint::TransportType,
-                                            Endpoint::EncryptionType) const;
+  // std::map<std::string, Endpoint*> matching(Endpoint::TransportType,
+  //                                           Endpoint::EncryptionType) const;
+  std::map<std::string, Endpoint*> allEndpoints() const { return _endpoints; }
   bool hasSsl() const;
   void dump() const;
 

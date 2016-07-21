@@ -24,7 +24,7 @@
 #include "RestHandlerFactory.h"
 
 #include "Cluster/ServerState.h"
-#include "HttpServer/RestHandler.h"
+#include "GeneralServer/RestHandler.h"
 #include "Logger/Logger.h"
 #include "Rest/GeneralRequest.h"
 #include "Rest/RequestContext.h"
@@ -63,17 +63,13 @@ class MaintenanceHandler : public RestHandler {
 
 RestHandlerFactory::RestHandlerFactory(context_fptr setContext,
                                        void* contextData)
-    : _setContext(setContext),
-      _contextData(contextData),
-      _notFound(nullptr) {}
+    : _setContext(setContext), _contextData(contextData), _notFound(nullptr) {}
 
 void RestHandlerFactory::setMaintenance(bool value) {
   _maintenanceMode.store(value);
 }
 
-bool RestHandlerFactory::isMaintenance() {
-  return _maintenanceMode.load();
-}
+bool RestHandlerFactory::isMaintenance() { return _maintenanceMode.load(); }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set request context, wrapper method

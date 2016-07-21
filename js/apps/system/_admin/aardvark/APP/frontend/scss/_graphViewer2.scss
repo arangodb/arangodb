@@ -43,10 +43,11 @@
 }
 
 .nodeInfoDiv {
-  left: 25px;
+  left: 175px;
   overflow: hidden;
-  position: absolute;
+  position: fixed;
   top: 130px;
+  z-index: 10;
 
   pre {
     background-color: rgba(64, 74, 83, .9);

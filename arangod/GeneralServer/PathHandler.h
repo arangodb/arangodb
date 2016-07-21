@@ -24,7 +24,7 @@
 #ifndef ARANGOD_HTTP_SERVER_PATH_HANDLER_H
 #define ARANGOD_HTTP_SERVER_PATH_HANDLER_H 1
 
-#include "HttpServer/RestHandler.h"
+#include "GeneralServer/RestHandler.h"
 
 namespace arangodb {
 namespace rest {
@@ -53,7 +53,8 @@ class PathHandler : public RestHandler {
   };
 
  public:
-  static RestHandler* create(GeneralRequest* request, GeneralResponse* response, void* data) {
+  static RestHandler* create(GeneralRequest* request, GeneralResponse* response,
+                             void* data) {
     Options* options = static_cast<Options*>(data);
 
     return new PathHandler(request, response, options);

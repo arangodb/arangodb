@@ -35,7 +35,7 @@
 #include "Basics/tri-strings.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ServerState.h"
-#include "HttpServer/HttpServer.h"
+#include "GeneralServer/GeneralServer.h"
 #include "Logger/Logger.h"
 #include "Rest/GeneralRequest.h"
 #include "Rest/HttpRequest.h"
@@ -403,22 +403,23 @@ static v8::Handle<v8::Object> RequestCppToV8(v8::Isolate* isolate,
   TRI_GET_GLOBAL_STRING(RequestTypeKey);
   TRI_GET_GLOBAL_STRING(RequestBodyKey);
 
-  auto set_request_body_json_or_vpack = [&](){
-      if (GeneralRequest::ContentType::JSON == request->contentType()) {
-        auto httpreq = dynamic_cast<HttpRequest*>(request);
-        if (httpreq == nullptr) {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
-        }
-        std::string const& body = httpreq->body();
-        req->ForceSet(RequestBodyKey, TRI_V8_STD_STRING(body));
-      } else {
-        VPackSlice slice = request->payload();
-        V8Buffer* buffer = V8Buffer::New(
-            isolate, slice.startAs<char>(), std::distance(slice.begin(), slice.end()));
-        v8::Local<v8::Object> bufferObject =
-            v8::Local<v8::Object>::New(isolate, buffer->_handle);
-        req->ForceSet(RequestBodyKey, bufferObject);
+  auto set_request_body_json_or_vpack = [&]() {
+    if (GeneralRequest::ContentType::JSON == request->contentType()) {
+      auto httpreq = dynamic_cast<HttpRequest*>(request);
+      if (httpreq == nullptr) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
       }
+      std::string const& body = httpreq->body();
+      req->ForceSet(RequestBodyKey, TRI_V8_STD_STRING(body));
+    } else {
+      VPackSlice slice = request->payload();
+      V8Buffer* buffer =
+          V8Buffer::New(isolate, slice.startAs<char>(),
+                        std::distance(slice.begin(), slice.end()));
+      v8::Local<v8::Object> bufferObject =
+          v8::Local<v8::Object>::New(isolate, buffer->_handle);
+      req->ForceSet(RequestBodyKey, bufferObject);
+    }
   };
 
   // copy request type
@@ -426,7 +427,7 @@ static v8::Handle<v8::Object> RequestCppToV8(v8::Isolate* isolate,
     case GeneralRequest::RequestType::POST: {
       TRI_GET_GLOBAL_STRING(PostConstant);
       req->ForceSet(RequestTypeKey, PostConstant);
-      //req->ForceSet(RequestBodyKey, TRI_V8_STD_STRING(request->body()));
+      // req->ForceSet(RequestBodyKey, TRI_V8_STD_STRING(request->body()));
       set_request_body_json_or_vpack();
       break;
     }
@@ -434,7 +435,7 @@ static v8::Handle<v8::Object> RequestCppToV8(v8::Isolate* isolate,
     case GeneralRequest::RequestType::PUT: {
       TRI_GET_GLOBAL_STRING(PutConstant);
       req->ForceSet(RequestTypeKey, PutConstant);
-      //req->ForceSet(RequestBodyKey, TRI_V8_STD_STRING(request->body()));
+      // req->ForceSet(RequestBodyKey, TRI_V8_STD_STRING(request->body()));
       set_request_body_json_or_vpack();
       break;
     }
@@ -442,7 +443,7 @@ static v8::Handle<v8::Object> RequestCppToV8(v8::Isolate* isolate,
     case GeneralRequest::RequestType::PATCH: {
       TRI_GET_GLOBAL_STRING(PatchConstant);
       req->ForceSet(RequestTypeKey, PatchConstant);
-      //req->ForceSet(RequestBodyKey, TRI_V8_STD_STRING(request->body()));
+      // req->ForceSet(RequestBodyKey, TRI_V8_STD_STRING(request->body()));
       set_request_body_json_or_vpack();
       break;
     }
@@ -1135,7 +1136,7 @@ static void JS_SendChunk(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   TRI_Utf8ValueNFC data(TRI_UNKNOWN_MEM_ZONE, args[1]);
 
-  int res = HttpServer::sendChunk(id, *data);
+  int res = GeneralServer::sendChunk(id, *data);
 
   if (res != TRI_ERROR_NO_ERROR && res != TRI_ERROR_TASK_NOT_FOUND) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "cannot send chunk");

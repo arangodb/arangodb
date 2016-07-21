@@ -26,10 +26,10 @@
 
 #include "Basics/WorkMonitor.h"
 #include "Dispatcher/DispatcherQueue.h"
-#include "HttpServer/AsyncJobManager.h"
-#include "HttpServer/HttpCommTask.h"
-#include "HttpServer/HttpServer.h"
-#include "HttpServer/RestHandler.h"
+#include "GeneralServer/AsyncJobManager.h"
+#include "GeneralServer/GeneralCommTask.h"
+#include "GeneralServer/GeneralServer.h"
+#include "GeneralServer/RestHandler.h"
 #include "Logger/Logger.h"
 #include "RestServer/RestServerFeature.h"
 #include "Scheduler/Scheduler.h"
@@ -42,7 +42,7 @@ using namespace arangodb::rest;
 /// @brief constructs a new server job
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpServerJob::HttpServerJob(HttpServer* server,
+HttpServerJob::HttpServerJob(GeneralServer* server,
                              WorkItem::uptr<RestHandler>& handler, bool isAsync)
     : Job("HttpServerJob"),
       _server(server),

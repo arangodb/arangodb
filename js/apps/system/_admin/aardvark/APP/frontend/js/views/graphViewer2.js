@@ -46,11 +46,14 @@
       'click #downloadPNG': 'downloadSVG',
       'click #reloadGraph': 'reloadGraph',
       'click #settingsMenu': 'toggleSettings',
-      'click #noGraphToggle': 'toggleSettings'
+      'click #noGraphToggle': 'toggleSettings',
+      'click #toggleForce': 'toggleLayout'
     },
 
     cursorX: 0,
     cursorY: 0,
+
+    layouting: false,
 
     model: null,
 
@@ -161,7 +164,7 @@
               vertices[node._id] = {
                 id: node._id,
                 label: node._key,
-                size: 10,
+                size: 0.3,
                 color: '#2ecc71',
                 x: Math.random(),
                 y: Math.random()
@@ -195,7 +198,7 @@
           returnObj.nodes.push({
             id: key,
             label: key,
-            size: 10,
+            size: 0.3,
             color: '#2ecc71',
             x: Math.random(),
             y: Math.random()
@@ -862,7 +865,7 @@
 
         // For instance, reset all node size as their initial size
         sigmaInstance.graph.nodes().forEach(function (node) {
-          node.color = self.graphConfig.nodeColor;
+          node.color = self.graphConfig.nodeColor ? self.graphConfig.nodeColor : 'rgb(46, 204, 113)';
         });
 
         // Then increase the size of selected nodes...
@@ -891,7 +894,7 @@
         );
         return;
       } else {
-        var style = 'right: 25px; bottom: 45px;';
+        var style = 'position: absolute; left: 25px; bottom: 45px;';
         if (this.aqlMode) {
           style = 'position: absolute; left: 30px; margin-top: -37px;';
         }
@@ -1042,7 +1045,7 @@
                   if (counter < 15) {
                     if (typeof val === 'string') {
                       if (val.length > 10) {
-                        obj[key] = val.substr(0, 10) + ' ...';
+                        obj[key] = val.substr(0, 15) + ' ...';
                       } else {
                         obj[key] = val;
                       }
@@ -1090,10 +1093,12 @@
           }
         });
 
-        s.bind('rightClickNode', function (e) {
-          var nodeId = e.data.node.id;
-          self.createNodeContextMenu(nodeId, e);
-        });
+        if (!this.aqlMode) {
+          s.bind('rightClickNode', function (e) {
+            var nodeId = e.data.node.id;
+            self.createNodeContextMenu(nodeId, e);
+          });
+        }
 
         s.bind('doubleClickNode', function (e) {
           var nodeId = e.data.node.id;
@@ -1137,15 +1142,27 @@
         });
       }
 
-      var dragListener;
       // Initialize the dragNodes plugin:
       if (algorithm === 'noverlap') {
         s.startNoverlap();
         // allow draggin nodes
-        dragListener = sigma.plugins.dragNodes(s, s.renderers[0]);
+        sigma.plugins.dragNodes(s, s.renderers[0]);
       } else if (algorithm === 'force') {
-        s.startForceAtlas2({worker: true, barnesHutOptimize: false});
+        // add buttons for start/stopping calculation
+        var style2 = 'color: rgb(64, 74, 83); cursor: pointer; position: absolute; right: 30px; bottom: 40px;';
 
+        if (self.aqlMode) {
+          style2 = 'color: rgb(64, 74, 83); cursor: pointer; position: absolute; right: 30px; margin-top: -30px;';
+        }
+
+        $(this.el).append(
+          '<div id="toggleForce" style="' + style2 + '">' +
+            '<i class="fa fa-pause"></i>' +
+          '</div>'
+        );
+        self.startLayout();
+
+        // suggestion rendering time
         var duration = 3000;
 
         if (graph.nodes.length > 2500) {
@@ -1154,17 +1171,16 @@
           duration = 500;
         }
 
+        // dragListener = sigma.plugins.dragNodes(s, s.renderers[0]);
         window.setTimeout(function () {
-          s.stopForceAtlas2();
-          dragListener = sigma.plugins.dragNodes(s, s.renderers[0]);
-          console.log(dragListener);
+          self.stopLayout();
         }, duration);
       } else if (algorithm === 'fruchtermann') {
         // Start the Fruchterman-Reingold algorithm:
         sigma.layouts.fruchtermanReingold.start(s);
-        dragListener = sigma.plugins.dragNodes(s, s.renderers[0]);
+        sigma.plugins.dragNodes(s, s.renderers[0]);
       } else {
-        dragListener = sigma.plugins.dragNodes(s, s.renderers[0]);
+        sigma.plugins.dragNodes(s, s.renderers[0]);
       }
 
       // add listener to keep track of cursor position
@@ -1176,10 +1192,20 @@
         $('#' + toFocus).focus();
       }
 
+      var enableLasso = function () {
+        self.graphLasso = self.initializeGraph(s, graph);
+        self.graphLasso.activate();
+        self.graphLasso.deactivate();
+      };
+
       // init graph lasso
-      self.graphLasso = self.initializeGraph(s, graph);
-      self.graphLasso.activate();
-      self.graphLasso.deactivate();
+      if (this.graphConfig) {
+        if (this.graphConfig.renderer !== 'canvas') {
+          enableLasso();
+        }
+      } else {
+        enableLasso();
+      }
 
       // add lasso event
       // Toggle lasso activation on Alt + l
@@ -1199,6 +1225,31 @@
 
       // clear up info div
       $('#calculatingGraph').remove();
+    },
+
+    toggleLayout: function () {
+      if (this.layouting) {
+        this.stopLayout();
+      } else {
+        this.startLayout();
+      }
+    },
+
+    startLayout: function () {
+      $('#toggleForce .fa').removeClass('fa-play').addClass('fa-pause');
+      this.layouting = true;
+      this.currentGraph.startForceAtlas2({
+        worker: true,
+        barnesHutOptimize: false
+      });
+      sigma.plugins.dragNodes(this.currentGraph, this.currentGraph.renderers[0]);
+    },
+
+    stopLayout: function () {
+      $('#toggleForce .fa').removeClass('fa-pause').addClass('fa-play');
+      this.layouting = false;
+      this.currentGraph.stopForceAtlas2();
+      sigma.plugins.dragNodes(this.currentGraph, this.currentGraph.renderers[0]);
     }
 
   });

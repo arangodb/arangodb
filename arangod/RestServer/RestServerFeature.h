@@ -32,7 +32,7 @@ namespace arangodb {
 namespace rest {
 class AsyncJobManager;
 class RestHandlerFactory;
-class HttpServer;
+class GeneralServer;
 }
 
 class RestServerThread;
@@ -48,11 +48,11 @@ class RestServerFeature final
   static bool authenticationEnabled() {
     return REST_SERVER != nullptr && REST_SERVER->authentication();
   }
-  
+
   static bool hasProxyCheck() {
     return REST_SERVER != nullptr && REST_SERVER->proxyCheck();
   }
-  
+
   static std::vector<std::string> getTrustedProxies() {
     if (REST_SERVER == nullptr) {
       return std::vector<std::string>();
@@ -92,7 +92,7 @@ class RestServerFeature final
   bool _proxyCheck;
   std::vector<std::string> _trustedProxies;
   std::vector<std::string> _accessControlAllowOrigins;
-  
+
   std::string _jwtSecret;
 
  public:
@@ -112,7 +112,7 @@ class RestServerFeature final
  private:
   std::unique_ptr<rest::RestHandlerFactory> _handlerFactory;
   std::unique_ptr<rest::AsyncJobManager> _jobManager;
-  std::vector<rest::HttpServer*> _servers;
+  std::vector<rest::GeneralServer*> _servers;
 };
 }
 

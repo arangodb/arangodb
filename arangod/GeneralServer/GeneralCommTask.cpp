@@ -22,15 +22,15 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "HttpCommTask.h"
+#include "GeneralCommTask.h"
 
 #include "Basics/HybridLogicalClock.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
-#include "HttpServer/HttpServer.h"
-#include "HttpServer/RestHandler.h"
-#include "HttpServer/RestHandlerFactory.h"
+#include "GeneralServer/GeneralServer.h"
+#include "GeneralServer/RestHandler.h"
+#include "GeneralServer/RestHandlerFactory.h"
 #include "Logger/Logger.h"
 #include "RestServer/RestServerFeature.h"
 #include "Scheduler/Scheduler.h"
@@ -45,22 +45,24 @@ using namespace arangodb::rest;
 /// @brief static initializers
 ////////////////////////////////////////////////////////////////////////////////
 
-size_t const HttpCommTask::MaximalHeaderSize = 1 * 1024 * 1024;      //   1 MB
-size_t const HttpCommTask::MaximalBodySize = 512 * 1024 * 1024;      // 512 MB
-size_t const HttpCommTask::MaximalPipelineSize = 512 * 1024 * 1024;  // 512 MB
-size_t const HttpCommTask::RunCompactEvery = 500;
+size_t const GeneralCommTask::MaximalHeaderSize = 1 * 1024 * 1024;  //   1 MB
+size_t const GeneralCommTask::MaximalBodySize = 512 * 1024 * 1024;  // 512 MB
+size_t const GeneralCommTask::MaximalPipelineSize =
+    512 * 1024 * 1024;  // 512 MB
+size_t const GeneralCommTask::RunCompactEvery = 500;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a new task
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpCommTask::HttpCommTask(HttpServer* server, TRI_socket_t socket,
-                           ConnectionInfo&& info, double keepAliveTimeout)
-    : Task("HttpCommTask"),
+GeneralCommTask::GeneralCommTask(GeneralServer* server, TRI_socket_t socket,
+                                 ConnectionInfo&& info, double keepAliveTimeout)
+    : Task("GeneralCommTask"),
       SocketTask(socket, keepAliveTimeout),
       _connectionInfo(std::move(info)),
       _server(server),
       _allowMethodOverride(server->allowMethodOverride()),
+      _protocol("unknown"),
       _writeBuffers(),
       _writeBuffersStats(),
       _readPosition(0),
@@ -97,7 +99,7 @@ HttpCommTask::HttpCommTask(HttpServer* server, TRI_socket_t socket,
 /// @brief destructs a task
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpCommTask::~HttpCommTask() {
+GeneralCommTask::~GeneralCommTask() {
   LOG(TRACE) << "connection closed, client "
              << TRI_get_fd_or_handle_of_socket(_commSocket);
 
@@ -114,7 +116,7 @@ HttpCommTask::~HttpCommTask() {
   delete _request;
 }
 
-void HttpCommTask::handleResponse(HttpResponse* response) {
+void GeneralCommTask::handleResponse(HttpResponse* response) {
   _requestPending = false;
   _isChunked = false;
   _startThread = false;
@@ -126,16 +128,16 @@ void HttpCommTask::handleResponse(HttpResponse* response) {
   }
 }
 
-void HttpCommTask::handleSimpleError(GeneralResponse::ResponseCode code) {
+void GeneralCommTask::handleSimpleError(GeneralResponse::ResponseCode code) {
   HttpResponse response(code);
 
   resetState(true);
   addResponse(&response);
 }
 
-void HttpCommTask::handleSimpleError(GeneralResponse::ResponseCode responseCode,
-                                     int errorNum,
-                                     std::string const& errorMessage) {
+void GeneralCommTask::handleSimpleError(
+    GeneralResponse::ResponseCode responseCode, int errorNum,
+    std::string const& errorMessage) {
   HttpResponse response(responseCode);
 
   VPackBuilder builder;
@@ -147,7 +149,8 @@ void HttpCommTask::handleSimpleError(GeneralResponse::ResponseCode responseCode,
   builder.close();
 
   try {
-    response.setPayload(_request, builder.slice(), true, VPackOptions::Defaults);
+    response.setPayload(_request, builder.slice(), true,
+                        VPackOptions::Defaults);
 
     clearRequest();
     handleResponse(&response);
@@ -157,7 +160,7 @@ void HttpCommTask::handleSimpleError(GeneralResponse::ResponseCode responseCode,
   }
 }
 
-GeneralResponse::ResponseCode HttpCommTask::authenticateRequest() {
+GeneralResponse::ResponseCode GeneralCommTask::authenticateRequest() {
   auto context = (_request == nullptr) ? nullptr : _request->requestContext();
 
   if (context == nullptr && _request != nullptr) {
@@ -181,7 +184,7 @@ GeneralResponse::ResponseCode HttpCommTask::authenticateRequest() {
 /// @brief reads data from the socket
 ////////////////////////////////////////////////////////////////////////////////
 
-bool HttpCommTask::processRead() {
+bool GeneralCommTask::processRead() {
   if (_requestPending || _readBuffer->c_str() == nullptr) {
     return false;
   }
@@ -296,7 +299,7 @@ bool HttpCommTask::processRead() {
 
       // update the connection information, i. e. client and server addresses
       // and ports
-      _request->setProtocol(_server->protocol());
+      _request->setProtocol(_protocol);
 
       LOG(TRACE) << "server port " << _connectionInfo.serverPort
                  << ", client port " << _connectionInfo.clientPort;
@@ -321,10 +324,11 @@ bool HttpCommTask::processRead() {
 
           // if the request asks to allow credentials, we'll check against the
           // configured whitelist of origins
-          std::vector<std::string> const& accessControlAllowOrigins = _server->trustedOrigins();
+          std::vector<std::string> const& accessControlAllowOrigins =
+              _server->trustedOrigins();
 
           if (StringUtils::boolean(allowCredentials) &&
-              !accessControlAllowOrigins.empty())  {
+              !accessControlAllowOrigins.empty()) {
             if (accessControlAllowOrigins[0] == "*") {
               // special case: allow everything
               _denyCredentials = false;
@@ -332,10 +336,14 @@ bool HttpCommTask::processRead() {
               // copy origin string
               if (_origin[_origin.size() - 1] == '/') {
                 // strip trailing slash
-                auto result = std::find(accessControlAllowOrigins.begin(), accessControlAllowOrigins.end(), _origin.substr(0, _origin.size() - 1));
+                auto result = std::find(accessControlAllowOrigins.begin(),
+                                        accessControlAllowOrigins.end(),
+                                        _origin.substr(0, _origin.size() - 1));
                 _denyCredentials = (result == accessControlAllowOrigins.end());
               } else {
-                auto result = std::find(accessControlAllowOrigins.begin(), accessControlAllowOrigins.end(), _origin);
+                auto result =
+                    std::find(accessControlAllowOrigins.begin(),
+                              accessControlAllowOrigins.end(), _origin);
                 _denyCredentials = (result == accessControlAllowOrigins.end());
               }
             } else {
@@ -545,8 +553,7 @@ bool HttpCommTask::processRead() {
   // not authenticated
   else {
     HttpResponse response(GeneralResponse::ResponseCode::UNAUTHORIZED);
-    std::string realm =
-      "Bearer token_type=\"JWT\", realm=\"ArangoDB\"";
+    std::string realm = "Bearer token_type=\"JWT\", realm=\"ArangoDB\"";
 
     response.setHeaderNC(StaticStrings::WwwAuthenticate, std::move(realm));
 
@@ -561,7 +568,7 @@ bool HttpCommTask::processRead() {
 /// @brief sends more chunked data
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpCommTask::sendChunk(StringBuffer* buffer) {
+void GeneralCommTask::sendChunk(StringBuffer* buffer) {
   if (_isChunked) {
     TRI_ASSERT(buffer != nullptr);
 
@@ -578,7 +585,7 @@ void HttpCommTask::sendChunk(StringBuffer* buffer) {
 /// @brief chunking is finished
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpCommTask::finishedChunked() {
+void GeneralCommTask::finishedChunked() {
   auto buffer = std::make_unique<StringBuffer>(TRI_UNKNOWN_MEM_ZONE, 6, true);
   buffer->appendText(TRI_CHAR_LENGTH_PAIR("0\r\n\r\n"));
   buffer->ensureNullTerminated();
@@ -599,7 +606,7 @@ void HttpCommTask::finishedChunked() {
 /// @brief task set up complete
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpCommTask::setupDone() {
+void GeneralCommTask::setupDone() {
   _setupDone.store(true, std::memory_order_relaxed);
 }
 
@@ -607,7 +614,7 @@ void HttpCommTask::setupDone() {
 /// @brief reads data from the socket
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpCommTask::addResponse(HttpResponse* response) {
+void GeneralCommTask::addResponse(HttpResponse* response) {
   // CORS response handling
   if (!_origin.empty()) {
     // the request contained an Origin header. We have to send back the
@@ -706,7 +713,7 @@ void HttpCommTask::addResponse(HttpResponse* response) {
 /// check the content-length header of a request and fail it is broken
 ////////////////////////////////////////////////////////////////////////////////
 
-bool HttpCommTask::checkContentLength(bool expectContentLength) {
+bool GeneralCommTask::checkContentLength(bool expectContentLength) {
   int64_t const bodyLength = _request->contentLength();
 
   if (bodyLength < 0) {
@@ -749,7 +756,7 @@ bool HttpCommTask::checkContentLength(bool expectContentLength) {
 /// @brief fills the write buffer
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpCommTask::fillWriteBuffer() {
+void GeneralCommTask::fillWriteBuffer() {
   if (!hasWriteBuffer() && !_writeBuffers.empty()) {
     StringBuffer* buffer = _writeBuffers.front();
     _writeBuffers.pop_front();
@@ -767,7 +774,7 @@ void HttpCommTask::fillWriteBuffer() {
 /// @brief handles CORS options
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpCommTask::processCorsOptions() {
+void GeneralCommTask::processCorsOptions() {
   HttpResponse response(GeneralResponse::ResponseCode::OK);
 
   response.setHeaderNC(StaticStrings::Allow, StaticStrings::CorsMethods);
@@ -807,7 +814,7 @@ void HttpCommTask::processCorsOptions() {
 /// @brief processes a request
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpCommTask::processRequest() {
+void GeneralCommTask::processRequest() {
   // check for deflate
   bool found;
   std::string const& acceptEncoding =
@@ -837,10 +844,11 @@ void HttpCommTask::processRequest() {
   }
 
   // check for an HLC time stamp
-  std::string const& timeStamp = _request->header(StaticStrings::HLCHeader, found);
+  std::string const& timeStamp =
+      _request->header(StaticStrings::HLCHeader, found);
   if (found) {
-    uint64_t timeStampInt
-        = arangodb::basics::HybridLogicalClock::decodeTimeStampWithCheck(
+    uint64_t timeStampInt =
+        arangodb::basics::HybridLogicalClock::decodeTimeStampWithCheck(
             timeStamp);
     if (timeStampInt != 0) {
       TRI_HybridLogicalClock(timeStampInt);
@@ -872,7 +880,8 @@ void HttpCommTask::processRequest() {
 
   if (_request != nullptr) {
     bool found;
-    std::string const& startThread = _request->header(StaticStrings::StartThread, found);
+    std::string const& startThread =
+        _request->header(StaticStrings::StartThread, found);
 
     if (found) {
       _startThread = StringUtils::boolean(startThread);
@@ -927,7 +936,7 @@ void HttpCommTask::processRequest() {
 /// @brief clears the request object
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpCommTask::clearRequest() {
+void GeneralCommTask::clearRequest() {
   delete _request;
   _request = nullptr;
 }
@@ -939,7 +948,7 @@ void HttpCommTask::clearRequest() {
 /// prematurely
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpCommTask::resetState(bool close) {
+void GeneralCommTask::resetState(bool close) {
   if (close) {
     clearRequest();
 
@@ -985,7 +994,7 @@ void HttpCommTask::resetState(bool close) {
   _startThread = false;
 }
 
-bool HttpCommTask::setup(Scheduler* scheduler, EventLoop loop) {
+bool GeneralCommTask::setup(Scheduler* scheduler, EventLoop loop) {
   bool ok = SocketTask::setup(scheduler, loop);
 
   if (!ok) {
@@ -1000,9 +1009,9 @@ bool HttpCommTask::setup(Scheduler* scheduler, EventLoop loop) {
   return true;
 }
 
-void HttpCommTask::cleanup() { SocketTask::cleanup(); }
+void GeneralCommTask::cleanup() { SocketTask::cleanup(); }
 
-bool HttpCommTask::handleEvent(EventToken token, EventType events) {
+bool GeneralCommTask::handleEvent(EventToken token, EventType events) {
   bool result = SocketTask::handleEvent(token, events);
 
   if (_clientClosed) {
@@ -1012,7 +1021,7 @@ bool HttpCommTask::handleEvent(EventToken token, EventType events) {
   return result;
 }
 
-void HttpCommTask::signalTask(TaskData* data) {
+void GeneralCommTask::signalTask(TaskData* data) {
   // data response
   if (data->_type == TaskData::TASK_DATA_RESPONSE) {
     data->RequestStatisticsAgent::transferTo(this);
@@ -1064,7 +1073,7 @@ void HttpCommTask::signalTask(TaskData* data) {
   }
 }
 
-bool HttpCommTask::handleRead() {
+bool GeneralCommTask::handleRead() {
   bool res = true;
 
   if (!_setupDone.load(std::memory_order_relaxed)) {
@@ -1097,7 +1106,7 @@ bool HttpCommTask::handleRead() {
   return res;
 }
 
-void HttpCommTask::completedWriteBuffer() {
+void GeneralCommTask::completedWriteBuffer() {
   _writeBuffer = nullptr;
   _writeLength = 0;
 
@@ -1117,7 +1126,7 @@ void HttpCommTask::completedWriteBuffer() {
   }
 }
 
-void HttpCommTask::handleTimeout() {
+void GeneralCommTask::handleTimeout() {
   _clientClosed = true;
   _server->handleCommunicationClosed(this);
 }

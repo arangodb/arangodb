@@ -23,12 +23,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "HttpsCommTask.h"
-
 #include <openssl/err.h>
 
 #include "Basics/StringBuffer.h"
 #include "Basics/socket-utils.h"
-#include "HttpServer/HttpsServer.h"
+#include "GeneralServer/GeneralServer.h"
 #include "Logger/Logger.h"
 #include "Scheduler/Scheduler.h"
 #include "Ssl/ssl-helper.h"
@@ -40,7 +39,7 @@ using namespace arangodb::rest;
 /// @brief constructs a new task with a given socket
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpsCommTask::HttpsCommTask(HttpsServer* server, TRI_socket_t socket,
+HttpsCommTask::HttpsCommTask(GeneralServer* server, TRI_socket_t socket,
                              ConnectionInfo&& info, double keepAliveTimeout,
                              SSL_CTX* ctx, int verificationMode,
                              int (*verificationCallback)(int, X509_STORE_CTX*))

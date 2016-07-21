@@ -58,9 +58,7 @@ class RestHandler : public RequestStatisticsAgent, public arangodb::WorkItem {
   virtual bool isDirect() const = 0;
 
   // returns the queue name
-  virtual size_t queue() const {
-    return Dispatcher::STANDARD_QUEUE;
-  }
+  virtual size_t queue() const { return Dispatcher::STANDARD_QUEUE; }
 
   // prepares execution of a handler, has to be called before execute
   virtual void prepareExecute() {}
@@ -72,9 +70,7 @@ class RestHandler : public RequestStatisticsAgent, public arangodb::WorkItem {
   virtual void finalizeExecute() {}
 
   // tries to cancel an execution
-  virtual bool cancel() {
-    return false;
-  }
+  virtual bool cancel() { return false; }
 
   // handles error
   virtual void handleError(basics::Exception const&) = 0;
@@ -84,14 +80,10 @@ class RestHandler : public RequestStatisticsAgent, public arangodb::WorkItem {
 
  public:
   // returns the id of the underlying task
-  uint64_t taskId() const {
-    return _taskId;
-  }
+  uint64_t taskId() const { return _taskId; }
 
   // returns the event loop of the underlying task
-  EventLoop eventLoop() const {
-    return _loop;
-  }
+  EventLoop eventLoop() const { return _loop; }
 
   // sets the id of the underlying task or 0 if dettach
   void setTaskId(uint64_t id, EventLoop);
@@ -100,17 +92,13 @@ class RestHandler : public RequestStatisticsAgent, public arangodb::WorkItem {
   status executeFull();
 
   // return a pointer to the request
-  GeneralRequest const* request() const {
-    return _request;
-  }
+  GeneralRequest const* request() const { return _request; }
 
   // steal the pointer to the request
   GeneralRequest* stealRequest();
 
   // returns the response
-  GeneralResponse* response() const {
-    return _response;
-  }
+  GeneralResponse* response() const { return _response; }
 
   // steal the response
   GeneralResponse* stealResponse();
@@ -132,7 +120,7 @@ class RestHandler : public RequestStatisticsAgent, public arangodb::WorkItem {
   // the request
   GeneralRequest* _request;
 
-//OBI-TODO make private
+  // OBI-TODO make private
   // the response
   GeneralResponse* _response;
 };
