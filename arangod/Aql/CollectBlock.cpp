@@ -313,7 +313,7 @@ int SortedCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
     }
 
     throwIfKilled();  // check if we were aborted
-
+    
     bool newGroup = false;
     if (!isTotalAggregation) {
       if (_currentGroup.groupValues[0].isEmpty()) {
@@ -322,7 +322,14 @@ int SortedCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
       } else {
         // we already had a group, check if the group has changed
         size_t i = 0;
-
+        
+        if (_pos > 0) {
+          // re-use already copied AQLValues
+          for (auto& it : _groupRegisters) {
+            res->copyColValuesFromFirstRow(_pos, it.second);
+          }
+        }
+    
         for (auto& it : _groupRegisters) {
           int cmp = AqlValue::Compare(
               _trx, _currentGroup.groupValues[i], 
@@ -603,6 +610,7 @@ int HashedCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
   // If we get here, we do have _buffer.front()
   AqlItemBlock* cur = _buffer.front();
   TRI_ASSERT(cur != nullptr);
+  size_t const curNrRegs = cur->getNrRegs();
 
   TRI_ASSERT(_aggregateRegisters.size() == en->_aggregateVariables.size());
 
@@ -640,6 +648,7 @@ int HashedCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
 
     size_t row = 0;
     for (auto& it : allGroups) {
+    
       auto& keys = it.first;
 
       TRI_ASSERT(keys.size() == _groupRegisters.size());
@@ -662,6 +671,12 @@ int HashedCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
         result->setValue(row, _collectRegister,
                          it.second->back()->stealValue());
       }
+      
+      if (row > 0) {
+        // re-use already copied AQLValues for remaining registers
+        result->copyValuesFromFirstRow(row, static_cast<RegisterId>(curNrRegs));
+      }
+
 
       ++row;
     }

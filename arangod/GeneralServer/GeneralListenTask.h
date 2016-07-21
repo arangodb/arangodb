@@ -26,27 +26,29 @@
 #define ARANGOD_HTTP_SERVER_HTTP_LISTEN_TASK_H 1
 
 #include "Scheduler/ListenTask.h"
+#include "GeneralServer/GeneralDefinitions.h"
 
 namespace arangodb {
 class Endpoint;
 
 namespace rest {
-class HttpServer;
+class GeneralServer;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief task used to establish connections
 ////////////////////////////////////////////////////////////////////////////////
 
-class HttpListenTask : public ListenTask {
-  HttpListenTask(HttpListenTask const&) = delete;
-  HttpListenTask& operator=(HttpListenTask const&) = delete;
+class GeneralListenTask : public ListenTask {
+  GeneralListenTask(GeneralListenTask const&) = delete;
+  GeneralListenTask& operator=(GeneralListenTask const&) = delete;
 
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief listen to given port
   //////////////////////////////////////////////////////////////////////////////
 
-  HttpListenTask(HttpServer* server, Endpoint* endpoint);
+  GeneralListenTask(GeneralServer* server, Endpoint* endpoint,
+                    ConnectionType connectionType);
 
  protected:
   bool handleConnected(TRI_socket_t s, ConnectionInfo&& info) override;
@@ -56,7 +58,8 @@ class HttpListenTask : public ListenTask {
   /// @brief underlying general server
   //////////////////////////////////////////////////////////////////////////////
 
-  HttpServer* _server;
+  GeneralServer* _server;
+  ConnectionType _connectionType;
 };
 }
 }

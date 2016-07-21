@@ -25,7 +25,7 @@
 #define ARANGOD_REST_HANDLER_REST_UPLOAD_HANDLER_H 1
 
 #include "Basics/Common.h"
-#include "HttpServer/HttpServer.h"
+#include "GeneralServer/GeneralServer.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
 namespace arangodb {

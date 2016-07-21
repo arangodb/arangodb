@@ -222,8 +222,18 @@ function optimizerCollectExpressionTestSuite () {
     testIntoWithOutVariableUsedInAssignment : function () {
       assertFailingQuery("FOR doc IN [{ age: 1, value: 1 }, { age: 1, value: 2 }, { age: 2, value: 1 }, { age: 2, value: 2 }] COLLECT v1 = doc.age, v2 = doc.value INTO g = v1 RETURN [v1,v2,g]");
       assertFailingQuery("FOR doc IN [{ age: 1, value: 1 }, { age: 1, value: 2 }, { age: 2, value: 1 }, { age: 2, value: 2 }] COLLECT v1 = doc.age AGGREGATE v2 = MAX(doc.value) INTO g = v2 RETURN [v1,v2,g]");
-    }
+    },
 
+    testMultiCollectWithConstExpression : function () {
+      var query = "LET values = [ {time:1}, {time:1}, {time:2}, {time:2}, {time:3}, {time:4}, {time:2}, {time:3}, {time:6} ] FOR p1 IN values COLLECT t = FLOOR(p1.time / 2) AGGREGATE m = MAX(p1.time) FOR p2 IN values FILTER m != p2.time COLLECT q = 0 INTO qs = p2 RETURN {q}"; 
+      var results = AQL_EXECUTE(query);
+      assertEqual([ { q: 0 } ], results.json);
+      
+      query = "LET values = [ {time:1}, {time:1}, {time:2}, {time:2}, {time:3}, {time:4}, {time:2}, {time:3}, {time:6} ] FOR p1 IN values COLLECT t = FLOOR(p1.time / 2) AGGREGATE m = MAX(p1.time) FOR p2 IN values FILTER m == p2.time COLLECT q = 0 INTO qs = p2 RETURN {q}"; 
+      results = AQL_EXECUTE(query);
+      assertEqual([ { q: 0 } ], results.json);
+    }
+    
   };
 }
 

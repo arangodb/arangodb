@@ -22,18 +22,18 @@
 /// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "HttpServer.h"
+#include "GeneralServer.h"
 
 #include "Basics/MutexLocker.h"
 #include "Basics/WorkMonitor.h"
 #include "Dispatcher/Dispatcher.h"
 #include "Dispatcher/DispatcherFeature.h"
 #include "Endpoint/EndpointList.h"
-#include "HttpServer/AsyncJobManager.h"
-#include "HttpServer/HttpCommTask.h"
-#include "HttpServer/HttpListenTask.h"
-#include "HttpServer/HttpServerJob.h"
-#include "HttpServer/RestHandler.h"
+#include "GeneralServer/AsyncJobManager.h"
+#include "GeneralServer/GeneralCommTask.h"
+#include "GeneralServer/GeneralListenTask.h"
+#include "GeneralServer/HttpServerJob.h"
+#include "GeneralServer/RestHandler.h"
 #include "Logger/Logger.h"
 #include "RestServer/RestServerFeature.h"
 #include "Scheduler/ListenTask.h"
@@ -48,7 +48,7 @@ using namespace arangodb::rest;
 /// @brief destroys an endpoint server
 ////////////////////////////////////////////////////////////////////////////////
 
-int HttpServer::sendChunk(uint64_t taskId, std::string const& data) {
+int GeneralServer::sendChunk(uint64_t taskId, std::string const& data) {
   auto taskData = std::make_unique<TaskData>();
 
   taskData->_taskId = taskId;
@@ -65,37 +65,51 @@ int HttpServer::sendChunk(uint64_t taskId, std::string const& data) {
 /// @brief constructs a new general server with dispatcher and job manager
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpServer::HttpServer(
-    double keepAliveTimeout,
-    bool allowMethodOverride,
-    std::vector<std::string> const& accessControlAllowOrigins)
+GeneralServer::GeneralServer(
+    double keepAliveTimeout, bool allowMethodOverride,
+    std::vector<std::string> const& accessControlAllowOrigins, SSL_CTX* ctx)
     : _listenTasks(),
       _endpointList(nullptr),
       _commTasks(),
       _keepAliveTimeout(keepAliveTimeout),
       _allowMethodOverride(allowMethodOverride),
-      _accessControlAllowOrigins(accessControlAllowOrigins) {}
-
+      _accessControlAllowOrigins(accessControlAllowOrigins),
+      _ctx(ctx),
+      _verificationMode(SSL_VERIFY_NONE),
+      _verificationCallback(nullptr),
+      _sslAllowed(ctx != nullptr) {}
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructs a general server
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpServer::~HttpServer() { stopListening(); }
+GeneralServer::~GeneralServer() { stopListening(); }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates a suitable communication task
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpCommTask* HttpServer::createCommTask(TRI_socket_t s,
-                                         ConnectionInfo&& info) {
-  return new HttpCommTask(this, s, std::move(info), _keepAliveTimeout);
+GeneralCommTask* GeneralServer::createCommTask(TRI_socket_t s,
+                                               ConnectionInfo&& info,
+                                               ConnectionType conntype) {
+  switch (conntype) {
+    case ConnectionType::VPPS:
+      return new HttpCommTask(this, s, std::move(info), _keepAliveTimeout);
+    case ConnectionType::VPP:
+      return new HttpCommTask(this, s, std::move(info), _keepAliveTimeout);
+    case ConnectionType::HTTPS:
+      // check _ctx and friends? REVIEW
+      return new HttpsCommTask(this, s, std::move(info), _keepAliveTimeout,
+                               _ctx, _verificationMode, _verificationCallback);
+    default:
+      return new HttpCommTask(this, s, std::move(info), _keepAliveTimeout);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief add the endpoint list
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpServer::setEndpointList(EndpointList const* list) {
+void GeneralServer::setEndpointList(EndpointList const* list) {
   _endpointList = list;
 }
 
@@ -103,11 +117,8 @@ void HttpServer::setEndpointList(EndpointList const* list) {
 /// @brief starts listening
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpServer::startListening() {
-  auto endpoints =
-      _endpointList->matching(Endpoint::TransportType::HTTP, encryptionType());
-
-  for (auto& it : endpoints) {
+void GeneralServer::startListening() {
+  for (auto& it : _endpointList->allEndpoints()) {
     LOG(TRACE) << "trying to bind to endpoint '" << it.first
                << "' for requests";
 
@@ -118,7 +129,8 @@ void HttpServer::startListening() {
     } else {
       LOG(FATAL) << "failed to bind to endpoint '" << it.first
                  << "'. Please check whether another instance is already "
-                    "running using this endpoint and review your endpoints configuration.";
+                    "running using this endpoint and review your endpoints "
+                    "configuration.";
       FATAL_ERROR_EXIT();
     }
   }
@@ -128,7 +140,7 @@ void HttpServer::startListening() {
 /// @brief stops listening
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpServer::stopListening() {
+void GeneralServer::stopListening() {
   for (auto& task : _listenTasks) {
     SchedulerFeature::SCHEDULER->destroyTask(task);
   }
@@ -140,9 +152,9 @@ void HttpServer::stopListening() {
 /// @brief removes all listen and comm tasks
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpServer::stop() {
+void GeneralServer::stop() {
   while (true) {
-    HttpCommTask* task = nullptr;
+    GeneralCommTask* task = nullptr;
 
     {
       MUTEX_LOCKER(mutexLocker, _commTasksLock);
@@ -163,8 +175,9 @@ void HttpServer::stop() {
 /// @brief handles connection request
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpServer::handleConnected(TRI_socket_t s, ConnectionInfo&& info) {
-  HttpCommTask* task = createCommTask(s, std::move(info));
+void GeneralServer::handleConnected(TRI_socket_t s, ConnectionInfo&& info,
+                                    ConnectionType connectionType) {
+  GeneralCommTask* task = createCommTask(s, std::move(info), connectionType);
 
   try {
     MUTEX_LOCKER(mutexLocker, _commTasksLock);
@@ -184,7 +197,7 @@ void HttpServer::handleConnected(TRI_socket_t s, ConnectionInfo&& info) {
 /// @brief handles a connection close
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpServer::handleCommunicationClosed(HttpCommTask* task) {
+void GeneralServer::handleCommunicationClosed(GeneralCommTask* task) {
   MUTEX_LOCKER(mutexLocker, _commTasksLock);
   _commTasks.erase(task);
 }
@@ -193,7 +206,7 @@ void HttpServer::handleCommunicationClosed(HttpCommTask* task) {
 /// @brief handles a connection failure
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpServer::handleCommunicationFailure(HttpCommTask* task) {
+void GeneralServer::handleCommunicationFailure(GeneralCommTask* task) {
   MUTEX_LOCKER(mutexLocker, _commTasksLock);
   _commTasks.erase(task);
 }
@@ -202,9 +215,9 @@ void HttpServer::handleCommunicationFailure(HttpCommTask* task) {
 /// @brief create a job for asynchronous execution (using the dispatcher)
 ////////////////////////////////////////////////////////////////////////////////
 
-bool HttpServer::handleRequestAsync(HttpCommTask* task,
-                                    WorkItem::uptr<RestHandler>& handler,
-                                    uint64_t* jobId) {
+bool GeneralServer::handleRequestAsync(GeneralCommTask* task,
+                                       WorkItem::uptr<RestHandler>& handler,
+                                       uint64_t* jobId) {
   bool startThread = task->startThread();
 
   // extract the coordinator flag
@@ -248,8 +261,8 @@ bool HttpServer::handleRequestAsync(HttpCommTask* task,
 /// @brief executes the handler directly or add it to the queue
 ////////////////////////////////////////////////////////////////////////////////
 
-bool HttpServer::handleRequest(HttpCommTask* task,
-                               WorkItem::uptr<RestHandler>& handler) {
+bool GeneralServer::handleRequest(GeneralCommTask* task,
+                                  WorkItem::uptr<RestHandler>& handler) {
   // direct handlers
   if (handler->isDirect()) {
     HandlerWorkStack work(handler);
@@ -264,7 +277,7 @@ bool HttpServer::handleRequest(HttpCommTask* task,
   std::unique_ptr<Job> job = std::make_unique<HttpServerJob>(this, handler);
   task->RequestStatisticsAgent::transferTo(job.get());
 
-  LOG(TRACE) << "HttpCommTask " << (void*)task << " created HttpServerJob "
+  LOG(TRACE) << "GeneralCommTask " << (void*)task << " created HttpServerJob "
              << (void*)job.get();
 
   // add the job to the dispatcher
@@ -278,8 +291,32 @@ bool HttpServer::handleRequest(HttpCommTask* task,
 /// @brief opens a listen port
 ////////////////////////////////////////////////////////////////////////////////
 
-bool HttpServer::openEndpoint(Endpoint* endpoint) {
-  ListenTask* task = new HttpListenTask(this, endpoint);
+bool GeneralServer::openEndpoint(Endpoint* endpoint) {
+  ConnectionType connectionType;
+
+  if (endpoint->transport() == Endpoint::TransportType::HTTP) {
+    if (endpoint->encryption() == Endpoint::EncryptionType::SSL) {
+      if (!_sslAllowed) {  // we should not end up here
+        LOG(FATAL) << "no ssl context";
+        FATAL_ERROR_EXIT();
+      }
+      connectionType = ConnectionType::HTTPS;
+    } else {
+      connectionType = ConnectionType::HTTP;
+    }
+  } else {
+    if (endpoint->encryption() == Endpoint::EncryptionType::SSL) {
+      if (!_sslAllowed) {  // we should not end up here
+        LOG(FATAL) << "no ssl context";
+        FATAL_ERROR_EXIT();
+      }
+      connectionType = ConnectionType::VPPS;
+    } else {
+      connectionType = ConnectionType::VPP;
+    }
+  }
+
+  ListenTask* task = new GeneralListenTask(this, endpoint, connectionType);
 
   // ...................................................................
   // For some reason we have failed in our endeavor to bind to the socket -
@@ -305,8 +342,8 @@ bool HttpServer::openEndpoint(Endpoint* endpoint) {
 /// @brief handle request directly
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpServer::handleRequestDirectly(RestHandler* handler,
-                                       HttpCommTask* task) {
+void GeneralServer::handleRequestDirectly(RestHandler* handler,
+                                          GeneralCommTask* task) {
   task->RequestStatisticsAgent::transferTo(handler);
   RestHandler::status result = handler->executeFull();
   handler->RequestStatisticsAgent::transferTo(task);

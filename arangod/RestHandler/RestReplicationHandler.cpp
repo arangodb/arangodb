@@ -30,7 +30,7 @@
 #include "Basics/files.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterMethods.h"
-#include "HttpServer/HttpServer.h"
+#include "GeneralServer/GeneralServer.h"
 #include "Indexes/EdgeIndex.h"
 #include "Indexes/Index.h"
 #include "Indexes/PrimaryIndex.h"
@@ -569,7 +569,8 @@ void RestReplicationHandler::handleCommandBatch() {
     }
 
     // extract ttl
-    double expires = VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", 0);
+    double expires =
+        VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", 0);
 
     TRI_voc_tick_t id;
     int res = TRI_InsertBlockerCompactorVocBase(_vocbase, expires, &id);
@@ -599,14 +600,15 @@ void RestReplicationHandler::handleCommandBatch() {
 
     auto input = _request->toVelocyPackBuilderPtr(&VPackOptions::Defaults);
 
-    if (input == nullptr || !input->slice().isObject()){
+    if (input == nullptr || !input->slice().isObject()) {
       generateError(GeneralResponse::ResponseCode::BAD,
                     TRI_ERROR_HTTP_BAD_PARAMETER, "invalid JSON");
       return;
     }
 
     // extract ttl
-    double expires = VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", 0);
+    double expires =
+        VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", 0);
 
     // now extend the blocker
     int res = TRI_TouchBlockerCompactorVocBase(_vocbase, id, expires);
@@ -778,7 +780,6 @@ void RestReplicationHandler::handleCommandBarrier() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleTrampolineCoordinator() {
-
   if (_request == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   }
@@ -815,7 +816,7 @@ void RestReplicationHandler::handleTrampolineCoordinator() {
   ClusterComm* cc = ClusterComm::instance();
 
   HttpRequest* httpRequest = dynamic_cast<HttpRequest*>(_request);
-  if(httpRequest == nullptr){
+  if (httpRequest == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   }
 
@@ -1219,7 +1220,7 @@ void RestReplicationHandler::handleCommandClusterInventory() {
                   TRI_ERROR_CLUSTER_READING_PLAN_AGENCY);
   } else {
     VPackSlice colls = result.slice()[0].get(std::vector<std::string>(
-      {_agency.prefix(), "Plan", "Collections", dbName}));
+        {_agency.prefix(), "Plan", "Collections", dbName}));
     if (!colls.isObject()) {
       generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
                     TRI_ERROR_CLUSTER_READING_PLAN_AGENCY);
@@ -1235,7 +1236,7 @@ void RestReplicationHandler::handleCommandClusterInventory() {
             if (subResultSlice.isObject()) {
               if (includeSystem ||
                   !arangodb::basics::VelocyPackHelper::getBooleanValue(
-                    subResultSlice, "isSystem", true)) {
+                      subResultSlice, "isSystem", true)) {
                 VPackObjectBuilder b3(&resultBuilder);
                 resultBuilder.add("indexes", subResultSlice.get("indexes"));
                 resultBuilder.add("parameters", subResultSlice);
@@ -1248,11 +1249,9 @@ void RestReplicationHandler::handleCommandClusterInventory() {
         resultBuilder.add("tick", VPackValue(tickString));
         resultBuilder.add("state", VPackValue("unused"));
       }
-      generateResult(GeneralResponse::ResponseCode::OK,
-                     resultBuilder.slice());
+      generateResult(GeneralResponse::ResponseCode::OK, resultBuilder.slice());
     }
   }
-
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1629,7 +1628,8 @@ int RestReplicationHandler::processRestoreCollection(
 
 int RestReplicationHandler::processRestoreCollectionCoordinator(
     VPackSlice const& collection, bool dropExisting, bool reuseId, bool force,
-    uint64_t numberOfShards, std::string& errorMsg, uint64_t replicationFactor) {
+    uint64_t numberOfShards, std::string& errorMsg,
+    uint64_t replicationFactor) {
   if (!collection.isObject()) {
     errorMsg = "collection declaration is invalid";
 
@@ -1719,8 +1719,8 @@ int RestReplicationHandler::processRestoreCollectionCoordinator(
 
   VPackSlice const replFactorSlice = parameters.get("replicationFactor");
   if (replFactorSlice.isInteger()) {
-    replicationFactor = replFactorSlice.getNumericValue
-                            <decltype(replicationFactor)>();
+    replicationFactor =
+        replFactorSlice.getNumericValue<decltype(replicationFactor)>();
   }
   if (replicationFactor == 0) {
     replicationFactor = 1;
@@ -1744,9 +1744,9 @@ int RestReplicationHandler::processRestoreCollectionCoordinator(
 
     // shards
     std::vector<std::string> dbServers;  // will be filled
-    std::map<std::string, std::vector<std::string>> shardDistribution
-        = arangodb::distributeShards(numberOfShards, replicationFactor,
-                                     dbServers);
+    std::map<std::string, std::vector<std::string>> shardDistribution =
+        arangodb::distributeShards(numberOfShards, replicationFactor,
+                                   dbServers);
     if (shardDistribution.empty()) {
       errorMsg = "no database servers found in cluster";
       return TRI_ERROR_INTERNAL;
@@ -1994,7 +1994,8 @@ int RestReplicationHandler::processRestoreIndexesCoordinator(
   int res = TRI_ERROR_NO_ERROR;
   for (VPackSlice const& idxDef : VPackArrayIterator(indexes)) {
     VPackSlice type = idxDef.get("type");
-    if (type.isString() && (type.copyString() == "primary" || type.copyString() == "edge")) {
+    if (type.isString() &&
+        (type.copyString() == "primary" || type.copyString() == "edge")) {
       // must ignore these types of indexes during restore
       continue;
     }
@@ -2274,8 +2275,8 @@ int RestReplicationHandler::processRestoreDataBatch(
     options.ignoreRevs = true;
     options.isRestore = true;
     options.waitForSync = false;
-    OperationResult opRes = trx.remove(collectionName, oldBuilder.slice(),
-                                       options);
+    OperationResult opRes =
+        trx.remove(collectionName, oldBuilder.slice(), options);
     if (!opRes.successful()) {
       return opRes.code;
     }
@@ -3946,9 +3947,10 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
   }
   VPackSlice const body = parsedBody->slice();
   if (!body.isObject()) {
-    generateError(
-        GeneralResponse::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-        "body needs to be an object with attributes 'collection', 'ttl' and 'id'");
+    generateError(GeneralResponse::ResponseCode::BAD,
+                  TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "body needs to be an object with attributes 'collection', "
+                  "'ttl' and 'id'");
     return;
   }
   VPackSlice const collection = body.get("collection");
@@ -3963,7 +3965,8 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
   }
   std::string id = idSlice.copyString();
 
-  auto col = TRI_LookupCollectionByNameVocBase(_vocbase, collection.copyString());
+  auto col =
+      TRI_LookupCollectionByNameVocBase(_vocbase, collection.copyString());
   if (col == nullptr) {
     generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
                   TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
@@ -4051,16 +4054,15 @@ void RestReplicationHandler::handleCommandCheckHoldReadLockCollection() {
   }
   VPackSlice const body = parsedBody->slice();
   if (!body.isObject()) {
-    generateError(
-        GeneralResponse::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-        "body needs to be an object with attribute 'id'");
+    generateError(GeneralResponse::ResponseCode::BAD,
+                  TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "body needs to be an object with attribute 'id'");
     return;
   }
   VPackSlice const idSlice = body.get("id");
   if (!idSlice.isString()) {
     generateError(GeneralResponse::ResponseCode::BAD,
-                  TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "'id' needs to be a string");
+                  TRI_ERROR_HTTP_BAD_PARAMETER, "'id' needs to be a string");
     return;
   }
   std::string id = idSlice.copyString();
@@ -4099,16 +4101,15 @@ void RestReplicationHandler::handleCommandCancelHoldReadLockCollection() {
   }
   VPackSlice const body = parsedBody->slice();
   if (!body.isObject()) {
-    generateError(
-        GeneralResponse::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-        "body needs to be an object with attribute 'id'");
+    generateError(GeneralResponse::ResponseCode::BAD,
+                  TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "body needs to be an object with attribute 'id'");
     return;
   }
   VPackSlice const idSlice = body.get("id");
   if (!idSlice.isString()) {
     generateError(GeneralResponse::ResponseCode::BAD,
-                  TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "'id' needs to be a string");
+                  TRI_ERROR_HTTP_BAD_PARAMETER, "'id' needs to be a string");
     return;
   }
   std::string id = idSlice.copyString();

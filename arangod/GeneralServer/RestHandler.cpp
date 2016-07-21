@@ -61,7 +61,7 @@ RestHandler::status RestHandler::executeFull() {
 #ifdef USE_DEV_TIMERS
   TRI_request_statistics_t::STATS = _statistics;
 #endif
-  
+
   try {
     prepareExecute();
 
@@ -111,7 +111,7 @@ RestHandler::status RestHandler::executeFull() {
 #ifdef USE_DEV_TIMERS
   TRI_request_statistics_t::STATS = nullptr;
 #endif
-  
+
   return result;
 }
 

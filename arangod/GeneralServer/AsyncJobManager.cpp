@@ -25,8 +25,8 @@
 
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
-#include "HttpServer/HttpServerJob.h"
-#include "HttpServer/RestHandler.h"
+#include "GeneralServer/HttpServerJob.h"
+#include "GeneralServer/RestHandler.h"
 #include "Logger/Logger.h"
 #include "Rest/GeneralResponse.h"
 

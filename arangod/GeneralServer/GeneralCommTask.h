@@ -38,11 +38,11 @@ class HttpRequest;
 class HttpResponse;
 
 namespace rest {
-class HttpServer;
+class GeneralServer;
 
-class HttpCommTask : public SocketTask, public RequestStatisticsAgent {
-  HttpCommTask(HttpCommTask const&) = delete;
-  HttpCommTask const& operator=(HttpCommTask const&) = delete;
+class GeneralCommTask : public SocketTask, public RequestStatisticsAgent {
+  GeneralCommTask(GeneralCommTask const&) = delete;
+  GeneralCommTask const& operator=(GeneralCommTask const&) = delete;
 
  public:
   static size_t const MaximalHeaderSize;
@@ -51,11 +51,11 @@ class HttpCommTask : public SocketTask, public RequestStatisticsAgent {
   static size_t const RunCompactEvery;
 
  public:
-  HttpCommTask(HttpServer*, TRI_socket_t, ConnectionInfo&&,
-               double keepAliveTimeout);
+  GeneralCommTask(GeneralServer*, TRI_socket_t, ConnectionInfo&&,
+                  double keepAliveTimeout);
 
  protected:
-  ~HttpCommTask();
+  ~GeneralCommTask();
 
  public:
   // return whether or not the task desires to start a dispatcher thread
@@ -128,10 +128,12 @@ class HttpCommTask : public SocketTask, public RequestStatisticsAgent {
   ConnectionInfo _connectionInfo;
 
   // the underlying server
-  HttpServer* const _server;
+  GeneralServer* const _server;
 
   // allow method override
   bool _allowMethodOverride;
+
+  char const* _protocol;
 
  private:
   // write buffers
@@ -169,7 +171,7 @@ class HttpCommTask : public SocketTask, public RequestStatisticsAgent {
 
   // true if within a chunked response
   bool _isChunked;
-  
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief start a separate thread if the task is added to the dispatcher?
   //////////////////////////////////////////////////////////////////////////////
@@ -205,8 +207,9 @@ class HttpCommTask : public SocketTask, public RequestStatisticsAgent {
 
   // authentication real
   std::string const _authenticationRealm;
-};
-}
-}
+
+};  // Commontask
+}  // rest
+}  // arango
 
 #endif

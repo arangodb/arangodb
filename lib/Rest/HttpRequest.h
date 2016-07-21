@@ -26,14 +26,15 @@
 #define ARANGODB_REST_HTTP_REQUEST_H 1
 
 #include "Rest/GeneralRequest.h"
-
 #include "Endpoint/ConnectionInfo.h"
 
 namespace arangodb {
 class RestBatchHandler;
 
 namespace rest {
+class GeneralCommTask;
 class HttpCommTask;
+class HttpsCommTask;
 }
 
 namespace velocypack {
@@ -43,6 +44,8 @@ struct Options;
 
 class HttpRequest : public GeneralRequest {
   friend class rest::HttpCommTask;
+  friend class rest::HttpsCommTask;
+  friend class rest::GeneralCommTask;
   friend class RestBatchHandler;  // TODO must be removed
 
  private:
@@ -73,7 +76,6 @@ class HttpRequest : public GeneralRequest {
 
   // Payload
   VPackSlice payload(arangodb::velocypack::Options const*) override final;
-
 
   /// @brief sets a key/value header
   //  this function is called by setHeaders and get offsets to

@@ -30,7 +30,7 @@
 #include "Aql/QueryList.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
-#include "HttpServer/RestHandler.h"
+#include "GeneralServer/RestHandler.h"
 #include "Logger/Logger.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"

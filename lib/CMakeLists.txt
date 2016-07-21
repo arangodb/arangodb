@@ -208,6 +208,7 @@ add_library(${LIB_ARANGO} STATIC
   Random/RandomFeature.cpp
   Random/RandomGenerator.cpp
   Random/UniformCharacter.cpp
+  Rest/FakeRequest.cpp
   Rest/GeneralRequest.cpp
   Rest/GeneralResponse.cpp
   Rest/HttpRequest.cpp
