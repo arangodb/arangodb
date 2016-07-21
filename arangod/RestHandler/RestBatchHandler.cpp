@@ -26,8 +26,8 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Logger/Logger.h"
-#include "HttpServer/HttpServer.h"
-#include "HttpServer/RestHandlerFactory.h"
+#include "GeneralServer/GeneralServer.h"
+#include "GeneralServer/RestHandlerFactory.h"
 #include "Rest/HttpRequest.h"
 #include "RestServer/RestServerFeature.h"
 

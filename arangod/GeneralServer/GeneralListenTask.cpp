@@ -22,46 +22,25 @@
 /// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_HTTP_SERVER_HTTP_SERVER_JOB_H
-#define ARANGOD_HTTP_SERVER_HTTP_SERVER_JOB_H 1
+#include "GeneralListenTask.h"
 
-#include "Dispatcher/Job.h"
+#include "GeneralServer/GeneralServer.h"
 
-#include "Basics/Exceptions.h"
-#include "Basics/WorkMonitor.h"
+using namespace arangodb;
+using namespace arangodb::rest;
 
-namespace arangodb {
-namespace rest {
-class RestHandler;
-class HttpServer;
+////////////////////////////////////////////////////////////////////////////////
+/// @brief listen to given port
+////////////////////////////////////////////////////////////////////////////////
 
-class HttpServerJob : public Job {
-  HttpServerJob(HttpServerJob const&) = delete;
-  HttpServerJob& operator=(HttpServerJob const&) = delete;
+GeneralListenTask::GeneralListenTask(GeneralServer* server, Endpoint* endpoint,
+                                     ConnectionType connectionType)
+    : Task("GeneralListenTask"),
+      ListenTask(endpoint),
+      _server(server),
+      _connectionType(connectionType) {}
 
- public:
-  HttpServerJob(HttpServer*, arangodb::WorkItem::uptr<RestHandler>&,
-                bool isAsync = false);
-
-  ~HttpServerJob();
-
- public:
-  RestHandler* handler() const { return _handler.get(); }
-
- public:
-  size_t queue() const override;
-  void work() override;
-  bool cancel() override;
-  void cleanup(DispatcherQueue*) override;
-  void handleError(basics::Exception const&) override;
-
- protected:
-  HttpServer* _server;
-  arangodb::WorkItem::uptr<RestHandler> _handler;
-  arangodb::WorkDescription* _workDesc;
-  bool _isAsync;
-};
+bool GeneralListenTask::handleConnected(TRI_socket_t s, ConnectionInfo&& info) {
+  _server->handleConnected(s, std::move(info), _connectionType);
+  return true;
 }
-}
-
-#endif

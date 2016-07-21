@@ -26,7 +26,7 @@
 #include "Basics/StringUtils.h"
 #include "Dispatcher/Dispatcher.h"
 #include "Dispatcher/DispatcherFeature.h"
-#include "HttpServer/AsyncJobManager.h"
+#include "GeneralServer/AsyncJobManager.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
 
@@ -40,7 +40,7 @@ using namespace arangodb::rest;
 RestJobHandler::RestJobHandler(GeneralRequest* request,
                                GeneralResponse* response,
                                AsyncJobManager* jobManager)
-  : RestBaseHandler(request, response), _jobManager(jobManager) {
+    : RestBaseHandler(request, response), _jobManager(jobManager) {
   TRI_ASSERT(jobManager != nullptr);
 }
 
@@ -129,7 +129,7 @@ void RestJobHandler::putJobMethod() {
       generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
                     TRI_ERROR_HTTP_NOT_FOUND);
     }
-    
+
     bool status = DispatcherFeature::DISPATCHER->cancelJob(jobId);
 
     // unknown or already fetched job

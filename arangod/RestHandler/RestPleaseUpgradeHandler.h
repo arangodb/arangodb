@@ -24,7 +24,7 @@
 #ifndef ARANGOD_REST_HANDLER_REST_PLEASE_UPGRADE_HANDLER_H
 #define ARANGOD_REST_HANDLER_REST_PLEASE_UPGRADE_HANDLER_H 1
 
-#include "HttpServer/RestHandler.h"
+#include "GeneralServer/RestHandler.h"
 
 namespace arangodb {
 class RestPleaseUpgradeHandler : public rest::RestHandler {

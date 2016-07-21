@@ -34,11 +34,13 @@ class RestBatchHandler;
 
 namespace rest {
 class HttpCommTask;
+class GeneralCommTask;
 }
 
 class HttpResponse : public GeneralResponse {
+  friend class rest::GeneralCommTask;
   friend class rest::HttpCommTask;
-  friend class RestBatchHandler; // TODO must be removed
+  friend class RestBatchHandler;  // TODO must be removed
 
  public:
   static bool HIDE_PRODUCT_HEADER;
@@ -67,7 +69,9 @@ class HttpResponse : public GeneralResponse {
   size_t bodySize() const;
 
   /// @brief set type of connection
-  void setConnectionType(ConnectionType type) override { _connectionType = type; }
+  void setConnectionType(ConnectionType type) override {
+    _connectionType = type;
+  }
 
   /// @brief set content-type
   void setContentType(ContentType type) override { _contentType = type; }
@@ -94,7 +98,6 @@ class HttpResponse : public GeneralResponse {
   void setPayload(GeneralRequest const*, arangodb::velocypack::Slice const&,
                   bool generateBody,
                   arangodb::velocypack::Options const&) override final;
-
 
  private:
   // the body must already be set. deflate is then run on the existing body

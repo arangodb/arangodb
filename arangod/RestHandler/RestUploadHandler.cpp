@@ -27,7 +27,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
-#include "HttpServer/HttpServer.h"
+#include "GeneralServer/GeneralServer.h"
 #include "Logger/Logger.h"
 #include "Rest/HttpRequest.h"
 

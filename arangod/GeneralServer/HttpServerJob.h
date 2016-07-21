@@ -19,45 +19,47 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
+/// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_HTTP_SERVER_HTTPS_SERVER_H
-#define ARANGOD_HTTP_SERVER_HTTPS_SERVER_H 1
+#ifndef ARANGOD_HTTP_SERVER_HTTP_SERVER_JOB_H
+#define ARANGOD_HTTP_SERVER_HTTP_SERVER_JOB_H 1
 
-#include "HttpServer/HttpServer.h"
+#include "Dispatcher/Job.h"
 
-#include <openssl/ssl.h>
+#include "Basics/Exceptions.h"
+#include "Basics/WorkMonitor.h"
 
 namespace arangodb {
 namespace rest {
+class RestHandler;
+class GeneralServer;
 
-class HttpsServer : public HttpServer {
- public:
-  HttpsServer(double keepAliveTimeout, bool allowMethodOverride,
-              std::vector<std::string> const& accessControlAllowOrigins,
-              SSL_CTX*);
-  ~HttpsServer();
-
- public:
-  // sets the verification mode
-  void setVerificationMode(int mode);
-
-  // sets the verification callback
-  void setVerificationCallback(int (*func)(int, X509_STORE_CTX*));
+class HttpServerJob : public Job {
+  HttpServerJob(HttpServerJob const&) = delete;
+  HttpServerJob& operator=(HttpServerJob const&) = delete;
 
  public:
-  char const* protocol() const override { return "https"; }
+  HttpServerJob(GeneralServer*, arangodb::WorkItem::uptr<RestHandler>&,
+                bool isAsync = false);
 
-  Endpoint::EncryptionType encryptionType() const override {
-    return Endpoint::EncryptionType::SSL;
-  }
+  ~HttpServerJob();
 
-  HttpCommTask* createCommTask(TRI_socket_t, ConnectionInfo&&) override;
+ public:
+  RestHandler* handler() const { return _handler.get(); }
 
- private:
-  SSL_CTX* _ctx;
-  int _verificationMode;
-  int (*_verificationCallback)(int, X509_STORE_CTX*);
+ public:
+  size_t queue() const override;
+  void work() override;
+  bool cancel() override;
+  void cleanup(DispatcherQueue*) override;
+  void handleError(basics::Exception const&) override;
+
+ protected:
+  GeneralServer* _server;
+  arangodb::WorkItem::uptr<RestHandler> _handler;
+  arangodb::WorkDescription* _workDesc;
+  bool _isAsync;
 };
 }
 }

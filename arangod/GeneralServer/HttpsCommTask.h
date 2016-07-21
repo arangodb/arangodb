@@ -25,13 +25,13 @@
 #ifndef ARANGOD_HTTP_SERVER_HTTPS_COMM_TASK_H
 #define ARANGOD_HTTP_SERVER_HTTPS_COMM_TASK_H 1
 
-#include "HttpServer/HttpCommTask.h"
+#include "GeneralServer/HttpCommTask.h"
 
 #include <openssl/ssl.h>
 
 namespace arangodb {
 namespace rest {
-class HttpsServer;
+class GeneralServer;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief https communication
@@ -53,7 +53,7 @@ class HttpsCommTask : public HttpCommTask {
   /// @brief constructs a new task with a given socket
   //////////////////////////////////////////////////////////////////////////////
 
-  HttpsCommTask(HttpsServer*, TRI_socket_t, ConnectionInfo&&,
+  HttpsCommTask(GeneralServer*, TRI_socket_t, ConnectionInfo&&,
                 double keepAliveTimeout, SSL_CTX* ctx, int verificationMode,
                 int (*verificationCallback)(int, X509_STORE_CTX*));
 

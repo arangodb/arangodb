@@ -25,7 +25,7 @@
 #define ARANGOD_REST_HANDLER_REST_JOB_HANDLER_H 1
 
 #include "Basics/Common.h"
-#include "HttpServer/AsyncJobManager.h"
+#include "GeneralServer/AsyncJobManager.h"
 #include "RestHandler/RestBaseHandler.h"
 
 namespace arangodb {

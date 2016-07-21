@@ -24,7 +24,7 @@
 #ifndef ARANGOD_REST_HANDLER_REST_BASE_HANDLER_H
 #define ARANGOD_REST_HANDLER_REST_BASE_HANDLER_H 1
 
-#include "HttpServer/RestHandler.h"
+#include "GeneralServer/RestHandler.h"
 
 #include "Rest/GeneralResponse.h"
 
@@ -66,9 +66,8 @@ class RestBaseHandler : public rest::RestHandler {
 
  protected:
   // write result back to client
-  void writeResult(arangodb::velocypack::Slice const& slice, 
+  void writeResult(arangodb::velocypack::Slice const& slice,
                    arangodb::velocypack::Options const& options);
-
 };
 }
 

@@ -26,11 +26,14 @@
 #ifndef ARANGOD_HTTP_SERVER_HTTP_SERVER_H
 #define ARANGOD_HTTP_SERVER_HTTP_SERVER_H 1
 
+#include "GeneralServer/GeneralDefinitions.h"
 #include "Scheduler/TaskManager.h"
-
 #include "Basics/Mutex.h"
 #include "Endpoint/ConnectionInfo.h"
-#include "HttpServer/RestHandler.h"
+#include "GeneralServer/RestHandler.h"
+#include "GeneralServer/HttpCommTask.h"
+#include "GeneralServer/HttpsCommTask.h"
+#include <openssl/ssl.h>
 
 namespace arangodb {
 class EndpointList;
@@ -39,46 +42,45 @@ namespace rest {
 
 class AsyncJobManager;
 class Dispatcher;
-class HttpCommTask;
+class GeneralCommTask;
 class HttpServerJob;
 class Job;
 class ListenTask;
 class RestHandlerFactory;
 
-class HttpServer : protected TaskManager {
-  HttpServer(HttpServer const&) = delete;
-  HttpServer const& operator=(HttpServer const&) = delete;
+class GeneralServer : protected TaskManager {
+  GeneralServer(GeneralServer const&) = delete;
+  GeneralServer const& operator=(GeneralServer const&) = delete;
 
  public:
   // destroys an endpoint server
   static int sendChunk(uint64_t, std::string const&);
 
  public:
-  HttpServer(double keepAliveTimeout,
-             bool allowMethodOverride, 
-             std::vector<std::string> const& accessControlAllowOrigins);
-  virtual ~HttpServer();
+  GeneralServer(double keepAliveTimeout, bool allowMethodOverride,
+                std::vector<std::string> const& accessControlAllowOrigins,
+                SSL_CTX* ctx = nullptr);
+  virtual ~GeneralServer();
 
  public:
   // returns the protocol
-  virtual char const* protocol() const { return "http"; }
-
-  // returns the encryption to be used
-  virtual Endpoint::EncryptionType encryptionType() const {
-    return Endpoint::EncryptionType::NONE;
-  }
+  // virtual char const* protocol() const { return "http"; }
 
   // check, if we allow a method override
-  bool allowMethodOverride() {
-    return _allowMethodOverride;
-  }
+  bool allowMethodOverride() { return _allowMethodOverride; }
 
   // generates a suitable communication task
-  virtual HttpCommTask* createCommTask(TRI_socket_t, ConnectionInfo&&);
+  virtual GeneralCommTask* createCommTask(
+      TRI_socket_t, ConnectionInfo&&, ConnectionType = ConnectionType::HTTP);
+
+  void setVerificationMode(int mode) { _verificationMode = mode; }
+  void setVerificationCallback(int (*func)(int, X509_STORE_CTX*)) {
+    _verificationCallback = func;
+  }
 
  public:
-  // list of trusted origin urls for CORS 
-  std::vector<std::string> const& trustedOrigins() const { 
+  // list of trusted origin urls for CORS
+  std::vector<std::string> const& trustedOrigins() const {
     return _accessControlAllowOrigins;
   }
 
@@ -95,26 +97,27 @@ class HttpServer : protected TaskManager {
   void stop();
 
   // handles connection request
-  void handleConnected(TRI_socket_t s, ConnectionInfo&& info);
+  void handleConnected(TRI_socket_t s, ConnectionInfo&& info, ConnectionType);
 
   // handles a connection close
-  void handleCommunicationClosed(HttpCommTask*);
+  void handleCommunicationClosed(GeneralCommTask*);
 
   // handles a connection failure
-  void handleCommunicationFailure(HttpCommTask*);
+  void handleCommunicationFailure(GeneralCommTask*);
 
   // creates a job for asynchronous execution
-  bool handleRequestAsync(HttpCommTask*, arangodb::WorkItem::uptr<RestHandler>&,
+  bool handleRequestAsync(GeneralCommTask*,
+                          arangodb::WorkItem::uptr<RestHandler>&,
                           uint64_t* jobId);
 
   // executes the handler directly or add it to the queue
-  bool handleRequest(HttpCommTask*, arangodb::WorkItem::uptr<RestHandler>&);
+  bool handleRequest(GeneralCommTask*, arangodb::WorkItem::uptr<RestHandler>&);
 
  protected:
   // Handler, Job, and Task tuple
   struct handler_task_job_t {
     RestHandler* _handler;
-    HttpCommTask* _task;
+    GeneralCommTask* _task;
     HttpServerJob* _job;
   };
 
@@ -123,10 +126,10 @@ class HttpServer : protected TaskManager {
   bool openEndpoint(Endpoint* endpoint);
 
   // handle request directly
-  void handleRequestDirectly(RestHandler* handler, HttpCommTask* task);
+  void handleRequestDirectly(RestHandler* handler, GeneralCommTask* task);
 
   // registers a task
-  void registerHandler(RestHandler* handler, HttpCommTask* task);
+  void registerHandler(RestHandler* handler, GeneralCommTask* task);
 
  protected:
   // active listen tasks
@@ -139,16 +142,22 @@ class HttpServer : protected TaskManager {
   arangodb::Mutex _commTasksLock;
 
   // active comm tasks
-  std::unordered_set<HttpCommTask*> _commTasks;
+  std::unordered_set<GeneralCommTask*> _commTasks;
 
   // keep-alive timeout
   double _keepAliveTimeout;
 
   // allow to override the method
   bool _allowMethodOverride;
-  
-  // list of trusted origin urls for CORS 
+
+  // list of trusted origin urls for CORS
   std::vector<std::string> const _accessControlAllowOrigins;
+
+ private:
+  SSL_CTX* _ctx;
+  int _verificationMode;
+  int (*_verificationCallback)(int, X509_STORE_CTX*);
+  bool _sslAllowed;
 };
 }
 }

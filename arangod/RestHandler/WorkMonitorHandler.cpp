@@ -23,7 +23,7 @@
 #include "WorkMonitorHandler.h"
 
 #include "Basics/StringUtils.h"
-#include "HttpServer/RestHandler.h"
+#include "GeneralServer/RestHandler.h"
 #include "Rest/HttpRequest.h"
 #include "velocypack/Builder.h"
 #include "velocypack/velocypack-aliases.h"
