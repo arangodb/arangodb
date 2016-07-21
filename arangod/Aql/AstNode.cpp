@@ -1834,6 +1834,18 @@ bool AstNode::isSimple() const {
     return true;
   }
 
+  if (type == NODE_TYPE_OPERATOR_NARY_AND || type == NODE_TYPE_OPERATOR_NARY_OR) {
+    // a logical operator is simple if all its operands are simple
+    for (auto const& it : members) {
+      if (!it->isSimple()) {
+        setFlag(DETERMINED_SIMPLE);
+        return false;
+      }
+    }
+    setFlag(DETERMINED_SIMPLE, VALUE_SIMPLE);
+    return true;
+  }
+
   setFlag(DETERMINED_SIMPLE);
   return false;
 }

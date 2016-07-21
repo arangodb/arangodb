@@ -808,36 +808,32 @@ void TraversalNode::fillTraversalOptions(
   AstNode* condition = nullptr;
   bool res = false;
   EdgeConditionBuilder globalEdgeConditionBuilder(this);
+  Ast* ast = _plan->getAst();
 
   opts._baseLookupInfos.reserve(numEdgeColls);
   // Compute Edge Indexes. First default indexes:
   for (size_t i = 0; i < numEdgeColls; ++i) {
     auto dir = _directions[i];
-    // TODO we can optimize here. indexCondition and nonIndexCondition could be
+    // TODO we can optimize here. indexCondition and Expression could be
     // made non-overlapping.
     traverser::TraverserOptions::LookupInfo info;
     switch (dir) {
       case TRI_EDGE_IN:
         info.indexCondition =
-            globalEdgeConditionBuilder.getInboundCondition()->clone(
-                _plan->getAst());
+            globalEdgeConditionBuilder.getInboundCondition()->clone(ast);
         break;
       case TRI_EDGE_OUT:
         info.indexCondition =
-            globalEdgeConditionBuilder.getOutboundCondition()->clone(
-                _plan->getAst());
+            globalEdgeConditionBuilder.getOutboundCondition()->clone(ast);
         break;
       case TRI_EDGE_ANY:
         info.indexCondition =
-            globalEdgeConditionBuilder.getOutboundCondition()->clone(
-                _plan->getAst());
+            globalEdgeConditionBuilder.getOutboundCondition()->clone(ast);
 
         traverser::TraverserOptions::LookupInfo infoIn;
         infoIn.indexCondition =
-            globalEdgeConditionBuilder.getInboundCondition()->clone(
-                _plan->getAst());
-        infoIn.nonIndexCondition =
-            infoIn.indexCondition->clone(_plan->getAst());
+            globalEdgeConditionBuilder.getInboundCondition()->clone(ast);
+        infoIn.expression = new Expression(ast, infoIn.indexCondition->clone(ast));
 #warning hard-coded nrItems.
         res = trx->getBestIndexHandleForFilterCondition(
             _edgeColls[i], infoIn.indexCondition, _tmpObjVariable, 1000,
@@ -848,7 +844,7 @@ void TraversalNode::fillTraversalOptions(
 
         break;
     }
-    info.nonIndexCondition = info.indexCondition->clone(_plan->getAst());
+    info.expression = new Expression(ast, info.indexCondition->clone(ast));
 #warning hard-coded nrItems.
     res = trx->getBestIndexHandleForFilterCondition(
         _edgeColls[i], info.indexCondition, _tmpObjVariable, 1000,
@@ -866,42 +862,41 @@ void TraversalNode::fillTraversalOptions(
 
     for (size_t i = 0; i < numEdgeColls; ++i) {
       auto dir = _directions[i];
-      // TODO we can optimize here. indexCondition and nonIndexCondition could be
+      // TODO we can optimize here. indexCondition and Expression could be
       // made non-overlapping.
       traverser::TraverserOptions::LookupInfo info;
       switch (dir) {
         case TRI_EDGE_IN:
           info.indexCondition =
-              globalEdgeConditionBuilder.getInboundCondition()->clone(
-                  _plan->getAst());
+              globalEdgeConditionBuilder.getInboundCondition()->clone(ast);
           break;
         case TRI_EDGE_OUT:
           info.indexCondition =
-              globalEdgeConditionBuilder.getOutboundCondition()->clone(
-                  _plan->getAst());
+              globalEdgeConditionBuilder.getOutboundCondition()->clone(ast);
           break;
         case TRI_EDGE_ANY:
+          {
           info.indexCondition =
-              globalEdgeConditionBuilder.getOutboundCondition()->clone(
-                  _plan->getAst());
+              globalEdgeConditionBuilder.getOutboundCondition()->clone(ast);
 
           traverser::TraverserOptions::LookupInfo infoIn;
           infoIn.indexCondition =
-              globalEdgeConditionBuilder.getInboundCondition()->clone(
-                  _plan->getAst());
-          infoIn.nonIndexCondition =
-              infoIn.indexCondition->clone(_plan->getAst());
+              globalEdgeConditionBuilder.getInboundCondition()->clone(ast);
+          infoIn.expression = new Expression(ast, infoIn.indexCondition->clone(ast));
 #warning hard-coded nrItems.
           res = trx->getBestIndexHandleForFilterCondition(
               _edgeColls[i], infoIn.indexCondition, _tmpObjVariable, 1000,
               infoIn.idxHandle);
-          TRI_ASSERT(res);  // Right now we have an enforced edge index which will
-                            // always fit.
+          TRI_ASSERT(
+              res);  // Right now we have an enforced edge index which will
+                     // always fit.
           infos.emplace_back(std::move(infoIn));
 
           break;
+        }
       }
-      info.nonIndexCondition = info.indexCondition->clone(_plan->getAst());
+
+      info.expression = new Expression(ast, info.indexCondition->clone(ast));
 #warning hard-coded nrItems.
       res = trx->getBestIndexHandleForFilterCondition(
           _edgeColls[i], info.indexCondition, _tmpObjVariable, 1000,
@@ -910,6 +905,11 @@ void TraversalNode::fillTraversalOptions(
                         // always fit.
       infos.emplace_back(std::move(info));
     }
+  }
+
+  for (auto& it : _vertexConditions) {
+    opts._vertexExpressions.emplace(it.first, new Expression(ast, it.second));
+    TRI_ASSERT(!opts._vertexExpressions[it.first]->isV8());
   }
 
   opts.useBreadthFirst = _options.useBreadthFirst;

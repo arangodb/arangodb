@@ -29,10 +29,11 @@
 #include "Aql/types.h"
 
 namespace arangodb {
+class Transaction;
+
 namespace aql {
 
 class AqlItemBlock;
-class AqlTransaction;
 struct Variable;
 
 /// @brief AttributeAccessor
@@ -42,7 +43,7 @@ class AttributeAccessor {
   ~AttributeAccessor() = default;
 
   /// @brief execute the accessor
-  AqlValue get(arangodb::AqlTransaction* trx, AqlItemBlock const*, size_t,
+  AqlValue get(arangodb::Transaction* trx, AqlItemBlock const*, size_t,
                std::vector<Variable const*> const&,
                std::vector<RegisterId> const&, bool& mustDestroy);
     

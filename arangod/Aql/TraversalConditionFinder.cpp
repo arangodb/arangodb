@@ -159,9 +159,6 @@ static bool matchesPathAccessPattern(AstNode const* testee,
 
 static void transformCondition(AstNode const* node, Variable const* pvar,
                                Ast* ast, TraversalNode* tn) {
-  // TODO REMOVE OUTPUT
-  node->dump(0);
-
   TRI_ASSERT(node->type == NODE_TYPE_OPERATOR_NARY_OR);
   // We do not support OR conditions for pruning
   TRI_ASSERT(node->numMembers() == 1);

@@ -297,10 +297,6 @@ public:
                            arangodb::velocypack::Builder&) override;
 
  private:
-  bool edgeMatchesConditions(arangodb::velocypack::Slice, size_t);
-
-  bool vertexMatchesConditions(arangodb::velocypack::Slice, size_t);
-
   std::vector<TRI_document_collection_t*> _edgeCols;
 
   //////////////////////////////////////////////////////////////////////////////

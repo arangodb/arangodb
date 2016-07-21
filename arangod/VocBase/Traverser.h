@@ -42,6 +42,7 @@ class Slice;
 
 namespace aql {
 struct AstNode;
+class Expression;
 class TraversalNode;
 }
 namespace traverser {
@@ -223,19 +224,23 @@ struct TraverserOptions {
  private:
 
   struct LookupInfo {
-    // This struct does not take responsibility for anything.
+    // This struct does only take responsibility for the expression
+    // NOTE: The expression can be nullptr!
     arangodb::Transaction::IndexHandle idxHandle;
-    aql::AstNode* nonIndexCondition;
+    aql::Expression* expression;
     aql::AstNode* indexCondition;
 
-    LookupInfo() : nonIndexCondition(nullptr), indexCondition(nullptr){};
-    ~LookupInfo() {};
+    LookupInfo() : expression(nullptr), indexCondition(nullptr){};
+    ~LookupInfo();
+
+    LookupInfo(LookupInfo const&);
   };
 
  private:
   arangodb::Transaction* _trx;
   std::vector<LookupInfo> _baseLookupInfos;
   std::unordered_map<size_t, std::vector<LookupInfo>> _depthLookupInfo;
+  std::unordered_map<size_t, aql::Expression*> _vertexExpressions;
 
   aql::Variable const* _tmpVar;
 
@@ -259,7 +264,12 @@ struct TraverserOptions {
         uniqueEdges(UniquenessLevel::PATH) {
   }
 
-  bool evaluateEdgeExpression(arangodb::velocypack::Slice, size_t) const;
+  ~TraverserOptions();
+
+  TraverserOptions(TraverserOptions const&);
+
+  bool evaluateEdgeExpression(arangodb::velocypack::Slice,
+                              arangodb::velocypack::Slice, size_t) const;
 
   bool evaluateVertexExpression(arangodb::velocypack::Slice, size_t) const;
 
@@ -407,6 +417,11 @@ class Traverser {
   //////////////////////////////////////////////////////////////////////////////
 
   bool hasMore() { return !_done; }
+
+  bool edgeMatchesConditions(arangodb::velocypack::Slice,
+                             arangodb::velocypack::Slice, size_t);
+
+  bool vertexMatchesConditions(arangodb::velocypack::Slice, size_t);
 
  protected:
   //////////////////////////////////////////////////////////////////////////////

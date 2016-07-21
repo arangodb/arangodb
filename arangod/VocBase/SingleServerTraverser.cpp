@@ -107,33 +107,13 @@ SingleServerTraverser::SingleServerTraverser(TraverserOptions& opts,
 
 SingleServerTraverser::~SingleServerTraverser() {}
 
-bool SingleServerTraverser::edgeMatchesConditions(VPackSlice e, size_t depth) {
-  if (_opts.evaluateEdgeExpression(e, depth)) {
-    ++_filteredPaths;
-    return false;
-  }
-  return true;
-}
-
-bool SingleServerTraverser::vertexMatchesConditions(VPackSlice v,
-                                                    size_t depth) {
-  TRI_ASSERT(v.isString());
-#warning it is possible to not fetch the vertex if no check is required.
-  aql::AqlValue vertex = fetchVertexData(v);
-  if (!_opts.evaluateVertexExpression(vertex.slice(), depth)) {
-    ++_filteredPaths;
-    return false;
-  }
-  return true;
-}
-
 aql::AqlValue SingleServerTraverser::fetchVertexData(VPackSlice id) {
   TRI_ASSERT(id.isString());
   auto it = _vertices.find(id);
 
   if (it == _vertices.end()) {
     TRI_doc_mptr_t mptr;
-#warning Do we need the copy here
+#warning Do we need the copy here?
     int res = FetchDocumentById(_trx, id.copyString(), &mptr);
     ++_readDocuments;
     if (res != TRI_ERROR_NO_ERROR) {
@@ -427,9 +407,11 @@ bool SingleServerTraverser::EdgeGetter::nextCursor(std::string const& startVerte
   */
 }
 
+#warning Deprecated
 void SingleServerTraverser::EdgeGetter::nextEdge(
     std::string const& startVertex, size_t& eColIdx, size_t*& last,
     std::vector<std::string>& edges) {
+  /*
 
   if (last == nullptr) {
     _posInCursor.push(0);
@@ -502,6 +484,7 @@ void SingleServerTraverser::EdgeGetter::nextEdge(
     edges.emplace_back(std::move(id));
     return;
   }
+*/
 }
 
 void SingleServerTraverser::EdgeGetter::getEdge(std::string const& startVertex,

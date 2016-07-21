@@ -58,7 +58,7 @@ V8Expression::~V8Expression() {
 
 /// @brief execute the expression
 AqlValue V8Expression::execute(v8::Isolate* isolate, Query* query,
-                               arangodb::AqlTransaction* trx,
+                               arangodb::Transaction* trx,
                                AqlItemBlock const* argv, size_t startPos,
                                std::vector<Variable const*> const& vars,
                                std::vector<RegisterId> const& regs,

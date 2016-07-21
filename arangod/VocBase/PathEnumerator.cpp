@@ -62,6 +62,14 @@ bool DepthFirstEnumerator::next() {
       TRI_ASSERT(_edgeCursors.size() == _enumeratedPath.edges.size() + 1);
       auto cursor = _edgeCursors.top();
       if (cursor->next(_enumeratedPath.edges)) {
+        if (!_traverser->edgeMatchesConditions(_enumeratedPath.edges.back(),
+                                               _enumeratedPath.vertices.back(),
+                                               _enumeratedPath.edges.size())) {
+            // This edge does not pass the filtering
+            _enumeratedPath.edges.pop_back();
+            continue;
+        }
+
         if (_opts->uniqueEdges == TraverserOptions::UniquenessLevel::PATH) {
           auto& e = _enumeratedPath.edges.back();
           bool foundOnce = false;
@@ -81,11 +89,19 @@ bool DepthFirstEnumerator::next() {
             continue;
           }
         }
-        
+
 #warning not yet finished
         // We have to check if edge and vertex is valid
         if (_traverser->getVertex(_enumeratedPath.edges.back(),
                                   _enumeratedPath.vertices)) {
+          if (!_traverser->vertexMatchesConditions(
+                  _enumeratedPath.vertices.back(),
+                  _enumeratedPath.vertices.size())) {
+            // This edge does not pass the filtering
+            _enumeratedPath.vertices.pop_back();
+            _enumeratedPath.edges.pop_back();
+            continue;
+          }
           // case both are valid.
           if (_opts->uniqueVertices == TraverserOptions::UniquenessLevel::PATH) {
             auto& e = _enumeratedPath.vertices.back();

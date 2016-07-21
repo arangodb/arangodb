@@ -26,7 +26,7 @@
 #include "Aql/Variable.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Utils/AqlTransaction.h"
+#include "Utils/Transaction.h"
 
 using namespace arangodb::aql;
 
@@ -67,7 +67,7 @@ void AttributeAccessor::replaceVariable(std::unordered_map<VariableId, Variable 
 }
 
 /// @brief execute the accessor
-AqlValue AttributeAccessor::get(arangodb::AqlTransaction* trx,
+AqlValue AttributeAccessor::get(arangodb::Transaction* trx,
                                 AqlItemBlock const* argv, size_t startPos,
                                 std::vector<Variable const*> const& vars,
                                 std::vector<RegisterId> const& regs,
