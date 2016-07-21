@@ -775,6 +775,9 @@ class Transaction {
 
   void setAllowImplicitCollections(bool value) {
     _allowImplicitCollections = value;
+    if (_trx != nullptr) {
+      _trx->_allowImplicit = value;
+    }
   }
 
   //////////////////////////////////////////////////////////////////////////////

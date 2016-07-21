@@ -32,8 +32,14 @@ var jsunity = require("jsunity");
 var arangodb = require("@arangodb");
 var internal = require("internal");
 var ERRORS = arangodb.errors;
+var cluster;
+var isOnServer = (typeof ArangoClusterComm === "object");
+if (isOnServer) {
+  cluster = require("@arangodb/cluster");
+} else {
+  cluster = {};
+}
 var db = arangodb.db;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -237,7 +243,7 @@ function TransactionsImplicitCollectionsSuite () {
       db._drop(cn1);
       db._drop(cn2);
       c1 = db._create(cn1);
-      c2 = db._create(cn2);
+      c2 = db._createEdgeCollection(cn2);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -252,17 +258,140 @@ function TransactionsImplicitCollectionsSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test allowImplicit
+////////////////////////////////////////////////////////////////////////////////
+
+    testSingleReadOnly : function () {
+      assertEqual([], db._executeTransaction({
+        collections: { allowImplicit: false, read: cn1 },
+        action: "function (params) { " +
+          "return require('internal').db._query('FOR doc IN @@cn1 RETURN doc', { '@cn1' : params.cn }).toArray(); }",
+        params: { cn: cn1 }
+      }));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test allowImplicit
+////////////////////////////////////////////////////////////////////////////////
+
+    testSingleWriteOnly : function () {
+      assertEqual([], db._executeTransaction({
+        collections: { allowImplicit: false, write: cn1 },
+        action: "function (params) { " +
+          "return require('internal').db._query('FOR doc IN @@cn RETURN doc', { '@cn' : params.cn }).toArray(); }",
+        params: { cn: cn1 }
+      }));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test allowImplicit
+////////////////////////////////////////////////////////////////////////////////
+
+    testSingleReadWrite : function () {
+      assertEqual([], db._executeTransaction({
+        collections: { allowImplicit: false, write: cn1, read: cn1 },
+        action: "function (params) { " +
+          "return require('internal').db._query('FOR doc IN @@cn RETURN doc', { '@cn' : params.cn }).toArray(); }",
+        params: { cn: cn1 }
+      }));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test allowImplicit
+////////////////////////////////////////////////////////////////////////////////
+
+    testMultiRead : function () {
+      try {
+        db._executeTransaction({
+          collections: { allowImplicit: false, read: cn1 },
+          action: "function (params) { " +
+            "return require('internal').db._query('FOR doc IN @@cn RETURN doc', { '@cn' : params.cn }).toArray(); }",
+          params: { cn: cn2 }
+        });
+        fail();
+      }
+      catch (err) {
+        assertEqual(ERRORS.ERROR_TRANSACTION_UNREGISTERED_COLLECTION.code, err.errorNum);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief uses implicitly declared collections in AQL
+////////////////////////////////////////////////////////////////////////////////
+
+    testUseInAqlTraversal : function () {
+      var result = db._executeTransaction({
+        collections: { allowImplicit: false, read: cn2 },
+        action: "function (params) { " +
+          "return require('internal').db._query('FOR i IN ANY @start @@cn RETURN i', { '@cn' : params.cn, start: params.cn + '/1' }).toArray(); }",
+        params: { cn: cn2 }
+      });
+      assertEqual([ ], result);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief uses implicitly declared collections in AQL
+////////////////////////////////////////////////////////////////////////////////
+
+    testUseInAqlTraversalTwoCollections : function () {
+      var result = db._executeTransaction({
+        collections: { allowImplicit: false, read: [ cn1, cn2 ] },
+        action: "function (params) { " +
+          "return require('internal').db._query('FOR i IN ANY @start @@cn RETURN i', { '@cn' : params.cn, start: params.cn + '/1' }).toArray(); }",
+        params: { cn: cn2 }
+      });
+      assertEqual([ ], result);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief uses implicitly declared collections in AQL
+////////////////////////////////////////////////////////////////////////////////
+
+    testUseInAqlTraversalUndeclared : function () {
+      try {
+        db._executeTransaction({
+          collections: { allowImplicit: false, read: cn1 },
+          action: "function (params) { " +
+            "return require('internal').db._query('FOR i IN ANY @start @@cn RETURN i', { '@cn' : params.cn, start: params.cn + '/1' }).toArray(); }",
+          params: { cn: cn2 }
+        });
+      }
+      catch (err) {
+        assertEqual(ERRORS.ERROR_TRANSACTION_UNREGISTERED_COLLECTION.code, err.errorNum);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief uses implicitly declared collections in AQL
 ////////////////////////////////////////////////////////////////////////////////
 
     testUseInAql : function () {
       var result = db._executeTransaction({
-        collections: { allowImplicit: false },
+        collections: { allowImplicit: false, read: cn1 },
         action: "function (params) { " +
           "return require('internal').db._query('FOR i IN @@cn1 RETURN i', { '@cn1' : params.cn1 }).toArray(); }",
         params: { cn1: cn1 }
       });
       assertEqual([ ], result);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief uses implicitly declared collections in AQL
+////////////////////////////////////////////////////////////////////////////////
+
+    testUseInAqlUndeclared : function () {
+      try {
+        db._executeTransaction({
+          collections: { allowImplicit: false },
+          action: "function (params) { " +
+            "return require('internal').db._query('FOR i IN @@cn1 RETURN i', { '@cn1' : params.cn1 }).toArray(); }",
+          params: { cn1: cn1 }
+        });
+        fail();
+      }
+      catch (err) {
+        assertEqual(ERRORS.ERROR_TRANSACTION_UNREGISTERED_COLLECTION.code, err.errorNum);
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -387,6 +516,10 @@ function TransactionsImplicitCollectionsSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUseOtherForWriteNoAllowImplicit : function () {
+      if ((cluster && cluster.isCluster && cluster.isCluster()) || !cluster.isCluster) {
+        return;
+      }
+
       try {
         db._executeTransaction({
           collections: { read: cn1, allowImplicit : false },

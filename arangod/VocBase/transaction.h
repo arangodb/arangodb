@@ -127,6 +127,7 @@ struct TRI_transaction_t {
 #endif
   TRI_transaction_hint_t _hints;      // hints;
   int _nestingLevel;
+  bool _allowImplicit;
   bool _hasOperations;
   bool _waitForSync;   // whether or not the collection had a synchronous op
   bool _beginWritten;  // whether or not the begin marker was already written
