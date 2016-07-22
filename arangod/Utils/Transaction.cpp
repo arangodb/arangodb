@@ -3334,7 +3334,8 @@ int Transaction::addCollectionEmbedded(TRI_voc_cid_t cid, TRI_transaction_type_e
 
   if (res != TRI_ERROR_NO_ERROR) {
     if (res == TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(res, std::string(TRI_errno_string(res)) + ": " + resolver()->getCollectionNameCluster(cid));
+      // special error message to indicate which collection was undeclared
+      THROW_ARANGO_EXCEPTION_MESSAGE(res, std::string(TRI_errno_string(res)) + ": " + resolver()->getCollectionNameCluster(cid) + " [" + TRI_TransactionTypeGetStr(type) + "]");
     }
     return registerError(res);
   }
@@ -3361,7 +3362,8 @@ int Transaction::addCollectionToplevel(TRI_voc_cid_t cid, TRI_transaction_type_e
 
   if (res != TRI_ERROR_NO_ERROR) {
     if (res == TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(res, std::string(TRI_errno_string(res)) + ": " + resolver()->getCollectionNameCluster(cid));
+      // special error message to indicate which collection was undeclared
+      THROW_ARANGO_EXCEPTION_MESSAGE(res, std::string(TRI_errno_string(res)) + ": " + resolver()->getCollectionNameCluster(cid) + " [" + TRI_TransactionTypeGetStr(type) + "]");
     }
     registerError(res);
   }
@@ -3382,6 +3384,7 @@ int Transaction::setupTransaction() {
   if (_trx != nullptr) {
     // yes, we are embedded
     _setupState = setupEmbedded();
+    _allowImplicitCollections = _trx->_allowImplicit;
   } else {
     // non-embedded
     _setupState = setupToplevel();

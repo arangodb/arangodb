@@ -365,6 +365,60 @@ function TransactionsImplicitCollectionsSuite () {
 /// @brief uses implicitly declared collections in AQL
 ////////////////////////////////////////////////////////////////////////////////
 
+    testUseInAqlTraversalUndeclared2 : function () {
+      try {
+        db._executeTransaction({
+          collections: { allowImplicit: false, read: cn2 },
+          action: "function (params) { " +
+            "return require('internal').db._query('FOR i IN ANY @start @@cn RETURN i', { '@cn' : params.cn2, start: params.cn1 + '/1' }).toArray(); }",
+          params: { cn1: cn1, cn2: cn2 }
+        });
+      }
+      catch (err) {
+        assertEqual(ERRORS.ERROR_TRANSACTION_UNREGISTERED_COLLECTION.code, err.errorNum);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief uses implicitly declared collections in AQL
+////////////////////////////////////////////////////////////////////////////////
+
+    testUseInAqlTraversalUndeclared3 : function () {
+      try {
+        db._executeTransaction({
+          collections: { allowImplicit: false, read: cn1 },
+          action: "function (params) { " +
+            "return require('internal').db._query('FOR i IN ANY @start @@cn RETURN i', { '@cn' : params.cn2, start: params.cn1 + '/1' }).toArray(); }",
+          params: { cn1: cn1, cn2: cn2 }
+        });
+      }
+      catch (err) {
+        assertEqual(ERRORS.ERROR_TRANSACTION_UNREGISTERED_COLLECTION.code, err.errorNum);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief uses implicitly declared collections in AQL
+////////////////////////////////////////////////////////////////////////////////
+
+    testUseInAqlDocument : function () {
+      try {
+        db._executeTransaction({
+          collections: { allowImplicit: false, read: cn1 },
+          action: "function (params) { " +
+            "return require('internal').db._query('RETURN DOCUMENT(@v)', { v: params.cn + '/1' }).toArray(); }",
+          params: { cn: cn2 }
+        });
+      }
+      catch (err) {
+        assertEqual(ERRORS.ERROR_TRANSACTION_UNREGISTERED_COLLECTION.code, err.errorNum);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief uses implicitly declared collections in AQL
+////////////////////////////////////////////////////////////////////////////////
+
     testUseInAql : function () {
       var result = db._executeTransaction({
         collections: { allowImplicit: false, read: cn1 },
