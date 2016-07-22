@@ -8,6 +8,6 @@ Returns the name of the current database as a string.
 @EXAMPLES
 
 @EXAMPLE_ARANGOSH_OUTPUT{dbName}
-  require("internal").db._name();
+  require("@arangodb").db._name();
 @END_EXAMPLE_ARANGOSH_OUTPUT
 

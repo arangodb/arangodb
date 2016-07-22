@@ -9,6 +9,6 @@ database.
 @EXAMPLES
 
 @EXAMPLE_ARANGOSH_OUTPUT{dbVersion}
-  require("internal").db._version();
+  require("@arangodb").db._version();
 @END_EXAMPLE_ARANGOSH_OUTPUT
 
