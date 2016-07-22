@@ -32,10 +32,9 @@
 #include "Basics/WorkItem.h"
 
 #include <deque>
-
 namespace arangodb {
-class HttpRequest;
-class HttpResponse;
+class GeneralRequest;
+class GeneralResponse;
 
 namespace rest {
 class GeneralServer;
@@ -45,170 +44,58 @@ class GeneralCommTask : public SocketTask, public RequestStatisticsAgent {
   GeneralCommTask const& operator=(GeneralCommTask const&) = delete;
 
  public:
-  static size_t const MaximalHeaderSize;
-  static size_t const MaximalBodySize;
-  static size_t const MaximalPipelineSize;
-  static size_t const RunCompactEvery;
-
- public:
   GeneralCommTask(GeneralServer*, TRI_socket_t, ConnectionInfo&&,
                   double keepAliveTimeout);
 
- protected:
-  ~GeneralCommTask();
-
- public:
   // return whether or not the task desires to start a dispatcher thread
-  bool startThread() const { return _startThread; }
+  bool startThread() const { return _startThread; }  // called by server
+  void handleResponse(GeneralResponse*);             // called by server
 
-  // handles response
-  void handleResponse(HttpResponse*);
-
-  // handles simple errors
   void handleSimpleError(GeneralResponse::ResponseCode);
   void handleSimpleError(GeneralResponse::ResponseCode, int code,
                          std::string const& errorMessage);
 
-  // reads data from the socket
-  bool processRead();
-
-  // sends more chunked data
-  void sendChunk(basics::StringBuffer*);
-
-  // chunking is finished
-  void finishedChunked();
-
   // task set up complete
-  void setupDone();
+  void setupDone() { _setupDone.store(true, std::memory_order_relaxed); }
 
- private:
-  // returns the authentication realm
-  std::string authenticationRealm() const;
+ protected:
+  virtual ~GeneralCommTask();
 
-  // checks the authentication
-  GeneralResponse::ResponseCode authenticateRequest();
+  virtual void addResponse(GeneralResponse*) = 0;
+  virtual bool processRead() = 0;
+  virtual void processRequest() = 0;
+  virtual void resetState(bool) = 0;
 
-  // reads data from the socket
-  void addResponse(HttpResponse*);
+  virtual bool handleEvent(EventToken token,
+                           EventType events) override;  // called by TODO
+  virtual bool setup(Scheduler* scheduler,
+                     EventLoop loop) override;  // called by
 
-  // check the content-length header of a request and fail it is broken
-  bool checkContentLength(bool expectContentLength);
-
-  // fills the write buffer
-  void fillWriteBuffer();
-
-  // handles CORS options
-  void processCorsOptions();
-
-  // processes a request
-  void processRequest();
+  void cleanup() override final { SocketTask::cleanup(); }
 
   // clears the request object
-  void clearRequest();
-
-  // resets the internal state
-  //
-  // this method can be called to clean up when the request handling aborts
-  // prematurely
-  void resetState(bool close);
-
- protected:
-  bool setup(Scheduler* scheduler, EventLoop loop) override;
-  void cleanup() override;
-  bool handleEvent(EventToken token, EventType events) override;
-  void signalTask(TaskData*) override;
-
- protected:
-  bool handleRead() override;
-  void completedWriteBuffer() override;
-  void handleTimeout() override;
-
- protected:
-  // connection info
-  ConnectionInfo _connectionInfo;
-
-  // the underlying server
-  GeneralServer* const _server;
-
-  // allow method override
-  bool _allowMethodOverride;
-
-  char const* _protocol;
+  void clearRequest() {
+    delete _request;
+    _request = nullptr;
+  }
 
  private:
-  // write buffers
-  std::deque<basics::StringBuffer*> _writeBuffers;
+  void handleTimeout() override final;
 
-  // statistics buffers
-  std::deque<TRI_request_statistics_t*> _writeBuffersStats;
-
-  // current read position
-  size_t _readPosition;
-
-  // start of the body position
-  size_t _bodyPosition;
-
-  // body length
-  size_t _bodyLength;
-
-  // true if request is complete but not handled
-  bool _requestPending;
-
-  // true if a close has been requested by the client
-  bool _closeRequested;
-
-  // true if reading the request body
-  bool _readRequestBody;
-
-  // whether or not to allow credentialed requests (only CORS)
-  bool _denyCredentials;
-
-  // whether the client accepts deflate algorithm
-  bool _acceptDeflate;
-
-  // new request started
-  bool _newRequest;
-
-  // true if within a chunked response
-  bool _isChunked;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief start a separate thread if the task is added to the dispatcher?
-  //////////////////////////////////////////////////////////////////////////////
-
+ protected:
+  GeneralServer* const _server;
+  GeneralRequest* _request;  // the request with possible incomplete body
+  ConnectionInfo _connectionInfo;
+  char const* _protocol;  // protocal to use http, vpp
+  GeneralRequest::ProtocolVersion _protocolVersion;
   bool _startThread;
-
-  // the request with possible incomplete body
-  HttpRequest* _request;
-
-  // http version number used
-  GeneralRequest::ProtocolVersion _httpVersion;
-
-  // type of request (GET, POST, ...)
-  GeneralRequest::RequestType _requestType;
-
-  // value of requested URL
-  std::string _fullUrl;
-
-  // value of the HTTP origin header the client sent (if any, CORS only)
-  std::string _origin;
-
-  // start position of current request
-  size_t _startPosition;
-
-  // number of requests since last compactification
-  size_t _sinceCompactification;
-
-  // original body length
-  size_t _originalBodyLength;
-
-  // task ready
-  std::atomic<bool> _setupDone;
-
-  // authentication real
-  std::string const _authenticationRealm;
-
-};  // Commontask
+  std::deque<basics::StringBuffer*> _writeBuffers;
+  std::deque<TRI_request_statistics_t*>
+      _writeBuffersStats;        // statistics buffers
+  bool _isChunked;               // true if within a chunked response
+  bool _requestPending;          // true if request is complete but not handled
+  std::atomic<bool> _setupDone;  // task ready
+};                               // Commontask
 }  // rest
 }  // arango
 

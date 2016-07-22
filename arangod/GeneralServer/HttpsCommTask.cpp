@@ -20,6 +20,7 @@
 ///
 /// @author Dr. Frank Celler
 /// @author Achim Brandt
+//  @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "HttpsCommTask.h"
@@ -34,10 +35,6 @@
 
 using namespace arangodb;
 using namespace arangodb::rest;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs a new task with a given socket
-////////////////////////////////////////////////////////////////////////////////
 
 HttpsCommTask::HttpsCommTask(GeneralServer* server, TRI_socket_t socket,
                              ConnectionInfo&& info, double keepAliveTimeout,
@@ -55,10 +52,6 @@ HttpsCommTask::HttpsCommTask(GeneralServer* server, TRI_socket_t socket,
       _verificationCallback(verificationCallback) {
   _tmpReadBuffer = new char[READ_BLOCK_SIZE];
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destructs a task
-////////////////////////////////////////////////////////////////////////////////
 
 HttpsCommTask::~HttpsCommTask() {
   shutdownSsl(true);
