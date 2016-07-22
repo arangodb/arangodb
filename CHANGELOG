@@ -1,6 +1,8 @@
 devel
 -----
 
+* replaced require("internal").db by require("@arangodb").db
+
 * added option `--skip-lines` for arangoimp
   this allows skipping the first few lines from the import file in case the
   CSV or TSV import are used
@@ -31,6 +33,10 @@ devel
 
 v3.0.4 (XXXX-XX-XX)
 -------------------
+
+* replaced require("internal").db by require("@arangodb").db
+
+* fixed issue #1953
 
 * fixed issue #1950
 
