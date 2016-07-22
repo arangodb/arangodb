@@ -21,7 +21,7 @@ Returns the name of the current database as a string.
 
 @startDocuBlockInline dbName
 @EXAMPLE_ARANGOSH_OUTPUT{dbName}
-  require("internal").db._name();
+  require("@arangodb").db._name();
 @END_EXAMPLE_ARANGOSH_OUTPUT
 @endDocuBlock dbName
 
@@ -41,7 +41,7 @@ Returns the id of the current database as a string.
 
 @startDocuBlockInline dbId
 @EXAMPLE_ARANGOSH_OUTPUT{dbId}
-  require("internal").db._id();
+  require("@arangodb").db._id();
 @END_EXAMPLE_ARANGOSH_OUTPUT
 @endDocuBlock dbId
 
@@ -61,7 +61,7 @@ Returns the filesystem path of the current database as a string.
 
 @startDocuBlockInline dbPath
 @EXAMPLE_ARANGOSH_OUTPUT{dbPath}
-  require("internal").db._path();
+  require("@arangodb").db._path();
 @END_EXAMPLE_ARANGOSH_OUTPUT
 @endDocuBlock dbPath
 

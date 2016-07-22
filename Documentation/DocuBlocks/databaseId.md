@@ -8,6 +8,6 @@ Returns the id of the current database as a string.
 @EXAMPLES
 
 @EXAMPLE_ARANGOSH_OUTPUT{dbId}
-  require("internal").db._id();
+  require("@arangodb").db._id();
 @END_EXAMPLE_ARANGOSH_OUTPUT
 
