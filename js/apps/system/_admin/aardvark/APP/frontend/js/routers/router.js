@@ -55,8 +55,18 @@
       }
 
       if (this.graphViewer2) {
-        this.graphViewer2.graphSettingsView.hide();
+        if (this.graphViewer2.graphSettingsView) {
+          this.graphViewer2.graphSettingsView.hide();
+        }
       }
+    },
+
+    listenerFunctions: {},
+
+    listener: function (event) {
+      _.each(window.App.listenerFunctions, function (func, key) {
+        func(event);
+      });
     },
 
     checkUser: function () {
@@ -133,6 +143,8 @@
       if (frontendConfig.isCluster === true) {
         this.isCluster = true;
       }
+
+      document.addEventListener('keyup', this.listener, false);
 
       // This should be the only global object
       window.modalView = new window.ModalView();
@@ -876,6 +888,9 @@
       }
       if (this.queryView) {
         this.queryView.resize();
+      }
+      if (this.naviView) {
+        this.naviView.resize();
       }
       if (this.graphViewer2) {
         this.graphViewer2.resize();

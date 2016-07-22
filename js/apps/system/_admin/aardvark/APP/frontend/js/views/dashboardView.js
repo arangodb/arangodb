@@ -232,7 +232,7 @@
         if (v < 0) {
           tempColor = '#d05448';
         } else {
-          tempColor = '#7da817';
+          tempColor = '#77DB99';
           p = '+';
         }
         if (self.history.hasOwnProperty(self.server) &&

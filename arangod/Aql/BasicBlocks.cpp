@@ -30,6 +30,23 @@ using namespace arangodb::aql;
 
 using Json = arangodb::basics::Json;
 
+void SingletonBlock::buildWhitelist() {
+  if (!_whitelistBuilt) {
+    auto en = static_cast<SingletonNode const*>(getPlanNode());
+    auto const& registerPlan = en->getRegisterPlan()->varInfo;
+    std::unordered_set<Variable const*> const& varsUsedLater = en->getVarsUsedLater();
+
+    for (auto const& it : varsUsedLater) {
+      auto it2 = registerPlan.find(it->id);
+
+      if (it2 != registerPlan.end()) {
+        _whitelist.emplace((*it2).second.registerId);
+      }
+    }
+  }
+  _whitelistBuilt = true;
+}
+
 /// @brief initializeCursor, store a copy of the register values coming from
 /// above
 int SingletonBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
@@ -38,24 +55,11 @@ int SingletonBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
   deleteInputVariables();
 
   if (items != nullptr) {
-    auto en = static_cast<SingletonNode const*>(getPlanNode());
-    auto const& registerPlan = en->getRegisterPlan()->varInfo;
-    std::unordered_set<Variable const*> const& varsUsedLater =
-        en->getVarsUsedLater();
-
     // build a whitelist with all the registers that we will copy from above
-    std::unordered_set<RegisterId> whitelist;
-
-    for (auto const& it : varsUsedLater) {
-      auto it2 = registerPlan.find(it->id);
-
-      if (it2 != registerPlan.end()) {
-        whitelist.emplace((*it2).second.registerId);
-      }
-    }
-
+    buildWhitelist();
     deleteInputVariables();
-    _inputRegisterValues = items->slice(pos, whitelist);
+    TRI_ASSERT(_whitelistBuilt);
+    _inputRegisterValues = items->slice(pos, _whitelist);
   }
 
   _done = false;
@@ -88,14 +92,23 @@ int SingletonBlock::getOrSkipSome(size_t,  // atLeast,
 
     try {
       if (_inputRegisterValues != nullptr) {
+        buildWhitelist();
+        TRI_ASSERT(_whitelistBuilt); 
+
         skipped++;
         for (RegisterId reg = 0; reg < _inputRegisterValues->getNrRegs();
              ++reg) {
+          if (_whitelist.find(reg) == _whitelist.end()) {
+            continue;
+          }
           TRI_IF_FAILURE("SingletonBlock::getOrSkipSome") {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
           }
 
           AqlValue a = _inputRegisterValues->getValue(0, reg);
+          if (a.isEmpty()) {
+            continue;
+          }
           _inputRegisterValues->steal(a);
 
           try {

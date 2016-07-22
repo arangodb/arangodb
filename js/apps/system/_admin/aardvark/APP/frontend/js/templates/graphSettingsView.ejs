@@ -19,7 +19,10 @@
             <% if (val.type === 'divider') { %>
               <div class="pure-u-1-1 left heading"><%=val.name%></div>
             <% } else { %>
-            <div class="<%= genClass %> left"><%=val.name%></div>
+            <div class="<%= genClass %> left">
+              <i title="<%=val.desc%>" class="fa fa-info-circle gv-tooltips" aria-hidden="true"></i>
+              <%=val.name%>
+            </div>
             <div class="<%= genClass2 %> left">
 
               <% if (val.type === 'select') { %>
@@ -41,7 +44,8 @@
               <% } %>
 
               <% if (val.type === 'range') { %>
-                <input id="g_<%=key%>" type='range' min="0" max="50" val="<%=VALUE%>"/>
+                <label id="g_<%=key%>_label" class="rangeLabel">1</label>
+                <input id="g_<%=key%>" type='range' min="0" max="30" val="1"/>
               <% } %>
 
               <% if (val.type === 'color') { %>
@@ -64,10 +68,12 @@
             <% if (val.type === 'divider') { %>
               <div class="pure-u-1-1 left heading"><%=val.name%></div>
             <% } else { %>
+              <div class="<%= genClass %> left">
+                <i title="<%=val.desc%>" class="fa fa-info-circle gv-tooltips" aria-hidden="true"></i>
+                <%=val.name%>
+              </div>
 
-              <div class="<%= genClass %> left"><%=val.name%></div>
               <div class="<%= genClass2 %> left">
-
 
                 <% var VALUE; %>
                 <% if (val.value) { %>
@@ -89,7 +95,8 @@
                 <% } %>
 
                 <% if (val.type === 'range') { %>
-                  <input id="g_<%=key%>" type='range' min="0" max="100" val="<%=VALUE%>"/>
+                  <label id="g_<%=key%>_label" class="rangeLabel">1</label>
+                  <input id="g_<%=key%>" type='range' min="0" max="30" val="1"/>
                 <% } %>
 
                 <% if (val.type === 'select') { %>

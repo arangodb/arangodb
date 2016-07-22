@@ -4,6 +4,11 @@
   .social-icons {
     display: none;
   }
+
+  #navigationBar {
+    overflow: scroll;
+    overflow-x: hidden !important;
+  }
 }
 
 @media (max-height: 525px) {
@@ -401,5 +406,8 @@
   }
 }
 
-@media (min-width: 1042px) and (max-width: 1284px) {
+@media (max-width: 1024px) {
+  #docsSort {
+    display: none;
+  }
 }
