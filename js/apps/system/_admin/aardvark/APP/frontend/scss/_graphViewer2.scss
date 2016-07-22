@@ -3,6 +3,7 @@
   margin-top: 3px;
 
   #graph-container {
+    @extend %not-selectable;
     background-color: $c-white;
     z-index: 5;
   }
@@ -90,6 +91,10 @@
 
   button {
     margin-bottom: 125px;
+  }
+
+  select {
+    width: 222px;
   }
 }
 

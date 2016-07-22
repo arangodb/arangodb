@@ -70,6 +70,11 @@
             "frontend/js/lib/sigma.canvas.edges.labels.curve.js",
             "frontend/js/lib/sigma.canvas.edges.labels.curvedArrow.js",
             "frontend/js/lib/sigma.canvas.edges.labels.def.js",
+            // "frontend/js/lib/sigma.canvas.edges.curve.js",
+            "frontend/js/lib/sigma.canvas.edges.autoCurve.js",
+            "frontend/js/lib/sigma.canvas.edges.tapered.js",
+            "frontend/js/lib/sigma.canvas.edges.dotted.js",
+            "frontend/js/lib/sigma.canvas.edges.dashed.js",
             "frontend/js/lib/worker.js",
             "frontend/js/lib/supervisor.js",
             // END SIGMA LIBRARIES

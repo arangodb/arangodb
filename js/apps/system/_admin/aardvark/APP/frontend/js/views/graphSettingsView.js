@@ -27,32 +27,35 @@
       'layout': {
         type: 'select',
         name: 'Layout algorithm',
+        desc: 'Different graph displaying algorithms. No overlap is very fast, force is slower and fruchtermann is the slowest. The calculation time strongly depends on your nodes and edges counts.',
         noverlap: {
-          name: 'No overlap (fast)',
+          name: 'No overlap',
           val: 'noverlap'
         },
         force: {
-          name: 'Force (slow)',
+          name: 'Force',
           val: 'force'
         },
         fruchtermann: {
-          name: 'Fruchtermann (very slow)',
+          name: 'Fruchtermann',
           val: 'fruchtermann'
         }
       },
       'renderer': {
         type: 'select',
         name: 'Renderer',
+        desc: 'Canvas enables editing, WebGL is only for displaying a graph but much faster.',
         canvas: {
-          name: 'Canvas (editable)',
+          name: 'Canvas',
           val: 'canvas'
         },
         webgl: {
-          name: 'WebGL (only display)',
+          name: 'WebGL',
           val: 'webgl'
         }
       },
       'depth': {
+        desc: 'Search depth, starting from your start node.',
         type: 'number',
         name: 'Search depth',
         value: 2
@@ -72,7 +75,7 @@
       },
       'nodeLabelThreshold': {
         type: 'range',
-        name: 'Node label threshold',
+        name: 'Label threshold',
         desc: 'The minimum size a node must have on screen to see its label displayed. This does not affect hovering behavior.',
         default: '_key'
       },
@@ -81,6 +84,24 @@
         name: 'Color',
         desc: 'Default node color. RGB or HEX value.',
         default: '#2ecc71'
+      },
+      'nodeColorAttribute': {
+        type: 'string',
+        name: 'Colorize attr',
+        desc: 'If an attribute is given, nodes will then be colorized by the attribute. This setting ignores default node color if set.'
+      },
+      'nodeColorByCollection': {
+        type: 'select',
+        name: 'Colorize by coll?',
+        no: {
+          name: 'No',
+          val: 'false'
+        },
+        yes: {
+          name: 'Yes',
+          val: 'true'
+        },
+        desc: 'Should nodes be colorized by their collection? If enabled, node color and node color attribute will be ignored.'
       },
       'nodeSize': {
         type: 'string',
@@ -98,7 +119,7 @@
       },
       'edgeLabelThreshold': {
         type: 'range',
-        name: 'Edge label threshold',
+        name: 'Label threshold',
         desc: 'The minimum size an edge must have on screen to see its label displayed. This does not affect hovering behavior.',
         default: '_key'
       },
@@ -108,10 +129,36 @@
         desc: 'Default edge color. RGB or HEX value.',
         default: '#cccccc'
       },
-      'edgeSize': {
-        type: 'number',
-        name: 'Sizing',
-        desc: 'Default edge thickness. Numeric value > 0.'
+      'edgeColorAttribute': {
+        type: 'string',
+        name: 'Colorize attr',
+        desc: 'If an attribute is given, edges will then be colorized by the attribute. This setting ignores default edge color if set.'
+      },
+      'edgeColorByCollection': {
+        type: 'select',
+        name: 'Colorize by coll?',
+        no: {
+          name: 'No',
+          val: 'false'
+        },
+        yes: {
+          name: 'Yes',
+          val: 'true'
+        },
+        desc: 'Should edges be colorized by their collection? If enabled, edge color and edge color attribute will be ignored.'
+      },
+      'edgeEditable': {
+        type: 'select',
+        name: 'Editable',
+        no: {
+          name: 'No',
+          val: 'false'
+        },
+        yes: {
+          name: 'Yes',
+          val: 'true'
+        },
+        desc: 'Should edges be editable?'
       },
       'edgeType': {
         type: 'select',
@@ -124,17 +171,19 @@
         curve: {
           name: 'Curve',
           val: 'curve'
-        }
-        /*
-        arrow: {
-          name: 'Arrow',
-          val: 'arrow'
         },
-        curvedArrow: {
-          name: 'Curved Arrow',
-          val: 'curvedArrow'
+        dotted: {
+          name: 'Dotted',
+          val: 'dotted'
+        },
+        dashed: {
+          name: 'Dashed',
+          val: 'dashed'
+        },
+        tapered: {
+          name: 'Tapered',
+          val: 'tapered'
         }
-        */
       }
     },
 
@@ -200,14 +249,18 @@
           renderer: $('#g_renderer').val(),
           depth: $('#g_depth').val(),
           nodeColor: $('#g_nodeColor').val(),
+          nodeColorAttribute: $('#g_nodeColorAttribute').val(),
+          nodeColorByCollection: $('#g_nodeColorByCollection').val(),
           nodeLabelThreshold: $('#g_nodeLabelThreshold').val(),
           edgeColor: $('#g_edgeColor').val(),
+          edgeColorAttribute: $('#g_edgeColorAttribute').val(),
+          edgeColorByCollection: $('#g_edgeColorByCollection').val(),
           edgeLabelThreshold: $('#g_edgeLabelThreshold').val(),
           nodeLabel: $('#g_nodeLabel').val(),
           edgeLabel: $('#g_edgeLabel').val(),
           edgeType: $('#g_edgeType').val(),
           nodeSize: $('#g_nodeSize').val(),
-          edgeSize: $('#g_edgeSize').val(),
+          edgeEditable: $('#g_edgeEditable').val(),
           nodeStart: $('#g_nodeStart').val()
         };
       }
@@ -237,17 +290,23 @@
         renderer: 'canvas',
         depth: '2',
         nodeColor: '#2ecc71',
+        nodeColorAttribute: '',
+        nodeColorByCollection: 'false',
         nodeLabelThreshold: 10,
-        edgeColor: $('#g_edgeColor').val(),
+        edgeColor: '#cccccc',
+        edgeColorAttribute: '',
+        edgeColorByCollection: 'false',
         edgeLabelThreshold: 10,
         nodeLabel: '_key',
         edgeLabel: '',
         edgeType: 'line',
         nodeSize: '',
-        edgeSize: '',
+        edgeEditable: 'false',
         nodeStart: ''
       };
       this.saveGraphSettings(null, null, null, obj);
+      this.render();
+      window.App.graphViewer2.render(this.lastFocussed);
     },
 
     toggle: function () {
@@ -275,6 +334,8 @@
         general: this.general,
         specific: this.specific
       }));
+
+      arangoHelper.fixTooltips('.gv-tooltips', 'top');
 
       if (this.graphConfig) {
         _.each(this.graphConfig, function (val, key) {

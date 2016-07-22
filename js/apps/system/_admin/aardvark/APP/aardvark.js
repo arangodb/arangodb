@@ -288,6 +288,29 @@ authRouter.get('/graph/:name', function (req, res) {
   var _ = require('lodash');
   var name = req.pathParams.name;
   var gm = require('@arangodb/general-graph');
+  var colors = [
+    '#EACD3F',
+    '#6F308A',
+    '#DA6927',
+    '#98CDE5',
+    '#B81F34',
+    '#C0BC82',
+    '#7F7E80',
+    '#61A547',
+    '#60A446',
+    '#D285B0',
+    '#4477B3',
+    '#DD8465',
+    '#473896',
+    '#E0A02F',
+    '#8F2689',
+    '#E7E655',
+    '#7C1514',
+    '#93AD3C',
+    '#6D3312',
+    '#D02C26',
+    '#2A3415'
+  ];
   // var traversal = require("@arangodb/graph/traversal");
 
   var graph = gm._graph(name);
@@ -338,8 +361,12 @@ authRouter.get('/graph/:name', function (req, res) {
   var edgesObj = {};
   var edgesArr = [];
 
+  var tmpObjEdges = {};
+  var tmpObjNodes = {};
+
   _.each(cursor.json, function (obj) {
     var edgeLabel;
+    var edgeObj;
 
     _.each(obj.edges, function (edge) {
       if (edge._to && edge._from) {
@@ -356,18 +383,44 @@ authRouter.get('/graph/:name', function (req, res) {
           }
         }
 
-        edgesObj[edge._from + edge._to] = {
+        edgeObj = {
           id: edge._id,
           source: edge._from,
           label: edgeLabel,
           color: config.edgeColor || '#cccccc',
           target: edge._to
         };
+
+        if (config.edgeEditable === 'true') {
+          edgeObj.size = 1;
+        }
+
+        if (config.edgeColorByCollection === 'true') {
+          var coll = edge._id.split('/')[0];
+          if (tmpObjEdges.hasOwnProperty(coll)) {
+            edgeObj.color = tmpObjEdges[coll];
+          } else {
+            tmpObjEdges[coll] = colors[Object.keys(tmpObjEdges).length];
+            edgeObj.color = tmpObjEdges[coll];
+          }
+        } else if (config.edgeColorAttribute !== '') {
+          var attr = edge[config.edgeColorAttribute];
+          if (attr) {
+            if (tmpObjEdges.hasOwnProperty(attr)) {
+              edgeObj.color = tmpObjEdges[attr];
+            } else {
+              tmpObjEdges[attr] = colors[Object.keys(tmpObjEdges).length];
+              edgeObj.color = tmpObjEdges[attr];
+            }
+          }
+        }
       }
+      edgesObj[edge._from + edge._to] = edgeObj;
     });
 
     var nodeLabel;
     var nodeSize;
+    var nodeObj;
 
     _.each(obj.vertices, function (node) {
       if (config.nodeLabel) {
@@ -380,14 +433,36 @@ authRouter.get('/graph/:name', function (req, res) {
         nodeSize = node[config.nodeSize];
       }
 
-      nodesObj[node._id] = {
+      nodeObj = {
         id: node._id,
         label: nodeLabel,
-        size: nodeSize || Math.random(),
+        size: nodeSize || 10,
         color: config.nodeColor || '#2ecc71',
         x: Math.random(),
         y: Math.random()
       };
+
+      if (config.nodeColorByCollection === 'true') {
+        var coll = node._id.split('/')[0];
+        if (tmpObjNodes.hasOwnProperty(coll)) {
+          nodeObj.color = tmpObjNodes[coll];
+        } else {
+          tmpObjNodes[coll] = colors[Object.keys(tmpObjNodes).length];
+          nodeObj.color = tmpObjNodes[coll];
+        }
+      } else if (config.nodeColorAttribute !== '') {
+        var attr = node[config.nodeColorAttribute];
+        if (attr) {
+          if (tmpObjNodes.hasOwnProperty(attr)) {
+            nodeObj.color = tmpObjNodes[attr];
+          } else {
+            tmpObjNodes[attr] = colors[Object.keys(tmpObjNodes).length];
+            nodeObj.color = tmpObjNodes[attr];
+          }
+        }
+      }
+
+      nodesObj[node._id] = nodeObj;
     });
   });
 
