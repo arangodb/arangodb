@@ -168,6 +168,10 @@
           name: 'Line',
           val: 'line'
         },
+        arrow: {
+          name: 'Arrow',
+          val: 'arrow'
+        },
         curve: {
           name: 'Curve',
           val: 'curve'
