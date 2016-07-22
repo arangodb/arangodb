@@ -658,6 +658,9 @@ struct AstNode {
   /// this creates an equivalent to what JSON.stringify() would do
   void appendValue(arangodb::basics::StringBuffer*) const;
 
+  /// @brief Steals the computed value and frees it.
+  void stealComputedValue();
+
  public:
   /// @brief the node type
   AstNodeType const type;

@@ -2824,6 +2824,13 @@ void AstNode::appendValue(arangodb::basics::StringBuffer* buffer) const {
   }
 }
 
+void AstNode::stealComputedValue() {
+  if (computedValue != nullptr) {
+    delete[] computedValue;
+    computedValue = nullptr;
+  }
+}
+
 /// @brief append the AstNode to an output stream
 std::ostream& operator<<(std::ostream& stream,
                          arangodb::aql::AstNode const* node) {

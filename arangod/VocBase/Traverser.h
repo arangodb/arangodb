@@ -56,8 +56,9 @@ class EdgeCursor {
   EdgeCursor() {}
   virtual ~EdgeCursor() {}
 
-  virtual bool next(std::vector<arangodb::velocypack::Slice>&) = 0;
-  virtual void readAll(std::unordered_set<arangodb::velocypack::Slice>&) = 0;
+  virtual bool next(std::vector<arangodb::velocypack::Slice>&, size_t&) = 0;
+  virtual bool readAll(std::unordered_set<arangodb::velocypack::Slice>&,
+                       size_t&) = 0;
 };
 
 #warning Deprecated
@@ -272,7 +273,8 @@ struct TraverserOptions {
   bool vertexHasFilter(size_t) const;
 
   bool evaluateEdgeExpression(arangodb::velocypack::Slice,
-                              arangodb::velocypack::Slice, size_t) const;
+                              arangodb::velocypack::Slice, size_t,
+                              size_t) const;
 
   bool evaluateVertexExpression(arangodb::velocypack::Slice, size_t) const;
 
@@ -422,7 +424,7 @@ class Traverser {
   bool hasMore() { return !_done; }
 
   bool edgeMatchesConditions(arangodb::velocypack::Slice,
-                             arangodb::velocypack::Slice, size_t);
+                             arangodb::velocypack::Slice, size_t, size_t);
 
   bool vertexMatchesConditions(arangodb::velocypack::Slice, size_t);
 

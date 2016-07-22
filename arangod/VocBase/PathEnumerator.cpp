@@ -32,10 +32,7 @@ using TraverserOptions = arangodb::traverser::TraverserOptions;
 bool DepthFirstEnumerator::next() {
   if (_isFirst) {
     _isFirst = false;
-    // Initialze the first cursor
-    _opts->nextCursor(_enumeratedPath.vertices.back(), 0);
     if (_opts->minDepth == 0) {
-
       return true;
     }
   }
@@ -43,12 +40,15 @@ bool DepthFirstEnumerator::next() {
     // We are done;
     return false;
   }
+
+  size_t cursorId = 0;
+
   while (true) {
     if (_enumeratedPath.edges.size() < _opts->maxDepth) {
       // We are not done with this path, so
       // we reserve the cursor for next depth
       auto cursor = _opts->nextCursor(_enumeratedPath.vertices.back(),
-                                      _enumeratedPath.vertices.size());
+                                      _enumeratedPath.edges.size());
       if (cursor != nullptr) {
         _edgeCursors.emplace(cursor);
       }
@@ -60,8 +60,8 @@ bool DepthFirstEnumerator::next() {
 
     while (!_edgeCursors.empty()) {
       TRI_ASSERT(_edgeCursors.size() == _enumeratedPath.edges.size() + 1);
-      auto cursor = _edgeCursors.top();
-      if (cursor->next(_enumeratedPath.edges)) {
+      auto& cursor = _edgeCursors.top();
+      if (cursor->next(_enumeratedPath.edges, cursorId)) {
         if (_opts->uniqueEdges == TraverserOptions::UniquenessLevel::GLOBAL) {
           if (_returnedEdges.find(_enumeratedPath.edges.back()) ==
               _returnedEdges.end()) {
@@ -75,7 +75,8 @@ bool DepthFirstEnumerator::next() {
         }
         if (!_traverser->edgeMatchesConditions(_enumeratedPath.edges.back(),
                                                _enumeratedPath.vertices.back(),
-                                               _enumeratedPath.edges.size())) {
+                                               _enumeratedPath.edges.size(),
+                                               cursorId)) {
             // This edge does not pass the filtering
             _enumeratedPath.edges.pop_back();
             continue;
@@ -257,37 +258,41 @@ bool BreadthFirstEnumerator::next() {
 
     auto cursor = _opts->nextCursor(nextVertex, _currentDepth);
     if (cursor != nullptr) {
-      cursor->readAll(_tmpEdges);
-    }
-
-    bool shouldReturnPath = _currentDepth + 1 >= _opts->minDepth;
-    if (!_tmpEdges.empty()) {
+      size_t cursorIdx;
+      bool shouldReturnPath = _currentDepth + 1 >= _opts->minDepth;
       bool didInsert = false;
-      VPackSlice v;
-      for (auto const& e : _tmpEdges) {
-        if (_opts->uniqueEdges == TraverserOptions::UniquenessLevel::GLOBAL) {
-          if (_returnedEdges.find(e) ==
-              _returnedEdges.end()) {
-            // Edge not yet visited. Mark and continue.
-            _returnedEdges.emplace(e);
-          } else {
-            _traverser->_filteredPaths++;
-            continue;
-          }
-        }
+      while (cursor->readAll(_tmpEdges, cursorIdx)) {
+        if (!_tmpEdges.empty()) {
+          VPackSlice v;
+          for (auto const& e : _tmpEdges) {
+            if (_opts->uniqueEdges ==
+                TraverserOptions::UniquenessLevel::GLOBAL) {
+              if (_returnedEdges.find(e) == _returnedEdges.end()) {
+                // Edge not yet visited. Mark and continue.
+                _returnedEdges.emplace(e);
+              } else {
+                _traverser->_filteredPaths++;
+                continue;
+              }
+            }
 
-        if (!_traverser->edgeMatchesConditions(e, nextVertex, _currentDepth)) {
-          continue;
-        }
-        if (_traverser->getSingleVertex(e, nextVertex, _currentDepth, v)) {
-          auto step = std::make_unique<PathStep>(nextIdx, e, v);
-          _schreier.emplace_back(step.get());
-          step.release();
-          if (_currentDepth < _opts->maxDepth - 1) {
-            _nextDepth.emplace_back(NextStep(_schreierIndex));
+            if (!_traverser->edgeMatchesConditions(e, nextVertex,
+                                                   _currentDepth,
+                                                   cursorIdx)) {
+              continue;
+            }
+            if (_traverser->getSingleVertex(e, nextVertex, _currentDepth, v)) {
+              auto step = std::make_unique<PathStep>(nextIdx, e, v);
+              _schreier.emplace_back(step.get());
+              step.release();
+              if (_currentDepth < _opts->maxDepth - 1) {
+                _nextDepth.emplace_back(NextStep(_schreierIndex));
+              }
+              _schreierIndex++;
+              didInsert = true;
+            }
           }
-          _schreierIndex++;
-          didInsert = true;
+          _tmpEdges.clear();
         }
       }
       if (!shouldReturnPath) {

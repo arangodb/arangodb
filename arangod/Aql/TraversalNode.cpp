@@ -859,6 +859,7 @@ void TraversalNode::fillTraversalOptions(
     TRI_ASSERT(ins.second);
     auto& infos = ins.first->second;
     infos.reserve(numEdgeColls);
+    auto& builder = it.second;
 
     for (size_t i = 0; i < numEdgeColls; ++i) {
       auto dir = _directions[i];
@@ -867,22 +868,18 @@ void TraversalNode::fillTraversalOptions(
       traverser::TraverserOptions::LookupInfo info;
       switch (dir) {
         case TRI_EDGE_IN:
-          info.indexCondition =
-              globalEdgeConditionBuilder.getInboundCondition()->clone(ast);
+          info.indexCondition = builder.getInboundCondition()->clone(ast);
           break;
         case TRI_EDGE_OUT:
-          info.indexCondition =
-              globalEdgeConditionBuilder.getOutboundCondition()->clone(ast);
+          info.indexCondition = builder.getOutboundCondition()->clone(ast);
           break;
-        case TRI_EDGE_ANY:
-          {
-          info.indexCondition =
-              globalEdgeConditionBuilder.getOutboundCondition()->clone(ast);
+        case TRI_EDGE_ANY: {
+          info.indexCondition = builder.getOutboundCondition()->clone(ast);
 
           traverser::TraverserOptions::LookupInfo infoIn;
-          infoIn.indexCondition =
-              globalEdgeConditionBuilder.getInboundCondition()->clone(ast);
-          infoIn.expression = new Expression(ast, infoIn.indexCondition->clone(ast));
+          infoIn.indexCondition = builder.getInboundCondition()->clone(ast);
+          infoIn.expression =
+              new Expression(ast, infoIn.indexCondition->clone(ast));
 #warning hard-coded nrItems.
           res = trx->getBestIndexHandleForFilterCondition(
               _edgeColls[i], infoIn.indexCondition, _tmpObjVariable, 1000,

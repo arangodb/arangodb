@@ -62,13 +62,14 @@ SingleServerEdgeCursor::SingleServerEdgeCursor(size_t nrCursors)
   _cache.reserve(1000);
 };
 
-bool SingleServerEdgeCursor::next(std::vector<VPackSlice>& result) {
+bool SingleServerEdgeCursor::next(std::vector<VPackSlice>& result, size_t& cursorId) {
   if (_currentCursor == _cursors.size()) {
     return false;
   }
   _cachePos++;
   if (_cachePos < _cache.size()) {
     result.emplace_back(_cache[_cachePos]->vpack());
+    cursorId = _currentCursor;
     return true;
   }
   // We need to refill the cache.
@@ -85,26 +86,34 @@ bool SingleServerEdgeCursor::next(std::vector<VPackSlice>& result) {
         return false;
       }
       cursor = _cursors[_currentCursor];
+      // If we switch the cursor. We have to clear the cache.
+      _cache.clear();
     } else {
       cursor->getMoreMptr(_cache);
     }
   } while (_cache.empty());
   TRI_ASSERT(_cachePos < _cache.size());
   result.emplace_back(_cache[_cachePos]->vpack());
+  cursorId = _currentCursor;
   return true;
 }
 
-void SingleServerEdgeCursor::readAll(std::unordered_set<VPackSlice>& result) {
-  for (auto& cursor : _cursors) {
-    while (cursor->hasMore()) {
-      // NOTE: We cannot clear the cache,
-      // because the cursor expect's it to be filled.
-      cursor->getMoreMptr(_cache);
-      for (auto const& mptr : _cache) {
-        result.emplace(mptr->vpack());
-      }
+bool SingleServerEdgeCursor::readAll(std::unordered_set<VPackSlice>& result, size_t& cursorId) {
+  if (_currentCursor >= _cursors.size()) {
+    return false;
+  }
+  cursorId = _currentCursor;
+  auto& cursor = _cursors[_currentCursor];
+  while (cursor->hasMore()) {
+    // NOTE: We cannot clear the cache,
+    // because the cursor expect's it to be filled.
+    cursor->getMoreMptr(_cache);
+    for (auto const& mptr : _cache) {
+      result.emplace(mptr->vpack());
     }
   }
+  _currentCursor++;
+  return true;
 }
 
 SingleServerTraverser::SingleServerTraverser(TraverserOptions& opts,
@@ -142,14 +151,7 @@ aql::AqlValue SingleServerTraverser::fetchVertexData(VPackSlice id) {
 }
 
 aql::AqlValue SingleServerTraverser::fetchEdgeData(VPackSlice edge) {
-#warning Is this enough?
   return aql::AqlValue(edge);
-  /*
-  auto it = _edges.find(id);
-  
-  TRI_ASSERT(it != _edges.end());
-  return aql::AqlValue((*it).second, aql::AqlValueFromMasterPointer());
-  */
 }
 
 void SingleServerTraverser::addVertexToVelocyPack(VPackSlice id,

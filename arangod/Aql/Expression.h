@@ -207,9 +207,10 @@ class Expression {
   void setVariable(Variable const* variable, arangodb::velocypack::Slice value) {
     _variables.emplace(variable, value);
   }
- private:
 
   void clearVariable(Variable const* variable) { _variables.erase(variable); }
+
+ private:
 
   /// @brief find a value in an array
   bool findInArray(AqlValue const&, AqlValue const&,
