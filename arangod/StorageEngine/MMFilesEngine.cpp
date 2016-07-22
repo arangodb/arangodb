@@ -308,7 +308,9 @@ TRI_vocbase_t* MMFilesEngine::openDatabase(VPackSlice const& parameters, bool is
 // so that subsequent database creation requests will not fail.
 // the WAL entry for the database creation will be written *after* the call
 // to "createDatabase" returns
-void MMFilesEngine::createDatabase(TRI_voc_tick_t id, arangodb::velocypack::Slice const& data) {
+TRI_vocbase_t* MMFilesEngine::createDatabase(TRI_voc_tick_t id, arangodb::velocypack::Slice const& data) {
+  // TODO:
+  return nullptr;
 }
 
 // asks the storage engine to drop the specified database and persist the 

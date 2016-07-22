@@ -71,6 +71,9 @@ class DatabaseFeature final : public application_features::ApplicationFeature {
   void unprepare() override final;
 
  public:
+  int createDatabaseCoordinator(TRI_voc_tick_t id, std::string const& name, TRI_vocbase_t*& result);
+  int createDatabase(TRI_voc_tick_t id, std::string const& name, bool writeMarker, TRI_vocbase_t*& result);
+
   void useSystemDatabase();
   TRI_vocbase_t* useDatabase(std::string const& name);
   TRI_vocbase_t* systemDatabase() const { return _vocbase; }
@@ -115,6 +118,9 @@ class DatabaseFeature final : public application_features::ApplicationFeature {
 
   /// @brief activates deadlock detection in all existing databases
   void enableDeadlockDetection();
+
+  /// @brief writes a create-database marker into the log
+  int writeCreateMarker(TRI_voc_tick_t id, VPackSlice const& slice);
 
  private:
   uint64_t _maximalJournalSize;

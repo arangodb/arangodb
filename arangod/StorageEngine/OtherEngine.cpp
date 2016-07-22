@@ -76,7 +76,8 @@ uint64_t OtherEngine::getMaxRevision() {
 // so that subsequent database creation requests will not fail.
 // the WAL entry for the database creation will be written *after* the call
 // to "createDatabase" returns
-void OtherEngine::createDatabase(TRI_voc_tick_t id, arangodb::velocypack::Slice const& data) {
+TRI_vocbase_t* OtherEngine::createDatabase(TRI_voc_tick_t id, arangodb::velocypack::Slice const& data) {
+  return nullptr;
 }
 
 // asks the storage engine to drop the specified database and persist the 

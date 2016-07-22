@@ -95,7 +95,7 @@ class StorageEngine : public application_features::ApplicationFeature {
   // so that subsequent database creation requests will not fail.
   // the WAL entry for the database creation will be written *after* the call
   // to "createDatabase" returns
-  virtual void createDatabase(TRI_voc_tick_t id, arangodb::velocypack::Slice const& data) = 0;
+  virtual TRI_vocbase_t* createDatabase(TRI_voc_tick_t id, arangodb::velocypack::Slice const& data) = 0;
 
   // asks the storage engine to drop the specified database and persist the 
   // deletion info. Note that physical deletion of the database data must not 

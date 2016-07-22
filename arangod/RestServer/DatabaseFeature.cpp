@@ -25,6 +25,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryRegistry.h"
 #include "Basics/FileUtils.h"
+#include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/files.h"
@@ -59,6 +60,9 @@ using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;
+
+/// @brief lock for serializing the creation of database
+static arangodb::Mutex DatabaseCreateLock;
 
 TRI_server_t* DatabaseFeature::SERVER = nullptr;
 
@@ -397,6 +401,205 @@ void DatabaseFeature::unprepare() {
   _server.reset(nullptr);
 }
 
+/// @brief create a new database
+int DatabaseFeature::createDatabaseCoordinator(TRI_voc_tick_t id, std::string const& name, TRI_vocbase_t*& result) {
+  result = nullptr;
+
+  if (!TRI_IsAllowedNameVocBase(true, name.c_str())) {
+    return TRI_ERROR_ARANGO_DATABASE_NAME_INVALID;
+  }
+
+  MUTEX_LOCKER(mutexLocker, DatabaseCreateLock);
+
+  {
+    auto unuser(_databasesProtector.use());
+    auto theLists = _databasesLists.load();
+
+    auto it = theLists->_coordinatorDatabases.find(name);
+    if (it != theLists->_coordinatorDatabases.end()) {
+      // name already in use
+      return TRI_ERROR_ARANGO_DUPLICATE_NAME;
+    }
+  }
+
+  // name not yet in use, release the read lock
+
+  TRI_vocbase_t* vocbase = TRI_CreateInitialVocBase(TRI_VOCBASE_TYPE_COORDINATOR, "none", id, name.c_str());
+
+  if (vocbase == nullptr) {
+    // grab last error
+    int res = TRI_errno();
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      // but we must have an error...
+      res = TRI_ERROR_INTERNAL;
+    }
+
+    LOG(ERR) << "could not create database '" << name << "': " << TRI_errno_string(res);
+
+    return res;
+  }
+
+  TRI_ASSERT(vocbase != nullptr);
+
+  vocbase->_replicationApplier = TRI_CreateReplicationApplier(vocbase);
+
+  if (vocbase->_replicationApplier == nullptr) {
+    delete vocbase;
+
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
+
+  // increase reference counter
+  TRI_UseVocBase(vocbase);
+  vocbase->_state = (sig_atomic_t)TRI_VOCBASE_STATE_NORMAL;
+
+  {
+    MUTEX_LOCKER(mutexLocker, _databasesMutex);
+    auto oldLists = _databasesLists.load();
+    decltype(oldLists) newLists = nullptr;
+    try {
+      newLists = new DatabasesLists(*oldLists);
+      newLists->_coordinatorDatabases.emplace(name, vocbase);
+    } catch (...) {
+      delete newLists;
+      delete vocbase;
+      return TRI_ERROR_OUT_OF_MEMORY;
+    }
+    _databasesLists = newLists;
+    _databasesProtector.scan();
+    delete oldLists;
+  }
+
+  result = vocbase;
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+/// @brief create a new database
+int DatabaseFeature::createDatabase(TRI_voc_tick_t id, std::string const& name,
+                                    bool writeMarker, TRI_vocbase_t*& result) {
+  result = nullptr;
+
+  if (!TRI_IsAllowedNameVocBase(false, name.c_str())) {
+    return TRI_ERROR_ARANGO_DATABASE_NAME_INVALID;
+  }
+
+  TRI_vocbase_t* vocbase = nullptr;
+  VPackBuilder builder;
+  int res;
+
+  // the create lock makes sure no one else is creating a database while we're
+  // inside
+  // this function
+  MUTEX_LOCKER(mutexLocker, DatabaseCreateLock);
+  {
+    {
+      auto unuser(_databasesProtector.use());
+      auto theLists = _databasesLists.load();
+
+      auto it = theLists->_databases.find(name);
+      if (it != theLists->_databases.end()) {
+        // name already in use
+        return TRI_ERROR_ARANGO_DUPLICATE_NAME;
+      }
+    }
+
+    // create the database directory
+    if (id == 0) {
+      id = TRI_NewTickServer();
+    }
+
+    builder.openObject();
+    builder.add("database", VPackValue(id));
+    builder.add("id", VPackValue(std::to_string(id)));
+    builder.add("name", VPackValue(name));
+    builder.close();
+
+    // create database in storage engine
+    StorageEngine* engine = ApplicationServer::getFeature<EngineSelectorFeature>("EngineSelector")->ENGINE;
+    TRI_vocbase_t* vocbase = engine->createDatabase(id, builder.slice()); 
+
+    /* TODO: fix path */
+    /* TODO: move into engine */
+    std::string path = "PATH";
+    vocbase = TRI_OpenVocBase(path.c_str(), id, name.c_str(), false, false);
+
+    if (vocbase == nullptr) {
+      // grab last error
+      res = TRI_errno();
+
+      if (res != TRI_ERROR_NO_ERROR) {
+        // we must have an error...
+        res = TRI_ERROR_INTERNAL;
+      }
+
+      LOG(ERR) << "could not create database '" << name << "': " << TRI_errno_string(res);
+
+      return res;
+    }
+
+    TRI_ASSERT(vocbase != nullptr);
+
+    // create application directories
+    V8DealerFeature* dealer =
+        ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
+    auto appPath = dealer->appPath();
+
+    // create app directory for database if it does not exist
+    int res = createApplicationDirectory(name, appPath);
+
+    if (!arangodb::wal::LogfileManager::instance()->isInRecovery()) {
+      TRI_StartCompactorVocBase(vocbase);
+
+      // start the replication applier
+      if (vocbase->_replicationApplier->_configuration._autoStart) {
+        if (!_replicationApplier) {
+          LOG(INFO) << "replication applier explicitly deactivated for database '" << name << "'";
+        } else {
+          res = vocbase->_replicationApplier->start(0, false, 0);
+
+          if (res != TRI_ERROR_NO_ERROR) {
+            LOG(WARN) << "unable to start replication applier for database '"
+                      << name << "': " << TRI_errno_string(res);
+          }
+        }
+      }
+
+      // increase reference counter
+      TRI_UseVocBase(vocbase);
+    }
+
+    {
+      MUTEX_LOCKER(mutexLocker, _databasesMutex);
+      auto oldLists = _databasesLists.load();
+      decltype(oldLists) newLists = nullptr;
+      try {
+        newLists = new DatabasesLists(*oldLists);
+        newLists->_databases.insert(std::make_pair(name, vocbase));
+      } catch (...) {
+        LOG(ERR) << "Out of memory for putting new database into list!";
+        // This is bad, but at least we do not crash!
+      }
+      if (newLists != nullptr) {
+        _databasesLists = newLists;
+        _databasesProtector.scan();
+        delete oldLists;
+      }
+    }
+
+  }  // release DatabaseCreateLock
+
+  // write marker into log
+  if (writeMarker) {
+    res = writeCreateMarker(id, builder.slice());
+  }
+
+  result = vocbase;
+
+  return res;
+}
+
 void DatabaseFeature::useSystemDatabase() {
   useDatabase(TRI_VOC_SYSTEM_DATABASE);
 }
@@ -733,3 +936,31 @@ void DatabaseFeature::enableDeadlockDetection() {
   }
 }
 
+/// @brief writes a create-database marker into the log
+int DatabaseFeature::writeCreateMarker(TRI_voc_tick_t id, VPackSlice const& slice) {
+  int res = TRI_ERROR_NO_ERROR;
+
+  try {
+    arangodb::wal::DatabaseMarker marker(TRI_DF_MARKER_VPACK_CREATE_DATABASE,
+                                         id, slice);
+    arangodb::wal::SlotInfoCopy slotInfo =
+        arangodb::wal::LogfileManager::instance()->allocateAndWrite(marker,
+                                                                    false);
+
+    if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
+      // throw an exception which is caught at the end of this function
+      THROW_ARANGO_EXCEPTION(slotInfo.errorCode);
+    }
+  } catch (arangodb::basics::Exception const& ex) {
+    res = ex.code();
+  } catch (...) {
+    res = TRI_ERROR_INTERNAL;
+  }
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    LOG(WARN) << "could not save create database marker in log: "
+              << TRI_errno_string(res);
+  }
+
+  return res;
+}
