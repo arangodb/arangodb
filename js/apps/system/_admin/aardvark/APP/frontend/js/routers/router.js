@@ -889,6 +889,9 @@
       if (this.queryView) {
         this.queryView.resize();
       }
+      if (this.naviView) {
+        this.naviView.resize();
+      }
       if (this.graphViewer2) {
         this.graphViewer2.resize();
       }
