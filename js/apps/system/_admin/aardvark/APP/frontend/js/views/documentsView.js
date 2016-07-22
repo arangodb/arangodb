@@ -428,34 +428,59 @@
       // adds a line to the filter widget
 
       var num = ++this.filterId;
-      $('#filterHeader').append(' <div class="queryline querylineAdd">'+
-                                '<input id="attribute_name' + num +
-                                '" type="text" placeholder="Attribute name">'+
-                                '<select name="operator" id="operator' +
-                                num + '" class="filterSelect">'+
-                                '    <option value="==">==</option>'+
-                                '    <option value="!=">!=</option>'+
-                                '    <option value="&lt;">&lt;</option>'+
-                                '    <option value="&lt;=">&lt;=</option>'+
-                                '    <option value="&gt;=">&gt;=</option>'+
-                                '    <option value="&gt;">&gt;</option>'+
-                                '</select>'+
-                                '<input id="attribute_value' + num +
-                                '" type="text" placeholder="Attribute value" ' +
-                                'class="filterValue">'+
-                                ' <a class="removeFilterItem" id="removeFilter' + num + '">' +
-                                '<i class="icon icon-minus arangoicon"></i></a></div>');
+
+      $('#filterHeader').append(' <div class="queryline querylineAdd">' +
+        '<input id="attribute_name' + num +
+        '" type="text" placeholder="Attribute name">' +
+        '<select name="operator" id="operator' +
+        num + '" class="filterSelect">' +
+        '    <option value="==">==</option>' +
+        '    <option value="!=">!=</option>' +
+        '    <option value="&lt;">&lt;</option>' +
+        '    <option value="&lt;=">&lt;=</option>' +
+        '    <option value="&gt;=">&gt;=</option>' +
+        '    <option value="&gt;">&gt;</option>' +
+        '</select>' +
+        '<input id="attribute_value' + num +
+        '" type="text" placeholder="Attribute value" ' +
+        'class="filterValue">' +
+        ' <a class="removeFilterItem" id="removeFilter' + num + '">' +
+        '<i class="fa fa-minus-circle"></i></a></div>');
+
       this.filters[num] = true;
+      this.checkFilterState();
     },
 
-    filterValueKeydown : function (e) {
+    filterValueKeydown: function (e) {
       if (e.keyCode === 13) {
         this.sendFilter();
       }
     },
 
-    removeFilterItem : function (e) {
+    checkFilterState: function () {
+      var length = $('#filterHeader .queryline').length;
 
+      if (length === 1) {
+        $('#filterHeader .removeFilterItem').remove();
+      } else {
+        if ($('#filterHeader .queryline').first().find('.removeFilterItem').length === 0) {
+          var id = $('#filterHeader .queryline').first().children().first().attr('id');
+          var num = id.substr(14, id.length);
+
+          $('#filterHeader .queryline').first().find('.add-filter-item').after(
+            ' <a class="removeFilterItem" id="removeFilter' + num + '">' +
+            '<i class="fa fa-minus-circle"></i></a>');
+        }
+      }
+
+      if ($('#filterHeader .queryline').first().find('.add-filter-item').length === 0) {
+        $('#filterHeader .queryline').first().find('.filterValue').after(
+          '<a id="addFilterItem" class="add-filter-item"><i style="margin-left: 4px;" class="fa fa-plus-circle"></i></a>'
+        );
+      }
+    },
+
+    removeFilterItem: function (e) {
       // removes line from the filter widget
       var button = e.currentTarget;
 
@@ -466,6 +491,7 @@
 
       // remove the line from the DOM
       $(button.parentElement).remove();
+      this.checkFilterState();
     },
 
     removeAllFilterItems : function () {
