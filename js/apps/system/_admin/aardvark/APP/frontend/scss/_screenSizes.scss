@@ -401,5 +401,8 @@
   }
 }
 
-@media (min-width: 1042px) and (max-width: 1284px) {
+@media (max-width: 1024px) {
+  #docsSort {
+    display: none;
+  }
 }
