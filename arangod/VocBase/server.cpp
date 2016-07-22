@@ -644,23 +644,6 @@ int TRI_CreateDatabaseServer(TRI_server_t* server, TRI_voc_tick_t databaseId,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief activates or deactivates deadlock detection in all existing
-/// databases
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_EnableDeadlockDetectionDatabasesServer(TRI_server_t* server) {
-  auto unuser(server->_databasesProtector.use());
-  auto theLists = server->_databasesLists.load();
-
-  for (auto& p : theLists->_databases) {
-    TRI_vocbase_t* vocbase = p.second;
-    TRI_ASSERT(vocbase != nullptr);
-
-    vocbase->_deadlockDetector.enabled(true);
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief get the ids of all local coordinator databases
 /// the caller is responsible for freeing the result
 ////////////////////////////////////////////////////////////////////////////////

@@ -26,11 +26,11 @@
 
 using namespace arangodb;
 
-std::string const OtherEngine::EngineName("other");
+std::string const OtherEngine::EngineName("OtherEngine");
 
 // create the storage engine
 OtherEngine::OtherEngine(application_features::ApplicationServer* server)
-    : StorageEngine(server, "otherEngine") {
+    : StorageEngine(server, EngineName) {
 }
 
 OtherEngine::~OtherEngine() {

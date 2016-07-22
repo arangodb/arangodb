@@ -40,7 +40,7 @@ class StorageEngine : public application_features::ApplicationFeature {
 
   // create the storage engine
   StorageEngine(application_features::ApplicationServer* server, std::string const& name) 
-      : application_features::ApplicationFeature(server, name) {
+      : application_features::ApplicationFeature(server, name), _typeName(name) {
  
     // each specific storage engine feature is optional. the storage engine selection feature
     // will make sure that exactly one engine is selected at startup 
@@ -48,22 +48,22 @@ class StorageEngine : public application_features::ApplicationFeature {
     // storage engines must not use elevated privileges for files etc
     requiresElevatedPrivileges(false);
     // TODO: determine more sensible startup order for storage engine
+    startsAfter("DatabasePath");
     startsAfter("EngineSelector");
-    startsAfter("LogfileManager");
+    startsAfter("FileDescriptors");
+    startsAfter("Temp");
   }
 
-  // these methods must not be used in the storage engine implementations
-  void start() override final {}
-  void stop() override final {}
-
-  virtual void initialize() {}
-  virtual void shutdown() {}
+  virtual void start() {}
+  virtual void stop() {}
 
   // status functionality
   // --------------------
 
   // return the name of the storage engine
-  virtual char const* typeName() const = 0;
+  char const* typeName() const {
+    return _typeName.c_str();
+  }
   
   // inventory functionality
   // -----------------------
@@ -193,6 +193,9 @@ class StorageEngine : public application_features::ApplicationFeature {
   // from the storage engine's realm
   virtual void removeDocumentRevision(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId,
                                       arangodb::velocypack::Slice const& document) = 0;
+
+ private:
+  std::string const _typeName;
 };
 
 }

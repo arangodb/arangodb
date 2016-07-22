@@ -411,6 +411,8 @@ void V8DealerFeature::startGarbageCollection() {
 V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase,
                                          bool allowUseDatabase,
                                          ssize_t forceContext) {
+  TRI_ASSERT(vocbase != nullptr);
+
   if (_stopping) {
     return nullptr;
   }

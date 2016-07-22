@@ -239,6 +239,7 @@ DatabaseFeature::DatabaseFeature(ApplicationServer* server)
   setOptional(false);
   requiresElevatedPrivileges(false);
   startsAfter("DatabasePath");
+  startsAfter("EngineSelector");
   startsAfter("LogfileManager");
   startsAfter("InitDatabase");
   startsAfter("IndexPool");
@@ -327,52 +328,31 @@ void DatabaseFeature::start() {
   // init key generator
   KeyGenerator::Initialize();
 
-  // initialize storage engine
-  StorageEngine* engine = ApplicationServer::getFeature<EngineSelectorFeature>("EngineSelector")->ENGINE;
-  engine->initialize();
-
   _iterateMarkersOnOpen = !wal::LogfileManager::instance()->hasFoundLastTick();
 
-  // create shared application directory js/apps
-  V8DealerFeature* dealer = ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
-  auto appPath = dealer->appPath();
-
-  if (!appPath.empty() && !TRI_IsDirectory(appPath.c_str())) {
-    long systemError;
-    std::string errorMessage;
-    int res = TRI_CreateRecursiveDirectory(appPath.c_str(), systemError,
-                                           errorMessage);
-
-    if (res == TRI_ERROR_NO_ERROR) {
-      LOG(INFO) << "created --javascript.app-path directory '" << appPath << "'";
-    } else {
-      LOG(ERR) << "unable to create --javascript.app-path directory '"
-               << appPath << "': " << errorMessage;
-      THROW_ARANGO_EXCEPTION(res);
-    }
-  }
-  
-  // create subdirectory js/apps/_db if not yet present
-  int res = createBaseApplicationDirectory(appPath, "_db");
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    LOG(ERR) << "unable to initialize databases: " << TRI_errno_string(res);
-    THROW_ARANGO_EXCEPTION(res);
-  }
+  verifyAppPaths();
 
   // scan all databases
   VPackBuilder builder;
+  StorageEngine* engine = ApplicationServer::getFeature<EngineSelectorFeature>("EngineSelector")->ENGINE;
   engine->getDatabases(builder);
 
   TRI_ASSERT(builder.slice().isArray());
 
-  res = iterateDatabases(builder.slice());
+  int res = iterateDatabases(builder.slice());
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG(ERR) << "could not iterate over all databases: " << TRI_errno_string(res);
-    THROW_ARANGO_EXCEPTION(res);
+    LOG(FATAL) << "could not iterate over all databases: " << TRI_errno_string(res);
+    FATAL_ERROR_EXIT();
   }
 
+  if (systemDatabase() == nullptr) {
+    LOG(FATAL) << "No _system database found in database directory. Cannot start!";
+    FATAL_ERROR_EXIT();
+  }
+
+// TODO:
+/*
   // start database manager thread
   _databaseManager = new DatabaseManagerThread;
     
@@ -380,34 +360,15 @@ void DatabaseFeature::start() {
     LOG(FATAL) << "could not start database manager thread";
     FATAL_ERROR_EXIT();
   }
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    if (res == TRI_ERROR_ARANGO_EMPTY_DATADIR) {
-      LOG_TOPIC(TRACE, Logger::STARTUP) << "database is empty";
-      _isInitiallyEmpty = true;
-    }
-
-    if (! _checkVersion || ! _isInitiallyEmpty) {
-      LOG(FATAL) << "cannot start server: " << TRI_errno_string(res);
-      FATAL_ERROR_EXIT();
-    }
-  }
-
-  if (!_isInitiallyEmpty) {
-    LOG_TOPIC(TRACE, Logger::STARTUP) << "found system database";
-  }
-
-  if (_isInitiallyEmpty && _checkVersion) {
-    LOG(DEBUG) << "checking version on an empty database";
-    TRI_EXIT_FUNCTION(EXIT_SUCCESS, nullptr);
-  }
+*/
+  // TODO: handle _upgrade and _checkVersion here
 
   // update all v8 contexts
   updateContexts();
-
-  // active deadlock detection in case we're not running in cluster mode
+  
+  // activatee deadlock detection in case we're not running in cluster mode
   if (!arangodb::ServerState::instance()->isRunningInCluster()) {
-    TRI_EnableDeadlockDetectionDatabasesServer(DatabaseFeature::SERVER);
+    enableDeadlockDetection();
   }
 }
 
@@ -428,24 +389,34 @@ void DatabaseFeature::unprepare() {
     // we're in the shutdown... simply ignore any errors produced here
   }
   
-  StorageEngine* engine = ApplicationServer::getFeature<EngineSelectorFeature>("EngineSelector")->ENGINE;
-  engine->shutdown();
-  
   // clear singleton
   DATABASE = nullptr;
   SERVER = nullptr;
   _server.reset(nullptr);
 }
 
-void DatabaseFeature::updateContexts() {
-  _vocbase = TRI_UseDatabaseServer(DatabaseFeature::SERVER,
-                                   TRI_VOC_SYSTEM_DATABASE);
+void DatabaseFeature::useSystemDatabase() {
+  useDatabase(TRI_VOC_SYSTEM_DATABASE);
+}
 
-  if (_vocbase == nullptr) {
-    LOG(FATAL)
-        << "No _system database found in database directory. Cannot start!";
-    FATAL_ERROR_EXIT();
+TRI_vocbase_t* DatabaseFeature::useDatabase(std::string const& name) {
+  auto unuser(_databasesProtector.use());
+  auto theLists = _databasesLists.load();
+  auto it = theLists->_databases.find(name);
+  TRI_vocbase_t* vocbase = nullptr;
+
+  if (it != theLists->_databases.end()) {
+    vocbase = it->second;
+    TRI_UseVocBase(vocbase);
   }
+
+  return vocbase;
+}
+
+void DatabaseFeature::updateContexts() {
+  TRI_ASSERT(_vocbase != nullptr);
+
+  useSystemDatabase();
 
   auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY;
   TRI_ASSERT(queryRegistry != nullptr);
@@ -634,6 +605,12 @@ int DatabaseFeature::iterateDatabases(VPackSlice const& databases) {
 
   for (auto const& it : VPackArrayIterator(databases)) {
     TRI_ASSERT(it.isObject());
+    
+    VPackSlice deleted = it.get("deleted");
+    if (deleted.isBoolean() && deleted.getBoolean()) {
+      // ignore deleted databases here
+      continue;
+    }
 
     std::string const databaseName = it.get("name").copyString();
 
@@ -650,6 +627,12 @@ int DatabaseFeature::iterateDatabases(VPackSlice const& databases) {
     TRI_vocbase_t* vocbase = engine->openDatabase(it, _upgrade);
     // we found a valid database
     TRI_ASSERT(vocbase != nullptr);
+
+    if (databaseName == TRI_VOC_SYSTEM_DATABASE) {
+      // found the system database
+      TRI_ASSERT(_vocbase == nullptr);
+      _vocbase = vocbase;
+    }
 
     newLists->_databases.insert(std::make_pair(std::string(vocbase->_name), vocbase));
   }
@@ -705,3 +688,46 @@ void DatabaseFeature::closeDroppedDatabases() {
 
   delete oldList;  // Note that this does not delete the TRI_vocbase_t pointers!
 }
+  
+void DatabaseFeature::verifyAppPaths() {
+  // create shared application directory js/apps
+  V8DealerFeature* dealer = ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
+  auto appPath = dealer->appPath();
+
+  if (!appPath.empty() && !TRI_IsDirectory(appPath.c_str())) {
+    long systemError;
+    std::string errorMessage;
+    int res = TRI_CreateRecursiveDirectory(appPath.c_str(), systemError,
+                                           errorMessage);
+
+    if (res == TRI_ERROR_NO_ERROR) {
+      LOG(INFO) << "created --javascript.app-path directory '" << appPath << "'";
+    } else {
+      LOG(ERR) << "unable to create --javascript.app-path directory '"
+               << appPath << "': " << errorMessage;
+      THROW_ARANGO_EXCEPTION(res);
+    }
+  }
+  
+  // create subdirectory js/apps/_db if not yet present
+  int res = createBaseApplicationDirectory(appPath, "_db");
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    LOG(ERR) << "unable to initialize databases: " << TRI_errno_string(res);
+    THROW_ARANGO_EXCEPTION(res);
+  }
+}
+
+/// @brief activates deadlock detection in all existing databases
+void DatabaseFeature::enableDeadlockDetection() {
+  auto unuser(_databasesProtector.use());
+  auto theLists = _databasesLists.load();
+
+  for (auto& p : theLists->_databases) {
+    TRI_vocbase_t* vocbase = p.second;
+    TRI_ASSERT(vocbase != nullptr);
+
+    vocbase->_deadlockDetector.enabled(true);
+  }
+}
+

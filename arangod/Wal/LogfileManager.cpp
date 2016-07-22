@@ -39,6 +39,7 @@
 #include "ProgramOptions/Section.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 #include "VocBase/server.h"
 #include "Wal/AllocatorThread.h"
 #include "Wal/CollectorThread.h"
@@ -116,6 +117,11 @@ LogfileManager::LogfileManager(ApplicationServer* server)
   setOptional(false);
   requiresElevatedPrivileges(false);
   startsAfter("DatabasePath");
+  startsAfter("EngineSelector");
+
+  for (auto const& it : EngineSelectorFeature::availableEngines()) {
+    startsAfter(it);
+  }
 
   _transactions.reserve(32);
   _failedTransactions.reserve(32);
@@ -429,7 +435,7 @@ bool LogfileManager::open() {
   // tell the allocator that the recovery is over now
   _allocatorThread->recoveryDone();
 
-  // unload all collections to reset statistics, start compactor threads etc.
+  // start compactor threads etc.
   res = TRI_InitDatabasesServer(_server);
 
   if (res != TRI_ERROR_NO_ERROR) {

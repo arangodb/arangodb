@@ -53,15 +53,9 @@ class MMFilesEngine final : public StorageEngine {
   void prepare() override;
   
   // initialize engine
-  void initialize() override;
-  void shutdown() override;
+  void start() override;
+  void stop() override;
 
-  // status functionality
-  // --------------------
-
-  // return the name of the storage engine
-  char const* typeName() const override { return EngineName.c_str(); }
-  
   // inventory functionality
   // -----------------------
 

@@ -38,7 +38,7 @@
 
 using namespace arangodb;
 
-std::string const MMFilesEngine::EngineName("mmfiles");
+std::string const MMFilesEngine::EngineName("MMFiles");
 
 /// @brief extract the numeric part from a filename
 static uint64_t GetNumericFilenamePart(char const* filename) {
@@ -59,7 +59,7 @@ static bool DatabaseIdStringComparator(std::string const& lhs, std::string const
 
 // create the storage engine
 MMFilesEngine::MMFilesEngine(application_features::ApplicationServer* server)
-    : StorageEngine(server, "mmfilesEngine"), 
+    : StorageEngine(server, EngineName),
       _iterateMarkersOnOpen(true),
       _isUpgrade(false) {
 }
@@ -92,10 +92,10 @@ void MMFilesEngine::prepare() {
 }
 
 // initialize engine
-void MMFilesEngine::initialize() {
+void MMFilesEngine::start() {
   TRI_ASSERT(EngineSelectorFeature::ENGINE = this);
   
-  LOG(INFO) << "MMFilesEngine::initialize()";
+  LOG(INFO) << "MMFilesEngine::start()";
 
   // test if the "databases" directory is present and writable
   verifyDirectories();
@@ -125,7 +125,7 @@ void MMFilesEngine::initialize() {
 // stop the storage engine. this can be used to flush all data to disk,
 // shutdown threads etc. it is guaranteed that there will be no read and
 // write requests to the storage engine after this call
-void MMFilesEngine::shutdown() {
+void MMFilesEngine::stop() {
   TRI_ASSERT(EngineSelectorFeature::ENGINE = this);
   
   LOG(INFO) << "MMFilesEngine::stop()";
@@ -287,7 +287,7 @@ TRI_vocbase_t* MMFilesEngine::openDatabase(VPackSlice const& parameters, bool is
     int res = TRI_errno();
 
     if (res == TRI_ERROR_NO_ERROR) {
-      // but we must have an error...
+      // we must have an error...
       res = TRI_ERROR_INTERNAL;
     }
 

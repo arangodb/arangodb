@@ -50,12 +50,6 @@ class OtherEngine final : public StorageEngine {
   // the storage engine must not start any threads here or write any files
   void prepare() override;
   
-  // status functionality
-  // --------------------
-
-  // return the name of the storage engine
-  char const* typeName() const override { return EngineName.c_str(); }
-  
   // inventory functionality
   // -----------------------
 

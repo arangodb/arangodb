@@ -38,8 +38,7 @@ EngineSelectorFeature::EngineSelectorFeature(
     : ApplicationFeature(server, "EngineSelector"), _engine(MMFilesEngine::EngineName) {
   setOptional(false);
   requiresElevatedPrivileges(false);
-  startsAfter("Database");
-  startsAfter("LogfileManager");
+  startsAfter("Logger");
 }
 
 void EngineSelectorFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -53,18 +52,18 @@ void EngineSelectorFeature::collectOptions(std::shared_ptr<ProgramOptions> optio
 void EngineSelectorFeature::prepare() {
   // deactivate all engines but the selected one
   for (auto& engine : availableEngines()) {
-    StorageEngine* e = application_features::ApplicationServer::getFeature<StorageEngine>(engine + "Engine");
+    StorageEngine* e = application_features::ApplicationServer::getFeature<StorageEngine>(engine);
 
     if (engine == _engine) {
       // this is the selected engine
-      LOG(TRACE) << "enabling storage engine " << engine;
+      LOG_TOPIC(TRACE, Logger::STARTUP) << "enabling storage engine " << engine;
       e->enable();
 
       // register storage engine
       ENGINE = e;
     } else {
       // turn off all other storage engines
-      LOG(TRACE) << "disabling storage engine " << engine;
+      LOG_TOPIC(TRACE, Logger::STARTUP) << "disabling storage engine " << engine;
       e->disable();
     }
   }
