@@ -383,10 +383,11 @@ class Transaction {
     if (collection == nullptr) {
       int res = TRI_AddCollectionTransaction(_trx, cid,
                                              type,
-                                             _nestingLevel, true, true);
+                                             _nestingLevel, true, _allowImplicitCollections);
       if (res != TRI_ERROR_NO_ERROR) {
         if (res == TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION) {
-          THROW_ARANGO_EXCEPTION_MESSAGE(res, std::string(TRI_errno_string(res)) + ": " + collectionName);
+          // special error message to indicate which collection was undeclared
+          THROW_ARANGO_EXCEPTION_MESSAGE(res, std::string(TRI_errno_string(res)) + ": " + collectionName + " [" + TRI_TransactionTypeGetStr(type) + "]");
         }
         THROW_ARANGO_EXCEPTION(res);
       }

@@ -791,6 +791,12 @@ int TRI_AddCollectionTransaction(TRI_transaction_t* trx, TRI_voc_cid_t cid,
 
   allowImplicitCollections &= trx->_allowImplicit;
 
+  // LOG(TRACE) << "cid: " << cid 
+  //            << ", accessType: " << accessType 
+  //            << ", nestingLevel: " << nestingLevel 
+  //            << ", force: " << force 
+  //            << ", allowImplicitCollections: " << allowImplicitCollections;
+  
   // upgrade transaction type if required
   if (nestingLevel == 0) {
     if (!force) {
@@ -809,7 +815,7 @@ int TRI_AddCollectionTransaction(TRI_transaction_t* trx, TRI_voc_cid_t cid,
   size_t position = 0;
   TRI_transaction_collection_t* trxCollection =
       FindCollection(trx, cid, &position);
-
+  
   if (trxCollection != nullptr) {
     // collection is already contained in vector
 
@@ -845,7 +851,7 @@ int TRI_AddCollectionTransaction(TRI_transaction_t* trx, TRI_voc_cid_t cid,
   if (accessType == TRI_TRANSACTION_READ && !allowImplicitCollections) {
     return TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION;
   }
-
+  
   // collection was not contained. now create and insert it
   trxCollection = CreateCollection(trx, cid, accessType, nestingLevel);
 
