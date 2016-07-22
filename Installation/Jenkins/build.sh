@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -x
 set -e
 
 if test -z "${PARALLEL_BUILDS}"; then
