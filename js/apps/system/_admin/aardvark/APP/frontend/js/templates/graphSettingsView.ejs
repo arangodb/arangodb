@@ -44,11 +44,11 @@
               <% } %>
 
               <% if (val.type === 'range') { %>
-                <input id="g_<%=key%>" type='range' min="0" max="50" val="<%=VALUE%>"/>
+                <label id="g_<%=key%>_label" class="rangeLabel">1</label>
+                <input id="g_<%=key%>" type='range' min="0" max="30" val="1"/>
               <% } %>
 
               <% if (val.type === 'color') { %>
-              <% console.log(VALUE); %>
                 <input id="g_<%=key%>" type='color' name='color' value="<%=VALUE%>"/>
               <% } %>
 
@@ -95,7 +95,8 @@
                 <% } %>
 
                 <% if (val.type === 'range') { %>
-                  <input id="g_<%=key%>" type='range' min="0" max="100" val="<%=VALUE%>"/>
+                  <label id="g_<%=key%>_label" class="rangeLabel">1</label>
+                  <input id="g_<%=key%>" type='range' min="0" max="30" val="1"/>
                 <% } %>
 
                 <% if (val.type === 'select') { %>
