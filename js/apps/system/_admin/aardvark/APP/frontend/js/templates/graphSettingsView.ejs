@@ -19,7 +19,10 @@
             <% if (val.type === 'divider') { %>
               <div class="pure-u-1-1 left heading"><%=val.name%></div>
             <% } else { %>
-            <div class="<%= genClass %> left"><%=val.name%></div>
+            <div class="<%= genClass %> left">
+              <i title="<%=val.desc%>" class="fa fa-info-circle gv-tooltips" aria-hidden="true"></i>
+              <%=val.name%>
+            </div>
             <div class="<%= genClass2 %> left">
 
               <% if (val.type === 'select') { %>
@@ -45,6 +48,7 @@
               <% } %>
 
               <% if (val.type === 'color') { %>
+              <% console.log(VALUE); %>
                 <input id="g_<%=key%>" type='color' name='color' value="<%=VALUE%>"/>
               <% } %>
 
@@ -64,10 +68,12 @@
             <% if (val.type === 'divider') { %>
               <div class="pure-u-1-1 left heading"><%=val.name%></div>
             <% } else { %>
+              <div class="<%= genClass %> left">
+                <i title="<%=val.desc%>" class="fa fa-info-circle gv-tooltips" aria-hidden="true"></i>
+                <%=val.name%>
+              </div>
 
-              <div class="<%= genClass %> left"><%=val.name%></div>
               <div class="<%= genClass2 %> left">
-
 
                 <% var VALUE; %>
                 <% if (val.value) { %>

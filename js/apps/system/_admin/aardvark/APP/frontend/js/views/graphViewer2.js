@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global arangoHelper, _, slicePath, icon, Joi, wheelnav, document, sigma, Backbone, templateEngine, $, window*/
+/* global arangoHelper, _, frontendConfig, slicePath, icon, Joi, wheelnav, document, sigma, Backbone, templateEngine, $, window*/
 (function () {
   'use strict';
 
@@ -40,6 +40,11 @@
       }
     },
 
+    colors: {
+      hotaru: ['#364C4A', '#497C7F', '#92C5C0', '#858168', '#CCBCA5'],
+      random1: ['#292F36', '#4ECDC4', '#F7FFF7', '#DD6363', '#FFE66D']
+    },
+
     aqlMode: false,
 
     events: {
@@ -47,7 +52,8 @@
       'click #reloadGraph': 'reloadGraph',
       'click #settingsMenu': 'toggleSettings',
       'click #noGraphToggle': 'toggleSettings',
-      'click #toggleForce': 'toggleLayout'
+      'click #toggleForce': 'toggleLayout',
+      'click #selectNodes': 'toggleLasso'
     },
 
     cursorX: 0,
@@ -421,7 +427,7 @@
         } else {
           self.currentGraph.graph.addNode({
             id: id,
-            label: self.graphConfig.nodeLabel || '',
+            label: id.split('/')[1] || '',
             size: self.graphConfig.nodeSize || Math.random(),
             color: self.graphConfig.nodeColor || '#2ecc71',
             x: self.cursorX,
@@ -439,6 +445,46 @@
       } else {
         this.documentStore.createTypeDocument(collectionId, null, callback);
       }
+    },
+
+    deleteEdgeModal: function (edgeId) {
+      var buttons = []; var tableContent = [];
+
+      tableContent.push(
+        window.modalView.createReadOnlyEntry('delete-edge-attr-id', 'Really delete edge', edgeId)
+      );
+
+      buttons.push(
+        window.modalView.createDeleteButton('Delete', this.deleteEdge.bind(this))
+      );
+
+      window.modalView.show(
+        'modalTable.ejs',
+        'Delete edge',
+        buttons,
+        tableContent
+      );
+    },
+
+    deleteEdge: function () {
+      var self = this;
+      var documentKey = $('#delete-edge-attr-id').text();
+      var collectionId = documentKey.split('/')[0];
+      var documentId = documentKey.split('/')[1];
+
+      var callback = function (error) {
+        if (!error) {
+          self.currentGraph.graph.dropEdge(documentKey);
+
+          // rerender graph
+          self.currentGraph.refresh();
+        } else {
+          arangoHelper.arangoError('Graph', 'Could not delete edge.');
+        }
+      };
+
+      this.documentStore.deleteDocument(collectionId, documentId, callback);
+      window.modalView.hide();
     },
 
     addNodeModal: function () {
@@ -510,12 +556,22 @@
       var callback = function (error, data) {
         if (!error) {
           // success
-          self.currentGraph.graph.addEdge({
-            source: from,
-            target: to,
-            id: data._id,
-            color: self.graphConfig.edgeColor
-          });
+          if (self.graphConfig.edgeEditable) {
+            self.currentGraph.graph.addEdge({
+              source: from,
+              size: 1,
+              target: to,
+              id: data._id,
+              color: self.graphConfig.edgeColor
+            });
+          } else {
+            self.currentGraph.graph.addEdge({
+              source: from,
+              target: to,
+              id: data._id,
+              color: self.graphConfig.edgeColor
+            });
+          }
 
           // rerender graph
           self.currentGraph.refresh();
@@ -629,15 +685,13 @@
       this.clearOldContextMenu();
 
       var generateMenu = function (e) {
-        var hotaru = ['#364C4A', '#497C7F', '#92C5C0', '#858168', '#CCBCA5'];
-
         var Wheelnav = wheelnav;
 
         var wheel = new Wheelnav('nodeContextMenu');
         wheel.maxPercent = 1.0;
         wheel.wheelRadius = 50;
         wheel.clockwise = false;
-        wheel.colors = hotaru;
+        wheel.colors = self.colors.hotaru;
         wheel.multiSelect = true;
         wheel.clickModeRotate = false;
         wheel.slicePathFunction = slicePath().DonutSlice;
@@ -676,6 +730,58 @@
       $('#nodeContextMenu').height(100);
 
       generateMenu(e);
+    },
+
+    // right click edge context menu
+    createEdgeContextMenu: function (edgeId, e) {
+      var self = this;
+      var x = this.cursorX - 165;
+      var y = this.cursorY - 120;
+
+      this.clearOldContextMenu();
+
+      var generateMenu = function (e, edgeId) {
+        var hotaru = ['#364C4A', '#497C7F', '#92C5C0', '#858168', '#CCBCA5'];
+
+        var Wheelnav = wheelnav;
+
+        var wheel = new Wheelnav('nodeContextMenu');
+        wheel.maxPercent = 1.0;
+        wheel.wheelRadius = 50;
+        wheel.clockwise = false;
+        wheel.colors = hotaru;
+        wheel.multiSelect = true;
+        wheel.clickModeRotate = false;
+        wheel.slicePathFunction = slicePath().DonutSlice;
+        wheel.createWheel([icon.edit, icon.trash]);
+
+        wheel.navItems[0].selected = false;
+        wheel.navItems[0].hovered = false;
+        // add menu events
+
+        // function 0: edit
+        wheel.navItems[0].navigateFunction = function (e) {
+          self.clearOldContextMenu();
+          self.editEdge(edgeId);
+        };
+
+        // function 1: delete
+        wheel.navItems[1].navigateFunction = function (e) {
+          self.clearOldContextMenu();
+          self.deleteEdgeModal(edgeId);
+        };
+
+        // deselect active default entry
+        wheel.navItems[0].selected = false;
+        wheel.navItems[0].hovered = false;
+      };
+
+      $('#nodeContextMenu').css('left', x + 115);
+      $('#nodeContextMenu').css('top', y + 72);
+      $('#nodeContextMenu').width(100);
+      $('#nodeContextMenu').height(100);
+
+      generateMenu(e, edgeId);
     },
 
     // right click node context menu
@@ -784,7 +890,7 @@
 
     getGraphSettings: function (callback) {
       var self = this;
-      var combinedName = window.App.currentDB.toJSON().name + '_' + this.name;
+      var combinedName = frontendConfig.db + '_' + this.name;
 
       this.userConfig.fetch({
         success: function (data) {
@@ -815,8 +921,12 @@
 
     editNode: function (id) {
       var callback = function () {};
-
       arangoHelper.openDocEditor(id, 'doc', callback);
+    },
+
+    editEdge: function (id) {
+      var callback = function () {};
+      arangoHelper.openDocEditor(id, 'edge', callback);
     },
 
     reloadGraph: function () {
@@ -946,6 +1056,10 @@
         edgesPowRatio: 1
       };
 
+      if (renderer === 'canvas') {
+        settings.autoCurveSortByDirection = true;
+      }
+
       // adjust display settings for big graphs
       if (graph.nodes.length > 500) {
         // show node label if size is 15
@@ -1025,6 +1139,10 @@
 
       // for canvas renderer allow graph editing
       if (renderer === 'canvas') {
+        // render parallel edges
+        sigma.canvas.edges.autoCurve(s);
+        s.refresh();
+
         if (!self.aqlMode) {
           s.bind('rightClickStage', function (e) {
             self.createContextMenu(e);
@@ -1097,6 +1215,13 @@
           s.bind('rightClickNode', function (e) {
             var nodeId = e.data.node.id;
             self.createNodeContextMenu(nodeId, e);
+          });
+        }
+
+        if (this.graphConfig.edgeEditable) {
+          s.bind('rightClickEdge', function (e) {
+            var edgeId = e.data.edge.id;
+            self.createEdgeContextMenu(edgeId, e);
           });
         }
 
@@ -1190,6 +1315,11 @@
       // focus last input box if available
       if (toFocus) {
         $('#' + toFocus).focus();
+        /*
+        $('#graphSettingsContent').animate({
+          scrollTop: $('#' + toFocus).offset().top
+        }, 2000);
+       */
       }
 
       var enableLasso = function () {
@@ -1200,31 +1330,37 @@
 
       // init graph lasso
       if (this.graphConfig) {
-        if (this.graphConfig.renderer !== 'canvas') {
+        if (this.graphConfig.renderer === 'canvas') {
           enableLasso();
+        } else {
+          $('#selectNodes').parent().hide();
         }
       } else {
-        enableLasso();
+        if (renderer === 'canvas') {
+          enableLasso();
+        } else {
+          $('#selectNodes').parent().hide();
+        }
       }
 
-      // add lasso event
-      // Toggle lasso activation on Alt + l
-      document.addEventListener('keyup', function (event) {
-        switch (event.keyCode) {
-          case 76:
-            if (event.altKey) {
-              if (self.graphLasso.isActive) {
-                self.graphLasso.deactivate();
-              } else {
-                self.graphLasso.activate();
-              }
-            }
-            break;
-        }
-      });
-
+      if (self.graphLasso) {
+        // add lasso event
+        // Toggle lasso activation on Alt + l
+        window.App.listenerFunctions['graphViewer'] = this.keyUpFunction.bind(this);
+      }
       // clear up info div
       $('#calculatingGraph').remove();
+    },
+
+    keyUpFunction: function (event) {
+      var self = this;
+      switch (event.keyCode) {
+        case 76:
+          if (event.altKey) {
+            self.toggleLasso();
+          }
+          break;
+      }
     },
 
     toggleLayout: function () {
@@ -1232,6 +1368,16 @@
         this.stopLayout();
       } else {
         this.startLayout();
+      }
+    },
+
+    toggleLasso: function () {
+      if (this.graphLasso.isActive) {
+        $('#selectNodes').removeClass('activated');
+        this.graphLasso.deactivate();
+      } else {
+        $('#selectNodes').addClass('activated');
+        this.graphLasso.activate();
       }
     },
 
