@@ -226,7 +226,7 @@ enum TRI_vocbase_type_e {
 ////////////////////////////////////////////////////////////////////////////////
 
 struct TRI_vocbase_t {
-  TRI_vocbase_t(TRI_server_t*, TRI_vocbase_type_e, char const*, TRI_voc_tick_t,
+  TRI_vocbase_t(TRI_vocbase_type_e, char const*, TRI_voc_tick_t,
                 char const*);
 
   ~TRI_vocbase_t();
@@ -237,8 +237,6 @@ struct TRI_vocbase_t {
   TRI_vocbase_type_e _type;  // type (normal or coordinator)
 
   std::atomic<uint64_t> _refCount;
-
-  TRI_server_t* _server;
 
   arangodb::basics::DeadlockDetector<TRI_document_collection_t>
       _deadlockDetector;
@@ -407,7 +405,7 @@ class TRI_vocbase_col_t {
 /// @brief create a vocbase object, without threads and some other attributes
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vocbase_t* TRI_CreateInitialVocBase(TRI_server_t*, TRI_vocbase_type_e,
+TRI_vocbase_t* TRI_CreateInitialVocBase(TRI_vocbase_type_e,
                                         char const*, TRI_voc_tick_t,
                                         char const*);
 
@@ -415,7 +413,7 @@ TRI_vocbase_t* TRI_CreateInitialVocBase(TRI_server_t*, TRI_vocbase_type_e,
 /// @brief opens an existing database, loads all collections
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vocbase_t* TRI_OpenVocBase(TRI_server_t*, char const*, TRI_voc_tick_t,
+TRI_vocbase_t* TRI_OpenVocBase(char const*, TRI_voc_tick_t,
                                char const*, bool, bool);
 
 ////////////////////////////////////////////////////////////////////////////////

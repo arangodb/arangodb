@@ -53,12 +53,11 @@ using namespace arangodb::httpclient;
 using namespace arangodb::rest;
 
 ContinuousSyncer::ContinuousSyncer(
-    TRI_server_t* server, TRI_vocbase_t* vocbase,
+    TRI_vocbase_t* vocbase,
     TRI_replication_applier_configuration_t const* configuration,
     TRI_voc_tick_t initialTick, bool useTick,
     TRI_voc_tick_t barrierId)
     : Syncer(vocbase, configuration),
-      _server(server),
       _applier(vocbase->_replicationApplier),
       _chunkSize(),
       _restrictType(RESTRICT_NONE),
@@ -632,7 +631,7 @@ int ContinuousSyncer::startTransaction(VPackSlice const& slice) {
 
   LOG_TOPIC(TRACE, Logger::REPLICATION) << "starting replication transaction " << tid;
 
-  auto trx = std::make_unique<ReplicationTransaction>(_server, _vocbase);
+  auto trx = std::make_unique<ReplicationTransaction>(_vocbase);
 
   int res = trx->begin();
 

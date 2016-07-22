@@ -33,7 +33,6 @@
 
 #include <velocypack/Builder.h>
 
-struct TRI_server_t;
 struct TRI_vocbase_t;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -142,8 +141,7 @@ struct TRI_replication_applier_state_t {
 
 class TRI_replication_applier_t {
  public:
-  TRI_replication_applier_t(TRI_server_t*, TRI_vocbase_t*);
-
+  explicit TRI_replication_applier_t(TRI_vocbase_t*);
   ~TRI_replication_applier_t();
 
  public:
@@ -262,7 +260,6 @@ class TRI_replication_applier_t {
   std::atomic<uint64_t> _starts;
 
  public:
-  TRI_server_t* _server;
   TRI_vocbase_t* _vocbase;
   mutable arangodb::basics::ReadWriteLock _statusLock;
   std::atomic<bool> _terminateThread;
@@ -275,8 +272,7 @@ class TRI_replication_applier_t {
 /// @brief create a replication applier
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_replication_applier_t* TRI_CreateReplicationApplier(TRI_server_t*,
-                                                        TRI_vocbase_t*);
+TRI_replication_applier_t* TRI_CreateReplicationApplier(TRI_vocbase_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief configure the replication applier

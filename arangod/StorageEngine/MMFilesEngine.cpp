@@ -279,8 +279,7 @@ TRI_vocbase_t* MMFilesEngine::openDatabase(VPackSlice const& parameters, bool is
   std::string const name = parameters.get("name").copyString();
   std::string const directory = databaseDirectory(id);
   bool iterateMarkersOnOpen = true; /* TODO */
-  TRI_server_t* server = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database")->SERVER; // TODO
-  TRI_vocbase_t* vocbase = TRI_OpenVocBase(server, directory.c_str(), id, name.c_str(), isUpgrade, iterateMarkersOnOpen);
+  TRI_vocbase_t* vocbase = TRI_OpenVocBase(directory.c_str(), id, name.c_str(), isUpgrade, iterateMarkersOnOpen);
 
   if (vocbase == nullptr) {
     // grab last error

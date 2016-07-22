@@ -27,6 +27,7 @@
 #include "Basics/DataProtector.h"
 #include "Basics/Mutex.h"
 #include "Basics/Thread.h"
+#include "VocBase/voc-types.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -40,13 +41,6 @@ class DatabaseManagerThread;
 namespace aql {
 class QueryRegistry;
 }
-
-/// @brief databases list structure
-struct DatabasesLists {
-  std::unordered_map<std::string, TRI_vocbase_t*> _databases;
-  std::unordered_map<std::string, TRI_vocbase_t*> _coordinatorDatabases;
-  std::unordered_set<TRI_vocbase_t*> _droppedDatabases;
-};
 
 class DatabaseManagerThread : public Thread {
  public:
@@ -87,6 +81,7 @@ class DatabaseFeature final : public application_features::ApplicationFeature {
   void forceSyncProperties(bool value) { _forceSyncProperties = value; }
   bool waitForSync() const { return _defaultWaitForSync; }
   uint64_t maximalJournalSize() const { return _maximalJournalSize; }
+  bool compactor() const { return !_disableCompactor; }
 
   void disableReplicationApplier() { _replicationApplier = false; }
   void disableCompactor() { _disableCompactor = true; }

@@ -1233,12 +1233,11 @@ std::shared_ptr<VPackBuilder> TRI_vocbase_col_t::toVelocyPackIndexes(
 /// @brief create a vocbase object, without threads and some other attributes
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vocbase_t* TRI_CreateInitialVocBase(
-    TRI_server_t* server, TRI_vocbase_type_e type, char const* path,
+TRI_vocbase_t* TRI_CreateInitialVocBase(TRI_vocbase_type_e type, char const* path,
     TRI_voc_tick_t id, char const* name) {
   try {
     auto vocbase =
-        std::make_unique<TRI_vocbase_t>(server, type, path, id, name);
+        std::make_unique<TRI_vocbase_t>(type, path, id, name);
 
     return vocbase.release();
   } catch (...) {
@@ -1252,14 +1251,14 @@ TRI_vocbase_t* TRI_CreateInitialVocBase(
 /// @brief opens an existing database, scans all collections
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vocbase_t* TRI_OpenVocBase(TRI_server_t* server, char const* path,
+TRI_vocbase_t* TRI_OpenVocBase(char const* path,
                                TRI_voc_tick_t id, char const* name,
                                bool isUpgrade, bool iterateMarkers) {
   TRI_ASSERT(name != nullptr);
   TRI_ASSERT(path != nullptr);
 
   TRI_vocbase_t* vocbase = TRI_CreateInitialVocBase(
-      server, TRI_VOCBASE_TYPE_NORMAL, path, id, name);
+      TRI_VOCBASE_TYPE_NORMAL, path, id, name);
 
   if (vocbase == nullptr) {
     return nullptr;
@@ -1300,7 +1299,7 @@ TRI_vocbase_t* TRI_OpenVocBase(TRI_server_t* server, char const* path,
   TRI_StartThread(&vocbase->_cleanup, nullptr, "Cleanup", TRI_CleanupVocBase,
                   vocbase);
 
-  vocbase->_replicationApplier = TRI_CreateReplicationApplier(server, vocbase);
+  vocbase->_replicationApplier = TRI_CreateReplicationApplier(vocbase);
 
   if (vocbase->_replicationApplier == nullptr) {
     LOG(FATAL) << "initializing replication applier for database '"
@@ -1399,7 +1398,9 @@ void TRI_StartCompactorVocBase(TRI_vocbase_t* vocbase) {
 
   LOG(TRACE) << "starting compactor for database '" << vocbase->_name << "'";
   // start compactor thread
-  if (!vocbase->_server->_disableCompactor) {
+  DatabaseFeature* databaseFeature = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
+
+  if (databaseFeature->compactor()) {
     TRI_InitThread(&vocbase->_compactor);
     TRI_StartThread(&vocbase->_compactor, nullptr, "Compactor",
                     TRI_CompactorVocBase, vocbase);
@@ -2134,7 +2135,7 @@ void TRI_SetThrowCollectionNotLoadedVocBase(bool value) {
 /// @brief create a vocbase object
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vocbase_t::TRI_vocbase_t(TRI_server_t* server, TRI_vocbase_type_e type,
+TRI_vocbase_t::TRI_vocbase_t(TRI_vocbase_type_e type,
                              char const* path, TRI_voc_tick_t id,
                              char const* name)
     : _id(id),
@@ -2142,7 +2143,6 @@ TRI_vocbase_t::TRI_vocbase_t(TRI_server_t* server, TRI_vocbase_type_e type,
       _name(nullptr),
       _type(type),
       _refCount(0),
-      _server(server),
       _deadlockDetector(false),
       _userStructures(nullptr),
       _queries(nullptr),

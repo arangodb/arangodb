@@ -407,10 +407,9 @@ static void VPackState(VPackBuilder& builder,
 /// @brief create a replication applier
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_replication_applier_t* TRI_CreateReplicationApplier(
-    TRI_server_t* server, TRI_vocbase_t* vocbase) {
+TRI_replication_applier_t* TRI_CreateReplicationApplier(TRI_vocbase_t* vocbase) {
   TRI_replication_applier_t* applier =
-      new TRI_replication_applier_t(server, vocbase);
+      new TRI_replication_applier_t(vocbase);
 
   TRI_InitStateReplicationApplier(&applier->_state);
 
@@ -868,11 +867,9 @@ int TRI_SaveConfigurationReplicationApplier(
 /// @brief create a replication applier
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_replication_applier_t::TRI_replication_applier_t(TRI_server_t* server,
-                                                     TRI_vocbase_t* vocbase)
+TRI_replication_applier_t::TRI_replication_applier_t(TRI_vocbase_t* vocbase)
     : _databaseName(vocbase->_name),
       _starts(0),
-      _server(server),
       _vocbase(vocbase),
       _terminateThread(false),
       _state() {}
@@ -924,8 +921,7 @@ int TRI_replication_applier_t::start(TRI_voc_tick_t initialTick, bool useTick,
                       "no database configured");
   }
 
-  auto syncer = std::make_unique<arangodb::ContinuousSyncer>(
-      _server, _vocbase, &_configuration, initialTick, useTick, barrierId);
+  auto syncer = std::make_unique<arangodb::ContinuousSyncer>(_vocbase, &_configuration, initialTick, useTick, barrierId);
 
   // reset error
   if (_state._lastError._msg != nullptr) {

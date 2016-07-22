@@ -32,7 +32,6 @@
 #include "Aql/QueryRegistry.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
-#include "Basics/HybridLogicalClock.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
@@ -83,18 +82,6 @@ static std::atomic<bool> ServerShutdown;
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_vocbase_operationmode_e Mode = TRI_VOCBASE_MODE_NORMAL;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief current tick identifier (48 bit)
-////////////////////////////////////////////////////////////////////////////////
-
-static std::atomic<uint64_t> CurrentTick(0);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief a hybrid logical clock
-////////////////////////////////////////////////////////////////////////////////
-
-static HybridLogicalClock hybridLogicalClock;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create app subdirectory for a database
@@ -435,8 +422,7 @@ int TRI_CreateCoordinatorDatabaseServer(TRI_server_t* server,
 
   // name not yet in use, release the read lock
 
-  TRI_vocbase_t* vocbase = TRI_CreateInitialVocBase(
-      server, TRI_VOCBASE_TYPE_COORDINATOR, "none", tick, name);
+  TRI_vocbase_t* vocbase = TRI_CreateInitialVocBase(TRI_VOCBASE_TYPE_COORDINATOR, "none", tick, name);
 
   if (vocbase == nullptr) {
     // grab last error
@@ -455,7 +441,7 @@ int TRI_CreateCoordinatorDatabaseServer(TRI_server_t* server,
 
   TRI_ASSERT(vocbase != nullptr);
 
-  vocbase->_replicationApplier = TRI_CreateReplicationApplier(server, vocbase);
+  vocbase->_replicationApplier = TRI_CreateReplicationApplier(vocbase);
 
   if (vocbase->_replicationApplier == nullptr) {
     delete vocbase;
@@ -553,7 +539,7 @@ int TRI_CreateDatabaseServer(TRI_server_t* server, TRI_voc_tick_t databaseId,
                 << "'";
     }
 
-    vocbase = TRI_OpenVocBase(server, path.c_str(), databaseId, name, false, false);
+    vocbase = TRI_OpenVocBase(path.c_str(), databaseId, name, false, false);
 
     if (vocbase == nullptr) {
       // grab last error
@@ -990,54 +976,6 @@ int TRI_GetDatabaseNamesServer(TRI_server_t* server,
 
   return res;
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create a new tick
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_voc_tick_t TRI_NewTickServer() { return ++CurrentTick; }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create a new tick, using a hybrid logical clock
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_voc_tick_t TRI_HybridLogicalClock(void) {
-  return hybridLogicalClock.getTimeStamp();
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create a new tick, using a hybrid logical clock, this variant
-/// is supposed to be called when a time stamp is received in network
-/// communications.
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_voc_tick_t TRI_HybridLogicalClock(TRI_voc_tick_t received) {
-  return hybridLogicalClock.getTimeStamp(received);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief updates the tick counter, with lock
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_UpdateTickServer(TRI_voc_tick_t tick) {
-  TRI_voc_tick_t t = tick;
-
-  auto expected = CurrentTick.load(std::memory_order_relaxed);
-
-  // only update global tick if less than the specified value...
-  while (expected < t &&
-         !CurrentTick.compare_exchange_weak(expected, t,
-                                            std::memory_order_release,
-                                            std::memory_order_relaxed)) {
-    expected = CurrentTick.load(std::memory_order_relaxed);
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the current tick counter
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_voc_tick_t TRI_CurrentTickServer() { return CurrentTick; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets the current operation mode of the server

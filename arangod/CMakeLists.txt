@@ -327,6 +327,7 @@ add_executable(${BIN_ARANGOD}
   VocBase/replication-common.cpp
   VocBase/replication-dump.cpp
   VocBase/server.cpp
+  VocBase/ticks.cpp
   VocBase/transaction.cpp
   VocBase/vocbase.cpp
   Wal/AllocatorThread.cpp

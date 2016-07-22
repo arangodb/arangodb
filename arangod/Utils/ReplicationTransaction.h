@@ -25,6 +25,7 @@
 #define ARANGOD_UTILS_REPLICATION_TRANSACTION_H 1
 
 #include "Basics/Common.h"
+#include "RestServer/DatabaseFeature.h"
 #include "Utils/StandaloneTransactionContext.h"
 #include "Utils/Transaction.h"
 #include "VocBase/server.h"
@@ -40,17 +41,19 @@ class ReplicationTransaction : public Transaction {
   /// @brief create the transaction
   //////////////////////////////////////////////////////////////////////////////
 
-  ReplicationTransaction(TRI_server_t* server, TRI_vocbase_t* vocbase)
-      : Transaction(StandaloneTransactionContext::Create(vocbase)),
-        _server(server) {
-    TRI_UseDatabaseServer(_server, vocbase->_name);
+  ReplicationTransaction(TRI_vocbase_t* vocbase)
+      : Transaction(StandaloneTransactionContext::Create(vocbase)) {
+
+    TRI_UseDatabaseServer(DatabaseFeature::SERVER, vocbase->_name);
   }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief end the transaction
   //////////////////////////////////////////////////////////////////////////////
 
-  ~ReplicationTransaction() { TRI_ReleaseDatabaseServer(_server, vocbase()); }
+  ~ReplicationTransaction() { 
+    TRI_ReleaseDatabaseServer(DatabaseFeature::SERVER, vocbase()); 
+  }
 
  public:
 
@@ -83,9 +86,6 @@ class ReplicationTransaction : public Transaction {
 
     return trxCollection;
   }
-
- private:
-  TRI_server_t* _server;
 };
 }
 
