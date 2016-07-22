@@ -354,6 +354,21 @@ authRouter.get('/graph/:name', function (req, res) {
    'RETURN p'
   ;
 
+  var getAttributeByKey = function (o, s) {
+    s = s.replace(/\[(\w+)\]/g, '.$1');
+    s = s.replace(/^\./, '');
+    var a = s.split('.');
+    for (var i = 0, n = a.length; i < n; ++i) {
+      var k = a[i];
+      if (k in o) {
+        o = o[k];
+      } else {
+        return;
+      }
+    }
+    return o;
+  };
+
   var cursor = AQL_EXECUTE(aqlQuery);
 
   var nodesObj = {};
@@ -415,18 +430,28 @@ authRouter.get('/graph/:name', function (req, res) {
           }
         }
       }
-      edgesObj[edge._from + edge._to] = edgeObj;
+      edgesObj[edge._id] = edgeObj;
     });
 
     var nodeLabel;
     var nodeSize;
     var nodeObj;
-
     _.each(obj.vertices, function (node) {
       if (config.nodeLabel) {
-        nodeLabel = node[config.nodeLabel];
+        if (config.nodeLabel.indexOf('.') > -1) {
+          nodeLabel = getAttributeByKey(node, config.nodeLabel);
+          if (nodeLabel === undefined || nodeLabel === '') {
+            nodeLabel = node._id;
+          }
+        } else {
+          nodeLabel = node[config.nodeLabel];
+        }
       } else {
         nodeLabel = node._id;
+      }
+
+      if (typeof nodeLabel === 'number') {
+        nodeLabel = JSON.stringify(nodeLabel);
       }
 
       if (config.nodeSize) {
@@ -467,8 +492,8 @@ authRouter.get('/graph/:name', function (req, res) {
   });
 
   // array format for sigma.js
-  _.each(edgesObj, function (node) {
-    edgesArr.push(node);
+  _.each(edgesObj, function (edge) {
+    edgesArr.push(edge);
   });
   _.each(nodesObj, function (node) {
     nodesArr.push(node);

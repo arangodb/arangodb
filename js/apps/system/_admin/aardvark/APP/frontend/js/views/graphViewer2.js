@@ -574,6 +574,7 @@
           }
 
           // rerender graph
+          sigma.canvas.edges.autoCurve(self.currentGraph);
           self.currentGraph.refresh();
         } else {
           arangoHelper.arangoError('Graph', 'Could not create edge.');
@@ -971,8 +972,6 @@
         // Do something with the selected nodes
         var nodes = event.data;
 
-        console.log('nodes', nodes);
-
         // For instance, reset all node size as their initial size
         sigmaInstance.graph.nodes().forEach(function (node) {
           node.color = self.graphConfig.nodeColor ? self.graphConfig.nodeColor : 'rgb(46, 204, 113)';
@@ -1053,6 +1052,7 @@
         mouseEnabled: true,
         touchEnabled: true,
         nodesPowRatio: 1,
+        font: 'Roboto',
         edgesPowRatio: 1
       };
 
