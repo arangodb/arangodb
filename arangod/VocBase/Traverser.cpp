@@ -109,6 +109,11 @@ arangodb::traverser::TraverserOptions::TraverserOptions(
   }
 }
 
+bool arangodb::traverser::TraverserOptions::vertexHasFilter(
+    size_t depth) const {
+  return _vertexExpressions.find(depth) != _vertexExpressions.end();
+}
+
 bool arangodb::traverser::TraverserOptions::evaluateEdgeExpression(
     arangodb::velocypack::Slice edge, arangodb::velocypack::Slice vertex,
     size_t depth) const {
@@ -378,11 +383,12 @@ bool arangodb::traverser::Traverser::edgeMatchesConditions(VPackSlice e, VPackSl
 
 bool arangodb::traverser::Traverser::vertexMatchesConditions(VPackSlice v, size_t depth) {
   TRI_ASSERT(v.isString());
-#warning it is possible to not fetch the vertex if no check is required.
-  aql::AqlValue vertex = fetchVertexData(v);
-  if (!_opts.evaluateVertexExpression(vertex.slice(), depth)) {
-    ++_filteredPaths;
-    return false;
+  if (_opts.vertexHasFilter(depth)) {
+    aql::AqlValue vertex = fetchVertexData(v);
+    if (!_opts.evaluateVertexExpression(vertex.slice(), depth)) {
+      ++_filteredPaths;
+      return false;
+    }
   }
   return true;
 }

@@ -80,6 +80,9 @@ class PathEnumerator {
 
   EnumeratedPath _enumeratedPath;
 
+  /// @brief List which edges have been visited already.
+  std::unordered_set<arangodb::velocypack::Slice> _returnedEdges;
+
  public:
   PathEnumerator(Traverser* traverser, arangodb::velocypack::Slice startVertex,
                  TraverserOptions const* opts)

@@ -94,6 +94,19 @@ bool SingleServerEdgeCursor::next(std::vector<VPackSlice>& result) {
   return true;
 }
 
+void SingleServerEdgeCursor::readAll(std::unordered_set<VPackSlice>& result) {
+  for (auto& cursor : _cursors) {
+    while (cursor->hasMore()) {
+      // NOTE: We cannot clear the cache,
+      // because the cursor expect's it to be filled.
+      cursor->getMoreMptr(_cache);
+      for (auto const& mptr : _cache) {
+        result.emplace(mptr->vpack());
+      }
+    }
+  }
+}
+
 SingleServerTraverser::SingleServerTraverser(TraverserOptions& opts,
                                              arangodb::Transaction* trx)
     : Traverser(opts), _trx(trx), _startIdBuilder(trx) {
@@ -169,16 +182,15 @@ void SingleServerTraverser::addEdgeToVelocyPack(VPackSlice edge,
 bool SingleServerTraverser::VertexGetter::getVertex(
     VPackSlice edge, std::vector<VPackSlice>& result) {
   VPackSlice cmp = result.back();
-  VPackSlice from = Transaction::extractFromFromDocument(edge);
-#warning Here we have to execute VertexFilter
-  /// If the vertex is not cached in _traverser->_vertices => incr. _filteredPath return false;
-  /// Else check condition if ok => return true, else return false.
-  /// When returning false set result = ""
-  if (arangodb::basics::VelocyPackHelper::compare(cmp, from, false) != 0) {
-    result.emplace_back(from);
-  } else {
-    result.emplace_back(Transaction::extractToFromDocument(edge));
+  VPackSlice res = Transaction::extractFromFromDocument(edge);
+  if (arangodb::basics::VelocyPackHelper::compare(cmp, res, false) == 0) {
+    res = Transaction::extractToFromDocument(edge);
   }
+
+  if (!_traverser->vertexMatchesConditions(res, result.size())) {
+    return false;
+  }
+  result.emplace_back(res);
   return true;
 }
 
@@ -187,16 +199,12 @@ bool SingleServerTraverser::VertexGetter::getSingleVertex(VPackSlice edge,
                                                           size_t depth,
                                                           VPackSlice& result) {
   VPackSlice from = Transaction::extractFromFromDocument(edge);
-#warning Here we have to execute VertexFilter
-  /// If the vertex is not cached in _traverser->_vertices => incr. _filteredPath return false;
-  /// Else check condition if ok => return true, else return false.
-  /// When returning false set result = ""
   if (arangodb::basics::VelocyPackHelper::compare(cmp, from, false) != 0) {
     result = from;
   } else {
     result = Transaction::extractToFromDocument(edge);
   }
-  return true;
+  return _traverser->vertexMatchesConditions(result, depth);
 }
 
 
@@ -213,24 +221,22 @@ bool SingleServerTraverser::UniqueVertexGetter::getVertex(
     toAdd = Transaction::extractToFromDocument(edge);
   }
   
-#warning Here we have to execute VertexFilter
-    /// If the vertex is not cached in _traverser->_vertices => incr. _filteredPath return false;
-    /// Else check condition if ok => return true, else return false.
-    /// When returning false set result = ""
-    /// When returning true: _returnedVertices.emplace(result)
 
+  // First check if we visited it. If not, than mark
   if (_returnedVertices.find(toAdd) != _returnedVertices.end()) {
     // This vertex is not unique.
     ++_traverser->_filteredPaths;
     return false;
   } else {
     _returnedVertices.emplace(toAdd);
-    result.emplace_back(toAdd);
-    return true;
   }
 
-  // This should never be reached
-  return false;
+  if (!_traverser->vertexMatchesConditions(toAdd, result.size())) {
+    return false;
+  }
+
+  result.emplace_back(toAdd);
+  return true;
 }
 
 bool SingleServerTraverser::UniqueVertexGetter::getSingleVertex(
@@ -241,23 +247,16 @@ bool SingleServerTraverser::UniqueVertexGetter::getSingleVertex(
     result = Transaction::extractToFromDocument(edge);
   }
   
-#warning Here we have to execute VertexFilter
-    /// If the vertex is not cached in _traverser->_vertices => incr. _filteredPath return false;
-    /// Else check condition if ok => return true, else return false.
-    /// When returning false set result = ""
-    /// When returning true: _returnedVertices.emplace(result)
-
+  // First check if we visited it. If not, than mark
   if (_returnedVertices.find(result) != _returnedVertices.end()) {
     // This vertex is not unique.
     ++_traverser->_filteredPaths;
     return false;
   } else {
     _returnedVertices.emplace(result);
-    return true;
   }
 
-  // This should never be reached
-  return false;
+  return _traverser->vertexMatchesConditions(result, depth);
 }
 
 void SingleServerTraverser::UniqueVertexGetter::reset(VPackSlice startVertex) {
@@ -273,24 +272,15 @@ void SingleServerTraverser::setStartVertex(std::string const& v) {
   _startIdBuilder->add(VPackValue(v));
   VPackSlice idSlice = _startIdBuilder->slice();
 
-  TRI_doc_mptr_t vertex;
-  int result = FetchDocumentById(_trx, v, &vertex);
-  ++_readDocuments;
-
-  if (result != TRI_ERROR_NO_ERROR) {
-    // Vertex does not exist
-    _done = true;
-    return;
-  }
-  VPackSlice vertexSlice(vertex.vpack());
-
-  if (!_opts.evaluateVertexExpression(vertexSlice, 0)) {
+  if (!vertexMatchesConditions(idSlice, 0)) {
     // Start vertex invalid
     ++_filteredPaths;
     _done = true;
     return;
   }
+
   _vertexGetter->reset(idSlice);
+
   if (_opts.useBreadthFirst) {
     _enumerator.reset(new BreadthFirstEnumerator(this, idSlice, &_opts));
   } else {

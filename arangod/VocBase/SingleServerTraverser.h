@@ -52,6 +52,8 @@ class SingleServerEdgeCursor : public EdgeCursor {
 
   bool next(std::vector<arangodb::velocypack::Slice>&);
 
+  void readAll(std::unordered_set<arangodb::velocypack::Slice>&);
+
   std::vector<OperationCursor*>& getCursors() {
     return _cursors;
   }

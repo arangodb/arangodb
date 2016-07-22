@@ -62,6 +62,17 @@ bool DepthFirstEnumerator::next() {
       TRI_ASSERT(_edgeCursors.size() == _enumeratedPath.edges.size() + 1);
       auto cursor = _edgeCursors.top();
       if (cursor->next(_enumeratedPath.edges)) {
+        if (_opts->uniqueEdges == TraverserOptions::UniquenessLevel::GLOBAL) {
+          if (_returnedEdges.find(_enumeratedPath.edges.back()) ==
+              _returnedEdges.end()) {
+            // Edge not yet visited. Mark and continue.
+            _returnedEdges.emplace(_enumeratedPath.edges.back());
+          } else {
+            _traverser->_filteredPaths++;
+            _enumeratedPath.edges.pop_back();
+            continue;
+          }
+        }
         if (!_traverser->edgeMatchesConditions(_enumeratedPath.edges.back(),
                                                _enumeratedPath.vertices.back(),
                                                _enumeratedPath.edges.size())) {
@@ -90,18 +101,9 @@ bool DepthFirstEnumerator::next() {
           }
         }
 
-#warning not yet finished
         // We have to check if edge and vertex is valid
         if (_traverser->getVertex(_enumeratedPath.edges.back(),
                                   _enumeratedPath.vertices)) {
-          if (!_traverser->vertexMatchesConditions(
-                  _enumeratedPath.vertices.back(),
-                  _enumeratedPath.vertices.size())) {
-            // This edge does not pass the filtering
-            _enumeratedPath.vertices.pop_back();
-            _enumeratedPath.edges.pop_back();
-            continue;
-          }
           // case both are valid.
           if (_opts->uniqueVertices == TraverserOptions::UniquenessLevel::PATH) {
             auto& e = _enumeratedPath.vertices.back();
@@ -133,6 +135,7 @@ bool DepthFirstEnumerator::next() {
         }
         // Vertex Invalid. Revoke edge
         _enumeratedPath.edges.pop_back();
+        continue;
       } else {
         // cursor is empty.
         _edgeCursors.pop();
@@ -252,15 +255,31 @@ bool BreadthFirstEnumerator::next() {
     auto const nextIdx = _toSearch[_toSearchPos++].sourceIdx;
     auto const& nextVertex = _schreier[nextIdx]->vertex;
 
-    _traverser->getAllEdges(nextVertex, _tmpEdges, _currentDepth);
+    auto cursor = _opts->nextCursor(nextVertex, _currentDepth);
+    if (cursor != nullptr) {
+      cursor->readAll(_tmpEdges);
+    }
+
     bool shouldReturnPath = _currentDepth + 1 >= _opts->minDepth;
     if (!_tmpEdges.empty()) {
       bool didInsert = false;
       VPackSlice v;
       for (auto const& e : _tmpEdges) {
-        bool valid =
-            _traverser->getSingleVertex(e, nextVertex, _currentDepth, v);
-        if (valid) {
+        if (_opts->uniqueEdges == TraverserOptions::UniquenessLevel::GLOBAL) {
+          if (_returnedEdges.find(e) ==
+              _returnedEdges.end()) {
+            // Edge not yet visited. Mark and continue.
+            _returnedEdges.emplace(e);
+          } else {
+            _traverser->_filteredPaths++;
+            continue;
+          }
+        }
+
+        if (!_traverser->edgeMatchesConditions(e, nextVertex, _currentDepth)) {
+          continue;
+        }
+        if (_traverser->getSingleVertex(e, nextVertex, _currentDepth, v)) {
           auto step = std::make_unique<PathStep>(nextIdx, e, v);
           _schreier.emplace_back(step.get());
           step.release();
