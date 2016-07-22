@@ -377,10 +377,12 @@ void DatabaseFeature::unprepare() {
   closeDatabases();
 
   // delete the server
-  _databaseManager->beginShutdown();
+  if (_databaseManager != nullptr) {
+    _databaseManager->beginShutdown();
 
-  while (_databaseManager->isRunning()) {
-    usleep(1000);
+    while (_databaseManager->isRunning()) {
+      usleep(1000);
+    }
   }
  
   try {   
