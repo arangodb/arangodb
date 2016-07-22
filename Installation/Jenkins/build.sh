@@ -1,6 +1,10 @@
 #!/bin/bash -x
 set -e
 
+if test -f /scripts/prepare_buildenv.sh; then
+    echo "Sourcing docker container environment settings"
+    . /scripts/prepare_buildenv.sh
+fi
 if test -z "${PARALLEL_BUILDS}"; then
     PARALLEL_BUILDS=1
 fi
