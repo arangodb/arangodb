@@ -501,7 +501,7 @@ describe ArangoDB do
             document["type"].should eq(2300) 
             document["cid"].should eq(cid) 
             document["data"]["_key"].should eq("test") 
-            document["data"]["_rev"].should match(/^\d+$/)
+            document["data"]["_rev"].should match(/^[a-zA-Z0-9_\-]+$/)
             document["data"]["_rev"].should_not eq("0")
             document["data"]["test"].should eq(false)
               
@@ -517,7 +517,7 @@ describe ArangoDB do
             document["type"].should eq(2302) 
             document["cid"].should eq(cid) 
             document["data"]["_key"].should eq("test") 
-            document["data"]["_rev"].should match(/^\d+$/)
+            document["data"]["_rev"].should match(/^[a-zA-Z0-9_\-]+$/)
             document["data"]["_rev"].should_not eq(rev)
               
             i = i + 1
@@ -865,7 +865,7 @@ describe ArangoDB do
           doc = JSON.parse(part)
           doc['type'].should eq(2300)
           doc['data']['_key'].should eq("test" + i.to_s)
-          doc['data']['_rev'].should match(/^\d+$/)
+          doc["data"]["_rev"].should match(/^[a-zA-Z0-9_\-]+$/)
           doc['data']['test'].should eq(i)
 
           body = body.slice(position + 1, body.length)
@@ -909,7 +909,7 @@ describe ArangoDB do
           doc = JSON.parse(part)
           doc['type'].should eq(2300)
           doc['data']['_key'].should eq("test" + i.to_s)
-          doc['data']['_rev'].should match(/^\d+$/)
+          doc["data"]["_rev"].should match(/^[a-zA-Z0-9_\-]+$/)
           doc['data']['test'].should eq(i)
 
           body = body.slice(position + 1, body.length)
@@ -955,7 +955,7 @@ describe ArangoDB do
           document = JSON.parse(part)
           document['type'].should eq(2300)
           document['data']['_key'].should eq("test" + i.to_s)
-          document['data']['_rev'].should match(/^\d+$/)
+          document["data"]["_rev"].should match(/^[a-zA-Z0-9_\-]+$/)
           document['data']['_from'].should eq("UnitTestsReplication/foo")
           document['data']['_to'].should eq("UnitTestsReplication/bar")
           document['data']['test1'].should eq(i)
@@ -1007,10 +1007,10 @@ describe ArangoDB do
           document.should have_key("key")
           document['key'].should eq("test" + i.to_s)
           document.should have_key("rev")
-          document['rev'].should match(/^\d+$/)
+          document['rev'].should match(/^[a-zA-Z0-9_\-]+$/)
 
           document['data']['_key'].should eq("test" + i.to_s)
-          document['data']['_rev'].should match(/^\d+$/)
+          document['data']['_rev'].should match(/^[a-zA-Z0-9_\-]+$/)
           document['data']['_from'].should eq("UnitTestsReplication/foo")
           document['data']['_to'].should eq("UnitTestsReplication/bar")
           document['data']['test1'].should eq(i)
@@ -1060,7 +1060,7 @@ describe ArangoDB do
           document = JSON.parse(part)
           document['type'].should eq(2300)
           document['data']['_key'].should eq("test" + i.to_s)
-          document['data']['_rev'].should match(/^\d+$/)
+          document['data']['_rev'].should match(/^[a-zA-Z0-9_\-]+$/)
           document['data']['_from'].should eq("UnitTestsReplication/foo")
           document['data']['_to'].should eq("UnitTestsReplication/bar")
           document['data']['test1'].should eq(i)
@@ -1163,7 +1163,7 @@ describe ArangoDB do
           document['type'].should eq(2302)
           # truncate order is undefined
           document['data']['_key'].should match(/^test\d+$/)
-          document['data']['_rev'].should match(/^\d+$/)
+          document['data']['_rev'].should match(/^[a-zA-Z0-9_\-]+$/)
 
           body = body.slice(position + 1, body.length)
           i = i + 1
@@ -1200,7 +1200,7 @@ describe ArangoDB do
           doc.should_not have_key("key")
           doc.should_not have_key("rev")
           doc['data']['_key'].should eq("test" + i.to_s)
-          doc['data']['_rev'].should match(/^\d+$/)
+          doc['data']['_rev'].should match(/^[a-zA-Z0-9_\-]+$/)
           doc['data']['test'].should eq(i)
 
           body = body.slice(position + 1, body.length)
@@ -1238,10 +1238,10 @@ describe ArangoDB do
           doc.should have_key("key")
           doc['key'].should eq("test" + i.to_s)
           doc.should have_key("rev")
-          doc['rev'].should match(/^\d+$/)
+          doc['rev'].should match(/^[a-zA-Z0-9_\-]+$/)
 
           doc['data']['_key'].should eq("test" + i.to_s)
-          doc['data']['_rev'].should match(/^\d+$/)
+          doc['data']['_rev'].should match(/^[a-zA-Z0-9_\-]+$/)
           doc['data']['test'].should eq(i)
 
           body = body.slice(position + 1, body.length)
@@ -1287,7 +1287,7 @@ describe ArangoDB do
           document = JSON.parse(body)
           document['type'].should eq(2300)
           document['data']['_key'].should eq("test" + i.to_s)
-          document['data']['_rev'].should match(/^\d+$/)
+          document['data']['_rev'].should match(/^[a-zA-Z0-9_\-]+$/)
           document['data']['test'].should eq(i)
         }
       end
