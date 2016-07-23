@@ -53,7 +53,7 @@ BootstrapFeature::BootstrapFeature(
   startsAfter("Upgrade");
   startsAfter("CheckVersion");
   startsAfter("FoxxQueues");
-  startsAfter("RestServer");
+  startsAfter("GeneralServer");
 }
 
 void BootstrapFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {

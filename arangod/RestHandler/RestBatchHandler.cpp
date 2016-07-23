@@ -25,11 +25,11 @@
 
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
-#include "Logger/Logger.h"
 #include "GeneralServer/GeneralServer.h"
+#include "GeneralServer/GeneralServerFeature.h"
 #include "GeneralServer/RestHandlerFactory.h"
+#include "Logger/Logger.h"
 #include "Rest/HttpRequest.h"
-#include "RestServer/RestServerFeature.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -176,7 +176,7 @@ RestHandler::status RestBatchHandler::execute() {
     {
       std::unique_ptr<HttpResponse> response(
           new HttpResponse(GeneralResponse::ResponseCode::SERVER_ERROR));
-      handler = RestServerFeature::HANDLER_FACTORY->createHandler(
+      handler = GeneralServerFeature::HANDLER_FACTORY->createHandler(
           request, response.get());
 
       if (handler == nullptr) {

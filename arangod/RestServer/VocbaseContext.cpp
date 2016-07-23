@@ -32,8 +32,8 @@
 #include "Basics/tri-strings.h"
 #include "Cluster/ServerState.h"
 #include "Endpoint/ConnectionInfo.h"
+#include "GeneralServer/GeneralServerFeature.h"
 #include "Logger/Logger.h"
-#include "RestServer/RestServerFeature.h"
 #include "Ssl/SslInterface.h"
 #include "VocBase/AuthInfo.h"
 #include "VocBase/server.h"
@@ -113,7 +113,7 @@ GeneralResponse::ResponseCode VocbaseContext::authenticate() {
 
       if (!username.empty() || !dbname.empty()) {
         AuthLevel level =
-            RestServerFeature::AUTH_INFO.canUseDatabase(username, dbname);
+            GeneralServerFeature::AUTH_INFO.canUseDatabase(username, dbname);
 
         if (level != AuthLevel::RW) {
           result = GeneralResponse::ResponseCode::UNAUTHORIZED;
@@ -221,7 +221,7 @@ GeneralResponse::ResponseCode VocbaseContext::basicAuthentication(
     return GeneralResponse::ResponseCode::OK;
   }
 
-  AuthResult result = RestServerFeature::AUTH_INFO.checkAuthentication(
+  AuthResult result = GeneralServerFeature::AUTH_INFO.checkAuthentication(
       AuthInfo::AuthType::BASIC, auth);
 
   if (!result._authorized) {
@@ -250,7 +250,7 @@ GeneralResponse::ResponseCode VocbaseContext::basicAuthentication(
 
 GeneralResponse::ResponseCode VocbaseContext::jwtAuthentication(
     std::string const& auth) {
-  AuthResult result = RestServerFeature::AUTH_INFO.checkAuthentication(
+  AuthResult result = GeneralServerFeature::AUTH_INFO.checkAuthentication(
       AuthInfo::AuthType::JWT, auth);
 
   if (!result._authorized) {

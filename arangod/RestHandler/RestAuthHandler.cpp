@@ -27,9 +27,9 @@
 #include <velocypack/velocypack-aliases.h>
 
 #include "Basics/StringUtils.h"
+#include "GeneralServer/GeneralServerFeature.h"
 #include "Logger/Logger.h"
 #include "Rest/HttpRequest.h"
-#include "RestServer/RestServerFeature.h"
 #include "Ssl/SslInterface.h"
 #include "VocBase/AuthInfo.h"
 
@@ -111,7 +111,7 @@ RestHandler::status RestAuthHandler::execute() {
   std::string const password = passwordSlice.copyString();
 
   AuthResult auth =
-      RestServerFeature::AUTH_INFO.checkPassword(username, password);
+      GeneralServerFeature::AUTH_INFO.checkPassword(username, password);
 
   if (auth._authorized) {
     VPackBuilder resultBuilder;

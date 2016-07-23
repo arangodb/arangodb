@@ -20,7 +20,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "RestServerFeature.h"
+#include "GeneralServerFeature.h"
 
 #include "Agency/AgencyFeature.h"
 #include "Agency/RestAgencyHandler.h"
@@ -79,14 +79,14 @@ using namespace arangodb;
 using namespace arangodb::rest;
 using namespace arangodb::options;
 
-rest::RestHandlerFactory* RestServerFeature::HANDLER_FACTORY = nullptr;
-rest::AsyncJobManager* RestServerFeature::JOB_MANAGER = nullptr;
-RestServerFeature* RestServerFeature::REST_SERVER = nullptr;
-AuthInfo RestServerFeature::AUTH_INFO;
+rest::RestHandlerFactory* GeneralServerFeature::HANDLER_FACTORY = nullptr;
+rest::AsyncJobManager* GeneralServerFeature::JOB_MANAGER = nullptr;
+GeneralServerFeature* GeneralServerFeature::GENERAL_SERVER = nullptr;
+AuthInfo GeneralServerFeature::AUTH_INFO;
 
-RestServerFeature::RestServerFeature(
+GeneralServerFeature::GeneralServerFeature(
     application_features::ApplicationServer* server)
-    : ApplicationFeature(server, "RestServer"),
+    : ApplicationFeature(server, "GeneralServer"),
       _keepAliveTimeout(300.0),
       _allowMethodOverride(false),
       _authentication(true),
@@ -111,7 +111,7 @@ RestServerFeature::RestServerFeature(
   startsAfter("Upgrade");
 }
 
-void RestServerFeature::collectOptions(
+void GeneralServerFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
   options->addSection("server", "Server features");
 
@@ -180,7 +180,7 @@ void RestServerFeature::collectOptions(
                      new VectorParameter<StringParameter>(&_trustedProxies));
 }
 
-void RestServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
+void GeneralServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
   if (!_accessControlAllowOrigins.empty()) {
     // trim trailing slash from all members
     for (auto& it : _accessControlAllowOrigins) {
@@ -210,9 +210,9 @@ void RestServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
   }
 
   if (!_jwtSecret.empty()) {
-    if (_jwtSecret.length() > RestServerFeature::_maxSecretLength) {
+    if (_jwtSecret.length() > GeneralServerFeature::_maxSecretLength) {
       LOG(ERR) << "Given JWT secret too long. Max length is "
-               << RestServerFeature::_maxSecretLength;
+               << GeneralServerFeature::_maxSecretLength;
       FATAL_ERROR_EXIT();
     }
   }
@@ -256,32 +256,32 @@ static bool SetRequestContext(GeneralRequest* request, void* data) {
   }
 
   VocbaseContext* ctx = new arangodb::VocbaseContext(
-      request, vocbase, RestServerFeature::getJwtSecret());
+      request, vocbase, GeneralServerFeature::getJwtSecret());
   request->setRequestContext(ctx, true);
 
   // the "true" means the request is the owner of the context
   return true;
 }
 
-void RestServerFeature::generateNewJwtSecret() {
+void GeneralServerFeature::generateNewJwtSecret() {
   _jwtSecret = "";
   uint16_t m = 254;
 
-  for (size_t i = 0; i < RestServerFeature::_maxSecretLength; i++) {
+  for (size_t i = 0; i < GeneralServerFeature::_maxSecretLength; i++) {
     _jwtSecret += (1 + RandomGenerator::interval(m));
   }
 }
 
-void RestServerFeature::prepare() {
+void GeneralServerFeature::prepare() {
   if (_jwtSecret.empty()) {
     generateNewJwtSecret();
   }
 
   RestHandlerFactory::setMaintenance(true);
-  REST_SERVER = this;
+  GENERAL_SERVER = this;
 }
 
-void RestServerFeature::start() {
+void GeneralServerFeature::start() {
   _jobManager.reset(new AsyncJobManager(ClusterCommRestCallback));
 
   JOB_MANAGER = _jobManager.get();
@@ -313,10 +313,10 @@ void RestServerFeature::start() {
 
   // populate the authentication cache. otherwise no one can access the new
   // database
-  RestServerFeature::AUTH_INFO.outdate();
+  GeneralServerFeature::AUTH_INFO.outdate();
 }
 
-void RestServerFeature::stop() {
+void GeneralServerFeature::stop() {
   for (auto& server : _servers) {
     server->stopListening();
   }
@@ -326,17 +326,17 @@ void RestServerFeature::stop() {
   }
 }
 
-void RestServerFeature::unprepare() {
+void GeneralServerFeature::unprepare() {
   for (auto& server : _servers) {
     delete server;
   }
 
-  REST_SERVER = nullptr;
+  GENERAL_SERVER = nullptr;
   JOB_MANAGER = nullptr;
   HANDLER_FACTORY = nullptr;
 }
 
-void RestServerFeature::buildServers() {
+void GeneralServerFeature::buildServers() {
   TRI_ASSERT(_jobManager != nullptr);
 
   EndpointFeature* endpoint =
@@ -367,7 +367,7 @@ void RestServerFeature::buildServers() {
   _servers.push_back(server);
 }
 
-void RestServerFeature::defineHandlers() {
+void GeneralServerFeature::defineHandlers() {
   TRI_ASSERT(_jobManager != nullptr);
 
   AgencyFeature* agency =

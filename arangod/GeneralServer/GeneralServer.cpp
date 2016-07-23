@@ -32,10 +32,10 @@
 #include "GeneralServer/AsyncJobManager.h"
 #include "GeneralServer/GeneralCommTask.h"
 #include "GeneralServer/GeneralListenTask.h"
+#include "GeneralServer/GeneralServerFeature.h"
 #include "GeneralServer/HttpServerJob.h"
 #include "GeneralServer/RestHandler.h"
 #include "Logger/Logger.h"
-#include "RestServer/RestServerFeature.h"
 #include "Scheduler/ListenTask.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -78,6 +78,7 @@ GeneralServer::GeneralServer(
       _verificationMode(SSL_VERIFY_NONE),
       _verificationCallback(nullptr),
       _sslAllowed(ctx != nullptr) {}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructs a general server
 ////////////////////////////////////////////////////////////////////////////////
@@ -233,7 +234,7 @@ bool GeneralServer::handleRequestAsync(GeneralCommTask* task,
 
   // register the job with the job manager
   if (jobId != nullptr) {
-    RestServerFeature::JOB_MANAGER->initAsyncJob(
+    GeneralServerFeature::JOB_MANAGER->initAsyncJob(
         static_cast<HttpServerJob*>(job.get()), hdr);
     *jobId = job->jobId();
   }
