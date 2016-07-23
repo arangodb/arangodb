@@ -111,7 +111,6 @@ bool HttpsCommTask::handleEvent(EventToken token, EventType revents) {
       // status is somehow invalid. we got here even though no accept was ever
       // successful
       _clientClosed = true;
-      _server->handleCommunicationFailure(this);
       _scheduler->destroyTask(this);
     }
 

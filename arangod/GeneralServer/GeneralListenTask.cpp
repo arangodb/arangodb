@@ -25,6 +25,10 @@
 #include "GeneralListenTask.h"
 
 #include "GeneralServer/GeneralServer.h"
+#include "GeneralServer/GeneralServerFeature.h"
+#include "Scheduler/Scheduler.h"
+#include "Scheduler/SchedulerFeature.h"
+#include "Ssl/SslServerFeature.h"
 
 using namespace arangodb;
 using namespace arangodb::rest;
@@ -38,9 +42,45 @@ GeneralListenTask::GeneralListenTask(GeneralServer* server, Endpoint* endpoint,
     : Task("GeneralListenTask"),
       ListenTask(endpoint),
       _server(server),
-      _connectionType(connectionType) {}
+      _connectionType(connectionType) {
+  _keepAliveTimeout = GeneralServerFeature::keepAliveTimeout();
 
-bool GeneralListenTask::handleConnected(TRI_socket_t s, ConnectionInfo&& info) {
-  _server->handleConnected(s, std::move(info), _connectionType);
+  SslServerFeature* ssl =
+      application_features::ApplicationServer::getFeature<SslServerFeature>(
+          "SslServer");
+
+  if (ssl != nullptr) {
+    _sslContext = ssl->sslContext();
+  }
+
+  _verificationMode = GeneralServerFeature::verificationMode();
+  _verificationCallback = GeneralServerFeature::verificationCallback();
+}
+
+bool GeneralListenTask::handleConnected(TRI_socket_t socket,
+                                        ConnectionInfo&& info) {
+  GeneralCommTask* commTask;
+
+  switch (_connectionType) {
+    case ConnectionType::VPPS:
+      commTask =
+          new HttpCommTask(_server, socket, std::move(info), _keepAliveTimeout);
+      break;
+    case ConnectionType::VPP:
+      commTask =
+          new HttpCommTask(_server, socket, std::move(info), _keepAliveTimeout);
+      break;
+    case ConnectionType::HTTPS:
+      commTask = new HttpsCommTask(_server, socket, std::move(info),
+                                   _keepAliveTimeout, _sslContext,
+                                   _verificationMode, _verificationCallback);
+      break;
+    case ConnectionType::HTTP:
+      commTask =
+          new HttpCommTask(_server, socket, std::move(info), _keepAliveTimeout);
+      break;
+  }
+
+  SchedulerFeature::SCHEDULER->registerTask(commTask);
   return true;
 }

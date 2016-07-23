@@ -26,6 +26,9 @@
 #define ARANGOD_HTTP_SERVER_HTTP_LISTEN_TASK_H 1
 
 #include "Scheduler/ListenTask.h"
+
+#include <openssl/ssl.h>
+
 #include "GeneralServer/GeneralDefinitions.h"
 
 namespace arangodb {
@@ -34,19 +37,11 @@ class Endpoint;
 namespace rest {
 class GeneralServer;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief task used to establish connections
-////////////////////////////////////////////////////////////////////////////////
-
 class GeneralListenTask : public ListenTask {
   GeneralListenTask(GeneralListenTask const&) = delete;
   GeneralListenTask& operator=(GeneralListenTask const&) = delete;
 
  public:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief listen to given port
-  //////////////////////////////////////////////////////////////////////////////
-
   GeneralListenTask(GeneralServer* server, Endpoint* endpoint,
                     ConnectionType connectionType);
 
@@ -54,12 +49,13 @@ class GeneralListenTask : public ListenTask {
   bool handleConnected(TRI_socket_t s, ConnectionInfo&& info) override;
 
  private:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief underlying general server
-  //////////////////////////////////////////////////////////////////////////////
-
   GeneralServer* _server;
   ConnectionType _connectionType;
+  double _keepAliveTimeout = 300.0;
+  SSL_CTX* _sslContext = nullptr;
+  int _verificationMode = SSL_VERIFY_NONE;
+  int (*_verificationCallback)(int, X509_STORE_CTX*) = nullptr
+;
 };
 }
 }

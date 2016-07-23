@@ -58,8 +58,7 @@ GeneralCommTask::GeneralCommTask(GeneralServer* server, TRI_socket_t socket,
       _writeBuffers(),
       _writeBuffersStats(),
       _isChunked(false),
-      _requestPending(false),
-      _setupDone(false) {
+      _requestPending(false) {
   LOG(TRACE) << "connection established, client "
              << TRI_get_fd_or_handle_of_socket(socket) << ", server ip "
              << _connectionInfo.serverAddress << ", server port "
@@ -122,22 +121,10 @@ void GeneralCommTask::handleSimpleError(
   }
 }
 
-bool GeneralCommTask::setup(Scheduler* scheduler, EventLoop loop) {
-  bool ok = SocketTask::setup(scheduler, loop);
-  if (!ok) return false;
-  _scheduler = scheduler;
-  _loop = loop;
-  setupDone();
-  return true;
-}
-
 bool GeneralCommTask::handleEvent(EventToken token, EventType events) {
   bool result = SocketTask::handleEvent(token, events);
   if (_clientClosed) _scheduler->destroyTask(this);
   return result;
 }
 
-void GeneralCommTask::handleTimeout() {
-  _clientClosed = true;
-  _server->handleCommunicationClosed(this);
-}
+void GeneralCommTask::handleTimeout() { _clientClosed = true; }

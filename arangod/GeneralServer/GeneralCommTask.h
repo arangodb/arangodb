@@ -27,6 +27,8 @@
 
 #include "Scheduler/SocketTask.h"
 
+#include <openssl/ssl.h>
+
 #include "Basics/Mutex.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/WorkItem.h"
@@ -55,9 +57,6 @@ class GeneralCommTask : public SocketTask, public RequestStatisticsAgent {
   void handleSimpleError(GeneralResponse::ResponseCode, int code,
                          std::string const& errorMessage);
 
-  // task set up complete
-  void setupDone() { _setupDone.store(true, std::memory_order_relaxed); }
-
  protected:
   virtual ~GeneralCommTask();
 
@@ -68,8 +67,6 @@ class GeneralCommTask : public SocketTask, public RequestStatisticsAgent {
 
   virtual bool handleEvent(EventToken token,
                            EventType events) override;  // called by TODO
-  virtual bool setup(Scheduler* scheduler,
-                     EventLoop loop) override;  // called by
 
   void cleanup() override final { SocketTask::cleanup(); }
 
@@ -91,12 +88,11 @@ class GeneralCommTask : public SocketTask, public RequestStatisticsAgent {
   bool _startThread;
   std::deque<basics::StringBuffer*> _writeBuffers;
   std::deque<TRI_request_statistics_t*>
-      _writeBuffersStats;        // statistics buffers
-  bool _isChunked;               // true if within a chunked response
-  bool _requestPending;          // true if request is complete but not handled
-  std::atomic<bool> _setupDone;  // task ready
-};                               // Commontask
-}  // rest
-}  // arango
+      _writeBuffersStats;  // statistics buffers
+  bool _isChunked;         // true if within a chunked response
+  bool _requestPending;    // true if request is complete but not handled
+};
+}
+}
 
 #endif

@@ -25,6 +25,8 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 
+#include <openssl/ssl.h>
+
 #include "Actions/RestActionHandler.h"
 #include "VocBase/AuthInfo.h"
 
@@ -40,11 +42,29 @@ class RestServerThread;
 class GeneralServerFeature final
     : public application_features::ApplicationFeature {
  public:
+  typedef int (*verification_callback_fptr)(int, X509_STORE_CTX*);
+
+ public:
   static rest::RestHandlerFactory* HANDLER_FACTORY;
   static rest::AsyncJobManager* JOB_MANAGER;
   static AuthInfo AUTH_INFO;
 
  public:
+  static double keepAliveTimeout() {
+    return GENERAL_SERVER != nullptr ? GENERAL_SERVER->_keepAliveTimeout
+                                     : 300.0;
+  };
+
+  static int verificationMode() {
+    return GENERAL_SERVER != nullptr ? GENERAL_SERVER->_verificationMode
+                                     : SSL_VERIFY_NONE;
+  };
+
+  static verification_callback_fptr verificationCallback() {
+    return GENERAL_SERVER != nullptr ? GENERAL_SERVER->_verificationCallback
+                                     : nullptr;
+  };
+
   static bool authenticationEnabled() {
     return GENERAL_SERVER != nullptr && GENERAL_SERVER->authentication();
   }
@@ -57,6 +77,7 @@ class GeneralServerFeature final
     if (GENERAL_SERVER == nullptr) {
       return std::vector<std::string>();
     }
+
     return GENERAL_SERVER->trustedProxies();
   }
 
@@ -64,6 +85,7 @@ class GeneralServerFeature final
     if (GENERAL_SERVER == nullptr) {
       return std::string();
     }
+
     return GENERAL_SERVER->jwtSecret();
   }
 
@@ -82,8 +104,14 @@ class GeneralServerFeature final
   void stop() override final;
   void unprepare() override final;
 
+ public:
+  void setVerificationMode(int mode) { _verificationMode = mode; }
+  void setVerificationCallback(int (*func)(int, X509_STORE_CTX*)) {
+    _verificationCallback = func;
+  }
+
  private:
-  double _keepAliveTimeout;
+  double _keepAliveTimeout = 300.0;
   bool _allowMethodOverride;
   bool _authentication;
   bool _authenticationUnixSockets;
@@ -94,6 +122,8 @@ class GeneralServerFeature final
   std::vector<std::string> _accessControlAllowOrigins;
 
   std::string _jwtSecret;
+  int _verificationMode;
+  verification_callback_fptr _verificationCallback;
 
  public:
   bool authentication() const { return _authentication; }

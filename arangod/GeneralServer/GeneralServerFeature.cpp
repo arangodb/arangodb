@@ -87,7 +87,6 @@ AuthInfo GeneralServerFeature::AUTH_INFO;
 GeneralServerFeature::GeneralServerFeature(
     application_features::ApplicationServer* server)
     : ApplicationFeature(server, "GeneralServer"),
-      _keepAliveTimeout(300.0),
       _allowMethodOverride(false),
       _authentication(true),
       _authenticationUnixSockets(true),
@@ -322,7 +321,7 @@ void GeneralServerFeature::stop() {
   }
 
   for (auto& server : _servers) {
-    server->stop();
+    server->stopListening();
   }
 }
 
@@ -345,7 +344,6 @@ void GeneralServerFeature::buildServers() {
   auto const& endpointList = endpoint->endpointList();
 
   // check if endpointList contains ssl featured server
-  SSL_CTX* sslContext = nullptr;
   if (endpointList.hasSsl()) {
     SslServerFeature* ssl =
         application_features::ApplicationServer::getFeature<SslServerFeature>(
@@ -356,12 +354,11 @@ void GeneralServerFeature::buildServers() {
                     "please use the '--ssl.keyfile' option";
       FATAL_ERROR_EXIT();
     }
-    sslContext = ssl->sslContext();
   }
 
   GeneralServer* server =
-      new GeneralServer(_keepAliveTimeout, _allowMethodOverride,
-                        _accessControlAllowOrigins, sslContext);
+      new GeneralServer(_allowMethodOverride,
+                        _accessControlAllowOrigins);
 
   server->setEndpointList(&endpointList);
   _servers.push_back(server);

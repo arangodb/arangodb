@@ -844,7 +844,6 @@ void HttpCommTask::signalTask(TaskData* data) {
 
 bool HttpCommTask::handleRead() {
   bool res = true;
-  if (!_setupDone.load(std::memory_order_relaxed)) return res;
 
   if (!_closeRequested) {
     res = fillReadBuffer();
@@ -862,10 +861,8 @@ bool HttpCommTask::handleRead() {
 
   if (_clientClosed) {
     res = false;
-    _server->handleCommunicationClosed(this);
   } else if (!res) {
     _clientClosed = true;
-    _server->handleCommunicationFailure(this);
   }
 
   return res;
@@ -886,7 +883,6 @@ void HttpCommTask::completedWriteBuffer() {
   if (!_clientClosed && _closeRequested && !hasWriteBuffer() &&
       _writeBuffers.empty() && !_isChunked) {
     _clientClosed = true;
-    _server->handleCommunicationClosed(this);
   }
 }
 
