@@ -59,7 +59,7 @@ GeneralListenTask::GeneralListenTask(GeneralServer* server, Endpoint* endpoint,
 
 bool GeneralListenTask::handleConnected(TRI_socket_t socket,
                                         ConnectionInfo&& info) {
-  GeneralCommTask* commTask;
+  GeneralCommTask* commTask = nullptr;
 
   switch (_connectionType) {
     case ConnectionType::VPPS:
@@ -79,6 +79,8 @@ bool GeneralListenTask::handleConnected(TRI_socket_t socket,
       commTask =
           new HttpCommTask(_server, socket, std::move(info), _keepAliveTimeout);
       break;
+    default:
+      return false;
   }
 
   SchedulerFeature::SCHEDULER->registerTask(commTask);
