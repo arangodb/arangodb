@@ -191,7 +191,8 @@
       var query = this.collection.buildDownloadDocumentQuery();
 
       if (query !== '' || query !== undefined || query !== null) {
-        window.open(encodeURI('query/result/download/' + btoa(JSON.stringify(query))));
+        var url = 'query/result/download/' + btoa(JSON.stringify(query));
+        arangoHelper.download(url);
       } else {
         arangoHelper.arangoError('Document error', 'could not download documents');
       }

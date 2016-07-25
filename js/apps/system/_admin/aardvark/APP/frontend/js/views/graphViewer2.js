@@ -45,6 +45,8 @@
       random1: ['#292F36', '#4ECDC4', '#F7FFF7', '#DD6363', '#FFE66D']
     },
 
+    selectedNodes: {},
+
     aqlMode: false,
 
     events: {
@@ -338,11 +340,19 @@
       this.cursorY = e.y;
     },
 
-    deleteNode: function () {
+    deleteNode: function (id) {
       var self = this;
-      var documentKey = $('#delete-node-attr-id').text();
-      var collectionId = documentKey.split('/')[0];
-      var documentId = documentKey.split('/')[1];
+      var documentKey;
+      var collectionId;
+      var documentId;
+
+      if (id) {
+        documentKey = id;
+      } else {
+        documentKey = $('#delete-node-attr-id').text();
+      }
+      collectionId = documentKey.split('/')[0];
+      documentId = documentKey.split('/')[1];
 
       if ($('#delete-node-edges-attr').val() === 'yes') {
         $.ajax({
@@ -375,6 +385,43 @@
         this.documentStore.deleteDocument(collectionId, documentId, callback);
       }
       window.modalView.hide();
+    },
+
+    deleteNodes: function () {
+      var self = this;
+
+      try {
+        var arr = JSON.parse($('#delete-nodes-arr-id').text());
+        _.each(arr, function (id) {
+          self.deleteNode(id);
+        });
+      } catch (ignore) {
+      }
+    },
+
+    deleteNodesModal: function () {
+      var nodeIds = [];
+
+      _.each(this.selectedNodes, function (id) {
+        nodeIds.push(id);
+      });
+
+      var buttons = []; var tableContent = [];
+
+      tableContent.push(
+        window.modalView.createReadOnlyEntry('delete-nodes-arr-id', 'Really delete nodes', JSON.stringify(nodeIds))
+      );
+
+      buttons.push(
+        window.modalView.createDeleteButton('Delete', this.deleteNodes.bind(this))
+      );
+
+      window.modalView.show(
+        'modalTable.ejs',
+        'Delete nodes',
+        buttons,
+        tableContent
+      );
     },
 
     deleteNodeModal: function (nodeId) {
@@ -556,7 +603,7 @@
       var callback = function (error, data) {
         if (!error) {
           // success
-          if (self.graphConfig.edgeEditable) {
+          if (self.graphConfig.edgeEditable === 'true') {
             self.currentGraph.graph.addEdge({
               source: from,
               size: 1,
@@ -574,8 +621,8 @@
           }
 
           // rerender graph
-          if (this.graphConfig) {
-            if (this.graphConfig.edgeType === 'curve') {
+          if (self.graphConfig) {
+            if (self.graphConfig.edgeType === 'curve') {
               sigma.canvas.edges.autoCurve(self.currentGraph);
             }
           }
@@ -683,6 +730,65 @@
     },
 
     // right click background context menu
+    createNodesContextMenu: function (e) {
+      var self = this;
+
+      // if right click
+      if (e.which === 3) {
+        var x = e.clientX - 50;
+        var y = e.clientY - 50;
+        this.clearOldContextMenu();
+
+        var generateMenu = function (e) {
+          var Wheelnav = wheelnav;
+
+          var wheel = new Wheelnav('nodeContextMenu');
+          wheel.maxPercent = 1.0;
+          wheel.wheelRadius = 50;
+          wheel.clockwise = false;
+          wheel.colors = self.colors.hotaru;
+          wheel.multiSelect = true;
+          wheel.clickModeRotate = false;
+          wheel.slicePathFunction = slicePath().DonutSlice;
+          if (self.viewStates.captureMode) {
+            wheel.createWheel([icon.plus, icon.trash]);
+          } else {
+            wheel.createWheel([icon.trash, icon.arrowleft2]);
+          }
+
+          wheel.navItems[0].selected = false;
+          wheel.navItems[0].hovered = false;
+          // add menu events
+
+          // function 0: remove all selectedNodes
+          wheel.navItems[0].navigateFunction = function (e) {
+            self.clearOldContextMenu();
+            self.deleteNodesModal();
+          };
+
+          // function 1: clear contextmenu
+          wheel.navItems[1].navigateFunction = function (e) {
+            self.clearOldContextMenu();
+          };
+
+          // deselect active default entry
+          wheel.navItems[0].selected = false;
+          wheel.navItems[0].hovered = false;
+        };
+
+        $('#nodeContextMenu').css('position', 'fixed');
+        $('#nodeContextMenu').css('left', x);
+        $('#nodeContextMenu').css('top', y);
+        $('#nodeContextMenu').width(100);
+        $('#nodeContextMenu').height(100);
+
+        generateMenu(e);
+      } else {
+        self.clearOldContextMenu();
+      }
+    },
+
+    // right click background context menu
     createContextMenu: function (e) {
       var self = this;
       var x = self.cursorX - 50;
@@ -700,11 +806,7 @@
         wheel.multiSelect = true;
         wheel.clickModeRotate = false;
         wheel.slicePathFunction = slicePath().DonutSlice;
-        if (self.viewStates.captureMode) {
-          wheel.createWheel([icon.plus, icon.trash]);
-        } else {
-          wheel.createWheel([icon.plus, '']);
-        }
+        wheel.createWheel([icon.plus, icon.arrowleft2]);
 
         wheel.navItems[0].selected = false;
         wheel.navItems[0].hovered = false;
@@ -716,12 +818,10 @@
           self.addNodeModal();
         };
 
-        if (self.viewStates.captureMode) {
-          // function 1: delete all selected nodes
-          wheel.navItems[1].navigateFunction = function (e) {
-            self.clearOldContextMenu();
-          };
-        }
+        // function 1: exit
+        wheel.navItems[1].navigateFunction = function (e) {
+          self.clearOldContextMenu();
+        };
 
         // deselect active default entry
         wheel.navItems[0].selected = false;
@@ -976,6 +1076,10 @@
         // Do something with the selected nodes
         var nodes = event.data;
 
+        _.each(nodes, function (val, key) {
+          self.selectedNodes[key] = val.id;
+        });
+
         // For instance, reset all node size as their initial size
         sigmaInstance.graph.nodes().forEach(function (node) {
           node.color = self.graphConfig.nodeColor ? self.graphConfig.nodeColor : 'rgb(46, 204, 113)';
@@ -994,6 +1098,7 @@
 
     renderGraph: function (graph, toFocus) {
       var self = this;
+      console.log(graph);
 
       this.graphSettings = graph.settings;
 
@@ -1387,11 +1492,32 @@
 
     toggleLasso: function () {
       if (this.graphLasso.isActive) {
+        // remove event
+        var c = document.getElementsByClassName('sigma-lasso')[0];
+        c.removeEventListener('mouseup', this.createNodesContextMenu.bind(this), false);
+
         $('#selectNodes').removeClass('activated');
         this.graphLasso.deactivate();
+
+        // clear selected nodes state
+        this.selectedNodes = {};
+
+        this.currentGraph.graph.nodes().forEach(function (n) {
+          n.color = n.originalColor;
+        });
+
+        this.currentGraph.graph.edges().forEach(function (e) {
+          e.color = e.originalColor;
+        });
+
+        this.currentGraph.refresh();
       } else {
         $('#selectNodes').addClass('activated');
         this.graphLasso.activate();
+
+        // add event
+        var x = document.getElementsByClassName('sigma-lasso')[0];
+        x.addEventListener('mouseup', this.createNodesContextMenu.bind(this), false);
       }
     },
 
