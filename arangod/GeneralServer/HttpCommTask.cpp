@@ -260,14 +260,6 @@ bool HttpCommTask::processRead() {
           _connectionInfo, _readBuffer->c_str() + _startPosition,
           _readPosition - _startPosition, _allowMethodOverride);
 
-      if (_request == nullptr) {
-        LOG(ERR) << "cannot generate request";
-
-        // internal server error
-        handleSimpleError(GeneralResponse::ResponseCode::SERVER_ERROR);
-        return false;
-      }
-
       GeneralServerFeature::HANDLER_FACTORY->setRequestContext(_request);
       _request->setClientTaskId(_taskId);
 
