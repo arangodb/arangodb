@@ -114,8 +114,8 @@ collection and the [character length](String.md#length) of a string.
 
 Return the difference of all arrays specified.
 
-- **arrays** (array, *repeatable*): an arbitrary of arrays as multiple arguments,
-  at least two
+- **arrays** (array, *repeatable*): an arbitrary number of arrays as multiple
+  arguments (at least 2)
 - returns **newArray** (array): an array of values that occur in the first array,
   but not in any of the subsequent arrays. The order of the result array is undefined
   and should not be relied on. Duplicates will be removed.
@@ -132,6 +132,28 @@ for positive positions, but does not support negative positions.
 - returns **nthElement** (any|null): the array element at the given *position*.
   If *position* is negative or beyond the upper bound of the array,
   then *null* will be returned.
+
+```js
+NTH( [ "foo", "bar", "baz" ], 2 )  // "baz"
+NTH( [ "foo", "bar", "baz" ], 3 )  // null
+NTH( [ "foo", "bar", "baz" ], -1 ) // null
+```
+
+!SUBSECTION OUTERSECTION()
+
+`OUTERSECTION(array1, array2, ... arrayN) → newArray`
+
+Return the values that occur only once across all arrays specified.
+
+- **arrays** (array, *repeatable*): an arbitrary number of arrays as multiple arguments
+  (at least 2)
+- returns **newArray** (array): a single array with only the elements that exist only once
+  across all provided arrays. The element order is random.
+
+```js
+OUTERSECTION( [ 1, 2, 3 ], [ 2, 3, 4 ], [ 3, 4, 5 ] )
+// [ 1, 5 ]
+```
 
 !SUBSECTION POP()
 
@@ -298,7 +320,7 @@ SLICE( [ 1, 2, 3, 4, 5 ], -3, 2 ) // [ 3, 4 ]
 Return the union of all arrays specified.
 
 - **arrays** (array, *repeatable*): an arbitrary number of arrays as multiple
-  arguments, at least 2
+  arguments (at least 2)
 - returns **newArray** (array): all array elements combined in a single array,
   in any order
 
@@ -331,7 +353,7 @@ UNIQUE(
 Return the union of distinct values of all arrays specified.
 
 - **arrays** (array, *repeatable*): an arbitrary number of arrays as multiple
-  arguments, at least 2
+  arguments (at least 2)
 - returns **newArray** (array): the elements of all given arrays in a single
   array, without duplicates, in any order
 

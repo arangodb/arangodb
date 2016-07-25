@@ -182,7 +182,6 @@ true && 23                                 // 23
 
 Arithmetic operators perform an arithmetic operation on two numeric
 operands. The result of an arithmetic operation is again a numeric value.
-Operators are supported.
 
 AQL supports the following arithmetic operators:
 
@@ -236,7 +235,8 @@ applied by the [TO_NUMBER()](Functions/TypeCast.md#tonumber) function:
 - objects / documents are converted to the number `0`.
 
 An arithmetic operation that produces an invalid value, such as `1 / 0` (division by zero)
-will also produce a result value of `null`.
+will also produce a result value of `null`. The query is not aborted, but you may see a
+warning.
 
 Here are a few examples:
 
