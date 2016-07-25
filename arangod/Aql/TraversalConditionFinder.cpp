@@ -211,6 +211,11 @@ static void transformCondition(AstNode const* node, Variable const* pvar,
       // TODO
       continue;
     }
+    if (!baseCondition->isSimple()) {
+      // We would need v8 for this condition.
+      // This will not be used.
+      continue;
+    }
 
     bool foundVar = false;
     bool isEdge = false;

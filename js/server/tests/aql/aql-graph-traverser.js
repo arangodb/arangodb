@@ -492,7 +492,6 @@ function multiCollectionGraphSuite () {
     },
 
     testNoBindParameterV8Function: function () {
-      assertEqual(false, true);
       var query = "FOR s IN " + vn + " FOR x, e, p IN OUTBOUND s " +
         en + " FILTER p.vertices[1]._key == NOOPT(V8(RAND())) SORT x._key RETURN x";
       var result = db._query(query).toArray();
