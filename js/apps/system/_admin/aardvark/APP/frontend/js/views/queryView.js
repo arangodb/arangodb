@@ -375,13 +375,6 @@
       if (string === 'JSON') {
         $('#outputEditor' + count).show();
 
-        $('#sentWrapper' + count).hide();
-        $('#outputGraph' + count).hide();
-        $('#outputTable' + count).hide();
-      } else if (string === 'AQL') {
-        $('#sentWrapper' + count).show();
-
-        $('#outputEditor' + count).hide();
         $('#outputGraph' + count).hide();
         $('#outputTable' + count).hide();
       } else if (string === 'Table') {
@@ -389,13 +382,11 @@
 
         $('#outputGraph' + count).hide();
         $('#outputEditor' + count).hide();
-        $('#sentWrapper' + count).hide();
       } else if (string === 'Graph') {
         $('#outputGraph' + count).show();
 
         $('#outputTable' + count).hide();
         $('#outputEditor' + count).hide();
-        $('#sentWrapper' + count).hide();
       }
 
       // deselect editors

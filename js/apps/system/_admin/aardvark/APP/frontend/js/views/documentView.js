@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global Backbone, $, window, arangoHelper, templateEngine, JSONEditor */
+/* global Backbone, $, localStorage, window, arangoHelper, templateEngine, JSONEditor */
 /* global document, _ */
 
 (function () {
@@ -41,6 +41,13 @@
       }
     },
 
+    initialize: function () {
+      var mode = localStorage.getItem('JSONEditorMode');
+      if (mode) {
+        this.defaultMode = mode;
+      }
+    },
+
     addDocument: function () {
       window.App.documentsView.addDocumentModal();
     },
@@ -49,7 +56,9 @@
       var self = this;
 
       $('.type-modes').on('click', function (elem) {
-        self.defaultMode = $(elem.currentTarget).text().toLowerCase();
+        var mode = $(elem.currentTarget).text().toLowerCase();
+        localStorage.setItem('JSONEditorMode', mode);
+        self.defaultMode = mode;
       });
     },
 
