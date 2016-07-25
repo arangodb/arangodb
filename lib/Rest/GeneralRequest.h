@@ -72,7 +72,7 @@ class GeneralRequest {
     ILLEGAL  // must be last
   };
 
-  enum class ProtocolVersion { HTTP_1_0, HTTP_1_1, VSTREAM_1_0, UNKNOWN };
+  enum class ProtocolVersion { HTTP_1_0, HTTP_1_1, VPP_1_0, UNKNOWN };
   enum class ContentType { UNSET, VPACK, JSON };
 
  public:
@@ -101,7 +101,7 @@ class GeneralRequest {
         _isRequestContextOwner(false),
         _type(RequestType::ILLEGAL),
         _contentType(ContentType::UNSET),
-        _contentTypeResponse(ContentType::UNSET){}
+        _contentTypeResponse(ContentType::UNSET) {}
 
   virtual ~GeneralRequest();
 
@@ -178,7 +178,8 @@ class GeneralRequest {
   bool velocyPackResponse() const;
 
   // should toVelocyPack be renamed to payload?
-  virtual VPackSlice payload(arangodb::velocypack::Options const* options = &VPackOptions::Defaults) = 0;
+  virtual VPackSlice payload(arangodb::velocypack::Options const*
+                                 options = &VPackOptions::Defaults) = 0;
 
   std::shared_ptr<VPackBuilder> toVelocyPackBuilderPtr(
       arangodb::velocypack::Options const* options) {
