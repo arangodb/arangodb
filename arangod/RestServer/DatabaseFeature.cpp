@@ -184,7 +184,7 @@ void DatabaseManagerThread::run() {
       usleep(waitTime()); 
 
       // The following is only necessary after a wait:
-      auto queryRegistry = databaseFeature->_queryRegistry.load();
+      auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY;
 
       if (queryRegistry != nullptr) {
         queryRegistry->expireQueries();
@@ -226,8 +226,6 @@ DatabaseFeature::DatabaseFeature(ApplicationServer* server)
       _ignoreDatafileErrors(false),
       _throwCollectionNotLoadedError(false),
       _vocbase(nullptr),
-      _queryRegistry(nullptr),
-      _databaseManager(nullptr),
       _databasesLists(new DatabasesLists()),
       _isInitiallyEmpty(false),
       _replicationApplier(true),
@@ -337,16 +335,14 @@ void DatabaseFeature::start() {
     FATAL_ERROR_EXIT();
   }
 
-// TODO:
-/*
   // start database manager thread
-  _databaseManager = new DatabaseManagerThread;
+  _databaseManager.reset(new DatabaseManagerThread);
     
   if (!_databaseManager->start()) {
     LOG(FATAL) << "could not start database manager thread";
     FATAL_ERROR_EXIT();
   }
-*/
+  
   // TODO: handle _upgrade and _checkVersion here
 
   // update all v8 contexts
@@ -377,7 +373,7 @@ void DatabaseFeature::unprepare() {
     // we're in the shutdown... simply ignore any errors produced here
   }
   
-  delete _databaseManager;
+  _databaseManager.reset();
 
   try {
     // closeOpenDatabases() can throw, but we're in a dtor

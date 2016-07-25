@@ -153,8 +153,7 @@ class DatabaseFeature final : public application_features::ApplicationFeature {
   bool _throwCollectionNotLoadedError;
 
   TRI_vocbase_t* _vocbase;
-  std::atomic<arangodb::aql::QueryRegistry*> _queryRegistry; // TODO
-  DatabaseManagerThread* _databaseManager;
+  std::unique_ptr<DatabaseManagerThread> _databaseManager;
 
   std::atomic<DatabasesLists*> _databasesLists; 
   // TODO: Make this again a template once everybody has gcc >= 4.9.2
