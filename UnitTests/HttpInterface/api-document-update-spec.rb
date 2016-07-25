@@ -183,7 +183,7 @@ describe ArangoDB do
 
         # update document, different revision
         cmd = "/_api/document/#{did}"
-        hdr = { "if-match" => "\"658993#{rev}\"" }
+        hdr = { "if-match" => "\"658993\"" }
         body = "{ \"World\" : \"Hallo\" }"
         doc = ArangoDB.log_put("#{prefix}-if-match-other", cmd, :headers => hdr, :body => body)
 
@@ -263,7 +263,7 @@ describe ArangoDB do
 
         # update document, invalid revision
         cmd = "/_api/document/#{did}"
-        hdr = { "if-match" => "\"abcd\"" }
+        hdr = { "if-match" => "\"*abcd\"" }
         doc = ArangoDB.log_put("#{prefix}-rev-invalid", cmd, :headers => hdr, :body => body)
 
         doc.code.should eq(400)
@@ -273,7 +273,7 @@ describe ArangoDB do
         
         # update document, invalid revision
         cmd = "/_api/document/#{did}"
-        hdr = { "if-match" => "'abcd'" }
+        hdr = { "if-match" => "'*abcd'" }
         doc = ArangoDB.log_put("#{prefix}-rev-invalid", cmd, :headers => hdr, :body => body)
 
         doc.code.should eq(400)

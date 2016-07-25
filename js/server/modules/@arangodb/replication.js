@@ -327,7 +327,7 @@ function syncCollectionFinalize (database, collname, from, config) {
       response: chunk, exception: err};
     }
 
-    console.log('Applying chunk:');
+    console.trace('Applying chunk:', l);
     try {
       for (var i = 0; i < l.length; i++) {
         apply(l[i]);

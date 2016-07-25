@@ -1,10 +1,10 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global Backbone, window, arangoCollectionModel, $, arangoHelper, data, _ */
+/* global Backbone, window, arangoCollectionModel, $, arangoHelper, _ */
 (function () {
   'use strict';
 
-  window.arangoCollections = Backbone.Collection.extend({
+  window.ArangoCollections = Backbone.Collection.extend({
     url: arangoHelper.databaseUrl('/_api/collection'),
 
     model: arangoCollectionModel,
@@ -71,7 +71,7 @@
     },
 
     getPosition: function (name) {
-      var list = this.getFiltered(this.searchOptions), i;
+      var list = this.getFiltered(this.searchOptions); var i;
       var prev = null;
       var next = null;
 
@@ -103,7 +103,7 @@
       this.models.forEach(function (model) {
         // search for name(s) entered
         if (searchPhrases.length > 0) {
-          var lowerName = model.get('name').toLowerCase(), i;
+          var lowerName = model.get('name').toLowerCase(); var i;
           // all phrases must match!
           for (i = 0; i < searchPhrases.length; ++i) {
             if (lowerName.indexOf(searchPhrases[i]) === -1) {

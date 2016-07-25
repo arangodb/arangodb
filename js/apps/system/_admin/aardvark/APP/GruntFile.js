@@ -61,16 +61,29 @@
             "frontend/js/lib/sigma.min.js",
             "frontend/js/lib/sigma.plugins.animate.js",
             "frontend/js/lib/sigma.plugins.dragNodes.js",
-            "frontend/js/lib/sigma.layout.noverlap.js",
             "frontend/js/lib/sigma.plugins.fullScreen.js",
+            "frontend/js/lib/sigma.plugins.filter.js",
+            "frontend/js/lib/sigma.plugins.lasso.js",
+            "frontend/js/lib/sigma.layout.noverlap.js",
             "frontend/js/lib/sigma.layout.fruchtermanReingold.js",
+            "frontend/js/lib/sigma.exporters.svg.js",
+            "frontend/js/lib/sigma.canvas.edges.labels.curve.js",
+            "frontend/js/lib/sigma.canvas.edges.labels.curvedArrow.js",
+            "frontend/js/lib/sigma.canvas.edges.labels.def.js",
+            // "frontend/js/lib/sigma.canvas.edges.curve.js",
+            "frontend/js/lib/sigma.canvas.edges.autoCurve.js",
+            "frontend/js/lib/sigma.canvas.edges.tapered.js",
+            "frontend/js/lib/sigma.canvas.edges.dotted.js",
+            "frontend/js/lib/sigma.canvas.edges.dashed.js",
             "frontend/js/lib/worker.js",
             "frontend/js/lib/supervisor.js",
             // END SIGMA LIBRARIES
+            // START NEW
             "frontend/js/lib/wheelnav.slicePath.js",
             "frontend/js/lib/wheelnav.min.js",
             "frontend/js/lib/raphael.min.js",
             "frontend/js/lib/raphael.icons.min.js",
+            // END NEW LIBRARIES
             "frontend/js/lib/jsoneditor-min.js",
             "frontend/js/lib/strftime-min.js",
             "frontend/js/lib/d3.fisheye.min.js",
@@ -320,6 +333,20 @@
         }
       },
 
+      semistandard: {
+        options: {
+          format: false
+        },
+        app: {
+          src: [
+            'frontend/js/views/*.js',
+            'frontend/js/arango/*.js',
+            'frontend/js/models/*.js',
+            'frontend/js/collections/*.js',
+            'frontend/js/routers/*.js'
+          ]
+        }
+      },
 
       uglify: {
         default1: {
@@ -387,6 +414,7 @@
       }
     });
 
+    grunt.loadNpmTasks('grunt-semistandard');
     grunt.loadNpmTasks("grunt-sass");
     grunt.loadNpmTasks("grunt-contrib-imagemin");
     grunt.loadNpmTasks('grunt-contrib-cssmin');
@@ -423,6 +451,7 @@
 
     grunt.registerTask('deploy', [
       'sass:dev',
+      'semistandard',
       'replace',
       'imagemin',
       'concat',

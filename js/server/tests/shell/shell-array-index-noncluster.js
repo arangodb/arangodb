@@ -96,7 +96,6 @@ function arrayHashIndexSuite () {
       assertEqual(id.id, idx.id);
     },
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test: Multiple identical elements in unique array 
 ////////////////////////////////////////////////////////////////////////////////
@@ -154,6 +153,25 @@ function arrayHashIndexSuite () {
       catch (err) {
         assertEqual(errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, err.errorNum);
       }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: Multiple index batch inserts
+////////////////////////////////////////////////////////////////////////////////
+
+    testInsertBatches : function () {
+      // this really needs to be 1,000,000 documents to reproduce a bug that
+      // occurred with exactly this value and no others
+      for (var i = 0; i < 1000 * 1000; ++i) {
+        collection.insert({ a: [ "foo", "bar" ] });  
+      }
+
+      // this is expected to just work and not fail
+      collection.ensureIndex({ type: "hash", fields: ["a[*]"] }); 
+      collection.ensureIndex({ type: "hash", fields: ["a[*]", "b[*]"] });
+
+      assertEqual(1000 * 1000, collection.count());
+      assertEqual(3, collection.getIndexes().length);
     }
 
   };

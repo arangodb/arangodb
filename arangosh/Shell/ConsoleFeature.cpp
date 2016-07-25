@@ -326,20 +326,21 @@ void ConsoleFeature::printLine(std::string const& s) {
 void ConsoleFeature::printErrorLine(std::string const& s) { printLine(s); }
 
 std::string ConsoleFeature::readPassword(std::string const& message) {
-  std::string password;
-
   printContinuous(message);
 
-#ifdef TRI_HAVE_TERMIOS_H
-  TRI_SetStdinVisibility(false);
-  std::getline(std::cin, password);
-
-  TRI_SetStdinVisibility(true);
-#else
-  std::getline(std::cin, password);
-#endif
+  std::string password = readPassword();
   ConsoleFeature::printLine("");
 
+  return password;
+}
+
+std::string ConsoleFeature::readPassword() {
+  TRI_SetStdinVisibility(false);
+
+  TRI_DEFER(TRI_SetStdinVisibility(true));
+
+  std::string password;
+  std::getline(std::cin, password);
   return password;
 }
 
@@ -468,13 +469,13 @@ ConsoleFeature::Prompt ConsoleFeature::buildPrompt(ClientFeature* client) {
 
         if (c == 'E') {
           // replace protocol
-          if (ep.find("tcp://") == 0) {
+          if (ep.compare(0, strlen("tcp://"), "tcp://") == 0) {
             ep = ep.substr(strlen("tcp://"));
-          } else if (ep.find("http+tcp://") == 0) {
+          } else if (ep.compare(0, strlen("http+tcp://"), "http+tcp://") == 0) {
             ep = ep.substr(strlen("http+tcp://"));
-          } else if (ep.find("ssl://") == 0) {
+          } else if (ep.compare(0, strlen("ssl://"), "ssl://") == 0) {
             ep = ep.substr(strlen("ssl://"));
-          } else if (ep.find("unix://") == 0) {
+          } else if (ep.compare(0, strlen("unix://"), "unix://") == 0) {
             ep = ep.substr(strlen("unix://"));
           }
         }

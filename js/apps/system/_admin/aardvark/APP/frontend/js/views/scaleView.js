@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global arangoHelper, Backbone, templateEngine, $, window, _, nv, d3 */
+/* global arangoHelper, Backbone, templateEngine, $, window */
 (function () {
   'use strict';
 
@@ -74,8 +74,8 @@
     },
 
     readNumberFromID: function (id, increment, decrement) {
-      var value = $(id).html(),
-        parsed = false;
+      var value = $(id).html();
+      var parsed = false;
 
       try {
         parsed = JSON.parse(value);
@@ -125,7 +125,7 @@
       var callback = function () {
         var cb2 = function () {
           self.continueRender();
-        }.bind(this);
+        };
 
         this.waitForDBServers(cb2);
       }.bind(this);
@@ -140,7 +140,9 @@
     },
 
     continueRender: function (rerender) {
-      var coords, dbs, self = this;
+      var coords;
+      var dbs;
+      var self = this;
       coords = this.coordinators.toJSON();
       dbs = this.dbServers.toJSON();
 

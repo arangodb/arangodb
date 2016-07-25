@@ -168,13 +168,30 @@ if (CMAKE_COMPILER_IS_GNUCC)
   if (VERBOSE)
     message(STATUS "Compiler type GNU: ${CMAKE_CXX_COMPILER}")
   endif ()
+
+# "-momit-leaf-frame-pointer" option not available not on ARM
+  SET(OPT_momit_leaf_frame_pointer "-momit-leaf-frame-pointer")
+
+  if(CMAKE_TARGET_ARCHITECTURES MATCHES "armv7"
+      OR CMAKE_HOST_SYSTEM_PROCESSOR MATCHES "armv7l" )
+    SET(OPT_momit_leaf_frame_pointer "")
+  endif()
+
+  if (VERBOSE)
+    message(STATUS "CMAKE_TARGET_ARCHITECTURES:" ${CMAKE_TARGET_ARCHITECTURES})
+    message(STATUS "CMAKE_HOST_SYSTEM_PROCESSOR:" ${CMAKE_HOST_SYSTEM_PROCESSOR})
+    message(STATUS "OPT_momit_leaf_frame_pointer:" ${OPT_momit_leaf_frame_pointer})
+  endif ()
+
+
 # -DSNAPPY -DZLIB
-  if (SOLARIS)
+  if (SOLARIS OR DARWIN)
     set(ROCKSDB_MALLOC_USABLE_SIZE "")
   else()
     set(ROCKSDB_MALLOC_USABLE_SIZE "-DROCKSDB_MALLOC_USABLE_SIZE")
   endif()
-  set(BASE_FLAGS "${BASE_FLAGS} -W -Wextra -Wall -Wsign-compare -Wshadow -Wno-unused-parameter -fno-omit-frame-pointer -momit-leaf-frame-pointer -fno-builtin-memcmp -Woverloaded-virtual -Wnon-virtual-dtor -Wno-missing-field-initializers  ${ROCKSDB_MALLOC_USABLE_SIZE} -isystem -fPIC -D${OS_DEFINE} ${POSIX_FLAG}")
+  set(BASE_FLAGS "${BASE_FLAGS} -W -Wextra -Wall -Wsign-compare -Wshadow -Wno-unused-parameter -fno-omit-frame-pointer ${OPT_momit_leaf_frame_pointer} -fno-builtin-memcmp -Woverloaded-virtual -Wnon-virtual-dtor -Wno-missing-field-initializers  ${ROCKSDB_MALLOC_USABLE_SIZE} -isystem -fPIC -D${OS_DEFINE} ${POSIX_FLAG}")
+
 
   set(CMAKE_C_FLAGS                "-g"                             CACHE INTERNAL "default C compiler flags")
   set(CMAKE_C_FLAGS_DEBUG          "-O0 -g -Werror"                         CACHE INTERNAL "C debug flags")

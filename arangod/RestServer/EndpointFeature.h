@@ -30,13 +30,9 @@
 #include "Endpoint/EndpointList.h"
 
 namespace arangodb {
-namespace rest {
-class HttpServer;
-class HttpsServer;
-}
 
 class EndpointFeature final : public application_features::ApplicationFeature,
-                            public HttpEndpointProvider {
+                              public HttpEndpointProvider {
  public:
   explicit EndpointFeature(application_features::ApplicationServer* server);
 

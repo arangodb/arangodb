@@ -4,7 +4,9 @@
 
 Synchronous replication can be configured per collection via the property *replicationFactor*. Synchronous replication requires a cluster to operate.
 
-Whenever you specify a *replicationFactor* greater than 1 when creating a collection, synchronous replication will be activated for this collection. The cluster will determine suitable *leaders* and *followers* for every requested shard (*numberOfShards*) within the cluster. When requesting data of a shard only the current leader will be asked whereas followers will only keep their copy in sync. Using *synchronous replication* alone will guarantee consistency and high availabilty at the cost of reduced performance (due to every write-request having to be executed on the followers).
+Whenever you specify a *replicationFactor* greater than 1 when creating a collection, synchronous replication will be activated for this collection. The cluster will determine suitable *leaders* and *followers* for every requested shard (*numberOfShards*) within the cluster. When requesting data of a shard only the current leader will be asked whereas followers will only keep their copy in sync. This is due to the current implementation of transactions.
+
+Using *synchronous replication* alone will guarantee consistency and high availabilty at the cost of reduced performance: Write requests will have a higher latency (due to every write-request having to be executed on the followers) and read requests won't scale out as only the leader is being asked.
 
 In a cluster synchronous replication will be managed by the *coordinators* for the client. The data will always be stored on *primaries*.
 
@@ -35,6 +37,8 @@ replicate it to the follower.
    connection to the leader) is back up, the two will resynchronize and
    synchronous replication is resumed. This happens all transparently
    to the client.
+
+The current implementation of ArangoDB does not allow changing the replicationFactor later. This is subject to change. In the meantime the only way is to create a new collection having the desired `replicationFactor`, copy all data and swap names with the original one.
 
 !SUBSECTION Automatic failover
 

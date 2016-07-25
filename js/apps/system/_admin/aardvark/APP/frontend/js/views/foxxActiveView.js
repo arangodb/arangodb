@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global Backbone, $, window, EJS, arangoHelper, _, templateEngine, Joi*/
+/* global Backbone, $, window, templateEngine */
 
 (function () {
   'use strict';

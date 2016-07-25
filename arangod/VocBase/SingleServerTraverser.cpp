@@ -56,12 +56,9 @@ static int FetchDocumentById(arangodb::Transaction* trx,
   return res;
 }
 
-SingleServerTraverser::SingleServerTraverser(
-    TraverserOptions& opts, arangodb::Transaction* trx,
-    std::unordered_map<size_t, std::vector<TraverserExpression*>> const*
-        expressions)
-    : Traverser(opts, expressions), _trx(trx) {
-
+SingleServerTraverser::SingleServerTraverser(TraverserOptions& opts,
+                                             arangodb::Transaction* trx)
+    : Traverser(opts), _trx(trx) {
   _edgeGetter = std::make_unique<EdgeGetter>(this, opts, trx);
   if (opts.uniqueVertices == TraverserOptions::UniquenessLevel::GLOBAL) {
     _vertexGetter = std::make_unique<UniqueVertexGetter>(this);
@@ -73,11 +70,11 @@ SingleServerTraverser::SingleServerTraverser(
 SingleServerTraverser::~SingleServerTraverser() {}
 
 bool SingleServerTraverser::edgeMatchesConditions(VPackSlice e, size_t depth) {
-  if (_hasEdgeConditions) {
-    TRI_ASSERT(_expressions != nullptr);
-    auto it = _expressions->find(depth);
+  if (_opts.hasEdgeConditions) {
+    TRI_ASSERT(_opts.expressions != nullptr);
+    auto it = _opts.expressions->find(depth);
 
-    if (it != _expressions->end()) {
+    if (it != _opts.expressions->end()) {
       for (auto const& exp : it->second) {
         TRI_ASSERT(exp != nullptr);
 
@@ -93,11 +90,11 @@ bool SingleServerTraverser::edgeMatchesConditions(VPackSlice e, size_t depth) {
 
 bool SingleServerTraverser::vertexMatchesConditions(std::string const& v,
                                                     size_t depth) {
-  if (_hasVertexConditions) {
-    TRI_ASSERT(_expressions != nullptr);
-    auto it = _expressions->find(depth);
+  if (_opts.hasVertexConditions) {
+    TRI_ASSERT(_opts.expressions != nullptr);
+    auto it = _opts.expressions->find(depth);
 
-    if (it != _expressions->end()) {
+    if (it != _opts.expressions->end()) {
       bool fetchVertex = true;
       aql::AqlValue vertex;
       for (auto const& exp : it->second) {
@@ -229,11 +226,11 @@ void SingleServerTraverser::UniqueVertexGetter::reset(std::string const& startVe
 void SingleServerTraverser::setStartVertex(std::string const& v) {
   _pruneNext = false;
 
-  TRI_ASSERT(_expressions != nullptr);
+  TRI_ASSERT(_opts.expressions != nullptr);
 
-  auto it = _expressions->find(0);
+  auto it = _opts.expressions->find(0);
 
-  if (it != _expressions->end()) {
+  if (it != _opts.expressions->end()) {
     if (!it->second.empty()) {
       TRI_doc_mptr_t vertex;
       bool fetchVertex = true;

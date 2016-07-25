@@ -24,6 +24,7 @@
     "grunt-karma": "*",
     "grunt-processhtml": "*",
     "grunt-sass": "*",
+    "grunt-semistandard": "^1.0.6",
     "grunt-text-replace": "*",
     "jasmine-core": "*",
     "karma": "*",

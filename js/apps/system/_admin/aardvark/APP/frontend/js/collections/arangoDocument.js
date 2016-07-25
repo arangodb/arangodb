@@ -1,8 +1,8 @@
 /* jshint browser: true */
 /* jshint strict: false, unused: false */
-/* global Backbone, window, arangoDocument, arangoDocumentModel, $, arangoHelper */
+/* global Backbone, window, arangoDocumentModel, $, arangoHelper */
 
-window.arangoDocument = Backbone.Collection.extend({
+window.ArangoDocument = Backbone.Collection.extend({
   url: '/_api/document/',
   model: arangoDocumentModel,
   collectionInfo: {},
@@ -60,7 +60,7 @@ window.arangoDocument = Backbone.Collection.extend({
       }
     });
   },
-  createTypeDocument: function (collectionID, key, callback) {
+  createTypeDocument: function (collectionID, key, callback, returnNew) {
     var newDocument;
 
     if (key) {
@@ -71,18 +71,28 @@ window.arangoDocument = Backbone.Collection.extend({
       newDocument = JSON.stringify({});
     }
 
+    var url = arangoHelper.databaseUrl('/_api/document?collection=' + encodeURIComponent(collectionID));
+
+    if (returnNew) {
+      url = url + '?returnNew=true';
+    }
+
     $.ajax({
       cache: false,
       type: 'POST',
-      url: arangoHelper.databaseUrl('/_api/document?collection=' + encodeURIComponent(collectionID)),
+      url: url,
       data: newDocument,
       contentType: 'application/json',
       processData: false,
       success: function (data) {
-        callback(false, data._id);
+        if (returnNew) {
+          callback(false, data);
+        } else {
+          callback(false, data._id);
+        }
       },
       error: function (data) {
-        callback(true, data._id);
+        callback(true, data._id, data.responseJSON);
       }
     });
   },

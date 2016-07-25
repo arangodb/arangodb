@@ -713,6 +713,10 @@ if (USE_OPENSSL_NO_SSL2)
   add_definitions(-DOPENSSL_NO_SSL2)
 endif ()
 
+if(WIN32)
+  option(BUNDLE_OPENSSL "Bundle OpenSSL library" ON)
+endif()
+
 ################################################################################
 ## V8
 ################################################################################

@@ -122,28 +122,28 @@ FOR vertex[, edge[, path]]
 - `OPTIONS` **options** (object, *optional*): used to modify the execution of the
   traversal. Only the following attributes have an effect, all others are ignored:
   - **uniqueVertices** (string): optionally ensure vertex uniqueness
-    - "path" → it is guaranteed that there is no path returned with a duplicate vertex
-    - "global" → it is guaranteed that each vertex is visited at most once during
+    - "path" – it is guaranteed that there is no path returned with a duplicate vertex
+    - "global" – it is guaranteed that each vertex is visited at most once during
       the traversal, no matter how many paths lead from the start vertex to this one.
       If you start with a `min depth > 1` a vertex that was found before *min* depth
       might not be returned at all (it still might be part of a path). **Note:**
       Using this configuration the result is not deterministic any more. If there
       are multiple paths from *startVertex* to *vertex*, one of those is picked.
-    - "none" (default) → no uniqueness check is applied on vertices
+    - "none" (default) – no uniqueness check is applied on vertices
   - **uniqueEdges** (string): optionally ensure edge uniqueness
-    - "path" → it is guaranteed that there is no path returned with a duplicate edge
-    - "global" → it is guaranteed that each edge is visited at most once during
+    - "path" – it is guaranteed that there is no path returned with a duplicate edge
+    - "global" – it is guaranteed that each edge is visited at most once during
       the traversal, no matter how many paths lead from the start vertex to this edge.
       If you start with a `min depth > 1`, an edge that was found before *min* depth
       might not be returned at all (it still might be part of a path). **Note:**
       Using this configuration the result is not deterministic any more. If there
       are multiple paths from *startVertex* over *edge* one of those is picked.
-    - "none" (default) → no uniqueness check is applied on edges. **Note:**
+    - "none" (default) – no uniqueness check is applied on edges. **Note:**
       Using this configuration the traversal will follow cycles in edges.
   - **bfs** (bool): optionally use the alternative breadth-first traversal algorithm
-    - true → the traversal will be executed breadth-first. The results will first
+    - true – the traversal will be executed breadth-first. The results will first
       contain all vertices at depth 1. Than all vertices at depth 2 and so on.
-    - false (default) → the traversal will be executed depth-first. It will first
+    - false (default) – the traversal will be executed depth-first. It will first
       return all paths from *min* depth to *max* depth for one vertex at depth 1.
       Than for the next vertex at depth 1 and so on.
 

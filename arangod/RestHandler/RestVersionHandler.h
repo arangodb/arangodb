@@ -27,19 +27,13 @@
 #include "RestHandler/RestBaseHandler.h"
 
 namespace arangodb {
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief version request handler
-////////////////////////////////////////////////////////////////////////////////
-
 class RestVersionHandler : public arangodb::RestBaseHandler {
  public:
-  explicit RestVersionHandler(arangodb::HttpRequest*);
+  explicit RestVersionHandler(GeneralRequest*, GeneralResponse*);
 
  public:
   bool isDirect() const override;
-
-  status_t execute() override;
+  status execute() override;
 };
 }
 

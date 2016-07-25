@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global Backbone, EJS, $, flush, window, arangoHelper, nv, d3, localStorage*/
+/* global Backbone, $, window, arangoHelper, nv, d3 */
 /* global document, console, frontendConfig, Dygraph, _,templateEngine */
 
 (function () {
@@ -84,9 +84,9 @@
     },
 
     showDetail: function (e) {
-      var self = this,
-        figure = this.getDetailFigure(e),
-        options;
+      var self = this;
+      var figure = this.getDetailFigure(e);
+      var options;
 
       options = this.dygraphConfig.getDetailChartConfig(figure);
 
@@ -147,7 +147,7 @@
     },
 
     prepareDygraphs: function () {
-      var self = this, options;
+      var self = this; var options;
       this.dygraphConfig.getDashBoardFigures().forEach(function (f) {
         options = self.dygraphConfig.getDefaultConfig(f);
         var dimensions = self.getCurrentSize(options.div);
@@ -181,7 +181,7 @@
     },
 
     toggleViews: function (e) {
-      var id = e.currentTarget.id.split('-')[0], self = this;
+      var id = e.currentTarget.id.split('-')[0]; var self = this;
       var views = ['replication', 'requests', 'system'];
 
       _.each(views, function (view) {
@@ -218,7 +218,7 @@
     },
 
     updateTendencies: function () {
-      var self = this, map = this.tendencies;
+      var self = this; var map = this.tendencies;
 
       var tempColor = '';
       Object.keys(map).forEach(function (a) {
@@ -232,16 +232,16 @@
         if (v < 0) {
           tempColor = '#d05448';
         } else {
-          tempColor = '#7da817';
+          tempColor = '#77DB99';
           p = '+';
         }
         if (self.history.hasOwnProperty(self.server) &&
           self.history[self.server].hasOwnProperty(a)) {
-          $('#' + a).html(self.history[self.server][a][0] + '<br/><span class="dashboard-figurePer" style="color: '
-            + tempColor + ';">' + p + v + '%</span>');
+          $('#' + a).html(self.history[self.server][a][0] + '<br/><span class="dashboard-figurePer" style="color: ' +
+            tempColor + ';">' + p + v + '%</span>');
         } else {
-          $('#' + a).html('<br/><span class="dashboard-figurePer" style="color: '
-            + '#000' + ';">' + '<p class="dataNotReadyYet">data not ready yet</p>' + '</span>');
+          $('#' + a).html('<br/><span class="dashboard-figurePer" style="color: ' +
+            '#000' + ';">' + '<p class="dataNotReadyYet">data not ready yet</p>' + '</span>');
         }
       });
     },
@@ -251,22 +251,22 @@
       var borderLeft, borderRight;
       if (isDetailChart && graph.dateWindow_) {
         borderLeft = graph.dateWindow_[0];
-        borderRight = t - graph.dateWindow_[1] - this.interval * 5 > 0 ?
-          graph.dateWindow_[1] : t;
+        borderRight = t - graph.dateWindow_[1] - this.interval * 5 > 0
+          ? graph.dateWindow_[1] : t;
         return [borderLeft, borderRight];
       }
       return [t - this.defaultTimeFrame, t];
     },
 
     updateLineChart: function (figure, isDetailChart) {
-      var g = isDetailChart ? this.detailGraph : this.graphs[figure],
-        opts = {
-          file: this.history[this.server][figure],
-          dateWindow: this.updateDateWindow(g, isDetailChart)
+      var g = isDetailChart ? this.detailGraph : this.graphs[figure];
+      var opts = {
+        file: this.history[this.server][figure],
+        dateWindow: this.updateDateWindow(g, isDetailChart)
       };
 
       // round line chart values to 10th decimals
-      var pointer = 0, dates = [];
+      var pointer = 0; var dates = [];
       _.each(opts.file, function (value) {
         var rounded = value[0].getSeconds() - (value[0].getSeconds() % 10);
         opts.file[pointer][0].setSeconds(rounded);
@@ -277,7 +277,8 @@
       // get min/max dates of array
       var maxDate = new Date(Math.max.apply(null, dates));
       var minDate = new Date(Math.min.apply(null, dates));
-      var tmpDate = new Date(minDate.getTime()), missingDates = [];
+      var tmpDate = new Date(minDate.getTime());
+      var missingDates = [];
       var tmpDatesComplete = [];
 
       while (tmpDate < maxDate) {
@@ -340,10 +341,10 @@
     },
 
     mergeDygraphHistory: function (newData, i) {
-      var self = this, valueList;
+      var self = this;
+      var valueList;
 
       this.dygraphConfig.getDashBoardFigures(true).forEach(function (f) {
-
         // check if figure is known
         if (!self.dygraphConfig.mapStatToFigure[f]) {
           return;
@@ -371,12 +372,11 @@
 
         // if we found at list one value besides times, then use the entry
         if (valueList.length > 1) {
-
           // HTTP requests combine all types to one
           // 0: date, 1: GET", 2: "PUT", 3: "POST", 4: "DELETE", 5: "PATCH",
           // 6: "HEAD", 7: "OPTIONS", 8: "OTHER"
           //
-          var read = 0, write = 0;
+          var read = 0; var write = 0;
           if (valueList.length === 9) {
             read += valueList[1];
             read += valueList[6];
@@ -397,7 +397,8 @@
     },
 
     cutOffHistory: function (f, cutoff) {
-      var self = this, v, h = self.history[self.server][f];
+      var self = this;
+      var h = self.history[self.server][f];
 
       while (h.length !== 0) {
         if (h[h.length - 1][0] >= cutoff) {
@@ -413,7 +414,6 @@
       var cutoffDate = new Date(cutoff);
 
       this.dygraphConfig.getDashBoardFigures(true).forEach(function (f) {
-
         // check if figure is known
         if (!self.dygraphConfig.mapStatToFigure[f]) {
           return;
@@ -429,7 +429,7 @@
     },
 
     mergeHistory: function (newData) {
-      var self = this, i;
+      var self = this; var i;
 
       for (i = 0; i < newData.times.length; ++i) {
         this.mergeDygraphHistory(newData, i);
@@ -468,28 +468,27 @@
       self.history[self.server].residentSizePercent = newData.residentSizePercent;
 
       // generate chart description
-      self.history[self.server].residentSizeChart =
-        [
-          {
-            'key': '',
-            'color': this.dygraphConfig.colors[1],
-            'values': [
-              {
-                label: 'used',
-                value: newData.residentSizePercent * 100
-              }
-            ]
-          },
-          {
-            'key': '',
-            'color': this.dygraphConfig.colors[2],
-            'values': [
-              {
-                label: 'used',
-                value: 100 - newData.residentSizePercent * 100
-              }
-            ]
-          }
+      self.history[self.server].residentSizeChart = [
+        {
+          'key': '',
+          'color': this.dygraphConfig.colors[1],
+          'values': [
+            {
+              label: 'used',
+              value: newData.residentSizePercent * 100
+            }
+          ]
+        },
+        {
+          'key': '',
+          'color': this.dygraphConfig.colors[2],
+          'values': [
+            {
+              label: 'used',
+              value: 100 - newData.residentSizePercent * 100
+            }
+          ]
+        }
       ];
 
       // remember next start
@@ -497,16 +496,19 @@
     },
 
     mergeBarChartData: function (attribList, newData) {
-      var i, v1 = {
-          'key': this.barChartsElementNames[attribList[0]],
-          'color': this.dygraphConfig.colors[1],
-          'values': []
-        }, v2 = {
-          'key': this.barChartsElementNames[attribList[1]],
-          'color': this.dygraphConfig.colors[2],
-          'values': []
+      var i;
+      var v1 = {
+        'key': this.barChartsElementNames[attribList[0]],
+        'color': this.dygraphConfig.colors[1],
+        'values': []
       };
-      for (i = newData[attribList[0]].values.length - 1;  0 <= i;  --i) {
+      var v2 = {
+        'key': this.barChartsElementNames[attribList[1]],
+        'color': this.dygraphConfig.colors[2],
+        'values': []
+      };
+
+      for (i = newData[attribList[0]].values.length - 1; i >= 0; --i) {
         v1.values.push({
           label: this.getLabel(newData[attribList[0]].cuts, i),
           value: newData[attribList[0]].values[i]
@@ -618,8 +620,8 @@
           }
           self.updateCharts();
         }).error(function (e) {
-        console.log('stat fetch req error:' + e);
-      });
+          console.log('stat fetch req error:' + e);
+        });
 
       this.getReplicationStatistics();
     },
@@ -628,8 +630,7 @@
       var self = this;
       var url = 'statistics/long';
 
-      var urlParams
-      = '?filter=' + this.dygraphConfig.mapStatToFigure[figure].join();
+      var urlParams = '?filter=' + this.dygraphConfig.mapStatToFigure[figure].join();
 
       if (self.server !== '-local-') {
         url = self.server.endpoint + arangoHelper.databaseUrl('/_admin/aardvark/statistics/cluster');
@@ -640,8 +641,8 @@
         }
       }
 
-      var origin = window.location.href.split('/'),
-        preUrl = origin[0] + '//' + origin[2] + '/' + origin[3] + '/_system/' + origin[5] + '/' + origin[6] + '/';
+      var origin = window.location.href.split('/');
+      var preUrl = origin[0] + '//' + origin[2] + '/' + origin[3] + '/_system/' + origin[5] + '/' + origin[6] + '/';
 
       $.ajax(
         preUrl + url + urlParams,
@@ -652,7 +653,7 @@
 
           self.history[self.server][figure] = [];
 
-          for (i = 0;  i < d.times.length;  ++i) {
+          for (i = 0; i < d.times.length; ++i) {
             self.mergeDygraphHistory(d, i, true);
           }
         }
@@ -722,7 +723,9 @@
           .stacked(true);
 
         chart.yAxis
-          .tickFormat(function (d) {return d + '%';})
+          .tickFormat(function (d) {
+            return d + '%';
+          })
           .showMaxMin(false);
         chart.xAxis.showMaxMin(false);
 
@@ -770,8 +773,8 @@
       }
 
       _.each(Object.keys(barCharts), function (k) {
-        var dimensions = self.getCurrentSize('#' + k
-          + 'Container .dashboard-interior-chart');
+        var dimensions = self.getCurrentSize('#' + k +
+          'Container .dashboard-interior-chart');
 
         var selector = '#' + k + 'Container svg';
 
@@ -833,13 +836,15 @@
           chart.yAxis
             .showMaxMin(false);
 
-          var yTicks2 = d3.select('.nv-y.nv-axis')
+          d3.select('.nv-y.nv-axis')
             .selectAll('text')
             .attr('transform', 'translate (0, ' + bottomSpacer + ')');
 
           chart.yAxis
             .tickValues(tickMarks)
-            .tickFormat(function (d) {return fmtNumber(((d * 100 * 100) / 100), 0) + '%';});
+            .tickFormat(function (d) {
+              return fmtNumber(((d * 100 * 100) / 100), 0) + '%';
+            });
 
           d3.select(selector)
             .datum(self.history[self.server][k])
@@ -884,7 +889,7 @@
       if (!this.isUpdating) {
         return;
       }
-      var self = this, dimensions;
+      var self = this; var dimensions;
       _.each(this.graphs, function (g) {
         dimensions = self.getCurrentSize(g.maindiv_.id);
         g.resize(dimensions.width, dimensions.height);

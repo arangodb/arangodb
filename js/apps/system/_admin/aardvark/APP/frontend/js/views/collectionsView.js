@@ -104,9 +104,9 @@
 
       var searchOptions = this.collection.searchOptions;
 
-      this.collection.getFiltered(searchOptions).forEach(function (arango_collection) {
+      this.collection.getFiltered(searchOptions).forEach(function (arangoCollection) {
         $('#collectionsThumbnailsIn', this.el).append(new window.CollectionListItemView({
-          model: arango_collection,
+          model: arangoCollection,
           collectionsView: this
         }).render().el);
       }, this);
@@ -313,13 +313,13 @@
         if (error) {
           arangoHelper.arangoError('DB', 'Could not check coordinator state');
         } else {
-          var collName = $('#new-collection-name').val(),
-            collSize = $('#new-collection-size').val(),
-            replicationFactor = $('#new-replication-factor').val(),
-            collType = $('#new-collection-type').val(),
-            collSync = $('#new-collection-sync').val(),
-            shards = 1,
-            shardBy = [];
+          var collName = $('#new-collection-name').val();
+          var collSize = $('#new-collection-size').val();
+          var replicationFactor = $('#new-replication-factor').val();
+          var collType = $('#new-collection-type').val();
+          var collSync = $('#new-collection-sync').val();
+          var shards = 1;
+          var shardBy = [];
 
           if (replicationFactor === '') {
             replicationFactor = 1;
@@ -396,10 +396,10 @@
         if (error) {
           arangoHelper.arangoError('DB', 'Could not check coordinator state');
         } else {
-          var buttons = [],
-            tableContent = [],
-            advanced = {},
-            advancedTableContent = [];
+          var buttons = [];
+          var tableContent = [];
+          var advanced = {};
+          var advancedTableContent = [];
 
           tableContent.push(
             window.modalView.createTextEntry(
@@ -441,8 +441,8 @@
                 'new-collection-shards',
                 'Shards',
                 '',
-                'The number of shards to create. You cannot change this afterwards. '
-                + 'Recommended: DBServers squared',
+                'The number of shards to create. You cannot change this afterwards. ' +
+                'Recommended: DBServers squared',
                 '',
                 true
               )
@@ -452,8 +452,8 @@
                 'new-collection-shardBy',
                 'shardBy',
                 '',
-                'The keys used to distribute documents on shards. '
-                + 'Type the key and press return to add it.',
+                'The keys used to distribute documents on shards. ' +
+                'Type the key and press return to add it.',
                 '_key',
                 false
               )

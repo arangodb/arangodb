@@ -155,11 +155,6 @@ pack-macosx-cmake:
 
 	test -d bin || mkdir bin
 
-	rm -f ./.file-list-js
-	cd Build && ${MAKE}
-
-	./Installation/file-copy-js.sh . Build
-
 	cd Build && ${MAKE} install DESTDIR=${PACK_DESTDIR}
 
 ################################################################################
@@ -186,11 +181,6 @@ pack-arm-cmake:
 
 	${MAKE} ${BUILT_SOURCES}
 
-	rm -f ./.file-list-js
-	cd Build && ${MAKE}
-
-	./Installation/file-copy-js.sh . Build
-
 	cd Build && cpack -G DEB
 
 
@@ -207,10 +197,7 @@ pack-deb-cmake:
 
 	${MAKE} ${BUILT_SOURCES}
 
-	rm -f ./.file-list-js
 	cd Build && ${MAKE}
-
-	./Installation/file-copy-js.sh . Build
 
 	cd Build && cpack -G DEB
 
@@ -255,7 +242,6 @@ pack-winXX-MOREOPTS:
 	${MAKE} packXX BITS="$(BITS)" TARGET="$(TARGET)" BUILD_TARGET=Debug
 
 winXX-cmake:
-	rm -f ./.file-list-js
 	cd ../b && cmake \
 		-G "$(TARGET)" \
 		-D "CMAKE_BUILD_TYPE=RelWithDebInfo" \
@@ -269,9 +255,5 @@ winXX-build:
 	cd ../b && cmake --build . --config $(BUILD_TARGET)
 
 packXX:
-	if test ! -d ../b/js; then ./Installation/file-copy-js.sh . ../b; fi
-	cd ../b; rm -f ArangoDB-*.exe ArangoDB*.nsi
-	cd ../b && cpack -G NSIS -C $(BUILD_TARGET)
+	cd ../b && cpack -G NSIS64 -C $(BUILD_TARGET)
 	cd ../b && cpack -G ZIP  -C $(BUILD_TARGET)
-
-	./Installation/Windows/installer-generator.sh $(BITS) ..\\b

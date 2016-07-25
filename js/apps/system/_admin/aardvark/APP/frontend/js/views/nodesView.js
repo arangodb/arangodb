@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global arangoHelper, Backbone, templateEngine, $, window, _, nv, d3 */
+/* global arangoHelper, Backbone, templateEngine, $, window, _ */
 (function () {
   'use strict';
 
@@ -48,7 +48,7 @@
             }
           });
         });
-      }.bind(this);
+      };
 
       // check cluster state
       $.ajax({

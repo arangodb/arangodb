@@ -216,13 +216,43 @@ struct TraverserOptions {
 
   UniquenessLevel uniqueEdges;
 
-  explicit TraverserOptions(arangodb::Transaction* trx)
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief a vector containing all information for early pruning
+  //////////////////////////////////////////////////////////////////////////////
+
+  std::unordered_map<size_t, std::vector<TraverserExpression*>> const* expressions;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief whether or not we have valid expressions
+  //////////////////////////////////////////////////////////////////////////////
+
+  bool hasEdgeConditions;
+
+  bool hasVertexConditions;
+
+  explicit TraverserOptions(
+      arangodb::Transaction* trx,
+      std::unordered_map<size_t, std::vector<TraverserExpression*>> const* expr)
       : _trx(trx),
         minDepth(1),
         maxDepth(1),
         useBreadthFirst(false),
         uniqueVertices(UniquenessLevel::NONE),
-        uniqueEdges(UniquenessLevel::PATH) {}
+        uniqueEdges(UniquenessLevel::PATH),
+        expressions(expr),
+        hasEdgeConditions(false),
+        hasVertexConditions(false) {
+    TRI_ASSERT(expressions != nullptr);
+    for (auto& it : *expressions) {
+      for (auto& it2 : it.second) {
+        if (it2->isEdgeAccess) {
+          hasEdgeConditions = true;
+        } else {
+          hasVertexConditions = true;
+        }
+      }
+    }
+  }
 
   void setCollections(std::vector<std::string> const&, TRI_edge_direction_e);
   void setCollections(std::vector<std::string> const&,
@@ -246,28 +276,13 @@ class Traverser {
   /// @brief Constructor. This is an abstract only class.
   //////////////////////////////////////////////////////////////////////////////
 
-  Traverser(TraverserOptions& opts,
-            std::unordered_map<size_t, std::vector<TraverserExpression*>> const*
-                expressions)
+  explicit Traverser(TraverserOptions& opts)
       : _readDocuments(0),
         _filteredPaths(0),
         _pruneNext(false),
         _done(true),
-        _hasVertexConditions(false),
-        _hasEdgeConditions(false),
-        _opts(opts),
-        _expressions(expressions) {
+        _opts(opts) {
     
-    TRI_ASSERT(_expressions != nullptr);
-    for (auto& it : *_expressions) {
-      for (auto& it2 : it.second) {
-        if (it2->isEdgeAccess) {
-          _hasEdgeConditions = true;
-        } else {
-          _hasVertexConditions = true;
-        }
-      }
-    }
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -412,24 +427,10 @@ class Traverser {
   bool _done;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief whether or not we have valid expressions
-  //////////////////////////////////////////////////////////////////////////////
-  
-  bool _hasVertexConditions;
-  bool _hasEdgeConditions;
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief options for traversal
   //////////////////////////////////////////////////////////////////////////////
 
   TraverserOptions _opts;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief a vector containing all information for early pruning
-  //////////////////////////////////////////////////////////////////////////////
-
-  std::unordered_map<size_t, std::vector<TraverserExpression*>> const*
-      _expressions;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Function to fetch the real data of a vertex into an AQLValue

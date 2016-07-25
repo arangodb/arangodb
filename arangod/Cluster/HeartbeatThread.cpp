@@ -39,9 +39,9 @@
 #include "Dispatcher/Dispatcher.h"
 #include "Dispatcher/DispatcherFeature.h"
 #include "Dispatcher/Job.h"
-#include "HttpServer/HttpHandlerFactory.h"
+#include "GeneralServer/GeneralServerFeature.h"
+#include "GeneralServer/RestHandlerFactory.h"
 #include "Logger/Logger.h"
-#include "RestServer/RestServerFeature.h"
 #include "V8/v8-globals.h"
 #include "VocBase/AuthInfo.h"
 #include "VocBase/server.h"
@@ -119,7 +119,7 @@ void HeartbeatThread::runDBServer() {
   // think
   // ohhh the dbserver is online...pump some documents into it
   // which fails when it is still in maintenance mode
-  while (arangodb::rest::HttpHandlerFactory::isMaintenance()) {
+  while (arangodb::rest::RestHandlerFactory::isMaintenance()) {
     usleep(100000);
   }
 
@@ -128,30 +128,30 @@ void HeartbeatThread::runDBServer() {
 
   std::function<bool(VPackSlice const& result)> updatePlan =
       [&](VPackSlice const& result) {
-        if (!result.isNumber()) {
-          LOG_TOPIC(ERR, Logger::HEARTBEAT) << "Plan Version is not a number! "
-                                            << result.toJson();
-          return false;
-        }
-        uint64_t version = result.getNumber<uint64_t>();
+    if (!result.isNumber()) {
+      LOG_TOPIC(ERR, Logger::HEARTBEAT) << "Plan Version is not a number! "
+                                        << result.toJson();
+      return false;
+    }
+    uint64_t version = result.getNumber<uint64_t>();
 
-        bool doSync = false;
-        {
-          MUTEX_LOCKER(mutexLocker, _statusLock);
-          if (version > _desiredVersions.plan) {
-            _desiredVersions.plan = version;
-            LOG_TOPIC(DEBUG, Logger::HEARTBEAT)
-                << "Desired Current Version is now " << _desiredVersions.plan;
-            doSync = true;
-          }
-        }
+    bool doSync = false;
+    {
+      MUTEX_LOCKER(mutexLocker, _statusLock);
+      if (version > _desiredVersions.plan) {
+        _desiredVersions.plan = version;
+        LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "Desired Current Version is now "
+                                            << _desiredVersions.plan;
+        doSync = true;
+      }
+    }
 
-        if (doSync) {
-          syncDBServerStatusQuo();
-        }
+    if (doSync) {
+      syncDBServerStatusQuo();
+    }
 
-        return true;
-      };
+    return true;
+  };
 
   auto planAgencyCallback = std::make_shared<AgencyCallback>(
       _agency, "Plan/Version", updatePlan, true);
@@ -375,7 +375,7 @@ void HeartbeatThread::runCoordinator() {
 
         if (userVersion > 0 && userVersion != oldUserVersion) {
           oldUserVersion = userVersion;
-          RestServerFeature::AUTH_INFO.outdate();
+          GeneralServerFeature::AUTH_INFO.outdate();
         }
       }
 
@@ -610,14 +610,15 @@ bool HeartbeatThread::syncDBServerStatusQuo() {
     if (becauseOfCurrent) {
       ci->invalidateCurrent();
     }
-    
+
     // only warn if the application server is still there and dispatching
     // should succeed
     bool warn = false;
-    application_features::ApplicationServer* server = application_features::ApplicationServer::server;
+    application_features::ApplicationServer* server =
+        application_features::ApplicationServer::server;
     if (server != nullptr) {
       auto state = server->state();
-      warn = (state != application_features::ServerState::IN_STOP && 
+      warn = (state != application_features::ServerState::IN_STOP &&
               state != application_features::ServerState::IN_UNPREPARE &&
               state != application_features::ServerState::STOPPED &&
               state != application_features::ServerState::ABORT);

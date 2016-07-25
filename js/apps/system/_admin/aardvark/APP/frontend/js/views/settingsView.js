@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global frontendConfig, arangoHelper, Joi, Backbone, window, templateEngine, $ */
+/* global frontendConfig, arangoHelper, Joi, Backbone, window, $ */
 
 (function () {
   'use strict';
@@ -114,8 +114,8 @@
             var indexBuckets;
             try {
               indexBuckets = JSON.parse($('#change-index-buckets').val());
-              if (indexBuckets < 1 || parseInt(indexBuckets) !== Math.pow(2, Math.log2(indexBuckets))) {
-                throw 'invalid indexBuckets value';
+              if (indexBuckets < 1 || parseInt(indexBuckets, 10) !== Math.pow(2, Math.log2(indexBuckets))) {
+                throw new Error('invalid indexBuckets value');
               }
             } catch (e) {
               arangoHelper.arangoError('Please enter a valid number of index buckets');
@@ -128,7 +128,7 @@
                 arangoHelper.arangoNotification('Collection: ' + 'Successfully changed.');
                 window.App.navigate('#cSettings/' + newname, {trigger: true});
               }
-            }.bind(this);
+            };
 
             var callbackRename = function (error) {
               if (error) {
@@ -153,7 +153,7 @@
                   arangoHelper.arangoNotification('Collection' + 'Successfully changed.');
                   window.App.navigate('#cSettings/' + newname, {trigger: true});
                 }
-              }.bind(this);
+              };
 
               if (frontendConfig.isCluster === false) {
                 this.model.renameCollection(newname, callbackRename2);
@@ -180,8 +180,8 @@
             collectionIsLoaded = true;
           }
 
-          var buttons = [],
-            tableContent = [];
+          var buttons = [];
+          var tableContent = [];
 
           if (!isCoordinator) {
             tableContent.push(
@@ -261,8 +261,8 @@
               )
             );
 
-            var tabBar = ['General', 'Indices'],
-              templates = ['modalTable.ejs', 'indicesView.ejs'];
+            var tabBar = ['General', 'Indices'];
+            var templates = ['modalTable.ejs', 'indicesView.ejs'];
 
             window.modalView.show(
               templates,
@@ -329,7 +329,7 @@
                 );
               }
               after();
-            }.bind(this);
+            };
 
             this.model.getProperties(callback2);
           } else {

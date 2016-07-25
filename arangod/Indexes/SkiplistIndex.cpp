@@ -115,6 +115,408 @@ static int CompareElementElement(TRI_index_element_t const* left,
   return arangodb::basics::VelocyPackHelper::compare(l, r, true);
 }
 
+bool BaseSkiplistLookupBuilder::isEquality() const {
+  return _isEquality;
+}
+
+VPackSlice const* BaseSkiplistLookupBuilder::getLowerLookup() const {
+  return &_lowerSlice;
+}
+
+bool BaseSkiplistLookupBuilder::includeLower() const {
+  return _includeLower;
+}
+
+VPackSlice const* BaseSkiplistLookupBuilder::getUpperLookup() const {
+  return &_upperSlice;
+}
+
+bool BaseSkiplistLookupBuilder::includeUpper() const {
+  return _includeUpper;
+}
+
+SkiplistLookupBuilder::SkiplistLookupBuilder(
+    Transaction* trx,
+    std::vector<std::vector<arangodb::aql::AstNode const*>>& ops,
+    arangodb::aql::Variable const* var, bool reverse) : BaseSkiplistLookupBuilder(trx) {
+  _lowerBuilder->openArray();
+  if (ops.empty()) {
+    // We only use this skiplist to sort. use empty array for lookup
+    _lowerBuilder->close();
+    _lowerSlice = _lowerBuilder->slice();
+    _upperSlice = _lowerBuilder->slice();
+    return;
+  }
+
+  auto const& last = ops.back();
+  TRI_ASSERT(!last.empty());
+
+  std::pair<arangodb::aql::Variable const*,
+            std::vector<arangodb::basics::AttributeName>> paramPair;
+
+  if (last[0]->type != arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ &&
+      last[0]->type != arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
+    _isEquality = false;
+    _upperBuilder->openArray();
+    for (size_t i = 0; i < ops.size() - 1; ++i) {
+      auto const& oplist = ops[i];
+      TRI_ASSERT(oplist.size() == 1);
+      auto const& op = oplist[0];
+      TRI_ASSERT(op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ ||
+                 op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN);
+      TRI_ASSERT(op->numMembers() == 2);
+      auto value = op->getMember(0);
+      if (value->isAttributeAccessForVariable(paramPair) &&
+            paramPair.first == var) {
+        value = op->getMember(1);
+        TRI_ASSERT(!(value->isAttributeAccessForVariable(paramPair) &&
+                     paramPair.first == var));
+      }
+      value->toVelocyPackValue(*(_lowerBuilder.get()));
+      value->toVelocyPackValue(*(_upperBuilder.get()));
+    }
+
+    TRI_IF_FAILURE("SkiplistIndex::permutationEQ") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+
+    TRI_IF_FAILURE("SkiplistIndex::permutationArrayIN") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+
+    auto const& last = ops.back();
+    for (auto const& op : last) {
+      bool isReverseOrder = true;
+      TRI_ASSERT(op->numMembers() == 2);
+
+      auto value = op->getMember(0);
+      if (value->isAttributeAccessForVariable(paramPair) &&
+            paramPair.first == var) {
+        value = op->getMember(1);
+        TRI_ASSERT(!(value->isAttributeAccessForVariable(paramPair) &&
+                     paramPair.first == var));
+        isReverseOrder = false;
+      }
+      switch (op->type) {
+        case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LT:
+          if (isReverseOrder) { 
+            _includeLower = false;
+          } else {
+            _includeUpper = false;
+          }
+          // Fall through intentional
+        case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE:
+          if (isReverseOrder) { 
+            value->toVelocyPackValue(*(_lowerBuilder.get()));
+          } else {
+            value->toVelocyPackValue(*(_upperBuilder.get()));
+          }
+          break;
+        case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GT:
+          if (isReverseOrder) { 
+            _includeUpper = false;
+          } else {
+            _includeLower = false;
+          }
+          // Fall through intentional
+        case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE:
+          if (isReverseOrder) { 
+            value->toVelocyPackValue(*(_upperBuilder.get()));
+          } else {
+            value->toVelocyPackValue(*(_lowerBuilder.get()));
+          }
+          break;
+        default:
+          TRI_ASSERT(false);
+      }
+    }
+    _lowerBuilder->close();
+    _lowerSlice = _lowerBuilder->slice();
+
+    _upperBuilder->close();
+    _upperSlice = _upperBuilder->slice();
+  } else {
+    for (auto const& oplist : ops) {
+      TRI_ASSERT(oplist.size() == 1);
+      auto const& op = oplist[0];
+      TRI_ASSERT(op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ ||
+                 op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN);
+      TRI_ASSERT(op->numMembers() == 2);
+      auto value = op->getMember(0);
+      if (value->isAttributeAccessForVariable(paramPair) &&
+            paramPair.first == var) {
+        value = op->getMember(1);
+        TRI_ASSERT(!(value->isAttributeAccessForVariable(paramPair) &&
+                     paramPair.first == var));
+      }
+      value->toVelocyPackValue(*(_lowerBuilder.get()));
+    }
+
+    TRI_IF_FAILURE("SkiplistIndex::permutationEQ") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+
+    TRI_IF_FAILURE("SkiplistIndex::permutationArrayIN") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+    _lowerBuilder->close();
+    _lowerSlice = _lowerBuilder->slice();
+    _upperSlice = _lowerBuilder->slice();
+  }
+}
+
+bool SkiplistLookupBuilder::next() {
+  // The first search value is created during creation.
+  // So next is always false.
+  return false;  
+}
+
+SkiplistInLookupBuilder::SkiplistInLookupBuilder(
+    Transaction* trx,
+    std::vector<std::vector<arangodb::aql::AstNode const*>>& ops,
+    arangodb::aql::Variable const* var, bool reverse) : BaseSkiplistLookupBuilder(trx), _dataBuilder(trx), _done(false) {
+  TRI_ASSERT(!ops.empty()); // We certainly do not need IN here
+  TransactionBuilderLeaser tmp(trx);
+  std::set<VPackSlice, arangodb::basics::VelocyPackHelper::VPackSorted<true>>
+      unique_set(
+          (arangodb::basics::VelocyPackHelper::VPackSorted<true>(reverse)));
+  std::pair<arangodb::aql::Variable const*,
+            std::vector<arangodb::basics::AttributeName>> paramPair;
+
+  _dataBuilder->clear();
+  _dataBuilder->openArray();
+
+  // The == and IN part
+  for (size_t i = 0; i < ops.size() - 1; ++i) {
+    auto const& oplist = ops[i];
+    TRI_ASSERT(oplist.size() == 1);
+    auto const& op = oplist[0];
+    TRI_ASSERT(op->numMembers() == 2);
+    auto value = op->getMember(0);
+    bool valueLeft = true;
+    if (value->isAttributeAccessForVariable(paramPair) &&
+        paramPair.first == var) {
+      valueLeft = false;
+      value = op->getMember(1);
+      TRI_ASSERT(!(value->isAttributeAccessForVariable(paramPair) &&
+                   paramPair.first == var));
+    }
+    if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
+
+      if (valueLeft) {
+        // Case: value IN x.a
+        // This is identical to == for the index.
+        value->toVelocyPackValue(*(_dataBuilder.get()));
+      } else {
+        // Case: x.a IN value
+        TRI_ASSERT(value->numMembers() > 0);
+        tmp->clear();
+        unique_set.clear();
+        value->toVelocyPackValue(*(tmp.get()));
+        for (auto const& it : VPackArrayIterator(tmp->slice())) {
+          unique_set.emplace(it);
+        }
+        TRI_IF_FAILURE("SkiplistIndex::permutationIN") {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+        }
+        _inPositions.emplace_back(i, 0, unique_set.size());
+        _dataBuilder->openArray();
+        for (auto const& it : unique_set) {
+          _dataBuilder->add(it);
+        }
+        _dataBuilder->close();
+      }
+    } else {
+      TRI_ASSERT(op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ);
+      value->toVelocyPackValue(*(_dataBuilder.get()));
+    }
+  }
+  auto const& last = ops.back();
+  arangodb::aql::AstNode const* lower = nullptr;
+  arangodb::aql::AstNode const* upper = nullptr;
+
+  _isEquality = false;
+
+  for (auto const& op : last) {
+    bool isReverseOrder = true;
+    TRI_ASSERT(op->numMembers() == 2);
+
+    auto value = op->getMember(0);
+    if (value->isAttributeAccessForVariable(paramPair) &&
+          paramPair.first == var) {
+      value = op->getMember(1);
+      TRI_ASSERT(!(value->isAttributeAccessForVariable(paramPair) &&
+                   paramPair.first == var));
+      isReverseOrder = false;
+    }
+
+    switch (op->type) {
+      case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LT:
+        if (isReverseOrder) { 
+          _includeLower = false;
+        } else {
+          _includeUpper = false;
+        }
+        // Fall through intentional
+      case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE:
+        if (isReverseOrder) { 
+          TRI_ASSERT(lower == nullptr);
+          lower = value;
+        } else {
+          TRI_ASSERT(upper == nullptr);
+          upper = value;
+        }
+        break;
+      case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GT:
+        if (isReverseOrder) { 
+          _includeUpper = false;
+        } else {
+          _includeLower = false;
+        }
+        // Fall through intentional
+      case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE:
+        if (isReverseOrder) { 
+          TRI_ASSERT(upper == nullptr);
+          upper = value;
+        } else {
+          TRI_ASSERT(lower == nullptr);
+          lower = value;
+        }
+        break;
+      case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN:
+        TRI_ASSERT(upper == nullptr);
+        TRI_ASSERT(lower == nullptr);
+        TRI_ASSERT(value->numMembers() > 0);
+        tmp->clear();
+        unique_set.clear();
+        value->toVelocyPackValue(*(tmp.get()));
+        for (auto const& it : VPackArrayIterator(tmp->slice())) {
+          unique_set.emplace(it);
+        }
+        TRI_IF_FAILURE("Index::permutationIN") {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+        }
+        _inPositions.emplace_back(ops.size() - 1, 0, unique_set.size());
+        _dataBuilder->openArray();
+        for (auto const& it : unique_set) {
+          _dataBuilder->add(it);
+        }
+        _dataBuilder->close();
+        _isEquality = true;
+        _dataBuilder->close();
+
+        buildSearchValues();
+        return;
+      case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ:
+        TRI_ASSERT(upper == nullptr);
+        TRI_ASSERT(lower == nullptr);
+        value->toVelocyPackValue(*(_dataBuilder.get()));
+        _isEquality = true;
+        _dataBuilder->close();
+
+        buildSearchValues();
+        return;
+      default:
+        TRI_ASSERT(false);
+    }
+  }
+  _dataBuilder->openArray();
+  if (lower == nullptr) {
+    _dataBuilder->add(arangodb::basics::VelocyPackHelper::NullValue());
+  } else {
+    lower->toVelocyPackValue(*(_dataBuilder.get()));
+  }
+
+  if (upper == nullptr) {
+    _dataBuilder->add(arangodb::basics::VelocyPackHelper::NullValue());
+  } else {
+    upper->toVelocyPackValue(*(_dataBuilder.get()));
+  }
+  _dataBuilder->close();
+  _dataBuilder->close();
+
+  buildSearchValues();
+}
+
+bool SkiplistInLookupBuilder::next() {
+  if (_done || !forwardInPosition()) {
+    return false;
+  }
+  buildSearchValues();
+  return true;
+}
+
+bool SkiplistInLookupBuilder::forwardInPosition() {
+  std::list<PosStruct>::reverse_iterator it = _inPositions.rbegin();
+  while (it != _inPositions.rend()) {
+    it->current++;
+    TRI_ASSERT(it->_max > 0);
+    if (it->current < it->_max) {
+      return true;
+      // Okay we increased this, next search value;
+    }
+    it->current = 0;
+    it++;
+  }
+  _done = true;
+  // If we get here all positions are reset to 0.
+  // We are done, no further combination
+  return false;
+}
+
+void SkiplistInLookupBuilder::buildSearchValues() {
+  auto inPos = _inPositions.begin();
+  _lowerBuilder->clear();
+  _lowerBuilder->openArray();
+
+  VPackSlice data = _dataBuilder->slice();
+  if (!_isEquality) {
+    _upperBuilder->clear();
+    _upperBuilder->openArray();
+
+    for (size_t i = 0; i < data.length() - 1; ++i) {
+      if (inPos != _inPositions.end() && i == inPos->field) {
+        _lowerBuilder->add(data.at(i).at(inPos->current));
+        _upperBuilder->add(data.at(i).at(inPos->current));
+        inPos++;
+      } else {
+        _lowerBuilder->add(data.at(i));
+        _upperBuilder->add(data.at(i));
+      }
+    }
+
+    VPackSlice bounds = data.at(data.length() - 1);
+    TRI_ASSERT(bounds.isArray());
+    TRI_ASSERT(bounds.length() == 2);
+    VPackSlice b = bounds.at(0);
+    if (!b.isNull()) {
+      _lowerBuilder->add(b);
+    }
+    _lowerBuilder->close();
+    _lowerSlice = _lowerBuilder->slice();
+
+    b = bounds.at(1);
+    if (!b.isNull()) {
+      _upperBuilder->add(b);
+    }
+
+    _upperBuilder->close();
+    _upperSlice = _upperBuilder->slice();
+  } else {
+    for (size_t i = 0; i < data.length(); ++i) {
+      if (inPos != _inPositions.end() && i == inPos->field) {
+        _lowerBuilder->add(data.at(i).at(inPos->current));
+        inPos++;
+      } else {
+        _lowerBuilder->add(data.at(i));
+      }
+    }
+    _lowerBuilder->close();
+    _lowerSlice = _lowerBuilder->slice();
+    _upperSlice = _lowerBuilder->slice();
+  }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Reset the cursor
 ////////////////////////////////////////////////////////////////////////////////
@@ -153,6 +555,160 @@ TRI_doc_mptr_t* SkiplistIterator::next() {
   TRI_ASSERT(tmp != nullptr);
   TRI_ASSERT(tmp->document() != nullptr);
   return tmp->document()->document();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Checks if the interval is valid. It is declared invalid if
+///        one border is nullptr or the right is lower than left.
+////////////////////////////////////////////////////////////////////////////////
+
+bool SkiplistIterator2::intervalValid(Node* left, Node* right) const {
+  if (left == nullptr) {
+    return false;
+  }
+  if (right == nullptr) {
+    return false;
+  }
+  if (left == right) {
+    // Exactly one result. Improve speed on unique indexes
+    return true;
+  }
+  if (_CmpElmElm(left->document(), right->document(),
+                 arangodb::basics::SKIPLIST_CMP_TOTORDER) > 0) {
+    return false;
+  }
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Reset the cursor
+////////////////////////////////////////////////////////////////////////////////
+
+void SkiplistIterator2::reset() {
+  // If _intervals is empty at this point
+  // the cursor does not contain any
+  // document at all. Reset is pointless
+  if (!_intervals.empty()) {
+    // We reset to the first interval and reset the cursor
+    _currentInterval = 0;
+    if (_reverse) {
+      _cursor = _intervals[0].second;
+    } else {
+      _cursor = _intervals[0].first;
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Get the next element in the skiplist
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_doc_mptr_t* SkiplistIterator2::next() {
+  if (_cursor == nullptr) {
+    // We are exhausted already, sorry
+    return nullptr;
+  }
+  TRI_ASSERT(_currentInterval < _intervals.size());
+  auto const& interval = _intervals[_currentInterval];
+  Node* tmp = _cursor;
+  if (_reverse) {
+    if (_cursor == interval.first) {
+      forwardCursor();
+    } else {
+      _cursor = _cursor->prevNode();
+    }
+  } else {
+    if (_cursor == interval.second) {
+      forwardCursor();
+    } else {
+      _cursor = _cursor->nextNode();
+    }
+  }
+  TRI_ASSERT(tmp != nullptr);
+  TRI_ASSERT(tmp->document() != nullptr);
+  return tmp->document()->document();
+}
+
+void SkiplistIterator2::forwardCursor() {
+  _currentInterval++;
+  if (_currentInterval < _intervals.size()) {
+    auto const& interval = _intervals[_currentInterval];
+    if (_reverse) {
+      _cursor = interval.second;
+    } else {
+      _cursor = interval.first;
+    }
+    return;
+  }
+  _cursor = nullptr;
+  if (_builder->next()) {
+    initNextInterval();
+  }
+}
+
+void SkiplistIterator2::initNextInterval() {
+  // We will always point the cursor to the resulting interval if any.
+  // We do not take responsibility for the Nodes!
+  Node* rightBorder = nullptr;
+  Node* leftBorder = nullptr;
+  while (true) {
+    if (_builder->isEquality()) {
+      rightBorder = _skiplistIndex->rightKeyLookup(_builder->getLowerLookup());
+      if (rightBorder == _skiplistIndex->startNode()) {
+        // No matching elements. Next interval
+        if (!_builder->next()) {
+          // No next interval. We are done.
+          return;
+        }
+        // Builder moved forward. Try again.
+        continue;
+      }
+      leftBorder = _skiplistIndex->leftKeyLookup(_builder->getLowerLookup());
+      leftBorder = leftBorder->nextNode();
+      // NOTE: rightBorder < leftBorder => no Match.
+      // Will be checked by interval valid
+    } else {
+      if (_builder->includeLower()) {
+        leftBorder = _skiplistIndex->leftKeyLookup(_builder->getLowerLookup());
+        // leftKeyLookup guarantees that we find the element before search.
+      } else {
+        leftBorder = _skiplistIndex->rightKeyLookup(_builder->getLowerLookup());
+        // leftBorder is identical or smaller than search
+      }
+      // This is the first element not to be returned, but the next one
+      // Also save for the startNode, it should never be contained in the index.
+      leftBorder = leftBorder->nextNode();
+
+      if (_builder->includeUpper()) {
+        rightBorder = _skiplistIndex->rightKeyLookup(_builder->getUpperLookup());
+      } else {
+        rightBorder = _skiplistIndex->leftKeyLookup(_builder->getUpperLookup());
+      }
+      if (rightBorder == _skiplistIndex->startNode()) {
+        // No match make interval invalid
+        rightBorder = nullptr;
+      }
+      // else rightBorder is correct
+    }
+    if (!intervalValid(leftBorder, rightBorder)) {
+      // No matching elements. Next interval
+      if (!_builder->next()) {
+        // No next interval. We are done.
+        return;
+      }
+      // Builder moved forward. Try again.
+      continue;
+    }
+    TRI_ASSERT(_currentInterval == _intervals.size());
+    _intervals.emplace_back(leftBorder, rightBorder);
+    if (_reverse) {
+      _cursor = rightBorder;
+    } else {
+      _cursor = leftBorder;
+    }
+    // Next valid interal initialized. Return;
+    return;
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -438,6 +994,7 @@ SkiplistIterator* SkiplistIndex::lookup(arangodb::Transaction* trx,
         rightSearch->add(lastRight);
         rightSearch->close();
         VPackSlice search = rightSearch->slice();
+
         rightBorder = _skiplistIndex->leftKeyLookup(&search);
         if (rightBorder == _skiplistIndex->startNode()) {
           // No match make interval invalid
@@ -687,6 +1244,215 @@ void SkiplistIndex::matchAttributes(
   }
 }
 
+
+bool SkiplistIndex::accessFitsIndex(
+    arangodb::aql::AstNode const* access, arangodb::aql::AstNode const* other,
+    arangodb::aql::AstNode const* op, arangodb::aql::Variable const* reference,
+    std::vector<std::vector<arangodb::aql::AstNode const*>>& found) const {
+  if (!this->canUseConditionPart(access, other, op, reference, true)) {
+    return false;
+  }
+
+  arangodb::aql::AstNode const* what = access;
+  std::pair<arangodb::aql::Variable const*,
+            std::vector<arangodb::basics::AttributeName>> attributeData;
+
+  if (op->type != arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
+    if (!what->isAttributeAccessForVariable(attributeData) ||
+        attributeData.first != reference) {
+      // this access is not referencing this collection
+      return false;
+    }
+    if (arangodb::basics::TRI_AttributeNamesHaveExpansion(
+            attributeData.second)) {
+      // doc.value[*] == 'value'
+      return false;
+    }
+    if (isAttributeExpanded(attributeData.second)) {
+      // doc.value == 'value' (with an array index)
+      return false;
+    }
+  } else {
+    // ok, we do have an IN here... check if it's something like 'value' IN
+    // doc.value[*]
+    TRI_ASSERT(op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN);
+    bool canUse = false;
+
+    if (what->isAttributeAccessForVariable(attributeData) &&
+        attributeData.first == reference &&
+        !arangodb::basics::TRI_AttributeNamesHaveExpansion(
+            attributeData.second) &&
+        attributeMatches(attributeData.second)) {
+      // doc.value IN 'value'
+      // can use this index
+      canUse = true;
+    } else {
+      // check for  'value' IN doc.value  AND  'value' IN doc.value[*]
+      what = other;
+      if (what->isAttributeAccessForVariable(attributeData) &&
+          attributeData.first == reference &&
+          isAttributeExpanded(attributeData.second) &&
+          attributeMatches(attributeData.second)) {
+        canUse = true;
+      }
+    }
+
+    if (!canUse) {
+      return false;
+    }
+  }
+
+  std::vector<arangodb::basics::AttributeName> const& fieldNames =
+      attributeData.second;
+
+  for (size_t i = 0; i < _fields.size(); ++i) {
+    if (_fields[i].size() != fieldNames.size()) {
+      // attribute path length differs
+      continue;
+    }
+
+    if (this->isAttributeExpanded(i) &&
+        op->type != arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
+      // If this attribute is correct or not, it could only serve for IN
+      continue;
+    }
+
+    bool match = arangodb::basics::AttributeName::isIdentical(_fields[i],
+                                                              fieldNames, true);
+
+    if (match) {
+      // mark ith attribute as being covered
+      found[i].emplace_back(op);
+
+      TRI_IF_FAILURE("SkiplistIndex::accessFitsIndex") {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      }
+
+      return true;
+    }
+  }
+
+  return false;
+}
+
+bool SkiplistIndex::findMatchingConditions(
+    arangodb::aql::AstNode const* node,
+    arangodb::aql::Variable const* reference,
+    std::vector<std::vector<arangodb::aql::AstNode const*>>& mapping,
+    bool& usesIn) const {
+  usesIn = false;
+
+  for (size_t i = 0; i < node->numMembers(); ++i) {
+    auto op = node->getMember(i);
+
+    switch (op->type) {
+      case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ:
+      case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LT:
+      case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE:
+      case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GT:
+      case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE: {
+        TRI_ASSERT(op->numMembers() == 2);
+        accessFitsIndex(op->getMember(0), op->getMember(1), op, reference,
+                        mapping);
+        accessFitsIndex(op->getMember(1), op->getMember(0), op, reference,
+                        mapping);
+        break;
+      }
+      case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN: {
+        auto m = op->getMember(1);
+        if (accessFitsIndex(op->getMember(0), m, op, reference,
+                            mapping)) {
+          if (m->numMembers() == 0) {
+            // We want to do an IN [].
+            // No results
+            // Even if we cannot use the index.
+            return false;
+          }
+        }
+        break;
+      }
+
+      default: {
+        TRI_ASSERT(false);
+        break;
+      }
+    }
+  }
+
+  for (size_t i = 0; i < mapping.size(); ++i) {
+    auto const& conditions = mapping[i];
+    if (conditions.empty()) {
+      // We do not have any condition for this field.
+      // Remove it and everything afterwards.
+      mapping.resize(i);
+      TRI_ASSERT(i == mapping.size());
+      break;
+    }
+    TRI_ASSERT(conditions.size() <= 2);
+    auto const& first = conditions[0];
+    switch (first->type) {
+      case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN:
+        if (first->getMember(1)->isArray()) {
+          usesIn = true;
+        }
+        //Fall through intentional
+      case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ:
+        TRI_ASSERT(conditions.size() == 1);
+        break;
+
+      default: {
+        // All conditions after this cannot be used.
+        // shrink and break outer for loop
+        mapping.resize(i + 1);
+        TRI_ASSERT(i + 1 == mapping.size());
+        return true;
+      }
+    }
+  }
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  for (auto const& it : mapping) {
+    TRI_ASSERT(!it.empty());
+  }
+#endif
+
+  return true;
+}
+
+
+IndexIterator* SkiplistIndex::iteratorForCondition(
+    arangodb::Transaction* trx, IndexIteratorContext*,
+    arangodb::aql::AstNode const* node,
+    arangodb::aql::Variable const* reference, bool reverse) const {
+  std::vector<std::vector<arangodb::aql::AstNode const*>> mapping;
+  bool usesIn = false;
+  if (node != nullptr) {
+    mapping.resize(_fields.size()); // We use the default constructor. Mapping will have _fields many entries.
+    TRI_ASSERT(mapping.size() == _fields.size());
+    if (!findMatchingConditions(node, reference, mapping, usesIn)) {
+      return new EmptyIndexIterator();
+    }
+  } else {
+    TRI_IF_FAILURE("SkiplistIndex::noSortIterator") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+  }
+
+  TRI_IF_FAILURE("SkiplistIndex::noIterator") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+
+  if (usesIn) {
+    auto builder =
+        std::make_unique<SkiplistInLookupBuilder>(trx, mapping, reference, reverse);
+    return new SkiplistIterator2(_skiplistIndex, CmpElmElm, reverse, builder.release());
+  }
+  auto builder =
+      std::make_unique<SkiplistLookupBuilder>(trx, mapping, reference, reverse);
+  return new SkiplistIterator2(_skiplistIndex, CmpElmElm, reverse, builder.release());
+}
+
+
+
 bool SkiplistIndex::supportsFilterCondition(
     arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, size_t itemsInIndex,
@@ -818,197 +1584,6 @@ bool SkiplistIndex::supportsSortCondition(
     estimatedCost = 0.0;
   }
   return false;
-}
-
-IndexIterator* SkiplistIndex::iteratorForCondition(
-    arangodb::Transaction* trx, IndexIteratorContext* context,
-    arangodb::aql::AstNode const* node,
-    arangodb::aql::Variable const* reference, bool reverse) const {
-
-  TransactionBuilderLeaser searchValues(trx);
-  searchValues->openArray();
-  bool needNormalize = false;
-  if (node == nullptr) {
-    // We only use this index for sort. Empty searchValue
-    searchValues->openArray();
-    searchValues->close();
-
-    TRI_IF_FAILURE("SkiplistIndex::noSortIterator") {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-    }
-  } else {
-    // Create the search Values for the lookup
-    VPackArrayBuilder guard(searchValues.builder());
-
-    std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>> found;
-    size_t unused = 0;
-    matchAttributes(node, reference, found, unused, true);
-
-    // found contains all attributes that are relevant for this node.
-    // It might be less than fields().
-    //
-    // Handle the first attributes. They can only be == or IN and only
-    // one node per attribute
-
-    auto getValueAccess = [&](arangodb::aql::AstNode const* comp,
-                              arangodb::aql::AstNode const*& access,
-                              arangodb::aql::AstNode const*& value) -> bool {
-      access = comp->getMember(0);
-      value = comp->getMember(1);
-      std::pair<arangodb::aql::Variable const*,
-                std::vector<arangodb::basics::AttributeName>> paramPair;
-      if (!(access->isAttributeAccessForVariable(paramPair) &&
-            paramPair.first == reference)) {
-        access = comp->getMember(1);
-        value = comp->getMember(0);
-        if (!(access->isAttributeAccessForVariable(paramPair) &&
-              paramPair.first == reference)) {
-          // Both side do not have a correct AttributeAccess, this should not
-          // happen and indicates
-          // an error in the optimizer
-          TRI_ASSERT(false);
-        }
-        return true;
-      }
-      return false;
-    };
-
-    size_t usedFields = 0;
-    for (; usedFields < _fields.size(); ++usedFields) {
-      auto it = found.find(usedFields);
-      if (it == found.end()) {
-        // We are either done
-        // or this is a range.
-        // Continue with more complicated loop
-        break;
-      }
-
-      auto comp = it->second[0];
-      TRI_ASSERT(comp->numMembers() == 2);
-      arangodb::aql::AstNode const* access = nullptr;
-      arangodb::aql::AstNode const* value = nullptr;
-      getValueAccess(comp, access, value);
-      // We found an access for this field
-      
-      if (comp->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
-        searchValues->openObject();
-        searchValues->add(VPackValue(StaticStrings::IndexEq));
-        TRI_IF_FAILURE("SkiplistIndex::permutationEQ") {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-        }
-      } else if (comp->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
-        if (isAttributeExpanded(usedFields)) {
-          searchValues->openObject();
-          searchValues->add(VPackValue(StaticStrings::IndexEq));
-          TRI_IF_FAILURE("SkiplistIndex::permutationArrayIN") {
-            THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-          }
-        } else {
-          needNormalize = true;
-          searchValues->openObject();
-          searchValues->add(VPackValue(StaticStrings::IndexIn));
-        }
-      } else {
-        // This is a one-sided range
-        break;
-      }
-      // We have to add the value always, the key was added before
-      value->toVelocyPackValue(*searchValues.builder());
-      searchValues->close();
-    }
-
-    // Now handle the next element, which might be a range
-    if (usedFields < _fields.size()) {
-      auto it = found.find(usedFields);
-      if (it != found.end()) {
-        auto rangeConditions = it->second;
-        TRI_ASSERT(rangeConditions.size() <= 2);
-        VPackObjectBuilder searchElement(searchValues.builder());
-        for (auto& comp : rangeConditions) {
-          TRI_ASSERT(comp->numMembers() == 2);
-          arangodb::aql::AstNode const* access = nullptr;
-          arangodb::aql::AstNode const* value = nullptr;
-          bool isReverseOrder = getValueAccess(comp, access, value);
-          // Add the key
-          switch (comp->type) {
-            case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LT:
-              if (isReverseOrder) {
-                searchValues->add(VPackValue(StaticStrings::IndexGt));
-              } else {
-                searchValues->add(VPackValue(StaticStrings::IndexLt));
-              }
-              break;
-            case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE:
-              if (isReverseOrder) {
-                searchValues->add(VPackValue(StaticStrings::IndexGe));
-              } else {
-                searchValues->add(VPackValue(StaticStrings::IndexLe));
-              }
-              break;
-            case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GT:
-              if (isReverseOrder) {
-                searchValues->add(VPackValue(StaticStrings::IndexLt));
-              } else {
-                searchValues->add(VPackValue(StaticStrings::IndexGt));
-              }
-              break;
-            case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE:
-              if (isReverseOrder) {
-                searchValues->add(VPackValue(StaticStrings::IndexLe));
-              } else {
-                searchValues->add(VPackValue(StaticStrings::IndexGe));
-              }
-              break;
-          default:
-            // unsupported right now. Should have been rejected by
-            // supportsFilterCondition
-            TRI_ASSERT(false);
-            return nullptr;
-          }
-          value->toVelocyPackValue(*searchValues.builder());
-        }
-      }
-    }
-  }
-  searchValues->close();
-
-  TRI_IF_FAILURE("SkiplistIndex::noIterator") {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-  }
-
-  if (needNormalize) {
-    TransactionBuilderLeaser expandedSearchValues(trx);
-    expandInSearchValues(searchValues->slice(), *expandedSearchValues.builder());
-    VPackSlice expandedSlice = expandedSearchValues->slice();
-    std::vector<IndexIterator*> iterators;
-    iterators.reserve(expandedSlice.length());
-    try {
-      for (auto const& val : VPackArrayIterator(expandedSlice)) {
-        auto iterator = lookup(trx, val, reverse);
-        try {
-          iterators.push_back(iterator);
-        } catch (...) {
-          // avoid leak
-          delete iterator;
-          throw;
-        }
-      }
-      if (reverse) {
-        std::reverse(iterators.begin(), iterators.end());
-      }
-    }
-    catch (...) {
-      for (auto& it : iterators) {
-        delete it;
-      }
-      throw; 
-    }
-    return new MultiIndexIterator(iterators);
-  }
-  VPackSlice searchSlice = searchValues->slice();
-  TRI_ASSERT(searchSlice.length() == 1);
-  searchSlice = searchSlice.at(0);
-  return lookup(trx, searchSlice, reverse);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

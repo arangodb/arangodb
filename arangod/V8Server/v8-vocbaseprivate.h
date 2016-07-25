@@ -78,15 +78,6 @@ v8::Handle<v8::Value> V8TickId(v8::Isolate* isolate, TRI_voc_tick_t tick);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parse document or document handle from a v8 value (string | object)
-////////////////////////////////////////////////////////////////////////////////
-
-bool ExtractDocumentHandle(v8::Isolate* isolate,
-                           v8::Handle<v8::Value> const val,
-                           std::string& collectionName,
-                           std::unique_ptr<char[]>& key, TRI_voc_rid_t& rid);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief parse document or document handle from a v8 value (string | object)
 /// Note that the builder must already be open with an object and will remain
 /// open afterwards.
 ////////////////////////////////////////////////////////////////////////////////

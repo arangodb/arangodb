@@ -57,43 +57,15 @@ class ExplicitTransaction : public Transaction {
       this->setWaitForSync();
     }
 
+    for (auto const& it : writeCollections) {
+      this->addCollection(it, TRI_TRANSACTION_WRITE);
+    }
+
+    for (auto const& it : readCollections) {
+      this->addCollection(it, TRI_TRANSACTION_READ);
+    }
+    
     this->setAllowImplicitCollections(allowImplicitCollections);
-    
-    for (auto const& it : writeCollections) {
-      this->addCollection(it, TRI_TRANSACTION_WRITE);
-    }
-
-    for (auto const& it : readCollections) {
-      this->addCollection(it, TRI_TRANSACTION_READ);
-    }
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief create the transaction with cids
-  //////////////////////////////////////////////////////////////////////////////
-
-  ExplicitTransaction(std::shared_ptr<V8TransactionContext> transactionContext,
-                      std::vector<TRI_voc_cid_t> const& readCollections,
-                      std::vector<TRI_voc_cid_t> const& writeCollections,
-                      double lockTimeout, bool waitForSync, bool embed)
-      : Transaction(transactionContext) {
-    this->addHint(TRI_TRANSACTION_HINT_LOCK_ENTIRELY, false);
-
-    if (lockTimeout >= 0.0) {
-      this->setTimeout(lockTimeout);
-    }
-
-    if (waitForSync) {
-      this->setWaitForSync();
-    }
-    
-    for (auto const& it : writeCollections) {
-      this->addCollection(it, TRI_TRANSACTION_WRITE);
-    }
-
-    for (auto const& it : readCollections) {
-      this->addCollection(it, TRI_TRANSACTION_READ);
-    }
   }
 
   //////////////////////////////////////////////////////////////////////////////

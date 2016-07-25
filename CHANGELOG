@@ -1,6 +1,8 @@
 devel
 -----
 
+* replaced require("internal").db by require("@arangodb").db
+
 * added option `--skip-lines` for arangoimp
   this allows skipping the first few lines from the import file in case the
   CSV or TSV import are used
@@ -23,11 +25,64 @@ devel
 
 * When disabling Foxx development mode the setup script is now re-run
 
+* Foxx now provides an easy way to directly serve GraphQL requests using the
+  `@arangodb/foxx/graphql` module and the bundled `graphql-sync` dependency
 
-v3.0.2 (XXXX-XX-XX)
+* Foxx OAuth2 module now correctly passes the `access_token` to the OAuth2 server
+
+
+v3.0.4 (XXXX-XX-XX)
 -------------------
 
-* don't expose local file paths in error messages.
+* fixed issue #1962
+
+* fixed issue #1959
+
+* replaced require("internal").db by require("@arangodb").db
+
+* fixed issue #1953
+
+* fixed issue #1950
+
+* fixed issue #1949
+
+* fixed segfault in V8, by backporting https://bugs.chromium.org/p/v8/issues/detail?id=5033
+
+* Foxx OAuth2 module now correctly passes the `access_token` to the OAuth2 server
+
+
+v3.0.3 (2016-07-17)
+-------------------
+
+* fixed issue #1942
+
+* fixed issue #1941
+
+* fixed array index batch insertion issues for hash indexes that caused problems when 
+  no elements remained for insertion
+
+* fixed AQL MERGE() function with External objects originating from traversals
+
+* fixed some logfile recovery errors with error message "document not found"
+
+* fixed issue #1937
+
+* fixed issue #1936
+
+* improved performance of arangorestore in clusters with synchronous
+  replication
+
+
+v3.0.2 (2016-07-09)
+-------------------
+
+* fixed assertion failure in case multiple remove operations were used in the same query
+
+* fixed upsert behavior in case upsert was used in a loop with the same document example 
+
+* fixed issue #1930
+
+* don't expose local file paths in Foxx error messages.
 
 * fixed issue #1929
 
@@ -55,6 +110,17 @@ v3.0.2 (XXXX-XX-XX)
 * fix Foxx thumbnails on DC/OS
 
 * fix Foxx configuration not being saved
+
+* fix Foxx app access from within the frontend on DC/OS
+
+* add option --default-replication-factor to arangorestore and simplify
+  the control over the number of shards when restoring
+
+* fix a bug in the VPack -> V8 conversion if special attributes _key,
+  _id, _rev, _from and _to had non-string values, which is allowed
+  below the top level
+
+* fix malloc_usable_size for darwin
 
 
 v3.0.1 (XXXX-XX-XX)
@@ -419,8 +485,24 @@ v3.0.0-rc1 (2015-06-10)
   using a backwards-compatible "legacy mode"
 
 
-v2.8.10 (XXXX-XX-XX)
+v2.8.11 (XXXX-XX-XX)
 --------------------
+
+* fixed issue #1937
+
+
+v2.8.10 (2016-07-01)
+--------------------
+
+* make sure next local _rev value used for a document is at least as high as the
+  _rev value supplied by external sources such as replication
+
+* make adding a collection in both read- and write-mode to a transaction behave as
+  expected (write includes read). This prevents the `unregister collection used in
+  transaction` error
+
+* fixed sometimes invalid result for `byExample(...).count()` when an index plus
+  post-filtering was used
 
 * fixed "collection is a nullptr" issue when starting a traversal from a transaction
 

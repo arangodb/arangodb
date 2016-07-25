@@ -74,6 +74,7 @@
     * [Middleware](Foxx/Router/Middleware.md)
     * [Request](Foxx/Router/Request.md)
     * [Response](Foxx/Router/Response.md)
+  * [Using GraphQL](Foxx/GraphQL.md)
   * [Sessions middleware](Foxx/Sessions/README.md)
     * [Session storages](Foxx/Sessions/Storages/README.md)
       * [Collection storage](Foxx/Sessions/Storages/Collection.md)

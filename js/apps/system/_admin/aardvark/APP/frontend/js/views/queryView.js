@@ -1,11 +1,11 @@
-/*jshint browser: true */
-/*jshint unused: false */
-/*global Backbone, EJS, $, setTimeout, localStorage, ace, Storage, window, _, console, btoa*/
-/*global _, arangoHelper, templateEngine, jQuery, Joi, d3*/
+/* jshint browser: true */
+/* jshint unused: false */
+/* global Backbone, $, setTimeout, localStorage, ace, Storage, window, _, console, btoa*/
+/* global _, arangoHelper, templateEngine, Joi */
 
 (function () {
   'use strict';
-  window.queryView = Backbone.View.extend({
+  window.QueryView = Backbone.View.extend({
     el: '#content',
     bindParamId: '#bindParamEditor',
     myQueriesId: '#queryTable',
@@ -27,6 +27,8 @@
         bindParam: undefined
       }
     },
+
+    graphs: [],
 
     settings: {
       aqlWidth: undefined
@@ -66,7 +68,7 @@
       'click #explainQuery': 'explainQuery',
       'click #clearQuery': 'clearQuery',
       'click .outputEditorWrapper #downloadQueryResult': 'downloadQueryResult',
-      'click .outputEditorWrapper .switchAce': 'switchAce',
+      'click .outputEditorWrapper .switchAce span': 'switchAce',
       'click .outputEditorWrapper .fa-close': 'closeResult',
       'click #toggleQueries1': 'toggleQueries',
       'click #toggleQueries2': 'toggleQueries',
@@ -102,11 +104,11 @@
           this.updateQueryTable();
           this.bindParamAceEditor.setValue(JSON.stringify(this.bindParamTableObj, null, '\t'), 1);
           this.deselect(this.bindParamAceEditor);
-        }else {
+        } else {
           $('#switchTypes').text('JSON');
           this.renderBindParamTable();
         }
-      }else {
+      } else {
         arangoHelper.arangoError('Bind parameter', 'Could not parse bind parameter');
       }
       this.resize();
@@ -174,7 +176,7 @@
       }
       if (obj) {
         obj = obj.get('value');
-      }else {
+      } else {
         _.each(this.queries, function (query) {
           if (query.name === qName) {
             obj = query.value;
@@ -216,17 +218,17 @@
           $('.aqlEditorWrapper').first().width($(window).width() * 0.33);
           this.queryPreview.setValue('No query selected.', 1);
           this.deselect(this.queryPreview);
-        }else {
+        } else {
           if (this.settings.aqlWidth === undefined) {
             $('.aqlEditorWrapper').first().width($(window).width() * 0.33);
-          }else {
+          } else {
             $('.aqlEditorWrapper').first().width(this.settings.aqlWidth);
           }
         }
-      }else {
+      } else {
         if (this.settings.aqlWidth === undefined) {
           $('.aqlEditorWrapper').first().width($(window).width() * 0.33);
-        }else {
+        } else {
           $('.aqlEditorWrapper').first().width(this.settings.aqlWidth);
         }
       }
@@ -257,15 +259,15 @@
       var name;
       if ($(e.currentTarget).is('tr')) {
         name = $(e.currentTarget).children().first().text();
-      }
-      else if ($(e.currentTarget).is('span')) {
+      } else if ($(e.currentTarget).is('span')) {
         name = $(e.currentTarget).parent().parent().prev().text();
       }
       return name;
     },
 
     deleteQueryModal: function (name) {
-      var buttons = [], tableContent = [];
+      var buttons = [];
+      var tableContent = [];
       tableContent.push(
         window.modalView.createReadOnlyEntry(
           undefined,
@@ -301,8 +303,8 @@
     },
 
     selectQueryFromTable: function (e, toggle) {
-      var name = this.getQueryNameFromTable(e),
-        self = this;
+      var name = this.getQueryNameFromTable(e);
+      var self = this;
 
       if (toggle === undefined) {
         this.toggleQueries();
@@ -338,7 +340,7 @@
       var callbackRemove = function (error) {
         if (error) {
           arangoHelper.arangoError('Query', 'Could not delete query.');
-        }else {
+        } else {
           this.updateLocalQueries();
           this.updateQueryTable();
           this.resize();
@@ -353,37 +355,72 @@
     },
 
     switchAce: function (e) {
+      // check if button is disabled
       var count = $(e.currentTarget).attr('counter');
+      var elem = e.currentTarget;
 
-      if ($(e.currentTarget).text() === 'Result') {
-        $(e.currentTarget).text('AQL');
-      }else {
-        $(e.currentTarget).text('Result');
+      if ($(elem).hasClass('disabled')) {
+        return;
       }
-      $('#outputEditor' + count).toggle();
-      $('#sentWrapper' + count).toggle();
+
+      _.each($(elem).parent().children(), function (child) {
+        $(child).removeClass('active');
+      });
+
+      var string = $(elem).attr('val');
+      $(elem).addClass('active');
+      $(elem).text(string.charAt(0).toUpperCase() + string.slice(1));
+
+      // refactor this
+      if (string === 'JSON') {
+        $('#outputEditor' + count).show();
+
+        $('#sentWrapper' + count).hide();
+        $('#outputGraph' + count).hide();
+        $('#outputTable' + count).hide();
+      } else if (string === 'AQL') {
+        $('#sentWrapper' + count).show();
+
+        $('#outputEditor' + count).hide();
+        $('#outputGraph' + count).hide();
+        $('#outputTable' + count).hide();
+      } else if (string === 'Table') {
+        $('#outputTable' + count).show();
+
+        $('#outputGraph' + count).hide();
+        $('#outputEditor' + count).hide();
+        $('#sentWrapper' + count).hide();
+      } else if (string === 'Graph') {
+        $('#outputGraph' + count).show();
+
+        $('#outputTable' + count).hide();
+        $('#outputEditor' + count).hide();
+        $('#sentWrapper' + count).hide();
+      }
+
+      // deselect editors
       this.deselect(ace.edit('outputEditor' + count));
       this.deselect(ace.edit('sentQueryEditor' + count));
       this.deselect(ace.edit('sentBindParamEditor' + count));
     },
 
     downloadQueryResult: function (e) {
-      var count = $(e.currentTarget).attr('counter'),
-        editor = ace.edit('sentQueryEditor' + count),
-        query = editor.getValue();
+      var count = $(e.currentTarget).attr('counter');
+      var editor = ace.edit('sentQueryEditor' + count);
+      var query = editor.getValue();
 
       if (query !== '' || query !== undefined || query !== null) {
         var url;
         if (Object.keys(this.bindParamTableObj).length === 0) {
           url = 'query/result/download/' + encodeURIComponent(btoa(JSON.stringify({ query: query })));
-        }else {
+        } else {
           url = 'query/result/download/' + encodeURIComponent(btoa(JSON.stringify({
             query: query,
             bindVars: this.bindParamTableObj
           })));
         }
         arangoHelper.download(url);
-      }else {
+      } else {
         arangoHelper.arangoError('Query error', 'could not query result.');
       }
     },
@@ -398,10 +435,10 @@
         type: 'Explain'
       }));
 
-      var counter = this.outputCounter,
-        outputEditor = ace.edit('outputEditor' + counter),
-        sentQueryEditor = ace.edit('sentQueryEditor' + counter),
-        sentBindParamEditor = ace.edit('sentBindParamEditor' + counter);
+      var counter = this.outputCounter;
+      var outputEditor = ace.edit('outputEditor' + counter);
+      var sentQueryEditor = ace.edit('sentQueryEditor' + counter);
+      var sentBindParamEditor = ace.edit('sentBindParamEditor' + counter);
 
       sentQueryEditor.getSession().setMode('ace/mode/aql');
       sentQueryEditor.setOption('vScrollBarAlwaysVisible', true);
@@ -426,8 +463,8 @@
     fillExplain: function (outputEditor, sentQueryEditor, counter) {
       sentQueryEditor.setValue(this.aqlEditor.getValue(), 1);
 
-      var self = this,
-        queryData = this.readQueryData();
+      var self = this;
+      var queryData = this.readQueryData();
       $('#outputEditorWrapper' + counter + ' .queryExecutionTime').text('');
       this.execPending = false;
 
@@ -449,7 +486,7 @@
             if (data.msg.includes('errorMessage')) {
               self.removeOutputEditor(counter);
               arangoHelper.arangoError('Explain', data.msg);
-            }else {
+            } else {
               outputEditor.setValue(data.msg, 1);
               self.deselect(outputEditor);
               $.noty.clearQueue();
@@ -483,8 +520,8 @@
 
     getCachedQueryAfterRender: function () {
       // get cached query if available
-      var queryObject = this.getCachedQuery(),
-        self = this;
+      var queryObject = this.getCachedQuery();
+      var self = this;
 
       if (queryObject !== null && queryObject !== undefined && queryObject !== '') {
         this.aqlEditor.setValue(queryObject.query, 1);
@@ -547,8 +584,8 @@
 
     fillSelectBoxes: function () {
       // fill select box with # of results
-      var querySize = 1000,
-        sizeBox = $('#querySize');
+      var querySize = 1000;
+      var sizeBox = $('#querySize');
       sizeBox.empty();
 
       [ 100, 250, 500, 1000, 2500, 5000, 10000, 'all' ].forEach(function (value) {
@@ -605,13 +642,13 @@
         cancelCallback = function () {
           $('#aqlEditor .ace_text-input').focus();
         };
-      }else {
+      } else {
         var focused = $(':focus');
         callback = function (string) {
           var old = $(focused).val();
           $(focused).val(old + string);
           $(focused).focus();
-        }.bind(this);
+        };
 
         cancelCallback = function () {
           $(focused).focus();
@@ -635,7 +672,7 @@
         $('#arangoBindParamTable tbody').css('width', $('#bindParamEditor').width());
         $('#arangoBindParamTable tbody tr').css('width', $('#bindParamEditor').width());
         $('#arangoBindParamTable tbody td').css('width', $('#bindParamEditor').width() / 2);
-      }else {
+      } else {
         this.queryPreview.resize();
         $('#arangoMyQueriesTable thead').css('width', $('#queryTable').width());
         $('#arangoMyQueriesTable thead th').css('width', $('#queryTable').width() / 2);
@@ -680,16 +717,17 @@
         val = JSON.parse(val);
         if (val instanceof Array) {
           type = 'arraytype';
-        }else {
+        } else {
           type = typeof val + 'type';
         }
-      } catch(ignore) {}
+      } catch (ignore) {}
 
       return type;
     },
 
     updateBindParams: function (e) {
-      var id, self = this;
+      var id;
+      var self = this;
 
       if (e) {
         id = $(e.currentTarget).attr('name');
@@ -703,7 +741,7 @@
           $(e.currentTarget).removeClass(type);
         });
         $(e.currentTarget).addClass(self.checkType($(e.currentTarget).val()));
-      }else {
+      } else {
         _.each($('#arangoBindParamTable input'), function (element) {
           id = $(element).attr('name');
           self.bindParamTableObj[id] = arangoHelper.parseInput(element);
@@ -725,14 +763,14 @@
     },
 
     parseQuery: function (query) {
-      var STATE_NORMAL = 0,
-        STATE_STRING_SINGLE = 1,
-        STATE_STRING_DOUBLE = 2,
-        STATE_STRING_TICK = 3,
-        STATE_COMMENT_SINGLE = 4,
-        STATE_COMMENT_MULTI = 5,
-        STATE_BIND = 6,
-        STATE_STRING_BACKTICK = 7;
+      var STATE_NORMAL = 0;
+      var STATE_STRING_SINGLE = 1;
+      var STATE_STRING_DOUBLE = 2;
+      var STATE_STRING_TICK = 3;
+      var STATE_COMMENT_SINGLE = 4;
+      var STATE_COMMENT_MULTI = 5;
+      var STATE_BIND = 6;
+      var STATE_STRING_BACKTICK = 7;
 
       query += ' ';
       var self = this;
@@ -842,7 +880,7 @@
       _.each(foundBindParams, function (word) {
         if (self.bindParamTableObj[word]) {
           newObject[word] = self.bindParamTableObj[word];
-        }else {
+        } else {
           newObject[word] = '';
         }
       });
@@ -878,10 +916,9 @@
           if ($(element).attr('name') === key) {
             if (val instanceof Array) {
               $(element).val(JSON.stringify(val)).addClass('arraytype');
-            }
-            else if (typeof val === 'object') {
+            } else if (typeof val === 'object') {
               $(element).val(JSON.stringify(val)).addClass(typeof val + 'type');
-            }else {
+            } else {
               $(element).val(val).addClass(typeof val + 'type');
             }
           }
@@ -932,7 +969,7 @@
               self.bindParamTableObj[k] = '';
             });
             self.allowParamToggle = true;
-          }else {
+          } else {
             self.allowParamToggle = false;
           }
         }
@@ -1031,10 +1068,9 @@
         var x;
         if (a.name < b.name) {
           x = -1;
-        }
-        else if (a.name > b.name) {
+        } else if (a.name > b.name) {
           x = 1;
-        }else {
+        } else {
           x = 0;
         }
         return x;
@@ -1080,7 +1116,9 @@
     },
 
     createCustomQueryModal: function () {
-      var buttons = [], tableContent = [];
+      var buttons = [];
+      var tableContent = [];
+
       tableContent.push(
         window.modalView.createTextEntry(
           'new-query-name',
@@ -1120,7 +1158,7 @@
         $('#modalButton1').removeClass('button-success');
         $('#modalButton1').addClass('button-warning');
         $('#modalButton1').text('Update');
-      }else {
+      } else {
         $('#modalButton1').removeClass('button-warning');
         $('#modalButton1').addClass('button-success');
         $('#modalButton1').text('Save');
@@ -1135,8 +1173,8 @@
       // update queries first, before writing
       this.refreshAQL();
 
-      var saveName = $('#new-query-name').val(),
-        bindVars = this.bindParamTableObj;
+      var saveName = $('#new-query-name').val();
+      var bindVars = this.bindParamTableObj;
 
       if ($('#new-query-name').hasClass('invalid-input')) {
         return;
@@ -1147,9 +1185,9 @@
         return;
       }
 
-      var content = this.aqlEditor.getValue(),
+      var content = this.aqlEditor.getValue();
         // check for already existing entry
-        quit = false;
+      var quit = false;
       _.each(this.customQueries, function (v) {
         if (v.name === saveName) {
           v.value = content;
@@ -1162,7 +1200,7 @@
         // Heiko: Form-Validator - name already taken
         // Update model and save
         this.collection.findWhere({name: saveName}).set('value', content);
-      }else {
+      } else {
         if (bindVars === '' || bindVars === undefined) {
           bindVars = '{}';
         }
@@ -1184,7 +1222,7 @@
       var callback = function (error) {
         if (error) {
           arangoHelper.arangoError('Query', 'Could not save query');
-        }else {
+        } else {
           var self = this;
           this.collection.fetch({
             success: function () {
@@ -1232,10 +1270,10 @@
       $('#outputEditorWrapper' + this.outputCounter).hide();
       $('#outputEditorWrapper' + this.outputCounter).show('fast');
 
-      var counter = this.outputCounter,
-        outputEditor = ace.edit('outputEditor' + counter),
-        sentQueryEditor = ace.edit('sentQueryEditor' + counter),
-        sentBindParamEditor = ace.edit('sentBindParamEditor' + counter);
+      var counter = this.outputCounter;
+      var outputEditor = ace.edit('outputEditor' + counter);
+      var sentQueryEditor = ace.edit('sentQueryEditor' + counter);
+      var sentBindParamEditor = ace.edit('sentBindParamEditor' + counter);
 
       sentQueryEditor.getSession().setMode('ace/mode/aql');
       sentQueryEditor.setOption('vScrollBarAlwaysVisible', true);
@@ -1270,7 +1308,7 @@
 
       if (sizeBox.val() === 'all') {
         data.batchSize = 1000000;
-      }else {
+      } else {
         data.batchSize = parseInt(sizeBox.val(), 10);
       }
 
@@ -1406,7 +1444,7 @@
 
           if ($('#bindParamEditor').is(':visible')) {
             self.renderBindParamTable();
-          }else {
+          } else {
             self.bindParamAceEditor.setValue(JSON.stringify(bindParam), 1);
             self.deselect(self.bindParamAceEditor);
           }
@@ -1435,6 +1473,31 @@
       var fetchQueryResult = function (data) {
         warningsFunc(data);
         window.progressView.hide();
+
+        var result = self.analyseQuery(data.result);
+        console.log('Using ' + result.defaultType + ' as data format.');
+        if (result.defaultType === 'table') {
+          $('#outputEditorWrapper' + counter + ' .arangoToolbarTop').after(
+            '<div id="outputTable' + counter + '" class="outputTable"></div>'
+          );
+          $('#outputTable' + counter).show();
+          self.renderOutputTable(result, counter);
+
+          // apply max height for table output dynamically
+          var maxHeight = $('.centralRow').height() - 250;
+          $('.outputEditorWrapper .tableWrapper').css('max-height', maxHeight);
+
+          $('#outputEditor' + counter).hide();
+        } else if (result.defaultType === 'graph') {
+          $('#outputEditorWrapper' + counter + ' .arangoToolbarTop').after('<div id="outputGraph' + counter + '"></div>');
+          $('#outputGraph' + counter).show();
+          self.renderOutputGraph(result, counter);
+
+          $('#outputEditor' + counter).hide();
+        }
+
+        // add active class to choosen display method
+        $('#' + result.defaultType + '-switch').addClass('active').css('display', 'inline');
 
         var appendSpan = function (value, icon, css) {
           if (!css) {
@@ -1466,20 +1529,11 @@
                 appendSpan(
                   data.extra.stats.writesIgnored + ' writes ignored', 'fa-check-circle positive', 'additional'
                 );
-              }else {
+              } else {
                 appendSpan(
                   data.extra.stats.writesIgnored + ' writes ignored', 'fa-exclamation-circle warning', 'additional'
                 );
               }
-            }
-            if (data.extra.stats.scannedFull > 0) {
-              appendSpan(
-                'full collection scan', 'fa-exclamation-circle warning', 'additional'
-              );
-            }else {
-              appendSpan(
-                'no full collection scan', 'fa-check-circle positive', 'additional'
-              );
             }
           }
         }
@@ -1511,13 +1565,11 @@
           contentType: 'application/json',
           processData: false,
           success: function (data, textStatus, xhr) {
-
             // query finished, now fetch results
             if (xhr.status === 201) {
               fetchQueryResult(data);
-            }
+            } else if (xhr.status === 204) {
             // query not ready yet, retry
-            else if (xhr.status === 204) {
               self.checkQueryTimer = window.setTimeout(function () {
                 checkQueryStatus();
               }, 500);
@@ -1541,7 +1593,7 @@
                     error.errorMessage.match(/'.*'/g)[0],
                     error.errorMessage.match(/\d+:\d+/g)[0]
                   );
-                }else {
+                } else {
                   self.markPositionError(
                     error.errorMessage.match(/\(\w+\)/g)[0]
                   );
@@ -1563,6 +1615,118 @@
         });
       };
       checkQueryStatus();
+    },
+
+    analyseQuery: function (result) {
+      var toReturn = {
+        defaultType: null,
+        original: result,
+        modified: null
+      };
+
+      var found = false;
+
+      // check if result could be displayed as graph
+      // case a) result has keys named vertices and edges
+      if (result[0]) {
+        if (result[0].vertices && result[0].edges) {
+          var hitsa = 0;
+          var totala = 0;
+
+          _.each(result, function (obj) {
+            if (obj.edges) {
+              totala += obj.edges.length;
+
+              _.each(obj.edges, function (edge) {
+                if (edge._from && edge._to) {
+                  hitsa++;
+                }
+              });
+            }
+          });
+
+          var percentagea = hitsa / totala * 100;
+
+          if (percentagea >= 95) {
+            found = true;
+            toReturn.defaultType = 'graph';
+            toReturn.graphInfo = 'object';
+          }
+        } else {
+          // case b) 95% have _from and _to attribute
+          var hitsb = 0;
+          var totalb = result.length;
+
+          _.each(result, function (obj) {
+            if (obj._from && obj._to) {
+              hitsb++;
+            }
+          });
+
+          var percentageb = hitsb / totalb * 100;
+
+          if (percentageb >= 95) {
+            found = true;
+            toReturn.defaultType = 'graph';
+            toReturn.graphInfo = 'array';
+            // then display as graph
+          }
+        }
+      }
+
+      // check if result could be displayed as table
+      if (!found) {
+        var maxAttributeCount = 0;
+        var check = true;
+        var length;
+        var attributes = {};
+
+        if (result.length <= 1) {
+          check = false;
+        }
+
+        if (check) {
+          _.each(result, function (obj) {
+            length = _.keys(obj).length;
+
+            if (length > maxAttributeCount) {
+              maxAttributeCount = length;
+            }
+
+            _.each(obj, function (value, key) {
+              if (attributes[key]) {
+                attributes[key] = attributes[key] + 1;
+              } else {
+                attributes[key] = 1;
+              }
+            });
+          });
+
+          var rate;
+
+          _.each(attributes, function (val, key) {
+            rate = (val / result.length) * 100;
+
+            if (check !== false) {
+              if (rate <= 95) {
+                check = false;
+              }
+            }
+          });
+        }
+
+        if (check) {
+          found = true;
+          toReturn.defaultType = 'table';
+        }
+      }
+
+      if (!found) {
+      // if all check fails, then just display as json
+        toReturn.defaultType = 'json';
+      }
+
+      return toReturn;
     },
 
     markPositionError: function (text, pos) {
@@ -1590,15 +1754,15 @@
       var callback = function (error) {
         if (error) {
           arangoHelper.arangoError('Query', 'Could not reload Queries');
-        }else {
+        } else {
           self.updateLocalQueries();
           self.updateQueryTable();
         }
-      }.bind(self);
+      };
 
       var originCallback = function () {
         self.getSystemQueries(callback);
-      }.bind(self);
+      };
 
       this.getAQL(originCallback);
     },
@@ -1640,6 +1804,46 @@
       });
     },
 
+    renderOutputTable: function (data, counter) {
+      var tableDescription = {
+        id: 'outputTableData' + counter,
+        titles: [],
+        rows: []
+      };
+
+      var first = true;
+      var part = [];
+      // self.tableDescription.rows.push(;
+      _.each(data.original, function (obj) {
+        if (first === true) {
+          tableDescription.titles = Object.keys(obj);
+          first = false;
+        }
+        _.each(obj, function (val) {
+          if (typeof val === 'object') {
+            val = JSON.stringify(val);
+          }
+          part.push(val);
+        });
+        tableDescription.rows.push(part);
+        part = [];
+      });
+
+      $('#outputTable' + counter).append(this.table.render({content: tableDescription}));
+    },
+
+    renderOutputGraph: function (data, counter) {
+      this.graphViewer2 = new window.GraphViewer2({
+        name: undefined,
+        documentStore: window.App.arangoDocumentStore,
+        collection: new window.GraphCollection(),
+        userConfig: window.App.userConfig,
+        id: '#outputGraph' + counter,
+        data: data
+      });
+      this.graphViewer2.renderAQL();
+    },
+
     getAQL: function (originCallback) {
       var self = this;
 
@@ -1663,10 +1867,10 @@
                   'Custom Queries',
                   'Could not import old local storage queries'
                 );
-              }else {
+              } else {
                 localStorage.removeItem('customQueries');
               }
-            }.bind(self);
+            };
             self.collection.saveCollectionQueries(callback);
           }
           self.updateLocalQueries();

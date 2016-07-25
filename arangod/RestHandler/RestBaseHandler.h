@@ -24,9 +24,9 @@
 #ifndef ARANGOD_REST_HANDLER_REST_BASE_HANDLER_H
 #define ARANGOD_REST_HANDLER_REST_BASE_HANDLER_H 1
 
-#include "HttpServer/HttpHandler.h"
+#include "GeneralServer/RestHandler.h"
 
-#include "Rest/HttpResponse.h"
+#include "Rest/GeneralResponse.h"
 
 namespace arangodb {
 class TransactionContext;
@@ -36,9 +36,9 @@ struct Options;
 class Slice;
 }
 
-class RestBaseHandler : public rest::HttpHandler {
+class RestBaseHandler : public rest::RestHandler {
  public:
-  explicit RestBaseHandler(HttpRequest* request);
+  explicit RestBaseHandler(GeneralRequest*, GeneralResponse*);
 
   void handleError(basics::Exception const&) override;
 
@@ -66,9 +66,8 @@ class RestBaseHandler : public rest::HttpHandler {
 
  protected:
   // write result back to client
-  void writeResult(arangodb::velocypack::Slice const& slice, 
+  void writeResult(arangodb::velocypack::Slice const& slice,
                    arangodb::velocypack::Options const& options);
-
 };
 }
 

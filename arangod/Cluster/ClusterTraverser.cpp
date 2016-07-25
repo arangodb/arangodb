@@ -47,8 +47,8 @@ bool ClusterTraverser::VertexGetter::getVertex(std::string const& edgeId,
       std::string to = slice.get(StaticStrings::ToString).copyString();
       result = std::move(to);
     }
-    auto exp = _traverser->_expressions->find(depth);
-    if (exp != _traverser->_expressions->end()) {
+    auto exp = _traverser->_opts.expressions->find(depth);
+    if (exp != _traverser->_opts.expressions->end()) {
       auto v = _traverser->_vertices.find(result);
       if (v == _traverser->_vertices.end()) {
         // If the vertex ist not in list it means it has not passed any
@@ -95,8 +95,8 @@ bool ClusterTraverser::UniqueVertexGetter::getVertex(
       return false;
     }
 
-    auto exp = _traverser->_expressions->find(depth);
-    if (exp != _traverser->_expressions->end()) {
+    auto exp = _traverser->_opts.expressions->find(depth);
+    if (exp != _traverser->_opts.expressions->end()) {
       auto v = _traverser->_vertices.find(result);
       if (v == _traverser->_vertices.end()) {
         // If the vertex ist not in list it means it has not passed any
@@ -137,8 +137,8 @@ void ClusterTraverser::ClusterEdgeGetter::getEdge(
     // We have to request the next level
     arangodb::GeneralResponse::ResponseCode responseCode;
     std::vector<TraverserExpression*> expEdges;
-    auto found = _traverser->_expressions->find(depth);
-    if (found != _traverser->_expressions->end()) {
+    auto found = _traverser->_opts.expressions->find(depth);
+    if (found != _traverser->_opts.expressions->end()) {
       expEdges = found->second;
     }
 
@@ -254,8 +254,8 @@ void ClusterTraverser::ClusterEdgeGetter::getAllEdges(
   TRI_edge_direction_e dir;
   size_t eColIdx = 0;
   std::vector<TraverserExpression*> expEdges;
-  auto found = _traverser->_expressions->find(depth);
-  if (found != _traverser->_expressions->end()) {
+  auto found = _traverser->_opts.expressions->find(depth);
+  if (found != _traverser->_opts.expressions->end()) {
     expEdges = found->second;
   }
 
@@ -348,8 +348,8 @@ void ClusterTraverser::setStartVertex(std::string const& id) {
     }
   }
 
-  auto exp = _expressions->find(0);
-  if (exp != _expressions->end() &&
+  auto exp = _opts.expressions->find(0);
+  if (exp != _opts.expressions->end() &&
       !vertexMatchesCondition(VPackSlice(it->second->data()), exp->second)) {
     // We can stop here. The start vertex does not match condition
     _done = true;
@@ -378,8 +378,8 @@ void ClusterTraverser::fetchVertices(std::unordered_set<std::string>& verticesTo
   _readDocuments += verticesToFetch.size();
 
   std::vector<TraverserExpression*> expVertices;
-  auto found = _expressions->find(depth);
-  if (found != _expressions->end()) {
+  auto found = _opts.expressions->find(depth);
+  if (found != _opts.expressions->end()) {
     expVertices = found->second;
   }
 

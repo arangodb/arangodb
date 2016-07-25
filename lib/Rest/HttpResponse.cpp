@@ -45,7 +45,7 @@ bool HttpResponse::HIDE_PRODUCT_HEADER = false;
 HttpResponse::HttpResponse(ResponseCode code)
     : GeneralResponse(code),
       _connectionType(CONNECTION_KEEP_ALIVE),
-      _contentType(CONTENT_TYPE_TEXT),
+      _contentType(ContentType::TEXT),
       _isHeadResponse(false),
       _body(TRI_UNKNOWN_MEM_ZONE, false),
       _bodySize(0) {
@@ -53,6 +53,17 @@ HttpResponse::HttpResponse(ResponseCode code)
     // no buffer could be reserved. out of memory!
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
+}
+
+void HttpResponse::reset(ResponseCode code) {
+  _responseCode = code;
+  _headers.clear();
+
+  _connectionType = CONNECTION_KEEP_ALIVE;
+  _contentType = ContentType::TEXT;
+  _isHeadResponse = false;
+  _body.clear();
+  _bodySize = 0;
 }
 
 void HttpResponse::setCookie(std::string const& name, std::string const& value,
@@ -221,27 +232,27 @@ void HttpResponse::writeHeader(StringBuffer* output) {
 
   // add "Content-Type" header
   switch (_contentType) {
-    case CONTENT_TYPE_JSON:
+    case ContentType::JSON:
       output->appendText(TRI_CHAR_LENGTH_PAIR(
           "Content-Type: application/json; charset=utf-8\r\n"));
       break;
-    case CONTENT_TYPE_VPACK:
+    case ContentType::VPACK:
       output->appendText(
           TRI_CHAR_LENGTH_PAIR("Content-Type: application/x-velocypack\r\n"));
       break;
-    case CONTENT_TYPE_TEXT:
+    case ContentType::TEXT:
       output->appendText(
           TRI_CHAR_LENGTH_PAIR("Content-Type: text/plain; charset=utf-8\r\n"));
       break;
-    case CONTENT_TYPE_HTML:
+    case ContentType::HTML:
       output->appendText(
           TRI_CHAR_LENGTH_PAIR("Content-Type: text/html; charset=utf-8\r\n"));
       break;
-    case CONTENT_TYPE_DUMP:
+    case ContentType::DUMP:
       output->appendText(TRI_CHAR_LENGTH_PAIR(
           "Content-Type: application/x-arango-dump; charset=utf-8\r\n"));
       break;
-    case CONTENT_TYPE_CUSTOM: {
+    case ContentType::CUSTOM: {
       // intentionally don't print anything here
       // the header should have been in _headers already, and should have been
       // handled above
@@ -287,12 +298,12 @@ void HttpResponse::writeHeader(StringBuffer* output) {
   // end of header, body to follow
 }
 
-void HttpResponse::fillBody(GeneralRequest const* request,
-                            arangodb::velocypack::Slice const& slice,
-                            bool generateBody, VPackOptions const& options) {
+void HttpResponse::setPayload(GeneralRequest const* request,
+                              arangodb::velocypack::Slice const& slice,
+                              bool generateBody, VPackOptions const& options){
   // VELOCYPACK
   if (request != nullptr && request->velocyPackResponse()) {
-    setContentType(HttpResponse::CONTENT_TYPE_VPACK);
+    setContentType(HttpResponse::ContentType::VPACK);
     size_t length = static_cast<size_t>(slice.byteSize());
 
     if (generateBody) {
@@ -304,7 +315,7 @@ void HttpResponse::fillBody(GeneralRequest const* request,
 
   // JSON
   else {
-    setContentType(HttpResponse::CONTENT_TYPE_JSON);
+    setContentType(HttpResponse::ContentType::JSON);
 
     if (generateBody) {
       arangodb::basics::VelocyPackDumper dumper(&_body, &options);
@@ -324,4 +335,4 @@ void HttpResponse::fillBody(GeneralRequest const* request,
       headResponse(tmp.length());
     }
   }
-}
+};

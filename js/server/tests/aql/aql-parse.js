@@ -1,4 +1,4 @@
-/*jshint globalstrict:false, strict:false, maxlen: 700 */
+/*jshint globalstrict:false, strict:false, maxlen: 7000 */
 /*global assertEqual, assertTrue, assertMatch, fail, AQL_EXECUTE */
 
 ////////////////////////////////////////////////////////////////////////////////

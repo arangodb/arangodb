@@ -167,7 +167,7 @@ void ExecutionBlock::inheritRegisters(AqlItemBlock const* src,
   for (RegisterId i = 0; i < n; i++) {
     if (planNode->_regsToClear.find(i) == planNode->_regsToClear.end()) {
       auto const& value = src->getValueReference(srcRow, i);
-
+      
       if (!value.isEmpty()) {
         AqlValue a = value.clone();
         AqlValueGuard guard(a, true);
@@ -202,9 +202,10 @@ void ExecutionBlock::inheritRegisters(AqlItemBlock const* src,
 
         dst->setValue(0, i, a);
         guard.steal();
-      }
+      } 
     }
   }
+
   DEBUG_END_BLOCK();  
 }
 
@@ -284,7 +285,7 @@ size_t ExecutionBlock::skipSome(size_t atLeast, size_t atMost) {
 
 // skip exactly <number> outputs, returns <true> if _done after
 // skipping, and <false> otherwise . . .
-bool ExecutionBlock::skip(size_t number) {
+bool ExecutionBlock::skip(size_t number, size_t& numActuallySkipped) {
   DEBUG_BEGIN_BLOCK();
   size_t skipped = skipSome(number, number);
   size_t nr = skipped;
@@ -292,6 +293,7 @@ bool ExecutionBlock::skip(size_t number) {
     nr = skipSome(number - skipped, number - skipped);
     skipped += nr;
   }
+  numActuallySkipped = skipped;
   if (nr == 0) {
     return true;
   }
@@ -345,7 +347,8 @@ int ExecutionBlock::getOrSkipSome(size_t atLeast, size_t atMost, bool skipping,
     while (skipped < atLeast) {
       if (_buffer.empty()) {
         if (skipping) {
-          _dependencies[0]->skip(atLeast - skipped);
+          size_t numActuallySkipped = 0;
+          _dependencies[0]->skip(atLeast - skipped, numActuallySkipped);
           skipped = atLeast;
           freeCollector();
           return TRI_ERROR_NO_ERROR;

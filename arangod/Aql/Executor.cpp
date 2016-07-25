@@ -398,7 +398,9 @@ void Executor::generateCodeExpression(AstNode const* node) {
     // thrown by the function 
     _buffer->appendText(TRI_CHAR_LENGTH_PAIR(" = function(params) { try { return _AQL.fixValue(state.f"));
     _buffer->appendInteger(it.second);
-    _buffer->appendText(TRI_CHAR_LENGTH_PAIR(".apply(null, params)); } catch (err) { _AQL.throwFromFunction(\""));
+    _buffer->appendText(TRI_CHAR_LENGTH_PAIR(".apply({ name: \""));
+    _buffer->appendText(it.first);
+    _buffer->appendText(TRI_CHAR_LENGTH_PAIR("\" }, params)); } catch (err) { _AQL.throwFromFunction(\""));
     _buffer->appendText(it.first);
     _buffer->appendText(TRI_CHAR_LENGTH_PAIR("\", require(\"internal\").errors.ERROR_QUERY_FUNCTION_RUNTIME_ERROR, _AQL.AQL_TO_STRING(err.stack || String(err))); } }; "));
   }

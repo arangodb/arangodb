@@ -66,13 +66,13 @@
           <tr class="tableRow">
             <th class="collectionTh">Format:</th>
             <th class="collectionTh" colspan="2">
-              <p>JSON documents embedded into a list:</p>
-              <p></p>
-              <p>[{</p>
-              <p style="margin-left: 10px">"name": "Query Name",</p>
-              <p style="margin-left: 10px">"value": "Query Definition",</p>
-              <p style="margin-left: 10px">"parameter": "Query Bind Parameter as Object"</p>
-              <p>}]</p>
+<pre><code>JSON documents embedded into a list:
+
+[{
+  "name": "Query Name",
+  "value": "Query Definition",
+  "parameter": "Query Bind Parameter as Object"
+}]</code></code>
             </th>
           </tr>
           <tr class="tableRow">
@@ -105,11 +105,12 @@
         <span class="action"><i class="fa fa-close" element="outputEditor<%= counter %>" style="display: none"></i></span>
       </div>
       <div class="pull-right">
-        <% if (type === 'Query') { %>
-          <span class="switchAce" counter="<%=counter%>" style="display: none">Result</span>
-        <% } else { %>
-          <span class="switchAce" counter="<%=counter%>">AQL</span>
-        <% } %>
+        <div class="switchAce" counter="<%=counter%>">
+          <span id="json-switch" val="JSON" counter="<%=counter%>">JSON</span>
+          <span id="table-switch" val="Table" counter="<%=counter%>" style="display: none">Table</span>
+          <span id="graph-switch" val="Graph" counter="<%=counter%>" style="display: none">Graph</span>
+          <span id="aql-switch" val="AQL" counter="<%=counter%>">AQL</span>
+        </div>
       </div>
     </div>
     <div id="outputEditor<%= counter %>" style="opacity: 0.5"></div>

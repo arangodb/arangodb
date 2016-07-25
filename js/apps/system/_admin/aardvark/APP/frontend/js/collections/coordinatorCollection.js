@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global window, Backbone, $, arangoHelper */
+/* global window, Backbone, arangoHelper */
 (function () {
   'use strict';
   window.CoordinatorCollection = Backbone.Collection.extend({

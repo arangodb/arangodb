@@ -27,9 +27,9 @@
 #include <velocypack/velocypack-aliases.h>
 
 #include "Basics/StringUtils.h"
+#include "GeneralServer/GeneralServerFeature.h"
 #include "Logger/Logger.h"
 #include "Rest/HttpRequest.h"
-#include "RestServer/RestServerFeature.h"
 #include "Ssl/SslInterface.h"
 #include "VocBase/AuthInfo.h"
 
@@ -37,12 +37,17 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestAuthHandler::RestAuthHandler(HttpRequest* request, std::string const* jwtSecret)
-    : RestVocbaseBaseHandler(request), _jwtSecret(*jwtSecret), _validFor(60 * 60 * 24 * 30) {}
+RestAuthHandler::RestAuthHandler(GeneralRequest* request,
+                                 GeneralResponse* response,
+                                 std::string const* jwtSecret)
+    : RestVocbaseBaseHandler(request, response),
+      _jwtSecret(*jwtSecret),
+      _validFor(60 * 60 * 24 * 30) {}
 
 bool RestAuthHandler::isDirect() const { return false; }
 
-std::string RestAuthHandler::generateJwt(std::string const& username, std::string const& password) {
+std::string RestAuthHandler::generateJwt(std::string const& username,
+                                         std::string const& password) {
   VPackBuilder headerBuilder;
   {
     VPackObjectBuilder h(&headerBuilder);
@@ -50,9 +55,10 @@ std::string RestAuthHandler::generateJwt(std::string const& username, std::strin
     headerBuilder.add("typ", VPackValue("JWT"));
   }
 
-  std::chrono::seconds exp = std::chrono::duration_cast<std::chrono::seconds>(
-    std::chrono::system_clock::now().time_since_epoch()
-  ) + _validFor;
+  std::chrono::seconds exp =
+      std::chrono::duration_cast<std::chrono::seconds>(
+          std::chrono::system_clock::now().time_since_epoch()) +
+      _validFor;
   VPackBuilder bodyBuilder;
   {
     VPackObjectBuilder p(&bodyBuilder);
@@ -61,18 +67,22 @@ std::string RestAuthHandler::generateJwt(std::string const& username, std::strin
     bodyBuilder.add("exp", VPackValue(exp.count()));
   }
 
-  std::string fullMessage(StringUtils::encodeBase64(headerBuilder.toJson()) + "." + StringUtils::encodeBase64(bodyBuilder.toJson()));
-  std::string signature = sslHMAC(_jwtSecret.c_str(), _jwtSecret.length(), fullMessage.c_str(), fullMessage.length(), SslInterface::Algorithm::ALGORITHM_SHA256);
-  
+  std::string fullMessage(StringUtils::encodeBase64(headerBuilder.toJson()) +
+                          "." +
+                          StringUtils::encodeBase64(bodyBuilder.toJson()));
+  std::string signature =
+      sslHMAC(_jwtSecret.c_str(), _jwtSecret.length(), fullMessage.c_str(),
+              fullMessage.length(), SslInterface::Algorithm::ALGORITHM_SHA256);
+
   return fullMessage + "." + StringUtils::encodeBase64U(signature);
 }
 
-HttpHandler::status_t RestAuthHandler::execute() {
+RestHandler::status RestAuthHandler::execute() {
   auto const type = _request->requestType();
   if (type != GeneralRequest::RequestType::POST) {
     generateError(GeneralResponse::ResponseCode::METHOD_NOT_ALLOWED,
                   TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
-    return status_t(HANDLER_DONE);
+    return status::DONE;
   }
 
   VPackOptions options = VPackOptions::Defaults;
@@ -84,8 +94,8 @@ HttpHandler::status_t RestAuthHandler::execute() {
   if (!parseSuccess) {
     return badRequest();
   }
-  
-  VPackSlice slice = parsedBody->slice(); 
+
+  VPackSlice slice = parsedBody->slice();
   if (!slice.isObject()) {
     return badRequest();
   }
@@ -99,8 +109,9 @@ HttpHandler::status_t RestAuthHandler::execute() {
 
   std::string const username = usernameSlice.copyString();
   std::string const password = passwordSlice.copyString();
-  
-  AuthResult auth = RestServerFeature::AUTH_INFO.checkPassword(username, password);
+
+  AuthResult auth =
+      GeneralServerFeature::AUTH_INFO.checkPassword(username, password);
 
   if (auth._authorized) {
     VPackBuilder resultBuilder;
@@ -110,19 +121,19 @@ HttpHandler::status_t RestAuthHandler::execute() {
       resultBuilder.add("jwt", VPackValue(jwt));
       resultBuilder.add("must_change_password", VPackValue(auth._mustChange));
     }
-    
+
     generateDocument(resultBuilder.slice(), true, &VPackOptions::Defaults);
-    return status_t(HANDLER_DONE);
+    return status::DONE;
   } else {
     // mop: rfc 2616 10.4.2 (if credentials wrong 401)
-    generateError(GeneralResponse::ResponseCode::UNAUTHORIZED, TRI_ERROR_HTTP_UNAUTHORIZED,
-                  "Wrong credentials");
-    return status_t(HANDLER_DONE);
+    generateError(GeneralResponse::ResponseCode::UNAUTHORIZED,
+                  TRI_ERROR_HTTP_UNAUTHORIZED, "Wrong credentials");
+    return status::DONE;
   }
 }
 
-HttpHandler::status_t RestAuthHandler::badRequest() {
-    generateError(GeneralResponse::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "invalid JSON");
-    return status_t(HANDLER_DONE);
+RestHandler::status RestAuthHandler::badRequest() {
+  generateError(GeneralResponse::ResponseCode::BAD,
+                TRI_ERROR_HTTP_BAD_PARAMETER, "invalid JSON");
+  return status::DONE;
 }

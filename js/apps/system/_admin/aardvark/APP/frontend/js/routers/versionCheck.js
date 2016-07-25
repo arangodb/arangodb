@@ -3,13 +3,7 @@
 (function () {
   'use strict';
 
-  var disableVersionCheck = function () {
-    $.ajax({
-      type: 'POST',
-      url: arangoHelper.databaseUrl('/_admin/aardvark/disableVersionCheck')
-    });
-  };
-
+  /*
   var isVersionCheckEnabled = function (cb) {
     $.ajax({
       type: 'GET',
@@ -21,20 +15,20 @@
       }
     });
   };
+  */
 
   var showInterface = function (currentVersion, json) {
     var buttons = [];
-    /* buttons.push(window.modalView.createNotificationButton("Don't ask again", function() {
-      disableVersionCheck()
-      window.modalView.hide()
-    }));*/
+
     buttons.push(window.modalView.createSuccessButton('Download Page', function () {
       window.open('https://www.arangodb.com/download', '_blank');
       window.modalView.hide();
     }));
+
     var infos = [];
     var cEntry = window.modalView.createReadOnlyEntry.bind(window.modalView);
     infos.push(cEntry('current', 'Current', currentVersion.toString()));
+
     if (json.major) {
       infos.push(cEntry('major', 'Major', json.major.version));
     }
@@ -44,11 +38,13 @@
     if (json.bugfix) {
       infos.push(cEntry('bugfix', 'Bugfix', json.bugfix.version));
     }
+
     window.modalView.show(
       'modalTable.ejs', 'New Version Available', buttons, infos
     );
   };
 
+  /*
   var getInformation = function () {
     var nVer = navigator.appVersion;
     var nAgt = navigator.userAgent;
@@ -107,7 +103,9 @@
       userAgent: navigator.userAgent
     };
   };
+  */
 
+  /*
   var getOS = function () {
     var OSName = 'Unknown OS';
     if (navigator.appVersion.indexOf('Win') !== -1) {
@@ -125,6 +123,7 @@
 
     return OSName;
   };
+  */
 
   window.checkVersion = function () {
     // this checks for version updates
@@ -138,7 +137,9 @@
       success: function (data) {
         var currentVersion =
         window.versionHelper.fromString(data.version);
-        $('.navbar #currentVersion').text(' ' + data.version.substr(0, 3));
+        $('.navbar #currentVersion').html(
+          ' ' + data.version.substr(0, 5) + '<i class="fa fa-exclamation-circle"></i>'
+        );
 
         window.parseVersions = function (json) {
           if (_.isEmpty(json)) {

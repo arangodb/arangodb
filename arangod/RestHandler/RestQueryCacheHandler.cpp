@@ -30,12 +30,13 @@ using namespace arangodb::aql;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestQueryCacheHandler::RestQueryCacheHandler(HttpRequest* request)
-    : RestVocbaseBaseHandler(request) {}
+RestQueryCacheHandler::RestQueryCacheHandler(GeneralRequest* request,
+                                             GeneralResponse* response)
+    : RestVocbaseBaseHandler(request, response) {}
 
 bool RestQueryCacheHandler::isDirect() const { return false; }
 
-HttpHandler::status_t RestQueryCacheHandler::execute() {
+RestHandler::status RestQueryCacheHandler::execute() {
   // extract the sub-request type
   auto const type = _request->requestType();
 
@@ -55,7 +56,7 @@ HttpHandler::status_t RestQueryCacheHandler::execute() {
   }
 
   // this handler is done
-  return status_t(HANDLER_DONE);
+  return status::DONE;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -69,7 +70,7 @@ bool RestQueryCacheHandler::clearCache() {
     VPackBuilder result;
     result.add(VPackValue(VPackValueType::Object));
     result.add("error", VPackValue(false));
-    result.add("code", VPackValue((int) GeneralResponse::ResponseCode::OK));
+    result.add("code", VPackValue((int)GeneralResponse::ResponseCode::OK));
     result.close();
     generateResult(GeneralResponse::ResponseCode::OK, result.slice());
   } catch (...) {

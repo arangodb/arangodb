@@ -48,8 +48,6 @@
     template: templateEngine.createTemplate('footerView.ejs'),
 
     showServerStatus: function (isOnline) {
-      var self = this;
-
       if (!window.App.isCluster) {
         if (isOnline === true) {
           $('#healthStatus').removeClass('negative');
@@ -125,7 +123,7 @@
             $('.health-state').html('NODES OK');
             $('.health-icon').html('<i class="fa fa-check-circle"></i>');
           }
-        }.bind(this);
+        };
 
         // check cluster state
         $.ajax({

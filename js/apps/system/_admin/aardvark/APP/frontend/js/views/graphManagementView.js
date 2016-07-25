@@ -25,6 +25,7 @@
       'keyup #graphManagementSearchInput': 'search',
       'click #graphManagementSearchSubmit': 'search',
       'click .tile-graph': 'redirectToGraphViewer',
+      'click #gv2': 'redirectToGraphViewer2',
       'click #graphManagementToggle': 'toggleGraphDropdown',
       'click .css-label': 'checkBoxes',
       'change #graphSortDesc': 'sorting'
@@ -47,6 +48,15 @@
       var name = $(e.currentTarget).attr('id');
       name = name.substr(0, name.length - 5);
       window.location = window.location + '/' + encodeURIComponent(name);
+    },
+
+    // please remove this when gv2 is launched
+    redirectToGraphViewer2: function (e) {
+      e.preventDefault();
+      var name = $(e.currentTarget).parent().parent().attr('id');
+      name = name.substr(0, name.length - 5);
+      console.log(name);
+      window.App.navigate('graph2/' + encodeURIComponent(name), {trigger: true});
     },
 
     loadGraphViewer: function (graphName, refetch) {
@@ -124,7 +134,7 @@
             window.modalView.hide();
             arangoHelper.arangoError('Graph', 'Could not delete Graph.');
           }
-        }.bind(this);
+        };
 
         this.collection.dropAndDeleteGraph(name, callback);
       } else {
@@ -134,8 +144,8 @@
             window.modalView.hide();
           },
           error: function (xhr, err) {
-            var response = JSON.parse(err.responseText),
-              msg = response.errorMessage;
+            var response = JSON.parse(err.responseText);
+            var msg = response.errorMessage;
             arangoHelper.arangoError(msg);
             window.modalView.hide();
           }
@@ -174,7 +184,9 @@
     },
 
     createExampleGraphs: function (e) {
-      var graph = $(e.currentTarget).attr('graph-id'), self = this;
+      var graph = $(e.currentTarget).attr('graph-id');
+      var self = this;
+
       $.ajax({
         type: 'POST',
         url: arangoHelper.databaseUrl('/_admin/aardvark/graph-examples/create/' + encodeURIComponent(graph)),
@@ -232,7 +244,7 @@
                 }, 200);
               }
             }
-          }.bind(self);
+          };
           arangoHelper.setCheckboxStatus('#graphManagementDropdown');
         }
       });
@@ -245,7 +257,8 @@
 
     setFromAndTo: function (e) {
       e.stopPropagation();
-      var map = this.calculateEdgeDefinitionMap(), id, i, tmp;
+      var map = this.calculateEdgeDefinitionMap();
+      var id;
 
       if (e.added) {
         if (this.eCollList.indexOf(e.added.id) === -1 &&
@@ -304,15 +317,15 @@
     },
 
     saveEditedGraph: function () {
-      var name = $('#editGraphName')[0].value,
-        editedVertexCollections = _.pluck($('#newVertexCollections').select2('data'), 'text'),
-        edgeDefinitions = [],
-        newEdgeDefinitions = {},
-        collection,
-        from,
-        to,
-        index,
-        edgeDefinitionElements;
+      var name = $('#editGraphName')[0].value;
+      var editedVertexCollections = _.pluck($('#newVertexCollections').select2('data'), 'text');
+      var edgeDefinitions = [];
+      var newEdgeDefinitions = {};
+      var collection;
+      var from;
+      var to;
+      var index;
+      var edgeDefinitionElements;
 
       edgeDefinitionElements = $('[id^=s2id_newEdgeDefinitions]').toArray();
       edgeDefinitionElements.forEach(
@@ -464,15 +477,15 @@
     },
 
     createNewGraph: function () {
-      var name = $('#createNewGraphName').val(),
-        vertexCollections = _.pluck($('#newVertexCollections').select2('data'), 'text'),
-        edgeDefinitions = [],
-        self = this,
-        collection,
-        from,
-        to,
-        index,
-        edgeDefinitionElements;
+      var name = $('#createNewGraphName').val();
+      var vertexCollections = _.pluck($('#newVertexCollections').select2('data'), 'text');
+      var edgeDefinitions = [];
+      var self = this;
+      var collection;
+      var from;
+      var to;
+      var index;
+      var edgeDefinitionElements;
 
       if (!name) {
         arangoHelper.arangoError(
@@ -536,8 +549,8 @@
           window.modalView.hide();
         },
         error: function (obj, err) {
-          var response = JSON.parse(err.responseText),
-            msg = response.errorMessage;
+          var response = JSON.parse(err.responseText);
+          var msg = response.errorMessage;
           // Gritter does not display <>
           msg = msg.replace('<', '');
           msg = msg.replace('>', '');
@@ -547,25 +560,25 @@
     },
 
     createEditGraphModal: function (graph) {
-      var buttons = [],
-        collList = [],
-        tableContent = [],
-        collections = this.options.collectionCollection.models,
-        self = this,
-        name = '',
-        edgeDefinitions = [{collection: '', from: '', to: ''}],
-        orphanCollections = '',
-        title,
-        sorter = function (l, r) {
-          l = l.toLowerCase();
-          r = r.toLowerCase();
-          if (l < r) {
-            return -1;
-          }
-          if (l > r) {
-            return 1;
-          }
-          return 0;
+      var buttons = [];
+      var collList = [];
+      var tableContent = [];
+      var collections = this.options.collectionCollection.models;
+      var self = this;
+      var name = '';
+      var edgeDefinitions = [{collection: '', from: '', to: ''}];
+      var orphanCollections = '';
+      var title;
+      var sorter = function (l, r) {
+        l = l.toLowerCase();
+        r = r.toLowerCase();
+        if (l < r) {
+          return -1;
+        }
+        if (l > r) {
+          return 1;
+        }
+        return 0;
       };
 
       this.eCollList = [];
@@ -750,8 +763,7 @@
     },
 
     addRemoveDefinition: function (e) {
-      var collList = [],
-        collections = this.options.collectionCollection.models;
+      var collList = []; var collections = this.options.collectionCollection.models;
 
       collections.forEach(function (c) {
         if (c.get('isSystem')) {
@@ -760,7 +772,7 @@
         collList.push(c.id);
       });
       e.stopPropagation();
-      var id = $(e.currentTarget).attr('id'), number;
+      var id = $(e.currentTarget).attr('id'); var number;
       if (id.indexOf('addAfter_newEdgeDefinitions') !== -1) {
         this.counter++;
         $('#row_newVertexCollections').before(

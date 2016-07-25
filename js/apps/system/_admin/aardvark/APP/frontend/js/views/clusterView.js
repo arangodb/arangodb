@@ -33,9 +33,9 @@
 
         // start polling with interval
         window.setInterval(function () {
-          if (window.location.hash === '#cluster'
-            || window.location.hash === ''
-            || window.location.hash === '#') {
+          if (window.location.hash === '#cluster' ||
+            window.location.hash === '' ||
+            window.location.hash === '#') {
             var callback = function (data) {
               self.rerenderValues(data);
               self.rerenderGraphs(data);
@@ -111,16 +111,18 @@
         }
 
         var stat = new window.Statistics({name: dbserver.id});
-        stat.url = coord.get('protocol') + '://'
-        + coord.get('address')
-        + '/_admin/clusterStatistics?DBserver='
-        + dbserver.get('name');
+        stat.url = coord.get('protocol') + '://' +
+        coord.get('address') +
+        '/_admin/clusterStatistics?DBserver=' +
+        dbserver.get('name');
         self.statCollectDBS.add(stat);
       });
 
       // create statistics collector for coordinator
       this.coordinators.forEach(function (coordinator) {
-        if (coordinator.get('status') !== 'ok') {return;}
+        if (coordinator.get('status') !== 'ok') {
+          return;
+        }
 
         if (self.knownServers.indexOf(coordinator.id) === -1) {
           self.knownServers.push(coordinator.id);
@@ -128,9 +130,9 @@
 
         var stat = new window.Statistics({name: coordinator.id});
 
-        stat.url = coordinator.get('protocol') + '://'
-          + coordinator.get('address')
-          + '/_admin/statistics';
+        stat.url = coordinator.get('protocol') + '://' +
+          coordinator.get('address') +
+          '/_admin/statistics';
 
         self.statCollectCoord.add(stat);
       });
@@ -139,7 +141,7 @@
       var callback = function (data) {
         self.rerenderValues(data);
         self.rerenderGraphs(data);
-      }.bind(this);
+      };
 
       // now fetch the statistics history
       self.getCoordStatHistory(callback);
@@ -168,7 +170,7 @@
       if (typeof value === 'number') {
         $(id).html(value);
       } else if ($.isArray(value)) {
-        var a = value[0], b = value[1];
+        var a = value[0]; var b = value[1];
 
         var percent = 1 / (b / a) * 100;
         if (percent > 90) {
@@ -199,8 +201,8 @@
     renderNodes: function () {
       var self = this;
       var callbackFunction = function (data) {
-        var coords = 0, coordsErrors = 0;
-        var dbs = 0, dbsErrors = 0;
+        var coords = 0; var coordsErrors = 0;
+        var dbs = 0; var dbsErrors = 0;
 
         _.each(data, function (node) {
           if (node.Role === 'Coordinator') {
@@ -244,22 +246,6 @@
           self.renderValue('#clusterDBServers', 'N/A', true);
         }
       });
-
-      /*
-      if (connection) {
-        this.coordinators.each(function(value) {
-          if (value.toJSON().status === 'ok') {
-            ok++
-          }
-          else {
-            error++
-          }
-        })
-        
-      }*/
-
-      // ERROR
-
     },
 
     initValues: function () {
@@ -301,7 +287,6 @@
 
       if (!self.historyInit) {
         _.each(data.times, function (time, key) {
-
           // DATA
           self.chartsOptions[0].options[0].values.push({x: time, y: data.bytesSentPerSecond[key]});
           self.chartsOptions[0].options[1].values.push({x: time, y: data.bytesReceivedPerSecond[key]});
@@ -432,7 +417,7 @@
               }
             });
 
-          var data, lines = self.returnGraphOptions(c.id);
+          var data; var lines = self.returnGraphOptions(c.id);
           if (lines.length > 0) {
             _.each(lines, function (val, key) {
               c.options[key].values = val;
@@ -488,7 +473,7 @@
         return;
       }
 
-      var self = this, data, lines;
+      var self = this; var data; var lines;
       this.formatDataForGraph(input);
 
       _.each(self.chartsOptions, function (c) {

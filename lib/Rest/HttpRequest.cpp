@@ -27,6 +27,7 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Options.h>
 #include <velocypack/Parser.h>
+#include <velocypack/Validator.h>
 #include <velocypack/velocypack-aliases.h>
 
 #include "Basics/conversions.h"
@@ -44,8 +45,11 @@ HttpRequest::HttpRequest(ConnectionInfo const& connectionInfo,
     : GeneralRequest(connectionInfo),
       _contentLength(0),
       _header(nullptr),
-      _allowMethodOverride(allowMethodOverride) {
+      _allowMethodOverride(allowMethodOverride),
+      _vpackBuilder(nullptr){
   if (0 < length) {
+    _contentType = ContentType::JSON;
+    _contentTypeResponse = ContentType::JSON;
     _header = new char[length + 1];
     memcpy(_header, header, length);
     _header[length] = 0;
@@ -523,6 +527,21 @@ void HttpRequest::setHeader(char const* key, size_t keyLength,
     return;
   }
 
+  if (keyLength == 6 && memcmp(key, "accept", keyLength) == 0) {
+    if (valueLength == 24 &&
+        memcmp(value, "application/x-velocypack", valueLength) == 0) {
+      _contentTypeResponse = ContentType::VPACK;
+      return;
+    }
+  }
+
+  if (keyLength == 12 && valueLength == 24 &&
+      memcmp(key, "content-type", keyLength) == 0 &&
+      memcmp(value, "application/x-velocypack", valueLength) == 0) {
+    _contentType = ContentType::VPACK;
+    return;
+  }
+
   if (keyLength == 6 &&
       memcmp(key, "cookie", keyLength) == 0) {  // 6 = strlen("cookie")
     parseCookies(value, valueLength);
@@ -691,9 +710,18 @@ void HttpRequest::setBody(char const* body, size_t length) {
   _body[length] = '\0';
 }
 
-std::shared_ptr<VPackBuilder> HttpRequest::toVelocyPack(
-    VPackOptions const* options) {
-  VPackParser parser(options);
-  parser.parse(body());
-  return parser.steal();
+VPackSlice HttpRequest::payload(VPackOptions const* options) {
+  TRI_ASSERT(_vpackBuilder == nullptr);
+  // check options for nullptr?
+
+  if( _contentType == ContentType::JSON) {
+    VPackParser parser(options);
+    parser.parse(body());
+    _vpackBuilder = parser.steal();
+    return VPackSlice(_vpackBuilder->slice());
+  } else /*VPACK*/{
+    VPackValidator validator;
+    validator.validate(body().c_str(), body().length());
+    return VPackSlice(body().c_str());
+  }
 }

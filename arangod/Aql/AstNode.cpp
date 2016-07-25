@@ -2365,7 +2365,7 @@ void AstNode::stringify(arangodb::basics::StringBuffer* buffer, bool verbose,
     auto returnNode = getMember(4);
     if (returnNode != nullptr && returnNode != Ast::getNodeNop()) {
       buffer->appendText(TRI_CHAR_LENGTH_PAIR(" RETURN "));
-      returnNode->getMember(0)->stringify(buffer, verbose, failIfLong);
+      returnNode->stringify(buffer, verbose, failIfLong);
     }
 
     buffer->appendChar(')');

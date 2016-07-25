@@ -50,6 +50,14 @@ Debugging the build process
 ---------------------------
 If the compile goes wrong for no particular reason, appending 'verbose=' adds more output. For some reason V8 has VERBOSE=1 for the same effect.
 
+Temporary files and temp directories
+------------------------------------
+Depending on the native way ArangoDB tries to locate the temporary directory.
+
+* Linux/Mac: the environment variable `TMPDIR` is evaluated.
+* Windows: the [W32 API function GetTempPath()](https://msdn.microsoft.com/en-us/library/windows/desktop/aa364992%28v=vs.85%29.aspx) is called
+* all platforms: `--temp.path` overrules the above system provided settings.
+
 Runtime
 -------
  * start arangod with `--console` to get a debug console
@@ -78,7 +86,7 @@ ________________________________________________________________________________
 
 JSLint
 ======
-(we switched to jshint a while back - this is still named jslint for historical reasons)
+(we switched to eslint a while back - this is still named jslint for historical reasons)
 
 checker Script
 --------------
@@ -113,13 +121,17 @@ ArangoDB Unittesting Framework
 Dependencies
 ------------
 * *Ruby*, *rspec*, *httparty* to install the required dependencies run:
-  cd UnitTests/HttpInterface; bundler
+  `cd UnitTests/HttpInterface; bundler`
 * boost_test (compile time)
 
 
 Filename conventions
 ====================
 Special patterns in the test filenames are used to select tests to be executed or skipped depending on parameters:
+
+-server
+-------
+Make use of existing external server. (example scripts/unittest http_server --server tcp://127.0.0.1:8529/ )
 
 -cluster
 --------
@@ -252,6 +264,7 @@ syntax --option value --sub:option value. Using Valgrind could look like this:
       --extraargs:scheduler.threads 1 \
       --extraargs:javascript.gc-frequency 1000000 \
       --extraargs:javascript.gc-interval 65536 \
+      --javascript.v8-contexts 2 \
       --valgrind /usr/bin/valgrind \
       --valgrindargs:log-file /tmp/valgrindlog.%p
 
@@ -681,3 +694,31 @@ be used when we offer a new major release of arangodb.
 does not include the minifying process.
 
   * `grunt watch`
+
+--------------------------------------------------------------------------------
+NPM dependencies
+=======
+
+To add new NPM dependencies switch into the `js/node` folder and install them
+with npm using the following options:
+
+`npm install [<@scope>/]<name> --global-style --save --save-exact`
+
+or simply
+
+`npm install [<@scope>/]<name> --global-style -s -E`
+
+The `save` and `save-exact` options are necessary to make sure the `package.json`
+file is updated correctly.
+
+The `global-style` option prevents newer versions of npm from unrolling nested
+dependencies inside the `node_modules` folder. Omitting this option results in
+exposing *all* dependencies of *all* modules to ArangoDB users.
+
+Finally add the module's licensing information to `LICENSES-OTHER-COMPONENTS.md`.
+
+When updating dependencies make sure that any mocked dependencies (like `glob`
+for `mocha`) match the versions required by the updated module and delete any
+duplicated nested dependencies if necessary (e.g. `mocha/node_modules/glob`)
+to make sure the global (mocked) version is used instead.
+

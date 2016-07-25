@@ -391,11 +391,12 @@ static void ClientConnection_reconnect(
     ConsoleFeature* console = 
         ApplicationServer::getFeature<ConsoleFeature>("Console");
 
-    if (!console->isEnabled()) {
-      std::cout << "Please specify a password: " << std::flush;
-      getline(std::cin, password);
-    } else {
+    if (console->isEnabled()) {
       password = console->readPassword("Please specify a password: ");
+    } else {
+      std::cout << "Please specify a password: " << std::flush;
+      password = ConsoleFeature::readPassword();
+      std::cout << std::endl << std::flush;
     }
   } else {
     password = TRI_ObjectToString(args[3]);

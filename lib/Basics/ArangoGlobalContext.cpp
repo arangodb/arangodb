@@ -28,6 +28,9 @@
 
 #include "Basics/debugging.h"
 #include "Basics/files.h"
+#ifdef __arm__
+#include "Basics/FileUtils.h"
+#endif
 #include "Logger/LogAppender.h"
 #include "Logger/Logger.h"
 #include "Rest/InitializeRest.h"

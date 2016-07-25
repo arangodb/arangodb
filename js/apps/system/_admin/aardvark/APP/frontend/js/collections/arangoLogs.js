@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global window, $, _, databaseUrl, arangoHelper */
+/* global window, _, arangoHelper */
 (function () {
   'use strict';
 
@@ -35,8 +35,8 @@
     model: window.newArangoLog,
 
     url: function () {
-      var type, rtnStr, offset, size;
-      offset = this.page * this.pagesize;
+      var type; var rtnStr; var size;
+
       var inverseOffset = this.totalAmount - ((this.page + 1) * this.pagesize);
       if (inverseOffset < 0 && this.page === (this.totalPages - 1)) {
         inverseOffset = 0;

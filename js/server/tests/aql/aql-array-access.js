@@ -705,6 +705,45 @@ function arrayAccessTestSuite () {
       var expected = [ 4, 8, 12 ];
       var result = AQL_EXECUTE("RETURN @value[**** FILTER CURRENT % 2 == 0 LIMIT 3 RETURN CURRENT * 2]", { value : data }).json;
       assertEqual([ expected ], result);
+    },
+
+    testCollapseWithData : function () {
+      var data = [ {
+        "last": "2016-07-12",
+        "name": "a1",
+        "st": [ {
+          "last": "2016-07-12",
+          "name": "a11",
+          "id": "a2",
+          "dx": [ {
+            "last": "2016-07-12",
+            "name": "a21",
+            "id": "a3",
+            "docs": []
+          }, {
+            "last": "2016-07-12",
+            "name": "a22",
+            "id": "a4",
+            "docs": []
+          } ]
+        } ]
+      } ];
+
+      var expected = [  
+        { 
+          "st" : [ 
+            { "id" : "a2", "date" : "2016-07-12" }
+          ], 
+          "dx" : [ 
+            { "id" : "a3", "date" : "2016-07-12" }, 
+            { "id" : "a4", "date" : "2016-07-12" }  
+          ], 
+          "docs" : [ ] 
+        } 
+      ];
+      
+      var result = AQL_EXECUTE("FOR c IN @value COLLECT st = c.st[* RETURN { id: CURRENT.id, date: CURRENT.last }], dx = c.st[*].dx[* RETURN { id: CURRENT.id, date: CURRENT.last }][**], docs = c.st[*].dx[*][**].docs[* RETURN { id: CURRENT.id, date: CURRENT.last }][**] RETURN { st , dx, docs }", { value : data }).json;
+      assertEqual(expected, result);
     }
 
   };

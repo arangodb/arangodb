@@ -29,11 +29,11 @@
 namespace arangodb {
 class RestEchoHandler : public arangodb::RestVocbaseBaseHandler {
  public:
-  explicit RestEchoHandler(arangodb::HttpRequest*);
+  explicit RestEchoHandler(GeneralRequest*, GeneralResponse*);
 
  public:
   bool isDirect() const override { return true; }
-  status_t execute() override;
+  status execute() override;
 };
 }
 

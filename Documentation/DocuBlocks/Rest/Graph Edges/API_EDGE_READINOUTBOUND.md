@@ -37,7 +37,7 @@ is returned if the edge collection was not found.
 Any direction
 
 @EXAMPLE_ARANGOSH_RUN{RestEdgesReadEdgesAny}
-    var db = require("internal").db;
+    var db = require("@arangodb").db;
     db._create("vertices");
     db._createEdgeCollection("edges");
 
@@ -63,7 +63,7 @@ Any direction
 In edges
 
 @EXAMPLE_ARANGOSH_RUN{RestEdgesReadEdgesIn}
-    var db = require("internal").db;
+    var db = require("@arangodb").db;
     db._create("vertices");
     db._createEdgeCollection("edges");
 
@@ -89,7 +89,7 @@ In edges
 Out edges
 
 @EXAMPLE_ARANGOSH_RUN{RestEdgesReadEdgesOut}
-    var db = require("internal").db;
+    var db = require("@arangodb").db;
     db._create("vertices");
     db._createEdgeCollection("edges");
 

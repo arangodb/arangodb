@@ -266,7 +266,7 @@
     }
 
     .aceAction {
-      background-color: rgb(133, 133, 133);
+      background-color: $c-bluegrey-dark;
       border-radius: 3px;
       color: $c-white;
       cursor: pointer;
@@ -328,7 +328,6 @@
   .ui-resizable-e {
     cursor: ew-resize;
   }
-
 }
 
 .queryContent {
@@ -356,8 +355,29 @@
   padding-top: 20px;
   width: 100%;
 
+  .tableWrapper {
+    max-width: 100%;
+    overflow-x: scroll;
+
+    .arango-table {
+      border-left: 1px solid $c-content-border;
+      border-right: 1px solid $c-content-border;
+    }
+  }
+
+  .outputTable {
+    margin-right: -2px;
+  }
+
+  .graphContent {
+    border-left: 1px solid $c-content-border;
+    border-right: 1px solid $c-content-border;
+    margin-right: -2px;
+    margin-top: 0;
+  }
+
   .switchAce {
-    background-color: rgba(0, 0, 0, .6);
+    background-color: $c-bluegrey-dark;
     border-radius: 3px;
     color: $c-white;
     cursor: pointer;
@@ -365,6 +385,20 @@
     right: -24px;
     top: 45px;
     z-index: 10;
+
+    span {
+      margin-left: 0;
+      padding: 0 8px;
+      top: 0;
+
+      &.active {
+        color: $c-positive;
+      }
+
+      &.disabled {
+        cursor: not-allowed;
+      }
+    }
   }
 
   .ace_editor {

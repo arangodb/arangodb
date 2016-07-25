@@ -25,13 +25,13 @@
 #include "Basics/StringUtils.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/v8-cluster.h"
+#include "GeneralServer/GeneralServerFeature.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "Rest/Version.h"
 #include "RestServer/DatabaseServerFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
-#include "RestServer/RestServerFeature.h"
 #include "V8Server/V8DealerFeature.h"
 #include "V8Server/v8-query.h"
 #include "V8Server/v8-vocbase.h"
@@ -245,8 +245,8 @@ void DatabaseFeature::openDatabases() {
   defaults.forceSyncProperties = _forceSyncProperties;
 
   // get authentication (if available)
-  RestServerFeature* rest =
-      ApplicationServer::getFeature<RestServerFeature>("RestServer");
+  GeneralServerFeature* rest =
+      ApplicationServer::getFeature<GeneralServerFeature>("GeneralServer");
 
   defaults.requireAuthentication = rest->authentication();
   defaults.requireAuthenticationUnixSockets = rest->authenticationUnixSockets();

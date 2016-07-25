@@ -486,6 +486,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
               options.recoveryMarker = envelope;
               options.isRestore = true;
               options.waitForSync = false;
+              options.ignoreRevs = true;
 
               // try an insert first
               TRI_ASSERT(VPackSlice(ptr).isObject());
@@ -493,8 +494,8 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
               int res = opRes.code;
 
               if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
-                // document/edge already exists, now make it an update
-                opRes = trx->update(collectionName, VPackSlice(ptr), options);
+                // document/edge already exists, now make it a replace
+                opRes = trx->replace(collectionName, VPackSlice(ptr), options);
                 res = opRes.code;
               }
 
@@ -547,16 +548,30 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
               options.silent = true;
               options.recoveryMarker = envelope;
               options.waitForSync = false;
+              options.ignoreRevs = true;
 
-              OperationResult opRes = trx->remove(collectionName, VPackSlice(ptr), options);
-              int res = opRes.code;
-
-              return res;
+              try {
+                OperationResult opRes = trx->remove(collectionName, VPackSlice(ptr), options);
+                if (opRes.code == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
+                  // document to delete is not present. this error can be ignored
+                  return TRI_ERROR_NO_ERROR;
+                }
+                return opRes.code;
+              } catch (arangodb::basics::Exception const& ex) {
+                if (ex.code() == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
+                  // document to delete is not present. this error can be ignored
+                  return TRI_ERROR_NO_ERROR;
+                }
+                return ex.code();
+              }
+              // should not get here... 
+              return TRI_ERROR_INTERNAL;
             });
 
         if (res != TRI_ERROR_NO_ERROR && res != TRI_ERROR_ARANGO_CONFLICT &&
             res != TRI_ERROR_ARANGO_DATABASE_NOT_FOUND &&
-            res != TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
+            res != TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND &&
+            res != TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
           LOG(WARN) << "unable to remove document in collection " << collectionId << " of database " << databaseId << ": " << TRI_errno_string(res);
           ++state->errorCount;
           return state->canContinue();

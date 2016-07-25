@@ -40,6 +40,7 @@
 #include <velocypack/Exception.h>
 #include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
+#include <velocypack/Validator.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
@@ -136,8 +137,9 @@ std::string const RestVocbaseBaseHandler::SIMPLE_REMOVE_PATH =
 
 std::string const RestVocbaseBaseHandler::UPLOAD_PATH = "/_api/upload";
 
-RestVocbaseBaseHandler::RestVocbaseBaseHandler(HttpRequest* request)
-    : RestBaseHandler(request),
+RestVocbaseBaseHandler::RestVocbaseBaseHandler(GeneralRequest* request,
+                                               GeneralResponse* response)
+    : RestBaseHandler(request, response),
       _context(static_cast<VocbaseContext*>(request->requestContext())),
       _vocbase(_context->vocbase()),
       _nolockHeaderSet(nullptr) {}
@@ -166,9 +168,9 @@ void RestVocbaseBaseHandler::generateSaved(
     arangodb::OperationResult const& result, std::string const& collectionName,
     TRI_col_type_e type, VPackOptions const* options, bool isMultiple) {
   if (result.wasSynchronous) {
-    createResponse(GeneralResponse::ResponseCode::CREATED);
+    setResponseCode(GeneralResponse::ResponseCode::CREATED);
   } else {
-    createResponse(GeneralResponse::ResponseCode::ACCEPTED);
+    setResponseCode(GeneralResponse::ResponseCode::ACCEPTED);
   }
 
   if (isMultiple && !result.countErrorCodes.empty()) {
@@ -193,9 +195,9 @@ void RestVocbaseBaseHandler::generateDeleted(
     arangodb::OperationResult const& result, std::string const& collectionName,
     TRI_col_type_e type, VPackOptions const* options) {
   if (result.wasSynchronous) {
-    createResponse(GeneralResponse::ResponseCode::OK);
+    setResponseCode(GeneralResponse::ResponseCode::OK);
   } else {
-    createResponse(GeneralResponse::ResponseCode::ACCEPTED);
+    setResponseCode(GeneralResponse::ResponseCode::ACCEPTED);
   }
   generate20x(result, collectionName, type, options);
 }
@@ -210,7 +212,7 @@ void RestVocbaseBaseHandler::generate20x(
   VPackSlice slice = result.slice();
   if (slice.isNone()) {
     // will happen if silent == true
-    slice = VelocyPackHelper::EmptyObjectValue(); 
+    slice = VelocyPackHelper::EmptyObjectValue();
   } else {
     TRI_ASSERT(slice.isObject() || slice.isArray());
     if (slice.isObject()) {
@@ -254,7 +256,7 @@ void RestVocbaseBaseHandler::generateForbidden() {
 
 void RestVocbaseBaseHandler::generatePreconditionFailed(
     VPackSlice const& slice) {
-  createResponse(GeneralResponse::ResponseCode::PRECONDITION_FAILED);
+  setResponseCode(GeneralResponse::ResponseCode::PRECONDITION_FAILED);
 
   if (slice.isObject()) {  // single document case
     std::string const rev =
@@ -297,7 +299,7 @@ void RestVocbaseBaseHandler::generatePreconditionFailed(
   builder.add(StaticStrings::IdString,
               VPackValue(assembleDocumentId(collectionName, key, false)));
   builder.add(StaticStrings::KeyString, VPackValue(key));
-  builder.add(StaticStrings::RevString, VPackValue(std::to_string(rev)));
+  builder.add(StaticStrings::RevString, VPackValue(TRI_RidToString(rev)));
   builder.close();
 
   generatePreconditionFailed(builder.slice());
@@ -308,9 +310,9 @@ void RestVocbaseBaseHandler::generatePreconditionFailed(
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestVocbaseBaseHandler::generateNotModified(TRI_voc_rid_t rid) {
-  createResponse(GeneralResponse::ResponseCode::NOT_MODIFIED);
+  setResponseCode(GeneralResponse::ResponseCode::NOT_MODIFIED);
   _response->setHeaderNC(StaticStrings::Etag,
-                         "\"" + StringUtils::itoa(rid) + "\"");
+                         "\"" + TRI_RidToString(rid) + "\"");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -329,7 +331,7 @@ void RestVocbaseBaseHandler::generateDocument(VPackSlice const& input,
   }
 
   // and generate a response
-  createResponse(GeneralResponse::ResponseCode::OK);
+  setResponseCode(GeneralResponse::ResponseCode::OK);
 
   // set ETAG header
   if (!rev.empty()) {
@@ -337,7 +339,7 @@ void RestVocbaseBaseHandler::generateDocument(VPackSlice const& input,
   }
 
   try {
-    _response->fillBody(_request, document, generateBody, *options);
+    _response->setPayload(_request, document, generateBody, *options);
   } catch (...) {
     generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
                   TRI_ERROR_INTERNAL, "cannot generate output");
@@ -590,12 +592,9 @@ TRI_voc_rid_t RestVocbaseBaseHandler::extractRevision(char const* header,
 
     TRI_voc_rid_t rid = 0;
 
-    try {
-      rid = StringUtils::uint64_check(s, e - s);
-      isValid = true;
-    } catch (...) {
-      isValid = false;
-    }
+    bool isOld;
+    rid = TRI_StringToRidWithCheck(s, e-s, isOld);
+    isValid = (rid != 0);
 
     return rid;
   }
@@ -606,12 +605,9 @@ TRI_voc_rid_t RestVocbaseBaseHandler::extractRevision(char const* header,
     if (found) {
       TRI_voc_rid_t rid = 0;
 
-      try {
-        rid = StringUtils::uint64_check(etag2);
-        isValid = true;
-      } catch (...) {
-        isValid = false;
-      }
+      bool isOld;
+      rid = TRI_StringToRidWithCheck(etag2, isOld);
+      isValid = (rid != 0);
 
       return rid;
     }
@@ -644,29 +640,12 @@ std::shared_ptr<VPackBuilder> RestVocbaseBaseHandler::parseVelocyPackBody(
     VPackOptions const* options, bool& success) {
   try {
     success = true;
+    return _request->toVelocyPackBuilderPtr(options);
 
-#if 0
-    // currently deactivated...
-    bool found;
-    std::string const& contentType =
-        _request->header(StaticStrings::ContentTypeHeader, found);
-
-    if (found && contentType.size() == StaticStrings::MimeTypeVPack.size() &&
-        contentType == StaticStrings::MimeTypeVPack) {
-      VPackSlice slice{_request->body().c_str()};
-      auto builder = std::make_shared<VPackBuilder>(options);
-      builder->add(slice);
-      return builder;
-    } else {
-      return _request->toVelocyPack(options);
-    }
-#else
-    return _request->toVelocyPack(options);
-#endif
   } catch (std::bad_alloc const&) {
     generateOOMError();
   } catch (VPackException const& e) {
-    std::string errmsg("Parse error: ");
+    std::string errmsg("VpackError error: ");
     errmsg.append(e.what());
     generateError(GeneralResponse::ResponseCode::BAD,
                   TRI_ERROR_HTTP_CORRUPTED_JSON, errmsg);

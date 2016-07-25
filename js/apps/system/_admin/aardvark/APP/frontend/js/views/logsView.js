@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global Backbone, arangoHelper, $, window, templateEngine*/
+/* global arangoHelper, $, window, templateEngine*/
 
 (function () {
   'use strict';
@@ -61,7 +61,9 @@
       var self = this;
       this.collection = this.options[this.currentLoglevel];
       this.collection.fetch({
-        data: $.param({ test: true}),
+        data: $.param(
+          {test: true}
+        ),
         success: function () {
           self.convertModelToJSON();
         }
@@ -70,7 +72,9 @@
     },
 
     invertArray: function (array) {
-      var rtnArr = [], counter = 0, i;
+      var rtnArr = [];
+      var counter = 0;
+      var i;
       for (i = array.length - 1; i >= 0; i--) {
         rtnArr[counter] = array[i];
         counter++;

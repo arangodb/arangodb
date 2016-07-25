@@ -53,7 +53,7 @@ TraversalBlock::TraversalBlock(ExecutionEngine* engine, TraversalNode const* ep)
       _pathReg(0),
       _expressions(ep->expressions()),
       _hasV8Expression(false) {
-  arangodb::traverser::TraverserOptions opts(_trx);
+  arangodb::traverser::TraverserOptions opts(_trx, _expressions);
   ep->fillTraversalOptions(opts);
   auto ast = ep->_plan->getAst();
 
@@ -91,10 +91,10 @@ TraversalBlock::TraversalBlock(ExecutionEngine* engine, TraversalNode const* ep)
     _traverser.reset(new arangodb::traverser::ClusterTraverser(
         ep->edgeColls(), opts,
         std::string(_trx->vocbase()->_name, strlen(_trx->vocbase()->_name)),
-        _trx, _expressions));
+        _trx));
   } else {
     _traverser.reset(
-        new arangodb::traverser::SingleServerTraverser(opts, _trx, _expressions));
+        new arangodb::traverser::SingleServerTraverser(opts, _trx));
   }
   if (!ep->usesInVariable()) {
     _vertexId = ep->getStartVertex();
@@ -449,10 +449,6 @@ AqlItemBlock* TraversalBlock::getSome(size_t,  // atLeast,
   inheritRegisters(cur, res.get(), _pos);
 
   for (size_t j = 0; j < toSend; j++) {
-    if (j > 0) {
-      // re-use already copied aqlvalues
-      res->copyValuesFromFirstRow(j, static_cast<RegisterId>(curRegs));
-    }
     if (usesVertexOutput()) {
       res->setValue(j, _vertexReg, _vertices[_posInPaths].clone());
     }
@@ -461,6 +457,10 @@ AqlItemBlock* TraversalBlock::getSome(size_t,  // atLeast,
     }
     if (usesPathOutput()) {
       res->setValue(j, _pathReg, _paths[_posInPaths].clone());
+    }
+    if (j > 0) {
+      // re-use already copied AqlValues
+      res->copyValuesFromFirstRow(j, static_cast<RegisterId>(curRegs));
     }
     ++_posInPaths;
   }

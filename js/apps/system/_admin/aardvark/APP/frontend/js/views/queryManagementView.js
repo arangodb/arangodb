@@ -1,11 +1,10 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global Backbone, EJS, $, setTimeout, localStorage, ace, Storage, window, _ */
-/* global _, arangoHelper, templateEngine, jQuery, Joi*/
+/* global Backbone, $, setTimeout, window, arangoHelper, templateEngine */
 
 (function () {
   'use strict';
-  window.queryManagementView = Backbone.View.extend({
+  window.QueryManagementView = Backbone.View.extend({
     el: '#content',
 
     id: '#queryManagementContent',
@@ -25,8 +24,8 @@
       this.convertModelToJSON(true);
 
       window.setInterval(function () {
-        if (window.location.hash === '#queries' && window.VISIBLE && self.shouldRender
-          && arangoHelper.getCurrentSub().route === 'queryManagement') {
+        if (window.location.hash === '#queries' && window.VISIBLE && self.shouldRender &&
+          arangoHelper.getCurrentSub().route === 'queryManagement') {
           if (self.active) {
             if ($('#arangoQueryManagementTable').is(':visible')) {
               self.convertModelToJSON(true);
@@ -54,7 +53,8 @@
 
     deleteRunningQueryModal: function (e) {
       this.killQueryId = $(e.currentTarget).attr('data-id');
-      var buttons = [], tableContent = [];
+      var buttons = [];
+      var tableContent = [];
 
       tableContent.push(
         window.modalView.createReadOnlyEntry(
@@ -93,7 +93,8 @@
     },
 
     deleteSlowQueryHistoryModal: function () {
-      var buttons = [], tableContent = [];
+      var buttons = [];
+      var tableContent = [];
 
       tableContent.push(
         window.modalView.createReadOnlyEntry(

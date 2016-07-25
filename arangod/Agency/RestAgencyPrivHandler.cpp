@@ -44,34 +44,36 @@ using namespace arangodb::consensus;
 /// @brief ArangoDB server
 ////////////////////////////////////////////////////////////////////////////////
 
-RestAgencyPrivHandler::RestAgencyPrivHandler(HttpRequest* request, Agent* agent)
-    : RestBaseHandler(request), _agent(agent) {}
+RestAgencyPrivHandler::RestAgencyPrivHandler(GeneralRequest* request,
+                                             GeneralResponse* response,
+                                             Agent* agent)
+    : RestBaseHandler(request, response), _agent(agent) {}
 
 bool RestAgencyPrivHandler::isDirect() const { return false; }
 
-inline HttpHandler::status_t RestAgencyPrivHandler::reportErrorEmptyRequest() {
+inline RestHandler::status RestAgencyPrivHandler::reportErrorEmptyRequest() {
   LOG_TOPIC(WARN, Logger::AGENCY) << "Empty request to agency!";
   generateError(GeneralResponse::ResponseCode::NOT_FOUND, 404);
-  return HttpHandler::status_t(HANDLER_DONE);
+  return RestHandler::status::DONE;
 }
 
-inline HttpHandler::status_t RestAgencyPrivHandler::reportTooManySuffices() {
+inline RestHandler::status RestAgencyPrivHandler::reportTooManySuffices() {
   LOG_TOPIC(WARN, Logger::AGENCY) << "Agency handles a single suffix: vote, log or configure";
   generateError(GeneralResponse::ResponseCode::NOT_FOUND, 404);
-  return HttpHandler::status_t(HANDLER_DONE);
+  return RestHandler::status::DONE;
 }
 
-inline HttpHandler::status_t RestAgencyPrivHandler::reportBadQuery() {
+inline RestHandler::status RestAgencyPrivHandler::reportBadQuery() {
   generateError(GeneralResponse::ResponseCode::BAD, 400);
-  return HttpHandler::status_t(HANDLER_DONE);
+  return RestHandler::status::DONE;
 }
 
-inline HttpHandler::status_t RestAgencyPrivHandler::reportMethodNotAllowed() {
+inline RestHandler::status RestAgencyPrivHandler::reportMethodNotAllowed() {
   generateError(GeneralResponse::ResponseCode::METHOD_NOT_ALLOWED, 405);
-  return HttpHandler::status_t(HANDLER_DONE);
+  return RestHandler::status::DONE;
 }
 
-HttpHandler::status_t RestAgencyPrivHandler::execute() {
+RestHandler::status RestAgencyPrivHandler::execute() {
   try {
     VPackBuilder result;
     result.add(VPackValue(VPackValueType::Object));
@@ -96,7 +98,7 @@ HttpHandler::status_t RestAgencyPrivHandler::execute() {
             readValue("leaderCommit", leaderCommit)) {  // found all values
           bool ret = _agent->recvAppendEntriesRPC(
               term, id, prevLogIndex, prevLogTerm, leaderCommit,
-              _request->toVelocyPack(&opts));
+              _request->toVelocyPackBuilderPtr(&opts));
           result.add("success", VPackValue(ret));
         } else {
           return reportBadQuery();  // bad query
@@ -116,7 +118,7 @@ HttpHandler::status_t RestAgencyPrivHandler::execute() {
         }
         if (readValue("term", term) && readValue("agencyId", id)) {
           priv_rpc_ret_t ret = _agent->requestVote(
-              term, id, 0, 0, _request->toVelocyPack(&opts));
+              term, id, 0, 0, _request->toVelocyPackBuilderPtr(&opts));
           result.add("term", VPackValue(ret.term));
           result.add("voteGranted", VPackValue(ret.success));
         } else {
@@ -125,7 +127,7 @@ HttpHandler::status_t RestAgencyPrivHandler::execute() {
       } else {
         generateError(GeneralResponse::ResponseCode::NOT_FOUND,
                       404);  // nothing else here
-        return HttpHandler::status_t(HANDLER_DONE);
+        return RestHandler::status::DONE;
       }
     }
     result.close();
@@ -134,5 +136,5 @@ HttpHandler::status_t RestAgencyPrivHandler::execute() {
   } catch (...) {
     // Ignore this error
   }
-  return HttpHandler::status_t(HANDLER_DONE);
+  return RestHandler::status::DONE;
 }

@@ -105,7 +105,16 @@
         });
       }
 
+      self.resize();
+
       return this;
+    },
+
+    resize: function () {
+      // set menu sizes - responsive
+      var height = $(window).height() - $('.subMenuEntries').first().height();
+      $('#navigationBar').css('min-height', height);
+      $('#navigationBar').css('height', height);
     },
 
     navigateBySelect: function () {
@@ -118,9 +127,9 @@
     },
 
     navigateByTab: function (e) {
-      var tab = e.target || e.srcElement,
-        navigateTo = tab.id,
-        dropdown = false;
+      var tab = e.target || e.srcElement;
+      var navigateTo = tab.id;
+      var dropdown = false;
 
       if ($(tab).hasClass('fa')) {
         return;

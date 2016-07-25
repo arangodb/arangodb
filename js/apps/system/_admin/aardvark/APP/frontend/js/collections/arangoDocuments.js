@@ -1,10 +1,10 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global window, Backbone, arangoDocumentModel, _, arangoHelper, $*/
+/* global window, _, arangoHelper, $*/
 (function () {
   'use strict';
 
-  window.arangoDocuments = window.PaginatedCollection.extend({
+  window.ArangoDocuments = window.PaginatedCollection.extend({
     collectionID: 1,
 
     filters: [],
@@ -41,7 +41,7 @@
         if (error) {
           arangoHelper.arangoError('Documents', 'Could not fetch documents count');
         }
-      }.bind(this);
+      };
       this.resetFilter();
       this.collectionID = id;
       this.setPage(1);
@@ -68,40 +68,41 @@
       if (this.filters.length === 0) {
         return '';
       }
-      var query = ' FILTER', res = '',
-        parts = _.map(this.filters, function (f, i) {
-          if (f.op === 'LIKE') {
-            res = ' ' + f.op + '(x.`' + f.attr + '`, @param';
-            res += i;
-            res += ')';
+      var query = ' FILTER';
+      var res = '';
+      var parts = _.map(this.filters, function (f, i) {
+        if (f.op === 'LIKE') {
+          res = ' ' + f.op + '(x.`' + f.attr + '`, @param';
+          res += i;
+          res += ')';
+        } else {
+          if (f.op === 'IN' || f.op === 'NOT IN') {
+            res = ' ';
           } else {
-            if (f.op === 'IN' || f.op === 'NOT IN') {
-              res = ' ';
-            } else {
-              res = ' x.`';
-            }
-
-            res += f.attr;
-
-            if (f.op === 'IN' || f.op === 'NOT IN') {
-              res += ' ';
-            } else {
-              res += '` ';
-            }
-
-            res += f.op;
-
-            if (f.op === 'IN' || f.op === 'NOT IN') {
-              res += ' x.@param';
-            } else {
-              res += ' @param';
-            }
-            res += i;
+            res = ' x.`';
           }
 
-          bindVars['param' + i] = f.val;
-          return res;
-        });
+          res += f.attr;
+
+          if (f.op === 'IN' || f.op === 'NOT IN') {
+            res += ' ';
+          } else {
+            res += '` ';
+          }
+
+          res += f.op;
+
+          if (f.op === 'IN' || f.op === 'NOT IN') {
+            res += ' x.@param';
+          } else {
+            res += ' @param';
+          }
+          res += i;
+        }
+
+        bindVars['param' + i] = f.val;
+        return res;
+      });
       return query + parts.join(' &&');
     },
 
@@ -114,10 +115,14 @@
     },
 
     moveDocument: function (key, fromCollection, toCollection, callback) {
-      var querySave, queryRemove, bindVars = {
-          '@collection': fromCollection,
-          'filterid': key
-        }, queryObj1, queryObj2;
+      var querySave;
+      var queryRemove;
+      var bindVars = {
+        '@collection': fromCollection,
+        'filterid': key
+      };
+      var queryObj1;
+      var queryObj2;
 
       querySave = 'FOR x IN @@collection';
       querySave += ' FILTER x._key == @filterid';
@@ -176,11 +181,11 @@
     },
 
     getDocuments: function (callback) {
-      var self = this,
-        query,
-        bindVars,
-        tmp,
-        queryObj;
+      var self = this;
+      var query;
+      var bindVars;
+      var tmp;
+      var queryObj;
       bindVars = {
         '@collection': this.collectionID,
         'offset': this.getOffset(),
@@ -189,13 +194,13 @@
 
       // fetch just the first 25 attributes of the document
       // this number is arbitrary, but may reduce HTTP traffic a bit
-      query = 'FOR x IN @@collection LET att = SLICE(ATTRIBUTES(x), 0, 25)';
+      query = 'FOR x IN @@collection LET att = APPEND(SLICE(ATTRIBUTES(x), 0, 25), "_key", true)';
       query += this.setFiltersForQuery(bindVars);
       // Sort result, only useful for a small number of docs
       if (this.getTotal() < this.MAX_SORT) {
         if (this.getSort() === '_key') {
-          query += ' SORT TO_NUMBER(x.' + this.getSort() + ') == 0 ? x.'
-            + this.getSort() + ' : TO_NUMBER(x.' + this.getSort() + ')';
+          query += ' SORT TO_NUMBER(x.' + this.getSort() + ') == 0 ? x.' +
+            this.getSort() + ' : TO_NUMBER(x.' + this.getSort() + ')';
         } else if (this.getSort() !== '') {
           query += ' SORT x.' + this.getSort();
         }

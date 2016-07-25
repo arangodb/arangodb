@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global window, Backbone, $ */
+/* global window, Backbone */
 (function () {
   'use strict';
   window.WorkMonitorCollection = Backbone.Collection.extend({

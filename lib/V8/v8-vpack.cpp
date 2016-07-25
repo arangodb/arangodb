@@ -78,36 +78,34 @@ static v8::Handle<v8::Value> ObjectVPackObject(v8::Isolate* isolate,
     } else {
       // optimized code path for translated system attributes
       VPackSlice v = VPackSlice(k.begin() + 1);
+      v8::Local<v8::Value> sub;
+      if (v.isString()) {
+        char const* p = v.getString(l);
+        sub = TRI_V8_ASCII_PAIR_STRING(p, l);
+      } else {
+        sub = TRI_VPackToV8(isolate, v, options, &slice);
+      }
 
       uint8_t which = static_cast<uint8_t>(k.getUInt()) + VelocyPackHelper::AttributeBase;
       switch (which) {
         case VelocyPackHelper::KeyAttribute: { 
-          char const* p = v.getString(l);
-          object->ForceSet(v8::Local<v8::String>::New(isolate, v8g->_KeyKey), TRI_V8_ASCII_PAIR_STRING(p, l));
+          object->ForceSet(v8::Local<v8::String>::New(isolate, v8g->_KeyKey), sub);
           break;
         }
         case VelocyPackHelper::RevAttribute: { 
-          char const* p = v.getString(l);
-          object->ForceSet(v8::Local<v8::String>::New(isolate, v8g->_RevKey), TRI_V8_ASCII_PAIR_STRING(p, l));
+          object->ForceSet(v8::Local<v8::String>::New(isolate, v8g->_RevKey), sub);
           break;
         }
         case VelocyPackHelper::IdAttribute: {
-          if (v.isString()) {
-            char const* p = v.getString(l);
-            object->ForceSet(v8::Local<v8::String>::New(isolate, v8g->_IdKey), TRI_V8_ASCII_PAIR_STRING(p, l));
-          } else {
-            object->ForceSet(v8::Local<v8::String>::New(isolate, v8g->_IdKey), TRI_VPackToV8(isolate, v, options, &slice));
-          }
+          object->ForceSet(v8::Local<v8::String>::New(isolate, v8g->_IdKey), sub);
           break;
         }
         case VelocyPackHelper::FromAttribute: {
-          char const* p = v.getString(l);
-          object->ForceSet(v8::Local<v8::String>::New(isolate, v8g->_FromKey), TRI_V8_ASCII_PAIR_STRING(p, l));
+          object->ForceSet(v8::Local<v8::String>::New(isolate, v8g->_FromKey), sub);
           break;
         }
         case VelocyPackHelper::ToAttribute: {
-          char const* p = v.getString(l);
-          object->ForceSet(v8::Local<v8::String>::New(isolate, v8g->_ToKey), TRI_V8_ASCII_PAIR_STRING(p, l));
+          object->ForceSet(v8::Local<v8::String>::New(isolate, v8g->_ToKey), sub);
           break;
         }
       }

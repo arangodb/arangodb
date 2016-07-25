@@ -5,10 +5,10 @@
 
 @RESTHEADER{POST /_api/user, Create User}
 
--RESTBODYPARAM{user,string,required,string}
+@RESTBODYPARAM{user,string,required,string}
 The name of the user as a string. This is mandatory.
 
--RESTBODYPARAM{passwd,string,required,string}
+@RESTBODYPARAM{passwd,string,required,string}
 The user password as a string. If no password is specified, the empty
 string will be used. If you pass the special value
 *ARANGODB_DEFAULT_ROOT_PASSWORD*, the password will be set the value
@@ -17,11 +17,11 @@ stored in the environment variable
 variable into ArangoDB. For example, the instance identifier from
 Amazon.
 
--RESTBODYPARAM{active,boolean,optional,boolean}
+@RESTBODYPARAM{active,boolean,optional,boolean}
 An optional flag that specifies whether the user is active.  If not
 specified, this will default to true
 
--RESTBODYPARAM{extra,object,optional,}
+@RESTBODYPARAM{extra,object,optional,}
 An optional JSON object with arbitrary extra data about the user.
 
 @RESTDESCRIPTION
@@ -43,7 +43,7 @@ from the request.
 
 @EXAMPLE_ARANGOSH_RUN{RestCreateUser}
     var url = "/_api/user";
-    var data = { user: "admin@example", password: "secure" };
+    var data = { user: "admin@example", passwd: "secure" };
     var response = logCurlRequest('POST', url, data);
 
     assert(response.code === 201);
@@ -60,7 +60,7 @@ from the request.
 
 @RESTHEADER{PUT /_api/user/{user}/database/{dbname}, Grant or revoke database access}
 
--RESTBODYPARAM{grant,string,required,string}
+@RESTBODYPARAM{grant,string,required,string}
 Use "rw" to grant access right and "none" to revoke.
 
 @RESTURLPARAMETERS
@@ -90,15 +90,61 @@ from the request.
 
 @EXAMPLE_ARANGOSH_RUN{RestGrantDatabase}
     var users = require("@arangodb/users");
-    users.save("admin@secapp", "secret")
+    var theUser = "admin@myapp";
+    users.save(theUser, "secret")
 
-    var url = "/_api/user/admin@secapp/database/_system";
+    var url = "/_api/user/" + theUser + "/database/_system";
     var data = { grant: "rw" };
     var response = logCurlRequest('PUT', url, data);
 
     assert(response.code === 200);
 
     logJsonResponse(response);
+    users.remove(theUser);
+@END_EXAMPLE_ARANGOSH_RUN
+
+@endDocuBlock
+
+<!-- ---------------------------------------------------------------------- -->
+
+@startDocuBlock UserHandling_fetchDatabaseList
+@brief List available database to the specified user
+
+@RESTHEADER{GET /_api/user/{user}/database/, List the databases available to a User}
+
+@RESTURLPARAMETERS
+
+@RESTURLPARAM{user,string,required}
+The name of the user for which you want to query the databases.
+
+@RESTDESCRIPTION
+
+Fetch the list of databases available to the specified *user*. You
+need permission to the *_system* database in order to execute this
+REST call.
+
+@RESTRETURNCODES
+
+@RESTRETURNCODE{200}
+Returned if the list of available databases can be returned.
+
+@RESTRETURNCODE{400}
+If the access privileges aren't right etc.
+
+@EXAMPLES
+
+@EXAMPLE_ARANGOSH_RUN{RestFetchUserDatabaseList}
+    var users = require("@arangodb/users");
+    var theUser="anotherAdmin@secapp";
+    users.save(theUser, "secret")
+
+    var url = "/_api/user/" + theUser + "/database/";
+    var response = logCurlRequest('GET', url);
+
+    assert(response.code === 200);
+
+    logJsonResponse(response);
+    users.remove(theUser);
 @END_EXAMPLE_ARANGOSH_RUN
 
 @endDocuBlock
@@ -115,15 +161,15 @@ from the request.
 @RESTURLPARAM{user,string,required}
 The name of the user
 
--RESTBODYPARAM{passwd,string,required,string}
+@RESTBODYPARAM{passwd,string,required,string}
 The user password as a string. Specifying a password is mandatory, but
 the empty string is allowed for passwords
 
--RESTBODYPARAM{active,boolean,optional,boolean}
+@RESTBODYPARAM{active,boolean,optional,boolean}
 An optional flag that specifies whether the user is active.  If not
 specified, this will default to true
 
--RESTBODYPARAM{extra,object,optional,}
+@RESTBODYPARAM{extra,object,optional,}
 An optional JSON object with arbitrary extra data about the user.
 
 @RESTDESCRIPTION
@@ -148,15 +194,17 @@ The specified user does not exist
 
 @EXAMPLE_ARANGOSH_RUN{RestReplaceUser}
     var users = require("@arangodb/users");
-    users.save("admin@myapp", "secret")
+    var theUser = "admin@myapp";
+    users.save(theUser, "secret")
 
-    var url = "/_api/user/admin@myapp";
-    var data = { password: "secure" };
+    var url = "/_api/user/" + theUser;
+    var data = { passwd: "secure" };
     var response = logCurlRequest('PUT', url, data);
 
     assert(response.code === 200);
 
     logJsonResponse(response);
+    users.remove(theUser);
 @END_EXAMPLE_ARANGOSH_RUN
 
 @endDocuBlock
@@ -173,15 +221,15 @@ The specified user does not exist
 @RESTURLPARAM{user,string,required}
 The name of the user
 
--RESTBODYPARAM{passwd,string,required,string}
+@RESTBODYPARAM{passwd,string,required,string}
 The user password as a string. Specifying a password is mandatory, but
 the empty string is allowed for passwords
 
--RESTBODYPARAM{active,boolean,optional,boolean}
+@RESTBODYPARAM{active,boolean,optional,boolean}
 An optional flag that specifies whether the user is active.  If not
 specified, this will default to true
 
--RESTBODYPARAM{extra,object,optional,}
+@RESTBODYPARAM{extra,object,optional,}
 An optional JSON object with arbitrary extra data about the user.
 
 @RESTDESCRIPTION
@@ -206,15 +254,17 @@ The specified user does not exist
 
 @EXAMPLE_ARANGOSH_RUN{RestUpdateUser}
     var users = require("@arangodb/users");
-    users.save("admin@yourapp", "secret")
+    var theUser = "admin@myapp";
+    users.save(theUser, "secret")
 
-    var url = "/_api/user/admin@yourapp";
-    var data = { password: "secure" };
+    var url = "/_api/user/" + theUser;
+    var data = { passwd: "secure" };
     var response = logCurlRequest('PATCH', url, data);
 
     assert(response.code === 200);
 
     logJsonResponse(response);
+    users.remove(theUser);
 @END_EXAMPLE_ARANGOSH_RUN
 
 @endDocuBlock
@@ -250,9 +300,10 @@ The specified user does not exist
 
 @EXAMPLE_ARANGOSH_RUN{RestDeleteUser}
     var users = require("@arangodb/users");
-    users.save("admin@ourapp", "secret")
+    var theUser = "userToDelete@myapp";
+    users.save(theUser, "secret")
 
-    var url = "/_api/user/admin@ourapp";
+    var url = "/_api/user/" + theUser;
     var response = logCurlRequest('DELETE', url, {});
 
     assert(response.code === 202);
@@ -292,14 +343,16 @@ The user with the specified name does not exist.
 
 @EXAMPLE_ARANGOSH_RUN{RestFetchUser}
     var users = require("@arangodb/users");
-    users.save("admin@theirapp", "secret")
+    var theUser = "admin@myapp";
+    users.save(theUser, "secret")
 
-    var url = "/_api/user/admin@theirapp";
+    var url = "/_api/user/" + theUser;
     var response = logCurlRequest('GET', url);
 
     assert(response.code === 200);
 
     logJsonResponse(response);
+    users.remove(theUser);
 @END_EXAMPLE_ARANGOSH_RUN
 
 @endDocuBlock

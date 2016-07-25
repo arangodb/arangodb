@@ -1,3 +1,9 @@
+tags
+build
+core.*
+build.sh
+
+*.vim
 .deps
 .dirstamp
 *.o
@@ -6,6 +12,7 @@
 *.pyc
 *.sdf
 *.suo
+*.log
 
 *.iml
 *.orig
@@ -21,6 +28,8 @@
 Thumbs.db
 
 testresult.json
+botschaft.txt
+testsStarted
 
 build*/
 Build64/

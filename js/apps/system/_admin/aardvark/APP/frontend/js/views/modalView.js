@@ -238,7 +238,11 @@
 
     show: function (templateName, title, buttons, tableContent, advancedContent,
       extraInfo, events, noConfirm, tabBar, divID) {
-      var self = this, lastBtn, confirmMsg, closeButtonFound = false;
+      var self = this;
+      var lastBtn;
+      var confirmMsg;
+      var closeButtonFound = false;
+
       buttons = buttons || [];
       noConfirm = Boolean(noConfirm);
       this.clearValidators();
@@ -446,8 +450,8 @@
 
     modalBindValidation: function (entry) {
       var self = this;
-      if (entry.hasOwnProperty('id')
-        && entry.hasOwnProperty('validateInput')) {
+      if (entry.hasOwnProperty('id') &&
+          entry.hasOwnProperty('validateInput')) {
         var validCheck = function () {
           var $el = $('#' + entry.id);
           var validation = entry.validateInput($el);

@@ -24,12 +24,14 @@
 
 #include "SimpleHttpClient.h"
 
-#include "Basics/JsonHelper.h"
 #include "Basics/StringUtils.h"
 #include "Logger/Logger.h"
 #include "Rest/HttpResponse.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
+
+#include <velocypack/Parser.h>
+#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -546,7 +548,7 @@ void SimpleHttpClient::setRequest(
     for (; i != _pathToBasicAuth.end(); ++i) {
       std::string& f = i->first;
 
-      if (l->find(f) == 0) {
+      if (l->compare(0, f.size(), f) == 0) {
         // f is prefix of l
         if (f.length() > foundPrefix.length()) {
           foundPrefix = f;

@@ -37,13 +37,13 @@
       if (!this.checkRetries()) {
         return;
       }
-      var self = this,
-        completed = function () {
-          self.successFullTry();
-          self._retryCount = 0;
-          self.forEach(function (m) {
-            cb(self.statusClass(m.get('status')), m.get('address'));
-          });
+      var self = this;
+      var completed = function () {
+        self.successFullTry();
+        self._retryCount = 0;
+        self.forEach(function (m) {
+          cb(self.statusClass(m.get('status')), m.get('address'));
+        });
       };
       // This is the first function called in
       // Each update loop
@@ -79,74 +79,11 @@
     },
 
     getList: function () {
-      throw 'Do not use';
-    /*
-    var self = this
-    this.fetch({
-      beforeSend: window.App.addAuth.bind(window.App),
-      error: self.failureTry.bind(self, self.getList.bind(self, callback))
-    }).done(function() {
-      self.successFullTry()
-      var res = []
-      _.each(self.where({role: "primary"}), function(m) {
-        var e = {}
-        e.primary = m.forList()
-        if (m.get("secondary")) {
-          e.secondary = self.get(m.get("secondary")).forList()
-        }
-        res.push(e)
-      })
-      callback(res)
-    })
-    */
+      throw new Error('Do not use');
     },
 
     getOverview: function () {
-      throw 'Do not use DbServer.getOverview';
-    /*
-    this.fetch({
-      async: false,
-      beforeSend: window.App.addAuth.bind(window.App)
-    })
-    var res = {
-      plan: 0,
-      having: 0,
-      status: "ok"
-    },
-    self = this,
-    updateStatus = function(to) {
-      if (res.status === "critical") {
-        return
-      }
-      res.status = to
-    }
-    _.each(this.where({role: "primary"}), function(m) {
-      res.plan++
-      switch (m.get("status")) {
-        case "ok":
-          res.having++
-          break
-        case "warning":
-          res.having++
-          updateStatus("warning")
-          break
-        case "critical":
-          var bkp = self.get(m.get("secondary"))
-          if (!bkp || bkp.get("status") === "critical") {
-            updateStatus("critical")
-          } else {
-            if (bkp.get("status") === "ok") {
-              res.having++
-              updateStatus("warning")
-            }
-          }
-          break
-        default:
-          console.debug("Undefined server state occurred. This is still in development")
-      }
-    })
-    return res
-    */
+      throw new Error('Do not use DbServer.getOverview');
     }
   });
 }());

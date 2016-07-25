@@ -164,15 +164,15 @@
             var info;
             if (err) {
               info = (
-                '<p>The script failed with an error'
-                + (err.statusCode ? (' (HTTP ' + err.statusCode + ')') : '')
-                + ':</p>'
-                + '<pre>' + err.message + '</pre>'
+                '<p>The script failed with an error' +
+                (err.statusCode ? (' (HTTP ' + err.statusCode + ')') : '') +
+                ':</p>' +
+                '<pre>' + err.message + '</pre>'
               );
             } else if (result) {
               info = (
-                '<p>Script results:</p>'
-                + '<pre>' + JSON.stringify(result, null, 2) + '</pre>'
+                '<p>Script results:</p>' +
+                '<pre>' + JSON.stringify(result, null, 2) + '</pre>'
               );
             } else {
               info = '<p>The script ran successfully.</p>';
@@ -209,13 +209,13 @@
     runTests: function (event) {
       event.preventDefault();
       var warning = (
-      '<p><strong>WARNING:</strong> Running tests may result in destructive side-effects including data loss.'
-        + ' Please make sure not to run tests on a production database.</p>'
+      '<p><strong>WARNING:</strong> Running tests may result in destructive side-effects including data loss.' +
+        ' Please make sure not to run tests on a production database.</p>'
       );
       if (this.model.isDevelopment()) {
         warning += (
-          '<p><strong>WARNING:</strong> This app is running in <strong>development mode</strong>.'
-          + " If any of the tests access the app's HTTP API they may become non-deterministic.</p>"
+          '<p><strong>WARNING:</strong> This app is running in <strong>development mode</strong>.' +
+          ' If any of the tests access the app\'s HTTP API they may become non-deterministic.</p>'
         );
       }
       var buttons = [
@@ -251,7 +251,6 @@
           if (error) {
             arangoHelper.arangoError('DB', 'Could not get current database');
           } else {
-            var mount = this.model.get('mount');
             $(this.el).html(this.template.render({
               app: this.model,
               baseUrl: arangoHelper.databaseUrl('', db),
@@ -263,7 +262,12 @@
             self.jsonEditor.setReadOnly(true);
             self.jsonEditor.getSession().setMode('ace/mode/json');
 
-            $.get(this.appUrl(db)).success(function () {
+            $.ajax({
+              url: this.appUrl(db),
+              headers: {
+                accept: 'text/html,*/*;q=0.9'
+              }
+            }).success(function () {
               $('.open', this.el).prop('disabled', false);
             }.bind(this));
 
@@ -374,7 +378,7 @@
     },
 
     appUrl: function (currentDB) {
-      return arangoHelper.databaseUrl(this.model.get('mount'), currentDB)
+      return arangoHelper.databaseUrl(this.model.get('mount'), currentDB);
     },
 
     applyConfig: function () {
