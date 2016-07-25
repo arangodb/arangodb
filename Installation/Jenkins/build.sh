@@ -278,6 +278,7 @@ git rev-parse HEAD > ../last_compiled_version.sha
 
 if test -n "${TARGET_DIR}";  then
   echo "building distribution tarball"
+  mkdir -p "${TARGET_DIR}"
   dir="${TARGET_DIR}"
   TARFILE=arangodb.tar.gz
   TARFILE_TMP=`pwd`/arangodb.tar.$$
@@ -318,11 +319,11 @@ if test -n "${TARGET_DIR}";  then
 
      rm files.$$
     )
+
+    rm files.$$
+
+    gzip < ${TARFILE_TMP} > ${dir}/${TARFILE}
+    md5sum < ${dir}/${TARFILE} > ${dir}/${TARFILE}.md5
+    rm ${TARFILE_TMP}
   fi
-
-  rm files.$$
-
-  gzip < ${TARFILE_TMP} > ${dir}/${TARFILE}
-  md5sum < ${dir}/${TARFILE} > ${dir}/${TARFILE}.md5
-  rm ${TARFILE_TMP}
 fi
