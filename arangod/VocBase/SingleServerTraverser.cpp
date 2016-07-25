@@ -276,7 +276,6 @@ void SingleServerTraverser::setStartVertex(std::string const& v) {
 
   if (!vertexMatchesConditions(idSlice, 0)) {
     // Start vertex invalid
-    ++_filteredPaths;
     _done = true;
     return;
   }

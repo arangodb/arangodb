@@ -38,6 +38,7 @@ class Builder;
 namespace aql {
 
 class AqlItemBlock;
+class ExpressionContext;
 class Query;
 struct Variable;
 
@@ -63,9 +64,7 @@ struct V8Expression {
 
   /// @brief execute the expression
   AqlValue execute(v8::Isolate* isolate, Query* query,
-                    arangodb::Transaction*, AqlItemBlock const*, size_t,
-                    std::vector<Variable const*> const&,
-                    std::vector<RegisterId> const&, bool& mustDestroy);
+                    arangodb::Transaction*, ExpressionContext* context, bool& mustDestroy);
 
   /// @brief the isolate used when executing and destroying the expression
   v8::Isolate* isolate;

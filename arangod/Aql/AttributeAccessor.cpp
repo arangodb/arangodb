@@ -23,6 +23,7 @@
 
 #include "AttributeAccessor.h"
 #include "Aql/AqlItemBlock.h"
+#include "Aql/ExpressionContext.h"
 #include "Aql/Variable.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
@@ -68,32 +69,25 @@ void AttributeAccessor::replaceVariable(std::unordered_map<VariableId, Variable 
 
 /// @brief execute the accessor
 AqlValue AttributeAccessor::get(arangodb::Transaction* trx,
-                                AqlItemBlock const* argv, size_t startPos,
-                                std::vector<Variable const*> const& vars,
-                                std::vector<RegisterId> const& regs,
-                                bool& mustDestroy) {
-  size_t i = 0;
-  for (auto it = vars.begin(); it != vars.end(); ++it, ++i) {
-    if ((*it)->id == _variable->id) {
-      // get the AQL value
-      switch (_type) {
-        case EXTRACT_KEY:
-          return argv->getValueReference(startPos, regs[i]).getKeyAttribute(trx, mustDestroy, true);
-        case EXTRACT_ID:
-          return argv->getValueReference(startPos, regs[i]).getIdAttribute(trx, mustDestroy, true);
-        case EXTRACT_FROM:
-          return argv->getValueReference(startPos, regs[i]).getFromAttribute(trx, mustDestroy, true);
-        case EXTRACT_TO:
-          return argv->getValueReference(startPos, regs[i]).getToAttribute(trx, mustDestroy, true);
-        case EXTRACT_SINGLE:
-          // use optimized version for single attribute (e.g. variable.attr)
-          return argv->getValueReference(startPos, regs[i]).get(trx, _attributeParts[0], mustDestroy, true);
-        case EXTRACT_MULTI:
-          // use general version for multiple attributes (e.g. variable.attr.subattr)
-          return argv->getValueReference(startPos, regs[i]).get(trx, _attributeParts, mustDestroy, true);
-      }
-    }
-    // fall-through intentional
+                                ExpressionContext* context, bool& mustDestroy) {
+  AqlValue const& value = context->getVariableValue(_variable, false, mustDestroy);
+  // get the AQL value
+  switch (_type) {
+    case EXTRACT_KEY:
+      return value.getKeyAttribute(trx, mustDestroy, true);
+    case EXTRACT_ID:
+      return value.getIdAttribute(trx, mustDestroy, true);
+    case EXTRACT_FROM:
+      return value.getFromAttribute(trx, mustDestroy, true);
+    case EXTRACT_TO:
+      return value.getToAttribute(trx, mustDestroy, true);
+    case EXTRACT_SINGLE:
+      // use optimized version for single attribute (e.g. variable.attr)
+      return value.get(trx, _attributeParts[0], mustDestroy, true);
+    case EXTRACT_MULTI:
+      // use general version for multiple attributes (e.g. variable.attr.subattr)
+      return value.get(trx, _attributeParts, mustDestroy, true);
+      // fall-through intentional
   }
 
   mustDestroy = false;

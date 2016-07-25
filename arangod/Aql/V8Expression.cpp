@@ -24,6 +24,7 @@
 #include "V8Expression.h"
 #include "Aql/AqlItemBlock.h"
 #include "Aql/Executor.h"
+#include "Aql/ExpressionContext.h"
 #include "Aql/Query.h"
 #include "Aql/Variable.h"
 #include "Basics/VelocyPackHelper.h"
@@ -59,31 +60,27 @@ V8Expression::~V8Expression() {
 /// @brief execute the expression
 AqlValue V8Expression::execute(v8::Isolate* isolate, Query* query,
                                arangodb::Transaction* trx,
-                               AqlItemBlock const* argv, size_t startPos,
-                               std::vector<Variable const*> const& vars,
-                               std::vector<RegisterId> const& regs,
+                               ExpressionContext* context,
                                bool& mustDestroy) {
-  size_t const n = vars.size();
-  TRI_ASSERT(regs.size() == n);  // assert same vector length
-
   bool const hasRestrictions = !_attributeRestrictions.empty();
 
   v8::Handle<v8::Object> values = v8::Object::New(isolate);
 
-  for (size_t i = 0; i < n; ++i) {
-    RegisterId reg = regs[i];
+  size_t const n = context->numRegisters();
 
-    AqlValue const& value = argv->getValueReference(startPos, reg);
+  for (size_t i = 0; i < n; ++i) {
+    AqlValue const& value = context->getRegisterValue(i);
 
     if (value.isEmpty()) {
       continue;
     }
 
-    std::string const& varname = vars[i]->name;
+    Variable const* var = context->getVariable(i);
+    std::string const& varname = var->name;
 
     if (hasRestrictions && value.isObject()) {
       // check if we can get away with constructing a partial JSON object
-      auto it = _attributeRestrictions.find(vars[i]);
+      auto it = _attributeRestrictions.find(var);
 
       if (it != _attributeRestrictions.end()) {
         // build a partial object

@@ -62,6 +62,7 @@ bool DepthFirstEnumerator::next() {
       TRI_ASSERT(_edgeCursors.size() == _enumeratedPath.edges.size() + 1);
       auto& cursor = _edgeCursors.top();
       if (cursor->next(_enumeratedPath.edges, cursorId)) {
+        ++_traverser->_readDocuments;
         if (_opts->uniqueEdges == TraverserOptions::UniquenessLevel::GLOBAL) {
           if (_returnedEdges.find(_enumeratedPath.edges.back()) ==
               _returnedEdges.end()) {
@@ -75,7 +76,7 @@ bool DepthFirstEnumerator::next() {
         }
         if (!_traverser->edgeMatchesConditions(_enumeratedPath.edges.back(),
                                                _enumeratedPath.vertices.back(),
-                                               _enumeratedPath.edges.size(),
+                                               _enumeratedPath.edges.size() - 1,
                                                cursorId)) {
             // This edge does not pass the filtering
             _enumeratedPath.edges.pop_back();
@@ -263,6 +264,7 @@ bool BreadthFirstEnumerator::next() {
       bool didInsert = false;
       while (cursor->readAll(_tmpEdges, cursorIdx)) {
         if (!_tmpEdges.empty()) {
+          _traverser->_readDocuments += _tmpEdges.size();
           VPackSlice v;
           for (auto const& e : _tmpEdges) {
             if (_opts->uniqueEdges ==

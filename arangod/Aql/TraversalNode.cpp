@@ -31,8 +31,6 @@
 #include "Aql/TraversalOptions.h"
 #include "Indexes/Index.h"
 
-#include <iostream>
-
 using namespace arangodb::basics;
 using namespace arangodb::aql;
 
@@ -912,6 +910,8 @@ void TraversalNode::fillTraversalOptions(
   opts.useBreadthFirst = _options.useBreadthFirst;
   opts.uniqueVertices = _options.uniqueVertices;
   opts.uniqueEdges = _options.uniqueEdges;
+
+  // opts._variables = &_conditionVariables;
 }
 
 /// @brief remember the condition to execute for early traversal abortion.
@@ -936,7 +936,7 @@ void TraversalNode::setCondition(arangodb::aql::Condition* condition) {
 void TraversalNode::registerCondition(bool isConditionOnEdge,
                                       size_t conditionLevel,
                                       AstNode const* condition) {
-
+  // Ast::getReferencedVariables(condition, _conditionVariables);
   if (isConditionOnEdge) {
     auto const& it = _edgeConditions.find(conditionLevel);
     if (it == _edgeConditions.end()) {
@@ -963,14 +963,12 @@ void TraversalNode::registerCondition(bool isConditionOnEdge,
 
 void TraversalNode::registerGlobalCondition(bool isConditionOnEdge,
                                             AstNode const* condition) {
-  std::cout << "Registering global condition for edges: " << isConditionOnEdge << std::endl;
+  // Ast::getReferencedVariables(condition, _conditionVariables);
   if (isConditionOnEdge) {
     _globalEdgeCondition = condition;
   } else {
     _globalVertexCondition = condition;
   }
-
-  condition->dump(0);
 }
 
 AstNode* TraversalNode::getTemporaryRefNode() const {

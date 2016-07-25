@@ -240,7 +240,7 @@ static void transformCondition(AstNode const* node, Variable const* pvar,
           // We only find one!
           TRI_ASSERT(!foundVar);
           foundVar = true;
-          top->changeMember(i, varRefNode); 
+          top->changeMember(0, varRefNode); 
           tn->registerCondition(isEdge, idx, baseCondition);
           break;
         }
@@ -251,122 +251,6 @@ static void transformCondition(AstNode const* node, Variable const* pvar,
       }
     }
   }
-}
-
-static bool extractSimplePathAccesses(AstNode const* node, TraversalNode* tn,
-                                      Ast* ast) {
-  transformCondition(node, tn->pathOutVariable(), ast, tn);
-  std::vector<AstNode const*> currentPath;
-  std::vector<std::vector<AstNode const*>> paths;
-  std::vector<std::vector<AstNode const*>> clonePath;
-
-  node->findVariableAccess(currentPath, paths, tn->pathOutVariable());
-
-  for (auto const& onePath : paths) {
-    size_t len = onePath.size();
-    bool isEdgeAccess = false;
-    size_t attrAccessTo = 0;
-
-    TRI_ASSERT(len >= 3);
-    if (onePath[len - 2]->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-      isEdgeAccess = onePath[len - 2]->stringEquals("edges", false);
-    }
-    // we now need to check for p.edges[n] whether n is >= 0
-    if (onePath[len - 3]->type == NODE_TYPE_INDEXED_ACCESS) {
-      auto indexAccessNode = onePath[len - 3]->getMember(1);
-      attrAccessTo = indexAccessNode->value.value._int;
-    }
-
-    AstNode const* compareNode = nullptr;
-    AstNode const* accessNodeBranch = nullptr;
-
-    for (auto const& oneNode : onePath) {
-      if (compareNode != nullptr && accessNodeBranch == nullptr) {
-        accessNodeBranch = oneNode;
-      }
-
-      if ((oneNode->type == NODE_TYPE_OPERATOR_BINARY_EQ) ||
-          (oneNode->type == NODE_TYPE_OPERATOR_BINARY_NE) ||
-          (oneNode->type == NODE_TYPE_OPERATOR_BINARY_LT) ||
-          (oneNode->type == NODE_TYPE_OPERATOR_BINARY_LE) ||
-          (oneNode->type == NODE_TYPE_OPERATOR_BINARY_GT) ||
-          (oneNode->type == NODE_TYPE_OPERATOR_BINARY_GE) ||
-          (oneNode->type == NODE_TYPE_OPERATOR_BINARY_IN ) ||
-          (oneNode->type == NODE_TYPE_OPERATOR_BINARY_NIN))
-           {
-        compareNode = oneNode;
-      }
-    }
-
-    if (compareNode != nullptr) {
-      AstNode const* pathAccessNode;
-      AstNode* filterByNode;
-      bool flipOperator = false;
-
-      if (compareNode->getMember(0) == accessNodeBranch) {
-        pathAccessNode = accessNodeBranch;
-        filterByNode = compareNode->getMember(1);
-      } else {
-        flipOperator = (compareNode->type == NODE_TYPE_OPERATOR_BINARY_LT) ||
-                       (compareNode->type == NODE_TYPE_OPERATOR_BINARY_LE) ||
-                       (compareNode->type == NODE_TYPE_OPERATOR_BINARY_GT) ||
-                       (compareNode->type == NODE_TYPE_OPERATOR_BINARY_GE);
-
-        pathAccessNode = accessNodeBranch;
-        filterByNode = compareNode->getMember(0);
-      }
-
-      // Hacki: I do not think that the nullptr check can ever fail because of
-      // the structure of onePath
-      if (accessNodeBranch != nullptr && accessNodeBranch->isSimple() &&
-          filterByNode->isDeterministic()) {
-        currentPath.clear();
-        clonePath.clear();
-        filterByNode->findVariableAccess(currentPath, clonePath,
-                                         tn->pathOutVariable());
-        if (!clonePath.empty()) {
-          // Path variable access on the RHS? can't do that.
-          continue;
-        }
-        AstNode* newNode = pathAccessNode->clone(ast);
-
-        // since we just copied one path, we should only find one.
-        currentPath.clear();
-        clonePath.clear();
-        newNode->findVariableAccess(currentPath, clonePath,
-                                    tn->pathOutVariable());
-        if (clonePath.size() != 1) {
-          continue;
-        }
-        auto len = clonePath[0].size();
-        if (len < 4) {
-          continue;
-        }
-
-        AstNode* firstRefNode = (AstNode*)clonePath[0][len - 4];
-        TRI_ASSERT(firstRefNode->type == NODE_TYPE_ATTRIBUTE_ACCESS);
-
-        // replace the path variable access by a variable access to edge/vertex
-        // (then current to the iteration)
-        auto varRefNode = new AstNode(NODE_TYPE_REFERENCE);
-        try {
-          ast->query()->addNode(varRefNode);
-        } catch (...) {
-          // prevent leak
-          delete varRefNode;
-          throw;
-        }
-
-        // We fake the variable at this point.
-        // The reason is that we need a variable access (instead of indexed access)
-        // for serialisation. However the content of this variable is never used.
-        varRefNode->setData(tn->vertexOutVariable());
-        firstRefNode->changeMember(0, varRefNode);
-      }
-    }
-  }
-
-  return true;
 }
 
 bool TraversalConditionFinder::before(ExecutionNode* en) {
@@ -519,7 +403,7 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
         TRI_IF_FAILURE("ConditionFinder::normalizePlan") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
-        extractSimplePathAccesses(condition->root(), node, _plan->getAst());
+        transformCondition(condition->root(), node->pathOutVariable(), _plan->getAst(), node);
         node->setCondition(condition.release());
         *_planAltered = true;
       }
