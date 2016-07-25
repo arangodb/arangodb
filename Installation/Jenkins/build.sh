@@ -52,9 +52,10 @@ if test -n "$LASTREV"; then
 fi
 
 # setup make options
-
-CC="/usr/bin/gcc-4.9"
-CXX="/usr/bin/g++-4.9"
+if test -z "${CXX}"; then
+    CC="/usr/bin/gcc-4.9"
+    CXX="/usr/bin/g++-4.9"
+fi
 MAKE=make
 
 CFLAGS="-g"
