@@ -53,9 +53,11 @@ static uint64_t GetNumericFilenamePart(char const* filename) {
 
 /// @brief compare two filenames, based on the numeric part contained in
 /// the filename. this is used to sort database filenames on startup
-static bool DatabaseIdStringComparator(std::string const& lhs, std::string const& rhs) {
-  return GetNumericFilenamePart(lhs.c_str()) < GetNumericFilenamePart(rhs.c_str());
-}
+struct DatabaseIdStringComparator {
+  bool operator()(std::string const& lhs, std::string const& rhs) const {
+    return GetNumericFilenamePart(lhs.c_str()) < GetNumericFilenamePart(rhs.c_str());
+  }
+};
 
 // create the storage engine
 MMFilesEngine::MMFilesEngine(application_features::ApplicationServer* server)
@@ -139,7 +141,7 @@ void MMFilesEngine::getDatabases(arangodb::velocypack::Builder& result) {
 
   // open databases in defined order
   std::vector<std::string> files = TRI_FilesDirectory(_databasePath.c_str());
-  std::sort(files.begin(), files.end(), DatabaseIdStringComparator);
+  std::sort(files.begin(), files.end(), DatabaseIdStringComparator());
 
   for (auto const& name : files) {
     TRI_ASSERT(!name.empty());
@@ -507,7 +509,7 @@ std::vector<std::string> MMFilesEngine::getDatabaseNames() const {
   }
 
   // sort by id
-  std::sort(databases.begin(), databases.end(), DatabaseIdStringComparator);
+  std::sort(databases.begin(), databases.end(), DatabaseIdStringComparator());
 
   return databases;
 }
