@@ -161,6 +161,9 @@
           label: 'Execute Query',
           letter: 'Ctrl/Cmd + Return'
         }, {
+          label: 'Execute Selected Query',
+          letter: 'Ctrl/Cmd + Alt + Return'
+        }, {
           label: 'Explain Query',
           letter: 'Ctrl/Cmd + Shift + Return'
         }, {
