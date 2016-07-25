@@ -33,8 +33,6 @@
 #include "Wal/Marker.h"
 #include "Wal/Slots.h"
 
-struct TRI_server_t;
-
 namespace arangodb {
 namespace options {
 class ProgramOptions;
@@ -446,9 +444,6 @@ class LogfileManager final : public application_features::ApplicationFeature {
   std::string logfileName(Logfile::IdType) const;
 
  private:
-  // pointer to the server
-  TRI_server_t* _server;
-
   // the arangod config variable containing the database path
   std::string _databasePath;
 

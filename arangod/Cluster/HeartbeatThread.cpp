@@ -45,7 +45,6 @@
 #include "RestServer/DatabaseFeature.h"
 #include "V8/v8-globals.h"
 #include "VocBase/AuthInfo.h"
-#include "VocBase/server.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb;
@@ -56,12 +55,10 @@ std::atomic<bool> HeartbeatThread::HasRunOnce(false);
 /// @brief constructs a heartbeat thread
 ////////////////////////////////////////////////////////////////////////////////
 
-HeartbeatThread::HeartbeatThread(TRI_server_t* server,
-                                 AgencyCallbackRegistry* agencyCallbackRegistry,
+HeartbeatThread::HeartbeatThread(AgencyCallbackRegistry* agencyCallbackRegistry,
                                  uint64_t interval,
                                  uint64_t maxFailsBeforeWarning)
     : Thread("Heartbeat"),
-      _server(server),
       _agencyCallbackRegistry(agencyCallbackRegistry),
       _statusLock(),
       _agency(),

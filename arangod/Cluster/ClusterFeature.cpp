@@ -398,8 +398,7 @@ void ClusterFeature::start() {
     }
     
     // start heartbeat thread
-    _heartbeatThread = new HeartbeatThread(DatabaseFeature::SERVER,
-                                           _agencyCallbackRegistry.get(),
+    _heartbeatThread = new HeartbeatThread(_agencyCallbackRegistry.get(),
                                            _heartbeatInterval * 1000, 5);
     
     if (!_heartbeatThread->init() || !_heartbeatThread->start()) {

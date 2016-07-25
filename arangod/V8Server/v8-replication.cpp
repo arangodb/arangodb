@@ -812,7 +812,7 @@ static void JS_ForgetApplierReplication(
 
 void TRI_InitV8Replication(v8::Isolate* isolate,
                            v8::Handle<v8::Context> context,
-                           TRI_server_t* server, TRI_vocbase_t* vocbase,
+                           TRI_vocbase_t* vocbase,
                            size_t threadNumber, TRI_v8_global_t* v8g) {
   // replication functions. not intended to be used by end users
   TRI_AddGlobalFunctionVocbase(isolate, context,

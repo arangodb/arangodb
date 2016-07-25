@@ -31,7 +31,6 @@
 #include "V8Server/V8Context.h"
 #include "V8Server/V8DealerFeature.h"
 #include "V8Server/v8-vocbase.h"
-#include "VocBase/server.h"
 #include "Wal/LogfileManager.h"
 
 using namespace arangodb;
@@ -182,7 +181,7 @@ void UpgradeFeature::changeAdminPassword(std::string const& defaultPassword) {
 void UpgradeFeature::upgradeDatabase(std::string const& defaultPassword) {
   LOG(TRACE) << "starting database init/upgrade";
 
-  auto* server = DatabaseFeature::SERVER;
+  DatabaseFeature* databaseFeature = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
   auto* systemVocbase = DatabaseFeature::DATABASE->systemDatabase();
 
   // enter context and isolate
@@ -209,11 +208,9 @@ void UpgradeFeature::upgradeDatabase(std::string const& defaultPassword) {
         // run upgrade script
         LOG(DEBUG) << "running database init/upgrade";
 
-        auto unuser(server->_databasesProtector.use());
-        auto theLists = server->_databasesLists.load();
-
-        for (auto& p : theLists->_databases) {
-          TRI_vocbase_t* vocbase = p.second;
+        for (auto& name : databaseFeature->getDatabaseNames()) {
+          TRI_vocbase_t* vocbase = databaseFeature->lookupDatabase(name);
+          TRI_ASSERT(vocbase != nullptr);
 
           // special check script to be run just once in first thread (not in
           // all) but for all databases

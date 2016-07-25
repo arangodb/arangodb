@@ -26,7 +26,6 @@
 #include "Aql/QueryRegistry.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
-#include "RestServer/DatabaseFeature.h"
 #include "VocBase/server.h"
 
 using namespace arangodb;
@@ -93,11 +92,9 @@ void QueryRegistryFeature::prepare() {
 }
 
 void QueryRegistryFeature::start() {
-  DatabaseFeature::SERVER->_queryRegistry = _queryRegistry.get();
 }
 
 void QueryRegistryFeature::unprepare() {
   // clear the query registery
-  DatabaseFeature::SERVER->_queryRegistry = nullptr;
-  // TODO: reset QUERY_REGISTRY as well?
+  QUERY_REGISTRY = nullptr;
 }

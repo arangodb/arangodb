@@ -39,7 +39,6 @@
 
 struct TRI_document_collection_t;
 class TRI_replication_applier_t;
-struct TRI_server_t;
 class TRI_vocbase_col_t;
 
 namespace arangodb {

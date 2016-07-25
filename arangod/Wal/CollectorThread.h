@@ -38,7 +38,6 @@
 struct TRI_datafile_t;
 struct TRI_df_marker_t;
 struct TRI_document_collection_t;
-struct TRI_server_t;
 
 namespace arangodb {
 namespace wal {
@@ -140,7 +139,7 @@ class CollectorThread : public Thread {
   CollectorThread& operator=(CollectorThread const&) = delete;
 
  public:
-  CollectorThread(LogfileManager*, TRI_server_t*);
+  explicit CollectorThread(LogfileManager*);
   ~CollectorThread() { shutdown(); }
 
  public:
@@ -222,9 +221,6 @@ class CollectorThread : public Thread {
  private:
   /// @brief the logfile manager
   LogfileManager* _logfileManager;
-
-  /// @brief pointer to the server
-  TRI_server_t* _server;
 
   /// @brief condition variable for the collector thread
   basics::ConditionVariable _condition;

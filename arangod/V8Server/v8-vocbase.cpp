@@ -2721,7 +2721,7 @@ void TRI_V8ReloadRouting(v8::Isolate* isolate) {
 
 void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
                          arangodb::aql::QueryRegistry* queryRegistry,
-                         TRI_server_t* server, TRI_vocbase_t* vocbase,
+                         TRI_vocbase_t* vocbase,
                          size_t threadNumber) {
   v8::HandleScope scope(isolate);
 
@@ -2735,9 +2735,6 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   // register the query registry
   TRI_ASSERT(queryRegistry != nullptr);
   v8g->_queryRegistry = queryRegistry;
-
-  // register the server
-  v8g->_server = server;
 
   // register the database
   v8g->_vocbase = vocbase;
@@ -2785,8 +2782,7 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
 
   TRI_InitV8indexArangoDB(isolate, ArangoNS);
 
-  TRI_InitV8collection(context, server, vocbase, threadNumber, v8g, isolate,
-                       ArangoNS);
+  TRI_InitV8Collection(context, vocbase, threadNumber, v8g, isolate, ArangoNS);
 
   v8g->VocbaseTempl.Reset(isolate, ArangoNS);
   TRI_AddGlobalFunctionVocbase(isolate, context,
@@ -2847,7 +2843,7 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
       isolate, context, TRI_V8_ASCII_STRING("THROW_COLLECTION_NOT_LOADED"),
       JS_ThrowCollectionNotLoaded, true);
 
-  TRI_InitV8Replication(isolate, context, server, vocbase, threadNumber, v8g);
+  TRI_InitV8Replication(isolate, context, vocbase, threadNumber, v8g);
 
   TRI_AddGlobalFunctionVocbase(isolate, context,
                                TRI_V8_ASCII_STRING("COMPARE_STRING"),

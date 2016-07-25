@@ -33,7 +33,6 @@
 #include <velocypack/Slice.h>
 
 struct TRI_vocbase_t;
-struct TRI_server_t;
 
 namespace arangodb {
 class DatabaseManagerThread;
@@ -76,6 +75,8 @@ class DatabaseFeature final : public application_features::ApplicationFeature {
   void start() override final;
   void unprepare() override final;
 
+  int recoveryDone();
+
  public:
    /// @brief get the ids of all local coordinator databases
   std::vector<TRI_voc_tick_t> getDatabaseIdsCoordinator(bool includeSystem);
@@ -112,9 +113,6 @@ class DatabaseFeature final : public application_features::ApplicationFeature {
   void disableCompactor() { _disableCompactor = true; }
   void enableCheckVersion() { _checkVersion = true; }
   void enableUpgrade() { _upgrade = true; }
- 
- public:
-  static TRI_server_t* SERVER;
  
  private:
   void closeDatabases();
@@ -154,12 +152,11 @@ class DatabaseFeature final : public application_features::ApplicationFeature {
   bool _ignoreDatafileErrors;
   bool _throwCollectionNotLoadedError;
 
-  std::unique_ptr<TRI_server_t> _server; // TODO
   TRI_vocbase_t* _vocbase;
   std::atomic<arangodb::aql::QueryRegistry*> _queryRegistry; // TODO
   DatabaseManagerThread* _databaseManager;
 
-  std::atomic<DatabasesLists*> _databasesLists; // TODO
+  std::atomic<DatabasesLists*> _databasesLists; 
   // TODO: Make this again a template once everybody has gcc >= 4.9.2
   // arangodb::basics::DataProtector<64>
   arangodb::basics::DataProtector _databasesProtector;

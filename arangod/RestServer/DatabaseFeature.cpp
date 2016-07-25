@@ -62,8 +62,6 @@ using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
-TRI_server_t* DatabaseFeature::SERVER = nullptr;
-
 uint32_t const DatabaseFeature::DefaultIndexBuckets = 8;
 
 DatabaseFeature* DatabaseFeature::DATABASE = nullptr;
@@ -227,7 +225,6 @@ DatabaseFeature::DatabaseFeature(ApplicationServer* server)
       _forceSyncProperties(true),
       _ignoreDatafileErrors(false),
       _throwCollectionNotLoadedError(false),
-      _server(),
       _vocbase(nullptr),
       _queryRegistry(nullptr),
       _databaseManager(nullptr),
@@ -248,16 +245,6 @@ DatabaseFeature::DatabaseFeature(ApplicationServer* server)
 }
 
 DatabaseFeature::~DatabaseFeature() {
-  delete _databaseManager;
-
-  try {
-    // closeOpenDatabases() can throw, but we're in a dtor
-    closeOpenDatabases();
-  } catch (...) {
-  }
-
-  auto p = _databasesLists.load();
-  delete p;
 }
 
 void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -315,9 +302,6 @@ void DatabaseFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 }
 
 void DatabaseFeature::prepare() {
-  // create the server
-  _server.reset(new TRI_server_t()); // TODO
-  SERVER = _server.get();
 }
 
 void DatabaseFeature::start() {
@@ -393,10 +377,53 @@ void DatabaseFeature::unprepare() {
     // we're in the shutdown... simply ignore any errors produced here
   }
   
+  delete _databaseManager;
+
+  try {
+    // closeOpenDatabases() can throw, but we're in a dtor
+    closeOpenDatabases();
+  } catch (...) {
+  }
+
+  auto p = _databasesLists.load();
+  delete p;
+  
   // clear singleton
   DATABASE = nullptr;
-  SERVER = nullptr;
-  _server.reset(nullptr);
+}
+
+int DatabaseFeature::recoveryDone() {
+  auto unuser(_databasesProtector.use());
+  auto theLists = _databasesLists.load();
+
+  for (auto& p : theLists->_databases) {
+    TRI_vocbase_t* vocbase = p.second;
+    // iterate over all databases
+    TRI_ASSERT(vocbase != nullptr);
+    TRI_ASSERT(vocbase->_type == TRI_VOCBASE_TYPE_NORMAL);
+
+    // start the compactor for the database
+    TRI_StartCompactorVocBase(vocbase);
+
+    // start the replication applier
+    TRI_ASSERT(vocbase->_replicationApplier != nullptr);
+
+    if (vocbase->_replicationApplier->_configuration._autoStart) {
+      if (!_replicationApplier) {
+        LOG(INFO) << "replication applier explicitly deactivated for database '"
+                  << vocbase->_name << "'";
+      } else {
+        int res = vocbase->_replicationApplier->start(0, false, 0);
+
+        if (res != TRI_ERROR_NO_ERROR) {
+          LOG(WARN) << "unable to start replication applier for database '"
+                    << vocbase->_name << "': " << TRI_errno_string(res);
+        }
+      }
+    }
+  }
+
+  return TRI_ERROR_NO_ERROR;
 }
 
 /// @brief create a new database
@@ -905,19 +932,15 @@ void DatabaseFeature::updateContexts() {
   auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY;
   TRI_ASSERT(queryRegistry != nullptr);
 
-  auto server = DatabaseFeature::SERVER;
-  TRI_ASSERT(server != nullptr);
-
   auto vocbase = _vocbase;
 
   V8DealerFeature* dealer =
       ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
 
   dealer->defineContextUpdate(
-      [queryRegistry, server, vocbase](
+      [queryRegistry, vocbase](
           v8::Isolate* isolate, v8::Handle<v8::Context> context, size_t i) {
-        TRI_InitV8VocBridge(isolate, context, queryRegistry, server, vocbase,
-                            i);
+        TRI_InitV8VocBridge(isolate, context, queryRegistry, vocbase, i);
         TRI_InitV8Queries(isolate, context);
         TRI_InitV8Cluster(isolate, context);
       },
@@ -925,8 +948,8 @@ void DatabaseFeature::updateContexts() {
 }
 
 void DatabaseFeature::shutdownCompactor() {
-  auto unuser = DatabaseFeature::SERVER->_databasesProtector.use();
-  auto theLists = DatabaseFeature::SERVER->_databasesLists.load();
+  auto unuser = _databasesProtector.use();
+  auto theLists = _databasesLists.load();
 
   for (auto& p : theLists->_databases) {
     TRI_vocbase_t* vocbase = p.second;

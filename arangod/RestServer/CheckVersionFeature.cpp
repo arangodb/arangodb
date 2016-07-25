@@ -73,11 +73,11 @@ void CheckVersionFeature::validateOptions(
       ApplicationServer::getFeature<LoggerFeature>("Logger");
   logger->disableThreaded();
 
-  DatabaseFeature* database =
+  DatabaseFeature* databaseFeature =
       ApplicationServer::getFeature<DatabaseFeature>("Database");
-  database->disableReplicationApplier();
-  database->disableCompactor();
-  database->enableCheckVersion();
+  databaseFeature->disableReplicationApplier();
+  databaseFeature->disableCompactor();
+  databaseFeature->enableCheckVersion();
 
   V8DealerFeature* v8dealer =
       ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
@@ -133,17 +133,15 @@ void CheckVersionFeature::checkVersion() {
         LOG(DEBUG) << "running database version check";
 
         // can do this without a lock as this is the startup
-        auto server = DatabaseFeature::SERVER;
-        auto unuser = server->_databasesProtector.use();
-        auto theLists = server->_databasesLists.load();
+        DatabaseFeature* databaseFeature = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
 
-        for (auto& p : theLists->_databases) {
-          TRI_vocbase_t* vocbase = p.second;
+        for (auto& name : databaseFeature->getDatabaseNames()) {
+          TRI_vocbase_t* vocbase = databaseFeature->lookupDatabase(name);
+
+          TRI_ASSERT(vocbase != nullptr);
 
           // special check script to be run just once in first thread (not in
-          // all)
-          // but for all databases
-
+          // all) but for all databases
           int status = TRI_CheckDatabaseVersion(vocbase, localContext);
 
           LOG(DEBUG) << "version check return status " << status;
@@ -162,8 +160,7 @@ void CheckVersionFeature::checkVersion() {
       }
 
       // issue #391: when invoked with --database.auto-upgrade, the server will
-      // not always shut
-      // down
+      // not always shut down
       localContext->Exit();
     }
   }

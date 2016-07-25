@@ -57,7 +57,7 @@ bool EqualCollection(arangodb::CollectionNameResolver const* resolver,
 v8::Handle<v8::Object> WrapCollection(v8::Isolate* isolate,
                                       TRI_vocbase_col_t const* collection);
 
-void TRI_InitV8collection(v8::Handle<v8::Context> context, TRI_server_t* server,
+void TRI_InitV8Collection(v8::Handle<v8::Context> context,
                           TRI_vocbase_t* vocbase, size_t const threadNumber,
                           TRI_v8_global_t* v8g, v8::Isolate* isolate,
                           v8::Handle<v8::ObjectTemplate> ArangoDBNS);

@@ -40,7 +40,6 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
-#include "VocBase/server.h"
 #include "Wal/AllocatorThread.h"
 #include "Wal/CollectorThread.h"
 #include "Wal/RecoverState.h"
@@ -87,7 +86,6 @@ static inline uint32_t MaxSlots() { return 1024 * 1024 * 16; }
 // create the logfile manager
 LogfileManager::LogfileManager(ApplicationServer* server)
     : ApplicationFeature(server, "LogfileManager"),
-      _server(nullptr),
       _recoverState(nullptr),
       _allowWrites(false),  // start in read-only mode
       _hasFoundLastTick(false),
@@ -246,8 +244,8 @@ void LogfileManager::validateOptions(std::shared_ptr<options::ProgramOptions> op
 }
   
 void LogfileManager::prepare() {
-  auto database = ApplicationServer::getFeature<DatabasePathFeature>("DatabasePath");
-  _databasePath = database->directory();
+  auto databasePath = ApplicationServer::getFeature<DatabasePathFeature>("DatabasePath");
+  _databasePath = databasePath->directory();
 
   std::string const shutdownFile = shutdownFilename();
   bool const shutdownFileExists = basics::FileUtils::exists(shutdownFile);
@@ -269,9 +267,6 @@ void LogfileManager::prepare() {
 
 void LogfileManager::start() {
   Instance = this;
-
-  _server = DatabaseFeature::SERVER;
-  TRI_ASSERT(_server != nullptr);
 
   // needs server initialized
   size_t pageSize = PageSizeFeature::getPageSize();
@@ -436,7 +431,8 @@ bool LogfileManager::open() {
   _allocatorThread->recoveryDone();
 
   // start compactor threads etc.
-  res = TRI_InitDatabasesServer(_server);
+  auto databaseFeature = ApplicationServer::getFeature<DatabaseFeature>("Database");
+  res = databaseFeature->recoveryDone();
 
   if (res != TRI_ERROR_NO_ERROR) {
     LOG(FATAL) << "could not initialize databases: " << TRI_errno_string(res);
@@ -1877,7 +1873,7 @@ void LogfileManager::stopAllocatorThread() {
 
 // start the collector thread
 int LogfileManager::startCollectorThread() {
-  _collectorThread = new CollectorThread(this, _server);
+  _collectorThread = new CollectorThread(this);
 
   if (!_collectorThread->start()) {
     delete _collectorThread;

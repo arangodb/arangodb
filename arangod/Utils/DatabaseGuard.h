@@ -27,7 +27,6 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
 #include "RestServer/DatabaseFeature.h"
-#include "VocBase/server.h"
 
 struct TRI_vocbase_t;
 
@@ -42,8 +41,8 @@ class DatabaseGuard {
   /// @brief create the guard, using a database id
   //////////////////////////////////////////////////////////////////////////////
 
-  DatabaseGuard(TRI_server_t* server, TRI_voc_tick_t id)
-      : _server(server), _database(nullptr) {
+  explicit DatabaseGuard(TRI_voc_tick_t id)
+      : _database(nullptr) {
     
     auto databaseFeature = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
     _database = databaseFeature->useDatabase(id);
@@ -57,8 +56,8 @@ class DatabaseGuard {
   /// @brief create the guard, using a database name
   //////////////////////////////////////////////////////////////////////////////
 
-  DatabaseGuard(TRI_server_t* server, char const* name)
-      : _server(server), _database(nullptr) {
+  explicit DatabaseGuard(char const* name)
+      : _database(nullptr) {
       
     auto databaseFeature = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
     _database = databaseFeature->useDatabase(name);
@@ -87,11 +86,6 @@ class DatabaseGuard {
   inline TRI_vocbase_t* database() const { return _database; }
 
  private:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief server
-  //////////////////////////////////////////////////////////////////////////////
-
-  TRI_server_t* _server;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief pointer to database
