@@ -115,7 +115,6 @@ class GeneralResponse {
     CONNECTION_CLOSE
   };
 
-
  public:
   // converts the response code to a string for delivering to a http client.
   static std::string responseString(ResponseCode);
@@ -127,7 +126,7 @@ class GeneralResponse {
   static ResponseCode responseCode(int);
 
   // TODO OBI - check what can be implemented in this base class
-  virtual basics::StringBuffer& body() = 0;
+  // virtual basics::StringBuffer& body() = 0;
   virtual void setContentType(ContentType type) = 0;
   virtual void setContentType(std::string const& contentType) = 0;
   virtual void setContentType(std::string&& contentType) = 0;

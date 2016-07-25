@@ -65,7 +65,7 @@ class HttpResponse : public GeneralResponse {
   // information to the string buffer. Note that adding data to the body
   // invalidates any previously returned header. You must call header
   // again.
-  basics::StringBuffer& body() override { return _body; }
+  basics::StringBuffer& body() { return _body; }
   size_t bodySize() const;
 
   /// @brief set type of connection

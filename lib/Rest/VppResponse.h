@@ -55,8 +55,6 @@ class VppResponse : public GeneralResponse {
 
   void writeHeader(basics::StringBuffer*) override;
 
-  basics::StringBuffer& body() override { return _body; }
-
   void setConnectionType(ConnectionType type) override {
     _connectionType = type;
   }
