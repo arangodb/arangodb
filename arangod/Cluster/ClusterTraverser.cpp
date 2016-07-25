@@ -364,32 +364,20 @@ void ClusterTraverser::setStartVertex(std::string const& id) {
     }
   }
 
-  if (_opts.evaluateVertexExpression(VPackSlice(it->second->data()), 0)) {
+  if (_opts->evaluateVertexExpression(VPackSlice(it->second->data()), 0)) {
     // We can stop here. The start vertex does not match condition
     _done = true;
     return;
   }
   VPackSlice startId(it->second->data());
-  if (_opts.useBreadthFirst) {
+  if (_opts->useBreadthFirst) {
     _enumerator.reset(
-        new arangodb::traverser::BreadthFirstEnumerator(this, startId, &_opts));
+        new arangodb::traverser::BreadthFirstEnumerator(this, startId, _opts));
     _vertexGetter->setStartVertex(startId);
   } else {
     _enumerator.reset(
-        new arangodb::traverser::DepthFirstEnumerator(this, startId, &_opts));
+        new arangodb::traverser::DepthFirstEnumerator(this, startId, _opts));
   }
-}
-
-void ClusterTraverser::getEdge(std::string const& startVertex,
-                               std::vector<std::string>& result, size_t*& last,
-                               size_t& eColIdx) {
-  return _edgeGetter->getEdge(startVertex, result, last, eColIdx);
-}
-
-void ClusterTraverser::getAllEdges(
-    VPackSlice startVertex, std::unordered_set<VPackSlice>& result,
-    size_t depth) {
-  return _edgeGetter->getAllEdges(startVertex, result, depth);
 }
 
 bool ClusterTraverser::getVertex(VPackSlice edge,

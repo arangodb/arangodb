@@ -29,6 +29,7 @@
 #include "Basics/ShortestPathFinder.h"
 #include "Aql/AqlValue.h"
 #include "Aql/AstNode.h"
+#include "Aql/FixedVarExpressionContext.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/Transaction.h"
 #include "VocBase/voc-types.h"
@@ -243,8 +244,8 @@ struct TraverserOptions {
   std::vector<LookupInfo> _baseLookupInfos;
   std::unordered_map<size_t, std::vector<LookupInfo>> _depthLookupInfo;
   std::unordered_map<size_t, aql::Expression*> _vertexExpressions;
-
   aql::Variable const* _tmpVar;
+  aql::FixedVarExpressionContext* _ctx;
 
  public:
   uint64_t minDepth;
@@ -259,6 +260,7 @@ struct TraverserOptions {
 
   explicit TraverserOptions(arangodb::Transaction* trx)
       : _trx(trx),
+        _ctx(new aql::FixedVarExpressionContext()),
         minDepth(1),
         maxDepth(1),
         useBreadthFirst(false),
@@ -268,7 +270,7 @@ struct TraverserOptions {
 
   ~TraverserOptions();
 
-  TraverserOptions(TraverserOptions const&);
+  TraverserOptions(TraverserOptions const&) = delete;
 
   bool vertexHasFilter(size_t) const;
 
@@ -279,6 +281,10 @@ struct TraverserOptions {
   bool evaluateVertexExpression(arangodb::velocypack::Slice, size_t) const;
 
   EdgeCursor* nextCursor(arangodb::velocypack::Slice, size_t) const;
+
+  void clearVariableValues();
+
+  void setVariableValue(aql::Variable const*, aql::AqlValue const);
 
 };
 
@@ -291,7 +297,7 @@ class Traverser {
   /// @brief Constructor. This is an abstract only class.
   //////////////////////////////////////////////////////////////////////////////
 
-  explicit Traverser(TraverserOptions& opts)
+  explicit Traverser(TraverserOptions* opts)
       : _readDocuments(0),
         _filteredPaths(0),
         _pruneNext(false),
@@ -333,21 +339,6 @@ class Traverser {
   //////////////////////////////////////////////////////////////////////////////
 
   virtual bool next() = 0;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Function to load edges for a node
-  //////////////////////////////////////////////////////////////////////////////
-
-  virtual void getEdge(std::string const&, std::vector<std::string>&, size_t*&,
-                       size_t&) = 0;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Function to load all edges for a list of nodes
-  //////////////////////////////////////////////////////////////////////////////
-
-  virtual void getAllEdges(arangodb::velocypack::Slice,
-                           std::unordered_set<arangodb::velocypack::Slice>&,
-                           size_t) = 0;
 
   /// @brief Function to load the other sides vertex of an edge
   ///        Returns true if the vertex passes filtering conditions
@@ -407,7 +398,7 @@ class Traverser {
     return tmp;
   }
   
-  TraverserOptions const* options() { return &_opts; }
+  TraverserOptions const* options() { return _opts; }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Prune the current path prefix. Do not evaluate it any further.
@@ -457,7 +448,7 @@ class Traverser {
   /// @brief options for traversal
   //////////////////////////////////////////////////////////////////////////////
 
-  TraverserOptions _opts;
+  TraverserOptions* _opts;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Function to fetch the real data of a vertex into an AQLValue

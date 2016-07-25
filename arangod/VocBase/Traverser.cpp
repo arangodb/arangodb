@@ -90,26 +90,8 @@ arangodb::traverser::TraverserOptions::~TraverserOptions() {
       delete pair.second;
     }
   }
-}
-
-arangodb::traverser::TraverserOptions::TraverserOptions(
-    TraverserOptions const& other)
-    : _trx(other._trx),
-      _baseLookupInfos(other._baseLookupInfos),
-      _tmpVar(other._tmpVar),
-      minDepth(other.minDepth),
-      maxDepth(other.maxDepth),
-      useBreadthFirst(other.useBreadthFirst),
-      uniqueVertices(other.uniqueVertices),
-      uniqueEdges(other.uniqueEdges) {
-  _depthLookupInfo.reserve(other._depthLookupInfo.size());
-  for (auto const& it : other._depthLookupInfo) {
-    _depthLookupInfo.emplace(it.first, it.second);
-  }
-
-  _vertexExpressions.reserve(other._vertexExpressions.size());
-  for (auto const& it : other._vertexExpressions) {
-    _vertexExpressions.emplace(it.first, it.second->clone());
+  if (_ctx != nullptr) {
+    delete _ctx;
   }
 }
 
@@ -122,8 +104,6 @@ bool arangodb::traverser::TraverserOptions::evaluateEdgeExpression(
     arangodb::velocypack::Slice edge, arangodb::velocypack::Slice vertex,
     size_t depth, size_t cursorId) const {
   bool mustDestroy = false;
-  std::vector<arangodb::aql::Variable const*> vars;
-  std::vector<arangodb::aql::RegisterId> regs;
   auto specific = _depthLookupInfo.find(depth);
   arangodb::aql::Expression* expression = nullptr;
 
@@ -157,7 +137,7 @@ bool arangodb::traverser::TraverserOptions::evaluateEdgeExpression(
     idNode->stealComputedValue();
     idNode->setStringValue(vid, vidLength);
 
-    aql::AqlValue res = expression->execute(_trx, nullptr, 0, vars, regs, mustDestroy);
+    aql::AqlValue res = expression->execute(_trx, _ctx, mustDestroy);
     TRI_ASSERT(res.isBoolean());
     expression->clearVariable(_tmpVar);
     return res.toBoolean();
@@ -168,14 +148,12 @@ bool arangodb::traverser::TraverserOptions::evaluateEdgeExpression(
 bool arangodb::traverser::TraverserOptions::evaluateVertexExpression(
     arangodb::velocypack::Slice vertex, size_t depth) const {
   bool mustDestroy = false;
-  std::vector<arangodb::aql::Variable const*> vars;
-  std::vector<arangodb::aql::RegisterId> regs;
   auto specific = _vertexExpressions.find(depth);
   if (specific != _vertexExpressions.end()) {
     arangodb::aql::Expression* expression = specific->second;
     TRI_ASSERT(!expression->isV8());
     expression->setVariable(_tmpVar, vertex);
-    aql::AqlValue res = expression->execute(_trx, nullptr, 0, vars, regs, mustDestroy);
+    aql::AqlValue res = expression->execute(_trx, _ctx, mustDestroy);
     TRI_ASSERT(res.isBoolean());
     expression->clearVariable(_tmpVar);
     return res.toBoolean();
@@ -203,7 +181,7 @@ arangodb::traverser::TraverserOptions::nextCursor(VPackSlice vertex,
     auto& node = info.indexCondition;
     TRI_ASSERT(node->numMembers() > 0);
     auto dirCmp = node->getMemberUnchecked(node->numMembers() - 1);
-    TRI_ASSERT(dirCmp->type == aql::NODE_TYPE_OPERATOR_BINARY_EQ); 
+    TRI_ASSERT(dirCmp->type == aql::NODE_TYPE_OPERATOR_BINARY_EQ);
     TRI_ASSERT(dirCmp->numMembers() == 2);
 
     auto idNode = dirCmp->getMemberUnchecked(1);
@@ -214,6 +192,15 @@ arangodb::traverser::TraverserOptions::nextCursor(VPackSlice vertex,
         info.idxHandle, node, _tmpVar, UINT64_MAX, 1000, false));
   }
   return allCursor.release();
+}
+
+void arangodb::traverser::TraverserOptions::clearVariableValues() {
+  _ctx->clearVariableValues();
+}
+
+void arangodb::traverser::TraverserOptions::setVariableValue(
+    aql::Variable const* var, aql::AqlValue const value) {
+  _ctx->setVariableValue(var, value);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -386,7 +373,7 @@ bool arangodb::traverser::Traverser::edgeMatchesConditions(VPackSlice e,
                                                            VPackSlice vid,
                                                            size_t depth,
                                                            size_t cursorId) {
-  if (!_opts.evaluateEdgeExpression(e, vid, depth, cursorId)) {
+  if (!_opts->evaluateEdgeExpression(e, vid, depth, cursorId)) {
     ++_filteredPaths;
     return false;
   }
@@ -395,9 +382,9 @@ bool arangodb::traverser::Traverser::edgeMatchesConditions(VPackSlice e,
 
 bool arangodb::traverser::Traverser::vertexMatchesConditions(VPackSlice v, size_t depth) {
   TRI_ASSERT(v.isString());
-  if (_opts.vertexHasFilter(depth)) {
+  if (_opts->vertexHasFilter(depth)) {
     aql::AqlValue vertex = fetchVertexData(v);
-    if (!_opts.evaluateVertexExpression(vertex.slice(), depth)) {
+    if (!_opts->evaluateVertexExpression(vertex.slice(), depth)) {
       ++_filteredPaths;
       return false;
     }

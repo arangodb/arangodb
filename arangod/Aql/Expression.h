@@ -127,6 +127,11 @@ class Expression {
   }
 
   /// @brief execute the expression
+  AqlValue execute(arangodb::Transaction* trx, ExpressionContext* ctx,
+                   bool& mustDestroy);
+
+  /// @brief execute the expression
+  /// DEPRECATED
   AqlValue execute(arangodb::Transaction* trx, AqlItemBlock const*, size_t,
                    std::vector<Variable const*> const&,
                    std::vector<RegisterId> const&, bool& mustDestroy);

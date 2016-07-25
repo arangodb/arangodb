@@ -72,7 +72,10 @@ class TraversalBlock : public ExecutionBlock {
   /// @brief current position in _paths, _edges, _vertices
   size_t _posInPaths;
 
-  /// @brief Depth first Traverser object
+  /// @brief Options for the travereser
+  std::unique_ptr<arangodb::traverser::TraverserOptions> _opts;
+
+  /// @brief Traverser object
   std::unique_ptr<arangodb::traverser::Traverser> _traverser;
 
   /// @brief The information to get the starting point, when a register id is
@@ -110,13 +113,13 @@ class TraversalBlock : public ExecutionBlock {
   /// @brief Register for the full path output
   RegisterId _pathReg;
 
-  /// @brief _inVars, a vector containing for each expression above
-  /// a vector of Variable*, used to execute the expression
-  std::vector<std::vector<Variable const*>> _inVars;
+  /// @brief _inVars, a vector containing all variables required
+  ///        for the filtering conditions.
+  std::vector<Variable const*> _inVars;
 
   /// @brief _inRegs, a vector containing for each expression above
   /// a vector of RegisterId, used to execute the expression
-  std::vector<std::vector<RegisterId>> _inRegs;
+  std::vector<RegisterId> _inRegs;
 
   /// @brief continue fetching of paths
   bool morePaths(size_t hint);
@@ -124,8 +127,11 @@ class TraversalBlock : public ExecutionBlock {
   /// @brief skip the next paths
   size_t skipPaths(size_t hint);
 
+  /// @brief Initialize the filter expressions
+  void initializeExpressions(AqlItemBlock const*, size_t pos);
+
   /// @brief Initialize the path enumerator
-  void initializePaths(AqlItemBlock const*);
+  void initializePaths(AqlItemBlock const*, size_t pos);
 
   /// @brief Checks if we output the vertex
   bool usesVertexOutput() { return _vertexVar != nullptr; }

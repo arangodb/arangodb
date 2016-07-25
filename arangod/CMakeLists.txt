@@ -101,6 +101,7 @@ add_executable(${BIN_ARANGOD}
   Aql/AstNode.cpp
   Aql/AttributeAccessor.cpp
   Aql/BasicBlocks.cpp
+  Aql/BaseExpressionContext.cpp
   Aql/BindParameters.cpp
   Aql/CalculationBlock.cpp
   Aql/ClusterBlocks.cpp
@@ -122,6 +123,7 @@ add_executable(${BIN_ARANGOD}
   Aql/ExecutionStats.cpp
   Aql/Executor.cpp
   Aql/Expression.cpp
+  Aql/FixedVarExpressionContext.cpp
   Aql/FunctionDefinitions.cpp
   Aql/Function.cpp
   Aql/Functions.cpp

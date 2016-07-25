@@ -18,34 +18,42 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
+/// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_EXPRESSION_CONTEXT_H
-#define ARANGOD_AQL_EXPRESSION_CONTEXT_H 1
+#ifndef ARANGOD_AQL_FIXED_VAR_EXPRESSION_CONTEXT_H
+#define ARANGOD_AQL_FIXED_VAR_EXPRESSION_CONTEXT_H 1
 
-#include "Basics/Common.h"
-#include "arangod/Aql/types.h"
+#include "Aql/ExpressionContext.h"
 
 namespace arangodb {
 namespace aql {
-  struct AqlValue;
-  struct Variable;
+class AqlItemBlock;
 
-class ExpressionContext {
-  public:
-    ExpressionContext() {}
+class FixedVarExpressionContext : public ExpressionContext {
+ public:
+  FixedVarExpressionContext() : ExpressionContext() {}
 
-    virtual ~ExpressionContext() {}
+  ~FixedVarExpressionContext() {}
 
-    virtual size_t numRegisters() const = 0;
+  size_t numRegisters() const override;
 
-    virtual AqlValue const& getRegisterValue(size_t i) const = 0;
+  AqlValue const& getRegisterValue(size_t i) const override;
 
-    virtual Variable const* getVariable(size_t i) const = 0;
+  Variable const* getVariable(size_t i) const override;
 
-    virtual AqlValue getVariableValue(Variable const* variable, bool doCopy, bool& mustDestroy) const = 0;
+  AqlValue getVariableValue(Variable const* variable, bool doCopy,
+                            bool& mustDestroy) const override;
+
+  void clearVariableValues();
+
+  void setVariableValue(Variable const*, AqlValue);
+
+ private:
+  /// @brief temporary storage for expression data context
+  std::unordered_map<Variable const*, AqlValue> _vars;
 };
 }
 }
 #endif
+

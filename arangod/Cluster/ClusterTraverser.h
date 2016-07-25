@@ -39,14 +39,13 @@ class ClusterTraverser final : public Traverser {
 
  public:
   ClusterTraverser(
-      std::vector<std::string> edgeCollections, TraverserOptions& opts,
+      std::vector<std::string> edgeCollections, TraverserOptions* opts,
       std::string const& dbname, Transaction* trx)
       : Traverser(opts),
         _edgeCols(edgeCollections),
         _dbname(dbname),
         _trx(trx) {
-          _edgeGetter = std::make_unique<ClusterEdgeGetter>(this);
-          if (opts.uniqueVertices == TraverserOptions::UniquenessLevel::GLOBAL) {
+          if (opts->uniqueVertices == TraverserOptions::UniquenessLevel::GLOBAL) {
             _vertexGetter = std::make_unique<UniqueVertexGetter>(this);
           } else {
             _vertexGetter = std::make_unique<VertexGetter>(this);
@@ -57,21 +56,6 @@ class ClusterTraverser final : public Traverser {
   }
 
   void setStartVertex(std::string const& id) override;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Function to load edges for a node
-  //////////////////////////////////////////////////////////////////////////////
-
-  void getEdge(std::string const&, std::vector<std::string>&, size_t*&,
-               size_t&) override;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Function to load all edges for a list of nodes
-  //////////////////////////////////////////////////////////////////////////////
-
-  void getAllEdges(arangodb::velocypack::Slice,
-                   std::unordered_set<arangodb::velocypack::Slice>&,
-                   size_t) override;
 
   /// @brief Function to load the other sides vertex of an edge
   ///        Returns true if the vertex passes filtering conditions
@@ -224,8 +208,6 @@ class ClusterTraverser final : public Traverser {
   std::string _dbname;
 
   std::unique_ptr<VertexGetter> _vertexGetter;
-
-  std::unique_ptr<ClusterEdgeGetter> _edgeGetter;
 
   arangodb::velocypack::Builder _builder;
 

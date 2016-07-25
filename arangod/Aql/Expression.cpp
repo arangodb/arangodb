@@ -28,6 +28,7 @@
 #include "Aql/AttributeAccessor.h"
 #include "Aql/Executor.h"
 #include "Aql/ExpressionContext.h"
+#include "Aql/BaseExpressionContext.h"
 #include "Aql/Function.h"
 #include "Aql/Functions.h"
 #include "Aql/Quantifier.h"
@@ -121,10 +122,7 @@ void Expression::variables(std::unordered_set<Variable const*>& result) const {
 }
 
 /// @brief execute the expression
-AqlValue Expression::execute(arangodb::Transaction* trx,
-                             AqlItemBlock const* argv, size_t startPos,
-                             std::vector<Variable const*> const& vars,
-                             std::vector<RegisterId> const& regs,
+AqlValue Expression::execute(arangodb::Transaction* trx, ExpressionContext* ctx,
                              bool& mustDestroy) {
   if (!_built) {
     buildExpression(trx);
@@ -132,6 +130,7 @@ AqlValue Expression::execute(arangodb::Transaction* trx,
 
   TRI_ASSERT(_type != UNPROCESSED);
   TRI_ASSERT(_built);
+  _expressionContext = ctx;
 
   // and execute
   switch (_type) {
@@ -142,25 +141,18 @@ AqlValue Expression::execute(arangodb::Transaction* trx,
     }
 
     case SIMPLE: {
-      // FIXME
-      ExpressionContext ctx(startPos, argv, vars, regs);
-      _expressionContext = &ctx;
       return executeSimpleExpression(_node, trx, mustDestroy, true);
     }
 
     case ATTRIBUTE: {
       TRI_ASSERT(_accessor != nullptr);
-      // FIXME
-      ExpressionContext ctx(startPos, argv, vars, regs);
-      return _accessor->get(trx, &ctx, mustDestroy);
+      return _accessor->get(trx, ctx, mustDestroy);
     }
 
     case V8: {
       TRI_ASSERT(_func != nullptr);
       ISOLATE;
-      // FIXME
-      ExpressionContext ctx(startPos, argv, vars, regs);
-      return _func->execute(isolate, _ast->query(), trx, &ctx, mustDestroy);
+      return _func->execute(isolate, _ast->query(), trx, ctx, mustDestroy);
     }
 
     case UNPROCESSED: {
@@ -170,6 +162,18 @@ AqlValue Expression::execute(arangodb::Transaction* trx,
 
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                  "invalid simple expression");
+
+}
+
+/// @brief execute the expression
+/// TODO DEPRECATED
+AqlValue Expression::execute(arangodb::Transaction* trx,
+                             AqlItemBlock const* argv, size_t startPos,
+                             std::vector<Variable const*> const& vars,
+                             std::vector<RegisterId> const& regs,
+                             bool& mustDestroy) {
+  BaseExpressionContext ctx(startPos, argv, vars, regs);
+  return execute(trx, &ctx, mustDestroy);
 }
 
 /// @brief replace variables in the expression with other variables

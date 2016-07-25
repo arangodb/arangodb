@@ -111,7 +111,9 @@ class TraversalNode : public ExecutionNode {
   std::vector<Variable const*> getVariablesUsedHere() const override final {
     std::vector<Variable const*> result;
     for (auto const& condVar : _conditionVariables) {
-      result.emplace_back(condVar);
+      if (condVar != _tmpObjVariable) {
+        result.emplace_back(condVar);
+      }
     }
     if (usesInVariable()) {
       result.emplace_back(_inVariable);
@@ -123,7 +125,9 @@ class TraversalNode : public ExecutionNode {
   void getVariablesUsedHere(
       std::unordered_set<Variable const*>& result) const override final {
     for (auto const& condVar : _conditionVariables) {
-      result.emplace(condVar);
+      if (condVar != _tmpObjVariable) {
+        result.emplace(condVar);
+      }
     }
     if (usesInVariable()) {
       result.emplace(_inVariable);
@@ -190,7 +194,7 @@ class TraversalNode : public ExecutionNode {
 
   /// @brief Fill the traversal options with all values known to this node or
   ///        with default values.
-  void fillTraversalOptions(arangodb::traverser::TraverserOptions& opts,
+  void fillTraversalOptions(arangodb::traverser::TraverserOptions* opts,
                             arangodb::Transaction*) const;
 
   std::vector<std::string> const edgeColls() const { return _edgeColls; }
@@ -235,6 +239,8 @@ class TraversalNode : public ExecutionNode {
   TraversalOptions const* options() const { return &_options; }
 
   AstNode* getTemporaryRefNode() const;
+
+  void getConditionVariables(std::vector<Variable const*>&) const;
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
   void checkConditionsDefined() const;
@@ -281,7 +287,7 @@ class TraversalNode : public ExecutionNode {
   Condition* _condition;
 
   /// @brief variables that are inside of the condition
-  std::vector<Variable const*> _conditionVariables;
+  std::unordered_set<Variable const*> _conditionVariables;
 
   /// @brief Options for traversals
   TraversalOptions _options;

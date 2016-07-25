@@ -404,6 +404,20 @@ TraversalNode::TraversalNode(ExecutionPlan* plan,
     }
   }
 
+  if (base.has("conditionVariables")) {
+    TRI_json_t const* list =
+        JsonHelper::checkAndGetArrayValue(base.json(), "conditionVariables");
+    size_t count = TRI_LengthVector(&list->_value._objects);
+    // List of edge collection names
+    for (size_t i = 0; i < count; ++i) {
+      auto variableJson = static_cast<TRI_json_t const*>(
+          TRI_AtVector(&list->_value._objects, i));
+      auto builder = JsonHelper::toVelocyPack(variableJson);
+      _conditionVariables.emplace(
+          _plan->getAst()->variables()->createVariable(builder->slice()));
+    }
+  }
+
   std::string graphName;
   if (base.has("graph") && (base.get("graph").isString())) {
     graphName = JsonHelper::checkAndGetStringValue(base.json(), "graph");
@@ -595,6 +609,15 @@ void TraversalNode::toVelocyPackHelper(arangodb::velocypack::Builder& nodes,
     _condition->toVelocyPack(nodes, verbose);
   }
 
+  if (!_conditionVariables.empty()) {
+    nodes.add(VPackValue("conditionVariables"));
+    nodes.openArray();
+    for (auto const& it : _conditionVariables) {
+      it->toVelocyPack(nodes);
+    }
+    nodes.close();
+  }
+
   if (_graphObj != nullptr) {
     nodes.add(VPackValue("graphDefinition"));
     _graphObj->toVelocyPack(nodes, verbose);
@@ -715,6 +738,11 @@ ExecutionNode* TraversalNode::clone(ExecutionPlan* plan, bool withDependencies,
     c->specializeToNeighborsSearch();
   }
 
+  c->_conditionVariables.reserve(_conditionVariables.size());
+  for (auto const& it: _conditionVariables) {
+    c->_conditionVariables.emplace(it->clone());
+  }
+
 #ifdef TRI_ENABLE_MAINTAINER_MODE
   checkConditionsDefined();
 #endif
@@ -796,11 +824,11 @@ double TraversalNode::estimateCost(size_t& nrItems) const {
 }
 
 void TraversalNode::fillTraversalOptions(
-    arangodb::traverser::TraverserOptions& opts,
+    arangodb::traverser::TraverserOptions* opts,
     arangodb::Transaction* trx) const {
-  opts.minDepth = _minDepth;
-  opts.maxDepth = _maxDepth;
-  opts._tmpVar = _tmpObjVariable;
+  opts->minDepth = _minDepth;
+  opts->maxDepth = _maxDepth;
+  opts->_tmpVar = _tmpObjVariable;
 
   size_t numEdgeColls = _edgeColls.size();
   AstNode* condition = nullptr;
@@ -808,7 +836,7 @@ void TraversalNode::fillTraversalOptions(
   EdgeConditionBuilder globalEdgeConditionBuilder(this);
   Ast* ast = _plan->getAst();
 
-  opts._baseLookupInfos.reserve(numEdgeColls);
+  opts->_baseLookupInfos.reserve(numEdgeColls);
   // Compute Edge Indexes. First default indexes:
   for (size_t i = 0; i < numEdgeColls; ++i) {
     auto dir = _directions[i];
@@ -838,7 +866,7 @@ void TraversalNode::fillTraversalOptions(
             infoIn.idxHandle);
         TRI_ASSERT(res);  // Right now we have an enforced edge index which will
                           // always fit.
-        opts._baseLookupInfos.emplace_back(std::move(infoIn));
+        opts->_baseLookupInfos.emplace_back(std::move(infoIn));
 
         break;
     }
@@ -849,11 +877,11 @@ void TraversalNode::fillTraversalOptions(
         info.idxHandle);
     TRI_ASSERT(res);  // Right now we have an enforced edge index which will
                       // always fit.
-    opts._baseLookupInfos.emplace_back(std::move(info));
+    opts->_baseLookupInfos.emplace_back(std::move(info));
   }
 
   for (std::pair<size_t, EdgeConditionBuilder> it : _edgeConditions) {
-    auto ins = opts._depthLookupInfo.emplace(it.first, std::vector<traverser::TraverserOptions::LookupInfo>());
+    auto ins = opts->_depthLookupInfo.emplace(it.first, std::vector<traverser::TraverserOptions::LookupInfo>());
     TRI_ASSERT(ins.second);
     auto& infos = ins.first->second;
     infos.reserve(numEdgeColls);
@@ -903,15 +931,13 @@ void TraversalNode::fillTraversalOptions(
   }
 
   for (auto& it : _vertexConditions) {
-    opts._vertexExpressions.emplace(it.first, new Expression(ast, it.second));
-    TRI_ASSERT(!opts._vertexExpressions[it.first]->isV8());
+    opts->_vertexExpressions.emplace(it.first, new Expression(ast, it.second));
+    TRI_ASSERT(!opts->_vertexExpressions[it.first]->isV8());
   }
 
-  opts.useBreadthFirst = _options.useBreadthFirst;
-  opts.uniqueVertices = _options.uniqueVertices;
-  opts.uniqueEdges = _options.uniqueEdges;
-
-  // opts._variables = &_conditionVariables;
+  opts->useBreadthFirst = _options.useBreadthFirst;
+  opts->uniqueVertices = _options.uniqueVertices;
+  opts->uniqueEdges = _options.uniqueEdges;
 }
 
 /// @brief remember the condition to execute for early traversal abortion.
@@ -926,7 +952,7 @@ void TraversalNode::setCondition(arangodb::aql::Condition* condition) {
         (_edgeOutVariable != nullptr && oneVar->id != _edgeOutVariable->id) &&
         (_pathOutVariable != nullptr && oneVar->id != _pathOutVariable->id) &&
         (_inVariable != nullptr && oneVar->id != _inVariable->id)) {
-      _conditionVariables.emplace_back(oneVar);
+      _conditionVariables.emplace(oneVar);
     }
   }
 
@@ -936,7 +962,7 @@ void TraversalNode::setCondition(arangodb::aql::Condition* condition) {
 void TraversalNode::registerCondition(bool isConditionOnEdge,
                                       size_t conditionLevel,
                                       AstNode const* condition) {
-  // Ast::getReferencedVariables(condition, _conditionVariables);
+  Ast::getReferencedVariables(condition, _conditionVariables);
   if (isConditionOnEdge) {
     auto const& it = _edgeConditions.find(conditionLevel);
     if (it == _edgeConditions.end()) {
@@ -963,7 +989,7 @@ void TraversalNode::registerCondition(bool isConditionOnEdge,
 
 void TraversalNode::registerGlobalCondition(bool isConditionOnEdge,
                                             AstNode const* condition) {
-  // Ast::getReferencedVariables(condition, _conditionVariables);
+  Ast::getReferencedVariables(condition, _conditionVariables);
   if (isConditionOnEdge) {
     _globalEdgeCondition = condition;
   } else {
@@ -973,6 +999,15 @@ void TraversalNode::registerGlobalCondition(bool isConditionOnEdge,
 
 AstNode* TraversalNode::getTemporaryRefNode() const {
   return _tmpObjVarNode;
+}
+
+void TraversalNode::getConditionVariables(
+    std::vector<Variable const*>& res) const {
+  for (auto const& it : _conditionVariables) {
+    if (it != _tmpObjVariable) {
+      res.emplace_back(it);
+    }
+  }
 }
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE

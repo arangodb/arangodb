@@ -116,11 +116,10 @@ bool SingleServerEdgeCursor::readAll(std::unordered_set<VPackSlice>& result, siz
   return true;
 }
 
-SingleServerTraverser::SingleServerTraverser(TraverserOptions& opts,
+SingleServerTraverser::SingleServerTraverser(TraverserOptions* opts,
                                              arangodb::Transaction* trx)
     : Traverser(opts), _trx(trx), _startIdBuilder(trx) {
-  _edgeGetter = std::make_unique<EdgeGetter>(this, opts, trx);
-  if (opts.uniqueVertices == TraverserOptions::UniquenessLevel::GLOBAL) {
+  if (opts->uniqueVertices == TraverserOptions::UniquenessLevel::GLOBAL) {
     _vertexGetter = std::make_unique<UniqueVertexGetter>(this);
   } else {
     _vertexGetter = std::make_unique<VertexGetter>(this);
@@ -282,24 +281,12 @@ void SingleServerTraverser::setStartVertex(std::string const& v) {
 
   _vertexGetter->reset(idSlice);
 
-  if (_opts.useBreadthFirst) {
-    _enumerator.reset(new BreadthFirstEnumerator(this, idSlice, &_opts));
+  if (_opts->useBreadthFirst) {
+    _enumerator.reset(new BreadthFirstEnumerator(this, idSlice, _opts));
   } else {
-    _enumerator.reset(new DepthFirstEnumerator(this, idSlice, &_opts));
+    _enumerator.reset(new DepthFirstEnumerator(this, idSlice, _opts));
   }
   _done = false;
-}
-
-void SingleServerTraverser::getEdge(std::string const& startVertex,
-                                    std::vector<std::string>& edges,
-                                    size_t*& last, size_t& eColIdx) {
-  return _edgeGetter->getEdge(startVertex, edges, last, eColIdx);
-}
-
-void SingleServerTraverser::getAllEdges(
-    arangodb::velocypack::Slice startVertex,
-    std::unordered_set<arangodb::velocypack::Slice>& edges, size_t depth) {
-  return _edgeGetter->getAllEdges(startVertex, edges, depth);
 }
 
 bool SingleServerTraverser::getVertex(VPackSlice edge,
@@ -319,29 +306,6 @@ bool SingleServerTraverser::next() {
     _done = true;
   }
   return res;
-  /*
-  size_t countEdges = path.edges.size();
-  if (_opts.useBreadthFirst &&
-      _opts.uniqueVertices == TraverserOptions::UniquenessLevel::NONE &&
-      _opts.uniqueEdges == TraverserOptions::UniquenessLevel::PATH) {
-    // Only if we use breadth first
-    // and vertex uniqueness is not guaranteed
-    // We have to validate edges on path uniqueness.
-    // Otherwise this situation cannot occur.
-    // If two edges are identical than at least their start or end vertex
-    // is on the path twice: A -> B <- A
-    for (size_t i = 0; i < countEdges; ++i) {
-      for (size_t j = i + 1; j < countEdges; ++j) {
-        if (path.edges[i] == path.edges[j]) {
-          // We found two idential edges. Prune.
-          // Next
-          _pruneNext = true;
-          return next();
-        }
-      }
-    }
-  }
-  */
 }
 
 aql::AqlValue SingleServerTraverser::lastVertexToAqlValue() {
@@ -355,200 +319,3 @@ aql::AqlValue SingleServerTraverser::lastEdgeToAqlValue() {
 aql::AqlValue SingleServerTraverser::pathToAqlValue(VPackBuilder& builder) {
   return _enumerator->pathToAqlValue(builder);
 }
-
-bool SingleServerTraverser::EdgeGetter::nextCursor(std::string const& startVertex,
-                                                   size_t& eColIdx,
-                                                   size_t*& last) {
-#warning Reimplement
-  return false;
-  /*
-  std::string eColName;
-
-  while (true) {
-    arangodb::Transaction::IndexHandle indexHandle;
-    if (last != nullptr) {
-      // The cursor is empty clean up
-      last = nullptr;
-      TRI_ASSERT(!_posInCursor.empty());
-      TRI_ASSERT(!_cursors.empty());
-      TRI_ASSERT(!_results.empty());
-      _posInCursor.pop();
-      _cursors.pop();
-      _results.pop();
-    }
-    if (!_opts.getCollectionAndSearchValue(eColIdx, startVertex, eColName, indexHandle,
-                                           _builder)) {
-      // If we get here there are no valid edges at all
-      return false;
-    }
-    
-    std::unique_ptr<OperationCursor> cursor = _trx->indexScan(
-        eColName, arangodb::Transaction::CursorType::INDEX, indexHandle,
-        _builder.slice(), 0, UINT64_MAX, Transaction::defaultBatchSize(), false);
-    if (cursor->failed()) {
-      // Some error, ignore and go to next
-      eColIdx++;
-      continue;
-    }
-    TRI_ASSERT(_posInCursor.size() == _cursors.size());
-    _cursors.push(std::move(cursor));
-    _results.emplace();
-    return true;
-  }
-  */
-}
-
-#warning Deprecated
-void SingleServerTraverser::EdgeGetter::nextEdge(
-    std::string const& startVertex, size_t& eColIdx, size_t*& last,
-    std::vector<std::string>& edges) {
-  /*
-
-  if (last == nullptr) {
-    _posInCursor.push(0);
-    last = &_posInCursor.top();
-  } else {
-    ++(*last);
-  }
-
-  while (true) {
-    TRI_ASSERT(!_cursors.empty());
-    auto& cursor = _cursors.top();
-    TRI_ASSERT(!_results.empty());
-    auto& mptrs = _results.top();
-
-    // note: we need to check *first* that there is actually something in the mptrs list
-    if (mptrs.empty() || mptrs.size() <= *last) {
-      if (cursor->hasMore()) {
-        // Fetch next and try again
-        cursor->getMoreMptr(mptrs);
-        TRI_ASSERT(last != nullptr);
-        *last = 0;
-        _traverser->_readDocuments += static_cast<size_t>(mptrs.size());
-        continue;
-      }
-      eColIdx++;
-      if (!nextCursor(startVertex, eColIdx, last)) {
-        // No further edges.
-        TRI_ASSERT(last == nullptr);
-        TRI_ASSERT(_cursors.size() == _posInCursor.size());
-        TRI_ASSERT(_cursors.size() == _results.size());
-        return;
-      }
-      // There is a new Cursor on top of the stack, try it
-      _posInCursor.push(0);
-      last = &_posInCursor.top();
-      continue;
-    }
-
-    VPackSlice edge(mptrs[*last]->vpack());
-    std::string id = _trx->extractIdString(edge);
-    if (!_traverser->edgeMatchesConditions(edge, edges.size())) {
-      if (_opts.uniqueEdges == TraverserOptions::UniquenessLevel::GLOBAL) {
-        // Insert a dummy to please the uniqueness
-        _traverser->_edges.emplace(id, nullptr);
-      }
-
-      TRI_ASSERT(last != nullptr);
-      (*last)++;
-      continue;
-    }
-    if (_opts.uniqueEdges == TraverserOptions::UniquenessLevel::PATH) {
-      // test if edge is already on this path
-      auto found = std::find(edges.begin(), edges.end(), id);
-      if (found != edges.end()) {
-        // This edge is already on the path, next
-        TRI_ASSERT(last != nullptr);
-        (*last)++;
-        continue;
-      }
-    } else if (_opts.uniqueEdges == TraverserOptions::UniquenessLevel::GLOBAL) {
-      if (_traverser->_edges.find(id) != _traverser->_edges.end()) {
-        // This edge is already on the path, next
-        TRI_ASSERT(last != nullptr);
-        (*last)++;
-        continue;
-      }
-    }
-
-    _traverser->_edges.emplace(id, edge.begin());
-    edges.emplace_back(std::move(id));
-    return;
-  }
-*/
-}
-
-void SingleServerTraverser::EdgeGetter::getEdge(std::string const& startVertex,
-                                                std::vector<std::string>& edges,
-                                                size_t*& last,
-                                                size_t& eColIdx) {
-  if (last == nullptr) {
-    eColIdx = 0;
-    if (!nextCursor(startVertex, eColIdx, last)) {
-      // We were not able to find any edge
-      return;
-    }
-  }
-  nextEdge(startVertex, eColIdx, last, edges);
-}
-
-void SingleServerTraverser::EdgeGetter::getAllEdges(
-    VPackSlice startVertex, std::unordered_set<VPackSlice>& edges,
-    size_t depth) {
-#warning reimplement
-/*
-  size_t idxId = 0;
-  std::string eColName;
-  arangodb::Transaction::IndexHandle indexHandle;
-  std::vector<TRI_doc_mptr_t*> mptrs;
-
-  // We iterate over all index ids. note idxId++
-  while (_opts.getCollectionAndSearchValue(idxId++, startVertex, eColName,
-                                           indexHandle, _builder)) {
-    std::unique_ptr<OperationCursor> cursor = _trx->indexScan(
-        eColName, arangodb::Transaction::CursorType::INDEX, indexHandle,
-        _builder.slice(), 0, UINT64_MAX, Transaction::defaultBatchSize(), false);
-    if (cursor->failed()) {
-      // Some error, ignore and go to next
-      continue;
-    }
-    mptrs.clear();
-    while (cursor->hasMore()) {
-      cursor->getMoreMptr(mptrs, UINT64_MAX);
-      edges.reserve(mptrs.size());
-
-      _traverser->_readDocuments += static_cast<size_t>(mptrs.size());
-        
-      std::string id;
-      for (auto const& mptr : mptrs) {
-        VPackSlice edge(mptr->vpack());
-        id = _trx->extractIdString(edge);
-        if (!_traverser->edgeMatchesConditions(edge, depth)) {
-          if (_opts.uniqueEdges == TraverserOptions::UniquenessLevel::GLOBAL) {
-            // Insert a dummy to please the uniqueness
-            _traverser->_edges.emplace(std::move(id), nullptr);
-          }
-          continue;
-        }
-        if (_opts.uniqueEdges == TraverserOptions::UniquenessLevel::PATH) {
-          // test if edge is already on this path
-          auto found = edges.find(id);
-          if (found != edges.end()) {
-            // This edge is already on the path, next
-            continue;
-          }
-        } else if (_opts.uniqueEdges == TraverserOptions::UniquenessLevel::GLOBAL) {
-          if (_traverser->_edges.find(id) != _traverser->_edges.end()) {
-            // This edge is already on the path, next
-            continue;
-          }
-        }
-
-        _traverser->_edges.emplace(id, edge.begin());
-        edges.emplace(std::move(id));
-      }
-    }
-  }
-  */
-}
-

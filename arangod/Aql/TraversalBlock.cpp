@@ -42,6 +42,8 @@ using namespace arangodb::aql;
 TraversalBlock::TraversalBlock(ExecutionEngine* engine, TraversalNode const* ep)
     : ExecutionBlock(engine, ep),
       _posInPaths(0),
+      _opts(new traverser::TraverserOptions(_trx)),
+      _traverser(nullptr),
       _useRegister(false),
       _usedConstant(false),
       _vertexVar(nullptr),
@@ -50,18 +52,24 @@ TraversalBlock::TraversalBlock(ExecutionEngine* engine, TraversalNode const* ep)
       _edgeReg(0),
       _pathVar(nullptr),
       _pathReg(0) {
-#warning FIXME
-  arangodb::traverser::TraverserOptions opts(_trx);
-  ep->fillTraversalOptions(opts, _trx);
+  auto const& registerPlan = ep->getRegisterPlan()->varInfo;
+  ep->getConditionVariables(_inVars);
+  for (auto const& v : _inVars) {
+    auto it = registerPlan.find(v->id);
+    TRI_ASSERT(it != registerPlan.end());
+    _inRegs.emplace_back(it->second.registerId);
+  }
+
+  ep->fillTraversalOptions(_opts.get(), _trx);
 
   if (arangodb::ServerState::instance()->isCoordinator()) {
     _traverser.reset(new arangodb::traverser::ClusterTraverser(
-        ep->edgeColls(), opts,
+        ep->edgeColls(), _opts.get(),
         std::string(_trx->vocbase()->_name, strlen(_trx->vocbase()->_name)),
         _trx));
   } else {
     _traverser.reset(
-        new arangodb::traverser::SingleServerTraverser(opts, _trx));
+        new arangodb::traverser::SingleServerTraverser(_opts.get(), _trx));
   }
   if (!ep->usesInVariable()) {
     _vertexId = ep->getStartVertex();
@@ -209,8 +217,20 @@ size_t TraversalBlock::skipPaths(size_t hint) {
   DEBUG_END_BLOCK();
 }
 
+void TraversalBlock::initializeExpressions(AqlItemBlock const* items, size_t pos) {
+  // Initialize the Expressions within the options.
+  // We need to find the variable and read it's value here. Everything is computed right now.
+  _opts->clearVariableValues();
+  TRI_ASSERT(_inVars.size() == _inRegs.size());
+  LOG(ERR) << "We have invars: " << _inVars.size();
+  for (size_t i = 0; i < _inVars.size(); ++i) {
+    _opts->setVariableValue(_inVars[i], items->getValueReference(pos, _inRegs[i]));
+  }
+  // IF cluster => Transfer condition.
+}
+
 /// @brief initialize the list of paths
-void TraversalBlock::initializePaths(AqlItemBlock const* items) {
+void TraversalBlock::initializePaths(AqlItemBlock const* items, size_t pos) {
   DEBUG_BEGIN_BLOCK();
   if (!_vertices.empty()) {
     // No Initialization required.
@@ -266,6 +286,7 @@ void TraversalBlock::initializePaths(AqlItemBlock const* items) {
                                        "allowed");
     }
   }
+  initializeExpressions(items, pos);
   DEBUG_END_BLOCK();
 }
 
@@ -292,7 +313,7 @@ AqlItemBlock* TraversalBlock::getSome(size_t,  // atLeast,
 
   if (_pos == 0) {
     // Initial initialization
-    initializePaths(cur);
+    initializePaths(cur, _pos);
   }
 
   // Iterate more paths:
@@ -306,7 +327,7 @@ AqlItemBlock* TraversalBlock::getSome(size_t,  // atLeast,
         delete cur;
         _pos = 0;
       } else {
-        initializePaths(cur);
+        initializePaths(cur, _pos);
       }
       return getSome(atMost, atMost);
     }
@@ -353,7 +374,7 @@ AqlItemBlock* TraversalBlock::getSome(size_t,  // atLeast,
         delete cur;
         _pos = 0;
       } else {
-        initializePaths(cur);
+        initializePaths(cur, _pos);
       }
     }
   }
@@ -387,7 +408,7 @@ size_t TraversalBlock::skipSome(size_t atLeast, size_t atMost) {
 
   if (_pos == 0) {
     // Initial initialisation
-    initializePaths(cur);
+    initializePaths(cur, _pos);
   }
 
   size_t available = _vertices.size() - _posInPaths;
