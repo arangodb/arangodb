@@ -456,7 +456,7 @@ bool SkiplistInLookupBuilder::forwardInPosition() {
       // Okay we increased this, next search value;
     }
     it->current = 0;
-    it++;
+    ++it;
   }
   _done = true;
   // If we get here all positions are reset to 0.
