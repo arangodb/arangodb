@@ -3,6 +3,7 @@ build
 core.*
 build.sh
 
+*.vim
 .deps
 .dirstamp
 *.o
@@ -27,6 +28,8 @@ build.sh
 Thumbs.db
 
 testresult.json
+botschaft.txt
+testsStarted
 
 build*/
 Build64/

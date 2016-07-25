@@ -20,10 +20,12 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef APPLICATION_FEATURES_REST_SERVER_FEATURE_H
-#define APPLICATION_FEATURES_REST_SERVER_FEATURE_H 1
+#ifndef APPLICATION_FEATURES_GENERAL_SERVER_FEATURE_H
+#define APPLICATION_FEATURES_GENERAL_SERVER_FEATURE_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+
+#include <openssl/ssl.h>
 
 #include "Actions/RestActionHandler.h"
 #include "VocBase/AuthInfo.h"
@@ -37,42 +39,62 @@ class GeneralServer;
 
 class RestServerThread;
 
-class RestServerFeature final
+class GeneralServerFeature final
     : public application_features::ApplicationFeature {
+ public:
+  typedef int (*verification_callback_fptr)(int, X509_STORE_CTX*);
+
  public:
   static rest::RestHandlerFactory* HANDLER_FACTORY;
   static rest::AsyncJobManager* JOB_MANAGER;
   static AuthInfo AUTH_INFO;
 
  public:
+  static double keepAliveTimeout() {
+    return GENERAL_SERVER != nullptr ? GENERAL_SERVER->_keepAliveTimeout
+                                     : 300.0;
+  };
+
+  static int verificationMode() {
+    return GENERAL_SERVER != nullptr ? GENERAL_SERVER->_verificationMode
+                                     : SSL_VERIFY_NONE;
+  };
+
+  static verification_callback_fptr verificationCallback() {
+    return GENERAL_SERVER != nullptr ? GENERAL_SERVER->_verificationCallback
+                                     : nullptr;
+  };
+
   static bool authenticationEnabled() {
-    return REST_SERVER != nullptr && REST_SERVER->authentication();
+    return GENERAL_SERVER != nullptr && GENERAL_SERVER->authentication();
   }
 
   static bool hasProxyCheck() {
-    return REST_SERVER != nullptr && REST_SERVER->proxyCheck();
+    return GENERAL_SERVER != nullptr && GENERAL_SERVER->proxyCheck();
   }
 
   static std::vector<std::string> getTrustedProxies() {
-    if (REST_SERVER == nullptr) {
+    if (GENERAL_SERVER == nullptr) {
       return std::vector<std::string>();
     }
-    return REST_SERVER->trustedProxies();
+
+    return GENERAL_SERVER->trustedProxies();
   }
 
   static std::string getJwtSecret() {
-    if (REST_SERVER == nullptr) {
+    if (GENERAL_SERVER == nullptr) {
       return std::string();
     }
-    return REST_SERVER->jwtSecret();
+
+    return GENERAL_SERVER->jwtSecret();
   }
 
  private:
-  static RestServerFeature* REST_SERVER;
+  static GeneralServerFeature* GENERAL_SERVER;
   static const size_t _maxSecretLength = 64;
 
  public:
-  explicit RestServerFeature(application_features::ApplicationServer*);
+  explicit GeneralServerFeature(application_features::ApplicationServer*);
 
  public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -82,8 +104,14 @@ class RestServerFeature final
   void stop() override final;
   void unprepare() override final;
 
+ public:
+  void setVerificationMode(int mode) { _verificationMode = mode; }
+  void setVerificationCallback(int (*func)(int, X509_STORE_CTX*)) {
+    _verificationCallback = func;
+  }
+
  private:
-  double _keepAliveTimeout;
+  double _keepAliveTimeout = 300.0;
   bool _allowMethodOverride;
   bool _authentication;
   bool _authenticationUnixSockets;
@@ -94,6 +122,8 @@ class RestServerFeature final
   std::vector<std::string> _accessControlAllowOrigins;
 
   std::string _jwtSecret;
+  int _verificationMode;
+  verification_callback_fptr _verificationCallback;
 
  public:
   bool authentication() const { return _authentication; }

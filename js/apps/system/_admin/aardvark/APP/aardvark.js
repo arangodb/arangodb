@@ -385,12 +385,22 @@ authRouter.get('/graph/:name', function (req, res) {
 
     _.each(obj.edges, function (edge) {
       if (edge._to && edge._from) {
-        if (config.edgeLabel) {
+        if (config.edgeLabelByCollection === 'true') {
+          edgeLabel = edge._id.split('/')[0];
+        } else if (config.edgeLabel) {
           // configure edge labels
-          edgeLabel = edge[config.edgeLabel];
 
-          if (edgeLabel) {
-            edgeLabel = edgeLabel.toString();
+          if (config.edgeLabel.indexOf('.') > -1) {
+            edgeLabel = getAttributeByKey(edge, config.edgeLabel);
+            if (nodeLabel === undefined || nodeLabel === '') {
+              edgeLabel = edgeLabel._id;
+            }
+          } else {
+            edgeLabel = edge[config.edgeLabel];
+          }
+
+          if (typeof edgeLabel !== 'string') {
+            edgeLabel = JSON.stringify(edgeLabel);
           }
 
           if (!edgeLabel) {
@@ -437,7 +447,9 @@ authRouter.get('/graph/:name', function (req, res) {
     var nodeSize;
     var nodeObj;
     _.each(obj.vertices, function (node) {
-      if (config.nodeLabel) {
+      if (config.nodeLabelByCollection === 'true') {
+        nodeLabel = node._id.split('/')[0];
+      } else if (config.nodeLabel) {
         if (config.nodeLabel.indexOf('.') > -1) {
           nodeLabel = getAttributeByKey(node, config.nodeLabel);
           if (nodeLabel === undefined || nodeLabel === '') {

@@ -32,8 +32,8 @@
 #include "Basics/tri-strings.h"
 #include "Cluster/ServerState.h"
 #include "Endpoint/ConnectionInfo.h"
+#include "GeneralServer/GeneralServerFeature.h"
 #include "Logger/Logger.h"
-#include "RestServer/RestServerFeature.h"
 #include "Ssl/SslInterface.h"
 #include "VocBase/AuthInfo.h"
 #include "VocBase/server.h"
@@ -83,7 +83,7 @@ bool VocbaseContext::useClusterAuthentication() const {
 GeneralResponse::ResponseCode VocbaseContext::authenticate() {
   TRI_ASSERT(_vocbase != nullptr);
 
-  auto restServer = application_features::ApplicationServer::getFeature<RestServerFeature>("RestServer");
+  auto restServer = application_features::ApplicationServer::getFeature<GeneralServerFeature>("GeneralServer");
 
   if (!restServer->authentication()) {
     // no authentication required at all
@@ -115,7 +115,7 @@ GeneralResponse::ResponseCode VocbaseContext::authenticate() {
 
       if (!username.empty() || !dbname.empty()) {
         AuthLevel level =
-            RestServerFeature::AUTH_INFO.canUseDatabase(username, dbname);
+            GeneralServerFeature::AUTH_INFO.canUseDatabase(username, dbname);
 
         if (level != AuthLevel::RW) {
           result = GeneralResponse::ResponseCode::UNAUTHORIZED;
@@ -130,7 +130,7 @@ GeneralResponse::ResponseCode VocbaseContext::authenticate() {
 GeneralResponse::ResponseCode VocbaseContext::authenticateRequest(
     bool* forceOpen) {
   
-  auto restServer = application_features::ApplicationServer::getFeature<RestServerFeature>("RestServer");
+  auto restServer = application_features::ApplicationServer::getFeature<GeneralServerFeature>("GeneralServer");
 #ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
   // check if we need to run authentication for this type of
   // endpoint
@@ -225,7 +225,7 @@ GeneralResponse::ResponseCode VocbaseContext::basicAuthentication(
     return GeneralResponse::ResponseCode::OK;
   }
 
-  AuthResult result = RestServerFeature::AUTH_INFO.checkAuthentication(
+  AuthResult result = GeneralServerFeature::AUTH_INFO.checkAuthentication(
       AuthInfo::AuthType::BASIC, auth);
 
   if (!result._authorized) {
@@ -254,7 +254,7 @@ GeneralResponse::ResponseCode VocbaseContext::basicAuthentication(
 
 GeneralResponse::ResponseCode VocbaseContext::jwtAuthentication(
     std::string const& auth) {
-  AuthResult result = RestServerFeature::AUTH_INFO.checkAuthentication(
+  AuthResult result = GeneralServerFeature::AUTH_INFO.checkAuthentication(
       AuthInfo::AuthType::JWT, auth);
 
   if (!result._authorized) {

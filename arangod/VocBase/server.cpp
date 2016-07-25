@@ -41,9 +41,9 @@
 #include "Basics/memory-map.h"
 #include "Basics/tri-strings.h"
 #include "Cluster/ServerState.h"
+#include "GeneralServer/GeneralServerFeature.h"
 #include "Logger/Logger.h"
 #include "Random/RandomGenerator.h"
-#include "RestServer/RestServerFeature.h"
 #include "Utils/CursorRepository.h"
 #include "V8Server/V8DealerFeature.h"
 #include "VocBase/replication-applier.h"
@@ -924,7 +924,8 @@ int TRI_GetUserDatabasesServer(TRI_server_t* server, char const* username,
       char const* dbName = p.second->_name;
       TRI_ASSERT(dbName != nullptr);
 
-      auto level = RestServerFeature::AUTH_INFO.canUseDatabase(username, dbName);
+      auto level =
+          GeneralServerFeature::AUTH_INFO.canUseDatabase(username, dbName);
 
       if (level == AuthLevel::NONE) {
         continue;

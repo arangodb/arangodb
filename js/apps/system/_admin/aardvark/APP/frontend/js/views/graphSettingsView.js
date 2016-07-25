@@ -73,6 +73,19 @@
         desc: 'Node label. Please choose a valid and available node attribute.',
         default: '_key'
       },
+      'nodeLabelByCollection': {
+        type: 'select',
+        name: 'Label by coll?',
+        desc: 'Set label text by collection. If activated node label attribute will be ignored.',
+        no: {
+          name: 'No',
+          val: 'false'
+        },
+        yes: {
+          name: 'Yes',
+          val: 'true'
+        }
+      },
       'nodeLabelThreshold': {
         type: 'range',
         name: 'Label threshold',
@@ -116,6 +129,19 @@
         type: 'string',
         name: 'Label',
         desc: 'Default edge label.'
+      },
+      'edgeLabelByCollection': {
+        type: 'select',
+        name: 'Label by coll?',
+        desc: 'Set label text by collection. If activated edge label attribute will be ignored.',
+        no: {
+          name: 'No',
+          val: 'false'
+        },
+        yes: {
+          name: 'Yes',
+          val: 'true'
+        }
       },
       'edgeLabelThreshold': {
         type: 'range',
@@ -248,25 +274,19 @@
       if (overwrite) {
         config[combinedName] = overwrite;
       } else {
-        config[combinedName] = {
-          layout: $('#g_layout').val(),
-          renderer: $('#g_renderer').val(),
-          depth: $('#g_depth').val(),
-          nodeColor: $('#g_nodeColor').val(),
-          nodeColorAttribute: $('#g_nodeColorAttribute').val(),
-          nodeColorByCollection: $('#g_nodeColorByCollection').val(),
-          nodeLabelThreshold: $('#g_nodeLabelThreshold').val(),
-          edgeColor: $('#g_edgeColor').val(),
-          edgeColorAttribute: $('#g_edgeColorAttribute').val(),
-          edgeColorByCollection: $('#g_edgeColorByCollection').val(),
-          edgeLabelThreshold: $('#g_edgeLabelThreshold').val(),
-          nodeLabel: $('#g_nodeLabel').val(),
-          edgeLabel: $('#g_edgeLabel').val(),
-          edgeType: $('#g_edgeType').val(),
-          nodeSize: $('#g_nodeSize').val(),
-          edgeEditable: $('#g_edgeEditable').val(),
-          nodeStart: $('#g_nodeStart').val()
-        };
+        var object = {};
+
+        var id;
+        $('#graphSettingsView select').each(function (key, elem) {
+          id = elem.id;
+          object[id.substr(2, elem.id.length)] = $(elem).val();
+        });
+        $('#graphSettingsView input').each(function (key, elem) {
+          id = elem.id;
+          object[id.substr(2, elem.id.length)] = $(elem).val();
+        });
+
+        config[combinedName] = object;
       }
 
       if (nodeStart) {
@@ -306,6 +326,8 @@
         edgeType: 'line',
         nodeSize: '',
         edgeEditable: 'false',
+        nodeLabelByCollection: 'false',
+        edgeLabelByCollection: 'false',
         nodeStart: ''
       };
       this.saveGraphSettings(null, null, null, obj);
@@ -345,6 +367,10 @@
         _.each(this.graphConfig, function (val, key) {
           $('#g_' + key).val(val);
         });
+
+        // range customization
+        $('#g_nodeLabelThreshold_label').text(this.graphConfig.nodeLabelThreshold);
+        $('#g_edgeLabelThreshold_label').text(this.graphConfig.edgeLabelThreshold);
       } else {
         this.setDefaults();
       }

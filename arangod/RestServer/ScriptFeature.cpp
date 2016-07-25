@@ -43,7 +43,7 @@ ScriptFeature::ScriptFeature(application_features::ApplicationServer* server, in
       _result(result) {
   startsAfter("Nonce");
   startsAfter("Server");
-  startsAfter("RestServer");
+  startsAfter("GeneralServer");
 }
 
 void ScriptFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {

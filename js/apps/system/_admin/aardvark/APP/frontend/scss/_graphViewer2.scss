@@ -121,6 +121,10 @@
       height: 40px;
     }
 
+    .pure-u-1-3 {
+      line-height: 30px;
+    }
+
     .pure-u-2-3 {
       text-align: right;
     }
@@ -129,6 +133,13 @@
       border-bottom: 1px solid $c-white;
       height: 10px;
       margin-bottom: 15px;
+    }
+
+    .rangeLabel {
+      float: left;
+      margin-left: 4px;
+      margin-top: 5px;
+      position: relative;
     }
 
   }

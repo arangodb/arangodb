@@ -43,7 +43,7 @@ UnitTestsFeature::UnitTestsFeature(application_features::ApplicationServer* serv
       _result(result) {
   startsAfter("Nonce");
   startsAfter("Server");
-  startsAfter("RestServer");
+  startsAfter("GeneralServer");
   startsAfter("Bootstrap");
 }
 

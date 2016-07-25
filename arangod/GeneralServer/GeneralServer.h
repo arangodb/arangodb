@@ -26,14 +26,14 @@
 #ifndef ARANGOD_HTTP_SERVER_HTTP_SERVER_H
 #define ARANGOD_HTTP_SERVER_HTTP_SERVER_H 1
 
-#include "GeneralServer/GeneralDefinitions.h"
 #include "Scheduler/TaskManager.h"
+
 #include "Basics/Mutex.h"
 #include "Endpoint/ConnectionInfo.h"
-#include "GeneralServer/RestHandler.h"
+#include "GeneralServer/GeneralDefinitions.h"
 #include "GeneralServer/HttpCommTask.h"
 #include "GeneralServer/HttpsCommTask.h"
-#include <openssl/ssl.h>
+#include "GeneralServer/RestHandler.h"
 
 namespace arangodb {
 class EndpointList;
@@ -57,9 +57,8 @@ class GeneralServer : protected TaskManager {
   static int sendChunk(uint64_t, std::string const&);
 
  public:
-  GeneralServer(double keepAliveTimeout, bool allowMethodOverride,
-                std::vector<std::string> const& accessControlAllowOrigins,
-                SSL_CTX* ctx = nullptr);
+  GeneralServer(bool allowMethodOverride,
+                std::vector<std::string> const& accessControlAllowOrigins);
   virtual ~GeneralServer();
 
  public:
@@ -68,15 +67,6 @@ class GeneralServer : protected TaskManager {
 
   // check, if we allow a method override
   bool allowMethodOverride() { return _allowMethodOverride; }
-
-  // generates a suitable communication task
-  virtual GeneralCommTask* createCommTask(
-      TRI_socket_t, ConnectionInfo&&, ConnectionType = ConnectionType::HTTP);
-
-  void setVerificationMode(int mode) { _verificationMode = mode; }
-  void setVerificationCallback(int (*func)(int, X509_STORE_CTX*)) {
-    _verificationCallback = func;
-  }
 
  public:
   // list of trusted origin urls for CORS
@@ -92,18 +82,6 @@ class GeneralServer : protected TaskManager {
 
   // stops listining
   void stopListening();
-
-  // removes all listen and comm tasks
-  void stop();
-
-  // handles connection request
-  void handleConnected(TRI_socket_t s, ConnectionInfo&& info, ConnectionType);
-
-  // handles a connection close
-  void handleCommunicationClosed(GeneralCommTask*);
-
-  // handles a connection failure
-  void handleCommunicationFailure(GeneralCommTask*);
 
   // creates a job for asynchronous execution
   bool handleRequestAsync(GeneralCommTask*,
@@ -138,15 +116,6 @@ class GeneralServer : protected TaskManager {
   // defined ports and addresses
   const EndpointList* _endpointList;
 
-  // mutex for comm tasks
-  arangodb::Mutex _commTasksLock;
-
-  // active comm tasks
-  std::unordered_set<GeneralCommTask*> _commTasks;
-
-  // keep-alive timeout
-  double _keepAliveTimeout;
-
   // allow to override the method
   bool _allowMethodOverride;
 
@@ -154,10 +123,6 @@ class GeneralServer : protected TaskManager {
   std::vector<std::string> const _accessControlAllowOrigins;
 
  private:
-  SSL_CTX* _ctx;
-  int _verificationMode;
-  int (*_verificationCallback)(int, X509_STORE_CTX*);
-  bool _sslAllowed;
 };
 }
 }

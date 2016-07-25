@@ -184,18 +184,19 @@ add_executable(${BIN_ARANGOD}
   FulltextIndex/fulltext-list.cpp
   FulltextIndex/fulltext-query.cpp
   FulltextIndex/fulltext-result.cpp
-  GeoIndex/GeoIndex.cpp
   GeneralServer/AsyncJobManager.cpp
-  GeneralServer/HttpCommTask.cpp
-  GeneralServer/HttpServerJob.cpp
   GeneralServer/GeneralCommTask.cpp
-  GeneralServer/HttpCommTask.cpp
-  GeneralServer/HttpsCommTask.cpp
   GeneralServer/GeneralListenTask.cpp
   GeneralServer/GeneralServer.cpp
+  GeneralServer/GeneralServerFeature.cpp
+  GeneralServer/HttpCommTask.cpp
+  GeneralServer/HttpCommTask.cpp
+  GeneralServer/HttpServerJob.cpp
+  GeneralServer/HttpsCommTask.cpp
+  GeneralServer/PathHandler.cpp
   GeneralServer/RestHandler.cpp
   GeneralServer/RestHandlerFactory.cpp
-  GeneralServer/PathHandler.cpp
+  GeoIndex/GeoIndex.cpp
   Indexes/EdgeIndex.cpp
   Indexes/FulltextIndex.cpp
   Indexes/GeoIndex2.cpp
@@ -250,7 +251,6 @@ add_executable(${BIN_ARANGOD}
   RestServer/InitDatabaseFeature.cpp
   RestServer/LockfileFeature.cpp
   RestServer/QueryRegistryFeature.cpp
-  RestServer/RestServerFeature.cpp
   RestServer/ScriptFeature.cpp
   RestServer/ServerFeature.cpp
   RestServer/ServerIdFeature.cpp

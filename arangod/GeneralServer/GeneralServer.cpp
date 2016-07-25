@@ -32,10 +32,10 @@
 #include "GeneralServer/AsyncJobManager.h"
 #include "GeneralServer/GeneralCommTask.h"
 #include "GeneralServer/GeneralListenTask.h"
+#include "GeneralServer/GeneralServerFeature.h"
 #include "GeneralServer/HttpServerJob.h"
 #include "GeneralServer/RestHandler.h"
 #include "Logger/Logger.h"
-#include "RestServer/RestServerFeature.h"
 #include "Scheduler/ListenTask.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -66,44 +66,18 @@ int GeneralServer::sendChunk(uint64_t taskId, std::string const& data) {
 ////////////////////////////////////////////////////////////////////////////////
 
 GeneralServer::GeneralServer(
-    double keepAliveTimeout, bool allowMethodOverride,
-    std::vector<std::string> const& accessControlAllowOrigins, SSL_CTX* ctx)
+    bool allowMethodOverride,
+    std::vector<std::string> const& accessControlAllowOrigins)
     : _listenTasks(),
       _endpointList(nullptr),
-      _commTasks(),
-      _keepAliveTimeout(keepAliveTimeout),
       _allowMethodOverride(allowMethodOverride),
-      _accessControlAllowOrigins(accessControlAllowOrigins),
-      _ctx(ctx),
-      _verificationMode(SSL_VERIFY_NONE),
-      _verificationCallback(nullptr),
-      _sslAllowed(ctx != nullptr) {}
+      _accessControlAllowOrigins(accessControlAllowOrigins) {}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructs a general server
 ////////////////////////////////////////////////////////////////////////////////
 
 GeneralServer::~GeneralServer() { stopListening(); }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief generates a suitable communication task
-////////////////////////////////////////////////////////////////////////////////
-
-GeneralCommTask* GeneralServer::createCommTask(TRI_socket_t s,
-                                               ConnectionInfo&& info,
-                                               ConnectionType conntype) {
-  switch (conntype) {
-    case ConnectionType::VPPS:
-      return new HttpCommTask(this, s, std::move(info), _keepAliveTimeout);
-    case ConnectionType::VPP:
-      return new HttpCommTask(this, s, std::move(info), _keepAliveTimeout);
-    case ConnectionType::HTTPS:
-      // check _ctx and friends? REVIEW
-      return new HttpsCommTask(this, s, std::move(info), _keepAliveTimeout,
-                               _ctx, _verificationMode, _verificationCallback);
-    default:
-      return new HttpCommTask(this, s, std::move(info), _keepAliveTimeout);
-  }
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief add the endpoint list
@@ -137,7 +111,7 @@ void GeneralServer::startListening() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief stops listening
+/// @brief removes all listen and comm tasks
 ////////////////////////////////////////////////////////////////////////////////
 
 void GeneralServer::stopListening() {
@@ -146,69 +120,6 @@ void GeneralServer::stopListening() {
   }
 
   _listenTasks.clear();
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief removes all listen and comm tasks
-////////////////////////////////////////////////////////////////////////////////
-
-void GeneralServer::stop() {
-  while (true) {
-    GeneralCommTask* task = nullptr;
-
-    {
-      MUTEX_LOCKER(mutexLocker, _commTasksLock);
-
-      if (_commTasks.empty()) {
-        break;
-      }
-
-      task = *_commTasks.begin();
-      _commTasks.erase(task);
-    }
-
-    SchedulerFeature::SCHEDULER->destroyTask(task);
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief handles connection request
-////////////////////////////////////////////////////////////////////////////////
-
-void GeneralServer::handleConnected(TRI_socket_t s, ConnectionInfo&& info,
-                                    ConnectionType connectionType) {
-  GeneralCommTask* task = createCommTask(s, std::move(info), connectionType);
-
-  try {
-    MUTEX_LOCKER(mutexLocker, _commTasksLock);
-    _commTasks.emplace(task);
-  } catch (...) {
-    // destroy the task to prevent a leak
-    deleteTask(task);
-    throw;
-  }
-
-  // registers the task and get the number of the scheduler thread
-  ssize_t n;
-  SchedulerFeature::SCHEDULER->registerTask(task, &n);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief handles a connection close
-////////////////////////////////////////////////////////////////////////////////
-
-void GeneralServer::handleCommunicationClosed(GeneralCommTask* task) {
-  MUTEX_LOCKER(mutexLocker, _commTasksLock);
-  _commTasks.erase(task);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief handles a connection failure
-////////////////////////////////////////////////////////////////////////////////
-
-void GeneralServer::handleCommunicationFailure(GeneralCommTask* task) {
-  MUTEX_LOCKER(mutexLocker, _commTasksLock);
-  _commTasks.erase(task);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -233,7 +144,7 @@ bool GeneralServer::handleRequestAsync(GeneralCommTask* task,
 
   // register the job with the job manager
   if (jobId != nullptr) {
-    RestServerFeature::JOB_MANAGER->initAsyncJob(
+    GeneralServerFeature::JOB_MANAGER->initAsyncJob(
         static_cast<HttpServerJob*>(job.get()), hdr);
     *jobId = job->jobId();
   }
@@ -296,20 +207,12 @@ bool GeneralServer::openEndpoint(Endpoint* endpoint) {
 
   if (endpoint->transport() == Endpoint::TransportType::HTTP) {
     if (endpoint->encryption() == Endpoint::EncryptionType::SSL) {
-      if (!_sslAllowed) {  // we should not end up here
-        LOG(FATAL) << "no ssl context";
-        FATAL_ERROR_EXIT();
-      }
       connectionType = ConnectionType::HTTPS;
     } else {
       connectionType = ConnectionType::HTTP;
     }
   } else {
     if (endpoint->encryption() == Endpoint::EncryptionType::SSL) {
-      if (!_sslAllowed) {  // we should not end up here
-        LOG(FATAL) << "no ssl context";
-        FATAL_ERROR_EXIT();
-      }
       connectionType = ConnectionType::VPPS;
     } else {
       connectionType = ConnectionType::VPP;

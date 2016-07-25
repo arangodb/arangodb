@@ -574,7 +574,11 @@
           }
 
           // rerender graph
-          sigma.canvas.edges.autoCurve(self.currentGraph);
+          if (this.graphConfig) {
+            if (this.graphConfig.edgeType === 'curve') {
+              sigma.canvas.edges.autoCurve(self.currentGraph);
+            }
+          }
           self.currentGraph.refresh();
         } else {
           arangoHelper.arangoError('Graph', 'Could not create edge.');
@@ -1070,6 +1074,10 @@
       if (this.graphConfig) {
         if (this.graphConfig.edgeType) {
           settings.defaultEdgeType = this.graphConfig.edgeType;
+
+          if (this.graphConfig.edgeType === 'arrow') {
+            settings.minArrowSize = 7;
+          }
         }
 
         if (this.graphConfig.nodeLabelThreshold) {
@@ -1140,7 +1148,11 @@
       // for canvas renderer allow graph editing
       if (renderer === 'canvas') {
         // render parallel edges
-        sigma.canvas.edges.autoCurve(s);
+        if (this.graphConfig) {
+          if (this.graphConfig.edgeType === 'curve') {
+            sigma.canvas.edges.autoCurve(s);
+          }
+        }
         s.refresh();
 
         if (!self.aqlMode) {
@@ -1218,11 +1230,13 @@
           });
         }
 
-        if (this.graphConfig.edgeEditable) {
-          s.bind('rightClickEdge', function (e) {
-            var edgeId = e.data.edge.id;
-            self.createEdgeContextMenu(edgeId, e);
-          });
+        if (this.graphConfig) {
+          if (this.graphConfig.edgeEditable) {
+            s.bind('rightClickEdge', function (e) {
+              var edgeId = e.data.edge.id;
+              self.createEdgeContextMenu(edgeId, e);
+            });
+          }
         }
 
         s.bind('doubleClickNode', function (e) {

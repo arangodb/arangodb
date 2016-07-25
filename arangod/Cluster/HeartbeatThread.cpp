@@ -39,9 +39,9 @@
 #include "Dispatcher/Dispatcher.h"
 #include "Dispatcher/DispatcherFeature.h"
 #include "Dispatcher/Job.h"
+#include "GeneralServer/GeneralServerFeature.h"
 #include "GeneralServer/RestHandlerFactory.h"
 #include "Logger/Logger.h"
-#include "RestServer/RestServerFeature.h"
 #include "V8/v8-globals.h"
 #include "VocBase/AuthInfo.h"
 #include "VocBase/server.h"
@@ -375,7 +375,7 @@ void HeartbeatThread::runCoordinator() {
 
         if (userVersion > 0 && userVersion != oldUserVersion) {
           oldUserVersion = userVersion;
-          RestServerFeature::AUTH_INFO.outdate();
+          GeneralServerFeature::AUTH_INFO.outdate();
         }
       }
 

@@ -23,9 +23,9 @@
 
 #include "v8-vocbaseprivate.h"
 
-#include <unicode/timezone.h>
-#include <unicode/smpdtfmt.h>
 #include <unicode/dtfmtsym.h>
+#include <unicode/smpdtfmt.h>
+#include <unicode/timezone.h>
 
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
@@ -51,10 +51,10 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
+#include "GeneralServer/GeneralServerFeature.h"
 #include "ReadCache/GlobalRevisionCache.h"
 #include "Rest/Version.h"
 #include "RestServer/ConsoleThread.h"
-#include "RestServer/RestServerFeature.h"
 #include "RestServer/VocbaseContext.h"
 #include "Statistics/StatisticsFeature.h"
 #include "Utils/ExplicitTransaction.h"
@@ -557,8 +557,7 @@ static void JS_WaitCollectorWal(
 
   std::string const name = TRI_ObjectToString(args[0]);
 
-  TRI_vocbase_col_t* col =
-      TRI_LookupCollectionByNameVocBase(vocbase, name);
+  TRI_vocbase_col_t* col = TRI_LookupCollectionByNameVocBase(vocbase, name);
 
   if (col == nullptr) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
@@ -944,7 +943,7 @@ static void JS_ReloadAuth(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("RELOAD_AUTH()");
   }
 
-  RestServerFeature::AUTH_INFO.outdate();
+  GeneralServerFeature::AUTH_INFO.outdate();
 
   TRI_V8_RETURN_TRUE();
   TRI_V8_TRY_CATCH_END
@@ -1198,7 +1197,7 @@ static void JS_ExecuteAqlJson(v8::FunctionCallbackInfo<v8::Value> const& args) {
       TRI_V8_THROW_EXCEPTION(res);
     }
   }
-  
+
   TRI_GET_GLOBALS();
   arangodb::aql::Query query(true, vocbase, queryBuilder, options,
                              arangodb::aql::PART_MAIN);
@@ -2636,31 +2635,34 @@ static void JS_GetTimers(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
 static void JS_TrustedProxies(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
-  
-  if (RestServerFeature::hasProxyCheck()) {
+
+  if (GeneralServerFeature::hasProxyCheck()) {
     v8::Handle<v8::Array> result = v8::Array::New(isolate);
 
     uint32_t i = 0;
-    for (auto const& proxyDef: RestServerFeature::getTrustedProxies()) {
+    for (auto const& proxyDef : GeneralServerFeature::getTrustedProxies()) {
       result->Set(i++, TRI_V8_STD_STRING(proxyDef));
     }
     TRI_V8_RETURN(result);
   } else {
     TRI_V8_RETURN(v8::Null(isolate));
   }
-  
+
   TRI_V8_TRY_CATCH_END
 }
 
-static void JS_AuthenticationEnabled(v8::FunctionCallbackInfo<v8::Value> const& args) {
-  // mop: one could argue that this is a function because this might be changable on the fly
-  // at some time but the sad truth is server startup order :S v8 is initialized after RestServerFeature
-  // :weglaecheln:
+static void JS_AuthenticationEnabled(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
+  // mop: one could argue that this is a function because this might be
+  // changable on the fly at some time but the sad truth is server startup
+  // order
+  // v8 is initialized after GeneralServerFeature
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  v8::Handle<v8::Boolean> result = v8::Boolean::New(isolate, RestServerFeature::authenticationEnabled());
-  
+  v8::Handle<v8::Boolean> result =
+      v8::Boolean::New(isolate, GeneralServerFeature::authenticationEnabled());
+
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
 }
@@ -2857,7 +2859,7 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(
       isolate, context, TRI_V8_ASCII_STRING("AQL_QUERY_CACHE_INVALIDATE"),
       JS_QueryCacheInvalidateAql, true);
-  
+
   TRI_AddGlobalFunctionVocbase(isolate, context,
                                TRI_V8_ASCII_STRING("OBJECT_HASH"),
                                JS_ObjectHash, true);
@@ -2885,9 +2887,8 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
                                TRI_V8_ASCII_STRING("PARSE_DATETIME"),
                                JS_ParseDatetime);
 
-  TRI_AddGlobalFunctionVocbase(isolate, context,
-                               TRI_V8_ASCII_STRING("ENDPOINTS"),
-                               JS_Endpoints, true);
+  TRI_AddGlobalFunctionVocbase(
+      isolate, context, TRI_V8_ASCII_STRING("ENDPOINTS"), JS_Endpoints, true);
   TRI_AddGlobalFunctionVocbase(isolate, context,
                                TRI_V8_ASCII_STRING("RELOAD_AUTH"),
                                JS_ReloadAuth, true);
@@ -2920,11 +2921,13 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(
       isolate, context, TRI_V8_ASCII_STRING("GET_TIMERS"), JS_GetTimers, true);
 
-  TRI_AddGlobalFunctionVocbase(
-      isolate, context, TRI_V8_ASCII_STRING("AUTHENTICATION_ENABLED"), JS_AuthenticationEnabled, true);
-  
-  TRI_AddGlobalFunctionVocbase(
-      isolate, context, TRI_V8_ASCII_STRING("TRUSTED_PROXIES"), JS_TrustedProxies, true);
+  TRI_AddGlobalFunctionVocbase(isolate, context,
+                               TRI_V8_ASCII_STRING("AUTHENTICATION_ENABLED"),
+                               JS_AuthenticationEnabled, true);
+
+  TRI_AddGlobalFunctionVocbase(isolate, context,
+                               TRI_V8_ASCII_STRING("TRUSTED_PROXIES"),
+                               JS_TrustedProxies, true);
   // .............................................................................
   // create global variables
   // .............................................................................
@@ -2945,7 +2948,7 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   context->Global()->ForceSet(TRI_V8_ASCII_STRING("THREAD_NUMBER"),
                               v8::Number::New(isolate, (double)threadNumber),
                               v8::ReadOnly);
-  
+
   // whether or not statistics are enabled
   context->Global()->ForceSet(
       TRI_V8_ASCII_STRING("ENABLE_STATISTICS"),

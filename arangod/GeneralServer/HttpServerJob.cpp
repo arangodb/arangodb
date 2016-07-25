@@ -29,9 +29,9 @@
 #include "GeneralServer/AsyncJobManager.h"
 #include "GeneralServer/GeneralCommTask.h"
 #include "GeneralServer/GeneralServer.h"
+#include "GeneralServer/GeneralServerFeature.h"
 #include "GeneralServer/RestHandler.h"
 #include "Logger/Logger.h"
-#include "RestServer/RestServerFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 
@@ -81,8 +81,8 @@ void HttpServerJob::work() {
 
     if (_isAsync) {
       _handler->RequestStatisticsAgent::release();
-      RestServerFeature::JOB_MANAGER->finishAsyncJob(_jobId,
-                                                     _handler->stealResponse());
+      GeneralServerFeature::JOB_MANAGER->finishAsyncJob(
+          _jobId, _handler->stealResponse());
     } else {
       auto data = std::make_unique<TaskData>();
 
