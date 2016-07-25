@@ -41,8 +41,8 @@ using namespace arangodb;
 std::string const MMFilesEngine::EngineName("MMFiles");
 
 /// @brief extract the numeric part from a filename
-static uint64_t GetNumericFilenamePart(char const* filename) {
-  char const* pos = strrchr(filename, '-');
+static uint64_t GetNumericFilenamePart(std::string const& filename) {
+  char const* pos = strrchr(filename.c_str(), '-');
 
   if (pos == nullptr) {
     return 0;
@@ -55,7 +55,7 @@ static uint64_t GetNumericFilenamePart(char const* filename) {
 /// the filename. this is used to sort database filenames on startup
 struct DatabaseIdStringComparator {
   bool operator()(std::string const& lhs, std::string const& rhs) const {
-    return GetNumericFilenamePart(lhs.c_str()) < GetNumericFilenamePart(rhs.c_str());
+    return GetNumericFilenamePart(lhs) < GetNumericFilenamePart(rhs);
   }
 };
 
@@ -146,7 +146,7 @@ void MMFilesEngine::getDatabases(arangodb::velocypack::Builder& result) {
   for (auto const& name : files) {
     TRI_ASSERT(!name.empty());
     
-    TRI_voc_tick_t id = GetNumericFilenamePart(name.c_str());
+    TRI_voc_tick_t id = GetNumericFilenamePart(name);
 
     if (id == 0) {
       // invalid id
@@ -279,27 +279,9 @@ TRI_vocbase_t* MMFilesEngine::openDatabase(VPackSlice const& parameters, bool is
   VPackSlice idSlice = parameters.get("id");
   TRI_voc_tick_t id = static_cast<TRI_voc_tick_t>(basics::StringUtils::uint64(idSlice.copyString()));
   std::string const name = parameters.get("name").copyString();
-  std::string const directory = databaseDirectory(id);
   bool iterateMarkersOnOpen = true; /* TODO */
-  TRI_vocbase_t* vocbase = TRI_OpenVocBase(directory.c_str(), id, name.c_str(), isUpgrade, iterateMarkersOnOpen);
 
-  if (vocbase == nullptr) {
-    // grab last error
-    int res = TRI_errno();
-
-    if (res == TRI_ERROR_NO_ERROR) {
-      // we must have an error...
-      res = TRI_ERROR_INTERNAL;
-    }
-
-    LOG(ERR) << "could not process database directory '" << directory
-             << "' for database '" << name << "': " << TRI_errno_string(res);
-    THROW_ARANGO_EXCEPTION(res);
-  }
-    
-  LOG(INFO) << "loaded database '" << name << "' from '" << directory << "'";
-
-  return vocbase;
+  return openExistingDatabase(id, name, isUpgrade, iterateMarkersOnOpen);
 }
 
 // asks the storage engine to create a database as specified in the VPack
@@ -322,22 +304,7 @@ TRI_vocbase_t* MMFilesEngine::createDatabase(TRI_voc_tick_t id, arangodb::velocy
     THROW_ARANGO_EXCEPTION(res);
   }
 
-  TRI_vocbase_t* vocbase = TRI_OpenVocBase(path.c_str(), id, name.c_str(), false, false);
-
-  if (vocbase != nullptr) {
-    return vocbase;
-  }
-
-  // grab last error
-  res = TRI_errno();
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    // we must have an error...
-    res = TRI_ERROR_INTERNAL;
-  }
-
-  LOG(ERR) << "could not create database '" << name << "': " << TRI_errno_string(res);
-  THROW_ARANGO_EXCEPTION(res);
+  return openExistingDatabase(id, name, false, false);
 }
 
 // asks the storage engine to drop the specified database and persist the 
@@ -651,4 +618,26 @@ int MMFilesEngine::waitForDeletion(std::string const& directoryName, int statusC
   }
 
   return TRI_ERROR_NO_ERROR;
+}
+
+/// @brief open an existing database. internal function
+TRI_vocbase_t* MMFilesEngine::openExistingDatabase(TRI_voc_tick_t id, std::string const& name, bool isUpgrade, bool iterateMarkersOnOpen) {
+  std::string const path = databaseDirectory(id);
+
+  TRI_vocbase_t* vocbase = TRI_OpenVocBase(path.c_str(), id, name.c_str(), isUpgrade, iterateMarkersOnOpen);
+
+  if (vocbase != nullptr) {
+    return vocbase;
+  }
+
+  // grab last error
+  int res = TRI_errno();
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    // we must have an error...
+    res = TRI_ERROR_INTERNAL;
+  }
+
+  LOG(ERR) << "could not open database '" << name << "': " << TRI_errno_string(res);
+  THROW_ARANGO_EXCEPTION(res);
 }

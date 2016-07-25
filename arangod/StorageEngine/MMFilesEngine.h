@@ -205,6 +205,9 @@ class MMFilesEngine final : public StorageEngine {
 
   /// @brief wait until a database directory disappears
   int waitForDeletion(std::string const& directoryName, int statusCode);
+   
+  /// @brief open an existing database. internal function
+  TRI_vocbase_t* openExistingDatabase(TRI_voc_tick_t id, std::string const& name, bool isUpgrade, bool iterateMarkersOnOpen);
 
  public:
   static std::string const EngineName;
