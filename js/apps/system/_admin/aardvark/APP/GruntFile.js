@@ -66,7 +66,7 @@
             "frontend/js/lib/sigma.plugins.lasso.js",
             "frontend/js/lib/sigma.layout.noverlap.js",
             "frontend/js/lib/sigma.layout.fruchtermanReingold.js",
-            "frontend/js/lib/sigma.exporters.svg.js",
+            "frontend/js/lib/sigma.exporters.image.js",
             "frontend/js/lib/sigma.canvas.edges.labels.curve.js",
             "frontend/js/lib/sigma.canvas.edges.labels.curvedArrow.js",
             "frontend/js/lib/sigma.canvas.edges.labels.def.js",

@@ -27,7 +27,7 @@
       'layout': {
         type: 'select',
         name: 'Layout algorithm',
-        desc: 'Different graph displaying algorithms. No overlap is very fast, force is slower and fruchtermann is the slowest. The calculation time strongly depends on your nodes and edges counts.',
+        desc: 'Different graph algorithms. No overlap is very fast, force is slower and fruchtermann is the slowest. The calculation time strongly depends on your nodes and edges counts.',
         noverlap: {
           name: 'No overlap',
           val: 'noverlap'
@@ -77,13 +77,13 @@
         type: 'select',
         name: 'Label by coll?',
         desc: 'Set label text by collection. If activated node label attribute will be ignored.',
-        no: {
-          name: 'No',
-          val: 'false'
-        },
         yes: {
           name: 'Yes',
           val: 'true'
+        },
+        no: {
+          name: 'No',
+          val: 'false'
         }
       },
       'nodeLabelThreshold': {
@@ -134,13 +134,13 @@
         type: 'select',
         name: 'Label by coll?',
         desc: 'Set label text by collection. If activated edge label attribute will be ignored.',
-        no: {
-          name: 'No',
-          val: 'false'
-        },
         yes: {
           name: 'Yes',
           val: 'true'
+        },
+        no: {
+          name: 'No',
+          val: 'false'
         }
       },
       'edgeLabelThreshold': {
@@ -326,8 +326,8 @@
         edgeType: 'line',
         nodeSize: '',
         edgeEditable: 'false',
-        nodeLabelByCollection: 'false',
-        edgeLabelByCollection: 'false',
+        nodeLabelByCollection: 'true',
+        edgeLabelByCollection: 'true',
         nodeStart: ''
       };
       this.saveGraphSettings(null, null, null, obj);
