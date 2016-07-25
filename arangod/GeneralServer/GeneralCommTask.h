@@ -49,8 +49,6 @@ class GeneralCommTask : public SocketTask, public RequestStatisticsAgent {
   GeneralCommTask(GeneralServer*, TRI_socket_t, ConnectionInfo&&,
                   double keepAliveTimeout);
 
-  // return whether or not the task desires to start a dispatcher thread
-  bool startThread() const { return _startThread; }  // called by server
   void handleResponse(GeneralResponse*);             // called by server
 
   void handleSimpleError(GeneralResponse::ResponseCode);
@@ -85,7 +83,6 @@ class GeneralCommTask : public SocketTask, public RequestStatisticsAgent {
   ConnectionInfo _connectionInfo;
   char const* _protocol;  // protocal to use http, vpp
   GeneralRequest::ProtocolVersion _protocolVersion;
-  bool _startThread;
   std::deque<basics::StringBuffer*> _writeBuffers;
   std::deque<TRI_request_statistics_t*>
       _writeBuffersStats;  // statistics buffers

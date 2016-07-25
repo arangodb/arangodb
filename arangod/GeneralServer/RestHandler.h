@@ -57,6 +57,9 @@ class RestHandler : public RequestStatisticsAgent, public arangodb::WorkItem {
   // returns true if a handler is executed directly
   virtual bool isDirect() const = 0;
 
+  // returns true if a handler desires to start a new dispatcher thread
+  virtual bool needsOwnThread() const { return _needsOwnThread; }
+
   // returns the queue name
   virtual size_t queue() const { return Dispatcher::STANDARD_QUEUE; }
 
@@ -111,8 +114,8 @@ class RestHandler : public RequestStatisticsAgent, public arangodb::WorkItem {
   // handler id
   uint64_t const _handlerId;
 
-  // task id or 0
-  uint64_t _taskId;
+  // task id or (initially) 0
+  uint64_t _taskId = 0;
 
   // event loop
   EventLoop _loop;
@@ -123,6 +126,9 @@ class RestHandler : public RequestStatisticsAgent, public arangodb::WorkItem {
   // OBI-TODO make private
   // the response
   GeneralResponse* _response;
+
+ private:
+  bool _needsOwnThread = false;
 };
 }
 }

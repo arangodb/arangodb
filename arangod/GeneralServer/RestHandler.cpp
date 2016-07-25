@@ -39,9 +39,16 @@ std::atomic_uint_fast64_t NEXT_HANDLER_ID(
 
 RestHandler::RestHandler(GeneralRequest* request, GeneralResponse* response)
     : _handlerId(NEXT_HANDLER_ID.fetch_add(1, std::memory_order_seq_cst)),
-      _taskId(0),
       _request(request),
-      _response(response) {}
+      _response(response) {
+  bool found;
+  std::string const& startThread =
+      _request->header(StaticStrings::StartThread, found);
+
+  if (found) {
+    _needsOwnThread = StringUtils::boolean(startThread);
+  }
+}
 
 RestHandler::~RestHandler() {
   delete _request;

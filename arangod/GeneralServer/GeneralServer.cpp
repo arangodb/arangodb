@@ -129,7 +129,7 @@ void GeneralServer::stopListening() {
 bool GeneralServer::handleRequestAsync(GeneralCommTask* task,
                                        WorkItem::uptr<RestHandler>& handler,
                                        uint64_t* jobId) {
-  bool startThread = task->startThread();
+  bool startThread = handler->needsOwnThread();
 
   // extract the coordinator flag
   bool found;
@@ -182,7 +182,7 @@ bool GeneralServer::handleRequest(GeneralCommTask* task,
     return true;
   }
 
-  bool startThread = task->startThread();
+  bool startThread = handler->needsOwnThread();
 
   // use a dispatcher queue, handler belongs to the job
   std::unique_ptr<Job> job = std::make_unique<HttpServerJob>(this, handler);

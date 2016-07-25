@@ -626,16 +626,6 @@ void HttpCommTask::processRequest() {
 
   response.release();
 
-  if (_request != nullptr) {
-    bool found;
-    std::string const& startThread =
-        _request->header(StaticStrings::StartThread, found);
-
-    if (found) {
-      _startThread = StringUtils::boolean(startThread);
-    }
-  }
-
   handler->setTaskId(_taskId, _loop);
 
   // clear request object
@@ -694,7 +684,6 @@ void HttpCommTask::finishedChunked() {
   _writeBuffersStats.push_back(nullptr);
 
   _isChunked = false;
-  _startThread = false;
   _requestPending = false;
 
   fillWriteBuffer();
@@ -929,7 +918,6 @@ void HttpCommTask::resetState(bool close) {
 
   _newRequest = true;
   _readRequestBody = false;
-  _startThread = false;
 }
 
 GeneralResponse::ResponseCode HttpCommTask::authenticateRequest() {

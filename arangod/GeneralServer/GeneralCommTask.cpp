@@ -54,7 +54,6 @@ GeneralCommTask::GeneralCommTask(GeneralServer* server, TRI_socket_t socket,
       _connectionInfo(std::move(info)),
       _protocol("unknown"),
       _protocolVersion(GeneralRequest::ProtocolVersion::UNKNOWN),
-      _startThread(false),
       _writeBuffers(),
       _writeBuffersStats(),
       _isChunked(false),
@@ -82,7 +81,6 @@ GeneralCommTask::~GeneralCommTask() {
 void GeneralCommTask::handleResponse(GeneralResponse* response) {
   _requestPending = false;
   _isChunked = false;
-  _startThread = false;
 
   if (response == nullptr) {
     handleSimpleError(GeneralResponse::ResponseCode::SERVER_ERROR);
