@@ -309,8 +309,33 @@ TRI_vocbase_t* MMFilesEngine::openDatabase(VPackSlice const& parameters, bool is
 // the WAL entry for the database creation will be written *after* the call
 // to "createDatabase" returns
 TRI_vocbase_t* MMFilesEngine::createDatabase(TRI_voc_tick_t id, arangodb::velocypack::Slice const& data) {
-  // TODO:
-  return nullptr;
+  std::string const path = databaseDirectory(id);
+  std::string const name = data.get("name").copyString();
+
+  waitForDeletion(path, TRI_ERROR_NO_ERROR);
+  
+  int res = createDatabaseDirectory(id, name);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
+
+  TRI_vocbase_t* vocbase = TRI_OpenVocBase(path.c_str(), id, name.c_str(), false, false);
+
+  if (vocbase != nullptr) {
+    return vocbase;
+  }
+
+  // grab last error
+  res = TRI_errno();
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    // we must have an error...
+    res = TRI_ERROR_INTERNAL;
+  }
+
+  LOG(ERR) << "could not create database '" << name << "': " << TRI_errno_string(res);
+  THROW_ARANGO_EXCEPTION(res);
 }
 
 // asks the storage engine to drop the specified database and persist the 
@@ -585,4 +610,34 @@ std::string MMFilesEngine::databaseDirectory(TRI_voc_tick_t id) const {
 
 std::string MMFilesEngine::parametersFile(TRI_voc_tick_t id) const {
   return basics::FileUtils::buildFilename(databaseDirectory(id), TRI_VOC_PARAMETER_FILE);
+}
+
+/// @brief wait until a database directory disappears
+int MMFilesEngine::waitForDeletion(std::string const& directoryName, int statusCode) {
+  int iterations = 0;
+  // wait for at most 30 seconds for the directory to be removed
+  while (TRI_IsDirectory(directoryName.c_str())) {
+    if (iterations == 0) {
+      LOG(TRACE) << "waiting for deletion of database directory '" << directoryName << "', called with status code " << statusCode;
+
+      if (statusCode != TRI_ERROR_FORBIDDEN &&
+          (statusCode == TRI_ERROR_ARANGO_DATABASE_NOT_FOUND ||
+           statusCode != TRI_ERROR_NO_ERROR)) {
+        LOG(WARN) << "forcefully deleting database directory '" << directoryName << "'";
+        TRI_RemoveDirectory(directoryName.c_str());
+      }
+    } else if (iterations >= 30 * 10) {
+      LOG(WARN) << "unable to remove database directory '" << directoryName << "'";
+      return TRI_ERROR_INTERNAL;
+    }
+
+    if (iterations == 5 * 10) {
+      LOG(INFO) << "waiting for deletion of database directory '" << directoryName << "'";
+    }
+
+    ++iterations;
+    usleep(50000);
+  }
+
+  return TRI_ERROR_NO_ERROR;
 }

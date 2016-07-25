@@ -25,7 +25,6 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryRegistry.h"
 #include "Basics/FileUtils.h"
-#include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/files.h"
@@ -61,9 +60,6 @@ using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
-/// @brief lock for serializing the creation of database
-static arangodb::Mutex DatabaseCreateLock;
-
 TRI_server_t* DatabaseFeature::SERVER = nullptr;
 
 uint32_t const DatabaseFeature::DefaultIndexBuckets = 8;
@@ -84,7 +80,6 @@ void DatabaseManagerThread::run() {
   int cleanupCycles = 0;
 
   while (true) {
-
     // check if we have to drop some database
     TRI_vocbase_t* database = nullptr;
 
@@ -186,7 +181,8 @@ void DatabaseManagerThread::run() {
         break;
       }
 
-      usleep(500 * 1000); // TODO
+      usleep(waitTime()); 
+
       // The following is only necessary after a wait:
       auto queryRegistry = databaseFeature->_queryRegistry.load();
 
@@ -409,7 +405,7 @@ int DatabaseFeature::createDatabaseCoordinator(TRI_voc_tick_t id, std::string co
     return TRI_ERROR_ARANGO_DATABASE_NAME_INVALID;
   }
 
-  MUTEX_LOCKER(mutexLocker, DatabaseCreateLock);
+  MUTEX_LOCKER(mutexLocker, _databaseCreateLock);
 
   {
     auto unuser(_databasesProtector.use());
@@ -492,7 +488,7 @@ int DatabaseFeature::createDatabase(TRI_voc_tick_t id, std::string const& name,
   // the create lock makes sure no one else is creating a database while we're
   // inside
   // this function
-  MUTEX_LOCKER(mutexLocker, DatabaseCreateLock);
+  MUTEX_LOCKER(mutexLocker, _databaseCreateLock);
   {
     {
       auto unuser(_databasesProtector.use());
@@ -518,28 +514,12 @@ int DatabaseFeature::createDatabase(TRI_voc_tick_t id, std::string const& name,
 
     // create database in storage engine
     StorageEngine* engine = ApplicationServer::getFeature<EngineSelectorFeature>("EngineSelector")->ENGINE;
-    TRI_vocbase_t* vocbase = engine->createDatabase(id, builder.slice()); 
-
-    /* TODO: fix path */
-    /* TODO: move into engine */
-    std::string path = "PATH";
-    vocbase = TRI_OpenVocBase(path.c_str(), id, name.c_str(), false, false);
-
-    if (vocbase == nullptr) {
-      // grab last error
-      res = TRI_errno();
-
-      if (res != TRI_ERROR_NO_ERROR) {
-        // we must have an error...
-        res = TRI_ERROR_INTERNAL;
-      }
-
-      LOG(ERR) << "could not create database '" << name << "': " << TRI_errno_string(res);
-
-      return res;
-    }
-
+    // createDatabase must return a valid database or throw
+    vocbase = engine->createDatabase(id, builder.slice()); 
     TRI_ASSERT(vocbase != nullptr);
+ 
+    // enable deadlock detection 
+    vocbase->_deadlockDetector.enabled(!arangodb::ServerState::instance()->isRunningInCluster());
 
     // create application directories
     V8DealerFeature* dealer =
@@ -588,7 +568,7 @@ int DatabaseFeature::createDatabase(TRI_voc_tick_t id, std::string const& name,
       }
     }
 
-  }  // release DatabaseCreateLock
+  }  // release _databaseCreateLock
 
   // write marker into log
   if (writeMarker) {

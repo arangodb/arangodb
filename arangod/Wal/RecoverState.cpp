@@ -926,11 +926,12 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
         }
 
         vocbase = nullptr;
+        /* TODO: check what TRI_ERROR_ARANGO_DATABASE_NOT_FOUND means here 
         WaitForDeletion(state->server, databaseId,
                         TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-        int res = TRI_CreateDatabaseServer(state->server, databaseId,
-                                          nameString.c_str(),
-                                          &vocbase, false);
+        */
+        DatabaseFeature* databaseFeature = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
+        int res = databaseFeature->createDatabase(databaseId, nameString, false, vocbase);
 
         if (res != TRI_ERROR_NO_ERROR) {
           LOG(WARN) << "cannot create database " << databaseId << ": " << TRI_errno_string(res);

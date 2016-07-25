@@ -203,6 +203,9 @@ class MMFilesEngine final : public StorageEngine {
   std::string parametersFile(TRI_voc_tick_t id) const;
   int openDatabases();
 
+  /// @brief wait until a database directory disappears
+  int waitForDeletion(std::string const& directoryName, int statusCode);
+
  public:
   static std::string const EngineName;
 

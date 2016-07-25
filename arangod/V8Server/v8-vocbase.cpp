@@ -35,6 +35,7 @@
 #include <iostream>
 #include <thread>
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/HttpEndpointProvider.h"
 #include "Aql/Query.h"
 #include "Aql/QueryCache.h"
@@ -55,6 +56,7 @@
 #include "ReadCache/GlobalRevisionCache.h"
 #include "Rest/Version.h"
 #include "RestServer/ConsoleThread.h"
+#include "RestServer/DatabaseFeature.h"
 #include "RestServer/VocbaseContext.h"
 #include "Statistics/StatisticsFeature.h"
 #include "Utils/ExplicitTransaction.h"
@@ -2352,10 +2354,7 @@ static void JS_CreateDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   TRI_GET_GLOBALS();
   TRI_voc_tick_t id = 0;
-
-  // get database defaults from server
-
-  // overwrite database defaults from args[2]
+  // options for database (currently only allows setting "id" for testing purposes)
   if (args.Length() > 1 && args[1]->IsObject()) {
     v8::Handle<v8::Object> options = args[1]->ToObject();
 
@@ -2368,19 +2367,15 @@ static void JS_CreateDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   std::string const name = TRI_ObjectToString(args[0]);
 
-  TRI_vocbase_t* database;
-  int res =
-      TRI_CreateDatabaseServer(static_cast<TRI_server_t*>(v8g->_server), id,
-                               name.c_str(), &database, true);
+  DatabaseFeature* databaseFeature = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
+  TRI_vocbase_t* database = nullptr;
+  int res = databaseFeature->createDatabase(id, name, true, database);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION(res);
   }
 
   TRI_ASSERT(database != nullptr);
-
-  database->_deadlockDetector.enabled(
-      !arangodb::ServerState::instance()->isRunningInCluster());
 
   // copy users into context
   if (args.Length() >= 3 && args[2]->IsArray()) {

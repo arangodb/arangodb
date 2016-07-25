@@ -51,6 +51,12 @@ class DatabaseManagerThread : public Thread {
   ~DatabaseManagerThread();
 
   void run() override;
+
+ private:
+  // how long will the thread pause between iterations
+  static constexpr unsigned long waitTime() {
+    return 500 * 1000;
+  }
 };
 
 class DatabaseFeature final : public application_features::ApplicationFeature {
@@ -146,6 +152,9 @@ class DatabaseFeature final : public application_features::ApplicationFeature {
   bool _checkVersion;
   bool _iterateMarkersOnOpen;
   bool _upgrade;
+
+  /// @brief lock for serializing the creation of databases
+  arangodb::Mutex _databaseCreateLock;
 
  public:
   static uint32_t const DefaultIndexBuckets;
