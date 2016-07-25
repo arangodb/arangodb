@@ -996,6 +996,14 @@
       });
 
       this.aqlEditor.commands.addCommand({
+        name: 'executeSelectedQuery',
+        bindKey: {win: 'Ctrl-Alt-Return', mac: 'Command-Alt-Return', linux: 'Ctrl-Alt-Return'},
+        exec: function () {
+          self.executeQuery(true);
+        }
+      });
+
+      this.aqlEditor.commands.addCommand({
         name: 'saveQuery',
         bindKey: {win: 'Ctrl-Shift-S', mac: 'Command-Shift-S', linux: 'Ctrl-Shift-S'},
         exec: function () {
@@ -1248,7 +1256,7 @@
       return quit;
     },
 
-    executeQuery: function () {
+    executeQuery: function (selected) {
       if (this.verifyQueryAndParams()) {
         return;
       }
@@ -1285,17 +1293,22 @@
       sentBindParamEditor.setReadOnly(true);
       this.setEditorAutoHeight(sentBindParamEditor);
 
-      this.fillResult(outputEditor, sentQueryEditor, counter);
+      this.fillResult(outputEditor, sentQueryEditor, counter, selected);
       this.outputCounter++;
     },
 
-    readQueryData: function () {
+    readQueryData: function (selected) {
       // var selectedText = this.aqlEditor.session.getTextRange(this.aqlEditor.getSelectionRange())
       var sizeBox = $('#querySize');
       var data = {
-        query: this.aqlEditor.getValue(),
         id: 'currentFrontendQuery'
       };
+
+      if (selected) {
+        data.query = this.aqlEditor.getSelectedText();
+      } else {
+        data.query = this.aqlEditor.getValue();
+      }
 
       if (sizeBox.val() === 'all') {
         data.batchSize = 1000000;
@@ -1303,27 +1316,16 @@
         data.batchSize = parseInt(sizeBox.val(), 10);
       }
 
-      // var parsedBindVars = {}, tmpVar
       if (Object.keys(this.bindParamTableObj).length > 0) {
-        /*
-        _.each(this.bindParamTableObj, function(value, key) {
-          try {
-            tmpVar = JSON.parse(value)
-          }
-          catch (e) {
-            tmpVar = value
-          }
-          parsedBindVars[key] = tmpVar
-        });*/
         data.bindVars = this.bindParamTableObj;
       }
       return JSON.stringify(data);
     },
 
-    fillResult: function (outputEditor, sentQueryEditor, counter) {
+    fillResult: function (outputEditor, sentQueryEditor, counter, selected) {
       var self = this;
 
-      var queryData = this.readQueryData();
+      var queryData = this.readQueryData(selected);
 
       if (queryData) {
         sentQueryEditor.setValue(self.aqlEditor.getValue(), 1);
