@@ -168,12 +168,11 @@ void BootstrapFeature::start() {
 
 void BootstrapFeature::unprepare() {
   // notify all currently running queries about the shutdown
-  TRI_server_t* s = DatabaseFeature::SERVER;
+  auto databaseFeature = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
+
   if (ServerState::instance()->isCoordinator()) {
-    std::vector<TRI_voc_tick_t> ids =
-        TRI_GetIdsCoordinatorDatabaseServer(s, true);
-    for (auto& id : ids) {
-      TRI_vocbase_t* vocbase = TRI_UseByIdCoordinatorDatabaseServer(s, id);
+    for (auto& id : databaseFeature->getDatabaseIdsCoordinator(true)) {
+      TRI_vocbase_t* vocbase = databaseFeature->useDatabase(id);
 
       if (vocbase != nullptr) {
         vocbase->_queries->killAll(true);
@@ -181,16 +180,13 @@ void BootstrapFeature::unprepare() {
       }
     }
   } else {
-    std::vector<std::string> names;
-    int res = TRI_GetDatabaseNamesServer(s, names);
-    if (res == TRI_ERROR_NO_ERROR) {
-      for (auto& name : names) {
-        TRI_vocbase_t* vocbase = TRI_UseDatabaseServer(s, name.c_str());
+    std::vector<std::string> names = databaseFeature->getDatabaseNames();
+    for (auto& name : databaseFeature->getDatabaseNames()) {
+      TRI_vocbase_t* vocbase = databaseFeature->useDatabase(name);
 
-        if (vocbase != nullptr) {
-          vocbase->_queries->killAll(true);
-          TRI_ReleaseVocBase(vocbase);
-        }
+      if (vocbase != nullptr) {
+        vocbase->_queries->killAll(true);
+        TRI_ReleaseVocBase(vocbase);
       }
     }
   }

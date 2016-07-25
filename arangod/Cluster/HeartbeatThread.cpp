@@ -470,6 +470,8 @@ void HeartbeatThread::removeDispatchedJob(DBServerAgencySyncResult result) {
 
 static std::string const prefixPlanChangeCoordinator = "Plan/Databases";
 bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
+  DatabaseFeature* databaseFeature = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
+
   LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "found a plan update";
   AgencyCommResult result = _agency.getValues(prefixPlanChangeCoordinator);
 
@@ -516,8 +518,7 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
         ids.push_back(id);
       }
 
-      TRI_vocbase_t* vocbase =
-          TRI_UseCoordinatorDatabaseServer(_server, name.c_str());
+      TRI_vocbase_t* vocbase = databaseFeature->useDatabaseCoordinator(name);
 
       if (vocbase == nullptr) {
         // database does not yet exist, create it now
@@ -528,7 +529,6 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
         }
 
         // create a local database object...
-        DatabaseFeature* databaseFeature = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
         int res = databaseFeature->createDatabaseCoordinator(id, name, vocbase);
 
         if (res != TRI_ERROR_NO_ERROR) {
@@ -542,15 +542,13 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
     }
 
     // get the list of databases that we know about locally
-    std::vector<TRI_voc_tick_t> localIds =
-        TRI_GetIdsCoordinatorDatabaseServer(_server);
+    std::vector<TRI_voc_tick_t> localIds = databaseFeature->getDatabaseIdsCoordinator(false);
 
     for (auto id : localIds) {
       auto r = std::find(ids.begin(), ids.end(), id);
 
       if (r == ids.end()) {
         // local database not found in the plan...
-        DatabaseFeature* databaseFeature = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
         databaseFeature->dropDatabaseCoordinator(id, false);
       }
     }

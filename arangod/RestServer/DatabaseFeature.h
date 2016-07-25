@@ -77,14 +77,27 @@ class DatabaseFeature final : public application_features::ApplicationFeature {
   void unprepare() override final;
 
  public:
+   /// @brief get the ids of all local coordinator databases
+  std::vector<TRI_voc_tick_t> getDatabaseIdsCoordinator(bool includeSystem);
+  std::vector<TRI_voc_tick_t> getDatabaseIds(bool includeSystem);
+  std::vector<std::string> getDatabaseNames();
+  std::vector<std::string> getDatabaseNamesForUser(std::string const& user);
+
   int createDatabaseCoordinator(TRI_voc_tick_t id, std::string const& name, TRI_vocbase_t*& result);
   int createDatabase(TRI_voc_tick_t id, std::string const& name, bool writeMarker, TRI_vocbase_t*& result);
   int dropDatabaseCoordinator(TRI_voc_tick_t id, bool force);
   int dropDatabase(std::string const& name, bool writeMarker, bool waitForDeletion, bool removeAppsDirectory);
   int dropDatabase(TRI_voc_tick_t id, bool writeMarker, bool waitForDeletion, bool removeAppsDirectory);
 
-  void useSystemDatabase();
+  TRI_vocbase_t* useDatabaseCoordinator(std::string const& name);
+  TRI_vocbase_t* useDatabaseCoordinator(TRI_voc_tick_t id);
   TRI_vocbase_t* useDatabase(std::string const& name);
+  TRI_vocbase_t* useDatabase(TRI_voc_tick_t id);
+  void releaseDatabase(TRI_vocbase_t* vocbase);
+
+  TRI_vocbase_t* lookupDatabase(std::string const& name);
+
+  void useSystemDatabase();
   TRI_vocbase_t* systemDatabase() const { return _vocbase; }
   bool ignoreDatafileErrors() const { return _ignoreDatafileErrors; }
   bool isInitiallyEmpty() const { return _isInitiallyEmpty; }

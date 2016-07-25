@@ -24,7 +24,7 @@
 #ifndef ARANGOD_UTILS_REPLICATION_TRANSACTION_H
 #define ARANGOD_UTILS_REPLICATION_TRANSACTION_H 1
 
-#include "Basics/Common.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Utils/StandaloneTransactionContext.h"
 #include "Utils/Transaction.h"
@@ -44,7 +44,8 @@ class ReplicationTransaction : public Transaction {
   ReplicationTransaction(TRI_vocbase_t* vocbase)
       : Transaction(StandaloneTransactionContext::Create(vocbase)) {
 
-    TRI_UseDatabaseServer(DatabaseFeature::SERVER, vocbase->_name);
+    auto databaseFeature = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
+    databaseFeature->useDatabase(vocbase->_name);
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -52,7 +53,8 @@ class ReplicationTransaction : public Transaction {
   //////////////////////////////////////////////////////////////////////////////
 
   ~ReplicationTransaction() { 
-    TRI_ReleaseDatabaseServer(DatabaseFeature::SERVER, vocbase()); 
+    auto databaseFeature = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
+    databaseFeature->releaseDatabase(vocbase());
   }
 
  public:

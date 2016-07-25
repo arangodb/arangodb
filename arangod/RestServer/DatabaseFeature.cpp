@@ -44,6 +44,7 @@
 #include "V8Server/V8DealerFeature.h"
 #include "V8Server/v8-query.h"
 #include "V8Server/v8-vocbase.h"
+#include "VocBase/AuthInfo.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/replication-applier.h"
 #include "VocBase/server.h"
@@ -710,16 +711,145 @@ int DatabaseFeature::dropDatabase(TRI_voc_tick_t id, bool writeMarker, bool wait
   // and call the regular drop function
   return dropDatabase(name, writeMarker, waitForDeletion, removeAppsDirectory);
 }
+  
+std::vector<TRI_voc_tick_t> DatabaseFeature::getDatabaseIdsCoordinator(bool includeSystem) {
+  std::vector<TRI_voc_tick_t> ids;
+  {
+    auto unuser(_databasesProtector.use());
+    auto theLists = _databasesLists.load();
+
+    for (auto& p : theLists->_coordinatorDatabases) {
+      TRI_vocbase_t* vocbase = p.second;
+      TRI_ASSERT(vocbase != nullptr);
+
+      if (includeSystem || std::string(vocbase->_name) != TRI_VOC_SYSTEM_DATABASE) {
+        ids.emplace_back(vocbase->_id);
+      }
+    }
+  }
+
+  return ids;
+}
+
+std::vector<TRI_voc_tick_t> DatabaseFeature::getDatabaseIds(bool includeSystem) {
+  std::vector<TRI_voc_tick_t> ids;
+  
+  {
+    auto unuser(_databasesProtector.use());
+    auto theLists = _databasesLists.load();
+
+    for (auto& p : theLists->_databases) {
+      TRI_vocbase_t* vocbase = p.second;
+      TRI_ASSERT(vocbase != nullptr);
+      if (includeSystem || std::string(vocbase->_name) != TRI_VOC_SYSTEM_DATABASE) {
+        ids.emplace_back(vocbase->_id);
+      }
+    }
+  }
+
+  return ids;
+}
+
+/// @brief return the list of all database names
+std::vector<std::string> DatabaseFeature::getDatabaseNames() {
+  std::vector<std::string> names;
+
+  {
+    auto unuser(_databasesProtector.use());
+    auto theLists = _databasesLists.load();
+
+    for (auto& p : theLists->_databases) {
+      TRI_vocbase_t* vocbase = p.second;
+      TRI_ASSERT(vocbase != nullptr);
+      TRI_ASSERT(vocbase->_name != nullptr);
+
+      names.emplace_back(vocbase->_name);
+    }
+  }
+
+  std::sort(
+      names.begin(), names.end(),
+      [](std::string const& l, std::string const& r) -> bool { return l < r; });
+
+  return names;
+}
+
+/// @brief return the list of all database names for a user
+std::vector<std::string> DatabaseFeature::getDatabaseNamesForUser(std::string const& username) {
+  std::vector<std::string> names;
+
+  {
+    auto unuser(_databasesProtector.use());
+    auto theLists = _databasesLists.load();
+
+    for (auto& p : theLists->_databases) {
+      TRI_vocbase_t* vocbase = p.second;
+      TRI_ASSERT(vocbase != nullptr);
+      TRI_ASSERT(vocbase->_name != nullptr);
+
+      auto level =
+          GeneralServerFeature::AUTH_INFO.canUseDatabase(username, vocbase->_name);
+
+      if (level == AuthLevel::NONE) {
+        continue;
+      }
+
+      names.emplace_back(vocbase->_name);
+    }
+  }
+
+  std::sort(
+      names.begin(), names.end(),
+      [](std::string const& l, std::string const& r) -> bool { return l < r; });
+
+  return names;
+}
 
 void DatabaseFeature::useSystemDatabase() {
   useDatabase(TRI_VOC_SYSTEM_DATABASE);
 }
 
+/// @brief get a coordinator database by its id
+/// this will increase the reference-counter for the database
+TRI_vocbase_t* DatabaseFeature::useDatabaseCoordinator(TRI_voc_tick_t id) {
+  auto unuser(_databasesProtector.use());
+  auto theLists = _databasesLists.load();
+
+  for (auto& p : theLists->_coordinatorDatabases) {
+    TRI_vocbase_t* vocbase = p.second;
+
+    if (vocbase->_id == id) {
+      bool result TRI_UNUSED = TRI_UseVocBase(vocbase);
+
+      // if we got here, no one else can have deleted the database
+      TRI_ASSERT(result == true);
+      return vocbase;
+    }
+  }
+  return nullptr;
+}
+
+TRI_vocbase_t* DatabaseFeature::useDatabaseCoordinator(std::string const& name) {
+  auto unuser(_databasesProtector.use());
+  auto theLists = _databasesLists.load();
+  
+  TRI_vocbase_t* vocbase = nullptr;
+  auto it = theLists->_coordinatorDatabases.find(name);
+
+  if (it != theLists->_coordinatorDatabases.end()) {
+    vocbase = it->second;
+    TRI_UseVocBase(vocbase);
+  }
+
+  return vocbase;
+}
+
 TRI_vocbase_t* DatabaseFeature::useDatabase(std::string const& name) {
   auto unuser(_databasesProtector.use());
   auto theLists = _databasesLists.load();
-  auto it = theLists->_databases.find(name);
+
   TRI_vocbase_t* vocbase = nullptr;
+  auto it = theLists->_databases.find(name);
 
   if (it != theLists->_databases.end()) {
     vocbase = it->second;
@@ -727,6 +857,44 @@ TRI_vocbase_t* DatabaseFeature::useDatabase(std::string const& name) {
   }
 
   return vocbase;
+}
+
+TRI_vocbase_t* DatabaseFeature::useDatabase(TRI_voc_tick_t id) {
+  auto unuser(_databasesProtector.use());
+  auto theLists = _databasesLists.load();
+  
+  for (auto& p : theLists->_databases) {
+    TRI_vocbase_t* vocbase = p.second;
+
+    if (vocbase->_id == id) {
+      TRI_UseVocBase(vocbase);
+      return vocbase;
+    }
+  }
+
+  return nullptr;
+}
+
+/// @brief release a previously used database
+/// this will decrease the reference-counter for the database
+void DatabaseFeature::releaseDatabase(TRI_vocbase_t* vocbase) {
+  TRI_ReleaseVocBase(vocbase);
+}
+
+/// @brief lookup a database by its name
+TRI_vocbase_t* DatabaseFeature::lookupDatabase(std::string const& name) {
+  auto unuser(_databasesProtector.use());
+  auto theLists = _databasesLists.load();
+
+  for (auto& p : theLists->_databases) {
+    TRI_vocbase_t* vocbase = p.second;
+
+    if (name == vocbase->_name) {
+      return vocbase;
+    }
+  }
+
+  return nullptr;
 }
 
 void DatabaseFeature::updateContexts() {

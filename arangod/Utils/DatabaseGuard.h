@@ -24,8 +24,9 @@
 #ifndef ARANGOD_UTILS_DATABASE_GUARD_H
 #define ARANGOD_UTILS_DATABASE_GUARD_H 1
 
-#include "Basics/Common.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
+#include "RestServer/DatabaseFeature.h"
 #include "VocBase/server.h"
 
 struct TRI_vocbase_t;
@@ -43,7 +44,9 @@ class DatabaseGuard {
 
   DatabaseGuard(TRI_server_t* server, TRI_voc_tick_t id)
       : _server(server), _database(nullptr) {
-    _database = TRI_UseDatabaseByIdServer(server, id);
+    
+    auto databaseFeature = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
+    _database = databaseFeature->useDatabase(id);
 
     if (_database == nullptr) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
@@ -56,7 +59,9 @@ class DatabaseGuard {
 
   DatabaseGuard(TRI_server_t* server, char const* name)
       : _server(server), _database(nullptr) {
-    _database = TRI_UseDatabaseServer(server, name);
+      
+    auto databaseFeature = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
+    _database = databaseFeature->useDatabase(name);
 
     if (_database == nullptr) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
@@ -69,7 +74,8 @@ class DatabaseGuard {
 
   ~DatabaseGuard() {
     if (_database != nullptr) {
-      TRI_ReleaseDatabaseServer(_server, _database);
+      auto databaseFeature = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
+      databaseFeature->releaseDatabase(_database);
     }
   }
 

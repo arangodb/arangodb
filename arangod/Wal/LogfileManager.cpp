@@ -303,7 +303,7 @@ void LogfileManager::start() {
   
   // initialize some objects
   _slots = new Slots(this, _numberOfSlots, 0);
-  _recoverState = new RecoverState(_server, _ignoreRecoveryErrors);
+  _recoverState = new RecoverState(_ignoreRecoveryErrors);
 
   TRI_ASSERT(!_allowWrites);
 

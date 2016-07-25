@@ -69,8 +69,8 @@ static inline T NumericValue(VPackSlice const& slice, char const* attribute) {
 }
 
 /// @brief creates the recover state
-RecoverState::RecoverState(TRI_server_t* server, bool ignoreRecoveryErrors)
-    : server(server),
+RecoverState::RecoverState(bool ignoreRecoveryErrors)
+    : databaseFeature(nullptr),
       failedTransactions(),
       lastTick(0),
       logfilesToProcess(),
@@ -80,7 +80,10 @@ RecoverState::RecoverState(TRI_server_t* server, bool ignoreRecoveryErrors)
       ignoreRecoveryErrors(ignoreRecoveryErrors),
       errorCount(0),
       lastDatabaseId(0),
-      lastCollectionId(0) {}
+      lastCollectionId(0) {
+        
+  databaseFeature = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
+}
 
 /// @brief destroys the recover state
 RecoverState::~RecoverState() { releaseResources(); }
@@ -99,8 +102,7 @@ void RecoverState::releaseResources() {
 
   // release all databases
   for (auto it = openedDatabases.begin(); it != openedDatabases.end(); ++it) {
-    TRI_vocbase_t* vocbase = (*it).second;
-    TRI_ReleaseDatabaseServer(server, vocbase);
+    databaseFeature->releaseDatabase((*it).second);
   }
 
   openedDatabases.clear();
@@ -114,7 +116,7 @@ TRI_vocbase_t* RecoverState::useDatabase(TRI_voc_tick_t databaseId) {
     return (*it).second;
   }
 
-  TRI_vocbase_t* vocbase = TRI_UseDatabaseByIdServer(server, databaseId);
+  TRI_vocbase_t* vocbase = databaseFeature->useDatabase(databaseId);
 
   if (vocbase == nullptr) {
     return nullptr;
@@ -157,7 +159,7 @@ TRI_vocbase_t* RecoverState::releaseDatabase(TRI_voc_tick_t databaseId) {
     }
   }
 
-  TRI_ReleaseDatabaseServer(server, vocbase);
+  databaseFeature->releaseDatabase(vocbase);
   openedDatabases.erase(databaseId);
 
   return vocbase;
@@ -818,11 +820,10 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
         if (state->willBeDropped(collectionId)) {
           // in case we detect that this collection is going to be deleted anyway,
           // set the sync properties to false temporarily
-          auto database = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
-          bool oldSync = database->forceSyncProperties();
-          database->forceSyncProperties(false);
+          bool oldSync = state->databaseFeature->forceSyncProperties();
+          state->databaseFeature->forceSyncProperties(false);
           collection = TRI_CreateCollectionVocBase(vocbase, info, collectionId, false);
-          database->forceSyncProperties(oldSync);
+          state->databaseFeature->forceSyncProperties(oldSync);
         } else {
           // collection will be kept
           collection =
@@ -855,9 +856,8 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
 
         if (vocbase != nullptr) {
           // remove already existing database
-          DatabaseFeature* databaseFeature = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
           // TODO: how to signal a dropDatabase failure here?
-          databaseFeature->dropDatabase(databaseId, false, true, false);
+          state->databaseFeature->dropDatabase(databaseId, false, true, false);
         }
 
         VPackSlice const nameSlice = payloadSlice.get("name");
@@ -871,16 +871,14 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
         std::string nameString = nameSlice.copyString();
 
         // remove already existing database with same name
-        vocbase =
-            TRI_LookupDatabaseByNameServer(state->server, nameString.c_str());
+        vocbase = state->databaseFeature->lookupDatabase(nameString);
 
         if (vocbase != nullptr) {
           TRI_voc_tick_t otherId = vocbase->_id;
 
           state->releaseDatabase(otherId);
-          DatabaseFeature* databaseFeature = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
           // TODO: how to signal a dropDatabase failure here?
-          databaseFeature->dropDatabase(nameString, false, true, false);
+          state->databaseFeature->dropDatabase(nameString, false, true, false);
         }
 
         vocbase = nullptr;
@@ -888,8 +886,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
         WaitForDeletion(state->server, databaseId,
                         TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
         */
-        DatabaseFeature* databaseFeature = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
-        int res = databaseFeature->createDatabase(databaseId, nameString, false, vocbase);
+        int res = state->databaseFeature->createDatabase(databaseId, nameString, false, vocbase);
 
         if (res != TRI_ERROR_NO_ERROR) {
           LOG(WARN) << "cannot create database " << databaseId << ": " << TRI_errno_string(res);
@@ -1005,8 +1002,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
 
         if (vocbase != nullptr) {
           // ignore any potential error returned by this call
-          DatabaseFeature* databaseFeature = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
-          databaseFeature->dropDatabase(databaseId, false, true, false);
+          state->databaseFeature->dropDatabase(databaseId, false, true, false);
         }
 
 #ifdef ARANGODB_ENABLE_ROCKSDB

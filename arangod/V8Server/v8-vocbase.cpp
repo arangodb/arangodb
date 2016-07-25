@@ -2031,7 +2031,8 @@ static void JS_UseDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
 
-  std::string name = TRI_ObjectToString(args[0]);
+  auto databaseFeature = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
+  std::string const name = TRI_ObjectToString(args[0]);
 
   TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
 
@@ -2049,12 +2050,10 @@ static void JS_UseDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   if (ServerState::instance()->isCoordinator()) {
-    vocbase = TRI_UseCoordinatorDatabaseServer(
-        static_cast<TRI_server_t*>(v8g->_server), name.c_str());
+    vocbase = databaseFeature->useDatabaseCoordinator(name);
   } else {
     // check if the other database exists, and increase its refcount
-    vocbase = TRI_UseDatabaseServer(static_cast<TRI_server_t*>(v8g->_server),
-                                    name.c_str());
+    vocbase = databaseFeature->useDatabase(name);
   }
 
   if (vocbase == nullptr) {
@@ -2067,8 +2066,7 @@ static void JS_UseDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   v8g->_vocbase = vocbase;
   TRI_ASSERT(orig != vocbase);
-  TRI_ReleaseDatabaseServer(static_cast<TRI_server_t*>(v8g->_server),
-                            static_cast<TRI_vocbase_t*>(orig));
+  databaseFeature->releaseDatabase(static_cast<TRI_vocbase_t*>(orig));
 
   TRI_V8_RETURN(WrapVocBase(isolate, vocbase));
 }
@@ -2171,26 +2169,15 @@ static void JS_Databases(v8::FunctionCallbackInfo<v8::Value> const& args) {
     return;
   }
 
-  TRI_GET_GLOBALS();
-
+  auto databaseFeature = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
   std::vector<std::string> names;
-
-  int res;
 
   if (argc == 0) {
     // return all databases
-    res = TRI_GetDatabaseNamesServer(static_cast<TRI_server_t*>(v8g->_server),
-                                     names);
+    names = databaseFeature->getDatabaseNames();
   } else {
     // return all databases for a specific user
-    std::string&& username = TRI_ObjectToString(args[0]);
-
-    res = TRI_GetUserDatabasesServer(static_cast<TRI_server_t*>(v8g->_server),
-                                     username.c_str(), names);
-  }
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_THROW_EXCEPTION(res);
+    names = databaseFeature->getDatabaseNamesForUser(TRI_ObjectToString(args[0]));
   }
 
   v8::Handle<v8::Array> result = v8::Array::New(isolate, (int)names.size());
@@ -2267,10 +2254,11 @@ static void CreateDatabaseCoordinator(
   // now wait for heartbeat thread to create the database object
   TRI_vocbase_t* vocbase = nullptr;
   int tries = 0;
+  
+  auto databaseFeature = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
 
   while (++tries <= 6000) {
-    vocbase = TRI_UseByIdCoordinatorDatabaseServer(
-        static_cast<TRI_server_t*>(v8g->_server), id);
+    vocbase = databaseFeature->useDatabaseCoordinator(id);
 
     if (vocbase != nullptr) {
       break;
@@ -2418,12 +2406,10 @@ static void DropDatabaseCoordinator(
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
-  TRI_GET_GLOBALS();
-
   // Arguments are already checked, there is exactly one argument
+  auto databaseFeature = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
   std::string const name = TRI_ObjectToString(args[0]);
-  TRI_vocbase_t* vocbase = TRI_UseCoordinatorDatabaseServer(
-      static_cast<TRI_server_t*>(v8g->_server), name.c_str());
+  TRI_vocbase_t* vocbase = databaseFeature->useDatabaseCoordinator(name);
 
   if (vocbase == nullptr) {
     // no such database
@@ -2446,8 +2432,7 @@ static void DropDatabaseCoordinator(
   int tries = 0;
 
   while (++tries <= 6000) {
-    TRI_vocbase_t* vocbase = TRI_UseByIdCoordinatorDatabaseServer(
-        static_cast<TRI_server_t*>(v8g->_server), id);
+    TRI_vocbase_t* vocbase = databaseFeature->useDatabaseCoordinator(id);
 
     if (vocbase == nullptr) {
       // object has vanished
