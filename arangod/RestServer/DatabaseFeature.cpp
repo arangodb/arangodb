@@ -23,6 +23,7 @@
 #include "DatabaseFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Aql/QueryCache.h"
 #include "Aql/QueryRegistry.h"
 #include "Basics/FileUtils.h"
 #include "Basics/MutexLocker.h"
@@ -580,6 +581,94 @@ int DatabaseFeature::createDatabase(TRI_voc_tick_t id, std::string const& name,
   return res;
 }
 
+/// @brief drop database
+int DatabaseFeature::dropDatabase(std::string const& name, bool writeMarker, bool waitForDeletion, bool removeAppsDirectory) {
+  if (name == TRI_VOC_SYSTEM_DATABASE) {
+    // prevent deletion of system database
+    return TRI_ERROR_FORBIDDEN;
+  }
+
+  TRI_voc_tick_t id = 0;
+  MUTEX_LOCKER(mutexLocker, _databasesMutex);
+
+  auto oldLists = _databasesLists.load();
+  decltype(oldLists) newLists = nullptr;
+  TRI_vocbase_t* vocbase = nullptr;
+  try {
+    newLists = new DatabasesLists(*oldLists);
+
+    auto it = newLists->_databases.find(name);
+    if (it == newLists->_databases.end()) {
+      // not found
+      delete newLists;
+      return TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
+    } else {
+      vocbase = it->second;
+      id = vocbase->_id;
+      // mark as deleted
+      TRI_ASSERT(vocbase->_type == TRI_VOCBASE_TYPE_NORMAL);
+
+      newLists->_databases.erase(it);
+      newLists->_droppedDatabases.insert(vocbase);
+    }
+  } catch (...) {
+    delete newLists;
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
+
+  TRI_ASSERT(vocbase != nullptr);
+  TRI_ASSERT(id != 0);
+
+  _databasesLists = newLists;
+  _databasesProtector.scan();
+  delete oldLists;
+
+  vocbase->_isOwnAppsDirectory = removeAppsDirectory;
+
+  // invalidate all entries for the database
+  arangodb::aql::QueryCache::instance()->invalidate(vocbase);
+  
+  if (!TRI_DropVocBase(vocbase)) {
+    // deleted by someone else?
+    return TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
+  }
+
+  auto callback = []() -> bool { return true; };
+  StorageEngine* engine = ApplicationServer::getFeature<EngineSelectorFeature>("EngineSelector")->ENGINE;
+  int res = engine->dropDatabase(vocbase, waitForDeletion, callback);
+    
+  if (res == TRI_ERROR_NO_ERROR) {
+    if (writeMarker) {
+      // TODO: what shall happen in case writeDropMarker() fails?
+      writeDropMarker(id);
+    }
+  }
+  return res;
+}
+
+/// @brief drops an existing database
+int DatabaseFeature::dropDatabase(TRI_voc_tick_t id, bool writeMarker, bool waitForDeletion, bool removeAppsDirectory) {
+  std::string name;
+
+  // find database by name
+  {
+    auto unuser(_databasesProtector.use());
+    auto theLists = _databasesLists.load();
+
+    for (auto& p : theLists->_databases) {
+      TRI_vocbase_t* vocbase = p.second;
+
+      if (vocbase->_id == id) {
+        name = vocbase->_name;
+        break;
+      }
+    }
+  }
+
+  // and call the regular drop function
+  return dropDatabase(name, writeMarker, waitForDeletion, removeAppsDirectory);
+}
+
 void DatabaseFeature::useSystemDatabase() {
   useDatabase(TRI_VOC_SYSTEM_DATABASE);
 }
@@ -939,6 +1028,41 @@ int DatabaseFeature::writeCreateMarker(TRI_voc_tick_t id, VPackSlice const& slic
 
   if (res != TRI_ERROR_NO_ERROR) {
     LOG(WARN) << "could not save create database marker in log: "
+              << TRI_errno_string(res);
+  }
+
+  return res;
+}
+
+/// @brief writes a drop-database marker into the log
+int DatabaseFeature::writeDropMarker(TRI_voc_tick_t id) {
+  int res = TRI_ERROR_NO_ERROR;
+
+  try {
+    VPackBuilder builder;
+    builder.openObject();
+    builder.add("id", VPackValue(std::to_string(id)));
+    builder.close();
+
+    arangodb::wal::DatabaseMarker marker(TRI_DF_MARKER_VPACK_DROP_DATABASE, id,
+                                         builder.slice());
+
+    arangodb::wal::SlotInfoCopy slotInfo =
+        arangodb::wal::LogfileManager::instance()->allocateAndWrite(marker,
+                                                                    false);
+
+    if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
+      // throw an exception which is caught at the end of this function
+      THROW_ARANGO_EXCEPTION(slotInfo.errorCode);
+    }
+  } catch (arangodb::basics::Exception const& ex) {
+    res = ex.code();
+  } catch (...) {
+    res = TRI_ERROR_INTERNAL;
+  }
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    LOG(WARN) << "could not save drop database marker in log: "
               << TRI_errno_string(res);
   }
 

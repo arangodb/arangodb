@@ -89,7 +89,8 @@ TRI_vocbase_t* OtherEngine::createDatabase(TRI_voc_tick_t id, arangodb::velocypa
 // check whether the physical deletion of the database is possible.
 // the WAL entry for database deletion will be written *after* the call
 // to "dropDatabase" returns
-void OtherEngine::dropDatabase(TRI_voc_tick_t id, std::function<bool()> const& canRemovePhysically) {
+int OtherEngine::dropDatabase(TRI_vocbase_t* vocbase, bool waitForDeletion, std::function<bool()> const& canRemovePhysically) {
+  return TRI_ERROR_NO_ERROR;
 }
 
 // asks the storage engine to create a collection as specified in the VPack

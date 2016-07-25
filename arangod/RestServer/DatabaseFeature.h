@@ -79,6 +79,8 @@ class DatabaseFeature final : public application_features::ApplicationFeature {
  public:
   int createDatabaseCoordinator(TRI_voc_tick_t id, std::string const& name, TRI_vocbase_t*& result);
   int createDatabase(TRI_voc_tick_t id, std::string const& name, bool writeMarker, TRI_vocbase_t*& result);
+  int dropDatabase(std::string const& name, bool writeMarker, bool waitForDeletion, bool removeAppsDirectory);
+  int dropDatabase(TRI_voc_tick_t id, bool writeMarker, bool waitForDeletion, bool removeAppsDirectory);
 
   void useSystemDatabase();
   TRI_vocbase_t* useDatabase(std::string const& name);
@@ -127,6 +129,9 @@ class DatabaseFeature final : public application_features::ApplicationFeature {
 
   /// @brief writes a create-database marker into the log
   int writeCreateMarker(TRI_voc_tick_t id, VPackSlice const& slice);
+  
+  /// @brief writes a drop-database marker into the log
+  int writeDropMarker(TRI_voc_tick_t id);
 
  private:
   uint64_t _maximalJournalSize;

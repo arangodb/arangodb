@@ -347,7 +347,16 @@ TRI_vocbase_t* MMFilesEngine::createDatabase(TRI_voc_tick_t id, arangodb::velocy
 // check whether the physical deletion of the database is possible.
 // the WAL entry for database deletion will be written *after* the call
 // to "dropDatabase" returns
-void MMFilesEngine::dropDatabase(TRI_voc_tick_t id, std::function<bool()> const& canRemovePhysically) {
+int MMFilesEngine::dropDatabase(TRI_vocbase_t* vocbase, bool waitForDeletion, 
+                                std::function<bool()> const& canRemovePhysically) {
+  std::string const directory = databaseDirectory(vocbase->_id);
+
+  int res = saveDatabaseParameters(vocbase->_id, vocbase->_name, true);
+
+  if (res == TRI_ERROR_NO_ERROR && waitForDeletion) {
+    this->waitForDeletion(directory, TRI_ERROR_NO_ERROR);
+  }
+  return res;
 }
 
 // asks the storage engine to create a collection as specified in the VPack

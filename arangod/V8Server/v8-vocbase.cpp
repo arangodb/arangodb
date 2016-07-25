@@ -2494,10 +2494,9 @@ static void JS_DropDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   std::string const name = TRI_ObjectToString(args[0]);
-  TRI_GET_GLOBALS();
 
-  int res = TRI_DropDatabaseServer(static_cast<TRI_server_t*>(v8g->_server),
-                                   name.c_str(), true, true);
+  DatabaseFeature* databaseFeature = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
+  int res = databaseFeature->dropDatabase(name, true, false, true);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION(res);

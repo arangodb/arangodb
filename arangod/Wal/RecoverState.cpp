@@ -68,48 +68,6 @@ static inline T NumericValue(VPackSlice const& slice, char const* attribute) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
 }
 
-/// @brief get the directory for a database
-static std::string GetDatabaseDirectory(TRI_server_t* server,
-                                        TRI_voc_tick_t databaseId) {
-  std::string const dname("database-" + std::to_string(databaseId));
-  std::string const filename(arangodb::basics::FileUtils::buildFilename(server->_databasePath, dname));
-
-  return filename;
-}
-
-/// @brief wait until a database directory disappears
-static int WaitForDeletion(TRI_server_t* server, TRI_voc_tick_t databaseId,
-                           int statusCode) {
-  std::string const result = GetDatabaseDirectory(server, databaseId);
-
-  int iterations = 0;
-  // wait for at most 30 seconds for the directory to be removed
-  while (TRI_IsDirectory(result.c_str())) {
-    if (iterations == 0) {
-      LOG(TRACE) << "waiting for deletion of database directory '" << result << "', called with status code " << statusCode;
-
-      if (statusCode != TRI_ERROR_FORBIDDEN &&
-          (statusCode == TRI_ERROR_ARANGO_DATABASE_NOT_FOUND ||
-           statusCode != TRI_ERROR_NO_ERROR)) {
-        LOG(WARN) << "forcefully deleting database directory '" << result << "'";
-        TRI_RemoveDirectory(result.c_str());
-      }
-    } else if (iterations >= 30 * 10) {
-      LOG(WARN) << "unable to remove database directory '" << result << "'";
-      return TRI_ERROR_INTERNAL;
-    }
-
-    if (iterations == 5 * 10) {
-      LOG(INFO) << "waiting for deletion of database directory '" << result << "'";
-    }
-
-    ++iterations;
-    usleep(50000);
-  }
-
-  return TRI_ERROR_NO_ERROR;
-}
-
 /// @brief creates the recover state
 RecoverState::RecoverState(TRI_server_t* server, bool ignoreRecoveryErrors)
     : server(server),
@@ -897,9 +855,9 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
 
         if (vocbase != nullptr) {
           // remove already existing database
-          int statusCode =
-              TRI_DropByIdDatabaseServer(state->server, databaseId, false, false);
-          WaitForDeletion(state->server, databaseId, statusCode);
+          DatabaseFeature* databaseFeature = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
+          // TODO: how to signal a dropDatabase failure here?
+          databaseFeature->dropDatabase(databaseId, false, true, false);
         }
 
         VPackSlice const nameSlice = payloadSlice.get("name");
@@ -920,9 +878,9 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
           TRI_voc_tick_t otherId = vocbase->_id;
 
           state->releaseDatabase(otherId);
-          int statusCode = TRI_DropDatabaseServer(
-              state->server, nameString.c_str(), false, false);
-          WaitForDeletion(state->server, otherId, statusCode);
+          DatabaseFeature* databaseFeature = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
+          // TODO: how to signal a dropDatabase failure here?
+          databaseFeature->dropDatabase(nameString, false, true, false);
         }
 
         vocbase = nullptr;
@@ -1047,7 +1005,8 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
 
         if (vocbase != nullptr) {
           // ignore any potential error returned by this call
-          TRI_DropByIdDatabaseServer(state->server, databaseId, false, false);
+          DatabaseFeature* databaseFeature = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
+          databaseFeature->dropDatabase(databaseId, false, true, false);
         }
 
 #ifdef ARANGODB_ENABLE_ROCKSDB

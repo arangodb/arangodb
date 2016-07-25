@@ -42,6 +42,7 @@
 #include "GeneralServer/GeneralServerFeature.h"
 #include "GeneralServer/RestHandlerFactory.h"
 #include "Logger/Logger.h"
+#include "RestServer/DatabaseFeature.h"
 #include "V8/v8-globals.h"
 #include "VocBase/AuthInfo.h"
 #include "VocBase/server.h"
@@ -527,9 +528,14 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
         }
 
         // create a local database object...
-        TRI_CreateCoordinatorDatabaseServer(_server, id, name.c_str(),
-                                            &vocbase);
-        HasRunOnce = true;
+        DatabaseFeature* databaseFeature = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
+        int res = databaseFeature->createDatabaseCoordinator(id, name, vocbase);
+
+        if (res != TRI_ERROR_NO_ERROR) {
+          LOG(ERR) << "creating local database '" << name << "' failed: " << TRI_errno_string(res);
+        } else {
+          HasRunOnce = true;
+        }
       } else {
         TRI_ReleaseVocBase(vocbase);
       }

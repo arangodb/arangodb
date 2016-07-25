@@ -106,7 +106,8 @@ class StorageEngine : public application_features::ApplicationFeature {
   // check whether the physical deletion of the database is possible.
   // the WAL entry for database deletion will be written *after* the call
   // to "dropDatabase" returns
-  virtual void dropDatabase(TRI_voc_tick_t id, std::function<bool()> const& canRemovePhysically) = 0;
+  virtual int dropDatabase(TRI_vocbase_t* vocbase, bool waitForDeletion, 
+                           std::function<bool()> const& canRemovePhysically) = 0;
 
   // asks the storage engine to create a collection as specified in the VPack
   // Slice object and persist the creation info. It is guaranteed by the server 
