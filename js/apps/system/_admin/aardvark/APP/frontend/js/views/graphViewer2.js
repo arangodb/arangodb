@@ -101,8 +101,7 @@
     },
 
     downloadSVG: function () {
-      var size = parseInt($('#graph-container').width());
-
+      var size = parseInt($('#graph-container').width(), 10);
       sigma.plugins.image(this.currentGraph, this.currentGraph.renderers[0], {
         download: true,
         size: size,
@@ -1271,7 +1270,7 @@
           });
         }
 
-        s.bind('overNode', function (e) {
+        var showAttributes = function (e, node) {
           $('.nodeInfoDiv').remove();
 
           if (self.contextState.createEdge === false) {
@@ -1280,7 +1279,7 @@
                 if (!error) {
                   var attributes = '';
                   _.each(data, function (value, key) {
-                    if (key !== '_key' && key !== '_id' && key !== '_rev') {
+                    if (key !== '_key' && key !== '_id' && key !== '_rev' && key !== '_from' && key !== '_to') {
                       attributes += ('<span class="nodeAttribute">' + key + '</span>');
                     }
                   });
@@ -1290,12 +1289,30 @@
                 }
               };
 
-              self.documentStore.getDocument(e.data.node.id.split('/')[0], e.data.node.id.split('/')[1], callback);
+              if (node) {
+                self.documentStore.getDocument(e.data.node.id.split('/')[0], e.data.node.id.split('/')[1], callback);
+              } else {
+                self.documentStore.getDocument(e.data.edge.id.split('/')[0], e.data.edge.id.split('/')[1], callback);
+              }
             }
           }
+        };
+
+        s.bind('overNode', function (e) {
+          showAttributes(e, true);
+        });
+
+        s.bind('overEdge', function (e) {
+          showAttributes(e, false);
         });
 
         s.bind('outNode', function (e) {
+          if (self.contextState.createEdge === false) {
+            $('.nodeInfoDiv').remove();
+          }
+        });
+
+        s.bind('outEdge', function (e) {
           if (self.contextState.createEdge === false) {
             $('.nodeInfoDiv').remove();
           }
