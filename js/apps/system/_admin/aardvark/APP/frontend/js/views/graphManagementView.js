@@ -47,7 +47,7 @@
     redirectToGraphViewer: function (e) {
       var name = $(e.currentTarget).attr('id');
       name = name.substr(0, name.length - 5);
-      window.location = window.location + '/' + encodeURIComponent(name);
+      window.location.hash = window.location.hash.substr(0, window.location.hash.length - 1) + '2/' + encodeURIComponent(name);
     },
 
     // please remove this when gv2 is launched
