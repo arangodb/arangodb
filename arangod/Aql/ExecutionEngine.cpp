@@ -46,7 +46,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterComm.h"
 #include "Logger/Logger.h"
-#include "VocBase/server.h"
+#include "VocBase/ticks.h"
 
 using namespace arangodb::aql;
 

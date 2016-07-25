@@ -21,13 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "server.h"
-
-#ifdef _WIN32
-#include "Basics/win-utils.h"
-#endif
-
-using namespace arangodb;
+#include "modes.h"
 
 /// @brief server operation mode (e.g. read-only, normal etc).
 static TRI_vocbase_operationmode_e Mode = TRI_VOCBASE_MODE_NORMAL;
@@ -41,3 +35,4 @@ int TRI_ChangeOperationModeServer(TRI_vocbase_operationmode_e mode) {
 
 /// @brief returns the current operation server of the server
 TRI_vocbase_operationmode_e TRI_GetOperationModeServer() { return Mode; }
+

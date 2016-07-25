@@ -30,7 +30,7 @@
 #include "VocBase/DatafileHelper.h"
 #include "VocBase/Ditch.h"
 #include "VocBase/document-collection.h"
-#include "VocBase/server.h"
+#include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 #include "Wal/LogfileManager.h"
 

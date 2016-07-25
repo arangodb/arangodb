@@ -70,7 +70,6 @@
 #include "Scheduler/SchedulerFeature.h"
 #include "Ssl/SslServerFeature.h"
 #include "V8Server/V8DealerFeature.h"
-#include "VocBase/server.h"
 
 #include <stdexcept>
 

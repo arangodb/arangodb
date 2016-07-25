@@ -47,7 +47,6 @@
 #include "VocBase/AuthInfo.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/replication-applier.h"
-#include "VocBase/server.h"
 #include "VocBase/vocbase.h"
 #include "Wal/LogfileManager.h"
 

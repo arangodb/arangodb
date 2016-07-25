@@ -28,7 +28,7 @@
 #include "RestServer/DatabaseFeature.h"
 #include "Utils/StandaloneTransactionContext.h"
 #include "Utils/Transaction.h"
-#include "VocBase/server.h"
+#include "VocBase/ticks.h"
 #include "VocBase/transaction.h"
 
 struct TRI_vocbase_t;

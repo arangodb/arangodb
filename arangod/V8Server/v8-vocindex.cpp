@@ -44,6 +44,7 @@
 #include "V8Server/v8-collection.h"
 #include "V8Server/v8-vocbase.h"
 #include "V8Server/v8-vocbaseprivate.h"
+#include "VocBase/modes.h"
 
 #ifdef ARANGODB_ENABLE_ROCKSDB
 #include "Indexes/RocksDBIndex.h"

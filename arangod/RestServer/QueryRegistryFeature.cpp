@@ -26,7 +26,6 @@
 #include "Aql/QueryRegistry.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
-#include "VocBase/server.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;

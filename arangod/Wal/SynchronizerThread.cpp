@@ -27,7 +27,7 @@
 #include "Logger/Logger.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/Exceptions.h"
-#include "VocBase/server.h"
+#include "VocBase/ticks.h"
 #include "Wal/LogfileManager.h"
 #include "Wal/Slots.h"
 #include "Wal/SyncRegion.h"

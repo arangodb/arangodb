@@ -55,7 +55,7 @@
 #include "VocBase/compactor.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/replication-applier.h"
-#include "VocBase/server.h"
+#include "VocBase/ticks.h"
 #include "VocBase/transaction.h"
 #include "Wal/LogfileManager.h"
 

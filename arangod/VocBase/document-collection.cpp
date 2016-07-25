@@ -58,7 +58,7 @@
 #include "VocBase/IndexPoolFeature.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/MasterPointers.h"
-#include "VocBase/server.h"
+#include "VocBase/ticks.h"
 #include "Wal/DocumentOperation.h"
 #include "Wal/LogfileManager.h"
 #include "Wal/Marker.h"

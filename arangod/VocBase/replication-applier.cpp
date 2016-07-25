@@ -31,7 +31,6 @@
 #include "Basics/WriteLocker.h"
 #include "Basics/conversions.h"
 #include "Basics/files.h"
-#include "Basics/json.h"
 #include "Basics/tri-strings.h"
 #include "Logger/Logger.h"
 #include "Replication/ContinuousSyncer.h"
@@ -39,7 +38,6 @@
 #include "RestServer/ServerIdFeature.h"
 #include "VocBase/collection.h"
 #include "VocBase/document-collection.h"
-#include "VocBase/server.h"
 #include "VocBase/transaction.h"
 #include "VocBase/vocbase.h"
 

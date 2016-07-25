@@ -323,10 +323,10 @@ add_executable(${BIN_ARANGOD}
   VocBase/compactor.cpp
   VocBase/datafile.cpp
   VocBase/document-collection.cpp
+  VocBase/modes.cpp
   VocBase/replication-applier.cpp
   VocBase/replication-common.cpp
   VocBase/replication-dump.cpp
-  VocBase/server.cpp
   VocBase/ticks.cpp
   VocBase/transaction.cpp
   VocBase/vocbase.cpp

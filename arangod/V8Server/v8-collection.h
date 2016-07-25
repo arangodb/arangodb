@@ -27,7 +27,6 @@
 #include "Basics/Common.h"
 #include "Utils/CollectionNameResolver.h"
 #include "v8-vocbase.h"
-#include "VocBase/server.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief releases a collection

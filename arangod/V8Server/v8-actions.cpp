@@ -31,7 +31,6 @@
 #include "Basics/WriteLocker.h"
 #include "Basics/conversions.h"
 #include "Basics/files.h"
-#include "Basics/json.h"
 #include "Basics/tri-strings.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ServerState.h"
@@ -47,7 +46,7 @@
 #include "V8Server/V8Context.h"
 #include "V8Server/V8DealerFeature.h"
 #include "V8Server/v8-vocbase.h"
-#include "VocBase/server.h"
+#include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb;

@@ -34,7 +34,6 @@
 #include "Rest/Version.h"
 #include "RestServer/DatabaseFeature.h"
 #include "V8Server/V8DealerFeature.h"
-#include "VocBase/server.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;

@@ -45,6 +45,7 @@
 #include "V8Server/v8-vocbaseprivate.h"
 #include "V8Server/v8-vocindex.h"
 #include "VocBase/KeyGenerator.h"
+#include "VocBase/modes.h"
 #include "Wal/LogfileManager.h"
 
 #include <velocypack/Builder.h>

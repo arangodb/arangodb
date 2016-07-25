@@ -26,7 +26,6 @@
 #include "Basics/ConditionLocker.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
-#include "VocBase/server.h"
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Iterator.h>

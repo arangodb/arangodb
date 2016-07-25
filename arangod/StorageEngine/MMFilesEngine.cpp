@@ -29,7 +29,7 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
-#include "VocBase/server.h"
+#include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 
 #ifdef ARANGODB_ENABLE_ROCKSDB

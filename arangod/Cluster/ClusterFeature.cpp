@@ -38,7 +38,6 @@
 #include "ProgramOptions/Section.h"
 #include "RestServer/DatabaseFeature.h"
 #include "SimpleHttpClient/ConnectionManager.h"
-#include "VocBase/server.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;

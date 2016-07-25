@@ -28,11 +28,11 @@
 #include "VocBase/DatafileHelper.h"
 #include "VocBase/collection.h"
 #include "VocBase/document-collection.h"
-#include "VocBase/server.h"
-#include "VocBase/vocbase.h"
+#include "VocBase/ticks.h"
 #include "Wal/DocumentOperation.h"
 #include "Wal/LogfileManager.h"
 #include "Utils/Transaction.h"
+#include "VocBase/modes.h"
 
 #ifdef ARANGODB_ENABLE_ROCKSDB
 #include "Indexes/RocksDBFeature.h"

@@ -28,7 +28,7 @@
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/datafile.h"
 #include "VocBase/document-collection.h"
-#include "VocBase/server.h"
+#include "VocBase/ticks.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 #include "Wal/Logfile.h"

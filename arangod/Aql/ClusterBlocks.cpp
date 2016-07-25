@@ -35,7 +35,7 @@
 #include "Cluster/ClusterMethods.h"
 #include "Dispatcher/DispatcherThread.h"
 #include "V8/v8-globals.h"
-#include "VocBase/server.h"
+#include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Builder.h>

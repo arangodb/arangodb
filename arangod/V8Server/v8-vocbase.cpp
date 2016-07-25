@@ -73,6 +73,7 @@
 #include "V8Server/v8-voccursor.h"
 #include "V8Server/v8-vocindex.h"
 #include "VocBase/KeyGenerator.h"
+#include "VocBase/modes.h"
 #include "Wal/LogfileManager.h"
 
 using namespace arangodb;

@@ -34,9 +34,7 @@
 #include "V8/v8-vpack.h"
 #include "V8Server/V8Context.h"
 #include "V8Server/V8DealerFeature.h"
-#include "VocBase/server.h"
 #include "VocBase/vocbase.h"
-
 
 using namespace arangodb;
 using namespace arangodb::application_features;

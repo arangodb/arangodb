@@ -49,7 +49,7 @@
 #include "VocBase/document-collection.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/MasterPointers.h"
-#include "VocBase/server.h"
+#include "VocBase/ticks.h"
 #include "Wal/LogfileManager.h"
 
 #ifdef ARANGODB_ENABLE_ROCKSDB

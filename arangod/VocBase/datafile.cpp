@@ -32,7 +32,7 @@
 #include "Basics/tri-strings.h"
 #include "Logger/Logger.h"
 #include "VocBase/DatafileHelper.h"
-#include "VocBase/server.h"
+#include "VocBase/ticks.h"
 
 #include <sstream>
 

@@ -38,7 +38,7 @@
 #include "RestServer/DatabaseFeature.h"
 #include "VocBase/DatafileHelper.h"
 #include "VocBase/document-collection.h"
-#include "VocBase/server.h"
+#include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Collection.h>

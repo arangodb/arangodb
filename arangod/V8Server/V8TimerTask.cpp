@@ -28,7 +28,6 @@
 #include "Scheduler/SchedulerFeature.h"
 #include "V8/v8-conv.h"
 #include "V8Server/V8Job.h"
-#include "VocBase/server.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>

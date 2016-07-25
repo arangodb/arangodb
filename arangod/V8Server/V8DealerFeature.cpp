@@ -44,7 +44,6 @@
 #include "V8Server/V8Context.h"
 #include "V8Server/v8-actions.h"
 #include "V8Server/v8-user-structures.h"
-#include "VocBase/server.h"
 #include "VocBase/vocbase.h"
 
 #include "3rdParty/valgrind/valgrind.h"

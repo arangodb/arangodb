@@ -36,7 +36,6 @@
 #include "Logger/Logger.h"
 #include "Ssl/SslInterface.h"
 #include "VocBase/AuthInfo.h"
-#include "VocBase/server.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb;

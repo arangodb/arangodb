@@ -35,7 +35,6 @@
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/collection.h"
 #include "VocBase/document-collection.h"
-#include "VocBase/server.h"
 #include "VocBase/transaction.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"

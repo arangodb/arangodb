@@ -49,7 +49,7 @@
 #include "VocBase/compactor.h"
 #include "VocBase/replication-applier.h"
 #include "VocBase/replication-dump.h"
-#include "VocBase/server.h"
+#include "VocBase/ticks.h"
 #include "Wal/LogfileManager.h"
 
 #include <velocypack/Builder.h>

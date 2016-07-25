@@ -26,11 +26,9 @@
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include "Basics/json.h"
 #include "Dispatcher/Dispatcher.h"
 #include "Dispatcher/DispatcherFeature.h"
 #include "V8Server/V8Job.h"
-#include "VocBase/server.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;

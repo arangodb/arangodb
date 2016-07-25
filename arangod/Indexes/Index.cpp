@@ -29,7 +29,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/StringUtils.h"
 #include "VocBase/document-collection.h"
-#include "VocBase/server.h"
+#include "VocBase/ticks.h"
 
 #include <ostream>
 #include <velocypack/Iterator.h>
