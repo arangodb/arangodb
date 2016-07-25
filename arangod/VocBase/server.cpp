@@ -199,53 +199,6 @@ std::vector<TRI_voc_tick_t> TRI_GetIdsCoordinatorDatabaseServer(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief drops an existing coordinator database
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_DropByIdCoordinatorDatabaseServer(TRI_server_t* server,
-                                          TRI_voc_tick_t id, bool force) {
-  int res = TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
-
-  MUTEX_LOCKER(mutexLocker, server->_databasesMutex);
-  auto oldLists = server->_databasesLists.load();
-  decltype(oldLists) newLists = nullptr;
-  TRI_vocbase_t* vocbase = nullptr;
-  try {
-    newLists = new DatabasesLists(*oldLists);
-
-    for (auto it = newLists->_coordinatorDatabases.begin();
-         it != newLists->_coordinatorDatabases.end(); it++) {
-      vocbase = it->second;
-
-      if (vocbase->_id == id &&
-          (force ||
-           !TRI_EqualString(vocbase->_name, TRI_VOC_SYSTEM_DATABASE))) {
-        newLists->_droppedDatabases.emplace(vocbase);
-        newLists->_coordinatorDatabases.erase(it);
-        break;
-      }
-      vocbase = nullptr;
-    }
-  } catch (...) {
-    delete newLists;
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
-  if (vocbase != nullptr) {
-    server->_databasesLists = newLists;
-    server->_databasesProtector.scan();
-    delete oldLists;
-
-    if (TRI_DropVocBase(vocbase)) {
-      LOG(INFO) << "dropping coordinator database '" << vocbase->_name << "'";
-      res = TRI_ERROR_NO_ERROR;
-    }
-  } else {
-    delete newLists;
-  }
-  return res;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief get a coordinator database by its id
 /// this will increase the reference-counter for the database
 ////////////////////////////////////////////////////////////////////////////////

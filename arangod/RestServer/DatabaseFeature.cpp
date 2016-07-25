@@ -581,6 +581,48 @@ int DatabaseFeature::createDatabase(TRI_voc_tick_t id, std::string const& name,
   return res;
 }
 
+/// @brief drop coordinator database
+int DatabaseFeature::dropDatabaseCoordinator(TRI_voc_tick_t id, bool force) {
+  int res = TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
+
+  MUTEX_LOCKER(mutexLocker, _databasesMutex);
+  auto oldLists = _databasesLists.load();
+  decltype(oldLists) newLists = nullptr;
+  TRI_vocbase_t* vocbase = nullptr;
+  try {
+    newLists = new DatabasesLists(*oldLists);
+
+    for (auto it = newLists->_coordinatorDatabases.begin();
+         it != newLists->_coordinatorDatabases.end(); it++) {
+      vocbase = it->second;
+
+      if (vocbase->_id == id &&
+          (force || std::string(vocbase->_name) != TRI_VOC_SYSTEM_DATABASE)) {
+        newLists->_droppedDatabases.emplace(vocbase);
+        newLists->_coordinatorDatabases.erase(it);
+        break;
+      }
+      vocbase = nullptr;
+    }
+  } catch (...) {
+    delete newLists;
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
+  if (vocbase != nullptr) {
+    _databasesLists = newLists;
+    _databasesProtector.scan();
+    delete oldLists;
+
+    if (TRI_DropVocBase(vocbase)) {
+      LOG(INFO) << "dropping coordinator database '" << vocbase->_name << "'";
+      res = TRI_ERROR_NO_ERROR;
+    }
+  } else {
+    delete newLists;
+  }
+  return res;
+}
+
 /// @brief drop database
 int DatabaseFeature::dropDatabase(std::string const& name, bool writeMarker, bool waitForDeletion, bool removeAppsDirectory) {
   if (name == TRI_VOC_SYSTEM_DATABASE) {

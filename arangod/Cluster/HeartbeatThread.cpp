@@ -550,7 +550,8 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
 
       if (r == ids.end()) {
         // local database not found in the plan...
-        TRI_DropByIdCoordinatorDatabaseServer(_server, id, false);
+        DatabaseFeature* databaseFeature = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
+        databaseFeature->dropDatabaseCoordinator(id, false);
       }
     }
 
