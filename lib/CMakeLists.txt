@@ -209,6 +209,8 @@ add_library(${LIB_ARANGO} STATIC
   Rest/FakeRequest.cpp
   Rest/GeneralRequest.cpp
   Rest/GeneralResponse.cpp
+  Rest/VppRequest.cpp
+  Rest/VppResponse.cpp
   Rest/HttpRequest.cpp
   Rest/HttpResponse.cpp
   Rest/InitializeRest.cpp

@@ -47,14 +47,14 @@ VppRequest::VppRequest(ConnectionInfo const& connectionInfo,
   if (0 < length) {
     _contentType = ContentType::VPACK;
     _contentTypeResponse = ContentType::VPACK;
-    parseHeader(_header);
+    parseHeader();
   }
 }
 
-// good
 VPackSlice VppRequest::payload(VPackOptions const* options) {
   VPackValidator validator;
   validator.validate(_payload.data(), _payload.size());
-  return VPackSlice(_payload().data());
+  return VPackSlice(_payload.data());
 }
-}
+
+void VppRequest::parseHeader() {}

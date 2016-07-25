@@ -25,8 +25,13 @@
 #ifndef ARANGODB_REST_VPP_REQUEST_H
 #define ARANGODB_REST_VPP_REQUEST_H 1
 
-#include "Rest/VppRequest.h"
+#include "Rest/GeneralRequest.h"
 #include "Endpoint/ConnectionInfo.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/Dumper.h>
+#include <velocypack/Options.h>
+#include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
 class RestBatchHandler;
@@ -49,7 +54,8 @@ class VppRequest : public GeneralRequest {
   friend class RestBatchHandler;  // TODO must be removed
 
  private:
-  VppRequest(ConnectionInfo const&, char const*, size_t, bool);
+  VppRequest(ConnectionInfo const& connectionInfo,
+             VPackBuffer<uint8_t>&& header, size_t length);
 
  public:
   ~VppRequest();
