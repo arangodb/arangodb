@@ -315,8 +315,8 @@ authRouter.get('/graph/:name', function (req, res) {
 
   var graph = gm._graph(name);
 
-  var vertices = graph._vertexCollections();
-  var vertexName = vertices[Math.floor(Math.random() * vertices.length)].name();
+  var verticesCollections = graph._vertexCollections();
+  var vertexName = verticesCollections[Math.floor(Math.random() * verticesCollections.length)].name();
 
   var vertexCollections = [];
   _.each(graph._vertexCollections(), function (vertex) {
@@ -373,6 +373,7 @@ authRouter.get('/graph/:name', function (req, res) {
 
   var nodesObj = {};
   var nodesArr = [];
+  var nodeNames = {};
   var edgesObj = {};
   var edgesArr = [];
 
@@ -447,68 +448,79 @@ authRouter.get('/graph/:name', function (req, res) {
     var nodeSize;
     var nodeObj;
     _.each(obj.vertices, function (node) {
-      if (config.nodeLabelByCollection === 'true') {
-        nodeLabel = node._id.split('/')[0];
-      } else if (config.nodeLabel) {
-        if (config.nodeLabel.indexOf('.') > -1) {
-          nodeLabel = getAttributeByKey(node, config.nodeLabel);
-          if (nodeLabel === undefined || nodeLabel === '') {
-            nodeLabel = node._id;
-          }
-        } else {
-          nodeLabel = node[config.nodeLabel];
-        }
-      } else {
-        nodeLabel = node._id;
-      }
-
-      if (typeof nodeLabel === 'number') {
-        nodeLabel = JSON.stringify(nodeLabel);
-      }
-
-      if (config.nodeSize) {
-        nodeSize = node[config.nodeSize];
-      }
-
-      nodeObj = {
-        id: node._id,
-        label: nodeLabel,
-        size: nodeSize || 10,
-        color: config.nodeColor || '#2ecc71',
-        x: Math.random(),
-        y: Math.random()
-      };
-
-      if (config.nodeColorByCollection === 'true') {
-        var coll = node._id.split('/')[0];
-        if (tmpObjNodes.hasOwnProperty(coll)) {
-          nodeObj.color = tmpObjNodes[coll];
-        } else {
-          tmpObjNodes[coll] = colors[Object.keys(tmpObjNodes).length];
-          nodeObj.color = tmpObjNodes[coll];
-        }
-      } else if (config.nodeColorAttribute !== '') {
-        var attr = node[config.nodeColorAttribute];
-        if (attr) {
-          if (tmpObjNodes.hasOwnProperty(attr)) {
-            nodeObj.color = tmpObjNodes[attr];
+      if (node !== null) {
+        nodeNames[node._id] = true;
+        if (config.nodeLabelByCollection === 'true') {
+          nodeLabel = node._id.split('/')[0];
+        } else if (config.nodeLabel) {
+          if (config.nodeLabel.indexOf('.') > -1) {
+            nodeLabel = getAttributeByKey(node, config.nodeLabel);
+            if (nodeLabel === undefined || nodeLabel === '') {
+              nodeLabel = node._id;
+            }
           } else {
-            tmpObjNodes[attr] = colors[Object.keys(tmpObjNodes).length];
-            nodeObj.color = tmpObjNodes[attr];
+            nodeLabel = node[config.nodeLabel];
+          }
+        } else {
+          nodeLabel = node._id;
+        }
+
+        if (typeof nodeLabel === 'number') {
+          nodeLabel = JSON.stringify(nodeLabel);
+        }
+
+        if (config.nodeSize) {
+          nodeSize = node[config.nodeSize];
+        }
+
+        nodeObj = {
+          id: node._id,
+          label: nodeLabel,
+          size: nodeSize || 10,
+          color: config.nodeColor || '#2ecc71',
+          x: Math.random(),
+          y: Math.random()
+        };
+
+        if (config.nodeColorByCollection === 'true') {
+          var coll = node._id.split('/')[0];
+          if (tmpObjNodes.hasOwnProperty(coll)) {
+            nodeObj.color = tmpObjNodes[coll];
+          } else {
+            tmpObjNodes[coll] = colors[Object.keys(tmpObjNodes).length];
+            nodeObj.color = tmpObjNodes[coll];
+          }
+        } else if (config.nodeColorAttribute !== '') {
+          var attr = node[config.nodeColorAttribute];
+          if (attr) {
+            if (tmpObjNodes.hasOwnProperty(attr)) {
+              nodeObj.color = tmpObjNodes[attr];
+            } else {
+              tmpObjNodes[attr] = colors[Object.keys(tmpObjNodes).length];
+              nodeObj.color = tmpObjNodes[attr];
+            }
           }
         }
-      }
 
-      nodesObj[node._id] = nodeObj;
+        nodesObj[node._id] = nodeObj;
+      }
     });
+  });
+
+  _.each(nodesObj, function (node) {
+    nodesArr.push(node);
+  });
+
+  var nodeNamesArr = [];
+  _.each(nodeNames, function (found, key) {
+    nodeNamesArr.push(key);
   });
 
   // array format for sigma.js
   _.each(edgesObj, function (edge) {
-    edgesArr.push(edge);
-  });
-  _.each(nodesObj, function (node) {
-    nodesArr.push(node);
+    if (nodeNamesArr.indexOf(edge.source) > -1 && nodeNamesArr.indexOf(edge.target) > -1) {
+      edgesArr.push(edge);
+    }
   });
 
   res.json({

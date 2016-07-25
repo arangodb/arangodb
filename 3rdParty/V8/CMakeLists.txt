@@ -57,6 +57,11 @@ list(APPEND V8_GYP_ARGS
   -DPYTHON_EXECUTABLE=${PYTHON_EXECUTABLE}
 )
 
+if (CROSS_COMPILING)
+  list(APPEND V8_GYP_ARGS -DGYP_CROSSCOMPILE=1)
+endif()
+
+
 ################################################################################
 ## ICU EXPORTS
 ################################################################################

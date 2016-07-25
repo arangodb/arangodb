@@ -92,6 +92,8 @@ GeneralServerFeature::GeneralServerFeature(
       _authenticationSystemOnly(true),
       _proxyCheck(true),
       _jwtSecret(""),
+      _verificationMode(SSL_VERIFY_NONE),
+      _verificationCallback(nullptr),
       _handlerFactory(nullptr),
       _jobManager(nullptr) {
   setOptional(true);
