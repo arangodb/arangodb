@@ -1035,6 +1035,9 @@
         _.each(existingNodes, function (existingNode) {
           if (found === false) {
             if (newNode.id === existingNode.id) {
+              if (existingNode.id === origin) {
+                existingNode.label = existingNode.label + ' (expanded)';
+              }
               found = true;
             } else {
               found = false;
@@ -1054,10 +1057,10 @@
           });
 
           self.startLayout(true);
-
-          // rerender graph
-          self.currentGraph.refresh();
         }
+
+        // rerender graph
+        self.currentGraph.refresh();
       });
     },
 
