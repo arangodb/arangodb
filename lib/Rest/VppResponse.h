@@ -76,8 +76,8 @@ class VppResponse : public GeneralResponse {
   //_responseCode   - from Base
   //_headers        - from Base
   ConnectionType _connectionType;
-  ContentType _contentType;
   basics::StringBuffer _body;
+  ContentType _contentType;
 };
 }
 

@@ -120,6 +120,7 @@ GeneralRequest::RequestType GeneralRequest::translateMethod(
 }
 
 void GeneralRequest::appendMethod(RequestType method, StringBuffer* buffer) {
+  // append RequestType as string value to given String buffer
   buffer->appendText(translateMethod(method));
   buffer->appendChar(' ');
 }
@@ -198,6 +199,11 @@ void GeneralRequest::setFullUrl(char const* begin, char const* end) {
   TRI_ASSERT(begin <= end);
 
   _fullUrl = std::string(begin, end - begin);
+}
+
+void GeneralRequest::setFullUrl(std::string url) {
+  TRI_ASSERT(!url.empty());
+  _fullUrl = std::move(url);
 }
 
 void GeneralRequest::addSuffix(std::string&& part) {

@@ -61,7 +61,7 @@ void VppResponse::setPayload(GeneralRequest const* request,
   // VELOCYPACK
   if (request != nullptr && request->velocyPackResponse()) {
     setContentType(VppResponse::ContentType::VPACK);
-    size_t length = static_cast<size_t>(slice.byteSize());
+    // size_t length = static_cast<size_t>(slice.byteSize());
     if (generateBody) {
     }
   } else {  // JSON

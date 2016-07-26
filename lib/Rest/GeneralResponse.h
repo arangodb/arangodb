@@ -140,6 +140,8 @@ class GeneralResponse {
   virtual ~GeneralResponse() {}
 
  public:
+  // response codes are http response codes, but they are used in other
+  // protocols as well
   ResponseCode responseCode() const { return _responseCode; }
   void setResponseCode(ResponseCode responseCode) {
     _responseCode = responseCode;
@@ -174,8 +176,9 @@ class GeneralResponse {
                           arangodb::velocypack::Options const&) = 0;
 
  protected:
-  ResponseCode _responseCode;
-  std::unordered_map<std::string, std::string> _headers;
+  ResponseCode _responseCode;  // http response code
+  std::unordered_map<std::string, std::string>
+      _headers;  // headers/metadata map
 };
 }
 

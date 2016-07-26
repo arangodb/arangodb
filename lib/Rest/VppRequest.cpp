@@ -42,8 +42,7 @@ VppRequest::VppRequest(ConnectionInfo const& connectionInfo,
                        VPackBuffer<uint8_t>&& header, size_t length)
     : GeneralRequest(connectionInfo),
       _contentLength(0),
-      _header(std::move(header)),
-      _cookies(std::unordered_map<std::string, std::string>() /*TODO remove*/) {
+      _header(std::move(header)) {
   if (0 < length) {
     _contentType = ContentType::VPACK;
     _contentTypeResponse = ContentType::VPACK;

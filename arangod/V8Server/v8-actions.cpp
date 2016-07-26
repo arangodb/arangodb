@@ -499,11 +499,16 @@ static v8::Handle<v8::Object> RequestCppToV8(v8::Isolate* isolate,
   // copy cookies
   v8::Handle<v8::Object> cookiesObject = v8::Object::New(isolate);
 
-  for (auto& it : request->cookieValues()) {
-    cookiesObject->ForceSet(TRI_V8_STD_STRING(it.first),
-                            TRI_V8_STD_STRING(it.second));
+  HttpRequest* httpRequest = dynamic_cast<HttpRequest*>(request);
+  if (httpRequest == nullptr) {
+    // maybe we can just continue
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+  } else {
+    for (auto& it : httpRequest->cookieValues()) {
+      cookiesObject->ForceSet(TRI_V8_STD_STRING(it.first),
+                              TRI_V8_STD_STRING(it.second));
+    }
   }
-
   TRI_GET_GLOBAL_STRING(CookiesKey);
   req->ForceSet(CookiesKey, cookiesObject);
 

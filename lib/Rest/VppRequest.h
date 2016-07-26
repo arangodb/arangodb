@@ -63,12 +63,6 @@ class VppRequest : public GeneralRequest {
  public:
   VPackSlice payload(arangodb::velocypack::Options const*) override;
   int64_t contentLength() const override { return _contentLength; }
-
-  // TODO REMOVE
-  std::unordered_map<std::string, std::string> cookieValues() const override {
-    return _cookies;
-  }
-
   void setPayload(VPackBuffer<uint8_t>&& payload) { _payload = payload; }
 
  private:

@@ -45,12 +45,9 @@ class FakeRequest : public GeneralRequest {
   // the content length
   int64_t contentLength() const override { return _contentLength; }
 
-  std::unordered_map<std::string, std::string> cookieValues() const override {
-    return _cookies;
-  }
-
   // Payload
-  velocypack::Slice payload(arangodb::velocypack::Options const*) override final;
+  velocypack::Slice payload(
+      arangodb::velocypack::Options const*) override final;
 
   void setHeaders(std::unordered_map<std::string, std::string> const& headers) {
     _headers = headers;  // this is from the base class
