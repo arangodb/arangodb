@@ -56,6 +56,7 @@ class StorageEngine : public application_features::ApplicationFeature {
 
   virtual void start() {}
   virtual void stop() {}
+  virtual void recoveryDone(TRI_vocbase_t* vocbase) {} 
 
   // status functionality
   // --------------------

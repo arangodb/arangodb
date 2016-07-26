@@ -75,7 +75,6 @@ void CheckVersionFeature::validateOptions(
   DatabaseFeature* databaseFeature =
       ApplicationServer::getFeature<DatabaseFeature>("Database");
   databaseFeature->disableReplicationApplier();
-  databaseFeature->disableCompactor();
   databaseFeature->enableCheckVersion();
 
   V8DealerFeature* v8dealer =

@@ -103,21 +103,19 @@ class DatabaseFeature final : public application_features::ApplicationFeature {
   bool ignoreDatafileErrors() const { return _ignoreDatafileErrors; }
   bool isInitiallyEmpty() const { return _isInitiallyEmpty; }
   bool checkVersion() const { return _checkVersion; }
+  bool upgrade() const { return _upgrade; }
   bool forceSyncProperties() const { return _forceSyncProperties; }
   void forceSyncProperties(bool value) { _forceSyncProperties = value; }
   bool waitForSync() const { return _defaultWaitForSync; }
   uint64_t maximalJournalSize() const { return _maximalJournalSize; }
-  bool compactor() const { return !_disableCompactor; }
 
   void disableReplicationApplier() { _replicationApplier = false; }
-  void disableCompactor() { _disableCompactor = true; }
   void enableCheckVersion() { _checkVersion = true; }
   void enableUpgrade() { _upgrade = true; }
  
  private:
   void closeDatabases();
   void updateContexts();
-  void shutdownCompactor();
 
   /// @brief create base app directory
   int createBaseApplicationDirectory(std::string const& appPath, std::string const& type);
@@ -163,7 +161,6 @@ class DatabaseFeature final : public application_features::ApplicationFeature {
 
   bool _isInitiallyEmpty;
   bool _replicationApplier;
-  bool _disableCompactor;
   bool _checkVersion;
   bool _iterateMarkersOnOpen;
   bool _upgrade;

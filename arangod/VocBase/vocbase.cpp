@@ -1394,37 +1394,18 @@ void TRI_DestroyVocBase(TRI_vocbase_t* vocbase) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_StartCompactorVocBase(TRI_vocbase_t* vocbase) {
-  TRI_ASSERT(!vocbase->_hasCompactor);
-
-  LOG(TRACE) << "starting compactor for database '" << vocbase->_name << "'";
-  // start compactor thread
   DatabaseFeature* databaseFeature = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
 
-  if (databaseFeature->compactor()) {
+  if (!databaseFeature->checkVersion() && !databaseFeature->upgrade()) {
+    // start compactor thread
+    TRI_ASSERT(!vocbase->_hasCompactor);
+    LOG(TRACE) << "starting compactor for database '" << vocbase->_name << "'";
+
     TRI_InitThread(&vocbase->_compactor);
     TRI_StartThread(&vocbase->_compactor, nullptr, "Compactor",
                     TRI_CompactorVocBase, vocbase);
     vocbase->_hasCompactor = true;
   }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief stops the compactor thread
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_StopCompactorVocBase(TRI_vocbase_t* vocbase) {
-  if (vocbase->_hasCompactor) {
-    vocbase->_hasCompactor = false;
-
-    LOG(TRACE) << "stopping compactor for database '" << vocbase->_name << "'";
-    int res = TRI_JoinThread(&vocbase->_compactor);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      return TRI_ERROR_INTERNAL;
-    }
-  }
-
-  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

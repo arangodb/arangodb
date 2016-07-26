@@ -228,7 +228,6 @@ DatabaseFeature::DatabaseFeature(ApplicationServer* server)
       _databasesLists(new DatabasesLists()),
       _isInitiallyEmpty(false),
       _replicationApplier(true),
-      _disableCompactor(false),
       _checkVersion(false),
       _iterateMarkersOnOpen(false),
       _upgrade(false) {
@@ -344,13 +343,13 @@ void DatabaseFeature::start() {
   
   // TODO: handle _upgrade and _checkVersion here
 
-  // update all v8 contexts
-  updateContexts();
-  
   // activatee deadlock detection in case we're not running in cluster mode
   if (!arangodb::ServerState::instance()->isRunningInCluster()) {
     enableDeadlockDetection();
   }
+  
+  // update all v8 contexts
+  updateContexts();
 }
 
 void DatabaseFeature::unprepare() {
@@ -362,7 +361,7 @@ void DatabaseFeature::unprepare() {
     _databaseManager->beginShutdown();
 
     while (_databaseManager->isRunning()) {
-      usleep(1000);
+      usleep(5000);
     }
   }
  
@@ -380,6 +379,7 @@ void DatabaseFeature::unprepare() {
   } catch (...) {
   }
 
+  // clean up
   auto p = _databasesLists.load();
   delete p;
   
@@ -387,7 +387,11 @@ void DatabaseFeature::unprepare() {
   DATABASE = nullptr;
 }
 
+/// @brief will be called when the recovery phase has run
+/// this will start the compactors and replication appliers for all databases
 int DatabaseFeature::recoveryDone() {
+  StorageEngine* engine = ApplicationServer::getFeature<EngineSelectorFeature>("EngineSelector")->ENGINE;
+
   auto unuser(_databasesProtector.use());
   auto theLists = _databasesLists.load();
 
@@ -398,7 +402,7 @@ int DatabaseFeature::recoveryDone() {
     TRI_ASSERT(vocbase->_type == TRI_VOCBASE_TYPE_NORMAL);
 
     // start the compactor for the database
-    TRI_StartCompactorVocBase(vocbase);
+    engine->recoveryDone(vocbase);
 
     // start the replication applier
     TRI_ASSERT(vocbase->_replicationApplier != nullptr);
@@ -554,13 +558,12 @@ int DatabaseFeature::createDatabase(TRI_voc_tick_t id, std::string const& name,
     int res = createApplicationDirectory(name, appPath);
 
     if (!arangodb::wal::LogfileManager::instance()->isInRecovery()) {
-      TRI_StartCompactorVocBase(vocbase);
+      // starts compactor etc.
+      engine->recoveryDone(vocbase);
 
       // start the replication applier
       if (vocbase->_replicationApplier->_configuration._autoStart) {
-        if (!_replicationApplier) {
-          LOG(INFO) << "replication applier explicitly deactivated for database '" << name << "'";
-        } else {
+        if (_replicationApplier) {
           res = vocbase->_replicationApplier->start(0, false, 0);
 
           if (res != TRI_ERROR_NO_ERROR) {
@@ -903,7 +906,7 @@ void DatabaseFeature::releaseDatabase(TRI_vocbase_t* vocbase) {
   TRI_ReleaseVocBase(vocbase);
 }
 
-/// @brief lookup a database by its name
+/// @brief lookup a database by its name, not increasing its reference count
 TRI_vocbase_t* DatabaseFeature::lookupDatabase(std::string const& name) {
   auto unuser(_databasesProtector.use());
   auto theLists = _databasesLists.load();
@@ -940,28 +943,6 @@ void DatabaseFeature::updateContexts() {
         TRI_InitV8Cluster(isolate, context);
       },
       vocbase);
-}
-
-void DatabaseFeature::shutdownCompactor() {
-  auto unuser = _databasesProtector.use();
-  auto theLists = _databasesLists.load();
-
-  for (auto& p : theLists->_databases) {
-    TRI_vocbase_t* vocbase = p.second;
-
-    vocbase->_state = 2;
-
-    int res = TRI_ERROR_NO_ERROR;
-
-    res |= TRI_StopCompactorVocBase(vocbase);
-    vocbase->_state = 3;
-    res |= TRI_JoinThread(&vocbase->_cleanup);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      LOG(ERR) << "unable to join database threads for database '"
-               << vocbase->_name << "'";
-    }
-  }
 }
 
 void DatabaseFeature::closeDatabases() {

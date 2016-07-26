@@ -133,6 +133,11 @@ void MMFilesEngine::stop() {
   LOG(INFO) << "MMFilesEngine::stop()";
 }
 
+void MMFilesEngine::recoveryDone(TRI_vocbase_t* vocbase) {    
+  LOG(INFO) << "MMFilesEngine::recoveryDone() " << vocbase->_name;
+  TRI_StartCompactorVocBase(vocbase);
+}
+
 // fill the Builder object with an array of databases that were detected
 // by the storage engine. this method must sort out databases that were not
 // fully created (see "createDatabase" below). called at server start only
