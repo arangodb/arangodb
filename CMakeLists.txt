@@ -29,9 +29,9 @@ endif ()
 set(CMAKE_OSX_DEPLOYMENT_TARGET "10.9" CACHE STRING "deployment target for MacOSX")
 
 if (WIN32)
-  project(ArangoDB CXX C)
+  project(arangodb3 CXX C)
 else ()
-  project(ArangoDB CXX C ASM)
+  project(arangodb3 CXX C ASM)
 endif ()
 
 # where to find CMAKE modules
@@ -712,10 +712,6 @@ endif ()
 if (USE_OPENSSL_NO_SSL2)
   add_definitions(-DOPENSSL_NO_SSL2)
 endif ()
-
-if(WIN32)
-  option(BUNDLE_OPENSSL "Bundle OpenSSL library" ON)
-endif()
 
 ################################################################################
 ## V8

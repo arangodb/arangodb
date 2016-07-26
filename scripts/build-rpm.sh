@@ -9,7 +9,7 @@ cd ${DIR}/..
 ./Installation/Jenkins/build.sh \
     standard \
     --rpath \
-    --package DEB \
+    --package RPM \
     --jemalloc \
 
 cd ${DIR}/..
