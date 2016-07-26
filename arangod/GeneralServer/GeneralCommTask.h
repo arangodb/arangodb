@@ -51,8 +51,8 @@ class GeneralCommTask : public SocketTask, public RequestStatisticsAgent {
 
   // return whether or not the task desires to start a dispatcher thread
   bool startThread() const { return _startThread; }  // called by server
-  void handleResponse(GeneralResponse*);             // called by server
 
+  void handleResponse(GeneralResponse*);  // resets vars and calls addResponse
   void handleSimpleError(GeneralResponse::ResponseCode);
   void handleSimpleError(GeneralResponse::ResponseCode, int code,
                          std::string const& errorMessage);
@@ -60,13 +60,15 @@ class GeneralCommTask : public SocketTask, public RequestStatisticsAgent {
  protected:
   virtual ~GeneralCommTask();
 
-  virtual void addResponse(GeneralResponse*) = 0;
+  virtual void addResponse(GeneralResponse*) = 0;  // called by handleResponse
   virtual bool processRead() = 0;
   virtual void processRequest() = 0;
   virtual void resetState(bool) = 0;
 
-  virtual bool handleEvent(EventToken token,
-                           EventType events) override;  // called by TODO
+  // main callback of this class - called by base SocketTask - this version
+  // calls the SocketTask::handle Event
+  // and destroys this task if the client connection is closed
+  virtual bool handleEvent(EventToken token, EventType events) override;
 
   void cleanup() override final { SocketTask::cleanup(); }
 

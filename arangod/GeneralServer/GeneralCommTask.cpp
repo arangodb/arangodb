@@ -122,8 +122,11 @@ void GeneralCommTask::handleSimpleError(
 }
 
 bool GeneralCommTask::handleEvent(EventToken token, EventType events) {
+  // destroy taks if client is closed
   bool result = SocketTask::handleEvent(token, events);
-  if (_clientClosed) _scheduler->destroyTask(this);
+  if (_clientClosed) {
+    _scheduler->destroyTask(this);
+  }
   return result;
 }
 

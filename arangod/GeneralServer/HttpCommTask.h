@@ -23,7 +23,7 @@ class HttpCommTask : public GeneralCommTask {
     // internal addResponse
     HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(response);
     if (httpResponse == nullptr) {
-      // everything is borken
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
     }
     addResponse(httpResponse);
   };
@@ -32,24 +32,25 @@ class HttpCommTask : public GeneralCommTask {
   void completedWriteBuffer() override final;
 
  private:
+  bool handleRead() override final;  // required by SocketTask
+
   void signalTask(TaskData*) override final;
   // resets the internal state
   // this method can be called to clean up when the request handling aborts
   // prematurely
   virtual void resetState(bool close) override final;
 
+  void fillWriteBuffer();  // fills the write buffer
   HttpRequest* _requestAsHttp();
   void addResponse(HttpResponse*);
   void finishedChunked();
   // check the content-length header of a request and fail it is broken
   bool checkContentLength(bool expectContentLength);
-  void fillWriteBuffer();                   // fills the write buffer
   void processCorsOptions();                // handles CORS options
   std::string authenticationRealm() const;  // returns the authentication realm
   GeneralResponse::ResponseCode
   authenticateRequest();                  // checks the authentication
   void sendChunk(basics::StringBuffer*);  // sends more chunked data
-  bool handleRead() override final;
 
  private:
   size_t _readPosition;   // current read position
