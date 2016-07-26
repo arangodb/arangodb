@@ -259,7 +259,7 @@
             } else {
               self.fetchFinished = new Date();
               self.calcStart = self.fetchFinished;
-              $('#calcText').html('Server response took ' + Math.abs(self.fetchFinished.getTime() - self.fetchStarted.getTime()) + ' ms. Now calculating layout. Please wait ... ');
+              $('#calcText').html('Server response took ' + Math.abs(self.fetchFinished.getTime() - self.fetchStarted.getTime()) + ' ms. Initializing graph engine. Please wait ... ');
               // arangoHelper.buildGraphSubNav(self.name, 'Content');
               window.setTimeout(function () {
                 self.renderGraph(data, toFocus);
@@ -497,7 +497,7 @@
 
           window.modalView.hide();
           // rerender graph
-          self.currentGraph.refresh({autoRescale: false});
+          self.currentGraph.refresh();
         }
       };
 
@@ -969,6 +969,12 @@
           self.clearOldContextMenu();
         };
 
+        // function 4: mark as start node
+        wheel.navItems[4].navigateFunction = function (e) {
+          self.clearOldContextMenu();
+          self.expandNode(nodeId);
+        };
+
         // deselect active default entry
         wheel.navItems[0].selected = false;
         wheel.navItems[0].hovered = false;
@@ -986,6 +992,73 @@
       var c = document.getElementsByClassName('sigma-mouse')[0];
       var ctx = c.getContext('2d');
       ctx.clearRect(0, 0, $(c).width(), $(c).height());
+    },
+
+    expandNode: function (id) {
+      var self = this;
+      var ajaxData = {};
+
+      if (this.graphConfig) {
+        ajaxData = _.clone(this.graphConfig);
+
+        // remove not needed params
+        delete ajaxData.layout;
+        delete ajaxData.edgeType;
+        delete ajaxData.renderer;
+      }
+
+      ajaxData.query = 'FOR v, e, p IN 1..1 ANY "' + id + '" GRAPH "' + self.name + '" RETURN p';
+
+      $.ajax({
+        type: 'GET',
+        url: arangoHelper.databaseUrl('/_admin/aardvark/graph/' + encodeURIComponent(this.name)),
+        contentType: 'application/json',
+        data: ajaxData,
+        success: function (data) {
+          self.checkExpand(data, id);
+        },
+        error: function (e) {
+          arangoHelper.arangoError('Graph', 'Could not expand node: ' + id + '.');
+        }
+      });
+    },
+
+    checkExpand: function (data, origin) {
+      var self = this;
+      var newNodes = data.nodes;
+      var newEdges = data.edges;
+      var existingNodes = this.currentGraph.graph.nodes();
+
+      var found;
+      _.each(newNodes, function (newNode) {
+        found = false;
+        _.each(existingNodes, function (existingNode) {
+          if (found === false) {
+            if (newNode.id === existingNode.id) {
+              found = true;
+            } else {
+              found = false;
+            }
+          }
+        });
+
+        if (found === false) {
+          newNode.originalColor = newNode.color;
+          self.currentGraph.graph.addNode(newNode);
+
+          _.each(newEdges, function (edge) {
+            if (edge.source === newNode.id || edge.target === newNode.id) {
+              edge.originalColor = edge.color;
+              self.currentGraph.graph.addEdge(edge);
+            }
+          });
+
+          self.startLayout(true);
+
+          // rerender graph
+          self.currentGraph.refresh();
+        }
+      });
     },
 
     drawLine: function (e) {
@@ -1617,7 +1690,17 @@
       }
     },
 
-    startLayout: function () {
+    startLayout: function (kill) {
+      var self = this;
+
+      if (kill === true) {
+        this.currentGraph.killForceAtlas2();
+
+        window.setTimeout(function () {
+          self.stopLayout();
+        }, 400);
+      }
+
       $('#toggleForce .fa').removeClass('fa-play').addClass('fa-pause');
       this.layouting = true;
       this.currentGraph.startForceAtlas2({

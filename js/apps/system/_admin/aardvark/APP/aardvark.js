@@ -370,10 +370,15 @@ authRouter.get('/graph/:name', function (req, res) {
       }
     };
   } else {
-    var aqlQuery =
-     'FOR v, e, p IN 1..' + (config.depth || '2') + ' ANY "' + startVertex._id + '" GRAPH "' + name + '"' +
-     'RETURN p'
-    ;
+    var aqlQuery;
+    if (config.query) {
+      aqlQuery = config.query;
+    } else {
+      aqlQuery =
+       'FOR v, e, p IN 1..' + (config.depth || '2') + ' ANY "' + startVertex._id + '" GRAPH "' + name + '"' +
+       'RETURN p'
+      ;
+    }
 
     var getAttributeByKey = function (o, s) {
       s = s.replace(/\[(\w+)\]/g, '.$1');
