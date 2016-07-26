@@ -170,10 +170,11 @@ add_executable(${BIN_ARANGOD}
   Cluster/ClusterInfo.cpp
   Cluster/ClusterMethods.cpp
   Cluster/ClusterTraverser.cpp
+  Cluster/DBServerAgencySync.cpp
   Cluster/HeartbeatThread.cpp
   Cluster/RestAgencyCallbacksHandler.cpp
   Cluster/RestShardHandler.cpp
-  Cluster/DBServerAgencySync.cpp
+  Cluster/TraverserEngineRegistry.cpp
   Cluster/ServerState.cpp
   Cluster/v8-cluster.cpp
   Dispatcher/Dispatcher.cpp

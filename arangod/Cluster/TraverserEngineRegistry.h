@@ -24,14 +24,57 @@
 #ifndef ARANGOD_CLUSTER_TRAVERSER_ENGINE_REGISTRY_H
 #define ARANGOD_CLUSTER_TRAVERSER_ENGINE_REGISTRY_H 1
 
+#include "Basics/ReadWriteLock.h"
+#include "VocBase/voc-types.h"
+
 namespace arangodb {
 namespace traverser {
+
+class TraverserEngine;
+
+/// @brief type of a Traverser Engine Id
+typedef TRI_voc_tick_t TraverserEngineID;
 
 class TraverserEngineRegistry {
  public:
   TraverserEngineRegistry() {}
 
-  ~TraverserEngineRegistry() {}
+  ~TraverserEngineRegistry();
+
+  /// @brief Create a new Engine in the registry.
+  ///        It can be referred to by the returned
+  ///        ID. If the returned ID is 0 something
+  ///        internally went wrong.
+  TraverserEngineID createNew();
+
+  /// @brief Get the engine with the given ID.
+  ///        TODO Test what happens if this pointer
+  ///        is requested twice in parallel?
+  TraverserEngine* get(TraverserEngineID);
+
+  /// @brief Destroys the engine with the given id.
+  void destroy(TraverserEngineID);
+
+  /// @brief Returns the engine with the given id.
+  ///        NOTE: Caller is NOT allowed to use the
+  ///        engine after this return.
+  void returnEngine(TraverserEngineID);
+
+ private:
+
+  struct EngineInfo {
+    bool _isInUse;            // Flag if this engine is in use
+    TraverserEngine* _engine; // The real engine
+
+    double _timeToLive;       // in seconds
+    double _expires;          // UNIX UTC timestamp for expiration
+  };
+
+  /// @brief the actual map of engines
+  std::unordered_map<TraverserEngineID, EngineInfo*> _engines;
+
+  /// @brief _lock, the read/write lock for access
+  basics::ReadWriteLock _lock;
 };
 
 } // namespace traverser
