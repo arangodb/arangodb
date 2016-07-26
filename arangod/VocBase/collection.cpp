@@ -1533,10 +1533,13 @@ VocbaseCollectionInfo VocbaseCollectionInfo::fromFile(
     char const* path, TRI_vocbase_t* vocbase, char const* collectionName,
     bool versionWarning) {
   // find parameter file
-  std::string const filename = arangodb::basics::FileUtils::buildFilename(path, TRI_VOC_PARAMETER_FILE);
+  std::string filename = arangodb::basics::FileUtils::buildFilename(path, TRI_VOC_PARAMETER_FILE);
 
   if (!TRI_ExistsFile(filename.c_str())) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_PARAMETER_FILE);
+    filename += ".tmp"; // try file with .tmp extension
+    if (!TRI_ExistsFile(filename.c_str())) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_PARAMETER_FILE);
+    }
   }
 
   std::shared_ptr<VPackBuilder> content =
@@ -1546,6 +1549,11 @@ VocbaseCollectionInfo VocbaseCollectionInfo::fromFile(
     LOG(ERR) << "cannot open '" << filename
              << "', collection parameters are not readable";
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_PARAMETER_FILE);
+  }
+
+  if (filename.substr(filename.size() - 4, 4) == ".tmp") {
+    // we got a tmp file. Now try saving the original file
+    arangodb::basics::VelocyPackHelper::velocyPackToFile(filename.c_str(), slice, true);
   }
 
   // fiddle "isSystem" value, which is not contained in the JSON file

@@ -191,7 +191,8 @@
       var query = this.collection.buildDownloadDocumentQuery();
 
       if (query !== '' || query !== undefined || query !== null) {
-        window.open(encodeURI('query/result/download/' + btoa(JSON.stringify(query))));
+        var url = 'query/result/download/' + btoa(JSON.stringify(query));
+        arangoHelper.download(url);
       } else {
         arangoHelper.arangoError('Document error', 'could not download documents');
       }
@@ -435,13 +436,38 @@
         '" type="text" placeholder="Attribute value" ' +
         'class="filterValue">' +
         ' <a class="removeFilterItem" id="removeFilter' + num + '">' +
-        '<i class="icon icon-minus arangoicon"></i></a></div>');
+        '<i class="fa fa-minus-circle"></i></a></div>');
       this.filters[num] = true;
+
+      this.checkFilterState();
     },
 
     filterValueKeydown: function (e) {
       if (e.keyCode === 13) {
         this.sendFilter();
+      }
+    },
+
+    checkFilterState: function () {
+      var length = $('#filterHeader .queryline').length;
+
+      if (length === 1) {
+        $('#filterHeader .removeFilterItem').remove();
+      } else {
+        if ($('#filterHeader .queryline').first().find('.removeFilterItem').length === 0) {
+          var id = $('#filterHeader .queryline').first().children().first().attr('id');
+          var num = id.substr(14, id.length);
+
+          $('#filterHeader .queryline').first().find('.add-filter-item').after(
+            ' <a class="removeFilterItem" id="removeFilter' + num + '">' +
+            '<i class="fa fa-minus-circle"></i></a>');
+        }
+      }
+
+      if ($('#filterHeader .queryline').first().find('.add-filter-item').length === 0) {
+        $('#filterHeader .queryline').first().find('.filterValue').after(
+          '<a id="addFilterItem" class="add-filter-item"><i style="margin-left: 4px;" class="fa fa-plus-circle"></i></a>'
+        );
       }
     },
 
@@ -456,6 +482,7 @@
 
       // remove the line from the DOM
       $(button.parentElement).remove();
+      this.checkFilterState();
     },
 
     removeAllFilterItems: function () {

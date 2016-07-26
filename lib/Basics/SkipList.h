@@ -29,7 +29,6 @@
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include "Basics/JsonHelper.h"
 #include "Random/RandomGenerator.h"
 
 // We will probably never see more than 2^48 documents in a skip list

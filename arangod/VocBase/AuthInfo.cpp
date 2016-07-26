@@ -33,9 +33,9 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/tri-strings.h"
+#include "GeneralServer/GeneralServerFeature.h"
 #include "Logger/Logger.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RestServer/RestServerFeature.h"
 #include "Ssl/SslInterface.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utils/StandaloneTransactionContext.h"
@@ -544,7 +544,7 @@ bool AuthInfo::validateJwtHMAC256Signature(std::string const& message,
                                            std::string const& signature) {
   std::string decodedSignature = StringUtils::decodeBase64U(signature);
 
-  std::string const& jwtSecret = RestServerFeature::getJwtSecret();
+  std::string const& jwtSecret = GeneralServerFeature::getJwtSecret();
   return verifyHMAC(jwtSecret.c_str(), jwtSecret.length(), message.c_str(),
                     message.length(), decodedSignature.c_str(),
                     decodedSignature.length(),

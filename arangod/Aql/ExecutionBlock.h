@@ -26,6 +26,7 @@
 
 #include "AqlItemBlock.h"
 #include "Aql/ExecutionNode.h"
+#include "Aql/Variable.h"
 
 #include <deque>
 
@@ -57,6 +58,11 @@ class ExecutionBlock {
  public:
   /// @brief batch size value
   static constexpr inline size_t DefaultBatchSize() { return 1000; }
+
+  /// @brief returns the register id for a variable id
+  /// will return ExecutionNode::MaxRegisterId for an unknown variable
+  RegisterId getRegister(VariableId id) const;
+  RegisterId getRegister(Variable const* variable) const;
 
   /// @brief determine the number of rows in a vector of blocks
   size_t countBlocksRows(std::vector<AqlItemBlock*> const&) const;
@@ -156,7 +162,7 @@ class ExecutionBlock {
 
   // skip exactly <number> outputs, returns <true> if _done after
   // skipping, and <false> otherwise . . .
-  bool skip(size_t number);
+  bool skip(size_t number, size_t& numActuallySkipped);
 
   virtual bool hasMore();
 

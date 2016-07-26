@@ -547,12 +547,14 @@ int EdgeIndex::remove(arangodb::Transaction* trx, TRI_doc_mptr_t const* doc,
 int EdgeIndex::batchInsert(arangodb::Transaction* trx,
                            std::vector<TRI_doc_mptr_t const*> const* documents,
                            size_t numThreads) {
-  _edgesFrom->batchInsert(
-      trx, reinterpret_cast<std::vector<TRI_doc_mptr_t*> const*>(documents),
-      numThreads);
-  _edgesTo->batchInsert(
-      trx, reinterpret_cast<std::vector<TRI_doc_mptr_t*> const*>(documents),
-      numThreads);
+  if (!documents->empty()) {
+    _edgesFrom->batchInsert(
+        trx, reinterpret_cast<std::vector<TRI_doc_mptr_t*> const*>(documents),
+        numThreads);
+    _edgesTo->batchInsert(
+        trx, reinterpret_cast<std::vector<TRI_doc_mptr_t*> const*>(documents),
+        numThreads);
+  }
 
   return TRI_ERROR_NO_ERROR;
 }

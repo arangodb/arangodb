@@ -2,19 +2,14 @@
 
 !SUBSECTION Scheduler threads
 
-
-number of scheduler threads
-`--scheduler.threads arg`
+Number of scheduler threads: `--scheduler.threads arg`
 
 An integer argument which sets the number of threads to use in the IO
 scheduler. The default is 1.
 
-
-
 !SUBSECTION Scheduler maximal queue size
 
-
-maximum size of the dispatcher queue for asynchronous requests
+Maximum size of the dispatcher queue for asynchronous requests:
 `--server.maximal-queue-size size`
 
 Specifies the maximum *size* of the dispatcher queue for asynchronous
@@ -23,22 +18,17 @@ will be rejected until other tasks are popped from the queue. Setting this
 value may help preventing from running out of memory if the queue is
 filled up faster than the server can process requests.
 
-
-
 !SUBSECTION Scheduler backend
 
-
-scheduler backend
-`--scheduler.backend arg`
+Scheduler backend: `--scheduler.backend arg`
 
 The I/O method used by the event handler. The default (if this option is
 not specified) is to try all recommended backends. This is platform
 specific. See libev for further details and the meaning of select, poll
 and epoll.
 
-
-
 !SUBSECTION Io backends
+
 `--scheduler.show-backends`
 
 If this option is specified, then the server will list available backends and

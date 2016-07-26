@@ -36,14 +36,9 @@ class AqlItemBlock;
 class ExecutionEngine;
 
 class SingletonBlock : public ExecutionBlock {
-  void deleteInputVariables() {
-    delete _inputRegisterValues;
-    _inputRegisterValues = nullptr;
-  }
-
  public:
   SingletonBlock(ExecutionEngine* engine, SingletonNode const* ep)
-      : ExecutionBlock(engine, ep), _inputRegisterValues(nullptr) {}
+      : ExecutionBlock(engine, ep), _inputRegisterValues(nullptr), _whitelistBuilt(false) {}
 
   ~SingletonBlock() { deleteInputVariables(); }
 
@@ -64,13 +59,23 @@ class SingletonBlock : public ExecutionBlock {
 
   int64_t remaining() override final { return _done ? 0 : 1; }
 
-  /// @brief the bind data coming from outside
  private:
+  void deleteInputVariables() {
+    delete _inputRegisterValues;
+    _inputRegisterValues = nullptr;
+  }
+
+  void buildWhitelist();
+
   int getOrSkipSome(size_t atLeast, size_t atMost, bool skipping,
                     AqlItemBlock*& result, size_t& skipped) override;
 
   /// @brief _inputRegisterValues
   AqlItemBlock* _inputRegisterValues;
+
+  std::unordered_set<RegisterId> _whitelist;
+
+  bool _whitelistBuilt;
 };
 
 class FilterBlock : public ExecutionBlock {

@@ -78,6 +78,9 @@ class IndexNode : public ExecutionNode {
 
   /// @brief whether or not all indexes are accessed in reverse order
   bool reverse() const { return _reverse; }
+ 
+  /// @brief set reverse mode  
+  void reverse(bool value) { _reverse = value; }
 
   /// @brief export to VelocyPack
   void toVelocyPackHelper(arangodb::velocypack::Builder&,

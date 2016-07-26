@@ -348,14 +348,6 @@ class Transaction {
   static VPackSlice extractToFromDocument(VPackSlice);
   
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief quick access to the _rev attribute in a database document
-  /// the document must have at least three attributes: _key, _id, _rev 
-  /// (possibly with _from and _to in between)
-  //////////////////////////////////////////////////////////////////////////////
-  
-  static VPackSlice extractRevFromDocument(VPackSlice);
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief extract _key and _rev from a document, in one go
   /// this is an optimized version used when loading collections, WAL 
   /// collection and compaction
@@ -391,8 +383,12 @@ class Transaction {
     if (collection == nullptr) {
       int res = TRI_AddCollectionTransaction(_trx, cid,
                                              type,
-                                             _nestingLevel, true, true);
+                                             _nestingLevel, true, _allowImplicitCollections);
       if (res != TRI_ERROR_NO_ERROR) {
+        if (res == TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION) {
+          // special error message to indicate which collection was undeclared
+          THROW_ARANGO_EXCEPTION_MESSAGE(res, std::string(TRI_errno_string(res)) + ": " + collectionName + " [" + TRI_TransactionTypeGetStr(type) + "]");
+        }
         THROW_ARANGO_EXCEPTION(res);
       }
       TRI_EnsureCollectionsTransaction(_trx, _nestingLevel);
@@ -784,6 +780,9 @@ class Transaction {
 
   void setAllowImplicitCollections(bool value) {
     _allowImplicitCollections = value;
+    if (_trx != nullptr) {
+      _trx->_allowImplicit = value;
+    }
   }
 
   //////////////////////////////////////////////////////////////////////////////

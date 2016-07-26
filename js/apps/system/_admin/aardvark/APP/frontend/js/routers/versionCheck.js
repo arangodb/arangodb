@@ -137,7 +137,9 @@
       success: function (data) {
         var currentVersion =
         window.versionHelper.fromString(data.version);
-        $('.navbar #currentVersion').text(' ' + data.version.substr(0, 3));
+        $('.navbar #currentVersion').html(
+          ' ' + data.version.substr(0, 5) + '<i class="fa fa-exclamation-circle"></i>'
+        );
 
         window.parseVersions = function (json) {
           if (_.isEmpty(json)) {

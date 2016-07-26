@@ -53,6 +53,20 @@
       if (callback) {
         callback.apply(this, args);
       }
+
+      if (this.graphViewer2) {
+        if (this.graphViewer2.graphSettingsView) {
+          this.graphViewer2.graphSettingsView.hide();
+        }
+      }
+    },
+
+    listenerFunctions: {},
+
+    listener: function (event) {
+      _.each(window.App.listenerFunctions, function (func, key) {
+        func(event);
+      });
     },
 
     checkUser: function () {
@@ -129,6 +143,8 @@
       if (frontendConfig.isCluster === true) {
         this.isCluster = true;
       }
+
+      document.addEventListener('keyup', this.listener, false);
 
       // This should be the only global object
       window.modalView = new window.ModalView();
@@ -671,8 +687,16 @@
         this.waitForInit(this.graph2.bind(this), name);
         return;
       }
+      if (this.graphViewer2) {
+        if (this.graphViewer2.graphSettingsView) {
+          this.graphViewer2.graphSettingsView.remove();
+        }
+        this.graphViewer2.remove();
+      }
       this.graphViewer2 = new window.GraphViewer2({
         name: name,
+        documentStore: this.arangoDocumentStore,
+        collection: new window.GraphCollection(),
         userConfig: this.userConfig
       });
       this.graphViewer2.render();
@@ -683,6 +707,9 @@
       if (!initialized) {
         this.waitForInit(this.graph2settings.bind(this), name);
         return;
+      }
+      if (this.graphSettingsView) {
+        this.graphSettingsView.remove();
       }
       this.graphSettingsView = new window.GraphSettingsView({
         name: name,
@@ -861,6 +888,9 @@
       }
       if (this.queryView) {
         this.queryView.resize();
+      }
+      if (this.naviView) {
+        this.naviView.resize();
       }
       if (this.graphViewer2) {
         this.graphViewer2.resize();

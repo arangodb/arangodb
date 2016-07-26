@@ -1239,12 +1239,12 @@ class arangodb::aql::RedundantCalculationsReplacer final
  public:
   explicit RedundantCalculationsReplacer(
       std::unordered_map<VariableId, Variable const*> const& replacements)
-      : _replacements(replacements) {}
+      : _replacements(replacements) {
+  }
 
   template <typename T>
   void replaceInVariable(ExecutionNode* en) {
     auto node = static_cast<T*>(en);
-
     node->_inVariable = Variable::replace(node->_inVariable, _replacements);
   }
 
@@ -1252,7 +1252,7 @@ class arangodb::aql::RedundantCalculationsReplacer final
     auto node = static_cast<CalculationNode*>(en);
     std::unordered_set<Variable const*> variables;
     node->expression()->variables(variables);
-
+    
     // check if the calculation uses any of the variables that we want to
     // replace
     for (auto const& it : variables) {
@@ -1881,6 +1881,7 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
               (isSorted || fields.size() == sortCondition.numAttributes())) {
             // no need to sort
             _plan->unlinkNode(_plan->getNodeById(_sortNode->id()));
+            indexNode->reverse(sortCondition.isDescending());
             _modified = true;
           }
         }
@@ -3784,6 +3785,14 @@ void arangodb::aql::inlineSubqueriesRule(Optimizer* opt,
           // bingo!
           auto queryVariables = plan->getAst()->variables();
           std::vector<ExecutionNode*> subNodes(subqueryNode->getSubquery()->getDependencyChain(true));
+
+          // check if the subquery result variable is used after the FOR loop as well
+          std::unordered_set<Variable const*> varsUsedLater(listNode->getVarsUsedLater());
+          if (varsUsedLater.find(listNode->inVariable()) != varsUsedLater.end()) {
+            // exit the loop
+            current = nullptr;
+            break;
+          }
 
           TRI_ASSERT(! subNodes.empty());
           auto returnNode = static_cast<ReturnNode*>(subNodes[0]);

@@ -104,6 +104,94 @@ function optimizerFullcountTestSuite () {
 
       assertEqual(2, result.stats.fullCount);
       assertEqual(1, result.json.length);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test with fullcount
+////////////////////////////////////////////////////////////////////////////////
+
+    testHigherLimit : function () {
+      var result = AQL_EXECUTE("FOR doc IN UnitTestsCollection LIMIT 100 RETURN doc", null, { fullCount: true }); 
+
+      assertEqual(3, result.stats.fullCount);
+      assertEqual(3, result.json.length);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test with fullcount
+////////////////////////////////////////////////////////////////////////////////
+
+    testHigherLimit2 : function () {
+      var result = AQL_EXECUTE("FOR doc IN UnitTestsCollection LIMIT 1, 100 RETURN doc", null, { fullCount: true }); 
+
+      assertEqual(3, result.stats.fullCount);
+      assertEqual(2, result.json.length);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test with fullcount
+////////////////////////////////////////////////////////////////////////////////
+
+    testHigherLimit3 : function () {
+      var result = AQL_EXECUTE("FOR doc IN UnitTestsCollection LIMIT 2, 100 RETURN doc", null, { fullCount: true }); 
+
+      assertEqual(3, result.stats.fullCount);
+      assertEqual(1, result.json.length);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test with fullcount
+////////////////////////////////////////////////////////////////////////////////
+
+    testHigherLimit4 : function () {
+      var result = AQL_EXECUTE("FOR doc IN UnitTestsCollection LIMIT 3, 100 RETURN doc", null, { fullCount: true }); 
+
+      assertEqual(3, result.stats.fullCount);
+      assertEqual(0, result.json.length);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test with fullcount
+////////////////////////////////////////////////////////////////////////////////
+
+    testHigherLimit5 : function () {
+      var result = AQL_EXECUTE("FOR doc IN UnitTestsCollection LIMIT 10000, 100 RETURN doc", null, { fullCount: true }); 
+
+      assertEqual(3, result.stats.fullCount);
+      assertEqual(0, result.json.length);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test with fullcount
+////////////////////////////////////////////////////////////////////////////////
+
+    testHigherLimit6 : function () {
+      var result = AQL_EXECUTE("FOR doc IN UnitTestsCollection FILTER 'bar' IN doc.values LIMIT 1, 10 RETURN doc", null, { fullCount: true }); 
+
+      assertEqual(2, result.stats.fullCount);
+      assertEqual(1, result.json.length);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test with fullcount
+////////////////////////////////////////////////////////////////////////////////
+
+    testHigherLimit7 : function () {
+      var result = AQL_EXECUTE("FOR doc IN UnitTestsCollection FILTER 'bar' IN doc.values LIMIT 10, 10 RETURN doc", null, { fullCount: true }); 
+
+      assertEqual(2, result.stats.fullCount);
+      assertEqual(0, result.json.length);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test with fullcount
+////////////////////////////////////////////////////////////////////////////////
+
+    testHigherLimit8 : function () {
+      var result = AQL_EXECUTE("FOR doc IN UnitTestsCollection FILTER 'bar' IN doc.values LIMIT 1000, 1 RETURN doc", null, { fullCount: true }); 
+
+      assertEqual(2, result.stats.fullCount);
+      assertEqual(0, result.json.length);
     }
 
   };

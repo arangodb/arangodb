@@ -9,6 +9,8 @@ Retrieves the list of all existing databases
 
 **Note**: retrieving the list of databases is only possible from within the *_system* database.
 
+**Note**: You should use the [*GET user API*](../UserManagement/README.md#list-the-databases-available-to-a-user) to fetch the list of the available databases now.
+
 @RESTRETURNCODES
 
 @RESTRETURNCODE{200}

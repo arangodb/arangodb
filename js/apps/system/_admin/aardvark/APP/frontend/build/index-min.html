@@ -669,7 +669,12 @@ if (list.length > 0) {
 
 <div class="arangoDropdown documentsDropdown">
   <div id="filterHeader" class="headerDropdown">
-    <div class="queryline">
+     <div style="float: right;">
+       <button id="resetView" class="button-warning btn-old-padding">Reset</button>
+       <button id="filterSend" class="button-success btn-old-padding">Filter</button>
+       <input type="text" id="docsSort" style="float: right" placeholder="Sort by attribute"></input>
+    </div>
+    <div class="queryline querylineAdd">
        <input id="attribute_name0" type="text" placeholder="Attribute name"><select name="operator" id="operator0" class="filterSelect">
            <option value="==">==</option>
            <option value="!=">!=</option>
@@ -681,11 +686,8 @@ if (list.length > 0) {
            <option value="IN">IN</option>
            <option value="NOT IN">NOT IN</option>
        </select><input id="attribute_value0" type="text" placeholder="Attribute value" class="filterValue">
-       <a id="addFilterItem" class="add-filter-item"><i class="icon-plus arangoicon"></i></a>
-       <button id="resetView" class="button-warning btn-old-padding">Reset</button>
-       <button id="filterSend" class="button-success btn-old-padding">Filter</button>
-       <input type="text" id="docsSort" style="float: right" placeholder="Sort by attribute"></input>
-    </div>
+       <a id="addFilterItem" class="add-filter-item"><i class="fa fa-plus-circle"></i></a>
+     </div>
   </div>
 
   <div id="importHeader" class="dropdownImport">
@@ -1020,64 +1022,43 @@ if (list.length > 0) {
           <h5 class="collectionName"><%=graphName %></h5>
         </div>
       </div> <%});%> </div>
-  </div></script><script id="graphSettingsView.ejs" type="text/template"> <% var genClass = 'pure-u-1-2'; %> <% var formatName = function(name) { %> <% var formattedName = %> <% return name.charAt(0).toUpperCase() + string.slice(1);%> <% }; %> <div id="shardsContent" class="innerContent">
+  </div></script><script id="graphSettingsView.ejs" type="text/template"> <% var genClass = 'pure-u-1-3'; %> <% var genClass2 = 'pure-u-2-3'; %> <% var formatName = function(name) { %> <% var formattedName = %> <% return name.charAt(0).toUpperCase() + string.slice(1);%> <% }; %> <div id="graphSettingsView" class="innerContent">
     
     <div class="pure-g" style="margin-top: -15px">
-
-      <div class="pure-u-1-1 pure-u-md-1-1 pure-u-lg-1-1 pure-u-xl-1-2">
+      <div class="pure-u-1-1 pure-u-md-1-1 pure-u-lg-1-1 pure-u-xl-1-1">
     
-        <div class="sectionHeader pure-g">
-          <div class="pure-u-1-1">
-            <div class="title">
-              Graph specific
-            </div>
-          </div>
-        </div>
-
-        <div class="pure-g pure-table pure-table-header pure-title">
-          <div class="pure-table-row">
-            <div class="<%= genClass %> left">Name</div>
-            <div class="<%= genClass %> left">Property</div>
-          </div>
-        </div>
-     
-        <div class="pure-g pure-table pure-table-body"> <% _.each(specific, function(val, key) { %> <div class="<%= genClass %> left"><%=val.name%></div>
-            <div class="<%= genClass %> left"> <% var VALUE; %> <% if (val.value) { %> <% VALUE = val.value %> <% } else { %> <% VALUE = val.default %> <% } %> <% if (val.type === 'string') { %> <input type="text" value="<%=VALUE%>" placeholder=""></input> <% } %> <% if (val.type === 'color') { %> <input type='color' name='color' value="<%=VALUE%>"/> <% } %> <% if (val.type === 'select') { %> <div class="<%= genClass %> left">
-                  <select> <% _.each(val, function(option, optKey) { %> <% if (option.name) { %> <option> <%=option.name%> </option> <% } %> <% }); %> </select>
-                </div> <% } %> </div> <% }); %> </div>
+        <div class="pure-g pure-table pure-table-body"> <% _.each(general, function(val, key) { %> <% if (val.type === 'divider') { %> <div class="pure-u-1-1 left heading"><%=val.name%></div> <% } else { %> <div class="<%= genClass %> left"> <%=val.name%> </div>
+            <div class="<%= genClass2 %> left"> <% if (val.type === 'select') { %> <select id="g_<%=key%>"> <% _.each(val, function(option, optKey) { %> <% if (option.name) { %> <option value="<%=option.val%>"> <%=option.name%> </option> <% } %> <% }); %> </select> <% } %> <% if (val.type === 'string') { %> <input id="g_<%=key%>" type="text" placeholder="string"></input> <% } %> <% if (val.type === 'number') { %> <input id="g_<%=key%>" type="text" id="<%=val %>" value="<%=val.value %>" placeholder=""></input> <% } %> <% if (val.type === 'range') { %> <label id="g_<%=key%>_label" class="rangeLabel">1</label>
+                <input id="g_<%=key%>" type='range' min="0" max="30" val="1"/> <% } %> <% if (val.type === 'color') { %> <input id="g_<%=key%>" type='color' name='color' value="<%=VALUE%>"/> <% } %> <i title="<%=val.desc%>" class="fa fa-info-circle gv-tooltips" aria-hidden="true"></i>
+              </div> <% } %> <% }); %> </div>
 
       </div>
 
-      <div class="pure-u-1-1 pure-u-md-1-1 pure-u-lg-1-1 pure-u-xl-1-2">
+      <div class="pure-u-1-1 pure-u-md-1-1 pure-u-lg-1-1 pure-u-xl-1-1">
     
-        <div class="sectionHeader pure-g">
-          <div class="pure-u-1-1">
-            <div class="title">
-              General
-            </div>
-          </div>
-        </div>
+        <div class="pure-g pure-table pure-table-body"> <% _.each(specific, function(val, key) { %> <% if (val.type === 'divider') { %> <div class="pure-u-1-1 left heading"><%=val.name%></div> <% } else { %> <div class="<%= genClass %> left"> <%=val.name%> </div>
 
-        <div class="pure-g pure-table pure-table-header pure-title">
-          <div class="pure-table-row">
-            <div class="<%= genClass %> left">Name</div>
-            <div class="<%= genClass %> left">Property</div>
-          </div>
-        </div>
-     
-        <div class="pure-g pure-table pure-table-body"> <% _.each(general, function(val, key) { %> <div class="<%= genClass %> left"><%=val.name%></div> <% if (val.type === 'select') { %> <div class="<%= genClass %> left">
-                  <select id="g_<%=key%>"> <% _.each(val, function(option, optKey) { %> <% if (option.name) { %> <option value="<%=option.val%>"> <%=option.name%> </option> <% } %> <% }); %> </select>
-                </div> <% } %> <% if (val.type === 'numeric') { %> <input id="g_<%=key%>" type="text" id="<%=val %>" value="<%=val.value %>" placeholder=""></input> <% } %> <% }); %> </div>
+              <div class="<%= genClass2 %> left"> <% var VALUE; %> <% if (val.value) { %> <% VALUE = val.value %> <% } else { %> <% VALUE = val.default %> <% } %> <% if (val.type === 'string') { %> <input id="g_<%=key%>" type="text" placeholder="string"></input> <% } %> <% if (val.type === 'number') { %> <input id="g_<%=key%>" type="text" placeholder="number"></input> <% } %> <% if (val.type === 'color') { %> <input id="g_<%=key%>" type='color' name='color' value="<%=VALUE%>"/> <% } %> <% if (val.type === 'range') { %> <label id="g_<%=key%>_label" class="rangeLabel">1</label>
+                  <input id="g_<%=key%>" type='range' min="0" max="30" val="1"/> <% } %> <% if (val.type === 'select') { %> <select id="g_<%=key%>"> <% _.each(val, function(option, optKey) { %> <% if (option.name) { %> <option value="<%=option.val%>"> <%=option.name%> </option> <% } %> <% }); %> </select> <% } %> <i title="<%=val.desc%>" class="fa fa-info-circle gv-tooltips" aria-hidden="true"></i>
+              </div> <% } %> <% }); %> </div>
 
       </div>
 
-    <button id="saveGraphSettings" style="margin-top: 20px;" class="button-success pull-right">Save</button>
+
+    <button id="saveGraphSettings" style="margin-top: 20px; margin-right: 10px;" class="button-success pull-right">Save</button>
     <button id="restoreGraphSettings" style="margin-top: 20px;" class="button-success pull-right">Restore defaults</button>
   </div></script><script id="graphViewer2.ejs" type="text/template"><div class="graphContent" id="graphContainer">
 
     <div class="headerBar">
       <div class="headerButtonBar" style="margin: 0;">
         <ul class="headerButtonList">
+          <li class="enabled">
+            <a id="settingsMenu" class="headerButton">
+              <span title="Download visible graph as png image">
+                <i class="fa fa-bars fa-stack-1x"></i>
+              </span>
+            </a>
+          </li>
           <li class="enabled">
             <a id="graph-fullscreen-btn" class="headerButton">
               <span title="Switch to fullscreen mode">
@@ -2243,7 +2224,7 @@ if (list.length > 0) {
         <button id="importQuery" class="button-success query-button" style="display:none">Import Queries</button>
         <button id="executeQuery" class="button-success query-button">Execute</button>
         <button id="explainQuery" class="button-info query-button">Explain</button>
-        <button id="removeResults" class="button-close query-button" style="display: none">Remove results</button>
+        <button id="removeResults" class="button-close query-button" style="display: none">Remove all results</button>
       </div>
     </div>
 
@@ -2264,13 +2245,13 @@ if (list.length > 0) {
           <tr class="tableRow">
             <th class="collectionTh">Format:</th>
             <th class="collectionTh" colspan="2">
-              <p>JSON documents embedded into a list:</p>
-              <p></p>
-              <p>[{</p>
-              <p style="margin-left: 10px">"name": "Query Name",</p>
-              <p style="margin-left: 10px">"value": "Query Definition",</p>
-              <p style="margin-left: 10px">"parameter": "Query Bind Parameter as Object"</p>
-              <p>}]</p>
+<pre><code>JSON documents embedded into a list:
+
+[{
+  "name": "Query Name",
+  "value": "Query Definition",
+  "parameter": "Query Bind Parameter as Object"
+}]</code></code>
             </th>
           </tr>
           <tr class="tableRow">
@@ -2295,7 +2276,13 @@ if (list.length > 0) {
       <div class="pull-right">
         <span class="action"><i class="fa fa-close" element="outputEditor<%= counter %>" style="display: none"></i></span>
       </div>
-      <div class="pull-right"> <% if (type === 'Query') { %> <span class="switchAce" counter="<%=counter%>" style="display: none">Result</span> <% } else { %> <span class="switchAce" counter="<%=counter%>">AQL</span> <% } %> </div>
+      <div class="pull-right">
+        <div class="switchAce" counter="<%=counter%>">
+          <span id="json-switch" val="JSON" counter="<%=counter%>">JSON</span>
+          <span id="table-switch" val="Table" counter="<%=counter%>" style="display: none">Table</span>
+          <span id="graph-switch" val="Graph" counter="<%=counter%>" style="display: none">Graph</span>
+        </div>
+      </div>
     </div>
     <div id="outputEditor<%= counter %>" style="opacity: 0.5"></div>
     <div id="sentWrapper<%= counter %>" class="sentWrapper" style="display: none">
@@ -2410,14 +2397,14 @@ if (list.length > 0) {
   <ul class="subMenuEntries bottom">
   </ul></script><script id="supportView.ejs" type="text/template"><div class="supportView">
     <ul class="subMenuEntries subViewNavbar">
-      <li id="community-support" class="subMenuEntry active"><a>Community</a></li>
+      <li id="documentation-support" class="subMenuEntry active"><a>Documentation</a></li>
+      <li id="community-support" class="subMenuEntry"><a>Community</a></li>
       <li id="swagger-support" class="subMenuEntry "><a>Rest API</a></li>
-      <li id="documentation-support" class="subMenuEntry"><a>Documentation</a></li>
     </ul>
  
     <div class="innerContent" id="supportContent">
 
-      <div id="community">
+      <div id="community" style="display: none">
         <div class="pure-g" style="width: 100%;">
 
           <div class="pure-u-1-1" style="margin-bottom: 10px">
@@ -2458,7 +2445,7 @@ if (list.length > 0) {
       <div id="swagger" style="display: none; height: 100%;">
       </div>
 
-      <div id="documentation" style="display: none;">
+      <div id="documentation">
 
         <div class="pure-g" style="width: 100%;">
 
@@ -2723,4 +2710,4 @@ var cutByResolution = function (str) {
   </div>
 
   <div id="workMonitorContent" class="innerContent">
-  </div></script></head><body><nav class="navbar" style="display: none"><div class="primary"><div class="navlogo"><a class="logo big" href="#"><img class="arangodbLogo" src="img/arangodb_logo_big.png"></a><a class="logo small" href="#"><img class="arangodbLogo" src="img/arangodb_logo_small.png"></a><a class="version"><span>VERSION: </span><span id="currentVersion"></span></a></div><div class="statmenu" id="statisticBar"></div><div class="navmenu" id="navigationBar"></div></div></nav><div id="modalPlaceholder"></div><div class="bodyWrapper" style="display: none"><div class="centralRow"><div id="navbar2" class="navbarWrapper secondary"><div class="subnavmenu" id="subNavigationBar"></div></div><div class="resizecontainer contentWrapper"><div id="loadingScreen" class="loadingScreen" style="display: none"><i class="fa fa-circle-o-notch fa-spin fa-3x fa-fw margin-bottom"></i> <span class="sr-only">Loading...</span></div><div id="content" class="centralContent"></div><footer class="footer"><div id="footerBar"></div></footer></div></div></div><div id="progressPlaceholder" style="display:none"></div><div id="spotlightPlaceholder" style="display:none"></div><div id="offlinePlaceholder" style="display:none"><div class="offline-div"><div class="pure-u"><div class="pure-u-1-4"></div><div class="pure-u-1-2 offline-window"><div class="offline-header"><h3>You have been disconnected from the server</h3></div><div class="offline-body"><p>The connection to the server has been lost. The server may be under heavy load.</p><p>Trying to reconnect in <span id="offlineSeconds">10</span> seconds.</p><p class="animation_state"><span><button class="button-success">Reconnect now</button></span></p></div></div><div class="pure-u-1-4"></div></div></div></div><div class="arangoFrame" style=""><div class="outerDiv"><div class="innerDiv"></div></div></div><script src="libs.js?version=1468309999760"></script><script src="app.js?version=1468309999760"></script></body></html>
+  </div></script></head><body><nav class="navbar" style="display: none"><div class="primary"><div class="navlogo"><a class="logo big" href="#"><img class="arangodbLogo" src="img/arangodb_logo_big.png"></a><a class="logo small" href="#"><img class="arangodbLogo" src="img/arangodb_logo_small.png"></a><a class="version"><span>VERSION: </span><span id="currentVersion"></span></a></div><div class="statmenu" id="statisticBar"></div><div class="navmenu" id="navigationBar"></div></div></nav><div id="modalPlaceholder"></div><div class="bodyWrapper" style="display: none"><div class="centralRow"><div id="navbar2" class="navbarWrapper secondary"><div class="subnavmenu" id="subNavigationBar"></div></div><div class="resizecontainer contentWrapper"><div id="loadingScreen" class="loadingScreen" style="display: none"><i class="fa fa-circle-o-notch fa-spin fa-3x fa-fw margin-bottom"></i> <span class="sr-only">Loading...</span></div><div id="content" class="centralContent"></div><footer class="footer"><div id="footerBar"></div></footer></div></div></div><div id="progressPlaceholder" style="display:none"></div><div id="spotlightPlaceholder" style="display:none"></div><div id="graphSettingsContent" style="display: none"></div><div id="offlinePlaceholder" style="display:none"><div class="offline-div"><div class="pure-u"><div class="pure-u-1-4"></div><div class="pure-u-1-2 offline-window"><div class="offline-header"><h3>You have been disconnected from the server</h3></div><div class="offline-body"><p>The connection to the server has been lost. The server may be under heavy load.</p><p>Trying to reconnect in <span id="offlineSeconds">10</span> seconds.</p><p class="animation_state"><span><button class="button-success">Reconnect now</button></span></p></div></div><div class="pure-u-1-4"></div></div></div></div><div class="arangoFrame" style=""><div class="outerDiv"><div class="innerDiv"></div></div></div><script src="libs.js?version=1469461944991"></script><script src="app.js?version=1469461944991"></script></body></html>

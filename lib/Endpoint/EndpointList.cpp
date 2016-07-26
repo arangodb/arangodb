@@ -154,40 +154,40 @@ std::vector<std::string> EndpointList::all(
 /// @brief return all endpoints with a certain encryption type
 ////////////////////////////////////////////////////////////////////////////////
 
-std::map<std::string, Endpoint*> EndpointList::matching(
-    Endpoint::TransportType transport,
-    Endpoint::EncryptionType encryption) const {
-  std::string prefix;
-
-  switch (transport) {
-    case Endpoint::TransportType::HTTP:
-      prefix = "http+";
-      break;
-
-    case Endpoint::TransportType::VPP:
-      prefix = "vpp+";
-      break;
-  }
-
-  std::map<std::string, Endpoint*> result;
-
-  for (auto& it : _endpoints) {
-    std::string const& key = it.first;
-
-    if (encryption == Endpoint::EncryptionType::SSL) {
-      if (StringUtils::isPrefix(key, prefix + "ssl://")) {
-        result[key] = it.second;
-      }
-    } else {
-      if (StringUtils::isPrefix(key, prefix + "tcp://") ||
-          StringUtils::isPrefix(key, prefix + "unix://")) {
-        result[key] = it.second;
-      }
-    }
-  }
-
-  return result;
-}
+// std::map<std::string, Endpoint*> EndpointList::matching(
+//    Endpoint::TransportType transport,
+//    Endpoint::EncryptionType encryption) const {
+//  std::string prefix;
+//
+//  switch (transport) {
+//    case Endpoint::TransportType::HTTP:
+//      prefix = "http+";
+//      break;
+//
+//    case Endpoint::TransportType::VPP:
+//      prefix = "vpp+";
+//      break;
+//  }
+//
+//  std::map<std::string, Endpoint*> result;
+//
+//  for (auto& it : _endpoints) {
+//    std::string const& key = it.first;
+//
+//    if (encryption == Endpoint::EncryptionType::SSL) {
+//      if (StringUtils::isPrefix(key, prefix + "ssl://")) {
+//        result[key] = it.second;
+//      }
+//    } else {
+//      if (StringUtils::isPrefix(key, prefix + "tcp://") ||
+//          StringUtils::isPrefix(key, prefix + "unix://")) {
+//        result[key] = it.second;
+//      }
+//    }
+//  }
+//
+//  return result;
+//}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return if there is an endpoint with SSL

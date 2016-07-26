@@ -8,6 +8,8 @@ devel
   FOR v, e, p IN 2 OUTBOUND @start @@edge FILTER p.edges[0].foo == "bar"
   Will prefer an Hash Index on [_from, foo] above the EdgeIndex.
 
+* replaced require("internal").db by require("@arangodb").db
+
 * added option `--skip-lines` for arangoimp
   this allows skipping the first few lines from the import file in case the
   CSV or TSV import are used
@@ -33,9 +35,38 @@ devel
 * Foxx now provides an easy way to directly serve GraphQL requests using the
   `@arangodb/foxx/graphql` module and the bundled `graphql-sync` dependency
 
+* Foxx OAuth2 module now correctly passes the `access_token` to the OAuth2 server
 
-v3.0.3 (XXXX-XX-XX)
+
+v3.0.4 (XXXX-XX-XX)
 -------------------
+
+* fixed issue #1962
+
+* fixed issue #1959
+
+* replaced require("internal").db by require("@arangodb").db
+
+* fixed issue #1953
+
+* fixed issue #1950
+
+* fixed issue #1949
+
+* fixed segfault in V8, by backporting https://bugs.chromium.org/p/v8/issues/detail?id=5033
+
+* Foxx OAuth2 module now correctly passes the `access_token` to the OAuth2 server
+
+
+v3.0.3 (2016-07-17)
+-------------------
+
+* fixed issue #1942
+
+* fixed issue #1941
+
+* fixed array index batch insertion issues for hash indexes that caused problems when 
+  no elements remained for insertion
 
 * fixed AQL MERGE() function with External objects originating from traversals
 

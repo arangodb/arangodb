@@ -83,7 +83,7 @@ var runInDatabase = function () {
                 } catch (e) {}
                 db._useDatabase(initialDatabase);
               },
-              offset: 1,
+              offset: 0,
               isSystem: true,
               params: {
                 job: Object.assign({}, job, {

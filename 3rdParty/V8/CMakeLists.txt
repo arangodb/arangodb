@@ -36,6 +36,9 @@ endif()
 if ("${CMAKE_TARGET_ARCHITECTURES}" STREQUAL "armv7")
   set(V8_PROC_ARCH "arm")
   list(APPEND V8_GYP_ARGS -Darm_version=7 -Darm_fpu=default -Darm_float_abi=default)
+elseif("${CMAKE_TARGET_ARCHITECTURES}" STREQUAL "aarch64")
+  set(V8_PROC_ARCH "arm64")
+  list(APPEND V8_GYP_ARGS -Darm_fpu=default -Darm_float_abi=default)
 else ()
   if ("${BITS}" STREQUAL "64")
     set(V8_PROC_ARCH "x64")
@@ -56,6 +59,11 @@ list(APPEND V8_GYP_ARGS
   -Dbyteorder=${ENDIANESS}
   -DPYTHON_EXECUTABLE=${PYTHON_EXECUTABLE}
 )
+
+if (CROSS_COMPILING)
+  list(APPEND V8_GYP_ARGS -DGYP_CROSSCOMPILE=1)
+endif()
+
 
 ################################################################################
 ## ICU EXPORTS

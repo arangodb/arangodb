@@ -807,12 +807,15 @@ VPackSlice Transaction::extractKeyFromDocument(VPackSlice slice) {
     slice = slice.resolveExternal();
   }
   TRI_ASSERT(slice.isObject());
+
+  if (slice.isEmptyObject()) {
+    return VPackSlice();
+  }
   // a regular document must have at least the three attributes 
   // _key, _id and _rev (in this order). _key must be the first attribute
   // however this method may also be called for remove markers, which only
   // have _key and _rev. therefore the only assertion that we can make
   // here is that the document at least has two attributes 
-  TRI_ASSERT(slice.length() >= 2); 
 
   uint8_t const* p = slice.begin() + slice.findDataOffset(slice.head());
 
@@ -838,9 +841,12 @@ VPackSlice Transaction::extractIdFromDocument(VPackSlice slice) {
     slice = slice.resolveExternal();
   }
   TRI_ASSERT(slice.isObject());
+  
+  if (slice.isEmptyObject()) {
+    return VPackSlice();
+  }
   // a regular document must have at least the three attributes 
   // _key, _id and _rev (in this order). _id must be the second attribute
-  TRI_ASSERT(slice.length() >= 2); 
 
   uint8_t const* p = slice.begin() + slice.findDataOffset(slice.head());
 
@@ -871,9 +877,12 @@ VPackSlice Transaction::extractFromFromDocument(VPackSlice slice) {
     slice = slice.resolveExternal();
   }
   TRI_ASSERT(slice.isObject());
+  
+  if (slice.isEmptyObject()) {
+    return VPackSlice();
+  }
   // this method must only be called on edges
   // this means we must have at least the attributes  _key, _id, _from, _to and _rev
-  TRI_ASSERT(slice.length() >= 5); 
 
   uint8_t const* p = slice.begin() + slice.findDataOffset(slice.head());
   VPackValueLength count = 0;
@@ -904,9 +913,12 @@ VPackSlice Transaction::extractToFromDocument(VPackSlice slice) {
   if (slice.isExternal()) {
     slice = slice.resolveExternal();
   }
+  
+  if (slice.isEmptyObject()) {
+    return VPackSlice();
+  }
   // this method must only be called on edges
   // this means we must have at least the attributes  _key, _id, _from, _to and _rev
-  TRI_ASSERT(slice.length() >= 5); 
 
   uint8_t const* p = slice.begin() + slice.findDataOffset(slice.head());
   VPackValueLength count = 0;
@@ -925,38 +937,6 @@ VPackSlice Transaction::extractToFromDocument(VPackSlice slice) {
   
   // fall back to the regular lookup method
   return slice.get(StaticStrings::ToString); 
-}
-
-//////////////////////////////////////////////////////////////////////////////
-/// @brief quick access to the _rev attribute in a database document
-/// the document must have at least three attributes: _key, _id, _rev 
-/// (possibly with _from and _to in between)
-//////////////////////////////////////////////////////////////////////////////
-
-VPackSlice Transaction::extractRevFromDocument(VPackSlice slice) {
-  if (slice.isExternal()) {
-    slice = slice.resolveExternal();
-  }
-  TRI_ASSERT(slice.isObject());
-  TRI_ASSERT(slice.length() >= 2); 
-
-  uint8_t const* p = slice.begin() + slice.findDataOffset(slice.head());
-  VPackValueLength count = 0;
-
-  while (*p <= basics::VelocyPackHelper::ToAttribute && ++count <= 5) {
-    if (*p == basics::VelocyPackHelper::RevAttribute) {
-      // the + 1 is required so that we can skip over the attribute name
-      // and point to the attribute value 
-      return VPackSlice(p + 1);
-    }
-    // skip over the attribute name
-    ++p;
-    // skip over the attribute value
-    p += VPackSlice(p).byteSize();
-  }
-
-  // fall back to the regular lookup method
-  return slice.get(StaticStrings::RevString); 
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -989,11 +969,8 @@ void Transaction::extractKeyAndRevFromDocument(VPackSlice slice,
     } else if (*p == basics::VelocyPackHelper::RevAttribute) {
       VPackSlice revSlice(p + 1);
       if (revSlice.isString()) {
-        // use specialized conversion method for trusted input, that also 
-        // does not create a temporary std::string
-        VPackValueLength revLength;
-        char const* rev = revSlice.getString(revLength);
-        revisionId = basics::StringUtils::uint64_trusted(rev, revLength);
+        bool isOld;
+        revisionId = TRI_StringToRid(revSlice.copyString(), isOld);
       } else if (revSlice.isNumber()) {
         revisionId = revSlice.getNumericValue<TRI_voc_rid_t>();
       }
@@ -1010,7 +987,9 @@ void Transaction::extractKeyAndRevFromDocument(VPackSlice slice,
 
   // fall back to regular lookup
   keySlice = slice.get(StaticStrings::KeyString);    
-  revisionId = basics::StringUtils::uint64(slice.get(StaticStrings::RevString).copyString());
+  bool isOld;
+  revisionId = TRI_StringToRid(slice.get(StaticStrings::RevString).copyString(),
+                               isOld);
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -3387,6 +3366,10 @@ int Transaction::addCollectionEmbedded(TRI_voc_cid_t cid, TRI_transaction_type_e
                                          false, _allowImplicitCollections);
 
   if (res != TRI_ERROR_NO_ERROR) {
+    if (res == TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION) {
+      // special error message to indicate which collection was undeclared
+      THROW_ARANGO_EXCEPTION_MESSAGE(res, std::string(TRI_errno_string(res)) + ": " + resolver()->getCollectionNameCluster(cid) + " [" + TRI_TransactionTypeGetStr(type) + "]");
+    }
     return registerError(res);
   }
 
@@ -3411,6 +3394,10 @@ int Transaction::addCollectionToplevel(TRI_voc_cid_t cid, TRI_transaction_type_e
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
+    if (res == TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION) {
+      // special error message to indicate which collection was undeclared
+      THROW_ARANGO_EXCEPTION_MESSAGE(res, std::string(TRI_errno_string(res)) + ": " + resolver()->getCollectionNameCluster(cid) + " [" + TRI_TransactionTypeGetStr(type) + "]");
+    }
     registerError(res);
   }
 
@@ -3430,6 +3417,7 @@ int Transaction::setupTransaction() {
   if (_trx != nullptr) {
     // yes, we are embedded
     _setupState = setupEmbedded();
+    _allowImplicitCollections = _trx->_allowImplicit;
   } else {
     // non-embedded
     _setupState = setupToplevel();

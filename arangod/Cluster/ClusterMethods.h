@@ -52,7 +52,7 @@ struct OperationOptions;
 ////////////////////////////////////////////////////////////////////////////////
 
 std::unordered_map<std::string, std::string> getForwardableRequestHeaders(
-    arangodb::HttpRequest* request);
+    GeneralRequest*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check if a list of attributes have the same values in two vpack
@@ -129,7 +129,9 @@ int getFilteredDocumentsOnCoordinator(
     std::string const& dbname,
     std::vector<traverser::TraverserExpression*> const& expressions,
     std::unordered_set<std::string>& documentIds,
-    std::unordered_map<std::string, std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>& result);
+    std::unordered_map<std::string,
+                       std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>&
+        result);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get a filtered set of edges on Coordinator.
@@ -149,8 +151,8 @@ int getFilteredEdgesOnCoordinator(
 
 int modifyDocumentOnCoordinator(
     std::string const& dbname, std::string const& collname,
-    arangodb::velocypack::Slice const& slice,
-    OperationOptions const& options, bool isPatch,
+    arangodb::velocypack::Slice const& slice, OperationOptions const& options,
+    bool isPatch,
     std::unique_ptr<std::unordered_map<std::string, std::string>>& headers,
     arangodb::GeneralResponse::ResponseCode& responseCode,
     std::unordered_map<int, size_t>& errorCounter,

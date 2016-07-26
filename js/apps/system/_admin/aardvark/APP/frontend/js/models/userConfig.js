@@ -42,7 +42,7 @@ window.UserConfig = Backbone.Model.extend({
         }
       },
       error: function () {
-        arangoHelper.arangoNotification('User configuration', 'Could not update user configuration for key: ' + keyName);
+        arangoHelper.arangoError('User configuration', 'Could not update user configuration for key: ' + keyName);
       }
     });
   },
@@ -61,7 +61,7 @@ window.UserConfig = Backbone.Model.extend({
         callback(keyValue);
       },
       error: function () {
-        arangoHelper.arangoNotification('User configuration', 'Could not fetch user configuration for key: ' + keyName);
+        arangoHelper.arangoError('User configuration', 'Could not fetch user configuration for key: ' + keyName);
       }
     });
   }

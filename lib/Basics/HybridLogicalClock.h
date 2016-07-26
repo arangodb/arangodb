@@ -24,7 +24,12 @@
 #ifndef ARANGODB_BASICS_HYBRID_LOGICAL_CLOCK_H
 #define ARANGODB_BASICS_HYBRID_LOGICAL_CLOCK_H 1
 
+#include "Basics/Common.h"
+
 #include <chrono>
+
+namespace arangodb {
+namespace basics {
 
 class HybridLogicalClock {
   std::chrono::high_resolution_clock clock;
@@ -68,15 +73,16 @@ class HybridLogicalClock {
       if (newTime == oldTime) {
         if (newTime == recTime) {
           // all three identical
-          newCount = (std::max)(extractCount(oldTime), extractCount(recTime))+1;
+          newCount = (std::max)(extractCount(oldTimeStamp),
+                                extractCount(receivedTimeStamp))+1;
         } else {
           // this means recTime < newTime
-          newCount = extractCount(oldTime) + 1;
+          newCount = extractCount(oldTimeStamp) + 1;
         }
       } else {
         // newTime > oldTime
         if (newTime == recTime) {
-          newCount = extractCount(recTime) + 1;
+          newCount = extractCount(receivedTimeStamp) + 1;
         } else {
           newCount = 0;
         }
@@ -85,6 +91,49 @@ class HybridLogicalClock {
     } while (!lastTimeStamp.compare_exchange_weak(oldTimeStamp, newTimeStamp,
                  std::memory_order_release, std::memory_order_relaxed));
     return newTimeStamp;
+  }
+
+  static std::string encodeTimeStamp(uint64_t t) {
+    std::string r(11, '\x00');
+    size_t pos = 11;
+    while (t > 0) {
+      r[--pos] = encodeTable[static_cast<uint8_t>(t & 0x3ful)];
+      t >>= 6;
+    }
+    return r.substr(pos, 11-pos);
+  }
+
+  static uint64_t decodeTimeStamp(std::string const& s) {
+    return decodeTimeStamp(s.c_str(), s.size());
+  }
+
+  static uint64_t decodeTimeStamp(char const* p, size_t len) {
+    uint64_t r = 0;
+    for (size_t i = 0; i < len; i++) {
+      r = (r << 6) |
+          static_cast<uint8_t>(decodeTable[static_cast<uint8_t>(p[i])]);
+    }
+    return r;
+  }
+
+  static uint64_t decodeTimeStampWithCheck(std::string const& s) {
+    return decodeTimeStampWithCheck(s.c_str(), s.size());
+  }
+
+  static uint64_t decodeTimeStampWithCheck(char const* p, size_t len) {
+    // Returns 0 if format is not valid
+    if (len > 11) {
+      return 0;
+    }
+    uint64_t r = 0;
+    for (size_t i = 0; i < len; i++) {
+      signed char c = decodeTable[static_cast<uint8_t>(p[i])];
+      if (c < 0) {
+        return 0;
+      }
+      r = (r << 6) | static_cast<uint8_t>(c);
+    }
+    return r;
   }
 
  private:
@@ -105,9 +154,16 @@ class HybridLogicalClock {
   }
 
   static uint64_t assembleTimeStamp(uint64_t time, uint64_t count) {
-    return (time << 20) | count;
+    return (time << 20) + count;
   }
 
+  static char encodeTable[65];
+
+  static signed char decodeTable[256];
+
 };
+
+};  // namespace basics
+};  // namespace arangodb
 
 #endif

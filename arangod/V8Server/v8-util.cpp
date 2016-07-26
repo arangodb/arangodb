@@ -111,64 +111,6 @@ static bool ParseDocumentHandle(v8::Handle<v8::Value> const arg,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parse document or document handle from a v8 value (string | object)
-////////////////////////////////////////////////////////////////////////////////
-
-bool ExtractDocumentHandle(v8::Isolate* isolate,
-                           v8::Handle<v8::Value> const val,
-                           std::string& collectionName,
-                           std::unique_ptr<char[]>& key, TRI_voc_rid_t& rid) {
-  // reset the collection identifier and the revision
-  TRI_ASSERT(collectionName.empty());
-  rid = 0;
-
-  // extract the document identifier and revision from a string
-  if (val->IsString()) {
-    return ParseDocumentHandle(val, collectionName, key);
-  }
-
-  // extract the document identifier and revision from a document object
-  if (val->IsObject()) {
-    TRI_GET_GLOBALS();
-
-    v8::Handle<v8::Object> obj = val->ToObject();
-    TRI_GET_GLOBAL_STRING(_IdKey);
-    TRI_GET_GLOBAL_STRING(_KeyKey);
-    if (obj->HasRealNamedProperty(_IdKey)) {
-      v8::Handle<v8::Value> didVal = obj->Get(_IdKey);
-
-      if (!ParseDocumentHandle(didVal, collectionName, key)) {
-        return false;
-      }
-    } else if (obj->HasRealNamedProperty(_KeyKey)) {
-      v8::Handle<v8::Value> didVal = obj->Get(_KeyKey);
-
-      if (!ParseDocumentHandle(didVal, collectionName, key)) {
-        return false;
-      }
-    } else {
-      return false;
-    }
-
-    TRI_GET_GLOBAL_STRING(_RevKey);
-    if (!obj->HasRealNamedProperty(_RevKey)) {
-      return true;
-    }
-
-    rid = TRI_ObjectToUInt64(obj->Get(_RevKey), true);
-
-    if (rid == 0) {
-      return false;
-    }
-
-    return true;
-  }
-
-  // unknown value type. give up
-  return false;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief parse document or document handle from a v8 value (string | object)
 /// Note that the builder must already be open with an object and that it
 /// will remain open afterwards!
 ////////////////////////////////////////////////////////////////////////////////
@@ -234,14 +176,18 @@ bool ExtractDocumentHandle(v8::Isolate* isolate,
     if (!obj->HasRealNamedProperty(_RevKey)) {
       return true;
     }
-    uint64_t rid = 0;
-
-    rid = TRI_ObjectToUInt64(obj->Get(_RevKey), true);
+    v8::Handle<v8::Value> revObj = obj->Get(_RevKey);
+    if (!revObj->IsString()) {
+      return true;
+    }
+    v8::String::Utf8Value str(revObj);
+    bool isOld;
+    uint64_t rid = TRI_StringToRidWithCheck(*str, str.length(), isOld);
 
     if (rid == 0) {
       return false;
     }
-    builder.add(StaticStrings::RevString, VPackValue(std::to_string(rid)));
+    builder.add(StaticStrings::RevString, VPackValue(TRI_RidToString(rid)));
     return true;
   }
 

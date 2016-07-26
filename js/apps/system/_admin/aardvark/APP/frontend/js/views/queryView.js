@@ -28,6 +28,8 @@
       }
     },
 
+    graphs: [],
+
     settings: {
       aqlWidth: undefined
     },
@@ -66,7 +68,7 @@
       'click #explainQuery': 'explainQuery',
       'click #clearQuery': 'clearQuery',
       'click .outputEditorWrapper #downloadQueryResult': 'downloadQueryResult',
-      'click .outputEditorWrapper .switchAce': 'switchAce',
+      'click .outputEditorWrapper .switchAce span': 'switchAce',
       'click .outputEditorWrapper .fa-close': 'closeResult',
       'click #toggleQueries1': 'toggleQueries',
       'click #toggleQueries2': 'toggleQueries',
@@ -353,15 +355,41 @@
     },
 
     switchAce: function (e) {
+      // check if button is disabled
       var count = $(e.currentTarget).attr('counter');
+      var elem = e.currentTarget;
 
-      if ($(e.currentTarget).text() === 'Result') {
-        $(e.currentTarget).text('AQL');
-      } else {
-        $(e.currentTarget).text('Result');
+      if ($(elem).hasClass('disabled')) {
+        return;
       }
-      $('#outputEditor' + count).toggle();
-      $('#sentWrapper' + count).toggle();
+
+      _.each($(elem).parent().children(), function (child) {
+        $(child).removeClass('active');
+      });
+
+      var string = $(elem).attr('val');
+      $(elem).addClass('active');
+      $(elem).text(string.charAt(0).toUpperCase() + string.slice(1));
+
+      // refactor this
+      if (string === 'JSON') {
+        $('#outputEditor' + count).show();
+
+        $('#outputGraph' + count).hide();
+        $('#outputTable' + count).hide();
+      } else if (string === 'Table') {
+        $('#outputTable' + count).show();
+
+        $('#outputGraph' + count).hide();
+        $('#outputEditor' + count).hide();
+      } else if (string === 'Graph') {
+        $('#outputGraph' + count).show();
+
+        $('#outputTable' + count).hide();
+        $('#outputEditor' + count).hide();
+      }
+
+      // deselect editors
       this.deselect(ace.edit('outputEditor' + count));
       this.deselect(ace.edit('sentQueryEditor' + count));
       this.deselect(ace.edit('sentBindParamEditor' + count));
@@ -968,6 +996,14 @@
       });
 
       this.aqlEditor.commands.addCommand({
+        name: 'executeSelectedQuery',
+        bindKey: {win: 'Ctrl-Alt-Return', mac: 'Command-Alt-Return', linux: 'Ctrl-Alt-Return'},
+        exec: function () {
+          self.executeQuery(true);
+        }
+      });
+
+      this.aqlEditor.commands.addCommand({
         name: 'saveQuery',
         bindKey: {win: 'Ctrl-Shift-S', mac: 'Command-Shift-S', linux: 'Ctrl-Shift-S'},
         exec: function () {
@@ -1220,7 +1256,7 @@
       return quit;
     },
 
-    executeQuery: function () {
+    executeQuery: function (selected) {
       if (this.verifyQueryAndParams()) {
         return;
       }
@@ -1257,17 +1293,22 @@
       sentBindParamEditor.setReadOnly(true);
       this.setEditorAutoHeight(sentBindParamEditor);
 
-      this.fillResult(outputEditor, sentQueryEditor, counter);
+      this.fillResult(outputEditor, sentQueryEditor, counter, selected);
       this.outputCounter++;
     },
 
-    readQueryData: function () {
+    readQueryData: function (selected) {
       // var selectedText = this.aqlEditor.session.getTextRange(this.aqlEditor.getSelectionRange())
       var sizeBox = $('#querySize');
       var data = {
-        query: this.aqlEditor.getValue(),
         id: 'currentFrontendQuery'
       };
+
+      if (selected) {
+        data.query = this.aqlEditor.getSelectedText();
+      } else {
+        data.query = this.aqlEditor.getValue();
+      }
 
       if (sizeBox.val() === 'all') {
         data.batchSize = 1000000;
@@ -1275,27 +1316,16 @@
         data.batchSize = parseInt(sizeBox.val(), 10);
       }
 
-      // var parsedBindVars = {}, tmpVar
       if (Object.keys(this.bindParamTableObj).length > 0) {
-        /*
-        _.each(this.bindParamTableObj, function(value, key) {
-          try {
-            tmpVar = JSON.parse(value)
-          }
-          catch (e) {
-            tmpVar = value
-          }
-          parsedBindVars[key] = tmpVar
-        });*/
         data.bindVars = this.bindParamTableObj;
       }
       return JSON.stringify(data);
     },
 
-    fillResult: function (outputEditor, sentQueryEditor, counter) {
+    fillResult: function (outputEditor, sentQueryEditor, counter, selected) {
       var self = this;
 
-      var queryData = this.readQueryData();
+      var queryData = this.readQueryData(selected);
 
       if (queryData) {
         sentQueryEditor.setValue(self.aqlEditor.getValue(), 1);
@@ -1437,6 +1467,31 @@
         warningsFunc(data);
         window.progressView.hide();
 
+        var result = self.analyseQuery(data.result);
+        console.log('Using ' + result.defaultType + ' as data format.');
+        if (result.defaultType === 'table') {
+          $('#outputEditorWrapper' + counter + ' .arangoToolbarTop').after(
+            '<div id="outputTable' + counter + '" class="outputTable"></div>'
+          );
+          $('#outputTable' + counter).show();
+          self.renderOutputTable(result, counter);
+
+          // apply max height for table output dynamically
+          var maxHeight = $('.centralRow').height() - 250;
+          $('.outputEditorWrapper .tableWrapper').css('max-height', maxHeight);
+
+          $('#outputEditor' + counter).hide();
+        } else if (result.defaultType === 'graph') {
+          $('#outputEditorWrapper' + counter + ' .arangoToolbarTop').after('<div id="outputGraph' + counter + '"></div>');
+          $('#outputGraph' + counter).show();
+          self.renderOutputGraph(result, counter);
+
+          $('#outputEditor' + counter).hide();
+        }
+
+        // add active class to choosen display method
+        $('#' + result.defaultType + '-switch').addClass('active').css('display', 'inline');
+
         var appendSpan = function (value, icon, css) {
           if (!css) {
             css = '';
@@ -1472,15 +1527,6 @@
                   data.extra.stats.writesIgnored + ' writes ignored', 'fa-exclamation-circle warning', 'additional'
                 );
               }
-            }
-            if (data.extra.stats.scannedFull > 0) {
-              appendSpan(
-                'full collection scan', 'fa-exclamation-circle warning', 'additional'
-              );
-            } else {
-              appendSpan(
-                'no full collection scan', 'fa-check-circle positive', 'additional'
-              );
             }
           }
         }
@@ -1564,6 +1610,118 @@
       checkQueryStatus();
     },
 
+    analyseQuery: function (result) {
+      var toReturn = {
+        defaultType: null,
+        original: result,
+        modified: null
+      };
+
+      var found = false;
+
+      // check if result could be displayed as graph
+      // case a) result has keys named vertices and edges
+      if (result[0]) {
+        if (result[0].vertices && result[0].edges) {
+          var hitsa = 0;
+          var totala = 0;
+
+          _.each(result, function (obj) {
+            if (obj.edges) {
+              totala += obj.edges.length;
+
+              _.each(obj.edges, function (edge) {
+                if (edge._from && edge._to) {
+                  hitsa++;
+                }
+              });
+            }
+          });
+
+          var percentagea = hitsa / totala * 100;
+
+          if (percentagea >= 95) {
+            found = true;
+            toReturn.defaultType = 'graph';
+            toReturn.graphInfo = 'object';
+          }
+        } else {
+          // case b) 95% have _from and _to attribute
+          var hitsb = 0;
+          var totalb = result.length;
+
+          _.each(result, function (obj) {
+            if (obj._from && obj._to) {
+              hitsb++;
+            }
+          });
+
+          var percentageb = hitsb / totalb * 100;
+
+          if (percentageb >= 95) {
+            found = true;
+            toReturn.defaultType = 'graph';
+            toReturn.graphInfo = 'array';
+            // then display as graph
+          }
+        }
+      }
+
+      // check if result could be displayed as table
+      if (!found) {
+        var maxAttributeCount = 0;
+        var check = true;
+        var length;
+        var attributes = {};
+
+        if (result.length <= 1) {
+          check = false;
+        }
+
+        if (check) {
+          _.each(result, function (obj) {
+            length = _.keys(obj).length;
+
+            if (length > maxAttributeCount) {
+              maxAttributeCount = length;
+            }
+
+            _.each(obj, function (value, key) {
+              if (attributes[key]) {
+                attributes[key] = attributes[key] + 1;
+              } else {
+                attributes[key] = 1;
+              }
+            });
+          });
+
+          var rate;
+
+          _.each(attributes, function (val, key) {
+            rate = (val / result.length) * 100;
+
+            if (check !== false) {
+              if (rate <= 95) {
+                check = false;
+              }
+            }
+          });
+        }
+
+        if (check) {
+          found = true;
+          toReturn.defaultType = 'table';
+        }
+      }
+
+      if (!found) {
+      // if all check fails, then just display as json
+        toReturn.defaultType = 'json';
+      }
+
+      return toReturn;
+    },
+
     markPositionError: function (text, pos) {
       var row;
 
@@ -1637,6 +1795,46 @@
           parameter: model.get('parameter')
         });
       });
+    },
+
+    renderOutputTable: function (data, counter) {
+      var tableDescription = {
+        id: 'outputTableData' + counter,
+        titles: [],
+        rows: []
+      };
+
+      var first = true;
+      var part = [];
+      // self.tableDescription.rows.push(;
+      _.each(data.original, function (obj) {
+        if (first === true) {
+          tableDescription.titles = Object.keys(obj);
+          first = false;
+        }
+        _.each(obj, function (val) {
+          if (typeof val === 'object') {
+            val = JSON.stringify(val);
+          }
+          part.push(val);
+        });
+        tableDescription.rows.push(part);
+        part = [];
+      });
+
+      $('#outputTable' + counter).append(this.table.render({content: tableDescription}));
+    },
+
+    renderOutputGraph: function (data, counter) {
+      this.graphViewer2 = new window.GraphViewer2({
+        name: undefined,
+        documentStore: window.App.arangoDocumentStore,
+        collection: new window.GraphCollection(),
+        userConfig: window.App.userConfig,
+        id: '#outputGraph' + counter,
+        data: data
+      });
+      this.graphViewer2.renderAQL();
     },
 
     getAQL: function (originCallback) {
