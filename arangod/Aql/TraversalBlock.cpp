@@ -222,7 +222,6 @@ void TraversalBlock::initializeExpressions(AqlItemBlock const* items, size_t pos
   // We need to find the variable and read it's value here. Everything is computed right now.
   _opts->clearVariableValues();
   TRI_ASSERT(_inVars.size() == _inRegs.size());
-  LOG(ERR) << "We have invars: " << _inVars.size();
   for (size_t i = 0; i < _inVars.size(); ++i) {
     _opts->setVariableValue(_inVars[i], items->getValueReference(pos, _inRegs[i]));
   }

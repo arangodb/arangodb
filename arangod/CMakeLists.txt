@@ -250,6 +250,7 @@ add_executable(${BIN_ARANGOD}
   RestServer/QueryRegistryFeature.cpp
   RestServer/ScriptFeature.cpp
   RestServer/ServerFeature.cpp
+  RestServer/TraverserEngineRegistryFeature.cpp
   RestServer/UnitTestsFeature.cpp
   RestServer/UpgradeFeature.cpp
   RestServer/VocbaseContext.cpp

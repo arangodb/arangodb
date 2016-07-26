@@ -44,6 +44,9 @@ class ThreadPool;
 namespace rest {
 class ApplicationEndpointServer;
 }
+namespace traverser {
+class TraverserEngineRegistry;
+}
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -72,6 +75,7 @@ struct TRI_server_t {
   TRI_vocbase_defaults_t _defaults;
   arangodb::basics::ThreadPool* _indexPool;
   std::atomic<arangodb::aql::QueryRegistry*> _queryRegistry;
+  std::atomic<arangodb::traverser::TraverserEngineRegistry*> _traverserEngineRegistry;
 
   char* _basePath;
   char* _databasePath;
