@@ -8,7 +8,7 @@ set(CMAKE_INSTALL_FULL_SYSCONFDIR_ARANGO "${CMAKE_INSTALL_FULL_SYSCONFDIR}/arang
 
 # Global macros ----------------------------------------------------------------
 macro (generate_root_config name)
-  FILE(READ ${PROJECT_SOURCE_DIR}/${CMAKE_INSTALL_SYSCONFDIR_ARANGODB}/${name}.conf.in FileContent)
+  FILE(READ ${PROJECT_SOURCE_DIR}/etc/arangodb3/${name}.conf.in FileContent)
   STRING(REPLACE "@PKGDATADIR@" "@ROOTDIR@/share/arangodb3"
     FileContent "${FileContent}") 
   STRING(REPLACE "@LOCALSTATEDIR@" "@ROOTDIR@/var"

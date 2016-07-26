@@ -61,7 +61,6 @@ if test -z "${CXX}"; then
     CC="/usr/bin/gcc-4.9"
     CXX="/usr/bin/g++-4.9"
 fi
-MAKE=make
 
 CFLAGS="-g"
 CXXFLAGS="-g"
@@ -74,6 +73,9 @@ LIBS=""
 BUILD_DIR="build"
 BUILD_CONFIG=RelWithDebInfo
 
+PAR="-j"
+GENERATOR=make
+MAKE=make
 MAKE_PARAMS=""
 MAKE_CMD_PREFIX=""
 CONFIGURE_OPTIONS="$CMAKE_OPENSSL"
@@ -83,7 +85,7 @@ TARGET_DIR=""
 CLANG36=0
 CLANG=0
 COVERGAE=0
-CPACK=0
+CPACK=
 FAILURE_TESTS=0
 GCC5=0
 GOLD=0
@@ -119,7 +121,12 @@ while [ $# -gt 0 ];  do
         
          --msvc)
              shift
-             CONFIGURE_OPTIONS="${CONFIGURE_OPTIONS} -G 'Visual Studio 14 Win64'"
+             CC=""
+             CXX=""
+             PAR=""
+             PARALLEL_BUILDS=""
+             GENERATOR="Visual Studio 14 Win64"
+             CPACK="ZIP NSIS"
              MAKE='cmake --build . --config RelWithDebInfo'
              ;;
          
@@ -308,18 +315,24 @@ fi
 
 if [ ! -f Makefile ];  then
     CFLAGS="${CFLAGS}" CXXFLAGS="${CXXFLAGS}" LDFLAGS="${LDFLAGS}" LIBS="${LIBS}" \
-          cmake .. -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_INSTALL_LOCALSTATEDIR=/var -DVARDIR=/var ${CONFIGURE_OPTIONS} ${MAINTAINER_MODE}
+          cmake .. -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_INSTALL_LOCALSTATEDIR=/var -DVARDIR=/var ${CONFIGURE_OPTIONS} ${MAINTAINER_MODE} -G "${GENERATOR}"
 fi
 
-${MAKE_CMD_PREFIX} ${MAKE} ${VERBOSE_MAKE} -j "${PARALLEL_BUILDS}" ${MAKE_PARAMS}
+${MAKE_CMD_PREFIX} ${MAKE} ${VERBOSE_MAKE} "${PAR}" "${PARALLEL_BUILDS}" ${MAKE_PARAMS}
 if [ -n "$CPACK"  -a -n "${TARGET_DIR}" ];  then
-    if [ "$CPACK" == "DEB" ]; then
-        make prepare_debian
-    fi
+    for PACK in ${CPACK}; do 
+        if [ "$PACK" == "DEB" ]; then
+            make prepare_debian
+        fi
     
-    cpack -G "$CPACK"
-    EXT=`echo $CPACK|tr '[:upper:]' '[:lower:]'`
-    cp *.${EXT} ${TARGET_DIR}
+        cpack -G "$PACK"
+
+        EXT=`echo $PACK|tr '[:upper:]' '[:lower:]'`
+        if [ "$PACK" == "NSIS" ]; then
+            true
+        else
+            cp *.${EXT} ${TARGET_DIR}
+        fi
 fi
 
 git rev-parse HEAD > ../last_compiled_version.sha
