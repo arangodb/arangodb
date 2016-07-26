@@ -23,29 +23,26 @@ perf probe -x $ARANGOD_EXECUTABLE -d "probe_arangod:*"
 
 echo Adding events, this takes a few seconds...
 
+addEvent() {
+  x=$1
+  echo $x
+  perf probe -x $ARANGOD_EXECUTABLE -a $x=$x 2> /dev/null
+  perf probe -x $ARANGOD_EXECUTABLE -a ${x}Ret=$x%return 2> /dev/null
+}
 echo Single document operations...
-perf probe -x $ARANGOD_EXECUTABLE -a insertLocal 2> /dev/null
-perf probe -x $ARANGOD_EXECUTABLE -a insertLocalRet=insertLocal%return 2> /dev/null
-perf probe -x $ARANGOD_EXECUTABLE -a removeLocal 2> /dev/null
-perf probe -x $ARANGOD_EXECUTABLE -a removeLocalRet=removeLocal%return 2> /dev/null
-perf probe -x $ARANGOD_EXECUTABLE -a modifyLocal 2> /dev/null
-perf probe -x $ARANGOD_EXECUTABLE -a modifyLocalRet=modifyLocal%return 2> /dev/null
-perf probe -x $ARANGOD_EXECUTABLE -a documentLocal 2> /dev/null
-perf probe -x $ARANGOD_EXECUTABLE -a documentLocalRet=documentLocal%return 2> /dev/null
+addEvent insertLocal
+addEvent removeLocal
+addEvent modifyLocal
+addEvent documentLocal
 
 echo Single document operations on coordinator...
-perf probe -x $ARANGOD_EXECUTABLE -a insertCoordinator 2> /dev/null
-perf probe -x $ARANGOD_EXECUTABLE -a insertCoordinatorRet=insertCoordinator%return 2> /dev/null
-perf probe -x $ARANGOD_EXECUTABLE -a removeCoordinator 2> /dev/null
-perf probe -x $ARANGOD_EXECUTABLE -a removeCoordinatorRet=removeCoordinator%return 2> /dev/null
-perf probe -x $ARANGOD_EXECUTABLE -a updateCoordinator 2> /dev/null
-perf probe -x $ARANGOD_EXECUTABLE -a updateCoordinatorRet=updateCoordinator%return 2> /dev/null
-perf probe -x $ARANGOD_EXECUTABLE -a replaceCoordinator 2> /dev/null
-perf probe -x $ARANGOD_EXECUTABLE -a replaceCoordinatorRet=replaceCoordinator%return 2> /dev/null
-perf probe -x $ARANGOD_EXECUTABLE -a documentCoordinator 2> /dev/null
-perf probe -x $ARANGOD_EXECUTABLE -a documentCoordinatorRet=documentCoordinator%return 2> /dev/null
+addEvent insertCoordinator
+addEvent removeCoordinator
+addEvent updateCoordinator
+addEvent replaceCoordinator
+addEvent documentCoordinator
 
 echo work method in HttpServerJob
-perf probe -x $ARANGOD_EXECUTABLE -a work=work@HttpServerJob.cpp 2> /dev/null
-perf probe -x $ARANGOD_EXECUTABLE -a workRet=work@HttpServerJob.cpp%return 2> /dev/null
+addEvent work@HttpServerJob.cpp
+
 echo Done.
