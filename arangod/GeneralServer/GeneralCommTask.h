@@ -41,6 +41,10 @@ class GeneralResponse;
 namespace rest {
 class GeneralServer;
 
+// handleEvent (defined in SocketTask and arumented in this class) is called
+// when new data is available. handleEvent calls in turn handleWrite and
+// handleRead (virtual function required by SocketTask) that calls processRead
+// (which has to be implemented in derived) as long as new input is available.
 class GeneralCommTask : public SocketTask, public RequestStatisticsAgent {
   GeneralCommTask(GeneralCommTask const&) = delete;
   GeneralCommTask const& operator=(GeneralCommTask const&) = delete;
@@ -82,6 +86,9 @@ class GeneralCommTask : public SocketTask, public RequestStatisticsAgent {
   void handleTimeout() override final;
 
  protected:
+  void fillWriteBuffer();  // fills SocketTasks _writeBuffer
+                           // _writeBufferStatistics from
+                           // _writeBuffers/_writeBuffersStats
   GeneralServer* const _server;
   GeneralRequest* _request;  // the request with possible incomplete body
   ConnectionInfo _connectionInfo;

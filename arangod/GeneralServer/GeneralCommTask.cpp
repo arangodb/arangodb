@@ -79,6 +79,20 @@ GeneralCommTask::~GeneralCommTask() {
   delete _request;
 }
 
+void GeneralCommTask::fillWriteBuffer() {
+  if (!hasWriteBuffer() && !_writeBuffers.empty()) {
+    StringBuffer* buffer = _writeBuffers.front();
+    _writeBuffers.pop_front();
+
+    TRI_ASSERT(buffer != nullptr);
+
+    TRI_request_statistics_t* statistics = _writeBuffersStats.front();
+    _writeBuffersStats.pop_front();
+
+    setWriteBuffer(buffer, statistics);
+  }
+}
+
 void GeneralCommTask::handleResponse(GeneralResponse* response) {
   _requestPending = false;
   _isChunked = false;

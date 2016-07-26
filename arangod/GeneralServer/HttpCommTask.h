@@ -15,7 +15,7 @@ class HttpCommTask : public GeneralCommTask {
  public:
   HttpCommTask(GeneralServer*, TRI_socket_t, ConnectionInfo&&, double timeout);
 
-  bool processRead() override;
+  bool processRead() override;  // called by handleRead
   virtual void processRequest() override;
 
   void addResponse(GeneralResponse* response) override {
@@ -35,13 +35,11 @@ class HttpCommTask : public GeneralCommTask {
   bool handleRead() override final;  // required by SocketTask
 
   void signalTask(TaskData*) override final;
-  // resets the internal state
-  // this method can be called to clean up when the request handling aborts
-  // prematurely
+  // resets the internal state this method can be called to clean up when the
+  // request handling aborts prematurely
   virtual void resetState(bool close) override final;
 
-  void fillWriteBuffer();  // fills the write buffer
-  HttpRequest* _requestAsHttp();
+  HttpRequest* requestAsHttp();
   void addResponse(HttpResponse*);
   void finishedChunked();
   // check the content-length header of a request and fail it is broken

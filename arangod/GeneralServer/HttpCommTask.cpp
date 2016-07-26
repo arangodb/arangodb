@@ -448,8 +448,7 @@ bool HttpCommTask::processRead() {
     }
 
     // read "bodyLength" from read buffer and add this body to "httpRequest"
-    _requestAsHttp()->setBody(_readBuffer->c_str() + _bodyPosition,
-                              _bodyLength);
+    requestAsHttp()->setBody(_readBuffer->c_str() + _bodyPosition, _bodyLength);
 
     LOG(TRACE) << "" << std::string(_readBuffer->c_str() + _bodyPosition,
                                     _bodyLength);
@@ -491,7 +490,7 @@ bool HttpCommTask::processRead() {
     // the connection
     LOG(DEBUG) << "connection close requested by client";
     _closeRequested = true;
-  } else if (_requestAsHttp()->isHttp10() && connectionType != "keep-alive") {
+  } else if (requestAsHttp()->isHttp10() && connectionType != "keep-alive") {
     // HTTP 1.0 request, and no "Connection: Keep-Alive" header sent
     // we should close the connection
     LOG(DEBUG) << "no keep-alive, connection close requested by client";
@@ -554,7 +553,7 @@ void HttpCommTask::processRequest() {
   // check for deflate
   bool found;
 
-  auto httpRequest = _requestAsHttp();
+  auto httpRequest = requestAsHttp();
   std::string const& acceptEncoding =
       httpRequest->header(StaticStrings::AcceptEncoding, found);
 
@@ -736,20 +735,6 @@ bool HttpCommTask::checkContentLength(bool expectContentLength) {
   return true;
 }
 
-void HttpCommTask::fillWriteBuffer() {
-  if (!hasWriteBuffer() && !_writeBuffers.empty()) {
-    StringBuffer* buffer = _writeBuffers.front();
-    _writeBuffers.pop_front();
-
-    TRI_ASSERT(buffer != nullptr);
-
-    TRI_request_statistics_t* statistics = _writeBuffersStats.front();
-    _writeBuffersStats.pop_front();
-
-    setWriteBuffer(buffer, statistics);
-  }
-}
-
 void HttpCommTask::processCorsOptions() {
   HttpResponse response(GeneralResponse::ResponseCode::OK);
 
@@ -928,7 +913,8 @@ GeneralResponse::ResponseCode HttpCommTask::authenticateRequest() {
   auto context = (_request == nullptr) ? nullptr : _request->requestContext();
 
   if (context == nullptr && _request != nullptr) {
-    bool res = GeneralServerFeature::HANDLER_FACTORY->setRequestContext(_request);
+    bool res =
+        GeneralServerFeature::HANDLER_FACTORY->setRequestContext(_request);
 
     if (!res) {
       return GeneralResponse::ResponseCode::NOT_FOUND;
@@ -956,10 +942,10 @@ void HttpCommTask::sendChunk(StringBuffer* buffer) {
 }
 
 // convert internal GeneralRequest to HttpRequest
-HttpRequest* HttpCommTask::_requestAsHttp() {
+HttpRequest* HttpCommTask::requestAsHttp() {
   HttpRequest* request = dynamic_cast<HttpRequest*>(_request);
   if (request == nullptr) {
-    // everything is borken FIXME
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   }
   return request;
 };
