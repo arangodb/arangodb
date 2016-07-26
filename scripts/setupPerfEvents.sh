@@ -20,7 +20,10 @@
 
 ARANGOD_EXECUTABLE=build/bin/arangod
 perf probe -x $ARANGOD_EXECUTABLE -d "probe_arangod:*"
+
 echo Adding events, this takes a few seconds...
+
+echo Single document operations...
 perf probe -x $ARANGOD_EXECUTABLE -a insertLocal 2> /dev/null
 perf probe -x $ARANGOD_EXECUTABLE -a insertLocalRet=insertLocal%return 2> /dev/null
 perf probe -x $ARANGOD_EXECUTABLE -a removeLocal 2> /dev/null
@@ -29,6 +32,8 @@ perf probe -x $ARANGOD_EXECUTABLE -a modifyLocal 2> /dev/null
 perf probe -x $ARANGOD_EXECUTABLE -a modifyLocalRet=modifyLocal%return 2> /dev/null
 perf probe -x $ARANGOD_EXECUTABLE -a documentLocal 2> /dev/null
 perf probe -x $ARANGOD_EXECUTABLE -a documentLocalRet=documentLocal%return 2> /dev/null
+
+echo Single document operations on coordinator...
 perf probe -x $ARANGOD_EXECUTABLE -a insertCoordinator 2> /dev/null
 perf probe -x $ARANGOD_EXECUTABLE -a insertCoordinatorRet=insertCoordinator%return 2> /dev/null
 perf probe -x $ARANGOD_EXECUTABLE -a removeCoordinator 2> /dev/null
@@ -39,4 +44,8 @@ perf probe -x $ARANGOD_EXECUTABLE -a replaceCoordinator 2> /dev/null
 perf probe -x $ARANGOD_EXECUTABLE -a replaceCoordinatorRet=replaceCoordinator%return 2> /dev/null
 perf probe -x $ARANGOD_EXECUTABLE -a documentCoordinator 2> /dev/null
 perf probe -x $ARANGOD_EXECUTABLE -a documentCoordinatorRet=documentCoordinator%return 2> /dev/null
+
+echo work method in HttpServerJob
+perf probe -x $ARANGOD_EXECUTABLE -a work=work@HttpServerJob.cpp 2> /dev/null
+perf probe -x $ARANGOD_EXECUTABLE -a workRet=work@HttpServerJob.cpp%return 2> /dev/null
 echo Done.
