@@ -64,11 +64,9 @@ struct compaction_blocker_t {
 };
 
 struct compaction_blockers_t {
-  TRI_read_write_lock_t _lock;
+  arangodb::basics::ReadWriteLock _lock;
   std::vector<compaction_blocker_t> _data;
 };
-
-extern bool IGNORE_DATAFILE_ERRORS;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tries to read lock the vocbase collection status

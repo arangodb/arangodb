@@ -25,8 +25,9 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ReadLocker.h"
+#include "Basics/WriteLocker.h"
 #include "Basics/files.h"
-#include "Basics/tri-strings.h"
+//#include "Basics/tri-strings.h"
 #include "Logger/Logger.h"
 #include "Utils/CursorRepository.h"
 #include "VocBase/Ditch.h"
@@ -257,46 +258,49 @@ void TRI_CleanupVocBase(void* data) {
       // and collections cannot be closed properly
       CleanupCursors(vocbase, true);
     }
-
+      
     // check if we can get the compactor lock exclusively
-    if (TRI_CheckAndLockCompactorVocBase(vocbase)) {
-      try {
-        READ_LOCKER(readLocker, vocbase->_collectionsLock);
-        // copy all collections
-        collections = vocbase->_collections;
-      } catch (...) {
-        collections.clear();
+    // check if compaction is currently disallowed
+    {
+      TRY_WRITE_LOCKER(locker, vocbase->_compactionBlockers._lock);
+
+      if (locker.isLocked()) {
+        try {
+          READ_LOCKER(readLocker, vocbase->_collectionsLock);
+          // copy all collections
+          collections = vocbase->_collections;
+        } catch (...) {
+          collections.clear();
+        }
+
+        for (auto& collection : collections) {
+          TRI_ASSERT(collection != nullptr);
+          TRI_document_collection_t* document;
+
+          {
+            READ_LOCKER(readLocker, collection->_lock);
+            document = collection->_collection;
+          }
+
+          if (document == nullptr) {
+            // collection currently not loaded
+            continue;
+          }
+
+          TRI_ASSERT(document != nullptr);
+
+          // we're the only ones that can unload the collection, so using
+          // the collection pointer outside the lock is ok
+
+          // maybe cleanup indexes, unload the collection or some datafiles
+          // clean indexes?
+          if (iterations % (uint64_t)CLEANUP_INDEX_ITERATIONS == 0) {
+            document->cleanupIndexes(document);
+          }
+
+          CleanupDocumentCollection(collection, document);
+        }
       }
-
-      for (auto& collection : collections) {
-        TRI_ASSERT(collection != nullptr);
-        TRI_document_collection_t* document;
-
-        {
-          READ_LOCKER(readLocker, collection->_lock);
-          document = collection->_collection;
-        }
-
-        if (document == nullptr) {
-          // collection currently not loaded
-          continue;
-        }
-
-        TRI_ASSERT(document != nullptr);
-
-        // we're the only ones that can unload the collection, so using
-        // the collection pointer outside the lock is ok
-
-        // maybe cleanup indexes, unload the collection or some datafiles
-        // clean indexes?
-        if (iterations % (uint64_t)CLEANUP_INDEX_ITERATIONS == 0) {
-          document->cleanupIndexes(document);
-        }
-
-        CleanupDocumentCollection(collection, document);
-      }
-
-      TRI_UnlockCompactorVocBase(vocbase);
     }
 
     if (vocbase->_state >= 1) {

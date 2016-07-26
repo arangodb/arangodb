@@ -1264,8 +1264,6 @@ TRI_vocbase_t* TRI_OpenVocBase(char const* path,
     return nullptr;
   }
 
-  TRI_InitCompactorVocBase(vocbase);
-
   // .............................................................................
   // scan directory for collections
   // .............................................................................
@@ -1277,7 +1275,6 @@ TRI_vocbase_t* TRI_OpenVocBase(char const* path,
   int res = ScanPath(vocbase, vocbase->_path, isUpgrade, iterateMarkers);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_DestroyCompactorVocBase(vocbase);
     delete vocbase;
     TRI_set_errno(res);
 
@@ -1384,8 +1381,6 @@ void TRI_DestroyVocBase(TRI_vocbase_t* vocbase) {
   for (auto& collection : vocbase->_collections) {
     delete collection;
   }
-
-  TRI_DestroyCompactorVocBase(vocbase);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

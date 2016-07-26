@@ -23,6 +23,7 @@
 
 #include "CollectionKeys.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/WriteLocker.h"
 #include "Utils/CollectionGuard.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utils/StandaloneTransactionContext.h"
@@ -88,17 +89,13 @@ void CollectionKeys::create(TRI_voc_tick_t maxTick) {
   arangodb::wal::LogfileManager::instance()->waitForCollectorQueue(
       _document->_info.id(), 30.0);
 
-  // try to acquire the exclusive lock on the compaction
-  while (!TRI_CheckAndLockCompactorVocBase(_document->_vocbase)) {
-    // didn't get it. try again...
-    usleep(5000);
+  {
+    // try to acquire the exclusive lock on the compaction
+    WRITE_LOCKER_EVENTUAL(locker, _document->_vocbase->_compactionBlockers._lock, 5000);
+
+    // create a ditch under the compaction lock
+    _ditch = _document->ditches()->createDocumentDitch(false, __FILE__, __LINE__);
   }
-
-  // create a ditch under the compaction lock
-  _ditch = _document->ditches()->createDocumentDitch(false, __FILE__, __LINE__);
-
-  // release the lock
-  TRI_UnlockCompactorVocBase(_document->_vocbase);
 
   // now we either have a ditch or not
   if (_ditch == nullptr) {

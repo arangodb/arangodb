@@ -179,7 +179,6 @@ void BootstrapFeature::unprepare() {
       }
     }
   } else {
-    std::vector<std::string> names = databaseFeature->getDatabaseNames();
     for (auto& name : databaseFeature->getDatabaseNames()) {
       TRI_vocbase_t* vocbase = databaseFeature->useDatabase(name);
 

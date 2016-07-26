@@ -1073,7 +1073,6 @@ int DatabaseFeature::createApplicationDirectory(std::string const& name, std::st
 int DatabaseFeature::iterateDatabases(VPackSlice const& databases) {
   V8DealerFeature* dealer = ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
   std::string const appPath = dealer->appPath();
-  std::string const databasePath = ApplicationServer::getFeature<DatabasePathFeature>("DatabasePath")->subdirectoryName("databases");
   
   StorageEngine* engine = ApplicationServer::getFeature<EngineSelectorFeature>("EngineSelector")->ENGINE;
 
