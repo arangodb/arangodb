@@ -255,7 +255,7 @@ void GeneralServer::handleRequestDirectly(RestHandler* handler,
     case RestHandler::status::FAILED:
     case RestHandler::status::DONE: {
       auto response = dynamic_cast<HttpResponse*>(handler->response());
-      task->handleResponse(response);
+      task->addResponse(response, false);
       break;
     }
 

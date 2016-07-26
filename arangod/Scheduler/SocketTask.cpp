@@ -92,11 +92,10 @@ void SocketTask::setKeepAliveTimeout(double timeout) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool SocketTask::fillReadBuffer() {
+
   // reserve some memory for reading
   if (_readBuffer->reserve(READ_BLOCK_SIZE + 1) == TRI_ERROR_OUT_OF_MEMORY) {
-    // out of memory
     LOG(TRACE) << "out of memory";
-
     return false;
   }
 
