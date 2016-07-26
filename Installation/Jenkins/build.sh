@@ -1,6 +1,11 @@
 #!/bin/bash -x
 set -e
 
+if python -c "import sys ; sys.exit(sys.platform != 'cygwin')"; then
+    echo "can't work with cygwin python - move it away!"
+    exit 1
+fi
+                                                                     
 if test -f /scripts/prepare_buildenv.sh; then
     echo "Sourcing docker container environment settings"
     . /scripts/prepare_buildenv.sh
@@ -67,10 +72,10 @@ V8_LDFLAGS=""
 LIBS=""
 
 BUILD_DIR="build"
+BUILD_CONFIG=RelWithDebInfo
 
 MAKE_PARAMS=""
 MAKE_CMD_PREFIX=""
-
 CONFIGURE_OPTIONS="$CMAKE_OPENSSL"
 MAINTAINER_MODE="-DUSE_MAINTAINER_MODE=off"
 
@@ -111,7 +116,13 @@ while [ $# -gt 0 ];  do
             COVERAGE=1
             shift
             ;;
-
+        
+         --msvc)
+             shift
+             CONFIGURE_OPTIONS="${CONFIGURE_OPTIONS} -G 'Visual Studio 14 Win64'"
+             MAKE='cmake --build . --config RelWithDebInfo'
+             ;;
+         
         --gold)
             GOLD=1
             shift
@@ -196,7 +207,7 @@ case "$1" in
     standard)
         CFLAGS="${CFLAGS} -O3"
         CXXFLAGS="${CXXFLAGS} -O3"
-        CONFIGURE_OPTIONS="${CONFIGURE_OPTIONS} -DCMAKE_BUILD_TYPE=RelWithDebInfo"
+        CONFIGURE_OPTIONS="${CONFIGURE_OPTIONS} -DCMAKE_BUILD_TYPE=${BUILD_CONFIG}"
         echo "using standard compile configuration"
         ;;
 
