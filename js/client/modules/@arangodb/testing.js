@@ -3090,6 +3090,7 @@ const recoveryTests = [
   'create-with-temp',
   'create-with-temp-old',
   'create-collection-fail',
+  'create-collection-tmpfile',
   'create-database-existing',
   'create-database-fail',
   'empty-datafiles',

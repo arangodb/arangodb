@@ -15,7 +15,7 @@ This is a synonym for [LENGTH()](#length).
 
 Concatenate the values passed as *value1* to *valueN*.
 
-- **values** (any, *repeatable*): elements of arbitrary type, at least one
+- **values** (any, *repeatable*): elements of arbitrary type (at least 1)
 - returns **str** (string): a concatenation of the elements. *null* values
   are ignored.
 
@@ -47,7 +47,7 @@ Concatenate the strings passed as arguments *value1* to *valueN* using the
 
 - **separator** (string): an arbitrary separator string
 - **values** (string|array, *repeatable*): strings or arrays of strings as multiple
-  arguments, at least one
+  arguments (at least 1)
 - returns **joinedString** (string): a concatenated string of the elements, using
   *separator* as separator string. *null* values are ignored. Array value arguments
   are expanded automatically, and their individual members will be concatenated.
