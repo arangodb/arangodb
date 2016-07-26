@@ -45,7 +45,7 @@ class ReplicationTransaction : public Transaction {
       : Transaction(StandaloneTransactionContext::Create(vocbase)) {
 
     auto databaseFeature = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
-    databaseFeature->useDatabase(vocbase->_name);
+    databaseFeature->useDatabase(vocbase->name());
   }
 
   //////////////////////////////////////////////////////////////////////////////

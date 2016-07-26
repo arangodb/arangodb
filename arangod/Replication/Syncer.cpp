@@ -68,7 +68,7 @@ Syncer::Syncer(TRI_vocbase_t* vocbase,
       _barrierTtl(600) {
   if (configuration->_database.empty()) {
     // use name of current database
-    _databaseName = std::string(vocbase->_name);
+    _databaseName = vocbase->name();
   } else {
     // use name from configuration
     _databaseName = configuration->_database;
@@ -108,7 +108,7 @@ Syncer::Syncer(TRI_vocbase_t* vocbase,
           std::string("retrying failed HTTP request for endpoint '") +
           _configuration._endpoint +
           std::string("' for replication applier in database '" +
-                      std::string(_vocbase->_name) + "'");
+                      _vocbase->name() + "'");
     }
   }
 }

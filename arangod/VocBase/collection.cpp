@@ -1154,7 +1154,7 @@ static std::string GetCollectionDirectory(char const* path, char const* name,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_collection_t* TRI_CreateCollection(
-    TRI_vocbase_t* vocbase, TRI_collection_t* collection, char const* path,
+    TRI_vocbase_t* vocbase, TRI_collection_t* collection, std::string const& path,
     arangodb::VocbaseCollectionInfo const& parameters) {
   // sanity check
   if (sizeof(TRI_df_header_marker_t) + sizeof(TRI_df_footer_marker_t) >
@@ -1168,17 +1168,16 @@ TRI_collection_t* TRI_CreateCollection(
     return nullptr;
   }
 
-  if (!TRI_IsDirectory(path)) {
+  if (!TRI_IsDirectory(path.c_str())) {
     TRI_set_errno(TRI_ERROR_ARANGO_DATADIR_INVALID);
 
-    LOG(ERR) << "cannot create collection '" << path
-             << "', path is not a directory";
+    LOG(ERR) << "cannot create collection '" << path << "', path is not a directory";
 
     return nullptr;
   }
 
   std::string const dirname =
-      GetCollectionDirectory(path, parameters.namec_str(), parameters.id());
+      GetCollectionDirectory(path.c_str(), parameters.namec_str(), parameters.id());
 
   // directory must not exist
   if (TRI_ExistsFile(dirname.c_str())) {
@@ -1591,7 +1590,7 @@ VocbaseCollectionInfo VocbaseCollectionInfo::fromFile(
   VocbaseCollectionInfo info(vocbase, collectionName, slice, isSystemValue);
 
   // warn about wrong version of the collection
-  if (versionWarning && info.version() < TRI_COL_VERSION_20) {
+  if (versionWarning && info.version() < TRI_COL_VERSION) {
     if (info.name()[0] != '\0') {
       // only warn if the collection version is older than expected, and if it's
       // not a shape collection
@@ -1908,7 +1907,7 @@ TRI_collection_t* TRI_OpenCollection(TRI_vocbase_t* vocbase,
     double start = TRI_microtime();
 
     LOG_TOPIC(TRACE, Logger::PERFORMANCE)
-        << "open-collection { collection: " << vocbase->_name << "/"
+        << "open-collection { collection: " << vocbase->name() << "/"
         << collection->_info.name();
 
     // check for journals and datafiles
@@ -1922,7 +1921,7 @@ TRI_collection_t* TRI_OpenCollection(TRI_vocbase_t* vocbase,
 
     LOG_TOPIC(TRACE, Logger::PERFORMANCE)
         << "[timer] " << Logger::FIXED(TRI_microtime() - start)
-        << " s, open-collection { collection: " << vocbase->_name << "/"
+        << " s, open-collection { collection: " << vocbase->name() << "/"
         << collection->_info.name() << " }";
 
     return collection;

@@ -234,13 +234,13 @@ void UpgradeFeature::upgradeDatabase(std::string const& defaultPassword) {
                     context->_isolate, "UPGRADE_STARTED"))) {
               localContext->Exit();
               if (_upgrade) {
-                LOG(FATAL) << "Database '" << vocbase->_name
+                LOG(FATAL) << "Database '" << vocbase->name()
                            << "' upgrade failed. Please inspect the logs from "
                               "the upgrade procedure";
                 FATAL_ERROR_EXIT();
               } else {
                 LOG(FATAL)
-                    << "Database '" << vocbase->_name
+                    << "Database '" << vocbase->name()
                     << "' needs upgrade. Please start the server with the "
                        "--database.auto-upgrade option";
                 FATAL_ERROR_EXIT();
@@ -250,7 +250,7 @@ void UpgradeFeature::upgradeDatabase(std::string const& defaultPassword) {
               FATAL_ERROR_EXIT();
             }
 
-            LOG(DEBUG) << "database '" << vocbase->_name
+            LOG(DEBUG) << "database '" << vocbase->name()
                        << "' init/upgrade done";
           }
         }

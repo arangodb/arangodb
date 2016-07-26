@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "replication-applier.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/ScopeGuard.h"
@@ -36,6 +37,8 @@
 #include "Replication/ContinuousSyncer.h"
 #include "Rest/Version.h"
 #include "RestServer/ServerIdFeature.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/StorageEngine.h"
 #include "VocBase/collection.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/transaction.h"
@@ -78,7 +81,8 @@ static int ReadTick(VPackSlice const& slice, char const* attributeName,
 ////////////////////////////////////////////////////////////////////////////////
 
 static std::string GetConfigurationFilename(TRI_vocbase_t* vocbase) {
-  return arangodb::basics::FileUtils::buildFilename(vocbase->_path, "REPLICATION-APPLIER-CONFIG");
+  StorageEngine* engine = application_features::ApplicationServer::getFeature<EngineSelectorFeature>("EngineSelector")->ENGINE;
+  return arangodb::basics::FileUtils::buildFilename(engine->path(vocbase->_id), "REPLICATION-APPLIER-CONFIG");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -119,7 +123,7 @@ static int LoadConfiguration(TRI_vocbase_t* vocbase,
   VPackSlice value = slice.get("database");
 
   if (!value.isString()) {
-    config->_database = std::string(vocbase->_name);
+    config->_database = vocbase->name();
   } else {
     config->_database = value.copyString();
   }
@@ -293,7 +297,8 @@ static int LoadConfiguration(TRI_vocbase_t* vocbase,
 ////////////////////////////////////////////////////////////////////////////////
 
 static std::string GetStateFilename(TRI_vocbase_t* vocbase) {
-  return arangodb::basics::FileUtils::buildFilename(vocbase->_path, "REPLICATION-APPLIER-STATE");
+  StorageEngine* engine = application_features::ApplicationServer::getFeature<EngineSelectorFeature>("EngineSelector")->ENGINE;
+  return arangodb::basics::FileUtils::buildFilename(engine->path(vocbase->_id), "REPLICATION-APPLIER-STATE");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -861,7 +866,7 @@ int TRI_SaveConfigurationReplicationApplier(
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_replication_applier_t::TRI_replication_applier_t(TRI_vocbase_t* vocbase)
-    : _databaseName(vocbase->_name),
+    : _databaseName(vocbase->name()),
       _starts(0),
       _vocbase(vocbase),
       _terminateThread(false),

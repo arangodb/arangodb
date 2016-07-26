@@ -29,17 +29,38 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "VocBase/CleanupThread.h"
+#include "VocBase/collection.h"
 #include "VocBase/compactor.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
+#include "Wal/LogfileManager.h"
 
 #ifdef ARANGODB_ENABLE_ROCKSDB
 #include "Indexes/RocksDBIndex.h"
 #endif
 
 using namespace arangodb;
+using namespace arangodb::basics;
 
 std::string const MMFilesEngine::EngineName("MMFiles");
+
+/// @brief this iterator is called on startup for journal and compactor file
+/// of a collection
+/// it will check the ticks of all markers and update the internal tick
+/// counter accordingly. this is done so we'll not re-assign an already used
+/// tick value
+static bool StartupTickIterator(TRI_df_marker_t const* marker, void* data,
+                                TRI_datafile_t* datafile) {
+  auto tick = static_cast<TRI_voc_tick_t*>(data);
+  TRI_voc_tick_t markerTick = marker->getTick();
+  
+  if (markerTick > *tick) {
+    *tick = markerTick;
+  }
+
+  return true;
+}
 
 /// @brief extract the numeric part from a filename
 static uint64_t GetNumericFilenamePart(std::string const& filename) {
@@ -64,7 +85,8 @@ struct DatabaseIdStringComparator {
 MMFilesEngine::MMFilesEngine(application_features::ApplicationServer* server)
     : StorageEngine(server, EngineName),
       _iterateMarkersOnOpen(true),
-      _isUpgrade(false) {
+      _isUpgrade(false),
+      _maxTick(0) {
 }
 
 MMFilesEngine::~MMFilesEngine() {
@@ -135,20 +157,35 @@ void MMFilesEngine::stop() {
 }
 
 void MMFilesEngine::recoveryDone(TRI_vocbase_t* vocbase) {    
-  LOG(INFO) << "MMFilesEngine::recoveryDone() " << vocbase->_name;
+  LOG(INFO) << "MMFilesEngine::recoveryDone() " << vocbase->name();
 
   DatabaseFeature* databaseFeature = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
 
   if (!databaseFeature->checkVersion() && !databaseFeature->upgrade()) {
     // start compactor thread
     TRI_ASSERT(!vocbase->_hasCompactor);
-    LOG(TRACE) << "starting compactor for database '" << vocbase->_name << "'";
+    LOG(TRACE) << "starting compactor for database '" << vocbase->name() << "'";
 
     TRI_InitThread(&vocbase->_compactor);
     TRI_StartThread(&vocbase->_compactor, nullptr, "Compactor",
                     TRI_CompactorVocBase, vocbase);
     vocbase->_hasCompactor = true;
   }
+
+  // delete all collection files from collections marked as deleted
+  for (auto& it : _deleted) {
+    std::string const& name = it.first;
+    std::string const& file = it.second;
+
+    LOG(DEBUG) << "collection '" << name << "' was deleted, wiping it";
+
+    int res = TRI_RemoveDirectory(file.c_str());
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      LOG(WARN) << "cannot wipe deleted collection '" << name << "': " << TRI_errno_string(res);
+    }
+  }
+  _deleted.clear();
 }
 
 // fill the Builder object with an array of databases that were detected
@@ -283,23 +320,143 @@ void MMFilesEngine::getDatabases(arangodb::velocypack::Builder& result) {
 
 // fill the Builder object with an array of collections (and their corresponding
 // indexes) that were detected by the storage engine. called at server start only
-void MMFilesEngine::getCollectionsAndIndexes(arangodb::velocypack::Builder& result) {
+int MMFilesEngine::getCollectionsAndIndexes(TRI_vocbase_t* vocbase, 
+                                            arangodb::velocypack::Builder& result,
+                                            bool wasCleanShutdown,
+                                            bool isUpgrade) {
+  if (!wasCleanShutdown) {
+    LOG(TRACE) << "scanning all collection markers in database '" << vocbase->name() << "'";
+  }
+
+  result.openArray();
+
+  std::string const path = databaseDirectory(vocbase->_id);
+  std::vector<std::string> files = TRI_FilesDirectory(path.c_str());
+
+  for (auto const& name : files) {
+    TRI_ASSERT(!name.empty());
+
+    if (!StringUtils::isPrefix(name, "collection-") ||
+        StringUtils::isSuffix(name, ".tmp")) {
+      // no match, ignore this file
+      continue;
+    }
+
+    std::string const file = FileUtils::buildFilename(path, name);
+
+    if (!TRI_IsDirectory(file.c_str())) {
+      LOG(DEBUG) << "ignoring non-directory '" << file << "'";
+      continue;
+    }
+
+    if (!TRI_IsWritable(file.c_str())) {
+      // the collection directory we found is not writable for the current
+      // user
+      // this can cause serious trouble so we will abort the server start if
+      // we
+      // encounter this situation
+      LOG(ERR) << "database subdirectory '" << file
+                << "' is not writable for current user";
+
+      return TRI_ERROR_ARANGO_DATADIR_NOT_WRITABLE;
+    }
+
+    int res = TRI_ERROR_NO_ERROR;
+
+    try {
+      arangodb::VocbaseCollectionInfo info =
+          arangodb::VocbaseCollectionInfo::fromFile(file.c_str(), vocbase,
+                                                    "",  // Name is unused
+                                                    true);
+     
+      if (info.deleted()) {
+        _deleted.emplace_back(std::make_pair(info.name(), file));
+        continue;
+      }
+
+      if (info.version() < TRI_COL_VERSION && !isUpgrade) {
+        // collection is too "old"
+        LOG(ERR) << "collection '" << info.name()
+                 << "' has a too old version. Please start the server "
+                    "with the --database.auto-upgrade option.";
+
+        return TRI_ERROR_FAILED;
+      }
+
+      result.openObject();
+      TRI_CreateVelocyPackCollectionInfo(info, result);
+      result.close();
+/*
+
+      } else {
+        // we found a collection that is still active
+        TRI_col_type_e type = info.type();
+        TRI_vocbase_col_t* c = nullptr;
+
+        try {
+          c = AddCollection(vocbase, type, info.namec_str(), info.id(), file);
+        } catch (...) {
+          // if we caught an exception, c is still a nullptr
+        }
+
+        if (c == nullptr) {
+          LOG(ERR) << "failed to add document collection from '"
+                    << file << "'";
+
+          return TRI_set_errno(TRI_ERROR_ARANGO_CORRUPTED_COLLECTION);
+        }
+
+        c->_planId = info.planId();
+        c->_status = TRI_VOC_COL_STATUS_UNLOADED;
+
+        if (!wasCleanShutdown) {
+          // iterating markers may be time-consuming. we'll only do it if
+          // we have to
+          TRI_IterateTicksCollection(file.c_str(), StartupTickIterator, &_maxTick);
+        }
+
+        LOG(DEBUG) << "added document collection '" << info.name()
+                    << "' from '" << file << "'";
+      }
+      */
+    } catch (arangodb::basics::Exception const& e) {
+      std::string tmpfile = FileUtils::buildFilename(file, ".tmp");
+
+      if (TRI_ExistsFile(tmpfile.c_str())) {
+        LOG(TRACE) << "ignoring temporary directory '" << tmpfile << "'";
+        // temp file still exists. this means the collection was not created
+        // fully and needs to be ignored
+        continue;  // ignore this directory
+      }
+
+      res = e.code();
+
+      LOG(ERR) << "cannot read collection info file in directory '"
+                << file << "': " << TRI_errno_string(res);
+
+      return res;
+    }
+  }
+
+  result.close();
+
+  return TRI_ERROR_NO_ERROR;
 }
 
 // determine the maximum revision id previously handed out by the storage
 // engine. this value is used as a lower bound for further HLC values handed out by
 // the server. called at server start only, after getDatabases() and getCollectionsAndIndexes()
 uint64_t MMFilesEngine::getMaxRevision() {
-  return 0; // TODO
+  return _maxTick;
 }
   
 TRI_vocbase_t* MMFilesEngine::openDatabase(VPackSlice const& parameters, bool isUpgrade) {
   VPackSlice idSlice = parameters.get("id");
   TRI_voc_tick_t id = static_cast<TRI_voc_tick_t>(basics::StringUtils::uint64(idSlice.copyString()));
   std::string const name = parameters.get("name").copyString();
-  bool iterateMarkersOnOpen = true; /* TODO */
-
-  return openExistingDatabase(id, name, isUpgrade, iterateMarkersOnOpen);
+  
+  bool const wasCleanShutdown = arangodb::wal::LogfileManager::instance()->hasFoundLastTick();
+  return openExistingDatabase(id, name, wasCleanShutdown, isUpgrade);
 }
 
 // asks the storage engine to create a database as specified in the VPack
@@ -322,7 +479,7 @@ TRI_vocbase_t* MMFilesEngine::createDatabase(TRI_voc_tick_t id, arangodb::velocy
     THROW_ARANGO_EXCEPTION(res);
   }
 
-  return openExistingDatabase(id, name, false, false);
+  return openExistingDatabase(id, name, true, false);
 }
 
 // asks the storage engine to drop the specified database and persist the 
@@ -338,7 +495,7 @@ int MMFilesEngine::dropDatabase(TRI_vocbase_t* vocbase, bool waitForDeletion,
                                 std::function<bool()> const& canRemovePhysically) {
   std::string const directory = databaseDirectory(vocbase->_id);
 
-  int res = saveDatabaseParameters(vocbase->_id, vocbase->_name, true);
+  int res = saveDatabaseParameters(vocbase->_id, vocbase->name(), true);
 
   if (res == TRI_ERROR_NO_ERROR && waitForDeletion) {
     this->waitForDeletion(directory, TRI_ERROR_NO_ERROR);
@@ -639,23 +796,31 @@ int MMFilesEngine::waitForDeletion(std::string const& directoryName, int statusC
 }
 
 /// @brief open an existing database. internal function
-TRI_vocbase_t* MMFilesEngine::openExistingDatabase(TRI_voc_tick_t id, std::string const& name, bool isUpgrade, bool iterateMarkersOnOpen) {
-  std::string const path = databaseDirectory(id);
+TRI_vocbase_t* MMFilesEngine::openExistingDatabase(TRI_voc_tick_t id, std::string const& name, bool wasCleanShutdown, bool isUpgrade) {
+  auto vocbase = std::make_unique<TRI_vocbase_t>(TRI_VOCBASE_TYPE_NORMAL, id, name);
 
-  TRI_vocbase_t* vocbase = TRI_OpenVocBase(path.c_str(), id, name.c_str(), isUpgrade, iterateMarkersOnOpen);
-
-  if (vocbase != nullptr) {
-    return vocbase;
-  }
-
-  // grab last error
-  int res = TRI_errno();
+  // scan the database path for collections
+  VPackBuilder builder;
+  int res = getCollectionsAndIndexes(vocbase.get(), builder, wasCleanShutdown, isUpgrade);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    // we must have an error...
-    res = TRI_ERROR_INTERNAL;
+    THROW_ARANGO_EXCEPTION(res);
+  }
+  
+  VPackSlice slice = builder.slice();
+  TRI_ASSERT(slice.isArray());
+
+  // vocbase is now active
+  vocbase->_state = (sig_atomic_t)TRI_VOCBASE_STATE_NORMAL;
+  
+  // start cleanup thread
+  TRI_ASSERT(vocbase->_cleanupThread == nullptr);
+  vocbase->_cleanupThread.reset(new CleanupThread(vocbase.get()));
+
+  if (!vocbase->_cleanupThread->start()) {
+    LOG(ERR) << "could not start cleanup thread";
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
 
-  LOG(ERR) << "could not open database '" << name << "': " << TRI_errno_string(res);
-  THROW_ARANGO_EXCEPTION(res);
+  return vocbase.release();
 }

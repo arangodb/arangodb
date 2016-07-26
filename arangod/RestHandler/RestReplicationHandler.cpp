@@ -1659,7 +1659,7 @@ int RestReplicationHandler::processRestoreCollectionCoordinator(
     return TRI_ERROR_NO_ERROR;
   }
 
-  std::string dbName = _vocbase->_name;
+  std::string dbName = _vocbase->name();
 
   // in a cluster, we only look up by name:
   ClusterInfo* ci = ClusterInfo::instance();
@@ -1980,7 +1980,7 @@ int RestReplicationHandler::processRestoreIndexesCoordinator(
     return TRI_ERROR_NO_ERROR;
   }
 
-  std::string dbName = _vocbase->_name;
+  std::string dbName = _vocbase->name();
 
   // in a cluster, we only look up by name:
   ClusterInfo* ci = ClusterInfo::instance();
@@ -2488,7 +2488,7 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator() {
     return;
   }
 
-  std::string dbName = _vocbase->_name;
+  std::string dbName = _vocbase->name();
   std::string errorMsg;
 
   // in a cluster, we only look up by name:
@@ -3268,7 +3268,7 @@ void RestReplicationHandler::handleCommandMakeSlave() {
   }
 
   std::string const database =
-      VelocyPackHelper::getStringValue(body, "database", _vocbase->_name);
+      VelocyPackHelper::getStringValue(body, "database", _vocbase->name());
   std::string const username =
       VelocyPackHelper::getStringValue(body, "username", "");
   std::string const password =
@@ -3452,7 +3452,7 @@ void RestReplicationHandler::handleCommandSync() {
   }
 
   std::string const database =
-      VelocyPackHelper::getStringValue(body, "database", _vocbase->_name);
+      VelocyPackHelper::getStringValue(body, "database", _vocbase->name());
   std::string const username =
       VelocyPackHelper::getStringValue(body, "username", "");
   std::string const password =
@@ -3639,7 +3639,7 @@ void RestReplicationHandler::handleCommandApplierSetConfig() {
   }
 
   config._database =
-      VelocyPackHelper::getStringValue(body, "database", _vocbase->_name);
+      VelocyPackHelper::getStringValue(body, "database", _vocbase->name());
 
   VPackSlice const username = body.get("username");
   if (username.isString()) {

@@ -70,7 +70,7 @@ void V8TimerTask::getDescription(VPackBuilder& builder) const {
   TimerTask::getDescription(builder);
   builder.add("created", VPackValue(_created));
   builder.add("command", VPackValue(_command));
-  builder.add("database", VPackValue(_vocbase->_name));
+  builder.add("database", VPackValue(_vocbase->name()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////

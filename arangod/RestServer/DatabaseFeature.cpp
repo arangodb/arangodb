@@ -77,6 +77,8 @@ void DatabaseManagerThread::run() {
   auto databaseFeature = ApplicationServer::getFeature<DatabaseFeature>("Database");
   auto dealer = ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
   int cleanupCycles = 0;
+  
+  StorageEngine* engine = ApplicationServer::getFeature<EngineSelectorFeature>("EngineSelector")->ENGINE;
 
   while (true) {
     // check if we have to drop some database
@@ -139,9 +141,9 @@ void DatabaseManagerThread::run() {
         // delete persistent indexes for this database
         RocksDBFeature::dropDatabase(database->_id);
 #endif
-
+  
         LOG(TRACE) << "physically removing database directory '"
-                    << database->_path << "' of database '" << database->_name
+                    << engine->path(database->_id) << "' of database '" << database->name()
                     << "'";
 
         std::string path;
@@ -152,18 +154,18 @@ void DatabaseManagerThread::run() {
         if (database->_isOwnAppsDirectory && !appPath.empty()) {
           path = arangodb::basics::FileUtils::buildFilename(
               arangodb::basics::FileUtils::buildFilename(appPath, "_db"),
-              database->_name);
+              database->name());
 
           if (TRI_IsDirectory(path.c_str())) {
             LOG(TRACE) << "removing app directory '" << path
-                      << "' of database '" << database->_name << "'";
+                      << "' of database '" << database->name() << "'";
 
             TRI_RemoveDirectory(path.c_str());
           }
         }
 
         // remember db path
-        path = std::string(database->_path);
+        path = engine->path(database->_id);
 
         TRI_DestroyVocBase(database);
 
@@ -410,13 +412,13 @@ int DatabaseFeature::recoveryDone() {
     if (vocbase->_replicationApplier->_configuration._autoStart) {
       if (!_replicationApplier) {
         LOG(INFO) << "replication applier explicitly deactivated for database '"
-                  << vocbase->_name << "'";
+                  << vocbase->name() << "'";
       } else {
         int res = vocbase->_replicationApplier->start(0, false, 0);
 
         if (res != TRI_ERROR_NO_ERROR) {
           LOG(WARN) << "unable to start replication applier for database '"
-                    << vocbase->_name << "': " << TRI_errno_string(res);
+                    << vocbase->name() << "': " << TRI_errno_string(res);
         }
       }
     }
@@ -447,35 +449,16 @@ int DatabaseFeature::createDatabaseCoordinator(TRI_voc_tick_t id, std::string co
   }
 
   // name not yet in use, release the read lock
-
-  TRI_vocbase_t* vocbase = TRI_CreateInitialVocBase(TRI_VOCBASE_TYPE_COORDINATOR, "none", id, name.c_str());
-
-  if (vocbase == nullptr) {
-    // grab last error
-    int res = TRI_errno();
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      // but we must have an error...
-      res = TRI_ERROR_INTERNAL;
-    }
-
-    LOG(ERR) << "could not create database '" << name << "': " << TRI_errno_string(res);
-
-    return res;
-  }
-
-  TRI_ASSERT(vocbase != nullptr);
+  auto vocbase = std::make_unique<TRI_vocbase_t>(TRI_VOCBASE_TYPE_COORDINATOR, id, name);
 
   try {
-    vocbase->_replicationApplier.reset(TRI_CreateReplicationApplier(vocbase));
+    vocbase->_replicationApplier.reset(TRI_CreateReplicationApplier(vocbase.get()));
   } catch (...) {
-    delete vocbase;
-
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
   // increase reference counter
-  TRI_UseVocBase(vocbase);
+  TRI_UseVocBase(vocbase.get());
   vocbase->_state = (sig_atomic_t)TRI_VOCBASE_STATE_NORMAL;
 
   {
@@ -484,10 +467,9 @@ int DatabaseFeature::createDatabaseCoordinator(TRI_voc_tick_t id, std::string co
     decltype(oldLists) newLists = nullptr;
     try {
       newLists = new DatabasesLists(*oldLists);
-      newLists->_coordinatorDatabases.emplace(name, vocbase);
+      newLists->_coordinatorDatabases.emplace(name, vocbase.get());
     } catch (...) {
       delete newLists;
-      delete vocbase;
       return TRI_ERROR_OUT_OF_MEMORY;
     }
     _databasesLists = newLists;
@@ -495,7 +477,8 @@ int DatabaseFeature::createDatabaseCoordinator(TRI_voc_tick_t id, std::string co
     delete oldLists;
   }
 
-  result = vocbase;
+  result = vocbase.get();
+  vocbase.release();
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -509,7 +492,7 @@ int DatabaseFeature::createDatabase(TRI_voc_tick_t id, std::string const& name,
     return TRI_ERROR_ARANGO_DATABASE_NAME_INVALID;
   }
 
-  TRI_vocbase_t* vocbase = nullptr;
+  std::unique_ptr<TRI_vocbase_t> vocbase;
   VPackBuilder builder;
   int res;
 
@@ -543,9 +526,17 @@ int DatabaseFeature::createDatabase(TRI_voc_tick_t id, std::string const& name,
     // create database in storage engine
     StorageEngine* engine = ApplicationServer::getFeature<EngineSelectorFeature>("EngineSelector")->ENGINE;
     // createDatabase must return a valid database or throw
-    vocbase = engine->createDatabase(id, builder.slice()); 
+    vocbase.reset(engine->createDatabase(id, builder.slice())); 
     TRI_ASSERT(vocbase != nullptr);
- 
+
+    try {
+      vocbase->_replicationApplier.reset(TRI_CreateReplicationApplier(vocbase.get()));
+    } catch (std::exception const& ex) {
+      LOG(FATAL) << "initializing replication applier for database '"
+                 << vocbase->name() << "' failed: " << ex.what();
+      FATAL_ERROR_EXIT();
+    }
+    
     // enable deadlock detection 
     vocbase->_deadlockDetector.enabled(!arangodb::ServerState::instance()->isRunningInCluster());
 
@@ -559,7 +550,7 @@ int DatabaseFeature::createDatabase(TRI_voc_tick_t id, std::string const& name,
 
     if (!arangodb::wal::LogfileManager::instance()->isInRecovery()) {
       // starts compactor etc.
-      engine->recoveryDone(vocbase);
+      engine->recoveryDone(vocbase.get());
 
       // start the replication applier
       if (vocbase->_replicationApplier->_configuration._autoStart) {
@@ -574,7 +565,7 @@ int DatabaseFeature::createDatabase(TRI_voc_tick_t id, std::string const& name,
       }
 
       // increase reference counter
-      TRI_UseVocBase(vocbase);
+      TRI_UseVocBase(vocbase.get());
     }
 
     {
@@ -583,7 +574,7 @@ int DatabaseFeature::createDatabase(TRI_voc_tick_t id, std::string const& name,
       decltype(oldLists) newLists = nullptr;
       try {
         newLists = new DatabasesLists(*oldLists);
-        newLists->_databases.insert(std::make_pair(name, vocbase));
+        newLists->_databases.insert(std::make_pair(name, vocbase.get()));
       } catch (...) {
         LOG(ERR) << "Out of memory for putting new database into list!";
         // This is bad, but at least we do not crash!
@@ -602,7 +593,7 @@ int DatabaseFeature::createDatabase(TRI_voc_tick_t id, std::string const& name,
     res = writeCreateMarker(id, builder.slice());
   }
 
-  result = vocbase;
+  result = vocbase.release();
 
   return res;
 }
@@ -623,7 +614,7 @@ int DatabaseFeature::dropDatabaseCoordinator(TRI_voc_tick_t id, bool force) {
       vocbase = it->second;
 
       if (vocbase->_id == id &&
-          (force || std::string(vocbase->_name) != TRI_VOC_SYSTEM_DATABASE)) {
+          (force || vocbase->name() != TRI_VOC_SYSTEM_DATABASE)) {
         newLists->_droppedDatabases.emplace(vocbase);
         newLists->_coordinatorDatabases.erase(it);
         break;
@@ -640,7 +631,7 @@ int DatabaseFeature::dropDatabaseCoordinator(TRI_voc_tick_t id, bool force) {
     delete oldLists;
 
     if (TRI_DropVocBase(vocbase)) {
-      LOG(INFO) << "dropping coordinator database '" << vocbase->_name << "'";
+      LOG(INFO) << "dropping coordinator database '" << vocbase->name() << "'";
       res = TRI_ERROR_NO_ERROR;
     }
   } else {
@@ -727,7 +718,7 @@ int DatabaseFeature::dropDatabase(TRI_voc_tick_t id, bool writeMarker, bool wait
       TRI_vocbase_t* vocbase = p.second;
 
       if (vocbase->_id == id) {
-        name = vocbase->_name;
+        name = vocbase->name();
         break;
       }
     }
@@ -747,7 +738,7 @@ std::vector<TRI_voc_tick_t> DatabaseFeature::getDatabaseIdsCoordinator(bool incl
       TRI_vocbase_t* vocbase = p.second;
       TRI_ASSERT(vocbase != nullptr);
 
-      if (includeSystem || std::string(vocbase->_name) != TRI_VOC_SYSTEM_DATABASE) {
+      if (includeSystem || vocbase->name() != TRI_VOC_SYSTEM_DATABASE) {
         ids.emplace_back(vocbase->_id);
       }
     }
@@ -766,7 +757,7 @@ std::vector<TRI_voc_tick_t> DatabaseFeature::getDatabaseIds(bool includeSystem) 
     for (auto& p : theLists->_databases) {
       TRI_vocbase_t* vocbase = p.second;
       TRI_ASSERT(vocbase != nullptr);
-      if (includeSystem || std::string(vocbase->_name) != TRI_VOC_SYSTEM_DATABASE) {
+      if (includeSystem || vocbase->name() != TRI_VOC_SYSTEM_DATABASE) {
         ids.emplace_back(vocbase->_id);
       }
     }
@@ -786,9 +777,8 @@ std::vector<std::string> DatabaseFeature::getDatabaseNames() {
     for (auto& p : theLists->_databases) {
       TRI_vocbase_t* vocbase = p.second;
       TRI_ASSERT(vocbase != nullptr);
-      TRI_ASSERT(vocbase->_name != nullptr);
 
-      names.emplace_back(vocbase->_name);
+      names.emplace_back(vocbase->name());
     }
   }
 
@@ -810,16 +800,15 @@ std::vector<std::string> DatabaseFeature::getDatabaseNamesForUser(std::string co
     for (auto& p : theLists->_databases) {
       TRI_vocbase_t* vocbase = p.second;
       TRI_ASSERT(vocbase != nullptr);
-      TRI_ASSERT(vocbase->_name != nullptr);
 
       auto level =
-          GeneralServerFeature::AUTH_INFO.canUseDatabase(username, vocbase->_name);
+          GeneralServerFeature::AUTH_INFO.canUseDatabase(username, vocbase->name());
 
       if (level == AuthLevel::NONE) {
         continue;
       }
 
-      names.emplace_back(vocbase->_name);
+      names.emplace_back(vocbase->name());
     }
   }
 
@@ -914,7 +903,7 @@ TRI_vocbase_t* DatabaseFeature::lookupDatabase(std::string const& name) {
   for (auto& p : theLists->_databases) {
     TRI_vocbase_t* vocbase = p.second;
 
-    if (name == vocbase->_name) {
+    if (name == vocbase->name()) {
       return vocbase;
     }
   }
@@ -1109,6 +1098,14 @@ int DatabaseFeature::iterateDatabases(VPackSlice const& databases) {
     TRI_vocbase_t* vocbase = engine->openDatabase(it, _upgrade);
     // we found a valid database
     TRI_ASSERT(vocbase != nullptr);
+    
+    try {
+      vocbase->_replicationApplier.reset(TRI_CreateReplicationApplier(vocbase));
+    } catch (std::exception const& ex) {
+      LOG(FATAL) << "initializing replication applier for database '"
+                 << vocbase->name() << "' failed: " << ex.what();
+      FATAL_ERROR_EXIT();
+    }
 
     if (databaseName == TRI_VOC_SYSTEM_DATABASE) {
       // found the system database
@@ -1116,7 +1113,7 @@ int DatabaseFeature::iterateDatabases(VPackSlice const& databases) {
       _vocbase = vocbase;
     }
 
-    newLists->_databases.insert(std::make_pair(std::string(vocbase->_name), vocbase));
+    newLists->_databases.insert(std::make_pair(vocbase->name(), vocbase));
   }
 
   _databasesLists = newLists;
@@ -1164,7 +1161,7 @@ void DatabaseFeature::closeDroppedDatabases() {
       delete vocbase;
     } else {
       LOG(ERR) << "unknown database type " << vocbase->_type << " "
-               << vocbase->_name << " - close doing nothing.";
+               << vocbase->name() << " - close doing nothing.";
     }
   }
 

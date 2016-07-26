@@ -98,7 +98,7 @@ class CollectionNameResolver {
     // We have to look up the collection info:
     ClusterInfo* ci = ClusterInfo::instance();
     std::shared_ptr<CollectionInfo> cinfo =
-        ci->getCollection(DatabaseID(_vocbase->_name), name);
+        ci->getCollection(_vocbase->name(), name);
     if (cinfo->empty()) {
       return 0;
     }
@@ -181,7 +181,7 @@ class CollectionNameResolver {
     // We have to look up the collection info:
     ClusterInfo* ci = ClusterInfo::instance();
     std::shared_ptr<CollectionInfo> cinfo =
-        ci->getCollection(DatabaseID(_vocbase->_name), name);
+        ci->getCollection(_vocbase->name(), name);
     if (cinfo->empty()) {
       return TRI_COL_TYPE_UNKNOWN;
     }
@@ -241,7 +241,7 @@ class CollectionNameResolver {
     while (tries++ < 2) {
       std::shared_ptr<CollectionInfo> ci =
           ClusterInfo::instance()->getCollection(
-              _vocbase->_name, arangodb::basics::StringUtils::itoa(cid));
+              _vocbase->name(), arangodb::basics::StringUtils::itoa(cid));
       name = ci->name();
 
       if (name.empty()) {

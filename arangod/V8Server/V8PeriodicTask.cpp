@@ -77,7 +77,7 @@ void V8PeriodicTask::getDescription(VPackBuilder& builder) const {
 
   builder.add("created", VPackValue(_created));
   builder.add("command", VPackValue(_command));
-  builder.add("database", VPackValue(_vocbase->_name));
+  builder.add("database", VPackValue(_vocbase->name()));
 }
 
 // handles the next tick

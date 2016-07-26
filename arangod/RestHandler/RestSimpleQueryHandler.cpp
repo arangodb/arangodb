@@ -196,7 +196,7 @@ void RestSimpleQueryHandler::allDocumentKeys() {
     } else if (returnType == "id") {
       aql.append("doc._id");
     } else {
-      aql.append(std::string("CONCAT('/_db/") + _vocbase->_name +
+      aql.append(std::string("CONCAT('/_db/") + _vocbase->name() +
                  "/_api/document/', doc._id)");
     }
 

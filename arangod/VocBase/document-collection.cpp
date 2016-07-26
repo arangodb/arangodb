@@ -114,7 +114,7 @@ TRI_document_collection_t::~TRI_document_collection_t() {
 }
 
 std::string TRI_document_collection_t::label() const {
-  return std::string(_vocbase->_name) + " / " + _info.name();
+  return _vocbase->name() + " / " + _info.name();
 }
  
 ////////////////////////////////////////////////////////////////////////////////
@@ -1185,7 +1185,7 @@ static int IterateMarkersCollection(arangodb::Transaction* trx,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_document_collection_t* TRI_CreateDocumentCollection(
-    TRI_vocbase_t* vocbase, char const* path, VocbaseCollectionInfo& parameters,
+    TRI_vocbase_t* vocbase, std::string const& path, VocbaseCollectionInfo& parameters,
     TRI_voc_cid_t cid) {
   if (cid > 0) {
     TRI_UpdateTickServer(cid);
@@ -1446,7 +1446,7 @@ int TRI_FillIndexesDocumentCollection(arangodb::Transaction* trx,
   if (primaryIndex->size() > NotificationSizeThreshold) {
     LOG_TOPIC(TRACE, Logger::PERFORMANCE)
         << "fill-indexes-document-collection { collection: "
-        << document->_vocbase->_name << "/" << document->_info.name()
+        << document->_vocbase->name() << "/" << document->_info.name()
         << " }, indexes: " << (n - 1);
   }
 
@@ -1518,7 +1518,7 @@ int TRI_FillIndexesDocumentCollection(arangodb::Transaction* trx,
   LOG_TOPIC(TRACE, Logger::PERFORMANCE)
       << "[timer] " << Logger::FIXED(TRI_microtime() - start)
       << " s, fill-indexes-document-collection { collection: "
-      << document->_vocbase->_name << "/" << document->_info.name()
+      << document->_vocbase->name() << "/" << document->_info.name()
       << " }, indexes: " << (n - 1);
 
   return result.load();
@@ -1548,7 +1548,7 @@ TRI_document_collection_t* TRI_OpenDocumentCollection(TRI_vocbase_t* vocbase,
 
   double start = TRI_microtime();
   LOG_TOPIC(TRACE, Logger::PERFORMANCE)
-      << "open-document-collection { collection: " << vocbase->_name << "/"
+      << "open-document-collection { collection: " << vocbase->name() << "/"
       << col->name() << " }";
 
   TRI_collection_t* collection =
@@ -1602,13 +1602,13 @@ TRI_document_collection_t* TRI_OpenDocumentCollection(TRI_vocbase_t* vocbase,
     double start = TRI_microtime();
 
     LOG_TOPIC(TRACE, Logger::PERFORMANCE)
-        << "iterate-markers { collection: " << vocbase->_name << "/"
+        << "iterate-markers { collection: " << vocbase->name() << "/"
         << document->_info.name() << " }";
 
     // iterate over all markers of the collection
     res = IterateMarkersCollection(&trx, collection);
 
-    LOG_TOPIC(TRACE, Logger::PERFORMANCE) << "[timer] " << Logger::FIXED(TRI_microtime() - start) << " s, iterate-markers { collection: " << vocbase->_name << "/" << document->_info.name() << " }";
+    LOG_TOPIC(TRACE, Logger::PERFORMANCE) << "[timer] " << Logger::FIXED(TRI_microtime() - start) << " s, iterate-markers { collection: " << vocbase->name() << "/" << document->_info.name() << " }";
   } catch (arangodb::basics::Exception const& ex) {
     res = ex.code();
   } catch (std::bad_alloc const&) {
@@ -1657,7 +1657,7 @@ TRI_document_collection_t* TRI_OpenDocumentCollection(TRI_vocbase_t* vocbase,
 
   LOG_TOPIC(TRACE, Logger::PERFORMANCE)
       << "[timer] " << Logger::FIXED(TRI_microtime() - start)
-      << " s, open-document-collection { collection: " << vocbase->_name << "/"
+      << " s, open-document-collection { collection: " << vocbase->name() << "/"
       << document->_info.name() << " }";
 
   return document;
@@ -1722,7 +1722,7 @@ static int FillIndexBatch(arangodb::Transaction* trx,
   double start = TRI_microtime();
 
   LOG_TOPIC(TRACE, Logger::PERFORMANCE)
-      << "fill-index-batch { collection: " << document->_vocbase->_name << "/"
+      << "fill-index-batch { collection: " << document->_vocbase->name() << "/"
       << document->_info.name() << " }, " << idx->context()
       << ", threads: " << indexPool->numThreads()
       << ", buckets: " << document->_info.indexBuckets();
@@ -1781,7 +1781,7 @@ static int FillIndexBatch(arangodb::Transaction* trx,
 
   LOG_TOPIC(TRACE, Logger::PERFORMANCE)
       << "[timer] " << Logger::FIXED(TRI_microtime() - start)
-      << " s, fill-index-batch { collection: " << document->_vocbase->_name
+      << " s, fill-index-batch { collection: " << document->_vocbase->name()
       << "/" << document->_info.name() << " }, " << idx->context()
       << ", threads: " << indexPool->numThreads()
       << ", buckets: " << document->_info.indexBuckets();
@@ -1799,7 +1799,7 @@ static int FillIndexSequential(arangodb::Transaction* trx,
   double start = TRI_microtime();
 
   LOG_TOPIC(TRACE, Logger::PERFORMANCE)
-      << "fill-index-sequential { collection: " << document->_vocbase->_name
+      << "fill-index-sequential { collection: " << document->_vocbase->name()
       << "/" << document->_info.name() << " }, " << idx->context()
       << ", buckets: " << document->_info.indexBuckets();
 
@@ -1845,7 +1845,7 @@ static int FillIndexSequential(arangodb::Transaction* trx,
 
   LOG_TOPIC(TRACE, Logger::PERFORMANCE)
       << "[timer] " << Logger::FIXED(TRI_microtime() - start)
-      << " s, fill-index-sequential { collection: " << document->_vocbase->_name
+      << " s, fill-index-sequential { collection: " << document->_vocbase->name()
       << "/" << document->_info.name() << " }, " << idx->context()
       << ", buckets: " << document->_info.indexBuckets();
 
@@ -3441,7 +3441,7 @@ int TRI_document_collection_t::update(Transaction* trx,
       if (ServerState::isDBServer(trx->serverRole())) {
         // Need to check that no sharding keys have changed:
         if (arangodb::shardKeysChanged(
-                _vocbase->_name,
+                _vocbase->name(),
                 trx->resolver()->getCollectionNameCluster(_info.planId()),
                 VPackSlice(oldHeader->vpack()), builder->slice(), false)) {
           return TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES;
@@ -3589,7 +3589,7 @@ int TRI_document_collection_t::replace(Transaction* trx,
     if (ServerState::isDBServer(trx->serverRole())) {
       // Need to check that no sharding keys have changed:
       if (arangodb::shardKeysChanged(
-              _vocbase->_name,
+              _vocbase->name(),
               trx->resolver()->getCollectionNameCluster(_info.planId()),
               VPackSlice(oldHeader->vpack()), builder->slice(), false)) {
         return TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES;

@@ -216,7 +216,7 @@ static void JS_SynchronizeReplication(
   if (object->Has(TRI_V8_ASCII_STRING("database"))) {
     database = TRI_ObjectToString(object->Get(TRI_V8_ASCII_STRING("database")));
   } else {
-    database = std::string(vocbase->_name);
+    database = vocbase->name();
   }
 
   std::string username;
@@ -454,7 +454,7 @@ static void JS_ConfigureApplierReplication(
     } else {
       if (config._database.empty()) {
         // no database set, use current
-        config._database = std::string(vocbase->_name);
+        config._database = vocbase->name();
       }
     }
 

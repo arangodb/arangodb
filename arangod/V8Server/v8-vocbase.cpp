@@ -59,6 +59,8 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/VocbaseContext.h"
 #include "Statistics/StatisticsFeature.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/StorageEngine.h"
 #include "Utils/ExplicitTransaction.h"
 #include "Utils/V8TransactionContext.h"
 #include "V8/JSLoader.h"
@@ -1892,7 +1894,7 @@ static void MapGetVocBase(v8::Local<v8::String> const name,
 
   if (ServerState::instance()->isCoordinator()) {
     std::shared_ptr<CollectionInfo> const ci =
-        ClusterInfo::instance()->getCollection(vocbase->_name,
+        ClusterInfo::instance()->getCollection(vocbase->name(),
                                                std::string(key));
 
     if ((*ci).empty()) {
@@ -1958,8 +1960,10 @@ static void JS_PathDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (vocbase == nullptr) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
+    
+  StorageEngine* engine = application_features::ApplicationServer::getFeature<EngineSelectorFeature>("EngineSelector")->ENGINE;
 
-  TRI_V8_RETURN_STRING(vocbase->_path);
+  TRI_V8_RETURN_STD_STRING(engine->path(vocbase->_id));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1993,7 +1997,8 @@ static void JS_NameDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
-  TRI_V8_RETURN_STRING(vocbase->_name);
+  std::string const n = vocbase->name();
+  TRI_V8_RETURN_STD_STRING(n);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2045,7 +2050,7 @@ static void JS_UseDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
-  if (TRI_EqualString(name.c_str(), vocbase->_name)) {
+  if (name == vocbase->name()) {
     // same database. nothing to do
     TRI_V8_RETURN(WrapVocBase(isolate, vocbase));
   }

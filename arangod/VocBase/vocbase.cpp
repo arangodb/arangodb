@@ -48,10 +48,11 @@
 #include "Basics/tri-strings.h"
 #include "Logger/Logger.h"
 #include "RestServer/DatabaseFeature.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/StorageEngine.h"
 #include "Utils/CollectionKeysRepository.h"
 #include "Utils/CursorRepository.h"
 #include "V8Server/v8-user-structures.h"
-#include "VocBase/CleanupThread.h"
 #include "VocBase/Ditch.h"
 #include "VocBase/compactor.h"
 #include "VocBase/document-collection.h"
@@ -104,7 +105,7 @@ TRI_vocbase_col_t::TRI_vocbase_col_t(TRI_vocbase_t* vocbase,
       _status(TRI_VOC_COL_STATUS_CORRUPTED),
       _collection(nullptr),
       _path(path),
-      _dbName(vocbase->_name),
+      _dbName(vocbase->name()),
       _name(name),
       _isLocal(true),
       _canDrop(true),
@@ -510,9 +511,11 @@ static TRI_vocbase_col_t* CreateCollection(
   // .............................................................................
   // ok, construct the collection
   // .............................................................................
+  
+  StorageEngine* engine = application_features::ApplicationServer::getFeature<EngineSelectorFeature>("EngineSelector")->ENGINE;
 
   TRI_document_collection_t* document =
-      TRI_CreateDocumentCollection(vocbase, vocbase->_path, parameters, cid);
+      TRI_CreateDocumentCollection(vocbase, engine->path(vocbase->_id), parameters, cid);
 
   if (document == nullptr) {
     return nullptr;
@@ -657,166 +660,6 @@ static int RenameCollection(TRI_vocbase_t* vocbase,
   // invalidate all entries for the two collections
   arangodb::aql::QueryCache::instance()->invalidate(
       vocbase, std::vector<std::string>{oldName, newName});
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief this iterator is called on startup for journal and compactor file
-/// of a collection
-/// it will check the ticks of all markers and update the internal tick
-/// counter accordingly. this is done so we'll not re-assign an already used
-/// tick value
-////////////////////////////////////////////////////////////////////////////////
-
-static bool StartupTickIterator(TRI_df_marker_t const* marker, void* data,
-                                TRI_datafile_t* datafile) {
-  auto tick = static_cast<TRI_voc_tick_t*>(data);
-  TRI_voc_tick_t markerTick = marker->getTick();
-  
-  if (markerTick > *tick) {
-    *tick = markerTick;
-  }
-
-  return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief scans a directory and loads all collections
-////////////////////////////////////////////////////////////////////////////////
-
-static int ScanPath(TRI_vocbase_t* vocbase, char const* path, bool isUpgrade,
-                    bool iterateMarkers) {
-  std::vector<std::string> files = TRI_FilesDirectory(path);
-
-  if (iterateMarkers) {
-    LOG(TRACE) << "scanning all collection markers in database '"
-               << vocbase->_name;
-  }
-
-  for (auto const& name : files) {
-    TRI_ASSERT(!name.empty());
-
-    if (!StringUtils::isPrefix(name, "collection-") ||
-        StringUtils::isSuffix(name, ".tmp")) {
-      // no match, ignore this file
-      continue;
-    }
-
-    std::string file = FileUtils::buildFilename(path, name);
-
-    if (TRI_IsDirectory(file.c_str())) {
-      if (!TRI_IsWritable(file.c_str())) {
-        // the collection directory we found is not writable for the current
-        // user
-        // this can cause serious trouble so we will abort the server start if
-        // we
-        // encounter this situation
-        LOG(ERR) << "database subdirectory '" << file
-                 << "' is not writable for current user";
-
-        return TRI_set_errno(TRI_ERROR_ARANGO_DATADIR_NOT_WRITABLE);
-      }
-
-      int res = TRI_ERROR_NO_ERROR;
-
-      try {
-        arangodb::VocbaseCollectionInfo info =
-            arangodb::VocbaseCollectionInfo::fromFile(file.c_str(), vocbase,
-                                                      "",  // Name is unused
-                                                      true);
-        TRI_UpdateTickServer(info.id());
-
-        if (info.deleted()) {
-          // we found a collection that is marked as deleted.
-          // deleted collections should be removed on startup. this is the
-          // default
-          LOG(DEBUG) << "collection '" << name
-                     << "' was deleted, wiping it";
-
-          res = TRI_RemoveDirectory(file.c_str());
-
-          if (res != TRI_ERROR_NO_ERROR) {
-            LOG(WARN) << "cannot wipe deleted collection: " << TRI_last_error();
-          }
-        } else {
-          // we found a collection that is still active
-          TRI_col_type_e type = info.type();
-
-          if (info.version() < TRI_COL_VERSION) {
-            // collection is too "old"
-
-            if (!isUpgrade) {
-              LOG(ERR) << "collection '" << info.name()
-                       << "' has a too old version. Please start the server "
-                          "with the --database.auto-upgrade option.";
-
-              return TRI_set_errno(res);
-            } else {
-              if (info.version() < TRI_COL_VERSION_20) {
-                LOG(ERR) << "collection '" << info.name()
-                         << "' is too old to be upgraded with this ArangoDB "
-                            "version.";
-                res = TRI_ERROR_ARANGO_ILLEGAL_STATE;
-
-                return TRI_set_errno(res);
-              }
-            }
-          }
-
-          TRI_vocbase_col_t* c = nullptr;
-
-          try {
-            c = AddCollection(vocbase, type, info.namec_str(), info.id(), file);
-          } catch (...) {
-            // if we caught an exception, c is still a nullptr
-          }
-
-          if (c == nullptr) {
-            LOG(ERR) << "failed to add document collection from '"
-                     << file << "'";
-
-            return TRI_set_errno(TRI_ERROR_ARANGO_CORRUPTED_COLLECTION);
-          }
-
-          c->_planId = info.planId();
-          c->_status = TRI_VOC_COL_STATUS_UNLOADED;
-
-          if (iterateMarkers) {
-            // iterating markers may be time-consuming. we'll only do it if
-            // we have to
-            TRI_voc_tick_t tick;
-            TRI_IterateTicksCollection(file.c_str(), StartupTickIterator,
-                                       &tick);
-
-            TRI_UpdateTickServer(tick);
-          }
-
-          LOG(DEBUG) << "added document collection '" << info.name()
-                     << "' from '" << file << "'";
-        }
-
-      } catch (arangodb::basics::Exception const& e) {
-        std::string tmpfile = FileUtils::buildFilename(file, ".tmp");
-
-        if (TRI_ExistsFile(tmpfile.c_str())) {
-          LOG(TRACE) << "ignoring temporary directory '" << tmpfile << "'";
-          // temp file still exists. this means the collection was not created
-          // fully and needs to be ignored
-          continue;  // ignore this directory
-        }
-
-        res = e.code();
-
-        LOG(ERR) << "cannot read collection info file in directory '"
-                 << file << "': " << TRI_errno_string(res);
-
-        return TRI_set_errno(res);
-      }
-    } else {
-      LOG(DEBUG) << "ignoring non-directory '" << file << "'";
-    }
-  }
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -1228,79 +1071,6 @@ std::shared_ptr<VPackBuilder> TRI_vocbase_col_t::toVelocyPackIndexes(
   toVelocyPackIndexes(*builder, maxTick);
   builder->close();
   return builder;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create a vocbase object, without threads and some other attributes
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_vocbase_t* TRI_CreateInitialVocBase(TRI_vocbase_type_e type, char const* path,
-    TRI_voc_tick_t id, char const* name) {
-  try {
-    auto vocbase =
-        std::make_unique<TRI_vocbase_t>(type, path, id, name);
-
-    return vocbase.release();
-  } catch (...) {
-    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
-
-    return nullptr;
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief opens an existing database, scans all collections
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_vocbase_t* TRI_OpenVocBase(char const* path, TRI_voc_tick_t id, char const* name,
-                               bool isUpgrade, bool iterateMarkers) {
-  TRI_ASSERT(name != nullptr);
-  TRI_ASSERT(path != nullptr);
-
-  TRI_vocbase_t* vocbase = TRI_CreateInitialVocBase(
-      TRI_VOCBASE_TYPE_NORMAL, path, id, name);
-
-  if (vocbase == nullptr) {
-    return nullptr;
-  }
-
-  // scan the database path for collections
-  // this will create the list of collections and their datafiles, and will also
-  // determine the last tick values used (if iterateMarkers is true)
-  int res = ScanPath(vocbase, vocbase->_path, isUpgrade, iterateMarkers);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    delete vocbase;
-    TRI_set_errno(res);
-
-    return nullptr;
-  }
-
-  // vocbase is now active
-  vocbase->_state = (sig_atomic_t)TRI_VOCBASE_STATE_NORMAL;
-
-  // start cleanup thread
-  TRI_ASSERT(vocbase->_cleanupThread == nullptr);
-  vocbase->_cleanupThread.reset(new CleanupThread(vocbase));
-
-  if (!vocbase->_cleanupThread->start()) {
-    delete vocbase;
-    LOG(ERR) << "could not start cleanup thread";
-    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
-
-    return nullptr;
-  }
-
-  try {
-    vocbase->_replicationApplier.reset(TRI_CreateReplicationApplier(vocbase));
-  } catch (std::exception const& ex) {
-    LOG(FATAL) << "initializing replication applier for database '"
-               << vocbase->_name << "' failed: " << ex.what();
-    FATAL_ERROR_EXIT();
-  }
-
-  // we are done
-  return vocbase;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2020,7 +1790,7 @@ bool TRI_CanRemoveVocBase(TRI_vocbase_t* vocbase) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_IsSystemVocBase(TRI_vocbase_t* vocbase) {
-  return TRI_EqualString(vocbase->_name, TRI_VOC_SYSTEM_DATABASE);
+  return vocbase->name() == TRI_VOC_SYSTEM_DATABASE;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2091,12 +1861,10 @@ void TRI_SetThrowCollectionNotLoadedVocBase(bool value) {
 /// @brief create a vocbase object
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vocbase_t::TRI_vocbase_t(TRI_vocbase_type_e type,
-                             char const* path, TRI_voc_tick_t id,
-                             char const* name)
+TRI_vocbase_t::TRI_vocbase_t(TRI_vocbase_type_e type, TRI_voc_tick_t id,
+                             std::string const& name)
     : _id(id),
-      _path(nullptr),
-      _name(nullptr),
+      _name(name),
       _type(type),
       _refCount(0),
       _deadlockDetector(false),
@@ -2109,9 +1877,6 @@ TRI_vocbase_t::TRI_vocbase_t(TRI_vocbase_type_e type,
   _queries = new arangodb::aql::QueryList(this);
   _cursorRepository = new arangodb::CursorRepository(this);
   _collectionKeys = new arangodb::CollectionKeysRepository();
-
-  _path = TRI_DuplicateString(TRI_CORE_MEM_ZONE, path);
-  _name = TRI_DuplicateString(TRI_CORE_MEM_ZONE, name);
 
   // init collections
   _collections.reserve(32);
@@ -2141,14 +1906,11 @@ TRI_vocbase_t::~TRI_vocbase_t() {
   delete _cursorRepository;
   delete _collectionKeys;
   delete _queries;
-
-  // free name and path
-  if (_path != nullptr) {
-    TRI_Free(TRI_CORE_MEM_ZONE, _path);
-  }
-  if (_name != nullptr) {
-    TRI_Free(TRI_CORE_MEM_ZONE, _name);
-  }
+}
+  
+std::string const TRI_vocbase_t::path() {
+  StorageEngine* engine = application_features::ApplicationServer::getFeature<EngineSelectorFeature>("EngineSelector")->ENGINE;
+  return engine->path(_id);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

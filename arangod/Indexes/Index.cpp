@@ -334,7 +334,7 @@ std::string Index::context() const {
   std::ostringstream result;
 
   result << "index { id: " << id() << ", type: " << typeName()
-         << ", collection: " << _collection->_vocbase->_name << "/"
+         << ", collection: " << _collection->_vocbase->name() << "/"
          << _collection->_info.name()
          << ", unique: " << (_unique ? "true" : "false") << ", fields: ";
   result << "[";

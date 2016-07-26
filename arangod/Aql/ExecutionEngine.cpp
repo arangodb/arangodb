@@ -506,7 +506,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     auto cc = arangodb::ClusterComm::instance();
 
     std::string const url("/_db/" + arangodb::basics::StringUtils::urlEncode(
-                                        collection->vocbase->_name) +
+                                        collection->vocbase->name()) +
                           "/_api/aql/instantiate");
 
     auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
@@ -746,7 +746,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
             std::string queryId = arangodb::basics::StringUtils::itoa(id);
             std::string theID =
                 arangodb::basics::StringUtils::itoa(it->idOfRemoteNode) + "/" +
-                engine->getQuery()->vocbase()->_name;
+                engine->getQuery()->vocbase()->name();
             queryIds.emplace(theID, queryId);
           } catch (...) {
             queryRegistry->destroy(engine->getQuery()->vocbase(), id,
@@ -916,7 +916,7 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
           TRI_vocbase_t* vocbase = query->vocbase();
           std::string const url(
               "/_db/" +
-              arangodb::basics::StringUtils::urlEncode(vocbase->_name) +
+              arangodb::basics::StringUtils::urlEncode(vocbase->name()) +
               "/_api/aql/lock/" + queryId);
           std::unordered_map<std::string, std::string> headers;
           auto res =
@@ -954,7 +954,7 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
             }
             std::string const url(
                 "/_db/" +
-                arangodb::basics::StringUtils::urlEncode(vocbase->_name) +
+                arangodb::basics::StringUtils::urlEncode(vocbase->name()) +
                 "/_api/aql/shutdown/" + queryId);
             std::unordered_map<std::string, std::string> headers;
             auto res =

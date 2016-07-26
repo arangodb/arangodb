@@ -75,13 +75,17 @@ class StorageEngine : public application_features::ApplicationFeature {
   virtual void getDatabases(arangodb::velocypack::Builder& result) = 0;
 
   // fill the Builder object with an array of collections (and their corresponding
-  // indexes) that were detected by the storage engine. called at server start only
-  virtual void getCollectionsAndIndexes(arangodb::velocypack::Builder& result) = 0;
+  // indexes) that were detected by the storage engine. called at server start separately
+  // for each database
+  virtual int getCollectionsAndIndexes(TRI_vocbase_t* vocbase, arangodb::velocypack::Builder& result, 
+                                       bool wasCleanShutdown, bool isUpgrade) = 0;
 
   // determine the maximum revision id previously handed out by the storage
   // engine. this value is used as a lower bound for further HLC values handed out by
   // the server. called at server start only, after getDatabases() and getCollectionsAndIndexes()
   virtual uint64_t getMaxRevision() = 0;
+
+  virtual std::string path(TRI_voc_tick_t id) const = 0;
 
   virtual TRI_vocbase_t* openDatabase(arangodb::velocypack::Slice const& parameters, bool isUpgrade) = 0;
 

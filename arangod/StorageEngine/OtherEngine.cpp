@@ -58,7 +58,8 @@ void OtherEngine::getDatabases(arangodb::velocypack::Builder& result) {
 
 // fill the Builder object with an array of collections (and their corresponding
 // indexes) that were detected by the storage engine. called at server start only
-void OtherEngine::getCollectionsAndIndexes(arangodb::velocypack::Builder& result) {
+int OtherEngine::getCollectionsAndIndexes(TRI_vocbase_t* vocbase, arangodb::velocypack::Builder& result, bool, bool) {
+  return TRI_ERROR_NO_ERROR;
 }
 
 // determine the maximum revision id previously handed out by the storage

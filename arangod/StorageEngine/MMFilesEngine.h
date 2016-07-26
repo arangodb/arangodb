@@ -68,13 +68,17 @@ class MMFilesEngine final : public StorageEngine {
   void getDatabases(arangodb::velocypack::Builder& result) override;
 
   // fill the Builder object with an array of collections (and their corresponding
-  // indexes) that were detected by the storage engine. called at server start only
-  void getCollectionsAndIndexes(arangodb::velocypack::Builder& result) override;
+  // indexes) that were detected by the storage engine. called at server start separately
+  // for each database
+  int getCollectionsAndIndexes(TRI_vocbase_t* vocbase, arangodb::velocypack::Builder& result,
+                               bool wasCleanShutdown, bool isUpgrade) override;
 
   // determine the maximum revision id previously handed out by the storage
   // engine. this value is used as a lower bound for further HLC values handed out by
   // the server. called at server start only, after getDatabases() and getCollectionsAndIndexes()
   uint64_t getMaxRevision() override;
+  
+  std::string path(TRI_voc_tick_t id) const override { return databaseDirectory(id); }
   
   TRI_vocbase_t* openDatabase(arangodb::velocypack::Slice const& parameters, bool isUpgrade) override;
 
@@ -210,7 +214,12 @@ class MMFilesEngine final : public StorageEngine {
   int waitForDeletion(std::string const& directoryName, int statusCode);
    
   /// @brief open an existing database. internal function
-  TRI_vocbase_t* openExistingDatabase(TRI_voc_tick_t id, std::string const& name, bool isUpgrade, bool iterateMarkersOnOpen);
+  TRI_vocbase_t* openExistingDatabase(TRI_voc_tick_t id, std::string const& name, bool wasCleanShutdown, bool isUpgrade);
+
+  /// @brief note the maximum local tick
+  void noteTick(TRI_voc_tick_t tick) {
+    if (tick > _maxTick) { _maxTick = tick; }
+  }
 
  public:
   static std::string const EngineName;
@@ -220,6 +229,8 @@ class MMFilesEngine final : public StorageEngine {
   std::string _databasePath;
   bool _iterateMarkersOnOpen;
   bool _isUpgrade;
+  TRI_voc_tick_t _maxTick;
+  std::vector<std::pair<std::string, std::string>> _deleted;
 };
 
 }

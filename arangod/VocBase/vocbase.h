@@ -238,14 +238,13 @@ enum TRI_vocbase_type_e {
 ////////////////////////////////////////////////////////////////////////////////
 
 struct TRI_vocbase_t {
-  TRI_vocbase_t(TRI_vocbase_type_e, char const*, TRI_voc_tick_t,
-                char const*);
-
+  TRI_vocbase_t(TRI_vocbase_type_e type, TRI_voc_tick_t id, std::string const& name);
   ~TRI_vocbase_t();
 
   TRI_voc_tick_t _id;        // internal database id
-  char* _path;               // path to the data directory
-  char* _name;               // database name
+ private:
+  std::string _name;         // database name
+ public:
   TRI_vocbase_type_e _type;  // type (normal or coordinator)
 
   std::atomic<uint64_t> _refCount;
@@ -301,6 +300,8 @@ struct TRI_vocbase_t {
   compaction_blockers_t _compactionBlockers;
 
  public:
+  std::string const name() { return _name; }
+  std::string const path();
   void updateReplicationClient(TRI_server_id_t, TRI_voc_tick_t);
   std::vector<std::tuple<TRI_server_id_t, double, TRI_voc_tick_t>>
   getReplicationClients();
@@ -410,21 +411,6 @@ class TRI_vocbase_col_t {
   bool _canUnload;  // true if the collection can be unloaded
   bool _canRename;  // true if the collection can be renamed
 };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create a vocbase object, without threads and some other attributes
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_vocbase_t* TRI_CreateInitialVocBase(TRI_vocbase_type_e,
-                                        char const*, TRI_voc_tick_t,
-                                        char const*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief opens an existing database, loads all collections
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_vocbase_t* TRI_OpenVocBase(char const*, TRI_voc_tick_t,
-                               char const*, bool, bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief closes a database and all collections

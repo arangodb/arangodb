@@ -172,7 +172,7 @@ static int ParseDocumentOrDocumentHandle(v8::Isolate* isolate,
     if (ServerState::instance()->isCoordinator()) {
       ClusterInfo* ci = ClusterInfo::instance();
       std::shared_ptr<CollectionInfo> c =
-          ci->getCollection(vocbase->_name, collectionName);
+          ci->getCollection(vocbase->name(), collectionName);
       col = CoordinatorCollection(vocbase, *c);
 
       if (col != nullptr && col->_cid == 0) {
@@ -271,7 +271,7 @@ static std::vector<TRI_vocbase_col_t*> GetCollectionsCluster(
   std::vector<TRI_vocbase_col_t*> result;
 
   std::vector<std::shared_ptr<CollectionInfo>> const collections =
-      ClusterInfo::instance()->getCollections(vocbase->_name);
+      ClusterInfo::instance()->getCollections(vocbase->name());
 
   for (auto& collection : collections) {
     TRI_vocbase_col_t* c = CoordinatorCollection(vocbase, *(collection));
@@ -296,7 +296,7 @@ static std::vector<std::string> GetCollectionNamesCluster(
   std::vector<std::string> result;
 
   std::vector<std::shared_ptr<CollectionInfo>> const collections =
-      ClusterInfo::instance()->getCollections(vocbase->_name);
+      ClusterInfo::instance()->getCollections(vocbase->name());
 
   for (auto& collection : collections) {
     std::string const& name = collection->name();
@@ -2705,7 +2705,7 @@ static void JS_CollectionVocbase(
   if (ServerState::instance()->isCoordinator()) {
     std::string const name = TRI_ObjectToString(val);
     std::shared_ptr<CollectionInfo> const ci =
-        ClusterInfo::instance()->getCollection(vocbase->_name, name);
+        ClusterInfo::instance()->getCollection(vocbase->name(), name);
 
     if ((*ci).id() == 0 || (*ci).empty()) {
       // not found
@@ -2805,7 +2805,7 @@ static void JS_CompletionsVocbase(
   std::vector<std::string> names;
 
   if (ServerState::instance()->isCoordinator()) {
-    if (ClusterInfo::instance()->doesDatabaseExist(vocbase->_name)) {
+    if (ClusterInfo::instance()->doesDatabaseExist(vocbase->name())) {
       names = GetCollectionNamesCluster(vocbase);
     }
   } else {

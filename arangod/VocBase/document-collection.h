@@ -327,7 +327,7 @@ struct TRI_document_collection_t : public TRI_collection_t {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_document_collection_t* TRI_CreateDocumentCollection(
-    TRI_vocbase_t*, char const*, arangodb::VocbaseCollectionInfo&,
+    TRI_vocbase_t*, std::string const&, arangodb::VocbaseCollectionInfo&,
     TRI_voc_cid_t);
 
 ////////////////////////////////////////////////////////////////////////////////

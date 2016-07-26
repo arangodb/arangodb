@@ -1273,7 +1273,7 @@ static void JS_DebugSetFailAt(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (v8g->_vocbase == nullptr) {
     TRI_V8_THROW_EXCEPTION_MEMORY();
   }
-  std::string dbname(v8g->_vocbase->_name);
+  std::string dbname(v8g->_vocbase->name());
 
   // extract arguments
   if (args.Length() != 1) {
@@ -1317,7 +1317,7 @@ static void JS_DebugRemoveFailAt(
   if (v8g->_vocbase == nullptr) {
     TRI_V8_THROW_EXCEPTION_MEMORY();
   }
-  std::string dbname(v8g->_vocbase->_name);
+  std::string dbname(v8g->_vocbase->name());
 
   // extract arguments
   if (args.Length() != 1) {
@@ -1370,7 +1370,7 @@ static void JS_DebugClearFailAt(
     if (v8g->_vocbase == nullptr) {
       TRI_V8_THROW_EXCEPTION_MEMORY();
     }
-    std::string dbname(v8g->_vocbase->_name);
+    std::string dbname(v8g->_vocbase->name());
 
     int res = clusterSendToAllServers(
         dbname, "_admin/debug/failat",

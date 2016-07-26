@@ -1390,7 +1390,7 @@ OperationResult Transaction::documentCoordinator(std::string const& collectionNa
   }
   
   int res = arangodb::getDocumentOnCoordinator(
-      _vocbase->_name, collectionName, value, options, headers, responseCode, errorCounter, resultBody);
+      _vocbase->name(), collectionName, value, options, headers, responseCode, errorCounter, resultBody);
 
   if (res == TRI_ERROR_NO_ERROR) {
     if (responseCode == GeneralResponse::ResponseCode::OK ||
@@ -1540,7 +1540,7 @@ OperationResult Transaction::insertCoordinator(std::string const& collectionName
   auto resultBody = std::make_shared<VPackBuilder>();
 
   int res = arangodb::createDocumentOnCoordinator(
-      _vocbase->_name, collectionName, options, value, responseCode,
+      _vocbase->name(), collectionName, options, value, responseCode,
       errorCounter, resultBody);
 
   if (res == TRI_ERROR_NO_ERROR) {
@@ -1672,7 +1672,7 @@ OperationResult Transaction::insertLocal(std::string const& collectionName,
     // Now replicate the good operations on all followers:
     std::string path
         = "/_db/" +
-          arangodb::basics::StringUtils::urlEncode(_vocbase->_name) +
+          arangodb::basics::StringUtils::urlEncode(_vocbase->name()) +
           "/_api/document/" +
           arangodb::basics::StringUtils::urlEncode(document->_info.name())
           + "?isRestore=true";
@@ -1802,7 +1802,7 @@ OperationResult Transaction::updateCoordinator(std::string const& collectionName
   auto resultBody = std::make_shared<VPackBuilder>();
 
   int res = arangodb::modifyDocumentOnCoordinator(
-      _vocbase->_name, collectionName, newValue, options,
+      _vocbase->name(), collectionName, newValue, options,
       true /* isPatch */, headers, responseCode, errorCounter,
       resultBody);
 
@@ -1875,7 +1875,7 @@ OperationResult Transaction::replaceCoordinator(std::string const& collectionNam
   auto resultBody = std::make_shared<VPackBuilder>();
 
   int res = arangodb::modifyDocumentOnCoordinator(
-      _vocbase->_name, collectionName, newValue, options,
+      _vocbase->name(), collectionName, newValue, options,
       false /* isPatch */, headers, responseCode, errorCounter,
       resultBody);
 
@@ -2029,7 +2029,7 @@ OperationResult Transaction::modifyLocal(
 
     std::string path
         = "/_db/" +
-          arangodb::basics::StringUtils::urlEncode(_vocbase->_name) +
+          arangodb::basics::StringUtils::urlEncode(_vocbase->name()) +
           "/_api/document/" +
           arangodb::basics::StringUtils::urlEncode(document->_info.name())
           + "?isRestore=true";
@@ -2152,7 +2152,7 @@ OperationResult Transaction::removeCoordinator(std::string const& collectionName
   auto resultBody = std::make_shared<VPackBuilder>();
 
   int res = arangodb::deleteDocumentOnCoordinator(
-      _vocbase->_name, collectionName, value, options, responseCode,
+      _vocbase->name(), collectionName, value, options, responseCode,
       errorCounter, resultBody);
 
   if (res == TRI_ERROR_NO_ERROR) {
@@ -2291,7 +2291,7 @@ OperationResult Transaction::removeLocal(std::string const& collectionName,
 
     std::string path
         = "/_db/" +
-          arangodb::basics::StringUtils::urlEncode(_vocbase->_name) +
+          arangodb::basics::StringUtils::urlEncode(_vocbase->name()) +
           "/_api/document/" +
           arangodb::basics::StringUtils::urlEncode(document->_info.name())
           + "?isRestore=true";
@@ -2474,7 +2474,7 @@ OperationResult Transaction::truncate(std::string const& collectionName,
 OperationResult Transaction::truncateCoordinator(std::string const& collectionName,
                                                  OperationOptions& options) {
   return OperationResult(
-      arangodb::truncateCollectionOnCoordinator(_vocbase->_name,
+      arangodb::truncateCollectionOnCoordinator(_vocbase->name(),
                                                 collectionName));
 }
 
@@ -2537,7 +2537,7 @@ OperationResult Transaction::truncateLocal(std::string const& collectionName,
 
       std::string path
           = "/_db/" +
-            arangodb::basics::StringUtils::urlEncode(_vocbase->_name) +
+            arangodb::basics::StringUtils::urlEncode(_vocbase->name()) +
             "/_api/collection/" + collectionName + "/truncate";
 
       auto body = std::make_shared<std::string>();
@@ -2604,7 +2604,7 @@ OperationResult Transaction::count(std::string const& collectionName) {
 
 OperationResult Transaction::countCoordinator(std::string const& collectionName) {
   uint64_t count = 0;
-  int res = arangodb::countOnCoordinator(_vocbase->_name, collectionName, count);
+  int res = arangodb::countOnCoordinator(_vocbase->name(), collectionName, count);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return OperationResult(res);
@@ -3111,12 +3111,12 @@ std::shared_ptr<Index> Transaction::indexForCollectionCoordinator(
     std::string const& name, std::string const& id) const {
   auto clusterInfo = arangodb::ClusterInfo::instance();
   auto collectionInfo =
-      clusterInfo->getCollection(std::string(_vocbase->_name), name);
+      clusterInfo->getCollection(_vocbase->name(), name);
 
   if (collectionInfo.get() == nullptr || (*collectionInfo).empty()) {
     THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_INTERNAL,
                                   "collection not found '%s' in database '%s'",
-                                  name.c_str(), _vocbase->_name);
+                                  name.c_str(), _vocbase->name().c_str());
   }
 
   VPackSlice const slice = (*collectionInfo).getIndexes();
@@ -3173,12 +3173,12 @@ std::vector<std::shared_ptr<Index>> Transaction::indexesForCollectionCoordinator
 
   auto clusterInfo = arangodb::ClusterInfo::instance();
   auto collectionInfo =
-      clusterInfo->getCollection(std::string(_vocbase->_name), name);
+      clusterInfo->getCollection(_vocbase->name(), name);
 
   if (collectionInfo.get() == nullptr || (*collectionInfo).empty()) {
     THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_INTERNAL,
                                   "collection not found '%s' in database '%s'",
-                                  name.c_str(), _vocbase->_name);
+                                  name.c_str(), _vocbase->name().c_str());
   }
 
   VPackSlice const slice = collectionInfo->getIndexes();

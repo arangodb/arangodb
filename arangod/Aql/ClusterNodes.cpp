@@ -46,7 +46,7 @@ void RemoteNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
   ExecutionNode::toVelocyPackHelperGeneric(nodes,
                                            verbose);  // call base class method
 
-  nodes.add("database", VPackValue(_vocbase->_name));
+  nodes.add("database", VPackValue(_vocbase->name()));
   nodes.add("collection", VPackValue(_collection->getName()));
   nodes.add("server", VPackValue(_server));
   nodes.add("ownName", VPackValue(_ownName));
@@ -85,7 +85,7 @@ ScatterNode::ScatterNode(ExecutionPlan* plan,
 void ScatterNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
   ExecutionNode::toVelocyPackHelperGeneric(nodes, verbose);  // call base class method
 
-  nodes.add("database", VPackValue(_vocbase->_name));
+  nodes.add("database", VPackValue(_vocbase->name()));
   nodes.add("collection", VPackValue(_collection->getName()));
 
   // And close it:
@@ -122,7 +122,7 @@ void DistributeNode::toVelocyPackHelper(VPackBuilder& nodes,
   ExecutionNode::toVelocyPackHelperGeneric(nodes,
                                            verbose);  // call base class method
 
-  nodes.add("database", VPackValue(_vocbase->_name));
+  nodes.add("database", VPackValue(_vocbase->name()));
   nodes.add("collection", VPackValue(_collection->getName()));
   nodes.add("varId", VPackValue(static_cast<int>(_varId)));
   nodes.add("alternativeVarId",
@@ -155,7 +155,7 @@ void GatherNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
   ExecutionNode::toVelocyPackHelperGeneric(nodes,
                                            verbose);  // call base class method
 
-  nodes.add("database", VPackValue(_vocbase->_name));
+  nodes.add("database", VPackValue(_vocbase->name()));
   nodes.add("collection", VPackValue(_collection->getName()));
 
   nodes.add(VPackValue("elements"));
