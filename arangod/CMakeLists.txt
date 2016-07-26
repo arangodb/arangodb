@@ -174,6 +174,7 @@ add_executable(${BIN_ARANGOD}
   Cluster/HeartbeatThread.cpp
   Cluster/RestAgencyCallbacksHandler.cpp
   Cluster/RestShardHandler.cpp
+  Cluster/TraverserEngine.cpp
   Cluster/TraverserEngineRegistry.cpp
   Cluster/ServerState.cpp
   Cluster/v8-cluster.cpp

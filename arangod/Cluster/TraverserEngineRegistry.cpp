@@ -26,6 +26,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
+#include "Cluster/TraverserEngine.h"
 
 using namespace arangodb::traverser;
 
