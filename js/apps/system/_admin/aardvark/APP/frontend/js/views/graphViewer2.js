@@ -246,15 +246,20 @@
 
         this.setupSigma();
 
+        self.fetchStarted = new Date();
         $.ajax({
           type: 'GET',
           url: arangoHelper.databaseUrl('/_admin/aardvark/graph/' + encodeURIComponent(this.name)),
           contentType: 'application/json',
           data: ajaxData,
           success: function (data) {
-            $('#calcText').html('Calculating layout. Please wait ... ');
+            self.fetchFinished = new Date();
+            self.calcStart = self.fetchFinished;
+            $('#calcText').html('Server response took ' + Math.abs(self.fetchFinished.getTime() - self.fetchStarted.getTime()) + ' ms. Now calculating layout. Please wait ... ');
             // arangoHelper.buildGraphSubNav(self.name, 'Content');
-            self.renderGraph(data, toFocus);
+            window.setTimeout(function () {
+              self.renderGraph(data, toFocus);
+            }, 50);
           },
           error: function (e) {
             try {
@@ -1263,7 +1268,6 @@
             sigma.canvas.edges.autoCurve(s);
           }
         }
-        s.refresh();
 
         if (!self.aqlMode) {
           s.bind('rightClickStage', function (e) {
@@ -1505,6 +1509,9 @@
       maxNodeSize = maxNodeSize * factor;
       s.settings('maxNodeSize', maxNodeSize);
       s.refresh();
+
+      self.calcFinished = new Date();
+      // console.log('Client side calculation took ' + Math.abs(self.calcFinished.getTime() - self.calcStart.getTime()) + ' ms');
     },
 
     keyUpFunction: function (event) {
@@ -1545,8 +1552,6 @@
         this.currentGraph.graph.edges().forEach(function (e) {
           e.color = e.originalColor;
         });
-
-        this.currentGraph.refresh();
       } else {
         $('#selectNodes').addClass('activated');
         this.graphLasso.activate();
