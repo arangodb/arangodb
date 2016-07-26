@@ -26,13 +26,14 @@
 #endif
 
 #include "compactor.h"
+#include "Basics/ConditionLocker.h"
+#include "Basics/ReadLocker.h"
+#include "Basics/WriteLocker.h"
 #include "Basics/conversions.h"
 #include "Basics/files.h"
 #include "Basics/FileUtils.h"
 #include "Basics/memory-map.h"
-#include "Basics/ReadLocker.h"
-#include "Basics/tri-strings.h"
-#include "Basics/WriteLocker.h"
+//#include "Basics/tri-strings.h"
 #include "Logger/Logger.h"
 #include "Indexes/PrimaryIndex.h"
 #include "Utils/SingleCollectionTransaction.h"
@@ -1192,9 +1193,8 @@ void TRI_CompactorVocBase(void* data) {
 
             // signal the cleanup thread that we worked and that it can now wake
             // up
-            TRI_LockCondition(&vocbase->_cleanupCondition);
-            TRI_SignalCondition(&vocbase->_cleanupCondition);
-            TRI_UnlockCondition(&vocbase->_cleanupCondition);
+            CONDITION_LOCKER(locker, vocbase->_cleanupCondition);
+            locker.signal();
           }
         }
       }

@@ -406,8 +406,7 @@ static void VPackState(VPackBuilder& builder,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_replication_applier_t* TRI_CreateReplicationApplier(TRI_vocbase_t* vocbase) {
-  TRI_replication_applier_t* applier =
-      new TRI_replication_applier_t(vocbase);
+  TRI_replication_applier_t* applier = new TRI_replication_applier_t(vocbase);
 
   TRI_InitStateReplicationApplier(&applier->_state);
 
@@ -417,9 +416,7 @@ TRI_replication_applier_t* TRI_CreateReplicationApplier(TRI_vocbase_t* vocbase) 
     if (res != TRI_ERROR_NO_ERROR && res != TRI_ERROR_FILE_NOT_FOUND) {
       TRI_DestroyStateReplicationApplier(&applier->_state);
       delete applier;
-      TRI_set_errno(res);
-
-      return nullptr;
+      THROW_ARANGO_EXCEPTION(res);
     }
 
     res = TRI_LoadStateReplicationApplier(vocbase, &applier->_state);
@@ -427,9 +424,7 @@ TRI_replication_applier_t* TRI_CreateReplicationApplier(TRI_vocbase_t* vocbase) 
     if (res != TRI_ERROR_NO_ERROR && res != TRI_ERROR_FILE_NOT_FOUND) {
       TRI_DestroyStateReplicationApplier(&applier->_state);
       delete applier;
-      TRI_set_errno(res);
-
-      return nullptr;
+      THROW_ARANGO_EXCEPTION(res);
     }
   }
 

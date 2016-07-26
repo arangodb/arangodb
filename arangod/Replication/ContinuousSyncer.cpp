@@ -58,7 +58,7 @@ ContinuousSyncer::ContinuousSyncer(
     TRI_voc_tick_t initialTick, bool useTick,
     TRI_voc_tick_t barrierId)
     : Syncer(vocbase, configuration),
-      _applier(vocbase->_replicationApplier),
+      _applier(vocbase->_replicationApplier.get()),
       _chunkSize(),
       _restrictType(RESTRICT_NONE),
       _initialTick(initialTick),

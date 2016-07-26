@@ -651,7 +651,7 @@ static void JS_ConfigureApplierReplication(
     }
 
     int res =
-        TRI_ConfigureReplicationApplier(vocbase->_replicationApplier, &config);
+        TRI_ConfigureReplicationApplier(vocbase->_replicationApplier.get(), &config);
 
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_V8_THROW_EXCEPTION(res);

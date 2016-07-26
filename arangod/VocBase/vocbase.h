@@ -25,6 +25,7 @@
 #define ARANGOD_VOC_BASE_VOCBASE_H 1
 
 #include "Basics/Common.h"
+#include "Basics/ConditionVariable.h"
 #include "Basics/DeadlockDetector.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/StringUtils.h"
@@ -52,6 +53,7 @@ class VocbaseAuthInfo;
 class VocbaseCollectionInfo;
 class CollectionKeysRepository;
 class CursorRepository;
+class Thread;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -273,7 +275,7 @@ struct TRI_vocbase_t {
   bool _hasCompactor;
   bool _isOwnAppsDirectory;
 
-  class TRI_replication_applier_t* _replicationApplier;
+  std::unique_ptr<TRI_replication_applier_t> _replicationApplier;
 
   arangodb::basics::ReadWriteLock _replicationClientsLock;
   std::unordered_map<TRI_server_id_t, std::pair<double, TRI_voc_tick_t>>
@@ -290,10 +292,11 @@ struct TRI_vocbase_t {
   sig_atomic_t _state;
 
   TRI_thread_t _compactor;
-  TRI_thread_t _cleanup;
+
+  std::unique_ptr<arangodb::Thread> _cleanupThread;
+  arangodb::basics::ConditionVariable _cleanupCondition;
 
   TRI_condition_t _compactorCondition;
-  TRI_condition_t _cleanupCondition;
 
   compaction_blockers_t _compactionBlockers;
 

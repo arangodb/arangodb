@@ -466,9 +466,9 @@ int DatabaseFeature::createDatabaseCoordinator(TRI_voc_tick_t id, std::string co
 
   TRI_ASSERT(vocbase != nullptr);
 
-  vocbase->_replicationApplier = TRI_CreateReplicationApplier(vocbase);
-
-  if (vocbase->_replicationApplier == nullptr) {
+  try {
+    vocbase->_replicationApplier.reset(TRI_CreateReplicationApplier(vocbase));
+  } catch (...) {
     delete vocbase;
 
     return TRI_ERROR_OUT_OF_MEMORY;

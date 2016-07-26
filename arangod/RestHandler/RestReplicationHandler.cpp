@@ -3401,7 +3401,7 @@ void RestReplicationHandler::handleCommandMakeSlave() {
     return;
   }
 
-  res = TRI_ConfigureReplicationApplier(_vocbase->_replicationApplier, &config);
+  res = TRI_ConfigureReplicationApplier(_vocbase->_replicationApplier.get(), &config);
 
   if (res != TRI_ERROR_NO_ERROR) {
     generateError(GeneralResponse::responseCode(res), res);
@@ -3716,7 +3716,7 @@ void RestReplicationHandler::handleCommandApplierSetConfig() {
   }
 
   int res =
-      TRI_ConfigureReplicationApplier(_vocbase->_replicationApplier, &config);
+      TRI_ConfigureReplicationApplier(_vocbase->_replicationApplier.get(), &config);
 
   if (res != TRI_ERROR_NO_ERROR) {
     generateError(GeneralResponse::responseCode(res), res);

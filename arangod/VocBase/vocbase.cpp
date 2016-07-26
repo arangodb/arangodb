@@ -31,6 +31,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryCache.h"
 #include "Aql/QueryList.h"
+#include "Basics/ConditionLocker.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
 #include "Basics/HybridLogicalClock.h"
@@ -50,8 +51,8 @@
 #include "Utils/CollectionKeysRepository.h"
 #include "Utils/CursorRepository.h"
 #include "V8Server/v8-user-structures.h"
+#include "VocBase/CleanupThread.h"
 #include "VocBase/Ditch.h"
-#include "VocBase/cleanup.h"
 #include "VocBase/compactor.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/replication-applier.h"
@@ -1251,8 +1252,7 @@ TRI_vocbase_t* TRI_CreateInitialVocBase(TRI_vocbase_type_e type, char const* pat
 /// @brief opens an existing database, scans all collections
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vocbase_t* TRI_OpenVocBase(char const* path,
-                               TRI_voc_tick_t id, char const* name,
+TRI_vocbase_t* TRI_OpenVocBase(char const* path, TRI_voc_tick_t id, char const* name,
                                bool isUpgrade, bool iterateMarkers) {
   TRI_ASSERT(name != nullptr);
   TRI_ASSERT(path != nullptr);
@@ -1264,14 +1264,9 @@ TRI_vocbase_t* TRI_OpenVocBase(char const* path,
     return nullptr;
   }
 
-  // .............................................................................
-  // scan directory for collections
-  // .............................................................................
-
   // scan the database path for collections
   // this will create the list of collections and their datafiles, and will also
   // determine the last tick values used (if iterateMarkers is true)
-
   int res = ScanPath(vocbase, vocbase->_path, isUpgrade, iterateMarkers);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -1281,26 +1276,26 @@ TRI_vocbase_t* TRI_OpenVocBase(char const* path,
     return nullptr;
   }
 
-  // .............................................................................
   // vocbase is now active
-  // .............................................................................
-
   vocbase->_state = (sig_atomic_t)TRI_VOCBASE_STATE_NORMAL;
 
-  // .............................................................................
-  // start helper threads
-  // .............................................................................
-
   // start cleanup thread
-  TRI_InitThread(&vocbase->_cleanup);
-  TRI_StartThread(&vocbase->_cleanup, nullptr, "Cleanup", TRI_CleanupVocBase,
-                  vocbase);
+  TRI_ASSERT(vocbase->_cleanupThread == nullptr);
+  vocbase->_cleanupThread.reset(new CleanupThread(vocbase));
 
-  vocbase->_replicationApplier = TRI_CreateReplicationApplier(vocbase);
+  if (!vocbase->_cleanupThread->start()) {
+    delete vocbase;
+    LOG(ERR) << "could not start cleanup thread";
+    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
 
-  if (vocbase->_replicationApplier == nullptr) {
+    return nullptr;
+  }
+
+  try {
+    vocbase->_replicationApplier.reset(TRI_CreateReplicationApplier(vocbase));
+  } catch (std::exception const& ex) {
     LOG(FATAL) << "initializing replication applier for database '"
-               << vocbase->_name << "' failed: " << TRI_last_error();
+               << vocbase->_name << "' failed: " << ex.what();
     FATAL_ERROR_EXIT();
   }
 
@@ -1362,14 +1357,19 @@ void TRI_DestroyVocBase(TRI_vocbase_t* vocbase) {
   // this will signal the cleanup thread to do one last iteration
   vocbase->_state = (sig_atomic_t)TRI_VOCBASE_STATE_SHUTDOWN_CLEANUP;
 
-  TRI_LockCondition(&vocbase->_cleanupCondition);
-  TRI_SignalCondition(&vocbase->_cleanupCondition);
-  TRI_UnlockCondition(&vocbase->_cleanupCondition);
+  {
+    CONDITION_LOCKER(locker, vocbase->_cleanupCondition);
+    locker.signal();
+  }
 
-  int res = TRI_JoinThread(&vocbase->_cleanup);
+  if (vocbase->_cleanupThread != nullptr) {
+    vocbase->_cleanupThread->beginShutdown();  
 
-  if (res != TRI_ERROR_NO_ERROR) {
-    LOG(ERR) << "unable to join cleanup thread: " << TRI_errno_string(res);
+    while (vocbase->_cleanupThread->isRunning()) {
+      usleep(5000);
+    }
+  
+    vocbase->_cleanupThread.reset();
   }
 
   // free dead collections (already dropped but pointers still around)
@@ -1704,9 +1704,10 @@ int TRI_UnloadCollectionVocBase(TRI_vocbase_t* vocbase,
   TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
 
   // wake up the cleanup thread
-  TRI_LockCondition(&vocbase->_cleanupCondition);
-  TRI_SignalCondition(&vocbase->_cleanupCondition);
-  TRI_UnlockCondition(&vocbase->_cleanupCondition);
+  {
+    CONDITION_LOCKER(locker, vocbase->_cleanupCondition);
+    locker.signal();
+  }
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -1743,9 +1744,8 @@ int TRI_DropCollectionVocBase(TRI_vocbase_t* vocbase,
             __FILE__, __LINE__);
 
         // wake up the cleanup thread
-        TRI_LockCondition(&vocbase->_cleanupCondition);
-        TRI_SignalCondition(&vocbase->_cleanupCondition);
-        TRI_UnlockCondition(&vocbase->_cleanupCondition);
+        CONDITION_LOCKER(locker, vocbase->_cleanupCondition);
+        locker.signal();
       }
     }
 
@@ -2105,8 +2105,7 @@ TRI_vocbase_t::TRI_vocbase_t(TRI_vocbase_type_e type,
       _cursorRepository(nullptr),
       _collectionKeys(nullptr),
       _hasCompactor(false),
-      _isOwnAppsDirectory(true),
-      _replicationApplier(nullptr) {
+      _isOwnAppsDirectory(true) {
   _queries = new arangodb::aql::QueryList(this);
   _cursorRepository = new arangodb::CursorRepository(this);
   _collectionKeys = new arangodb::CollectionKeysRepository();
@@ -2121,7 +2120,6 @@ TRI_vocbase_t::TRI_vocbase_t(TRI_vocbase_type_e type,
   TRI_CreateUserStructuresVocBase(this);
 
   TRI_InitCondition(&_compactorCondition);
-  TRI_InitCondition(&_cleanupCondition);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2134,11 +2132,10 @@ TRI_vocbase_t::~TRI_vocbase_t() {
   }
 
   // free replication
-  if (_replicationApplier != nullptr) {
-    delete _replicationApplier;
-  }
+  _replicationApplier.reset();
 
-  TRI_DestroyCondition(&_cleanupCondition);
+  _cleanupThread.reset();
+
   TRI_DestroyCondition(&_compactorCondition);
 
   delete _cursorRepository;

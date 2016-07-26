@@ -32,8 +32,6 @@
 #include "Cluster/DBServerAgencySync.h"
 #include "Logger/Logger.h"
 
-struct TRI_vocbase_t;
-
 namespace arangodb {
 
 struct AgencyVersions {
@@ -51,9 +49,6 @@ struct AgencyVersions {
 class AgencyCallbackRegistry;
 
 class HeartbeatThread : public Thread {
-  HeartbeatThread(HeartbeatThread const&) = delete;
-  HeartbeatThread& operator=(HeartbeatThread const&) = delete;
-
  public:
   HeartbeatThread(AgencyCallbackRegistry*, uint64_t, uint64_t);
   ~HeartbeatThread();

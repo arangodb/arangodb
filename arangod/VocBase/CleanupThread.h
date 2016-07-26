@@ -25,12 +25,43 @@
 #define ARANGOD_VOC_BASE_CLEANUP_H 1
 
 #include "Basics/Common.h"
-#include "VocBase/vocbase.h"
+#include "Basics/Thread.h"
 
-////////////////////////////////////////////////////////////////////////////////
+struct TRI_document_collection_t;
+struct TRI_vocbase_col_t;
+struct TRI_vocbase_t;
+
 /// @brief cleanup event loop
-////////////////////////////////////////////////////////////////////////////////
+namespace arangodb {
 
-void TRI_CleanupVocBase(void*);
+class CleanupThread : public Thread {
+ public:
+  CleanupThread(TRI_vocbase_t* vocbase);
+  ~CleanupThread();
+
+ protected:
+  void run() override;
+
+ private:
+  /// @brief cleanup interval in microseconds
+  static constexpr unsigned cleanupInterval() { return (1 * 1000 * 1000); }
+
+  /// @brief how many cleanup iterations until query cursors are cleaned
+  static constexpr uint64_t cleanupCursorIterations() { return 3; }
+
+  /// @brief how many cleanup iterations until indexes are cleaned
+  static constexpr uint64_t cleanupIndexIterations() { return 5; }
+ 
+  /// @brief clean up cursors
+  void cleanupCursors(bool force);
+
+  /// @brief checks all datafiles of a collection
+  void cleanupCollection(TRI_vocbase_col_t* collection, TRI_document_collection_t* document);
+
+ private:
+  TRI_vocbase_t* _vocbase;
+};
+
+}
 
 #endif
