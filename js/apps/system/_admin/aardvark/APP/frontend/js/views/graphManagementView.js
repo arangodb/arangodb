@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global Backbone, $, _, window, frontendConfig, templateEngine, arangoHelper, GraphViewerUI, require */
+/* global Backbone, $, _, window, templateEngine, arangoHelper, GraphViewerUI, require */
 
 (function () {
   'use strict';
@@ -757,7 +757,6 @@
 
     resetDisplaySettings: function () {
       var graphName = $('#editGraphName').val();
-      // var db = frontendConfig.db;
 
       var test = new window.GraphSettingsView({
         name: graphName,
