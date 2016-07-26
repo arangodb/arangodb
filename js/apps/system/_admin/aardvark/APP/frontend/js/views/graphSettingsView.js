@@ -308,7 +308,7 @@
       this.userConfig.setItem('graphs', config, callback);
     },
 
-    setDefaults: function () {
+    setDefaults: function (onlySave) {
       var obj = {
         layout: 'force',
         renderer: 'canvas',
@@ -331,9 +331,14 @@
         nodeStart: '',
         barnesHutOptimize: true
       };
-      this.saveGraphSettings(null, null, null, obj);
-      this.render();
-      window.App.graphViewer2.render(this.lastFocussed);
+
+      if (onlySave === true) {
+        this.saveGraphSettings(null, null, null, obj);
+      } else {
+        this.saveGraphSettings(null, null, null, obj);
+        this.render();
+        window.App.graphViewer2.render(this.lastFocussed);
+      }
     },
 
     toggle: function () {
@@ -373,7 +378,7 @@
         $('#g_nodeLabelThreshold_label').text(this.graphConfig.nodeLabelThreshold);
         $('#g_edgeLabelThreshold_label').text(this.graphConfig.edgeLabelThreshold);
       } else {
-        this.setDefaults();
+        this.setDefaults(true);
       }
 
       // arangoHelper.buildGraphSubNav(this.name, 'Settings');
