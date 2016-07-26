@@ -288,29 +288,40 @@ authRouter.get('/graph/:name', function (req, res) {
   var _ = require('lodash');
   var name = req.pathParams.name;
   var gm = require('@arangodb/general-graph');
-  var colors = [
-    '#EACD3F',
-    '#6F308A',
-    '#DA6927',
-    '#98CDE5',
-    '#B81F34',
-    '#C0BC82',
-    '#7F7E80',
-    '#61A547',
-    '#60A446',
-    '#D285B0',
-    '#4477B3',
-    '#DD8465',
-    '#473896',
-    '#E0A02F',
-    '#8F2689',
-    '#E7E655',
-    '#7C1514',
-    '#93AD3C',
-    '#6D3312',
-    '#D02C26',
-    '#2A3415'
-  ];
+  var colors = {
+    default: [
+      '#68BDF6',
+      '#6DCE9E',
+      '#FF756E',
+      '#DE9BF9',
+      '#FB95AF',
+      '#FFD86E',
+      '#A5ABB6'
+    ],
+    highContrast: [
+      '#EACD3F',
+      '#6F308A',
+      '#DA6927',
+      '#98CDE5',
+      '#B81F34',
+      '#C0BC82',
+      '#7F7E80',
+      '#61A547',
+      '#60A446',
+      '#D285B0',
+      '#4477B3',
+      '#DD8465',
+      '#473896',
+      '#E0A02F',
+      '#8F2689',
+      '#E7E655',
+      '#7C1514',
+      '#93AD3C',
+      '#6D3312',
+      '#D02C26',
+      '#2A3415'
+    ]
+  };
   // var traversal = require("@arangodb/graph/traversal");
 
   var graph = gm._graph(name);
@@ -426,7 +437,7 @@ authRouter.get('/graph/:name', function (req, res) {
           if (tmpObjEdges.hasOwnProperty(coll)) {
             edgeObj.color = tmpObjEdges[coll];
           } else {
-            tmpObjEdges[coll] = colors[Object.keys(tmpObjEdges).length];
+            tmpObjEdges[coll] = colors.default[Object.keys(tmpObjEdges).length];
             edgeObj.color = tmpObjEdges[coll];
           }
         } else if (config.edgeColorAttribute !== '') {
@@ -435,7 +446,7 @@ authRouter.get('/graph/:name', function (req, res) {
             if (tmpObjEdges.hasOwnProperty(attr)) {
               edgeObj.color = tmpObjEdges[attr];
             } else {
-              tmpObjEdges[attr] = colors[Object.keys(tmpObjEdges).length];
+              tmpObjEdges[attr] = colors.default[Object.keys(tmpObjEdges).length];
               edgeObj.color = tmpObjEdges[attr];
             }
           }
@@ -487,7 +498,7 @@ authRouter.get('/graph/:name', function (req, res) {
           if (tmpObjNodes.hasOwnProperty(coll)) {
             nodeObj.color = tmpObjNodes[coll];
           } else {
-            tmpObjNodes[coll] = colors[Object.keys(tmpObjNodes).length];
+            tmpObjNodes[coll] = colors.default[Object.keys(tmpObjNodes).length];
             nodeObj.color = tmpObjNodes[coll];
           }
         } else if (config.nodeColorAttribute !== '') {
@@ -496,7 +507,7 @@ authRouter.get('/graph/:name', function (req, res) {
             if (tmpObjNodes.hasOwnProperty(attr)) {
               nodeObj.color = tmpObjNodes[attr];
             } else {
-              tmpObjNodes[attr] = colors[Object.keys(tmpObjNodes).length];
+              tmpObjNodes[attr] = colors.default[Object.keys(tmpObjNodes).length];
               nodeObj.color = tmpObjNodes[attr];
             }
           }

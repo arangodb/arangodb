@@ -921,7 +921,7 @@
         wheel.multiSelect = true;
         wheel.clickModeRotate = false;
         wheel.slicePathFunction = slicePath().DonutSlice;
-        wheel.createWheel([icon.edit, icon.trash, icon.play, icon.connect]);
+        wheel.createWheel([icon.edit, icon.trash, icon.flag, icon.connect]);
 
         wheel.navItems[0].selected = false;
         wheel.navItems[0].hovered = false;
@@ -992,6 +992,7 @@
         ctx.beginPath();
         ctx.moveTo(fromX, fromY);
         ctx.lineTo(toX, toY);
+        ctx.strokeStyle = this.newEdgeColor;
         ctx.stroke();
       }
     },
@@ -1024,7 +1025,7 @@
 
     setStartNode: function (id) {
       this.graphConfig.nodeStart = id;
-      this.graphSettingsView.saveGraphSettings(null, id);
+      this.graphSettingsView.saveGraphSettings(undefined, undefined, id);
     },
 
     editNode: function (id) {
@@ -1147,15 +1148,18 @@
         }
       }
 
+      // sigmajs graph settings
       var settings = {
+        borderSize: 3,
+        defaultNodeBorderColor: '#8c8c8c',
         doubleClickEnabled: false,
         minNodeSize: 20,
         minEdgeSize: 1,
         maxEdgeSize: 4,
         enableEdgeHovering: true,
-        edgeHoverColor: '#000',
-        defaultEdgeHoverColor: '#000',
-        defaultEdgeType: 'line',
+        edgeHoverColor: '#8c8c8c',
+        defaultEdgeHoverColor: '#8c8c8c',
+        defaultEdgeType: 'arrow',
         edgeHoverSizeRatio: 2,
         edgeHoverExtremities: true,
         nodesPowRatio: 1,
@@ -1278,9 +1282,13 @@
               var callback = function (error, data) {
                 if (!error) {
                   var attributes = '';
+                  attributes += 'ID <span class="nodeId">' + data._id + '</span>';
+                  if (Object.keys(data).length > 3) {
+                    attributes += 'KEYS ';
+                  }
                   _.each(data, function (value, key) {
                     if (key !== '_key' && key !== '_id' && key !== '_rev' && key !== '_from' && key !== '_to') {
-                      attributes += ('<span class="nodeAttribute">' + key + '</span>');
+                      attributes += '<span class="nodeAttribute">' + key + '</span>';
                     }
                   });
                   var string = '<div id="nodeInfoDiv" class="nodeInfoDiv">' + attributes + '</div>';
@@ -1299,24 +1307,32 @@
         };
 
         s.bind('overNode', function (e) {
-          showAttributes(e, true);
+          if (self.contextState.createEdge === true) {
+            self.newEdgeColor = '#ff0000';
+          } else {
+            self.newEdgeColor = '#000000';
+          }
         });
 
-        s.bind('overEdge', function (e) {
+        s.bind('clickEdge', function (e) {
           showAttributes(e, false);
         });
 
+        /*
         s.bind('outNode', function (e) {
           if (self.contextState.createEdge === false) {
             $('.nodeInfoDiv').remove();
           }
         });
+        */
 
+        /*
         s.bind('outEdge', function (e) {
           if (self.contextState.createEdge === false) {
             $('.nodeInfoDiv').remove();
           }
         });
+       */
 
         s.bind('clickNode', function (e) {
           if (self.contextState.createEdge === true) {
@@ -1328,6 +1344,8 @@
             // validate edgeDefinitions
             var foundEdgeDefinitions = self.getEdgeDefinitionCollections(fromCollection, toCollection);
             self.addEdgeModal(foundEdgeDefinitions, self.contextState._from, self.contextState._to);
+          } else {
+            showAttributes(e, true);
           }
         });
 
