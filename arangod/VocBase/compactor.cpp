@@ -130,16 +130,7 @@ static char const* ReasonNothingToCompact =
 ////////////////////////////////////////////////////////////////////////////////
 
 static int const COMPACTOR_INTERVAL = (1 * 1000 * 1000);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief compaction blocker entry
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct compaction_blocker_s {
-  TRI_voc_tick_t _id;
-  double _expires;
-} compaction_blocker_t;
-
+  
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief auxiliary struct used when initializing compaction
 ////////////////////////////////////////////////////////////////////////////////
@@ -1017,12 +1008,8 @@ static bool CheckAndLockCompaction(TRI_vocbase_t* vocbase) {
   double now = TRI_microtime();
 
   // check if we have a still-valid compaction blocker
-  size_t const n = TRI_LengthVector(&vocbase->_compactionBlockers._data);
-  for (size_t i = 0; i < n; ++i) {
-    compaction_blocker_t* blocker = static_cast<compaction_blocker_t*>(
-        TRI_AtVector(&vocbase->_compactionBlockers._data, i));
-
-    if (blocker->_expires > now) {
+  for (auto const& blocker : vocbase->_compactionBlockers._data) {
+    if (blocker._expires > now) {
       // found a compaction blocker. unlock and return
       UnlockCompaction(vocbase);
       return false;
@@ -1038,8 +1025,6 @@ static bool CheckAndLockCompaction(TRI_vocbase_t* vocbase) {
 
 int TRI_InitCompactorVocBase(TRI_vocbase_t* vocbase) {
   TRI_InitReadWriteLock(&vocbase->_compactionBlockers._lock);
-  TRI_InitVector(&vocbase->_compactionBlockers._data, TRI_UNKNOWN_MEM_ZONE,
-                 sizeof(compaction_blocker_t));
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -1049,7 +1034,6 @@ int TRI_InitCompactorVocBase(TRI_vocbase_t* vocbase) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_DestroyCompactorVocBase(TRI_vocbase_t* vocbase) {
-  TRI_DestroyVector(&vocbase->_compactionBlockers._data);
   TRI_DestroyReadWriteLock(&vocbase->_compactionBlockers._lock);
 }
 
@@ -1067,14 +1051,13 @@ bool TRI_CleanupCompactorVocBase(TRI_vocbase_t* vocbase) {
   // we are now holding the write lock
   double now = TRI_microtime();
 
-  size_t n = TRI_LengthVector(&vocbase->_compactionBlockers._data);
-  size_t i = 0;
-  while (i < n) {
-    compaction_blocker_t* blocker = static_cast<compaction_blocker_t*>(
-        TRI_AtVector(&vocbase->_compactionBlockers._data, i));
+  size_t n = vocbase->_compactionBlockers._data.size();
 
-    if (blocker->_expires < now) {
-      TRI_RemoveVector(&vocbase->_compactionBlockers._data, i);
+  for (size_t i = 0; i < n; /* no hoisting */) {
+    auto& blocker = vocbase->_compactionBlockers._data[i];
+
+    if (blocker._expires < now) {
+      vocbase->_compactionBlockers._data.erase(vocbase->_compactionBlockers._data.begin() + i);
       n--;
     } else {
       i++;
@@ -1100,9 +1083,14 @@ int TRI_InsertBlockerCompactorVocBase(TRI_vocbase_t* vocbase, double lifetime,
   blocker._id = TRI_NewTickServer();
   blocker._expires = TRI_microtime() + lifetime;
 
+  int res = TRI_ERROR_NO_ERROR;
   LockCompaction(vocbase);
 
-  int res = TRI_PushBackVector(&vocbase->_compactionBlockers._data, &blocker);
+  try {
+    vocbase->_compactionBlockers._data.push_back(blocker);
+  } catch (...) {
+    res = TRI_ERROR_OUT_OF_MEMORY;
+  }
 
   UnlockCompaction(vocbase);
 
@@ -1129,14 +1117,9 @@ int TRI_TouchBlockerCompactorVocBase(TRI_vocbase_t* vocbase, TRI_voc_tick_t id,
 
   LockCompaction(vocbase);
 
-  size_t const n = TRI_LengthVector(&vocbase->_compactionBlockers._data);
-
-  for (size_t i = 0; i < n; ++i) {
-    compaction_blocker_t* blocker = static_cast<compaction_blocker_t*>(
-        TRI_AtVector(&vocbase->_compactionBlockers._data, i));
-
-    if (blocker->_id == id) {
-      blocker->_expires = TRI_microtime() + lifetime;
+  for (auto& blocker : vocbase->_compactionBlockers._data) {
+    if (blocker._id == id) {
+      blocker._expires = TRI_microtime() + lifetime;
       found = true;
       break;
     }
@@ -1179,14 +1162,12 @@ int TRI_RemoveBlockerCompactorVocBase(TRI_vocbase_t* vocbase,
 
   LockCompaction(vocbase);
 
-  size_t const n = TRI_LengthVector(&vocbase->_compactionBlockers._data);
+  size_t const n = vocbase->_compactionBlockers._data.size();
 
   for (size_t i = 0; i < n; ++i) {
-    compaction_blocker_t* blocker = static_cast<compaction_blocker_t*>(
-        TRI_AtVector(&vocbase->_compactionBlockers._data, i));
-
-    if (blocker->_id == id) {
-      TRI_RemoveVector(&vocbase->_compactionBlockers._data, i);
+    auto& blocker = vocbase->_compactionBlockers._data[i];
+    if (blocker._id == id) {
+      vocbase->_compactionBlockers._data.erase(vocbase->_compactionBlockers._data.begin() + i);
       found = true;
       break;
     }

@@ -34,8 +34,6 @@
 
 #include <type_traits>
 #include <utility>
-#include <string>
-#include <vector>
 
 namespace arangodb {
 namespace consensus {

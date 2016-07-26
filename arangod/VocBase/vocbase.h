@@ -29,7 +29,6 @@
 #include "Basics/ReadWriteLock.h"
 #include "Basics/StringUtils.h"
 #include "Basics/threads.h"
-#include "Basics/vector.h"
 #include "Basics/voc-errors.h"
 #include "VocBase/voc-types.h"
 
@@ -54,6 +53,20 @@ class VocbaseCollectionInfo;
 class CollectionKeysRepository;
 class CursorRepository;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief compaction blocker entry
+////////////////////////////////////////////////////////////////////////////////
+
+struct compaction_blocker_t {
+  TRI_voc_tick_t _id;
+  double _expires;
+};
+
+struct compaction_blockers_t {
+  TRI_read_write_lock_t _lock;
+  std::vector<compaction_blocker_t> _data;
+};
 
 extern bool IGNORE_DATAFILE_ERRORS;
 
@@ -281,13 +294,10 @@ struct TRI_vocbase_t {
   TRI_thread_t _compactor;
   TRI_thread_t _cleanup;
 
-  struct {
-    TRI_read_write_lock_t _lock;
-    TRI_vector_t _data;
-  } _compactionBlockers;
-
   TRI_condition_t _compactorCondition;
   TRI_condition_t _cleanupCondition;
+
+  compaction_blockers_t _compactionBlockers;
 
  public:
   void updateReplicationClient(TRI_server_id_t, TRI_voc_tick_t);
@@ -420,12 +430,6 @@ TRI_vocbase_t* TRI_OpenVocBase(char const*, TRI_voc_tick_t,
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_DestroyVocBase(TRI_vocbase_t*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief starts the compactor thread
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_StartCompactorVocBase(TRI_vocbase_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns all known collections

@@ -29,6 +29,7 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "VocBase/compactor.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 
@@ -135,7 +136,19 @@ void MMFilesEngine::stop() {
 
 void MMFilesEngine::recoveryDone(TRI_vocbase_t* vocbase) {    
   LOG(INFO) << "MMFilesEngine::recoveryDone() " << vocbase->_name;
-  TRI_StartCompactorVocBase(vocbase);
+
+  DatabaseFeature* databaseFeature = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
+
+  if (!databaseFeature->checkVersion() && !databaseFeature->upgrade()) {
+    // start compactor thread
+    TRI_ASSERT(!vocbase->_hasCompactor);
+    LOG(TRACE) << "starting compactor for database '" << vocbase->_name << "'";
+
+    TRI_InitThread(&vocbase->_compactor);
+    TRI_StartThread(&vocbase->_compactor, nullptr, "Compactor",
+                    TRI_CompactorVocBase, vocbase);
+    vocbase->_hasCompactor = true;
+  }
 }
 
 // fill the Builder object with an array of databases that were detected

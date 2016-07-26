@@ -1335,7 +1335,7 @@ void TRI_DestroyVocBase(TRI_vocbase_t* vocbase) {
   std::vector<TRI_vocbase_col_t*> collections;
 
   {
-    WRITE_LOCKER(writeLocker, vocbase->_collectionsLock);
+    READ_LOCKER(writeLocker, vocbase->_collectionsLock);
     collections = vocbase->_collections;
   }
 
@@ -1347,8 +1347,7 @@ void TRI_DestroyVocBase(TRI_vocbase_t* vocbase) {
     TRI_UnloadCollectionVocBase(vocbase, collection, true);
   }
 
-  // this will signal the synchronizer and the compactor threads to do one last
-  // iteration
+  // this will signal the compactor thread to do one last iteration
   vocbase->_state = (sig_atomic_t)TRI_VOCBASE_STATE_SHUTDOWN_COMPACTOR;
 
   TRI_LockCondition(&vocbase->_compactorCondition);
@@ -1387,25 +1386,6 @@ void TRI_DestroyVocBase(TRI_vocbase_t* vocbase) {
   }
 
   TRI_DestroyCompactorVocBase(vocbase);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief starts the compactor thread
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_StartCompactorVocBase(TRI_vocbase_t* vocbase) {
-  DatabaseFeature* databaseFeature = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
-
-  if (!databaseFeature->checkVersion() && !databaseFeature->upgrade()) {
-    // start compactor thread
-    TRI_ASSERT(!vocbase->_hasCompactor);
-    LOG(TRACE) << "starting compactor for database '" << vocbase->_name << "'";
-
-    TRI_InitThread(&vocbase->_compactor);
-    TRI_StartThread(&vocbase->_compactor, nullptr, "Compactor",
-                    TRI_CompactorVocBase, vocbase);
-    vocbase->_hasCompactor = true;
-  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
