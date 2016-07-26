@@ -75,7 +75,7 @@
       },
       'nodeLabelByCollection': {
         type: 'select',
-        name: 'Label by coll?',
+        name: 'Label by collection?',
         desc: 'Set label text by collection. If activated node label attribute will be ignored.',
         yes: {
           name: 'Yes',
@@ -100,12 +100,12 @@
       },
       'nodeColorAttribute': {
         type: 'string',
-        name: 'Colorize attr',
+        name: 'Color attribute',
         desc: 'If an attribute is given, nodes will then be colorized by the attribute. This setting ignores default node color if set.'
       },
       'nodeColorByCollection': {
         type: 'select',
-        name: 'Colorize by coll?',
+        name: 'Color by collection?',
         no: {
           name: 'No',
           val: 'false'
@@ -132,7 +132,7 @@
       },
       'edgeLabelByCollection': {
         type: 'select',
-        name: 'Label by coll?',
+        name: 'Label by collection?',
         desc: 'Set label text by collection. If activated edge label attribute will be ignored.',
         yes: {
           name: 'Yes',
@@ -157,12 +157,12 @@
       },
       'edgeColorAttribute': {
         type: 'string',
-        name: 'Colorize attr',
+        name: 'Color attribute',
         desc: 'If an attribute is given, edges will then be colorized by the attribute. This setting ignores default edge color if set.'
       },
       'edgeColorByCollection': {
         type: 'select',
-        name: 'Colorize by coll?',
+        name: 'Color by collection?',
         no: {
           name: 'No',
           val: 'false'
@@ -315,7 +315,7 @@
         depth: '2',
         nodeColor: '#2ecc71',
         nodeColorAttribute: '',
-        nodeColorByCollection: 'false',
+        nodeColorByCollection: 'true',
         nodeLabelThreshold: 10,
         edgeColor: '#cccccc',
         edgeColorAttribute: '',
@@ -323,10 +323,10 @@
         edgeLabelThreshold: 10,
         nodeLabel: '_key',
         edgeLabel: '',
-        edgeType: 'line',
+        edgeType: 'arrow',
         nodeSize: '',
         edgeEditable: 'false',
-        nodeLabelByCollection: 'true',
+        nodeLabelByCollection: 'false',
         edgeLabelByCollection: 'true',
         nodeStart: ''
       };

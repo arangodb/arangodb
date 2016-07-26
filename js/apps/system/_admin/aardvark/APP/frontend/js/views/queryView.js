@@ -456,6 +456,11 @@
 
       var self = this;
       var queryData = this.readQueryData();
+
+      if (queryData === 'false') {
+        return;
+      }
+
       $('#outputEditorWrapper' + counter + ' .queryExecutionTime').text('');
       this.execPending = false;
 
@@ -575,7 +580,7 @@
 
     fillSelectBoxes: function () {
       // fill select box with # of results
-      var querySize = 1000;
+      var querySize = 100;
       var sizeBox = $('#querySize');
       sizeBox.empty();
 
@@ -999,7 +1004,7 @@
         name: 'executeSelectedQuery',
         bindKey: {win: 'Ctrl-Alt-Return', mac: 'Command-Alt-Return', linux: 'Ctrl-Alt-Return'},
         exec: function () {
-          self.executeQuery(true);
+          self.executeQuery(undefined, true);
         }
       });
 
@@ -1256,7 +1261,7 @@
       return quit;
     },
 
-    executeQuery: function (selected) {
+    executeQuery: function (e, selected) {
       if (this.verifyQueryAndParams()) {
         return;
       }
@@ -1309,16 +1314,25 @@
       } else {
         data.query = this.aqlEditor.getValue();
       }
-
-      if (sizeBox.val() === 'all') {
-        data.batchSize = 1000000;
+      if (data.query.length === 0) {
+        if (selected) {
+          arangoHelper.arangoError('Query', 'Your query selection is empty!');
+        } else {
+          arangoHelper.arangoError('Query', 'Your query is empty!');
+        }
+        data = false;
       } else {
-        data.batchSize = parseInt(sizeBox.val(), 10);
+        if (sizeBox.val() === 'all') {
+          data.batchSize = 1000000;
+        } else {
+          data.batchSize = parseInt(sizeBox.val(), 10);
+        }
+
+        if (Object.keys(this.bindParamTableObj).length > 0) {
+          data.bindVars = this.bindParamTableObj;
+        }
       }
 
-      if (Object.keys(this.bindParamTableObj).length > 0) {
-        data.bindVars = this.bindParamTableObj;
-      }
       return JSON.stringify(data);
     },
 
@@ -1326,6 +1340,10 @@
       var self = this;
 
       var queryData = this.readQueryData(selected);
+
+      if (queryData === 'false') {
+        return;
+      }
 
       if (queryData) {
         sentQueryEditor.setValue(self.aqlEditor.getValue(), 1);
@@ -1598,7 +1616,7 @@
               if (error.code === 409) {
                 return;
               }
-              if (error.code !== 400 && error.code !== 404) {
+              if (error.code !== 400 && error.code !== 404 && error.code !== 500) {
                 arangoHelper.arangoNotification('Query', 'Successfully aborted.');
               }
             }

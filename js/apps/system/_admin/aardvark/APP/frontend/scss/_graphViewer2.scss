@@ -46,6 +46,8 @@
 .nodeInfoDiv {
   border-radius: 3px;
   bottom: 0;
+  color: $c-bluegrey-dark;
+  font-weight: 500;
   height: 25px;
   left: 165px;
   overflow: hidden;
@@ -53,7 +55,8 @@
   right: 15px;
   z-index: 10;
 
-  .nodeAttribute {
+  .nodeAttribute,
+  .nodeId {
     background-color: $c-info-blue;
     border-radius: 3px;
     color: $c-white;
@@ -61,6 +64,11 @@
     margin-right: 5px;
     padding: 2px 5px;
   }
+
+  .nodeId {
+    background-color: $c-positive;
+  }
+
 }
 
 .nodeContextMenu {
