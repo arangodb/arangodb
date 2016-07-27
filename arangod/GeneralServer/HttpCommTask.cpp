@@ -279,42 +279,33 @@ bool HttpCommTask::processRead() {
       _origin = _request->header(StaticStrings::Origin);
 
       if (!_origin.empty()) {
-        // check for Access-Control-Allow-Credentials header
-        bool found;
-        std::string const& allowCredentials = _request->header(
-            StaticStrings::AccessControlAllowCredentials, found);
+        // default is to allow nothing
+        _denyCredentials = true;
 
-        if (found) {
-          // default is to allow nothing
-          _denyCredentials = true;
+        // if the request asks to allow credentials, we'll check against the
+        // configured whitelist of origins
+        std::vector<std::string> const& accessControlAllowOrigins =
+            GeneralServerFeature::accessControlAllowOrigins();
 
-          // if the request asks to allow credentials, we'll check against the
-          // configured whitelist of origins
-          std::vector<std::string> const& accessControlAllowOrigins =
-              GeneralServerFeature::accessControlAllowOrigins();
-
-          if (StringUtils::boolean(allowCredentials) &&
-              !accessControlAllowOrigins.empty()) {
-            if (accessControlAllowOrigins[0] == "*") {
-              // special case: allow everything
-              _denyCredentials = false;
-            } else if (!_origin.empty()) {
-              // copy origin string
-              if (_origin[_origin.size() - 1] == '/') {
-                // strip trailing slash
-                auto result = std::find(accessControlAllowOrigins.begin(),
-                                        accessControlAllowOrigins.end(),
-                                        _origin.substr(0, _origin.size() - 1));
-                _denyCredentials = (result == accessControlAllowOrigins.end());
-              } else {
-                auto result =
-                    std::find(accessControlAllowOrigins.begin(),
-                              accessControlAllowOrigins.end(), _origin);
-                _denyCredentials = (result == accessControlAllowOrigins.end());
-              }
+        if (!accessControlAllowOrigins.empty()) {
+          if (accessControlAllowOrigins[0] == "*") {
+            // special case: allow everything
+            _denyCredentials = false;
+          } else if (!_origin.empty()) {
+            // copy origin string
+            if (_origin[_origin.size() - 1] == '/') {
+              // strip trailing slash
+              auto result = std::find(accessControlAllowOrigins.begin(),
+                                      accessControlAllowOrigins.end(),
+                                      _origin.substr(0, _origin.size() - 1));
+              _denyCredentials = (result == accessControlAllowOrigins.end());
             } else {
-              TRI_ASSERT(_denyCredentials);
+              auto result = std::find(accessControlAllowOrigins.begin(),
+                                      accessControlAllowOrigins.end(), _origin);
+              _denyCredentials = (result == accessControlAllowOrigins.end());
             }
+          } else {
+            TRI_ASSERT(_denyCredentials);
           }
         }
       }

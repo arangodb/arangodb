@@ -41,7 +41,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #if defined(__amd64__) || defined(__amd64) || defined(__x86_64__) || \
-    defined(__x86_64) || defined(_M_X64) || defined(_M_AMD64)
+    defined(__x86_64) || defined(_M_X64) || defined(_M_AMD64) ||     \
+    defined(__aarch64__)
 #undef TRI_PADDING_32
 #else
 #define TRI_PADDING_32 1
@@ -100,7 +101,8 @@
 /// @brief available functions
 ////////////////////////////////////////////////////////////////////////////////
 
-#undef TRI_HAVE_GETLINE /* TODO(fc) remove when we are using the new ProgramOptions */
+#undef TRI_HAVE_GETLINE /* TODO(fc) remove when we are using the new \
+                           ProgramOptions */
 
 #define ARANGODB_HAVE_FORK 1
 #define ARANGODB_HAVE_GETGRGID 1
@@ -109,7 +111,7 @@
 #define ARANGODB_HAVE_GETPWNAM 1
 #define ARANGODB_HAVE_GETPWUID 1
 #define ARANGODB_HAVE_GETRUSAGE 1
-#undef  ARANGODB_HAVE_GETTID
+#undef ARANGODB_HAVE_GETTID
 #define ARANGODB_HAVE_GMTIME_R 1
 #undef ARANGODB_HAVE_GMTIME_S
 #undef ARANGODB_HAVE_INITGROUPS
@@ -908,11 +910,11 @@ typedef unsigned char bool;
 
 // system error string macro requires ERRORBUF to instantiate its buffer before.
 
-#define TRI_SYSTEM_ERROR()                                                      \
-  if (FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, NULL, GetLastError(), 0,        \
-                windowsErrorBuf, sizeof(windowsErrorBuf), NULL) == 0) {         \
-    memcpy(&windowsErrorBuf[0], "unknown error\0", strlen("unknown error\0"));  \
-  }                                                                             \
+#define TRI_SYSTEM_ERROR()                                                     \
+  if (FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, NULL, GetLastError(), 0,       \
+                    windowsErrorBuf, sizeof(windowsErrorBuf), NULL) == 0) {    \
+    memcpy(&windowsErrorBuf[0], "unknown error\0", strlen("unknown error\0")); \
+  }                                                                            \
   errno = TRI_MapSystemError(GetLastError())
 
 #define STDERR_FILENO 2

@@ -75,7 +75,7 @@
       },
       'nodeLabelByCollection': {
         type: 'select',
-        name: 'Label by coll?',
+        name: 'Use collection name',
         desc: 'Set label text by collection. If activated node label attribute will be ignored.',
         yes: {
           name: 'Yes',
@@ -100,12 +100,12 @@
       },
       'nodeColorAttribute': {
         type: 'string',
-        name: 'Colorize attr',
+        name: 'Color attribute',
         desc: 'If an attribute is given, nodes will then be colorized by the attribute. This setting ignores default node color if set.'
       },
       'nodeColorByCollection': {
         type: 'select',
-        name: 'Colorize by coll?',
+        name: 'Use collection color',
         no: {
           name: 'No',
           val: 'false'
@@ -132,7 +132,7 @@
       },
       'edgeLabelByCollection': {
         type: 'select',
-        name: 'Label by coll?',
+        name: 'Use collection name',
         desc: 'Set label text by collection. If activated edge label attribute will be ignored.',
         yes: {
           name: 'Yes',
@@ -157,12 +157,12 @@
       },
       'edgeColorAttribute': {
         type: 'string',
-        name: 'Colorize attr',
+        name: 'Color attribute',
         desc: 'If an attribute is given, edges will then be colorized by the attribute. This setting ignores default edge color if set.'
       },
       'edgeColorByCollection': {
         type: 'select',
-        name: 'Colorize by coll?',
+        name: 'Use collection color',
         no: {
           name: 'No',
           val: 'false'
@@ -308,31 +308,37 @@
       this.userConfig.setItem('graphs', config, callback);
     },
 
-    setDefaults: function () {
+    setDefaults: function (onlySave) {
       var obj = {
         layout: 'force',
         renderer: 'canvas',
         depth: '2',
         nodeColor: '#2ecc71',
         nodeColorAttribute: '',
-        nodeColorByCollection: 'false',
-        nodeLabelThreshold: 10,
+        nodeColorByCollection: 'true',
+        nodeLabelThreshold: 2,
         edgeColor: '#cccccc',
         edgeColorAttribute: '',
         edgeColorByCollection: 'false',
-        edgeLabelThreshold: 10,
+        edgeLabelThreshold: 2,
         nodeLabel: '_key',
         edgeLabel: '',
-        edgeType: 'line',
+        edgeType: 'arrow',
         nodeSize: '',
         edgeEditable: 'false',
-        nodeLabelByCollection: 'true',
+        nodeLabelByCollection: 'false',
         edgeLabelByCollection: 'true',
-        nodeStart: ''
+        nodeStart: '',
+        barnesHutOptimize: true
       };
-      this.saveGraphSettings(null, null, null, obj);
-      this.render();
-      window.App.graphViewer2.render(this.lastFocussed);
+
+      if (onlySave === true) {
+        this.saveGraphSettings(null, null, null, obj);
+      } else {
+        this.saveGraphSettings(null, null, null, obj);
+        this.render();
+        window.App.graphViewer2.render(this.lastFocussed);
+      }
     },
 
     toggle: function () {
@@ -372,7 +378,7 @@
         $('#g_nodeLabelThreshold_label').text(this.graphConfig.nodeLabelThreshold);
         $('#g_edgeLabelThreshold_label').text(this.graphConfig.edgeLabelThreshold);
       } else {
-        this.setDefaults();
+        this.setDefaults(true);
       }
 
       // arangoHelper.buildGraphSubNav(this.name, 'Settings');

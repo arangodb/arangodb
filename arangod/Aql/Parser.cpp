@@ -64,7 +64,7 @@ bool Parser::configureWriteQuery(AstNode const* collectionNode,
 QueryResult Parser::parse(bool withDetails) {
   char const* q = queryString();
 
-  if (q == nullptr || *q == '\0') {
+  if (q == nullptr || *q == '\0' || remainingLength() == 0) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_EMPTY);
   }
 
@@ -144,8 +144,7 @@ void Parser::registerParseError(int errorCode, char const* data, int line,
                << (column + 1);
 
   if (_query->verboseErrors()) {
-    errorMessage << std::endl
-                 << _query->queryString() << std::endl;
+    errorMessage << std::endl << _query->queryString() << std::endl;
 
     // create a neat pointer to the location of the error.
     size_t i;
