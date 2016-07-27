@@ -72,7 +72,7 @@ you can paste multiple lines into arangosh, given the first line ends with an op
     @startDocuBlockInline shellPaste
     @EXAMPLE_ARANGOSH_OUTPUT{shellPaste}
     |for (var i = 0; i < 10; i ++) {
-    |         require("internal").print("Hello world " + i + "!\n");
+    |         require("@arangodb").print("Hello world " + i + "!\n");
     }
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock shellPaste

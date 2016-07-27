@@ -25,7 +25,7 @@
 */
 
 var internal = require('internal');
-var print = require('internal').print;
+var print = require('@arangodb').print;
 var errors = require("@arangodb").errors;
 var time = require("internal").time;
 var fs = require('fs');
