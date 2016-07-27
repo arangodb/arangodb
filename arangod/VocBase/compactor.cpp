@@ -33,9 +33,10 @@
 #include "Basics/files.h"
 #include "Basics/FileUtils.h"
 #include "Basics/memory-map.h"
-//#include "Basics/tri-strings.h"
 #include "Logger/Logger.h"
 #include "Indexes/PrimaryIndex.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/StorageEngine.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utils/StandaloneTransactionContext.h"
 #include "VocBase/DatafileHelper.h"
@@ -210,10 +211,10 @@ static void DropDatafileCallback(TRI_datafile_t* datafile, void* data) {
   TRI_document_collection_t* document =
       static_cast<TRI_document_collection_t*>(data);
   TRI_voc_fid_t fid = datafile->_fid;
-
+  
   std::string copy;
   std::string name("deleted-" + std::to_string(fid) + ".db");
-  std::string filename = arangodb::basics::FileUtils::buildFilename(document->_directory, name);
+  std::string filename = arangodb::basics::FileUtils::buildFilename(document->path(), name);
 
   if (datafile->isPhysical(datafile)) {
     // copy the current filename
@@ -272,7 +273,7 @@ static void DropDatafileCallback(TRI_datafile_t* datafile, void* data) {
 static void RenameDatafileCallback(TRI_datafile_t* datafile, void* data) {
   auto* context = static_cast<compaction_context_t*>(data);
   TRI_datafile_t* compactor = context->_compactor;
-
+  
   TRI_document_collection_t* document = context->_document;
 
   bool ok = false;
@@ -281,7 +282,7 @@ static void RenameDatafileCallback(TRI_datafile_t* datafile, void* data) {
   if (datafile->isPhysical(datafile)) {
     // construct a suitable tempname
     std::string jname("temp-" + std::to_string(datafile->_fid) + ".db");
-    std::string tempFilename = arangodb::basics::FileUtils::buildFilename(document->_directory, jname);
+    std::string tempFilename = arangodb::basics::FileUtils::buildFilename(document->path(), jname);
     std::string realName = datafile->_filename;
 
     if (!TRI_RenameDatafile(datafile, tempFilename.c_str())) {
@@ -818,7 +819,7 @@ static bool CompactifyDocumentCollection(TRI_document_collection_t* document) {
         document->_datafileStatistics.get(df->_fid);
 
     if (dfi.numberUncollected > 0) {
-      LOG_TOPIC(DEBUG, Logger::COMPACTOR) << "cannot compact datafile " << df->_fid << " of collection '" << document->_info.namec_str() << "' because it still has uncollected entries";
+      LOG_TOPIC(DEBUG, Logger::COMPACTOR) << "cannot compact datafile " << df->_fid << " of collection '" << document->_info.name() << "' because it still has uncollected entries";
       start = i + 1;
       break;
     }

@@ -474,8 +474,8 @@ static int UseCollections(TRI_transaction_t* trx, int nestingLevel) {
 
       if (trxCollection->_accessType == TRI_TRANSACTION_WRITE &&
           TRI_GetOperationModeServer() == TRI_VOCBASE_MODE_NO_CREATE &&
-          !TRI_IsSystemNameCollection(
-              trxCollection->_collection->_collection->_info.namec_str())) {
+          !TRI_collection_t::IsSystemName(
+              trxCollection->_collection->_collection->_info.name())) {
         return TRI_ERROR_ARANGO_READ_ONLY;
       }
 
@@ -1083,7 +1083,7 @@ int TRI_AddOperationTransaction(TRI_transaction_t* trx,
     operation.handle();
 
     arangodb::aql::QueryCache::instance()->invalidate(
-        trx->_vocbase, document->_info.namec_str());
+        trx->_vocbase, document->_info.name());
 
     ++document->_uncollectedLogfileEntries;
 

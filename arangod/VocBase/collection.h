@@ -121,7 +121,7 @@ class VocbaseCollectionInfo {
   int64_t _initialCount;        // initial count, used when loading a collection
   uint32_t _indexBuckets;  // number of buckets used in hash tables for indexes
 
-  char _name[TRI_COL_PATH_LENGTH];  // name of the collection()
+  char _name[TRI_COL_PATH_LENGTH];  // name of the collection
   std::shared_ptr<arangodb::velocypack::Buffer<uint8_t> const>
       _keyOptions;  // options for key creation
 
@@ -138,14 +138,14 @@ class VocbaseCollectionInfo {
 
   explicit VocbaseCollectionInfo(CollectionInfo const&);
 
-  VocbaseCollectionInfo(TRI_vocbase_t*, char const*, TRI_col_type_e,
+  VocbaseCollectionInfo(TRI_vocbase_t*, std::string const&, TRI_col_type_e,
                         TRI_voc_size_t, arangodb::velocypack::Slice const&);
 
-  VocbaseCollectionInfo(TRI_vocbase_t*, char const*,
+  VocbaseCollectionInfo(TRI_vocbase_t*, std::string const&,
                         arangodb::velocypack::Slice const&,
                         bool forceIsSystem);
 
-  VocbaseCollectionInfo(TRI_vocbase_t*, char const*, TRI_col_type_e,
+  VocbaseCollectionInfo(TRI_vocbase_t*, std::string const&, TRI_col_type_e,
                         arangodb::velocypack::Slice const&,
                         bool forceIsSystem);
 
@@ -157,8 +157,8 @@ class VocbaseCollectionInfo {
   /// function.
   //////////////////////////////////////////////////////////////////////////////
 
-  static VocbaseCollectionInfo fromFile(char const*, TRI_vocbase_t*,
-                                        char const*, bool);
+  static VocbaseCollectionInfo fromFile(std::string const& path, TRI_vocbase_t* vocbase,
+                                        std::string const& collectionName, bool versionWarning);
 
   // collection version
   TRI_col_version_t version() const;
@@ -186,9 +186,6 @@ class VocbaseCollectionInfo {
 
   // name of the collection
   std::string name() const;
-
-  // name of the collection as c string
-  char const* namec_str() const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns a copy of the key options
@@ -283,6 +280,18 @@ struct TRI_collection_t {
   ~TRI_collection_t() = default;
 
  public:
+  /// @brief determine whether a collection name is a system collection name
+  static inline bool IsSystemName(std::string const& name) {
+    if (name.empty()) {
+      return false;
+    }
+    return name[0] == '_';
+  }
+
+  /// @brief checks if a collection name is allowed
+  /// returns true if the name is allowed and false otherwise
+  static bool IsAllowedName(bool isSystem, std::string const& name);
+
   void iterateIndexes(std::function<bool(std::string const&, void*)> const&, void*);
 
   /// @brief updates the parameter info block
@@ -311,6 +320,7 @@ struct TRI_collection_t {
   bool removeDatafile(TRI_datafile_t*);
   void addIndexFile(std::string const&);
   int removeIndexFile(TRI_idx_iid_t);
+  std::string const& path() const { return _path; }
 
  private:
   /// @brief seal a datafile
@@ -330,8 +340,7 @@ struct TRI_collection_t {
 
   TRI_col_state_e _state;  // state of the collection
   int _lastError;          // last (critical) error
-
-  std::string _directory;  // directory of the collection
+  std::string _path;
 
   arangodb::basics::ReadWriteLock _filesLock;
   std::vector<TRI_datafile_t*> _datafiles;   // all datafiles
@@ -339,7 +348,6 @@ struct TRI_collection_t {
   std::vector<TRI_datafile_t*> _compactors;  // all compactor files
  private:
   std::vector<std::string> _indexFiles;   // all index filenames
-
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -421,17 +429,5 @@ bool TRI_IterateTicksCollection(char const* const,
                                 bool (*)(TRI_df_marker_t const*, void*,
                                          TRI_datafile_t*),
                                 void*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief determine whether a collection name is a system collection name
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_IsSystemNameCollection(char const*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if a collection name is allowed
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_IsAllowedNameCollection(bool, char const*);
 
 #endif

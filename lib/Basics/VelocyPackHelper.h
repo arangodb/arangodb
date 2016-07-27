@@ -268,10 +268,11 @@ class VelocyPackHelper {
   /// @brief writes a VelocyPack to a file
   //////////////////////////////////////////////////////////////////////////////
 
-  static bool velocyPackToFile(char const*, VPackSlice const&, bool);
+  static bool velocyPackToFile(std::string const& filename, 
+                               VPackSlice const& slice, bool syncFile);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Compares two VelocyPack number values
+  /// @brief compares two VelocyPack number values
   //////////////////////////////////////////////////////////////////////////////
 
   static int compareNumberValues(arangodb::velocypack::ValueType,

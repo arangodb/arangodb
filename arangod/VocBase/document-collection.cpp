@@ -685,7 +685,7 @@ static bool RemoveIndexFile(TRI_document_collection_t* collection,
                             TRI_idx_iid_t id) {
   // construct filename
   std::string name("index-" + std::to_string(id) + ".json");
-  std::string filename = arangodb::basics::FileUtils::buildFilename(collection->_directory, name);
+  std::string filename = arangodb::basics::FileUtils::buildFilename(collection->path(), name);
 
   int res = TRI_UnlinkFile(filename.c_str());
 
@@ -1254,10 +1254,10 @@ TRI_document_collection_t* TRI_CreateDocumentCollection(
 
   // save the parameters block (within create, no need to lock)
   bool doSync = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database")->forceSyncProperties();
-  int res = parameters.saveToFile(collection->_directory, doSync);
+  int res = parameters.saveToFile(collection->path(), doSync);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG(ERR) << "cannot save collection parameters in directory '" << collection->_directory << "': '" << TRI_last_error() << "'";
+    LOG(ERR) << "cannot save collection parameters in directory '" << collection->path() << "': '" << TRI_last_error() << "'";
 
     TRI_CloseCollection(collection);
     TRI_DestroyCollection(collection);
@@ -1266,7 +1266,7 @@ TRI_document_collection_t* TRI_CreateDocumentCollection(
   }
 
   // remove the temporary file
-  std::string tmpfile = collection->_directory + ".tmp";
+  std::string tmpfile = collection->path() + ".tmp";
   TRI_UnlinkFile(tmpfile.c_str());
 
   return document;
@@ -1531,7 +1531,7 @@ int TRI_FillIndexesDocumentCollection(arangodb::Transaction* trx,
 TRI_document_collection_t* TRI_OpenDocumentCollection(TRI_vocbase_t* vocbase,
                                                       TRI_vocbase_col_t* col,
                                                       bool ignoreErrors) {
-  char const* path = col->pathc_str();
+  char const* path = col->path().c_str();
 
   // first open the document collection
   TRI_document_collection_t* document = nullptr;
@@ -1678,7 +1678,7 @@ int TRI_CloseDocumentCollection(TRI_document_collection_t* document,
 
     bool doSync = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database")->forceSyncProperties();
     // Ignore the error?
-    document->_info.saveToFile(document->_directory, doSync);
+    document->_info.saveToFile(document->path(), doSync);
   }
 
   // closes all open compactors, journals, datafiles
@@ -2135,7 +2135,7 @@ int TRI_SaveIndex(TRI_document_collection_t* document, arangodb::Index* idx,
 
   // construct filename
   std::string name("index-" + std::to_string(idx->id()) + ".json");
-  std::string filename = arangodb::basics::FileUtils::buildFilename(document->_directory, name);
+  std::string filename = arangodb::basics::FileUtils::buildFilename(document->path(), name);
 
   TRI_vocbase_t* vocbase = document->_vocbase;
 
@@ -2216,7 +2216,7 @@ bool TRI_DropIndexDocumentCollection(TRI_document_collection_t* document,
   arangodb::Index* found = nullptr;
   {
     arangodb::aql::QueryCache::instance()->invalidate(
-        vocbase, document->_info.namec_str());
+        vocbase, document->_info.name());
     found = document->removeIndex(iid);
   }
 
@@ -2542,7 +2542,7 @@ arangodb::Index* TRI_EnsureGeoIndex1DocumentCollection(
   if (idx != nullptr) {
     if (created) {
       arangodb::aql::QueryCache::instance()->invalidate(
-          document->_vocbase, document->_info.namec_str());
+          document->_vocbase, document->_info.name());
       int res = TRI_SaveIndex(document, idx, true);
 
       if (res != TRI_ERROR_NO_ERROR) {
@@ -2569,7 +2569,7 @@ arangodb::Index* TRI_EnsureGeoIndex2DocumentCollection(
   if (idx != nullptr) {
     if (created) {
       arangodb::aql::QueryCache::instance()->invalidate(
-          document->_vocbase, document->_info.namec_str());
+          document->_vocbase, document->_info.name());
       int res = TRI_SaveIndex(document, idx, true);
 
       if (res != TRI_ERROR_NO_ERROR) {
@@ -2698,7 +2698,7 @@ arangodb::Index* TRI_EnsureHashIndexDocumentCollection(
   if (idx != nullptr) {
     if (created) {
       arangodb::aql::QueryCache::instance()->invalidate(
-          document->_vocbase, document->_info.namec_str());
+          document->_vocbase, document->_info.name());
       int res = TRI_SaveIndex(document, idx, true);
 
       if (res != TRI_ERROR_NO_ERROR) {
@@ -2827,7 +2827,7 @@ arangodb::Index* TRI_EnsureSkiplistIndexDocumentCollection(
   if (idx != nullptr) {
     if (created) {
       arangodb::aql::QueryCache::instance()->invalidate(
-          document->_vocbase, document->_info.namec_str());
+          document->_vocbase, document->_info.name());
       int res = TRI_SaveIndex(document, idx, true);
 
       if (res != TRI_ERROR_NO_ERROR) {
@@ -2992,7 +2992,7 @@ arangodb::Index* TRI_EnsureRocksDBIndexDocumentCollection(
   if (idx != nullptr) {
     if (created) {
       arangodb::aql::QueryCache::instance()->invalidate(
-          document->_vocbase, document->_info.namec_str());
+          document->_vocbase, document->_info.name());
       int res = TRI_SaveIndex(document, idx, true);
 
       if (res != TRI_ERROR_NO_ERROR) {
@@ -3156,7 +3156,7 @@ arangodb::Index* TRI_EnsureFulltextIndexDocumentCollection(
   if (idx != nullptr) {
     if (created) {
       arangodb::aql::QueryCache::instance()->invalidate(
-          document->_vocbase, document->_info.namec_str());
+          document->_vocbase, document->_info.name());
       int res = TRI_SaveIndex(document, idx, true);
 
       if (res != TRI_ERROR_NO_ERROR) {
@@ -4147,7 +4147,7 @@ int TRI_document_collection_t::newObjectForInsert(
       VPackValuePair(9ULL, VPackValueType::Custom));
   *p++ = 0xf3;  // custom type for _id
   if (ServerState::isDBServer(trx->serverRole()) &&
-      _info.namec_str()[0] != '_') {
+      _info.name()[0] != '_') {
     // db server in cluster, note: the local collections _statistics,
     // _statisticsRaw and _statistics15 (which are the only system collections)
     // must not be treated as shards but as local collections, we recognise

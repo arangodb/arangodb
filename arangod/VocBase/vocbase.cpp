@@ -92,19 +92,16 @@ enum DropState {
 /// @brief collection constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vocbase_col_t::TRI_vocbase_col_t(TRI_vocbase_t* vocbase,
-                                     TRI_col_type_e type,
-                                     std::string const& name, TRI_voc_cid_t cid,
-                                     std::string const& path)
+TRI_vocbase_col_t::TRI_vocbase_col_t(TRI_vocbase_t* vocbase, TRI_col_type_e type,
+                                     TRI_voc_cid_t cid, std::string const& name) 
     : _vocbase(vocbase),
       _cid(cid),
       _planId(0),
       _type(static_cast<TRI_col_type_t>(type)),
-      _lock(),
       _internalVersion(0),
+      _lock(),
       _status(TRI_VOC_COL_STATUS_CORRUPTED),
       _collection(nullptr),
-      _path(path),
       _dbName(vocbase->name()),
       _name(name),
       _isLocal(true),
@@ -112,7 +109,7 @@ TRI_vocbase_col_t::TRI_vocbase_col_t(TRI_vocbase_t* vocbase,
       _canUnload(true),
       _canRename(true) {
   // check for special system collection names
-  if (TRI_IsSystemNameCollection(name.c_str())) {
+  if (TRI_collection_t::IsSystemName(name)) {
     // a few system collections have special behavior
     if (TRI_EqualString(name.c_str(), TRI_COL_NAME_USERS) ||
         TRI_IsPrefixString(name.c_str(), TRI_COL_NAME_STATISTICS)) {
@@ -203,7 +200,6 @@ static bool UnregisterCollection(TRI_vocbase_t* vocbase,
 
 static bool UnloadCollectionCallback(TRI_collection_t* col, void* data) {
   TRI_vocbase_col_t* collection = static_cast<TRI_vocbase_col_t*>(data);
-
   TRI_ASSERT(collection != nullptr);
 
   TRI_EVENTUAL_WRITE_LOCK_STATUS_VOCBASE_COL(collection);
@@ -383,14 +379,14 @@ static bool DropCollectionCallback(TRI_collection_t* col, void* data) {
       }
 
       // perform the rename
-      int res = TRI_RenameFile(collection->pathc_str(), newFilename.c_str());
+      int res = TRI_RenameFile(collection->path().c_str(), newFilename.c_str());
 
       LOG(TRACE) << "renaming collection directory from '"
-                 << collection->pathc_str() << "' to '" << newFilename << "'";
+                 << collection->path() << "' to '" << newFilename << "'";
 
       if (res != TRI_ERROR_NO_ERROR) {
         LOG(ERR) << "cannot rename dropped collection '" << name
-                 << "' from '" << collection->pathc_str() << "' to '"
+                 << "' from '" << collection->path() << "' to '"
                  << newFilename << "': " << TRI_errno_string(res);
       } else {
         LOG(DEBUG) << "wiping dropped collection '" << name
@@ -405,7 +401,7 @@ static bool DropCollectionCallback(TRI_collection_t* col, void* data) {
       }
     } else {
       LOG(ERR) << "cannot rename dropped collection '" << name
-               << "': unknown path '" << collection->pathc_str() << "'";
+               << "': unknown path '" << collection->path() << "'";
     }
   }
 
@@ -419,11 +415,11 @@ static bool DropCollectionCallback(TRI_collection_t* col, void* data) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_vocbase_col_t* AddCollection(TRI_vocbase_t* vocbase,
-                                        TRI_col_type_e type, char const* name,
-                                        TRI_voc_cid_t cid, std::string const& path) {
+                                        TRI_col_type_e type, TRI_voc_cid_t cid,
+                                        std::string const& name) {
   // create a new proxy
   auto collection =
-      std::make_unique<TRI_vocbase_col_t>(vocbase, type, name, cid, path);
+      std::make_unique<TRI_vocbase_col_t>(vocbase, type, cid, name);
 
   TRI_ASSERT(collection != nullptr);
 
@@ -512,7 +508,7 @@ static TRI_vocbase_col_t* CreateCollection(
   // ok, construct the collection
   // .............................................................................
   
-  StorageEngine* engine = application_features::ApplicationServer::getFeature<EngineSelectorFeature>("EngineSelector")->ENGINE;
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
 
   TRI_document_collection_t* document =
       TRI_CreateDocumentCollection(vocbase, engine->path(vocbase->_id), parameters, cid);
@@ -528,8 +524,7 @@ static TRI_vocbase_col_t* CreateCollection(
 
   try {
     collection =
-        AddCollection(vocbase, col->_info.type(), col->_info.namec_str(),
-                      col->_info.id(), col->_directory);
+        AddCollection(vocbase, col->_info.type(), col->_info.id(), col->_info.name());
   } catch (...) {
     // if an exception is caught, collection will be a nullptr
   }
@@ -593,11 +588,11 @@ static int RenameCollection(TRI_vocbase_t* vocbase,
     else if (collection->_status == TRI_VOC_COL_STATUS_UNLOADED) {
       try {
         arangodb::VocbaseCollectionInfo info =
-            arangodb::VocbaseCollectionInfo::fromFile(collection->pathc_str(),
+            arangodb::VocbaseCollectionInfo::fromFile(collection->path(),
                                                       vocbase, newName, true);
 
         bool doSync = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database")->forceSyncProperties();
-        int res = info.saveToFile(collection->pathc_str(), doSync);
+        int res = info.saveToFile(collection->path(), doSync);
 
         if (res != TRI_ERROR_NO_ERROR) {
           return TRI_set_errno(res);
@@ -860,9 +855,9 @@ static int DropCollection(TRI_vocbase_t* vocbase, TRI_vocbase_col_t* collection,
   else if (collection->_status == TRI_VOC_COL_STATUS_UNLOADED) {
     try {
       arangodb::VocbaseCollectionInfo info =
-          arangodb::VocbaseCollectionInfo::fromFile(collection->pathc_str(),
+          arangodb::VocbaseCollectionInfo::fromFile(collection->path(),
                                                     collection->vocbase(),
-                                                    colName.c_str(), true);
+                                                    colName, true);
       if (!info.deleted()) {
         info.setDeleted(true);
 
@@ -870,7 +865,7 @@ static int DropCollection(TRI_vocbase_t* vocbase, TRI_vocbase_col_t* collection,
         bool doSync = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database")->forceSyncProperties();
         doSync = (doSync && !arangodb::wal::LogfileManager::instance()->isInRecovery());
 
-        int res = info.saveToFile(collection->pathc_str(), doSync);
+        int res = info.saveToFile(collection->path(), doSync);
 
         if (res != TRI_ERROR_NO_ERROR) {
           TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
@@ -990,17 +985,20 @@ static bool FilenameStringComparator(std::string const& lhs,
   uint64_t const numRight = GetNumericFilenamePart(rhs.c_str());
   return numLeft < numRight;
 }
+  
+std::string TRI_vocbase_col_t::path() const {
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  return engine->path(_vocbase->_id, _cid);
+}
 
 void TRI_vocbase_col_t::toVelocyPack(VPackBuilder& builder, bool includeIndexes,
                                      TRI_voc_tick_t maxTick) {
   TRI_ASSERT(!builder.isClosed());
-  char* filename = TRI_Concatenate2File(_path.c_str(), TRI_VOC_PARAMETER_FILE);
-  std::string path = std::string(filename, strlen(filename));
+  std::string const filename = basics::FileUtils::buildFilename(path(), TRI_VOC_PARAMETER_FILE);
 
   std::shared_ptr<VPackBuilder> fileInfoBuilder =
-      arangodb::basics::VelocyPackHelper::velocyPackFromFile(path);
+      arangodb::basics::VelocyPackHelper::velocyPackFromFile(filename);
   builder.add("parameters", fileInfoBuilder->slice());
-  TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
 
   if (includeIndexes) {
     builder.add("indexes", VPackValue(VPackValueType::Array));
@@ -1024,7 +1022,7 @@ void TRI_vocbase_col_t::toVelocyPackIndexes(VPackBuilder& builder,
                                             TRI_voc_tick_t maxTick) {
   TRI_ASSERT(!builder.isClosed());
 
-  std::vector<std::string> files = TRI_FilesDirectory(_path.c_str());
+  std::vector<std::string> files = TRI_FilesDirectory(path().c_str());
 
   // sort by index id
   std::sort(files.begin(), files.end(), FilenameStringComparator);
@@ -1032,9 +1030,9 @@ void TRI_vocbase_col_t::toVelocyPackIndexes(VPackBuilder& builder,
   for (auto const& file : files) {
     if (StringUtils::isPrefix(file, "index-") &&
         StringUtils::isSuffix(file, ".json")) {
-      std::string path = basics::FileUtils::buildFilename(_path, file);
+      std::string const filename = basics::FileUtils::buildFilename(path(), file);
       std::shared_ptr<VPackBuilder> indexVPack =
-          arangodb::basics::VelocyPackHelper::velocyPackFromFile(path);
+          arangodb::basics::VelocyPackHelper::velocyPackFromFile(filename);
 
       VPackSlice const indexSlice = indexVPack->slice();
       VPackSlice const id = indexSlice.get("id");
@@ -1345,8 +1343,8 @@ TRI_vocbase_col_t* TRI_CreateCollectionVocBase(
     TRI_vocbase_t* vocbase, arangodb::VocbaseCollectionInfo& parameters,
     TRI_voc_cid_t cid, bool writeMarker) {
   // check that the name does not contain any strange characters
-  if (!TRI_IsAllowedNameCollection(parameters.isSystem(),
-                                   parameters.namec_str())) {
+  if (!TRI_collection_t::IsAllowedName(parameters.isSystem(),
+                                       parameters.name())) {
     TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_NAME);
 
     return nullptr;
@@ -1557,19 +1555,19 @@ int TRI_RenameCollectionVocBase(TRI_vocbase_t* vocbase,
 
   if (!doOverride) {
     bool isSystem;
-    isSystem = TRI_IsSystemNameCollection(oldName.c_str());
+    isSystem = TRI_collection_t::IsSystemName(oldName);
 
-    if (isSystem && !TRI_IsSystemNameCollection(newName)) {
+    if (isSystem && !TRI_collection_t::IsSystemName(newName)) {
       // a system collection shall not be renamed to a non-system collection
       // name
       return TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_NAME);
-    } else if (!isSystem && TRI_IsSystemNameCollection(newName)) {
+    } else if (!isSystem && TRI_collection_t::IsSystemName(newName)) {
       // a non-system collection shall not be renamed to a system collection
       // name
       return TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_NAME);
     }
 
-    if (!TRI_IsAllowedNameCollection(isSystem, newName)) {
+    if (!TRI_collection_t::IsAllowedName(isSystem, newName)) {
       return TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_NAME);
     }
   }
@@ -1786,54 +1784,6 @@ bool TRI_CanRemoveVocBase(TRI_vocbase_t* vocbase) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns whether the database is the system database
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_IsSystemVocBase(TRI_vocbase_t* vocbase) {
-  return vocbase->name() == TRI_VOC_SYSTEM_DATABASE;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if a database name is allowed
-///
-/// Returns true if the name is allowed and false otherwise
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_IsAllowedNameVocBase(bool allowSystem, char const* name) {
-  size_t length = 0;
-
-  // check allow characters: must start with letter or underscore if system is
-  // allowed
-  for (char const* ptr = name; *ptr; ++ptr) {
-    bool ok;
-    if (length == 0) {
-      if (allowSystem) {
-        ok = (*ptr == '_') || ('a' <= *ptr && *ptr <= 'z') ||
-             ('A' <= *ptr && *ptr <= 'Z');
-      } else {
-        ok = ('a' <= *ptr && *ptr <= 'z') || ('A' <= *ptr && *ptr <= 'Z');
-      }
-    } else {
-      ok = (*ptr == '_') || (*ptr == '-') || ('0' <= *ptr && *ptr <= '9') ||
-           ('a' <= *ptr && *ptr <= 'z') || ('A' <= *ptr && *ptr <= 'Z');
-    }
-
-    if (!ok) {
-      return false;
-    }
-
-    ++length;
-  }
-
-  // invalid name length
-  if (length == 0 || length > TRI_COL_NAME_LENGTH) {
-    return false;
-  }
-
-  return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the next query id
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1909,8 +1859,44 @@ TRI_vocbase_t::~TRI_vocbase_t() {
 }
   
 std::string const TRI_vocbase_t::path() {
-  StorageEngine* engine = application_features::ApplicationServer::getFeature<EngineSelectorFeature>("EngineSelector")->ENGINE;
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
   return engine->path(_id);
+}
+
+/// @brief checks if a database name is allowed
+/// returns true if the name is allowed and false otherwise
+bool TRI_vocbase_t::IsAllowedName(bool allowSystem, std::string const& name) {
+  size_t length = 0;
+
+  // check allow characters: must start with letter or underscore if system is
+  // allowed
+  for (char const* ptr = name.c_str(); *ptr; ++ptr) {
+    bool ok;
+    if (length == 0) {
+      if (allowSystem) {
+        ok = (*ptr == '_') || ('a' <= *ptr && *ptr <= 'z') ||
+             ('A' <= *ptr && *ptr <= 'Z');
+      } else {
+        ok = ('a' <= *ptr && *ptr <= 'z') || ('A' <= *ptr && *ptr <= 'Z');
+      }
+    } else {
+      ok = (*ptr == '_') || (*ptr == '-') || ('0' <= *ptr && *ptr <= '9') ||
+           ('a' <= *ptr && *ptr <= 'z') || ('A' <= *ptr && *ptr <= 'Z');
+    }
+
+    if (!ok) {
+      return false;
+    }
+
+    ++length;
+  }
+
+  // invalid name length
+  if (length == 0 || length > TRI_COL_NAME_LENGTH) {
+    return false;
+  }
+
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

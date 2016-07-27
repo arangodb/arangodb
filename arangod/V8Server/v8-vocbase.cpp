@@ -1961,7 +1961,7 @@ static void JS_PathDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
     
-  StorageEngine* engine = application_features::ApplicationServer::getFeature<EngineSelectorFeature>("EngineSelector")->ENGINE;
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
 
   TRI_V8_RETURN_STD_STRING(engine->path(vocbase->_id));
 }
@@ -2016,7 +2016,7 @@ static void JS_IsSystemDatabase(
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
-  TRI_V8_RETURN(v8::Boolean::New(isolate, TRI_IsSystemVocBase(vocbase)));
+  TRI_V8_RETURN(v8::Boolean::New(isolate, vocbase->isSystem()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2165,7 +2165,7 @@ static void JS_Databases(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
-  if (argc == 0 && !TRI_IsSystemVocBase(vocbase)) {
+  if (argc == 0 && !vocbase->isSystem()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
   }
 
@@ -2213,7 +2213,7 @@ static void CreateDatabaseCoordinator(
   // First work with the arguments to create a VelocyPack entry:
   std::string const name = TRI_ObjectToString(args[0]);
 
-  if (!TRI_IsAllowedNameVocBase(false, name.c_str())) {
+  if (!TRI_vocbase_t::IsAllowedName(false, name)) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NAME_INVALID);
   }
 
@@ -2337,7 +2337,7 @@ static void JS_CreateDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_READ_ONLY);
   }
 
-  if (!TRI_IsSystemVocBase(vocbase)) {
+  if (!vocbase->isSystem()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
   }
 
@@ -2471,7 +2471,7 @@ static void JS_DropDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
-  if (!TRI_IsSystemVocBase(vocbase)) {
+  if (!vocbase->isSystem()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
   }
 
@@ -2526,7 +2526,7 @@ static void JS_Endpoints(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
-  if (!TRI_IsSystemVocBase(vocbase)) {
+  if (!vocbase->isSystem()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
   }
 

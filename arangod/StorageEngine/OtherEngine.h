@@ -67,7 +67,11 @@ class OtherEngine final : public StorageEngine {
   // the server. called at server start only, after getDatabases() and getCollectionsAndIndexes()
   uint64_t getMaxRevision() override;
   
+  // return the path for a database
   std::string path(TRI_voc_tick_t id) const override { return "none"; }
+  
+  // return the path for a collection in the database
+  std::string path(TRI_voc_tick_t id, TRI_voc_cid_t cid) const override { return "none"; }
   
   TRI_vocbase_t* openDatabase(arangodb::velocypack::Slice const& parameters, bool isUpgrade) override { 
     return nullptr; 

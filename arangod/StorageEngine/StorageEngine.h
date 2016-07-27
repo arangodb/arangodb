@@ -85,7 +85,11 @@ class StorageEngine : public application_features::ApplicationFeature {
   // the server. called at server start only, after getDatabases() and getCollectionsAndIndexes()
   virtual uint64_t getMaxRevision() = 0;
 
+  // return the path for a database
   virtual std::string path(TRI_voc_tick_t id) const = 0;
+
+  // return the path for a collection in the database
+  virtual std::string path(TRI_voc_tick_t id, TRI_voc_cid_t cid) const = 0;
 
   virtual TRI_vocbase_t* openDatabase(arangodb::velocypack::Slice const& parameters, bool isUpgrade) = 0;
 

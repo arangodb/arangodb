@@ -394,7 +394,7 @@ int MMFilesEngine::getCollectionsAndIndexes(TRI_vocbase_t* vocbase,
         TRI_vocbase_col_t* c = nullptr;
 
         try {
-          c = AddCollection(vocbase, type, info.namec_str(), info.id(), file);
+          c = AddCollection(vocbase, type, info.name(), info.id(), file);
         } catch (...) {
           // if we caught an exception, c is still a nullptr
         }
@@ -759,6 +759,10 @@ VPackBuilder MMFilesEngine::databaseToVelocyPack(TRI_voc_tick_t id,
 
 std::string MMFilesEngine::databaseDirectory(TRI_voc_tick_t id) const {
   return _databasePath + "database-" + std::to_string(id);
+}
+
+std::string MMFilesEngine::collectionDirectory(TRI_voc_tick_t id, TRI_voc_cid_t cid) const {
+  return basics::FileUtils::buildFilename(databaseDirectory(id), "collection-" + std::to_string(cid));
 }
 
 std::string MMFilesEngine::parametersFile(TRI_voc_tick_t id) const {

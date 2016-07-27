@@ -78,7 +78,7 @@ void DatabaseManagerThread::run() {
   auto dealer = ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
   int cleanupCycles = 0;
   
-  StorageEngine* engine = ApplicationServer::getFeature<EngineSelectorFeature>("EngineSelector")->ENGINE;
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
 
   while (true) {
     // check if we have to drop some database
@@ -318,7 +318,7 @@ void DatabaseFeature::start() {
 
   // scan all databases
   VPackBuilder builder;
-  StorageEngine* engine = ApplicationServer::getFeature<EngineSelectorFeature>("EngineSelector")->ENGINE;
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
   engine->getDatabases(builder);
 
   TRI_ASSERT(builder.slice().isArray());
@@ -392,7 +392,7 @@ void DatabaseFeature::unprepare() {
 /// @brief will be called when the recovery phase has run
 /// this will start the compactors and replication appliers for all databases
 int DatabaseFeature::recoveryDone() {
-  StorageEngine* engine = ApplicationServer::getFeature<EngineSelectorFeature>("EngineSelector")->ENGINE;
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
 
   auto unuser(_databasesProtector.use());
   auto theLists = _databasesLists.load();
@@ -431,7 +431,7 @@ int DatabaseFeature::recoveryDone() {
 int DatabaseFeature::createDatabaseCoordinator(TRI_voc_tick_t id, std::string const& name, TRI_vocbase_t*& result) {
   result = nullptr;
 
-  if (!TRI_IsAllowedNameVocBase(true, name.c_str())) {
+  if (!TRI_vocbase_t::IsAllowedName(true, name)) {
     return TRI_ERROR_ARANGO_DATABASE_NAME_INVALID;
   }
 
@@ -488,7 +488,7 @@ int DatabaseFeature::createDatabase(TRI_voc_tick_t id, std::string const& name,
                                     bool writeMarker, TRI_vocbase_t*& result) {
   result = nullptr;
 
-  if (!TRI_IsAllowedNameVocBase(false, name.c_str())) {
+  if (!TRI_vocbase_t::IsAllowedName(false, name)) {
     return TRI_ERROR_ARANGO_DATABASE_NAME_INVALID;
   }
 
@@ -524,7 +524,7 @@ int DatabaseFeature::createDatabase(TRI_voc_tick_t id, std::string const& name,
     builder.close();
 
     // create database in storage engine
-    StorageEngine* engine = ApplicationServer::getFeature<EngineSelectorFeature>("EngineSelector")->ENGINE;
+    StorageEngine* engine = EngineSelectorFeature::ENGINE;
     // createDatabase must return a valid database or throw
     vocbase.reset(engine->createDatabase(id, builder.slice())); 
     TRI_ASSERT(vocbase != nullptr);
@@ -693,7 +693,7 @@ int DatabaseFeature::dropDatabase(std::string const& name, bool writeMarker, boo
   }
 
   auto callback = []() -> bool { return true; };
-  StorageEngine* engine = ApplicationServer::getFeature<EngineSelectorFeature>("EngineSelector")->ENGINE;
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
   int res = engine->dropDatabase(vocbase, waitForDeletion, callback);
     
   if (res == TRI_ERROR_NO_ERROR) {
@@ -1063,7 +1063,7 @@ int DatabaseFeature::iterateDatabases(VPackSlice const& databases) {
   V8DealerFeature* dealer = ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
   std::string const appPath = dealer->appPath();
   
-  StorageEngine* engine = ApplicationServer::getFeature<EngineSelectorFeature>("EngineSelector")->ENGINE;
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
 
   int res = TRI_ERROR_NO_ERROR;
 

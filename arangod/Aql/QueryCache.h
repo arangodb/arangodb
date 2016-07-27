@@ -112,7 +112,6 @@ struct QueryCacheDatabaseEntry {
   /// @brief invalidate all entries for a collection in the database-specific
   /// cache
   void invalidate(std::string const&);
-  void invalidate(char const*);
 
   /// @brief enforce maximum number of results
   void enforceMaxResults(size_t);
@@ -191,7 +190,7 @@ class QueryCache {
   void invalidate(TRI_vocbase_t*, std::vector<std::string> const&);
 
   /// @brief invalidate all queries for a particular collection
-  void invalidate(TRI_vocbase_t*, char const*);
+  void invalidate(TRI_vocbase_t*, std::string const&);
 
   /// @brief invalidate all queries for a particular database
   void invalidate(TRI_vocbase_t*);

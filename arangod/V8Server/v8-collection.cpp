@@ -2611,7 +2611,7 @@ static void JS_VersionVocbaseCol(
   try {
     std::string const collectionName(collection->name());
     VocbaseCollectionInfo info = VocbaseCollectionInfo::fromFile(
-        collection->pathc_str(), collection->vocbase(), collectionName.c_str(),
+        collection->path().c_str(), collection->vocbase(), collectionName.c_str(),
         false);
 
     TRI_V8_RETURN(v8::Number::New(isolate, (int)info.version()));
@@ -2757,7 +2757,7 @@ static void JS_CollectionsVocbase(
   }
 
   std::sort(colls.begin(), colls.end(), [](TRI_vocbase_col_t const* lhs, TRI_vocbase_col_t const* rhs) -> bool {
-    return StringUtils::tolower(lhs->namec_str()) < StringUtils::tolower(rhs->namec_str());
+    return StringUtils::tolower(lhs->name()) < StringUtils::tolower(rhs->name());
   });
 
   bool error = false;
@@ -2962,7 +2962,7 @@ static void JS_DatafilesVocbaseCol(
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_UNLOADED);
     }
 
-    structure = TRI_FileStructureCollectionDirectory(collection->pathc_str());
+    structure = TRI_FileStructureCollectionDirectory(collection->path().c_str());
   }
 
   // build result

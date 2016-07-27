@@ -300,11 +300,19 @@ struct TRI_vocbase_t {
   compaction_blockers_t _compactionBlockers;
 
  public:
+  /// @brief checks if a database name is allowed
+  /// returns true if the name is allowed and false otherwise
+  static bool IsAllowedName(bool allowSystem, std::string const& name);
   std::string const name() { return _name; }
   std::string const path();
   void updateReplicationClient(TRI_server_id_t, TRI_voc_tick_t);
   std::vector<std::tuple<TRI_server_id_t, double, TRI_voc_tick_t>>
   getReplicationClients();
+
+  /// @brief returns whether the database is the system database
+  bool isSystem() {
+    return name() == TRI_VOC_SYSTEM_DATABASE;
+  }
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -335,22 +343,19 @@ class TRI_vocbase_col_t {
   TRI_vocbase_col_t() = delete;
 
   TRI_vocbase_col_t(TRI_vocbase_t* vocbase, TRI_col_type_e type,
-                    std::string const& name, TRI_voc_cid_t cid,
-                    std::string const& path);
+                    TRI_voc_cid_t cid, std::string const& name);
   ~TRI_vocbase_col_t();
 
   // Leftover from struct
  public:
+  std::string path() const;
   TRI_vocbase_t* vocbase() const { return _vocbase; }
   TRI_voc_cid_t cid() const { return _cid; }
   TRI_voc_cid_t planId() const { return _planId; }
   TRI_col_type_t type() const { return _type; }
   uint32_t internalVersion() const { return _internalVersion; }
-  std::string const& path() const { return _path; }
-  char const* pathc_str() const { return _path.c_str(); }
   std::string const& dbName() const { return _dbName; }
   std::string name() const { return _name; }
-  char const* namec_str() const { return _name.c_str(); }
   bool isLocal() const { return _isLocal; }
   bool canDrop() const { return _canDrop; }
   bool canUnload() const { return _canUnload; }
@@ -392,16 +397,14 @@ class TRI_vocbase_col_t {
   TRI_voc_cid_t _cid;     // local collecttion identifier
   TRI_voc_cid_t _planId;  // cluster-wide collection identifier
   TRI_col_type_t _type;   // collection type
+  uint32_t _internalVersion;  // is incremented when a collection is renamed
 
   arangodb::basics::ReadWriteLock _lock;  // lock protecting the status and name
 
-  uint32_t _internalVersion;  // is incremented when a collection is renamed
   // this is used to prevent caching of collection objects
   // with "wrong" names in the "db" object
   TRI_vocbase_col_status_e _status;  // status of the collection
-  struct TRI_document_collection_t*
-      _collection;            // NULL or pointer to loaded collection
-  std::string const _path;    // path to the collection files
+  TRI_document_collection_t* _collection;  // NULL or pointer to loaded collection
   std::string const _dbName;  // name of the database
   std::string _name;          // name of the collection
 
@@ -564,18 +567,6 @@ bool TRI_DropVocBase(TRI_vocbase_t*);
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_CanRemoveVocBase(TRI_vocbase_t*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns whether the database is the system database
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_IsSystemVocBase(TRI_vocbase_t*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if a database name is allowed
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_IsAllowedNameVocBase(bool, char const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the next query id

@@ -554,7 +554,7 @@ AstNode* Ast::createNodeCollection(char const* name,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
 
-  if (*name == '\0' || !TRI_IsAllowedNameCollection(true, name)) {
+  if (*name == '\0' || !TRI_collection_t::IsAllowedName(true, name)) {
     _query->registerErrorCustom(TRI_ERROR_ARANGO_ILLEGAL_NAME, name);
     return nullptr;
   }
