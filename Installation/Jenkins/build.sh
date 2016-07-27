@@ -74,7 +74,7 @@ BUILD_DIR="build"
 BUILD_CONFIG=RelWithDebInfo
 
 PAR="-j"
-GENERATOR=make
+GENERATOR="Unix Makefiles"
 MAKE=make
 MAKE_PARAMS=""
 MAKE_CMD_PREFIX=""
@@ -319,6 +319,8 @@ if [ ! -f Makefile ];  then
 fi
 
 ${MAKE_CMD_PREFIX} ${MAKE} ${VERBOSE_MAKE} "${PAR}" "${PARALLEL_BUILDS}" ${MAKE_PARAMS}
+git rev-parse HEAD > ../last_compiled_version.sha
+
 if [ -n "$CPACK"  -a -n "${TARGET_DIR}" ];  then
     for PACK in ${CPACK}; do 
         if [ "$PACK" == "DEB" ]; then
@@ -334,8 +336,6 @@ if [ -n "$CPACK"  -a -n "${TARGET_DIR}" ];  then
             cp *.${EXT} ${TARGET_DIR}
         fi
 fi
-
-git rev-parse HEAD > ../last_compiled_version.sha
 
 # and install
 
