@@ -620,6 +620,9 @@
           window.modalView.createDeleteButton('Delete', this.deleteGraph.bind(this))
         );
         buttons.push(
+          window.modalView.createNotificationButton('Reset display settings', this.resetDisplaySettings.bind(this))
+        );
+        buttons.push(
           window.modalView.createSuccessButton('Save', this.saveEditedGraph.bind(this))
         );
       } else {
@@ -750,6 +753,17 @@
           '</fieldset>'
         );
       }
+    },
+
+    resetDisplaySettings: function () {
+      var graphName = $('#editGraphName').val();
+
+      var test = new window.GraphSettingsView({
+        name: graphName,
+        userConfig: window.App.userConfig
+      });
+      test.setDefaults(true);
+      test.remove();
     },
 
     showHideDefinition: function (e) {
