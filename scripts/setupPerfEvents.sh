@@ -49,4 +49,10 @@ addEvent documentCoordinator
 echo work method in HttpServerJob
 addEvent workHttpServerJob work@HttpServerJob.cpp
 
+echo work method in RestDocumentHandler
+addEvent executeRestReadDocument readDocument@RestDocumentHandler.cpp
+addEvent executeRestInsertDocument createDocument@RestDocumentHandler.cpp
+addEvent handleRequest handleRequest@HttpServer.cpp
+addEvent handleWrite handleWrite@SocketTask.cpp
+
 echo Done.
