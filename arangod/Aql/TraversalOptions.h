@@ -24,7 +24,6 @@
 #define ARANGOD_AQL_TRAVERSAL_OPTIONS_H 1
 
 #include "Basics/Common.h"
-#include "Basics/JsonHelper.h"
 #include "VocBase/Traverser.h"
 
 namespace arangodb {

@@ -993,23 +993,18 @@ bool TRI_fsync(int fd) {
 
 char* TRI_SlurpFile(TRI_memory_zone_t* zone, char const* filename,
                     size_t* length) {
-  TRI_string_buffer_t result;
-  int fd;
-
-  fd = TRI_OPEN(filename, O_RDONLY | TRI_O_CLOEXEC);
+  int fd = TRI_OPEN(filename, O_RDONLY | TRI_O_CLOEXEC);
 
   if (fd == -1) {
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
     return nullptr;
   }
 
+  TRI_string_buffer_t result;
   TRI_InitStringBuffer(&result, zone);
 
   while (true) {
-    int res;
-    ssize_t n;
-
-    res = TRI_ReserveStringBuffer(&result, READBUFFER_SIZE);
+    int res = TRI_ReserveStringBuffer(&result, READBUFFER_SIZE);
 
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_CLOSE(fd);
@@ -1019,7 +1014,7 @@ char* TRI_SlurpFile(TRI_memory_zone_t* zone, char const* filename,
       return nullptr;
     }
 
-    n = TRI_READ(fd, (void*)TRI_EndStringBuffer(&result), READBUFFER_SIZE);
+    ssize_t n = TRI_READ(fd, (void*)TRI_EndStringBuffer(&result), READBUFFER_SIZE);
 
     if (n == 0) {
       break;

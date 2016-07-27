@@ -4,8 +4,7 @@
 <!-- arangod/Cluster/ApplicationCluster.h -->
 
 
-this server's id
-`--cluster.my-local-info info`
+This server's id: `--cluster.my-local-info info`
 
 Some local information about the server in the cluster, this can for
 example be an IP address with a process ID or any string unique to
@@ -18,13 +17,12 @@ have a unique local info. This is ignored if my-id below is specified.
 <!-- arangod/Cluster/ApplicationCluster.h -->
 
 
-list of agency endpoints
+List of agency endpoints:
 `--cluster.agency-endpoint endpoint`
 
 An agency endpoint the server can connect to. The option can be specified
-multiple times so the server can use a cluster of agency servers.
-Endpoints
-have the following pattern:
+multiple times, so the server can use a cluster of agency servers.
+Endpoints have the following pattern:
 
 - tcp://ipv4-address:port - TCP/IP endpoint, using IPv4
 - tcp://[ipv6-address]:port - TCP/IP endpoint, using IPv6
@@ -35,21 +33,18 @@ At least one endpoint must be specified or ArangoDB will refuse to start.
 It is recommended to specify at least two endpoints so ArangoDB has an
 alternative endpoint if one of them becomes unavailable.
 
-
 **Examples**
-
 
 ```
 --cluster.agency-endpoint tcp://192.168.1.1:4001 --cluster.agency-endpoint
 tcp://192.168.1.2:4002
 ```
 
-
 !SUBSECTION Agency prefix
 <!-- arangod/Cluster/ApplicationCluster.h -->
 
 
-global agency prefix
+Global agency prefix:
 `--cluster.agency-prefix prefix`
 
 The global key prefix used in all requests to the agency. The specified
@@ -60,21 +55,16 @@ server(s).
 *prefix* must consist of the letters *a-z*, *A-Z* and the digits *0-9*
 only. Specifying a prefix is mandatory.
 
-
 **Examples**
-
 
 ```
 --cluster.prefix mycluster
 ```
 
-
 !SUBSECTION MyId
 <!-- arangod/Cluster/ApplicationCluster.h -->
 
-
-this server's id
-`--cluster.my-id id`
+This server's id: `--cluster.my-id id`
 
 The local server's id in the cluster. Specifying *id* is mandatory on
 startup. Each server of the cluster must have a unique id.
@@ -85,12 +75,12 @@ determining the server's role and tasks in the cluster.
 *id* must be a string consisting of the letters *a-z*, *A-Z* or the
 digits *0-9* only.
 
-
 !SUBSECTION MyAddress
+
 <!-- arangod/Cluster/ApplicationCluster.h -->
 
 
-this server's address / endpoint
+This server's address / endpoint:
 `--cluster.my-address endpoint`
 
 The server's endpoint for cluster-internal communication. If specified, it
@@ -104,20 +94,17 @@ If no *endpoint* is specified, the server will look up its internal
 endpoint address in the agency. If no endpoint can be found in the agency
 for the server's id, ArangoDB will refuse to start.
 
-
 **Examples**
-
 
 ```
 --cluster.my-address tcp://192.168.1.1:8530
 ```
 
-
 !SUBSECTION Username
 <!-- arangod/Cluster/ApplicationCluster.h -->
 
 
-username used for cluster-internal communication
+Username used for cluster-internal communication:
 `--cluster.username username`
 
 The username used for authorization of cluster-internal requests.
@@ -133,12 +120,12 @@ If coordinators and database servers are run with authentication turned
 off, (e.g. by setting the *--server.authentication* option to *false*),
 the cluster-internal communication will also be unauthenticated.
 
-
 !SUBSECTION Password
+
 <!-- arangod/Cluster/ApplicationCluster.h -->
 
 
-password used for cluster-internal communication
+Password used for cluster-internal communication:
 `--cluster.password password`
 
 The password used for authorization of cluster-internal requests.
@@ -147,11 +134,9 @@ cluster-internal communication, i.e. requests exchanged between
 coordinators and individual database servers.
 
 This option is used for cluster-internal requests only. Regular requests
-to
-coordinators are authenticated normally using the data in the `_users`
+to coordinators are authenticated normally using the data in the `_users`
 collection.
 
 If coordinators and database servers are run with authentication turned
 off, (e.g. by setting the *--server.authentication* option to *false*),
 the cluster-internal communication will also be unauthenticated.
-

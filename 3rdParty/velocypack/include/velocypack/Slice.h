@@ -489,6 +489,12 @@ class Slice {
     return Slice(current);
   }
 
+  // tests whether the Slice is an empty array
+  bool isEmptyArray() const noexcept { return head() == 0x01; }
+
+  // tests whether the Slice is an empty object
+  bool isEmptyObject() const noexcept { return head() == 0x0a; }
+
   // translates an integer key into a string
   Slice translate() const;
  

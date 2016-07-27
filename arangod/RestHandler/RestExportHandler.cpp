@@ -41,15 +41,16 @@
 using namespace arangodb;
 using namespace arangodb::rest;
 
-RestExportHandler::RestExportHandler(HttpRequest* request)
-    : RestVocbaseBaseHandler(request), _restrictions() {}
+RestExportHandler::RestExportHandler(GeneralRequest* request,
+                                     GeneralResponse* response)
+    : RestVocbaseBaseHandler(request, response), _restrictions() {}
 
-HttpHandler::status_t RestExportHandler::execute() {
+RestHandler::status RestExportHandler::execute() {
   if (ServerState::instance()->isCoordinator()) {
     generateError(GeneralResponse::ResponseCode::NOT_IMPLEMENTED,
                   TRI_ERROR_CLUSTER_UNSUPPORTED,
                   "'/_api/export' is not yet supported in a cluster");
-    return status_t(HANDLER_DONE);
+    return status::DONE;
   }
 
   // extract the sub-request type
@@ -57,22 +58,22 @@ HttpHandler::status_t RestExportHandler::execute() {
 
   if (type == GeneralRequest::RequestType::POST) {
     createCursor();
-    return status_t(HANDLER_DONE);
+    return status::DONE;
   }
 
   if (type == GeneralRequest::RequestType::PUT) {
     modifyCursor();
-    return status_t(HANDLER_DONE);
+    return status::DONE;
   }
 
   if (type == GeneralRequest::RequestType::DELETE_REQ) {
     deleteCursor();
-    return status_t(HANDLER_DONE);
+    return status::DONE;
   }
 
   generateError(GeneralResponse::ResponseCode::METHOD_NOT_ALLOWED,
                 TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
-  return status_t(HANDLER_DONE);
+  return status::DONE;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -261,8 +262,17 @@ void RestExportHandler::createCursor() {
       bool count = arangodb::basics::VelocyPackHelper::getBooleanValue(
           options, "count", false);
 
-      createResponse(GeneralResponse::ResponseCode::CREATED);
-      _response->setContentType(HttpResponse::CONTENT_TYPE_JSON);
+      setResponseCode(GeneralResponse::ResponseCode::CREATED);
+
+      // TODO needs to generalized
+      auto* response = dynamic_cast<HttpResponse*>(_response);
+
+      if (response == nullptr) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+      }
+
+      // TODO: generalize to calling handler setPayload
+      response->setContentType(HttpResponse::ContentType::JSON);
 
       auto cursors =
           static_cast<arangodb::CursorRepository*>(_vocbase->_cursorRepository);
@@ -274,12 +284,12 @@ void RestExportHandler::createCursor() {
       collectionExport.release();
 
       try {
-        _response->body().appendChar('{');
-        cursor->dump(_response->body());
-        _response->body().appendText(",\"error\":false,\"code\":");
-        _response->body().appendInteger(
-            static_cast<uint32_t>(_response->responseCode()));
-        _response->body().appendChar('}');
+        response->body().appendChar('{');
+        cursor->dump(response->body());
+        response->body().appendText(",\"error\":false,\"code\":");
+        response->body().appendInteger(
+            static_cast<uint32_t>(response->responseCode()));
+        response->body().appendChar('}');
 
         cursors->release(cursor);
       } catch (...) {
@@ -329,15 +339,23 @@ void RestExportHandler::modifyCursor() {
   }
 
   try {
-    createResponse(GeneralResponse::ResponseCode::OK);
-    _response->setContentType(HttpResponse::CONTENT_TYPE_JSON);
+    setResponseCode(GeneralResponse::ResponseCode::OK);
 
-    _response->body().appendChar('{');
-    cursor->dump(_response->body());
-    _response->body().appendText(",\"error\":false,\"code\":");
-    _response->body().appendInteger(
-        static_cast<uint32_t>(_response->responseCode()));
-    _response->body().appendChar('}');
+    // TODO this needs to be generalized
+    auto* response = dynamic_cast<HttpResponse*>(_response);
+
+    if (response == nullptr) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    }
+
+    response->setContentType(HttpResponse::ContentType::JSON);
+
+    response->body().appendChar('{');
+    cursor->dump(response->body());
+    response->body().appendText(",\"error\":false,\"code\":");
+    response->body().appendInteger(
+        static_cast<uint32_t>(response->responseCode()));
+    response->body().appendChar('}');
 
     cursors->release(cursor);
   } catch (arangodb::basics::Exception const& ex) {
@@ -379,18 +397,12 @@ void RestExportHandler::deleteCursor() {
     return;
   }
 
-  // TODO: use RestBaseHandler
-  createResponse(GeneralResponse::ResponseCode::ACCEPTED);
-  _response->setContentType(HttpResponse::CONTENT_TYPE_JSON);
   VPackBuilder result;
   result.openObject();
   result.add("id", VPackValue(id));
   result.add("error", VPackValue(false));
-  result.add("code", VPackValue((int)_response->responseCode()));
+  result.add("code", VPackValue(static_cast<int>(GeneralResponse::ResponseCode::ACCEPTED)));
   result.close();
-  VPackSlice s = result.slice();
-  arangodb::basics::VPackStringBufferAdapter buffer(
-      _response->body().stringBuffer());
-  VPackDumper dumper(&buffer);
-  dumper.dump(s);
+
+  generateResult(GeneralResponse::ResponseCode::ACCEPTED, result.slice());
 }

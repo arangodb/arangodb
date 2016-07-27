@@ -92,8 +92,11 @@
 
   .wrong-credentials {
     color: $c-negative;
-    margin-top: -30px;
+    margin-left: -20px;
+    margin-top: -24px;
+    position: absolute;
     text-align: center;
+    width: 100%;
   }
 
   .login-space {

@@ -38,16 +38,14 @@ namespace rest {
 
 class RestAgencyCallbacksHandler : public RestVocbaseBaseHandler {
  public:
-  RestAgencyCallbacksHandler(HttpRequest* request, AgencyCallbackRegistry* agencyCallbackRegistry);
+  RestAgencyCallbacksHandler(GeneralRequest* request,
+                             GeneralResponse* response,
+                             AgencyCallbackRegistry* agencyCallbackRegistry);
 
  public:
   bool isDirect() const override;
+  status execute() override;
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief executes the handler
-  //////////////////////////////////////////////////////////////////////////////
-
-  status_t execute() override;
  private:
   AgencyCallbackRegistry* _agencyCallbackRegistry;
 };

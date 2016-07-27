@@ -525,7 +525,7 @@ void Constituent::run() {
     } else if (_role == CANDIDATE) {
       callElection();  // Run for office
     } else {
-      int32_t left = 100000.0 * config().minPing;
+      int32_t left = static_cast<int32_t>(100000.0 * config().minPing);
       long rand_wait = static_cast<long>(left);
       {
         CONDITION_LOCKER(guardv, _cv);

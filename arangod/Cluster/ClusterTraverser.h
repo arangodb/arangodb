@@ -40,10 +40,8 @@ class ClusterTraverser final : public Traverser {
  public:
   ClusterTraverser(
       std::vector<std::string> edgeCollections, TraverserOptions& opts,
-      std::string const& dbname, Transaction* trx,
-      std::unordered_map<size_t, std::vector<TraverserExpression*>> const*
-          expressions)
-      : Traverser(opts, expressions),
+      std::string const& dbname, Transaction* trx)
+      : Traverser(opts),
         _edgeCols(edgeCollections),
         _dbname(dbname),
         _trx(trx) {

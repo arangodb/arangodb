@@ -23,7 +23,7 @@
 #include "WorkMonitorHandler.h"
 
 #include "Basics/StringUtils.h"
-#include "HttpServer/HttpHandler.h"
+#include "GeneralServer/RestHandler.h"
 #include "Rest/HttpRequest.h"
 #include "velocypack/Builder.h"
 #include "velocypack/velocypack-aliases.h"
@@ -33,14 +33,15 @@ using namespace arangodb::basics;
 using namespace arangodb::rest;
 
 using arangodb::HttpRequest;
-using arangodb::rest::HttpHandler;
+using arangodb::rest::RestHandler;
 
-WorkMonitorHandler::WorkMonitorHandler(HttpRequest* request)
-    : RestBaseHandler(request) {}
+WorkMonitorHandler::WorkMonitorHandler(GeneralRequest* request,
+                                       GeneralResponse* response)
+    : RestBaseHandler(request, response) {}
 
 bool WorkMonitorHandler::isDirect() const { return true; }
 
-HttpHandler::status_t WorkMonitorHandler::execute() {
+RestHandler::status WorkMonitorHandler::execute() {
   auto suffix = _request->suffix();
   size_t const len = suffix.size();
   auto const type = _request->requestType();
@@ -50,11 +51,11 @@ HttpHandler::status_t WorkMonitorHandler::execute() {
       generateError(GeneralResponse::ResponseCode::BAD,
                     TRI_ERROR_HTTP_BAD_PARAMETER,
                     "expecting GET /_admin/work-monitor");
-      return status_t(HANDLER_DONE);
+      return status::DONE;
     }
 
     WorkMonitor::requestWorkOverview(_taskId);
-    return status_t(HANDLER_ASYNC);
+    return status::ASYNC;
   }
 
   if (type == GeneralRequest::RequestType::DELETE_REQ) {
@@ -63,7 +64,7 @@ HttpHandler::status_t WorkMonitorHandler::execute() {
                     TRI_ERROR_HTTP_BAD_PARAMETER,
                     "expecting DELETE /_admin/work-monitor/<id>");
 
-      return status_t(HANDLER_DONE);
+      return status::DONE;
     }
 
     uint64_t id = StringUtils::uint64(suffix[0]);
@@ -77,10 +78,10 @@ HttpHandler::status_t WorkMonitorHandler::execute() {
     VPackSlice s(b.start());
 
     generateResult(GeneralResponse::ResponseCode::OK, s);
-    return status_t(HANDLER_DONE);
+    return status::DONE;
   }
 
   generateError(GeneralResponse::ResponseCode::BAD,
                 TRI_ERROR_HTTP_METHOD_NOT_ALLOWED, "expecting GET or DELETE");
-  return status_t(HANDLER_DONE);
+  return status::DONE;
 }

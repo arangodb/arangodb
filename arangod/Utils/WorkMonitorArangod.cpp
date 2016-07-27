@@ -30,7 +30,7 @@
 #include "Aql/QueryList.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
-#include "HttpServer/HttpHandler.h"
+#include "GeneralServer/RestHandler.h"
 #include "Logger/Logger.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -44,7 +44,7 @@ using namespace arangodb::rest;
 /// @brief pushes a handler
 ////////////////////////////////////////////////////////////////////////////////
 
-void WorkMonitor::pushHandler(HttpHandler* handler) {
+void WorkMonitor::pushHandler(RestHandler* handler) {
   TRI_ASSERT(handler != nullptr);
   WorkDescription* desc = createWorkDescription(WorkType::HANDLER);
   desc->_data.handler = handler;
@@ -57,7 +57,7 @@ void WorkMonitor::pushHandler(HttpHandler* handler) {
 /// @brief pops and releases a handler
 ////////////////////////////////////////////////////////////////////////////////
 
-WorkDescription* WorkMonitor::popHandler(HttpHandler* handler, bool free) {
+WorkDescription* WorkMonitor::popHandler(RestHandler* handler, bool free) {
   WorkDescription* desc = deactivateWorkDescription();
 
   TRI_ASSERT(desc != nullptr);
@@ -83,7 +83,7 @@ WorkDescription* WorkMonitor::popHandler(HttpHandler* handler, bool free) {
 
 bool WorkMonitor::cancelAql(WorkDescription* desc) {
   auto type = desc->_type;
-  
+
   if (type != WorkType::AQL_STRING && type != WorkType::AQL_ID) {
     return true;
   }
@@ -123,15 +123,15 @@ void WorkMonitor::deleteHandler(WorkDescription* desc) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void WorkMonitor::vpackHandler(VPackBuilder* b, WorkDescription* desc) {
-  HttpHandler* handler = desc->_data.handler;
-  const HttpRequest* request = handler->getRequest();
+  RestHandler* handler = desc->_data.handler;
+  GeneralRequest const* request = handler->request();
 
   b->add("type", VPackValue("http-handler"));
   b->add("protocol", VPackValue(request->protocol()));
   b->add("method",
          VPackValue(HttpRequest::translateMethod(request->requestType())));
   b->add("url", VPackValue(request->fullUrl()));
-  b->add("httpVersion", VPackValue((int) request->protocolVersion()));
+  b->add("httpVersion", VPackValue((int)request->protocolVersion()));
   b->add("database", VPackValue(request->databaseName()));
   b->add("user", VPackValue(request->user()));
   b->add("taskId", VPackValue(request->clientTaskId()));
@@ -158,32 +158,23 @@ void WorkMonitor::vpackHandler(VPackBuilder* b, WorkDescription* desc) {
   b->close();
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sends the overview
-////////////////////////////////////////////////////////////////////////////////
-
-void WorkMonitor::sendWorkOverview(uint64_t taskId, std::string const& data) {
-  auto response = std::make_unique<HttpResponse>(GeneralResponse::ResponseCode::OK);
-
-  response->setContentType(HttpResponse::CONTENT_TYPE_JSON);
-  TRI_AppendString2StringBuffer(response->body().stringBuffer(), data.c_str(),
-                                data.length());
-
+void WorkMonitor::sendWorkOverview(
+    uint64_t taskId, std::shared_ptr<velocypack::Buffer<uint8_t>> buffer) {
   auto answer = std::make_unique<TaskData>();
 
   answer->_taskId = taskId;
   answer->_loop = SchedulerFeature::SCHEDULER->lookupLoopById(taskId);
-  answer->_type = TaskData::TASK_DATA_RESPONSE;
-  answer->_response.reset(response.release());
+  answer->_type = TaskData::TASK_DATA_BUFFER;
+  answer->_buffer = buffer;
 
   SchedulerFeature::SCHEDULER->signalTask(answer);
 }
 
-HandlerWorkStack::HandlerWorkStack(HttpHandler* handler) : _handler(handler) {
+HandlerWorkStack::HandlerWorkStack(RestHandler* handler) : _handler(handler) {
   WorkMonitor::pushHandler(_handler);
 }
 
-HandlerWorkStack::HandlerWorkStack(WorkItem::uptr<HttpHandler>& handler) {
+HandlerWorkStack::HandlerWorkStack(WorkItem::uptr<RestHandler>& handler) {
   _handler = handler.release();
   WorkMonitor::pushHandler(_handler);
 }

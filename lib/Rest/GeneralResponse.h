@@ -28,6 +28,9 @@
 
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
+#include "Basics/StringBuffer.h"
+
+#include "GeneralRequest.h"
 
 namespace arangodb {
 namespace velocypack {
@@ -97,6 +100,22 @@ class GeneralResponse {
     NOT_EXTENDED = 510
   };
 
+  enum class ContentType {
+    CUSTOM,  // use Content-Type from _headers
+    JSON,    // application/json
+    VPACK,   // application/x-velocypack
+    TEXT,    // text/plain
+    HTML,    // text/html
+    DUMP     // application/x-arango-dump
+  };
+
+  enum ConnectionType {
+    CONNECTION_NONE,
+    CONNECTION_KEEP_ALIVE,
+    CONNECTION_CLOSE
+  };
+
+
  public:
   // converts the response code to a string for delivering to a http client.
   static std::string responseString(ResponseCode);
@@ -107,8 +126,18 @@ class GeneralResponse {
   // response code from integer error code
   static ResponseCode responseCode(int);
 
- public:
+  // TODO OBI - check what can be implemented in this base class
+  virtual basics::StringBuffer& body() = 0;
+  virtual void setContentType(ContentType type) = 0;
+  virtual void setContentType(std::string const& contentType) = 0;
+  virtual void setContentType(std::string&& contentType) = 0;
+  virtual void setConnectionType(ConnectionType type) = 0;
+  virtual void writeHeader(basics::StringBuffer*) = 0;
+
+ protected:
   explicit GeneralResponse(ResponseCode);
+
+ public:
   virtual ~GeneralResponse() {}
 
  public:
@@ -137,11 +166,13 @@ class GeneralResponse {
   }
 
  public:
+  virtual void reset(ResponseCode) = 0;
+
   // generates the response body, sets the content type; this might
   // throw an error
-  virtual void fillBody(GeneralRequest const*,
-                        arangodb::velocypack::Slice const&, bool generateBody,
-                        arangodb::velocypack::Options const&) = 0;
+  virtual void setPayload(GeneralRequest const*,
+                          arangodb::velocypack::Slice const&, bool generateBody,
+                          arangodb::velocypack::Options const&) = 0;
 
  protected:
   ResponseCode _responseCode;

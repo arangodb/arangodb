@@ -26,7 +26,7 @@
 #include "Basics/StringUtils.h"
 #include "Dispatcher/Dispatcher.h"
 #include "Dispatcher/DispatcherFeature.h"
-#include "HttpServer/AsyncJobManager.h"
+#include "GeneralServer/AsyncJobManager.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
 
@@ -37,15 +37,16 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestJobHandler::RestJobHandler(HttpRequest* request,
+RestJobHandler::RestJobHandler(GeneralRequest* request,
+                               GeneralResponse* response,
                                AsyncJobManager* jobManager)
-    : RestBaseHandler(request), _jobManager(jobManager) {
+    : RestBaseHandler(request, response), _jobManager(jobManager) {
   TRI_ASSERT(jobManager != nullptr);
 }
 
 bool RestJobHandler::isDirect() const { return true; }
 
-HttpHandler::status_t RestJobHandler::execute() {
+RestHandler::status RestJobHandler::execute() {
   // extract the sub-request type
   auto const type = _request->requestType();
 
@@ -69,7 +70,7 @@ HttpHandler::status_t RestJobHandler::execute() {
                   (int)GeneralResponse::ResponseCode::METHOD_NOT_ALLOWED);
   }
 
-  return status_t(HANDLER_DONE);
+  return status::DONE;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -82,7 +83,7 @@ void RestJobHandler::putJob() {
   uint64_t jobId = StringUtils::uint64(value);
 
   AsyncJobResult::Status status;
-  HttpResponse* response = _jobManager->getJobResult(jobId, status, true);
+  GeneralResponse* response = _jobManager->getJobResult(jobId, status, true);
 
   if (status == AsyncJobResult::JOB_UNDEFINED) {
     // unknown or already fetched job
@@ -93,7 +94,7 @@ void RestJobHandler::putJob() {
 
   if (status == AsyncJobResult::JOB_PENDING) {
     // job is still pending
-    createResponse(GeneralResponse::ResponseCode::NO_CONTENT);
+    setResponseCode(GeneralResponse::ResponseCode::NO_CONTENT);
     return;
   }
 
@@ -128,7 +129,7 @@ void RestJobHandler::putJobMethod() {
       generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
                     TRI_ERROR_HTTP_NOT_FOUND);
     }
-    
+
     bool status = DispatcherFeature::DISPATCHER->cancelJob(jobId);
 
     // unknown or already fetched job
@@ -198,11 +199,11 @@ void RestJobHandler::getJobById(std::string const& value) {
 
   if (status == AsyncJobResult::JOB_PENDING) {
     // job is still pending
-    createResponse(GeneralResponse::ResponseCode::NO_CONTENT);
+    setResponseCode(GeneralResponse::ResponseCode::NO_CONTENT);
     return;
   }
 
-  createResponse(GeneralResponse::ResponseCode::OK);
+  setResponseCode(GeneralResponse::ResponseCode::OK);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

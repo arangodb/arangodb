@@ -188,12 +188,6 @@
 * GITHUB: https://github.com/nodeca/js-yaml
 * License: [MIT License](https://github.com/nodeca/js-yaml/blob/master/LICENSE)
 
-#### JSHint
-
-* Project Home: http://jshint.com
-* GITHUB: https://github.com/jshint/jshint
-* License: [MIT-style License](https://github.com/jshint/jshint/blob/master/LICENSE)
-
 #### JSUnity
 
 * GITHUB: https://github.com/atesgoral/jsunity
@@ -409,3 +403,8 @@
 * Project Home: http://swagger.io
 * GITHUB: https://github.com/swagger-api/swagger-ui
 * License: [Apache 2 license](https://github.com/swagger-api/swagger-ui/blob/master/LICENSE)
+
+#### sigma.js
+
+* GITHUB: https://github.com/jacomyal/sigma.js
+* License: [MIT License](https://github.com/jacomyal/sigma.js/blob/master/LICENSE.txt)

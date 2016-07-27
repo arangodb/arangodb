@@ -51,12 +51,11 @@ class Cursor;
 
 class RestCursorHandler : public RestVocbaseBaseHandler {
  public:
-  RestCursorHandler(
-      HttpRequest*,
-      arangodb::aql::QueryRegistry*);
+  RestCursorHandler(GeneralRequest*, GeneralResponse*,
+                    arangodb::aql::QueryRegistry*);
 
  public:
-  virtual status_t execute() override;
+  virtual status execute() override;
 
   bool cancel() override;
 

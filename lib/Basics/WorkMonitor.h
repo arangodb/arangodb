@@ -27,6 +27,7 @@
 #include "Basics/Thread.h"
 
 #include <velocypack/Builder.h>
+#include <velocypack/Buffer.h>
 #include <velocypack/velocypack-aliases.h>
 
 #include "Basics/WorkDescription.h"
@@ -40,7 +41,7 @@ class Builder;
 class WorkMonitor : public Thread {
  public:
   WorkMonitor();
-  ~WorkMonitor() {shutdown();}
+  ~WorkMonitor() { shutdown(); }
 
  public:
   bool isSilent() override { return true; }
@@ -56,8 +57,8 @@ class WorkMonitor : public Thread {
   static void pushCustom(char const* type, char const* text, size_t length);
   static void pushCustom(char const* type, uint64_t id);
   static void popCustom();
-  static void pushHandler(arangodb::rest::HttpHandler*);
-  static WorkDescription* popHandler(arangodb::rest::HttpHandler*, bool free);
+  static void pushHandler(rest::RestHandler*);
+  static WorkDescription* popHandler(rest::RestHandler*, bool free);
   static void requestWorkOverview(uint64_t taskId);
   static void cancelWork(uint64_t id);
 
@@ -65,11 +66,11 @@ class WorkMonitor : public Thread {
   void run() override;
 
  private:
-  static void sendWorkOverview(uint64_t, std::string const&);
+  static void sendWorkOverview(uint64_t,
+                               std::shared_ptr<velocypack::Buffer<uint8_t>>);
   static bool cancelAql(WorkDescription*);
   static void deleteHandler(WorkDescription* desc);
-  static void vpackHandler(arangodb::velocypack::Builder*,
-                           WorkDescription* desc);
+  static void vpackHandler(velocypack::Builder*, WorkDescription* desc);
 
   static WorkDescription* createWorkDescription(WorkType);
   static void deleteWorkDescription(WorkDescription*, bool stopped);
@@ -80,7 +81,7 @@ class WorkMonitor : public Thread {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief auto push and pop for HttpHandler
+/// @brief auto push and pop for RestHandler
 ////////////////////////////////////////////////////////////////////////////////
 
 class HandlerWorkStack {
@@ -88,9 +89,9 @@ class HandlerWorkStack {
   HandlerWorkStack& operator=(const HandlerWorkStack&) = delete;
 
  public:
-  explicit HandlerWorkStack(arangodb::rest::HttpHandler*);
+  explicit HandlerWorkStack(rest::RestHandler*);
 
-  explicit HandlerWorkStack(WorkItem::uptr<arangodb::rest::HttpHandler>&);
+  explicit HandlerWorkStack(WorkItem::uptr<rest::RestHandler>&);
 
   ~HandlerWorkStack();
 
@@ -99,14 +100,14 @@ class HandlerWorkStack {
   /// @brief returns the handler
   //////////////////////////////////////////////////////////////////////////////
 
-  arangodb::rest::HttpHandler* handler() const { return _handler; }
+  rest::RestHandler* handler() const { return _handler; }
 
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief handler
   //////////////////////////////////////////////////////////////////////////////
 
-  arangodb::rest::HttpHandler* _handler;
+  rest::RestHandler* _handler;
 };
 
 ////////////////////////////////////////////////////////////////////////////////

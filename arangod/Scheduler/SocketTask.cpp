@@ -24,9 +24,9 @@
 
 #include "SocketTask.h"
 
-#include "Logger/Logger.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/socket-utils.h"
+#include "Logger/Logger.h"
 #include "Scheduler/Scheduler.h"
 
 #include <errno.h>
@@ -122,17 +122,20 @@ bool SocketTask::fillReadBuffer() {
     return fillReadBuffer();
   }
 
-  // condition is required like this because g++ 6 will complain about 
+  // condition is required like this because g++ 6 will complain about
   //   if (myerrno != EWOULDBLOCK && myerrno != EAGAIN)
   // having two identical branches (because EWOULDBLOCK == EAGAIN on Linux).
-  // however, posix states that there may be systems where EWOULDBLOCK != EAGAIN...
+  // however, posix states that there may be systems where EWOULDBLOCK !=
+  // EAGAIN...
   if (myerrno != EWOULDBLOCK && (EWOULDBLOCK == EAGAIN || myerrno != EAGAIN)) {
-    LOG(DEBUG) << "read from socket failed with " << myerrno << ": " << strerror(myerrno);
+    LOG(DEBUG) << "read from socket failed with " << myerrno << ": "
+               << strerror(myerrno);
 
     return false;
   }
 
-  TRI_ASSERT(myerrno == EWOULDBLOCK || (EWOULDBLOCK != EAGAIN && myerrno == EAGAIN));
+  TRI_ASSERT(myerrno == EWOULDBLOCK ||
+             (EWOULDBLOCK != EAGAIN && myerrno == EAGAIN));
 
   // from man(2) read:
   // The  file  descriptor  fd  refers  to  a socket and has been marked
@@ -141,7 +144,8 @@ bool SocketTask::fillReadBuffer() {
   // either error to be returned for this case, and does not require these
   // constants to have the same value,
   // so a  portable  application  should check for both possibilities.
-  LOG(TRACE) << "read would block with " << myerrno << ": " << strerror(myerrno);
+  LOG(TRACE) << "read would block with " << myerrno << ": "
+             << strerror(myerrno);
 
   return true;
 }
@@ -172,13 +176,16 @@ bool SocketTask::handleWrite() {
         return handleWrite();
       }
 
-      if (myerrno != EWOULDBLOCK && (EAGAIN == EWOULDBLOCK || myerrno != EAGAIN)) {
-        LOG(DEBUG) << "writing to socket failed with " << myerrno << ": " << strerror(myerrno);
+      if (myerrno != EWOULDBLOCK &&
+          (EAGAIN == EWOULDBLOCK || myerrno != EAGAIN)) {
+        LOG(DEBUG) << "writing to socket failed with " << myerrno << ": "
+                   << strerror(myerrno);
 
         return false;
       }
 
-      TRI_ASSERT(myerrno == EWOULDBLOCK || (EWOULDBLOCK != EAGAIN && myerrno == EAGAIN));
+      TRI_ASSERT(myerrno == EWOULDBLOCK ||
+                 (EWOULDBLOCK != EAGAIN && myerrno == EAGAIN));
       nr = 0;
     }
 
@@ -269,7 +276,8 @@ bool SocketTask::setup(Scheduler* scheduler, EventLoop loop) {
   LOG(TRACE) << "attempting to convert socket handle to socket descriptor";
 
   if (!TRI_isvalidsocket(_commSocket)) {
-    LOG(ERR) << "In SocketTask::setup could not convert socket handle to socket descriptor -- invalid socket handle";
+    LOG(ERR) << "In SocketTask::setup could not convert socket handle to "
+                "socket descriptor -- invalid socket handle";
     return false;
   }
 
@@ -282,12 +290,15 @@ bool SocketTask::setup(Scheduler* scheduler, EventLoop loop) {
   int res = (int)_commSocket.fileHandle;
 
   if (res == -1) {
-    LOG(ERR) << "In SocketTask::setup could not convert socket handle to socket descriptor -- _open_osfhandle(...) failed";
+    LOG(ERR) << "In SocketTask::setup could not convert socket handle to "
+                "socket descriptor -- _open_osfhandle(...) failed";
     res = TRI_CLOSE_SOCKET(_commSocket);
 
     if (res != 0) {
       res = WSAGetLastError();
-      LOG(ERR) << "In SocketTask::setup closesocket(...) failed with error code: " << res;
+      LOG(ERR)
+          << "In SocketTask::setup closesocket(...) failed with error code: "
+          << res;
     }
 
     TRI_invalidatesocket(&_commSocket);
@@ -301,11 +312,6 @@ bool SocketTask::setup(Scheduler* scheduler, EventLoop loop) {
   _scheduler = scheduler;
   _loop = loop;
 
-  _readWatcher = _scheduler->installSocketEvent(loop, EVENT_SOCKET_READ, this,
-                                                _commSocket);
-  _writeWatcher = _scheduler->installSocketEvent(loop, EVENT_SOCKET_WRITE, this,
-                                                 _commSocket);
-
   // install timer for keep-alive timeout with some high default value
   _keepAliveWatcher = _scheduler->installTimerEvent(loop, this, 60.0);
 
@@ -314,6 +320,11 @@ bool SocketTask::setup(Scheduler* scheduler, EventLoop loop) {
 
   _tid = Thread::currentThreadId();
 
+  _writeWatcher = _scheduler->installSocketEvent(loop, EVENT_SOCKET_WRITE, this,
+                                                 _commSocket);
+
+  _readWatcher = _scheduler->installSocketEvent(loop, EVENT_SOCKET_READ, this,
+                                                _commSocket);
   return true;
 }
 

@@ -30,34 +30,28 @@
 #include "Basics/StringBuffer.h"
 
 namespace arangodb {
+class RestBatchHandler;
+
+namespace rest {
+class HttpCommTask;
+class GeneralCommTask;
+}
+
 class HttpResponse : public GeneralResponse {
+  friend class rest::GeneralCommTask;
+  friend class rest::HttpCommTask;
+  friend class RestBatchHandler;  // TODO must be removed
+
  public:
   static bool HIDE_PRODUCT_HEADER;
 
- public:
+ private:
   explicit HttpResponse(ResponseCode code);
 
  public:
   bool isHeadResponse() const { return _isHeadResponse; }
 
-  enum ConnectionType {
-    CONNECTION_NONE,
-    CONNECTION_KEEP_ALIVE,
-    CONNECTION_CLOSE
-  };
-
-  enum ContentType {
-    CONTENT_TYPE_CUSTOM,  // use Content-Type from _headers
-    CONTENT_TYPE_JSON,    // application/json
-    CONTENT_TYPE_VPACK,   // application/x-velocypack
-    CONTENT_TYPE_TEXT,    // text/plain
-    CONTENT_TYPE_HTML,    // text/html
-    CONTENT_TYPE_DUMP     // application/x-arango-dump
-  };
-
  public:
-  using GeneralResponse::setHeader;
-
   void setCookie(std::string const& name, std::string const& value,
                  int lifeTimeSeconds, std::string const& path,
                  std::string const& domain, bool secure, bool httpOnly);
@@ -71,35 +65,39 @@ class HttpResponse : public GeneralResponse {
   // information to the string buffer. Note that adding data to the body
   // invalidates any previously returned header. You must call header
   // again.
-  basics::StringBuffer& body() { return _body; }
+  basics::StringBuffer& body() override { return _body; }
   size_t bodySize() const;
 
   /// @brief set type of connection
-  void setConnectionType(ConnectionType type) { _connectionType = type; }
+  void setConnectionType(ConnectionType type) override {
+    _connectionType = type;
+  }
 
   /// @brief set content-type
-  void setContentType(ContentType type) { _contentType = type; }
+  void setContentType(ContentType type) override { _contentType = type; }
 
   /// @brief set content-type from a string. this should only be used in
   /// cases when the content-type is user-defined
-  void setContentType(std::string const& contentType) {
+  void setContentType(std::string const& contentType) override {
     _headers[arangodb::StaticStrings::ContentTypeHeader] = contentType;
-    _contentType = CONTENT_TYPE_CUSTOM;
+    _contentType = ContentType::CUSTOM;
   }
 
-  void setContentType(std::string&& contentType) {
+  void setContentType(std::string&& contentType) override {
     _headers[arangodb::StaticStrings::ContentTypeHeader] =
         std::move(contentType);
-    _contentType = CONTENT_TYPE_CUSTOM;
+    _contentType = ContentType::CUSTOM;
   }
 
   // you should call writeHeader only after the body has been created
-  void writeHeader(basics::StringBuffer*);
+  void writeHeader(basics::StringBuffer*) override;
 
  public:
-  void fillBody(GeneralRequest const*, arangodb::velocypack::Slice const&,
-                bool generateBody,
-                arangodb::velocypack::Options const&) override final;
+  void reset(ResponseCode code) override final;
+
+  void setPayload(GeneralRequest const*, arangodb::velocypack::Slice const&,
+                  bool generateBody,
+                  arangodb::velocypack::Options const&) override final;
 
  private:
   // the body must already be set. deflate is then run on the existing body

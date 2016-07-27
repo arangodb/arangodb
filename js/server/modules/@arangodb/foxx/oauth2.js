@@ -103,7 +103,7 @@ module.exports = function oauth2 (cfg) {
       if (!cfg.activeUserEndpoint) {
         return null;
       }
-      const url = getActiveUserUrl({access_token});
+      const url = getActiveUserUrl(access_token);
       const res = request.get(url);
       if (!res.body) {
         throw new Error(`OAuth2 provider returned empty response with HTTP status ${res.status}`);

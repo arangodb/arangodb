@@ -26,18 +26,32 @@
 #define ARANGODB_REST_HTTP_REQUEST_H 1
 
 #include "Rest/GeneralRequest.h"
-
 #include "Endpoint/ConnectionInfo.h"
 
 namespace arangodb {
+class RestBatchHandler;
+
+namespace rest {
+class GeneralCommTask;
+class HttpCommTask;
+class HttpsCommTask;
+}
+
 namespace velocypack {
 class Builder;
 struct Options;
 }
 
 class HttpRequest : public GeneralRequest {
- public:
+  friend class rest::HttpCommTask;
+  friend class rest::HttpsCommTask;
+  friend class rest::GeneralCommTask;
+  friend class RestBatchHandler;  // TODO must be removed
+
+ private:
   HttpRequest(ConnectionInfo const&, char const*, size_t, bool);
+
+ public:
   ~HttpRequest();
 
  public:
@@ -49,21 +63,27 @@ class HttpRequest : public GeneralRequest {
 
  public:
   // the content length
-  int64_t contentLength() const { return _contentLength; }
+  int64_t contentLength() const override { return _contentLength; }
 
   std::string const& cookieValue(std::string const& key) const;
   std::string const& cookieValue(std::string const& key, bool& found) const;
-  std::unordered_map<std::string, std::string> cookieValues() const { return _cookies; }
+  std::unordered_map<std::string, std::string> cookieValues() const override {
+    return _cookies;
+  }
 
   std::string const& body() const;
   void setBody(char const* body, size_t length);
 
-  // the request body as VelocyPackBuilder
-  std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack(
-      arangodb::velocypack::Options const*);
-  
+  // Payload
+  VPackSlice payload(arangodb::velocypack::Options const*) override final;
+
   /// @brief sets a key/value header
-  void setHeader(char const* key, size_t keyLength, char const* value, size_t valueLength);
+  //  this function is called by setHeaders and get offsets to
+  //  the found key / value with respective lengths.
+  //  the function sets member variables like _contentType. All
+  //  key that do not get special treatment end um in the _headers map.
+  void setHeader(char const* key, size_t keyLength, char const* value,
+                 size_t valueLength);
   /// @brief sets a key-only header
   void setHeader(char const* key, size_t keyLength);
 
@@ -82,6 +102,7 @@ class HttpRequest : public GeneralRequest {
   //  whether or not overriding the HTTP method via custom headers
   // (x-http-method, x-method-override or x-http-method-override) is allowed
   bool _allowMethodOverride;
+  std::shared_ptr<velocypack::Builder> _vpackBuilder;
 };
 }
 

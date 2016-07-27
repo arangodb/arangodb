@@ -171,11 +171,9 @@ class SingleServerTraverser final : public Traverser {
   //////////////////////////////////////////////////////////////////////////////
 
 public:
-  SingleServerTraverser(
-      TraverserOptions&, Transaction*,
-      std::unordered_map<size_t, std::vector<TraverserExpression*>> const*);
-  
-  ~SingleServerTraverser();
+ SingleServerTraverser(TraverserOptions&, Transaction*);
+
+ ~SingleServerTraverser();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Reset the traverser to use another start vertex

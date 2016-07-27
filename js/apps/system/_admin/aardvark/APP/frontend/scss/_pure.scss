@@ -9,6 +9,33 @@
   .dataTables_empty {
     padding-left: 10px;
   }
+
+  .heading {
+    font-weight: 600;
+    height: 40px;
+    padding-bottom: 10px;
+    padding-top: 10px;
+  }
+
+  select,
+  input {
+    @extend %inputs;
+  }
+
+  .fa {
+    @extend %animated;
+
+    &.fa-info-circle {
+      cursor: pointer;
+      margin-right: 3px;
+      opacity: .4;
+    }
+
+    &:hover {
+      opacity: 1;
+    }
+  }
+
 }
 
 .pure-table {

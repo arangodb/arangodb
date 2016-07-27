@@ -43,6 +43,7 @@
 #include "Basics/ArangoGlobalContext.h"
 #include "Cluster/ClusterFeature.h"
 #include "Dispatcher/DispatcherFeature.h"
+#include "GeneralServer/GeneralServerFeature.h"
 #include "Logger/LoggerBufferFeature.h"
 #include "Logger/LoggerFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
@@ -58,7 +59,6 @@
 #include "RestServer/FrontendFeature.h"
 #include "RestServer/InitDatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
-#include "RestServer/RestServerFeature.h"
 #include "RestServer/ScriptFeature.h"
 #include "RestServer/ServerFeature.h"
 #include "RestServer/UnitTestsFeature.h"
@@ -92,18 +92,21 @@ static int runServer(int argc, char** argv) {
   application_features::ApplicationServer server(options);
 
   std::vector<std::string> nonServerFeatures = {
-      "Action",     "Affinity",   "Agency",
-      "Cluster",    "Daemon",     "Dispatcher",
-      "Endpoint",   "FoxxQueues", "LoggerBufferFeature",
-      "RestServer", "Server",     "Scheduler",
-      "SslServer",  "Statistics", "Supervisor"};
+      "Action",        "Affinity",
+      "Agency",        "Cluster",
+      "Daemon",        "Dispatcher",
+      "Endpoint",      "FoxxQueues",
+      "GeneralServer", "LoggerBufferFeature",
+      "Server",        "Scheduler",
+      "SslServer",     "Statistics",
+      "Supervisor"};
 
   int ret = EXIT_FAILURE;
-  
+
 #ifdef _WIN32
   server.addFeature(new WindowsServiceFeature(&server));
 #endif
-  
+
   server.addFeature(new ActionFeature(&server));
   server.addFeature(new AffinityFeature(&server));
   server.addFeature(new AgencyFeature(&server));
@@ -119,6 +122,7 @@ static int runServer(int argc, char** argv) {
   server.addFeature(new FileDescriptorsFeature(&server));
   server.addFeature(new FoxxQueuesFeature(&server));
   server.addFeature(new FrontendFeature(&server));
+  server.addFeature(new GeneralServerFeature(&server));
   server.addFeature(new InitDatabaseFeature(&server, nonServerFeatures));
   server.addFeature(new LanguageFeature(&server));
   server.addFeature(new LogfileManager(&server));
@@ -129,7 +133,6 @@ static int runServer(int argc, char** argv) {
   server.addFeature(new QueryRegistryFeature(&server));
   server.addFeature(new RandomFeature(&server));
   server.addFeature(new RecoveryFeature(&server));
-  server.addFeature(new RestServerFeature(&server));
   server.addFeature(new SchedulerFeature(&server));
   server.addFeature(new ScriptFeature(&server, &ret));
   server.addFeature(new ServerFeature(&server, &ret));
@@ -163,10 +166,12 @@ static int runServer(int argc, char** argv) {
   } catch (std::exception const& ex) {
     LOG(ERR) << "arangod terminated because of an unhandled exception: "
              << ex.what();
+    Logger::flush();
     ret = EXIT_FAILURE;
   } catch (...) {
     LOG(ERR) << "arangod terminated because of an unhandled exception of "
                 "unknown type";
+    Logger::flush();
     ret = EXIT_FAILURE;
   }
 
@@ -177,12 +182,13 @@ static int runServer(int argc, char** argv) {
 static int ARGC;
 static char** ARGV;
 
-static void WINAPI ServiceMain (DWORD dwArgc, LPSTR *lpszArgv) {
+static void WINAPI ServiceMain(DWORD dwArgc, LPSTR* lpszArgv) {
   if (!TRI_InitWindowsEventLog()) {
     return;
   }
   // register the service ctrl handler,  lpszArgv[0] contains service name
-  ServiceStatus = RegisterServiceCtrlHandlerA(lpszArgv[0], (LPHANDLER_FUNCTION) ServiceCtrl);
+  ServiceStatus =
+      RegisterServiceCtrlHandlerA(lpszArgv[0], (LPHANDLER_FUNCTION)ServiceCtrl);
 
   // set start pending
   SetServiceStatus(SERVICE_START_PENDING, 0, 1, 10000);
@@ -201,17 +207,16 @@ int main(int argc, char* argv[]) {
   if (argc > 1 && TRI_EqualString("--start-service", argv[1])) {
     ARGC = argc;
     ARGV = argv;
-    
-    SERVICE_TABLE_ENTRY ste[] = {{TEXT(""), (LPSERVICE_MAIN_FUNCTION)ServiceMain},
-                                 {nullptr, nullptr}};
-    
+
+    SERVICE_TABLE_ENTRY ste[] = {
+        {TEXT(""), (LPSERVICE_MAIN_FUNCTION)ServiceMain}, {nullptr, nullptr}};
+
     if (!StartServiceCtrlDispatcher(ste)) {
       std::cerr << "FATAL: StartServiceCtrlDispatcher has failed with "
                 << GetLastError() << std::endl;
       exit(EXIT_FAILURE);
     }
-  }
-  else
+  } else
 #endif
     return runServer(argc, argv);
 }

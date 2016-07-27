@@ -363,12 +363,12 @@ void WorkMonitor::run() {
       }
 
       while (WORK_OVERVIEW.pop(taskId)) {
-        VPackBuilder b;
+        VPackBuilder builder;
 
-        b.add(VPackValue(VPackValueType::Object));
+        builder.add(VPackValue(VPackValueType::Object));
 
-        b.add("time", VPackValue(TRI_microtime()));
-        b.add("work", VPackValue(VPackValueType::Array));
+        builder.add("time", VPackValue(TRI_microtime()));
+        builder.add("work", VPackValue(VPackValueType::Array));
 
         {
           MUTEX_LOCKER(guard, THREADS_LOCK);
@@ -377,28 +377,17 @@ void WorkMonitor::run() {
             WorkDescription* desc = thread->workDescription();
 
             if (desc != nullptr) {
-              b.add(VPackValue(VPackValueType::Object));
-              vpackWorkDescription(&b, desc);
-              b.close();
+              builder.add(VPackValue(VPackValueType::Object));
+              vpackWorkDescription(&builder, desc);
+              builder.close();
             }
           }
         }
 
-        b.close();
-        b.close();
+        builder.close();
+        builder.close();
 
-        VPackSlice s(b.start());
-
-        VPackOptions options;
-        options.prettyPrint = true;
-
-        std::string buffer;
-        VPackStringSink sink(&buffer);
-
-        VPackDumper dumper(&sink, &options);
-        dumper.dump(s);
-
-        sendWorkOverview(taskId, buffer);
+        sendWorkOverview(taskId, builder.steal());
       }
     } catch (...) {
       // must prevent propagation of exceptions from here

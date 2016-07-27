@@ -80,6 +80,28 @@ class IndexIterator {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief Special iterator if the condition cannot have any result
+////////////////////////////////////////////////////////////////////////////////
+
+class EmptyIndexIterator : public IndexIterator {
+  public:
+    EmptyIndexIterator() {}
+    ~EmptyIndexIterator() {}
+
+    TRI_doc_mptr_t* next() override {
+      return nullptr;
+    }
+
+    void nextBabies(std::vector<TRI_doc_mptr_t*>&, size_t) override {}
+
+    void reset() override {}
+
+    void skip(uint64_t, uint64_t& skipped) override {
+      skipped = 0;
+    }
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief a wrapper class to iterate over several IndexIterators.
 ///        Each iterator is requested at the index itself.
 ///        This iterator does NOT check for uniqueness.

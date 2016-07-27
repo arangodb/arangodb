@@ -486,6 +486,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
               options.recoveryMarker = envelope;
               options.isRestore = true;
               options.waitForSync = false;
+              options.ignoreRevs = true;
 
               // try an insert first
               TRI_ASSERT(VPackSlice(ptr).isObject());

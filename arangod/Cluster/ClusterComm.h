@@ -32,6 +32,8 @@
 #include "Basics/Thread.h"
 #include "Cluster/AgencyComm.h"
 #include "Cluster/ClusterInfo.h"
+#include "Rest/GeneralRequest.h"
+#include "Rest/GeneralResponse.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
@@ -39,7 +41,6 @@
 #include "VocBase/voc-types.h"
 
 namespace arangodb {
-
 class ClusterCommThread;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -91,8 +92,8 @@ enum ClusterCommOpStatus {
 ///
 /// First, the actual destination is determined. If the responsible server
 /// for a shard is not found or the endpoint for a named server is not found,
-/// or if the given endpoint is no known protocol (currently "tcp://" or 
-/// "ssl://", then `status` is set to CL_COMM_BACKEND_UNAVAILABLE, 
+/// or if the given endpoint is no known protocol (currently "tcp://" or
+/// "ssl://", then `status` is set to CL_COMM_BACKEND_UNAVAILABLE,
 /// `errorMessage` is set but `result` and `answer` are both set
 /// to nullptr. The flag `sendWasComplete` remains false and the
 /// `answer_code` remains GeneralResponse::ResponseCode::PROCESSING.
@@ -112,7 +113,7 @@ enum ClusterCommOpStatus {
 /// error cases `result`, `answer` and `answer_code` are still unset.
 ///
 /// If the connection was successfully created the request is sent.
-/// If the request ended with a timeout, `status` is set to 
+/// If the request ended with a timeout, `status` is set to
 /// CL_COMM_TIMEOUT as above. If another communication error (broken
 /// connection) happens, `status` is set to CL_COMM_BACKEND_UNAVAILABLE.
 /// In both cases, `result` can be set or can still be a nullptr.
@@ -126,7 +127,7 @@ enum ClusterCommOpStatus {
 /// stage. The callback is called, and the result either left in the
 /// receiving queue or dropped. A call to ClusterComm::enquire or
 /// ClusterComm::wait can return a result in this state. Note that
-/// `answer` and `answer_code` are still not set. The flag 
+/// `answer` and `answer_code` are still not set. The flag
 /// `sendWasComplete` is correctly set, though.
 ///
 /// In the `singleRequest==false` mode, an asynchronous operation happens
@@ -190,9 +191,9 @@ struct ClusterCommResult {
   std::shared_ptr<httpclient::SimpleHttpResult> result;
   // the field answer is != nullptr if status is == CL_COMM_RECEIVED
   // answer_code is valid iff answer is != 0
-  std::shared_ptr<HttpRequest> answer;
+  std::shared_ptr<GeneralRequest> answer;
   GeneralResponse::ResponseCode answer_code;
-  
+
   // The following flag indicates whether or not the complete request was
   // sent to the other side. This is often important to judge whether or
   // not the operation could have been completed on the server, for example
@@ -265,7 +266,7 @@ struct ClusterCommOperation {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ClusterCommRestCallback(std::string& coordinator,
-                             HttpResponse* response);
+                             GeneralResponse* response);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief used to let ClusterComm send a set of requests and look after them
@@ -419,14 +420,14 @@ class ClusterComm {
   //////////////////////////////////////////////////////////////////////////////
 
   std::string processAnswer(std::string& coordinatorHeader,
-                            HttpRequest* answer);
+                            GeneralRequest* answer);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief send an answer HTTP request to a coordinator
   //////////////////////////////////////////////////////////////////////////////
 
   void asyncAnswer(std::string& coordinatorHeader,
-                   HttpResponse* responseToSend);
+                   GeneralResponse* responseToSend);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief this method performs the given requests described by the vector
@@ -448,7 +449,20 @@ class ClusterComm {
                          size_t& nrDone,
                          arangodb::LogTopic const& logTopic);
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief this is the fast path method for performRequests for the case
+  /// of only a single request in the vector. In this case we can use a single
+  /// syncRequest, which saves a network roundtrip. This is an important
+  /// optimization for the single document operation case.
+  /// Exact same semantics as performRequests.
+  //////////////////////////////////////////////////////////////////////////////
+
  private:
+  size_t performSingleRequest(std::vector<ClusterCommRequest>& requests,
+                         ClusterCommTimeout timeout,
+                         size_t& nrDone,
+                         arangodb::LogTopic const& logTopic);
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the pointer to the singleton instance
   //////////////////////////////////////////////////////////////////////////////

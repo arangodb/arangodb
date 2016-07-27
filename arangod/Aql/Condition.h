@@ -27,7 +27,6 @@
 #include "Basics/Common.h"
 #include "Aql/AstNode.h"
 #include "Basics/AttributeNameParser.h"
-#include "Basics/JsonHelper.h"
 #include "Utils/Transaction.h"
 
 namespace arangodb {

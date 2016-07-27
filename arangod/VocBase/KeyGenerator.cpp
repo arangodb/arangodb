@@ -279,7 +279,7 @@ int TraditionalKeyGenerator::validate(std::string const& key, bool isRestore) {
 /// @brief track usage of a key
 ////////////////////////////////////////////////////////////////////////////////
 
-void TraditionalKeyGenerator::track(std::string const&) {}
+void TraditionalKeyGenerator::track(char const*, VPackValueLength) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a VPack representation of the generator
@@ -398,9 +398,9 @@ int AutoIncrementKeyGenerator::validate(std::string const& key,
 /// @brief track usage of a key
 ////////////////////////////////////////////////////////////////////////////////
 
-void AutoIncrementKeyGenerator::track(std::string const& key) {
+void AutoIncrementKeyGenerator::track(char const* p, VPackValueLength length) {
   // check the numeric key part
-  uint64_t value = StringUtils::uint64(key);
+  uint64_t value = StringUtils::uint64(p, length);
 
   if (value > _lastValue) {
     // and update our last value

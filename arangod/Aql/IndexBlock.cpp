@@ -434,7 +434,7 @@ AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
     return nullptr;
   }
 
-  std::unique_ptr<AqlItemBlock> res(nullptr);
+  std::unique_ptr<AqlItemBlock> res;
 
   do {
     // repeatedly try to get more stuff from upstream
@@ -488,32 +488,32 @@ AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
     size_t toSend = (std::min)(atMost, available);
 
     if (toSend > 0) {
+      // automatically freed should we throw
       res.reset(new AqlItemBlock(
           toSend,
           getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
 
-      // automatically freed should we throw
       TRI_ASSERT(curRegs <= res->getNrRegs());
 
       // only copy 1st row of registers inherited from previous frame(s)
       inheritRegisters(cur, res.get(), _pos);
 
       for (size_t j = 0; j < toSend; j++) {
-        if (j > 0) {
-          // re-use already copied AqlValues
-          res->copyValuesFromFirstRow(j, static_cast<RegisterId>(curRegs));
-        }
-
         // The result is in the first variable of this depth,
         // we do not need to do a lookup in
         // getPlanNode()->_registerPlan->varInfo,
         // but can just take cur->getNrRegs() as registerId:
         auto doc = _documents[_posInDocs++];
         TRI_ASSERT(!doc.isExternal());
-        // doc points directly in the data files
+        // doc points directly into the data files
         res->setValue(j, static_cast<arangodb::aql::RegisterId>(curRegs), 
                       AqlValue(doc.begin(), AqlValueFromMasterPointer()));
         // No harm done, if the setValue throws!
+        
+        if (j > 0) {
+          // re-use already copied AqlValues
+          res->copyValuesFromFirstRow(j, static_cast<RegisterId>(curRegs));
+        }
       }
     }
 

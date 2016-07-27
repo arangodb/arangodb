@@ -94,6 +94,7 @@ const optionsDocumentation = [
   '   - `loopSleepWhen`: sleep every nth iteration',
   '   - `loopSleepSec`: sleep seconds between iterations',
   '',
+  '   - `server`: server_url for external server',
   '   - `cluster`: if set to true the tests are run with the coordinator',
   '     of a small local cluster',
   '   - `clusterNodes`: number of DB-Servers to use',
@@ -1153,6 +1154,11 @@ function runArangoBenchmark (options, instanceInfo, cmds) {
 }
 
 function shutdownArangod (arangod, options) {
+  if (options.hasOwnProperty("server")){
+      print("running with external server");
+      return;
+  }
+
   if (options.valgrind) {
     waitOnServerForGC(arangod, options, 60);
   }
@@ -1468,7 +1474,13 @@ function startInstance (protocol, options, addArgs, testname, tmpDir) {
 
   const startTime = time();
   try {
-    if (options.cluster) {
+    if(options.hasOwnProperty("server")){
+        return { endpoint : options.server,
+                 url : options.server.replace("tcp", "http"),
+                 arangods : []
+               };
+    }
+    else if (options.cluster) {
       startInstanceCluster(instanceInfo, protocol, options,
         addArgs, testname, rootDir);
     } else if (options.agency) {
@@ -3078,6 +3090,7 @@ const recoveryTests = [
   'create-with-temp',
   'create-with-temp-old',
   'create-collection-fail',
+  'create-collection-tmpfile',
   'create-database-existing',
   'create-database-fail',
   'empty-datafiles',
