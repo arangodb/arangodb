@@ -338,6 +338,9 @@ if [ -n "$CPACK"  -a -n "${TARGET_DIR}" ];  then
         cpack -G "$PACK"
 
         EXT=`echo $PACK|tr '[:upper:]' '[:lower:]'`
+        if [ "$PACK" == "Bundle" ]; then
+            EXT = 'dmg'
+        fi
         if [ "$PACK" == "NSIS" ]; then
             true
         else
