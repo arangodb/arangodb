@@ -32,14 +32,16 @@ class HttpCommTask : public GeneralCommTask {
 
  private:
   void processRequest();
+  // resets the internal state this method can be called to clean up when the
+  // request handling aborts prematurely
   void resetState(bool close);
 
-  HttpRequest* _requestAsHttp();
   void addResponse(HttpResponse*, bool isError);
+
+  HttpRequest* requestAsHttp();
   void finishedChunked();
   // check the content-length header of a request and fail it is broken
   bool checkContentLength(bool expectContentLength);
-  void fillWriteBuffer();                   // fills the write buffer
   void processCorsOptions();                // handles CORS options
   std::string authenticationRealm() const;  // returns the authentication realm
   GeneralResponse::ResponseCode
@@ -47,11 +49,11 @@ class HttpCommTask : public GeneralCommTask {
   void sendChunk(basics::StringBuffer*);  // sends more chunked data
 
  private:
-  size_t _readPosition;   // current read position
-  size_t _startPosition;  // start position of current request
-  size_t _bodyPosition;   // start of the body position
-  size_t _bodyLength;     // body length
-  bool _readRequestBody;  // true if reading the request body
+  size_t _readPosition;       // current read position
+  size_t _startPosition;      // start position of current request
+  size_t _bodyPosition;       // start of the body position
+  size_t _bodyLength;         // body length
+  bool _readRequestBody;      // true if reading the request body
   bool _allowMethodOverride;  // allow method override
   bool _denyCredentials;  // whether or not to allow credentialed requests (only
                           // CORS)

@@ -67,7 +67,7 @@ class HttpRequest : public GeneralRequest {
 
   std::string const& cookieValue(std::string const& key) const;
   std::string const& cookieValue(std::string const& key, bool& found) const;
-  std::unordered_map<std::string, std::string> cookieValues() const override {
+  std::unordered_map<std::string, std::string> cookieValues() const {
     return _cookies;
   }
 

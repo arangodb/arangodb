@@ -34,7 +34,7 @@ using namespace arangodb::basics;
 
 std::string GeneralRequest::translateVersion(ProtocolVersion version) {
   switch (version) {
-    case ProtocolVersion::VSTREAM_1_0:
+    case ProtocolVersion::VPP_1_0:
       return "VPP/1.0";
 
     case ProtocolVersion::HTTP_1_1:
@@ -44,12 +44,10 @@ std::string GeneralRequest::translateVersion(ProtocolVersion version) {
       return "HTTP/1.0";
 
     case ProtocolVersion::UNKNOWN:
-    default: {
-      return "HTTP/1.0";
-    }
+    default: { return "HTTP/1.0"; }
   }
 
-  return "UNKNOWN"; // in order please MSVC
+  return "UNKNOWN";  // in order please MSVC
 }
 
 std::string GeneralRequest::translateMethod(RequestType method) {
@@ -89,7 +87,7 @@ std::string GeneralRequest::translateMethod(RequestType method) {
       return "UNKNOWN";
   }
 
-  return "UNKNOWN"; // in order please MSVC
+  return "UNKNOWN";  // in order please MSVC
 }
 
 GeneralRequest::RequestType GeneralRequest::translateMethod(
@@ -122,12 +120,13 @@ GeneralRequest::RequestType GeneralRequest::translateMethod(
 }
 
 void GeneralRequest::appendMethod(RequestType method, StringBuffer* buffer) {
+  // append RequestType as string value to given String buffer
   buffer->appendText(translateMethod(method));
   buffer->appendChar(' ');
 }
 
-GeneralRequest::RequestType GeneralRequest::findRequestType(char const* ptr,
-                                                         size_t const length) {
+GeneralRequest::RequestType GeneralRequest::findRequestType(
+    char const* ptr, size_t const length) {
   switch (length) {
     case 3:
       if (ptr[0] == 'g' && ptr[1] == 'e' && ptr[2] == 't') {
@@ -202,6 +201,11 @@ void GeneralRequest::setFullUrl(char const* begin, char const* end) {
   _fullUrl = std::string(begin, end - begin);
 }
 
+void GeneralRequest::setFullUrl(std::string url) {
+  TRI_ASSERT(!url.empty());
+  _fullUrl = std::move(url);
+}
+
 void GeneralRequest::addSuffix(std::string&& part) {
   _suffix.emplace_back(StringUtils::urlDecode(part));
 }
@@ -216,7 +220,8 @@ std::string const& GeneralRequest::header(std::string const& key) const {
   return it->second;
 }
 
-std::string const& GeneralRequest::header(std::string const& key, bool& found) const {
+std::string const& GeneralRequest::header(std::string const& key,
+                                          bool& found) const {
   auto it = _headers.find(key);
 
   if (it == _headers.end()) {
@@ -240,7 +245,8 @@ std::string const& GeneralRequest::value(std::string const& key) const {
   return StaticStrings::Empty;
 }
 
-std::string const& GeneralRequest::value(std::string const& key, bool& found) const {
+std::string const& GeneralRequest::value(std::string const& key,
+                                         bool& found) const {
   if (!_values.empty()) {
     auto it = _values.find(key);
 
@@ -254,16 +260,13 @@ std::string const& GeneralRequest::value(std::string const& key, bool& found) co
   return StaticStrings::Empty;
 }
 
-void GeneralRequest::setArrayValue(char* key, size_t length, char const* value) {
+void GeneralRequest::setArrayValue(char* key, size_t length,
+                                   char const* value) {
   _arrayValues[std::string(key, length)].emplace_back(value);
 }
 
 bool GeneralRequest::velocyPackResponse() const {
-#if 0
-  // currently deactivated
+  // needs only to be used in http case?!
   std::string const& result = header(StaticStrings::Accept);
   return (std::string::npos != result.find(StaticStrings::MimeTypeVPack));
-#else
-  return false;
-#endif
 }

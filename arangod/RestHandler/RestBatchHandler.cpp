@@ -31,6 +31,8 @@
 #include "Logger/Logger.h"
 #include "Rest/HttpRequest.h"
 
+#include <iostream>
+
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
@@ -47,11 +49,15 @@ RestBatchHandler::~RestBatchHandler() {}
 
 RestHandler::status RestBatchHandler::execute() {
   // TODO OBI - generalize function
-  if (_response == nullptr) {
+  HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(_response);
+  if (httpResponse == nullptr) {
+    std::cout << "please fix this for vpack" << std::endl;
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   }
 
+  HttpRequest* httpRequest = dynamic_cast<HttpRequest*>(_request);
   if (_request == nullptr) {
+    std::cout << "please fix this for vpack" << std::endl;
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   }
 
@@ -161,14 +167,14 @@ RestHandler::status RestBatchHandler::execute() {
     if (bodyLength > 0) {
       LOG(TRACE) << "part body is '" << std::string(bodyStart, bodyLength)
                  << "'";
-      request->setBody(bodyStart, bodyLength);
+      httpRequest->setBody(bodyStart, bodyLength);
     }
 
     if (!authorization.empty()) {
       // inject Authorization header of multipart message into part message
-      request->setHeader(StaticStrings::Authorization.c_str(),
-                         StaticStrings::Authorization.size(),
-                         authorization.c_str(), authorization.size());
+      httpRequest->setHeader(StaticStrings::Authorization.c_str(),
+                             StaticStrings::Authorization.size(),
+                             authorization.c_str(), authorization.size());
     }
 
     RestHandler* handler = nullptr;
@@ -203,7 +209,8 @@ RestHandler::status RestBatchHandler::execute() {
         return status::FAILED;
       }
 
-      GeneralResponse* partResponse = handler->response();
+      HttpResponse* partResponse =
+          dynamic_cast<HttpResponse*>(handler->response());
 
       if (partResponse == nullptr) {
         generateError(GeneralResponse::ResponseCode::BAD, TRI_ERROR_INTERNAL,
@@ -220,28 +227,28 @@ RestHandler::status RestBatchHandler::execute() {
       }
 
       // append the boundary for this subpart
-      _response->body().appendText(boundary + "\r\nContent-Type: ");
-      _response->body().appendText(StaticStrings::BatchContentType);
+      httpResponse->body().appendText(boundary + "\r\nContent-Type: ");
+      httpResponse->body().appendText(StaticStrings::BatchContentType);
 
       // append content-id if it is present
       if (helper.contentId != 0) {
-        _response->body().appendText(
+        httpResponse->body().appendText(
             "\r\nContent-Id: " +
             std::string(helper.contentId, helper.contentIdLength));
       }
 
-      _response->body().appendText(TRI_CHAR_LENGTH_PAIR("\r\n\r\n"));
+      httpResponse->body().appendText(TRI_CHAR_LENGTH_PAIR("\r\n\r\n"));
 
       // remove some headers we don't need
       partResponse->setConnectionType(HttpResponse::CONNECTION_NONE);
       partResponse->setHeaderNC(StaticStrings::Server, "");
 
       // append the part response header
-      partResponse->writeHeader(&_response->body());
+      partResponse->writeHeader(&httpResponse->body());
 
       // append the part response body
-      _response->body().appendText(partResponse->body());
-      _response->body().appendText(TRI_CHAR_LENGTH_PAIR("\r\n"));
+      httpResponse->body().appendText(partResponse->body());
+      httpResponse->body().appendText(TRI_CHAR_LENGTH_PAIR("\r\n"));
     }
 
     // we've read the last part
@@ -251,10 +258,10 @@ RestHandler::status RestBatchHandler::execute() {
   }
 
   // append final boundary + "--"
-  _response->body().appendText(boundary + "--");
+  httpResponse->body().appendText(boundary + "--");
 
   if (errors > 0) {
-    _response->setHeaderNC(StaticStrings::Errors, StringUtils::itoa(errors));
+    httpResponse->setHeaderNC(StaticStrings::Errors, StringUtils::itoa(errors));
   }
 
   // success

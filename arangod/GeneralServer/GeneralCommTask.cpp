@@ -134,6 +134,20 @@ bool GeneralCommTask::handleRead() {
   return res;
 }
 
+void GeneralCommTask::fillWriteBuffer() {
+  if (!hasWriteBuffer() && !_writeBuffers.empty()) {
+    StringBuffer* buffer = _writeBuffers.front();
+    _writeBuffers.pop_front();
+
+    TRI_ASSERT(buffer != nullptr);
+
+    TRI_request_statistics_t* statistics = _writeBuffersStats.front();
+    _writeBuffersStats.pop_front();
+
+    setWriteBuffer(buffer, statistics);
+  }
+}
+
 void GeneralCommTask::executeRequest(GeneralRequest* request,
                                      GeneralResponse* response) {
   // create a handler for this request
@@ -238,7 +252,10 @@ void GeneralCommTask::handleSimpleError(
 
 // TODO(fc) MOVE TO SOCKET TASK
 bool GeneralCommTask::handleEvent(EventToken token, EventType events) {
+  // destroy this task if client is closed
   bool result = SocketTask::handleEvent(token, events);
-  if (_clientClosed) _scheduler->destroyTask(this);
+  if (_clientClosed) {
+    _scheduler->destroyTask(this);
+  }
   return result;
 }

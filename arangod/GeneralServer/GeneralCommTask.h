@@ -116,6 +116,11 @@ class GeneralServer;
 //     TODO(fc)
 //
 
+// handleEvent (defined in SocketTask and arumented in this class) is called
+// when new data is available. handleEvent calls in turn handleWrite and
+// handleRead (virtual function required by SocketTask) that calls processRead
+// (which has to be implemented in derived) as long as new input is available.
+
 class GeneralCommTask : public SocketTask, public RequestStatisticsAgent {
   GeneralCommTask(GeneralCommTask const&) = delete;
   GeneralCommTask const& operator=(GeneralCommTask const&) = delete;
@@ -130,6 +135,9 @@ class GeneralCommTask : public SocketTask, public RequestStatisticsAgent {
  public:
   virtual void addResponse(GeneralResponse*, bool error) = 0;
 
+  // void handleResponse(GeneralResponse*);  // resets vars and calls
+  // addResponse
+
  protected:
   void signalTask(TaskData*) override;
 
@@ -141,15 +149,16 @@ class GeneralCommTask : public SocketTask, public RequestStatisticsAgent {
   bool handleRead() override final;
 
   void executeRequest(GeneralRequest*, GeneralResponse*);
+  // TODO(fc) move to SocketTask
+  // main callback of this class - called by base SocketTask - this version
+  // calls the SocketTask's handleEvent
+  virtual bool handleEvent(EventToken token, EventType events) override;
 
   void processResponse(GeneralResponse*);
 
   void handleSimpleError(GeneralResponse::ResponseCode);
   void handleSimpleError(GeneralResponse::ResponseCode, int code,
                          std::string const& errorMessage);
-
-  // TODO(fc) move to SocketTask
-  bool handleEvent(EventToken token, EventType events) override;
 
   // clears the request object, TODO(fc) see below
   void clearRequest() {
@@ -168,6 +177,10 @@ class GeneralCommTask : public SocketTask, public RequestStatisticsAgent {
   void handleTimeout() override final { _clientClosed = true; }
 
  protected:
+  void fillWriteBuffer();  // fills SocketTasks _writeBuffer
+                           // _writeBufferStatistics from
+                           // _writeBuffers/_writeBuffersStats
+
   // for asynchronous requests
   GeneralServer* const _server;
 

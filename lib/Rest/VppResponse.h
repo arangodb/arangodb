@@ -22,8 +22,8 @@
 /// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_REST_HTTP_RESPONSE_H
-#define ARANGODB_REST_HTTP_RESPONSE_H 1
+#ifndef ARANGODB_REST_VPP_RESPONSE_H
+#define ARANGODB_REST_VPP_RESPONSE_H 1
 
 #include "Rest/GeneralResponse.h"
 
@@ -33,51 +33,34 @@ namespace arangodb {
 class RestBatchHandler;
 
 namespace rest {
-class HttpCommTask;
+class VppCommTask;
 class GeneralCommTask;
 }
 
-class HttpResponse : public GeneralResponse {
+class VppResponse : public GeneralResponse {
   friend class rest::GeneralCommTask;
-  friend class rest::HttpCommTask;
+  friend class rest::VppCommTask;
   friend class RestBatchHandler;  // TODO must be removed
+
+  explicit VppResponse(ResponseCode code);
 
  public:
   static bool HIDE_PRODUCT_HEADER;
 
- private:
-  explicit HttpResponse(ResponseCode code);
+  // required by base
+  void reset(ResponseCode code) override final;
+  void setPayload(GeneralRequest const*, arangodb::velocypack::Slice const&,
+                  bool generateBody,
+                  arangodb::velocypack::Options const&) override final;
 
- public:
-  bool isHeadResponse() const { return _isHeadResponse; }
+  void writeHeader(basics::StringBuffer*) override;
 
- public:
-  void setCookie(std::string const& name, std::string const& value,
-                 int lifeTimeSeconds, std::string const& path,
-                 std::string const& domain, bool secure, bool httpOnly);
-
-  // In case of HEAD request, no body must be defined. However, the response
-  // needs to know the size of body.
-  void headResponse(size_t);
-
-  // Returns a reference to the body. This reference is only valid as long as
-  // http response exists. You can add data to the body by appending
-  // information to the string buffer. Note that adding data to the body
-  // invalidates any previously returned header. You must call header
-  // again.
-  basics::StringBuffer& body() { return _body; }
-  size_t bodySize() const;
-
-  /// @brief set type of connection
   void setConnectionType(ConnectionType type) override {
     _connectionType = type;
   }
 
-  /// @brief set content-type
   void setContentType(ContentType type) override { _contentType = type; }
 
-  /// @brief set content-type from a string. this should only be used in
-  /// cases when the content-type is user-defined
   void setContentType(std::string const& contentType) override {
     _headers[arangodb::StaticStrings::ContentTypeHeader] = contentType;
     _contentType = ContentType::CUSTOM;
@@ -88,28 +71,13 @@ class HttpResponse : public GeneralResponse {
         std::move(contentType);
     _contentType = ContentType::CUSTOM;
   }
-
-  // you should call writeHeader only after the body has been created
-  void writeHeader(basics::StringBuffer*) override;
-
- public:
-  void reset(ResponseCode code) override final;
-
-  void setPayload(GeneralRequest const*, arangodb::velocypack::Slice const&,
-                  bool generateBody,
-                  arangodb::velocypack::Options const&) override final;
-
+  // end - required by base
  private:
-  // the body must already be set. deflate is then run on the existing body
-  int deflate(size_t = 16384);
-
- private:
+  //_responseCode   - from Base
+  //_headers        - from Base
   ConnectionType _connectionType;
-  ContentType _contentType;
-  bool _isHeadResponse;
-  std::vector<std::string> _cookies;
   basics::StringBuffer _body;
-  size_t _bodySize;
+  ContentType _contentType;
 };
 }
 

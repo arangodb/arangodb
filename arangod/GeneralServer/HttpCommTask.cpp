@@ -242,14 +242,6 @@ bool HttpCommTask::processRead() {
           _connectionInfo, _readBuffer->c_str() + _startPosition,
           _readPosition - _startPosition, _allowMethodOverride);
 
-      if (_request == nullptr) {
-        LOG(ERR) << "cannot generate request";
-
-        // internal server error
-        handleSimpleError(GeneralResponse::ResponseCode::SERVER_ERROR);
-        return false;
-      }
-
       GeneralServerFeature::HANDLER_FACTORY->setRequestContext(_request);
       _request->setClientTaskId(_taskId);
 
@@ -299,7 +291,7 @@ bool HttpCommTask::processRead() {
           // if the request asks to allow credentials, we'll check against the
           // configured whitelist of origins
           std::vector<std::string> const& accessControlAllowOrigins =
-            GeneralServerFeature::accessControlAllowOrigins();
+              GeneralServerFeature::accessControlAllowOrigins();
 
           if (StringUtils::boolean(allowCredentials) &&
               !accessControlAllowOrigins.empty()) {
@@ -438,8 +430,7 @@ bool HttpCommTask::processRead() {
     }
 
     // read "bodyLength" from read buffer and add this body to "httpRequest"
-    _requestAsHttp()->setBody(_readBuffer->c_str() + _bodyPosition,
-                              _bodyLength);
+    requestAsHttp()->setBody(_readBuffer->c_str() + _bodyPosition, _bodyLength);
 
     LOG(TRACE) << "" << std::string(_readBuffer->c_str() + _bodyPosition,
                                     _bodyLength);
@@ -481,7 +472,7 @@ bool HttpCommTask::processRead() {
     // the connection
     LOG(DEBUG) << "connection close requested by client";
     _closeRequested = true;
-  } else if (_requestAsHttp()->isHttp10() && connectionType != "keep-alive") {
+  } else if (requestAsHttp()->isHttp10() && connectionType != "keep-alive") {
     // HTTP 1.0 request, and no "Connection: Keep-Alive" header sent
     // we should close the connection
     LOG(DEBUG) << "no keep-alive, connection close requested by client";
@@ -544,7 +535,7 @@ void HttpCommTask::processRequest() {
   // check for deflate
   bool found;
 
-  auto httpRequest = _requestAsHttp();
+  auto httpRequest = requestAsHttp();
   std::string const& acceptEncoding =
       httpRequest->header(StaticStrings::AcceptEncoding, found);
 
@@ -649,20 +640,6 @@ bool HttpCommTask::checkContentLength(bool expectContentLength) {
 
   // everything's fine
   return true;
-}
-
-void HttpCommTask::fillWriteBuffer() {
-  if (!hasWriteBuffer() && !_writeBuffers.empty()) {
-    StringBuffer* buffer = _writeBuffers.front();
-    _writeBuffers.pop_front();
-
-    TRI_ASSERT(buffer != nullptr);
-
-    TRI_request_statistics_t* statistics = _writeBuffersStats.front();
-    _writeBuffersStats.pop_front();
-
-    setWriteBuffer(buffer, statistics);
-  }
 }
 
 void HttpCommTask::processCorsOptions() {
@@ -811,10 +788,10 @@ void HttpCommTask::sendChunk(StringBuffer* buffer) {
 }
 
 // convert internal GeneralRequest to HttpRequest
-HttpRequest* HttpCommTask::_requestAsHttp() {
+HttpRequest* HttpCommTask::requestAsHttp() {
   HttpRequest* request = dynamic_cast<HttpRequest*>(_request);
   if (request == nullptr) {
-    // everything is borken FIXME
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   }
   return request;
 };

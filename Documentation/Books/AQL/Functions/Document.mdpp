@@ -208,7 +208,7 @@ of the documents contained later in the argument list.
 
 
 - **documents** (object, *repeatable*): an arbitrary number of documents as
-  multiple arguments, at least 2
+  multiple arguments (at least 2)
 - returns **mergedDocument** (object): a combined document
 
 Note that merging will only be done for top-level attributes. If you wish to
@@ -273,7 +273,7 @@ If document attribute keys are ambiguous, the merged result will contain the val
 of the documents contained later in the argument list.
 
 - **documents** (object, *repeatable*): an arbitrary number of documents as
-  multiple arguments, at least 2
+  multiple arguments (at least 2)
 - returns **mergedDocument** (object): a combined document
 
 For example, two documents with distinct attribute names can easily be merged into one:
@@ -346,7 +346,7 @@ All other attributes will be preserved.
 
 - **document** (object): a document / object
 - **attributeNames** (string, *repeatable*): an arbitrary number of attribute
-  names as multiple arguments, at least 1
+  names as multiple arguments (at least 1)
 - returns **doc** (object): *document* without the specified attributes on the
   top-level
 
@@ -374,7 +374,7 @@ Recursively remove the attributes *attributeName1* to *attributeNameN* from
 
 - **document** (object): a document / object
 - **attributeNames** (string, *repeatable*): an arbitrary number of attribute
-  names as multiple arguments, at least 1
+  names as multiple arguments (at least 1)
 - returns **doc** (object): *document* without the specified attributes on
   all levels (top-level as well as nested objects)
 

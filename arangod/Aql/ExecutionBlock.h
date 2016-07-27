@@ -26,18 +26,34 @@
 
 #include "AqlItemBlock.h"
 #include "Aql/ExecutionNode.h"
+#include "Aql/Variable.h"
 
 #include <deque>
 
 #if 0
 
-#define DEBUG_BEGIN_BLOCK() try { //
-#define DEBUG_END_BLOCK() } catch (arangodb::basics::Exception const& ex) { LOG(WARN) << "arango exception caught in " << __FILE__ << ":" << __LINE__ << ":" << ex.what(); throw; } catch (std::exception const& ex) { LOG(WARN) << "std exception caught in " << __FILE__ << ":" << __LINE__ << ": " << ex.what(); throw; } catch (...) { LOG(WARN) << "exception caught in " << __FILE__ << ":" << __LINE__; throw; } //
+#define DEBUG_BEGIN_BLOCK() try {  //
+#define DEBUG_END_BLOCK()                                                     \
+  }                                                                           \
+  catch (arangodb::basics::Exception const& ex) {                             \
+    LOG(WARN) << "arango exception caught in " << __FILE__ << ":" << __LINE__ \
+              << ":" << ex.what();                                            \
+    throw;                                                                    \
+  }                                                                           \
+  catch (std::exception const& ex) {                                          \
+    LOG(WARN) << "std exception caught in " << __FILE__ << ":" << __LINE__    \
+              << ": " << ex.what();                                           \
+    throw;                                                                    \
+  }                                                                           \
+  catch (...) {                                                               \
+    LOG(WARN) << "exception caught in " << __FILE__ << ":" << __LINE__;       \
+    throw;                                                                    \
+  }  //
 
 #else
 
-#define DEBUG_BEGIN_BLOCK() //
-#define DEBUG_END_BLOCK() //
+#define DEBUG_BEGIN_BLOCK()  //
+#define DEBUG_END_BLOCK()    //
 
 #endif
 
@@ -53,10 +69,15 @@ class ExecutionBlock {
   ExecutionBlock(ExecutionEngine*, ExecutionNode const*);
 
   virtual ~ExecutionBlock();
- 
+
  public:
   /// @brief batch size value
   static constexpr inline size_t DefaultBatchSize() { return 1000; }
+
+  /// @brief returns the register id for a variable id
+  /// will return ExecutionNode::MaxRegisterId for an unknown variable
+  RegisterId getRegister(VariableId id) const;
+  RegisterId getRegister(Variable const* variable) const;
 
   /// @brief determine the number of rows in a vector of blocks
   size_t countBlocksRows(std::vector<AqlItemBlock*> const&) const;

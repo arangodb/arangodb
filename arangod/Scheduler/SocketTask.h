@@ -57,27 +57,16 @@ class SocketTask : virtual public Task, public ConnectionStatisticsAgent {
  private:
   static size_t const READ_BLOCK_SIZE = 10000;
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief constructs a new task with a given socket
-  //////////////////////////////////////////////////////////////////////////////
-
  public:
+  // @brief constructs a new task with a given socket
   SocketTask(TRI_socket_t, double);
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief deletes a socket task
-  ///
-  /// This method will close the underlying socket.
-  //////////////////////////////////////////////////////////////////////////////
-
  protected:
+  // This method will close the underlying socket.
   ~SocketTask();
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// set a request timeout
-  //////////////////////////////////////////////////////////////////////////////
-
  public:
+  // set a request timeout
   void setKeepAliveTimeout(double);
 
  protected:
@@ -91,17 +80,8 @@ class SocketTask : virtual public Task, public ConnectionStatisticsAgent {
 
   virtual bool fillReadBuffer();
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief handles a read
-  //////////////////////////////////////////////////////////////////////////////
-
-  virtual bool handleRead() = 0;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief handles a write
-  //////////////////////////////////////////////////////////////////////////////
-
-  virtual bool handleWrite();
+  virtual bool handleRead() = 0;  // called by handleEvent
+  virtual bool handleWrite();     // called by handleEvent
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief called if write buffer has been sent
@@ -112,10 +92,7 @@ class SocketTask : virtual public Task, public ConnectionStatisticsAgent {
 
   virtual void completedWriteBuffer() = 0;
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief handles a keep-alive timeout
-  //////////////////////////////////////////////////////////////////////////////
-
+  // handles a keep-alive timeout
   virtual void handleTimeout() = 0;
 
  protected:
@@ -140,6 +117,7 @@ class SocketTask : virtual public Task, public ConnectionStatisticsAgent {
 
   void cleanup() override;
 
+  // calls handleRead and handleWrite
   bool handleEvent(EventToken token, EventType) override;
 
  protected:

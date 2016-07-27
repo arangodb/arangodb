@@ -72,20 +72,20 @@ class GeneralRequest {
     ILLEGAL  // must be last
   };
 
-  enum class ProtocolVersion { HTTP_1_0, HTTP_1_1, VSTREAM_1_0, UNKNOWN };
+  enum class ProtocolVersion { HTTP_1_0, HTTP_1_1, VPP_1_0, UNKNOWN };
   enum class ContentType { UNSET, VPACK, JSON };
 
  public:
   // translate the HTTP protocol version
   static std::string translateVersion(ProtocolVersion);
 
-  // translate an enum value into an HTTP method string
+  // translate an RequestType enum value into an "HTTP method string"
   static std::string translateMethod(RequestType);
 
-  // translate an HTTP method string into an enum value
+  // translate "HTTP method string" into RequestType enum value
   static RequestType translateMethod(std::string const&);
 
-  // append the request method string to a string buffer
+  // append RequestType as string value to given String buffer
   static void appendMethod(RequestType, arangodb::basics::StringBuffer*);
 
  protected:
@@ -101,15 +101,13 @@ class GeneralRequest {
         _isRequestContextOwner(false),
         _type(RequestType::ILLEGAL),
         _contentType(ContentType::UNSET),
-        _contentTypeResponse(ContentType::UNSET){}
+        _contentTypeResponse(ContentType::UNSET) {}
 
   virtual ~GeneralRequest();
 
  public:
   ProtocolVersion protocolVersion() const { return _version; }
-
-  // http, https or vpp
-  char const* protocol() const { return _protocol; }
+  char const* protocol() const { return _protocol; }  // http, https or vpp
   void setProtocol(char const* protocol) { _protocol = protocol; }
 
   ConnectionInfo const& connectionInfo() const { return _connectionInfo; }
@@ -138,6 +136,7 @@ class GeneralRequest {
 
   std::string const& fullUrl() const { return _fullUrl; }
   void setFullUrl(char const* begin, char const* end);
+  void setFullUrl(std::string url);
 
   // consists of the URL without the host and without any parameters.
   std::string const& requestPath() const { return _requestPath; }
@@ -156,9 +155,10 @@ class GeneralRequest {
   std::vector<std::string> const& suffix() const { return _suffix; }
   void addSuffix(std::string&& part);
 
-  // The key must be lowercase.
+  // get value from headers map. The key must be lowercase.
   std::string const& header(std::string const& key) const;
   std::string const& header(std::string const& key, bool& found) const;
+  // return headers map
   std::unordered_map<std::string, std::string> const& headers() const {
     return _headers;
   }
@@ -178,7 +178,8 @@ class GeneralRequest {
   bool velocyPackResponse() const;
 
   // should toVelocyPack be renamed to payload?
-  virtual VPackSlice payload(arangodb::velocypack::Options const* options = &VPackOptions::Defaults) = 0;
+  virtual VPackSlice payload(arangodb::velocypack::Options const*
+                                 options = &VPackOptions::Defaults) = 0;
 
   std::shared_ptr<VPackBuilder> toVelocyPackBuilderPtr(
       arangodb::velocypack::Options const* options) {
@@ -190,8 +191,6 @@ class GeneralRequest {
   //  virtual std::string const& body() const = 0;
   virtual int64_t contentLength() const = 0;
 
-  virtual std::unordered_map<std::string, std::string> cookieValues() const = 0;
-
   ContentType contentType() const { return _contentType; }
 
  protected:
@@ -200,7 +199,7 @@ class GeneralRequest {
 
  protected:
   ProtocolVersion _version;
-  char const* _protocol;
+  char const* _protocol;  // http, https or vpp
 
   // connection info
   ConnectionInfo _connectionInfo;
@@ -213,16 +212,16 @@ class GeneralRequest {
   bool _isRequestContextOwner;
 
   // information about the payload
-  RequestType _type;
+  RequestType _type;  // GET, POST, ..
   std::string _fullUrl;
   std::string _requestPath;
-  std::string _prefix;
+  std::string _prefix;  // part of path matched by rest route
   std::vector<std::string> _suffix;
   std::unordered_map<std::string, std::string>
       _headers;  // gets set by httpRequest: parseHeaders -> setHeaders
   std::unordered_map<std::string, std::string> _values;
   std::unordered_map<std::string, std::vector<std::string>> _arrayValues;
-  ContentType _contentType;
+  ContentType _contentType;  // UNSET, VPACK, JSON
   ContentType _contentTypeResponse;
 };
 }

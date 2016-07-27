@@ -101,12 +101,12 @@
     },
 
     downloadSVG: function () {
-      var self = this;
-
-      this.currentGraph.toSVG({
+      var size = parseInt($('#graph-container').width(), 10);
+      sigma.plugins.image(this.currentGraph, this.currentGraph.renderers[0], {
         download: true,
-        filename: self.name + '.svg',
-        size: 1000
+        size: size,
+        background: 'white',
+        zoom: true
       });
     },
 
@@ -340,7 +340,7 @@
       this.cursorY = e.y;
     },
 
-    deleteNode: function (id) {
+    deleteNode: function (e, id) {
       var self = this;
       var documentKey;
       var collectionId;
@@ -393,7 +393,7 @@
       try {
         var arr = JSON.parse($('#delete-nodes-arr-id').text());
         _.each(arr, function (id) {
-          self.deleteNode(id);
+          self.deleteNode(null, id);
         });
       } catch (ignore) {
       }
@@ -465,6 +465,9 @@
     addNode: function () {
       var self = this;
 
+      var x = self.addNodeX / 100;
+      var y = self.addNodeY / 100;
+
       var collectionId = $('.modal-body #new-node-collection-attr').val();
       var key = $('.modal-body #new-node-key-attr').last().val();
 
@@ -477,8 +480,8 @@
             label: id.split('/')[1] || '',
             size: self.graphConfig.nodeSize || Math.random(),
             color: self.graphConfig.nodeColor || '#2ecc71',
-            x: self.cursorX,
-            y: self.cursorY
+            x: x,
+            y: y
           });
 
           window.modalView.hide();
@@ -961,7 +964,7 @@
       };
 
       $('#nodeContextMenu').css('left', x + 115);
-      $('#nodeContextMenu').css('top', y + 72);
+      $('#nodeContextMenu').css('top', y + 71);
       $('#nodeContextMenu').width(100);
       $('#nodeContextMenu').height(100);
 
@@ -1098,7 +1101,6 @@
 
     renderGraph: function (graph, toFocus) {
       var self = this;
-      console.log(graph);
 
       this.graphSettings = graph.settings;
 
@@ -1147,7 +1149,7 @@
 
       var settings = {
         doubleClickEnabled: false,
-        minNodeSize: 3.5,
+        minNodeSize: 20,
         minEdgeSize: 1,
         maxEdgeSize: 4,
         enableEdgeHovering: true,
@@ -1156,13 +1158,12 @@
         defaultEdgeType: 'line',
         edgeHoverSizeRatio: 2,
         edgeHoverExtremities: true,
+        nodesPowRatio: 1,
         // lasso settings
         autoRescale: true,
         mouseEnabled: true,
         touchEnabled: true,
-        nodesPowRatio: 1,
-        font: 'Roboto',
-        edgesPowRatio: 1
+        font: 'Roboto'
       };
 
       if (renderer === 'canvas') {
@@ -1262,54 +1263,56 @@
 
         if (!self.aqlMode) {
           s.bind('rightClickStage', function (e) {
+            self.addNodeX = e.data.captor.x;
+            self.addNodeY = e.data.captor.y;
             self.createContextMenu(e);
             self.clearMouseCanvas();
           });
         }
 
-        s.bind('overNode', function (e) {
+        var showAttributes = function (e, node) {
           $('.nodeInfoDiv').remove();
+
           if (self.contextState.createEdge === false) {
-            var callback = function (error, data) {
-              if (!error) {
-                var obj = {};
-                var counter = 0;
-                var more = false;
-
-                _.each(data, function (val, key) {
-                  if (counter < 15) {
-                    if (typeof val === 'string') {
-                      if (val.length > 10) {
-                        obj[key] = val.substr(0, 15) + ' ...';
-                      } else {
-                        obj[key] = val;
-                      }
+            if (window.location.hash.indexOf('graph') > -1) {
+              var callback = function (error, data) {
+                if (!error) {
+                  var attributes = '';
+                  _.each(data, function (value, key) {
+                    if (key !== '_key' && key !== '_id' && key !== '_rev' && key !== '_from' && key !== '_to') {
+                      attributes += ('<span class="nodeAttribute">' + key + '</span>');
                     }
-                  } else {
-                    more = true;
-                  }
-                  counter++;
-                });
+                  });
+                  var string = '<div id="nodeInfoDiv" class="nodeInfoDiv">' + attributes + '</div>';
 
-                var string = '<div id="nodeInfoDiv" class="nodeInfoDiv">' +
-                  '<pre>' + JSON.stringify(obj, null, 2);
-
-                if (more) {
-                  string = string.substr(0, string.length - 2);
-                  string += ' \n\n  ... \n\n } </pre></div>';
-                } else {
-                  string += '</pre></div>';
+                  $(self.el).append(string);
                 }
+              };
 
-                $(self.el).append(string);
+              if (node) {
+                self.documentStore.getDocument(e.data.node.id.split('/')[0], e.data.node.id.split('/')[1], callback);
+              } else {
+                self.documentStore.getDocument(e.data.edge.id.split('/')[0], e.data.edge.id.split('/')[1], callback);
               }
-            };
-
-            self.documentStore.getDocument(e.data.node.id.split('/')[0], e.data.node.id.split('/')[1], callback);
+            }
           }
+        };
+
+        s.bind('overNode', function (e) {
+          showAttributes(e, true);
+        });
+
+        s.bind('overEdge', function (e) {
+          showAttributes(e, false);
         });
 
         s.bind('outNode', function (e) {
+          if (self.contextState.createEdge === false) {
+            $('.nodeInfoDiv').remove();
+          }
+        });
+
+        s.bind('outEdge', function (e) {
           if (self.contextState.createEdge === false) {
             $('.nodeInfoDiv').remove();
           }
@@ -1469,6 +1472,21 @@
       }
       // clear up info div
       $('#calculatingGraph').remove();
+
+      // make nodes a bit bigger
+      var maxNodeSize = s.settings('maxNodeSize');
+      var factor = 1;
+      var length = s.graph.nodes().length;
+
+      if (length < 100) {
+        factor = 2.5;
+      } else if (length < 1000) {
+        factor = 0.7;
+      }
+
+      maxNodeSize = maxNodeSize * factor;
+      s.settings('maxNodeSize', maxNodeSize);
+      s.refresh();
     },
 
     keyUpFunction: function (event) {

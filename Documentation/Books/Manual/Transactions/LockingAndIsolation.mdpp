@@ -28,11 +28,11 @@ In this case, it would be impossible to know beforehand which collection to lock
 thus it is legal to not declare collections that will be accessed in the transaction in
 read-only mode. Accessing a non-declared collection in read-only mode during a 
 transaction will add the collection to the transaction lazily, and fetch data 
-from the collection as usual. However, as the collection ie added lazily, there is no 
+from the collection as usual. However, as the collection is added lazily, there is no 
 isolation from other concurrent operations or transactions. Reads from such
 collections are potentially non-repeatable.
 
-**EXAMPLES**:
+**Examples:**
 
 ```js
 db._executeTransaction({
@@ -40,10 +40,11 @@ db._executeTransaction({
     read: "users"
   },
   action: function () {
-    /* execute an AQL query that traverses a graph starting at a "users" vertex. 
-       it is yet unknown into which other collections the query will traverse */
+    const db = require("@arangodb").db;
+    /* Execute an AQL query that traverses a graph starting at a "users" vertex.
+       It is yet unknown into which other collections the query might traverse */
     db._createStatement({ 
-      query: "FOR t IN TRAVERSAL(users, connections, "users/1234", "any", { }) RETURN t"
+      query: `FOR v IN ANY "users/1234" connections RETURN v`
     }).execute().toArray().forEach(function (d) {
       /* ... */
     });
@@ -66,10 +67,11 @@ db._executeTransaction({
     allowImplicit: false
   },
   action: function () {
-    /* the below query will now fail because the collection connections has not 
+    /* The below query will now fail because the collection "connections" has not
        been specified in the list of collections used by the transaction */
+    const db = require("@arangodb").db;
     db._createStatement({ 
-      query: "FOR t IN TRAVERSAL(users, connections, "users/1234", "any", { }) RETURN t"
+      query: `FOR v IN ANY "users/1234" connections RETURN v`
     }).execute().toArray().forEach(function (d) {
       /* ... */
     });
@@ -80,6 +82,30 @@ db._executeTransaction({
 The default value for *allowImplicit* is *true*. Write-accessing collections that
 have not been declared in the *collections* array is never possible, regardless of
 the value of *allowImplicit*.
+
+If *users/1234* has an edge in *connections*, linking it to another document in
+the *users* collection, then the following explicit declaration will work:
+
+```js
+db._executeTransaction({
+  collections: { 
+    read: ["users", "connections"],
+    allowImplicit: false
+  },
+  /* ... */
+```
+
+If the edge points to a document in another collection however, then the query
+will fail, unless that other collection is added to the declaration as well.
+
+Note that if a document handle is used as starting point for a traversal, e.g.
+`FOR v IN ANY "users/not_linked" ...` or `FOR v IN ANY {_id: "users/not_linked"} ...`,
+then no error is raised in the case of the start vertex not having any edges to
+follow, with `allowImplicit: false` and *users* not being declared for read access.
+AQL only sees a string and does not consider it a read access, unless there are
+edges connected to it. `FOR v IN ANY DOCUMENT("users/not_linked") ...` will fail
+even without edges, as it is always considered to be a read access to the *users*
+collection.
 
 !SUBSECTION Deadlocks and Deadlock detection
 
@@ -98,7 +124,7 @@ db._executeTransaction({
     write: "c1"
   },
   action: function () {
-    var db = require("@arangodb").db;
+    const db = require("@arangodb").db;
 
     /* write into c1 (announced) */
     db.c1.insert({ foo: "bar" });

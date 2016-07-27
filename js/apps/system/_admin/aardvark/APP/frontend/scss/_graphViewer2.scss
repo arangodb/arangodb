@@ -44,19 +44,22 @@
 }
 
 .nodeInfoDiv {
-  left: 175px;
+  border-radius: 3px;
+  bottom: 0;
+  height: 25px;
+  left: 165px;
   overflow: hidden;
   position: fixed;
-  top: 130px;
+  right: 15px;
   z-index: 10;
 
-  pre {
-    background-color: rgba(64, 74, 83, .9);
-    border-radius: 2px;
+  .nodeAttribute {
+    background-color: $c-info-blue;
+    border-radius: 3px;
     color: $c-white;
-    max-height: 400px;
-    max-width: 330px;
-    overflow: hidden;
+    font-weight: 100;
+    margin-right: 5px;
+    padding: 2px 5px;
   }
 }
 
@@ -116,6 +119,14 @@
       color: $c-black;
     }
 
+    input {
+      width: 200px;
+    }
+
+    select {
+      width: 216px;
+    }
+
     .left {
       color: $c-white;
       height: 40px;
@@ -127,6 +138,14 @@
 
     .pure-u-2-3 {
       text-align: right;
+
+      .fa-info-circle {
+        float: right;
+        font-size: 14pt;
+        margin-right: 0;
+        margin-top: 7px;
+        padding-left: 10px;
+      }
     }
 
     .heading {
@@ -137,7 +156,7 @@
 
     .rangeLabel {
       float: left;
-      margin-left: 4px;
+      margin-left: 0;
       margin-top: 5px;
       position: relative;
     }
