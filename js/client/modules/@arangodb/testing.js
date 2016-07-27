@@ -2874,7 +2874,6 @@ testFuncs.http_replication = function (options) {
 // / @brief TEST: http_server
 // //////////////////////////////////////////////////////////////////////////////
 
-testFuncs.http_server = function (options) {
 testFuncs.http_server = function(options) {
   var opts = {
     "httpTrustedOrigin": "http://was-erlauben-strunz.it"
