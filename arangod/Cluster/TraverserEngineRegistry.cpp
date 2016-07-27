@@ -27,8 +27,15 @@
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
 #include "Cluster/TraverserEngine.h"
+#include "VocBase/server.h"
 
 using namespace arangodb::traverser;
+
+TraverserEngineRegistry::EngineInfo::EngineInfo(VPackSlice info)
+    : _isInUse(false),
+      _engine(new TraverserEngine(info)),
+      _timeToLive(0),
+      _expires(0) {}
 
 TraverserEngineRegistry::~TraverserEngineRegistry() {
   std::vector<TraverserEngineID> toDelete;
@@ -55,10 +62,19 @@ TraverserEngineRegistry::~TraverserEngineRegistry() {
 }
 
 /// @brief Create a new Engine and return it's id
-TraverserEngineID TraverserEngineRegistry::createNew() {
+TraverserEngineID TraverserEngineRegistry::createNew(VPackSlice engineInfo) {
   WRITE_LOCKER(writeLocker, _lock);
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  return 0;
+  TraverserEngineID id = TRI_NewTickServer();
+  TRI_ASSERT(_engines.find(id) == _engines.end());
+  try {
+    auto info = std::make_unique<EngineInfo>(engineInfo);
+    _engines.emplace(id, info.get());
+    info.release();
+  } catch (...) {
+    // In case the emplace fails
+    return 0;
+  }
+  return id;
 }
 
 /// @brief Destroy the engine with the given id

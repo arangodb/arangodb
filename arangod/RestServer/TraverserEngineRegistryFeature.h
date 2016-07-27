@@ -31,12 +31,13 @@ namespace traverser {
 class TraverserEngineRegistry;
 }
 
-class TraverserEngineRegistryFeature final : public application_features::ApplicationFeature {
+class TraverserEngineRegistryFeature final
+    : public application_features::ApplicationFeature {
+ public:
+  static traverser::TraverserEngineRegistry* TRAVERSER_ENGINE_REGISTRY;
 
-  public:
-    static traverser::TraverserEngineRegistry* TRAVERSER_ENGINE_REGISTRY;
-
-    explicit TraverserEngineRegistryFeature(application_features::ApplicationServer* server);
+  explicit TraverserEngineRegistryFeature(
+      application_features::ApplicationServer* server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -44,12 +45,14 @@ class TraverserEngineRegistryFeature final : public application_features::Applic
   void start() override final;
   void unprepare() override final;
 
-  traverser::TraverserEngineRegistry* engineRegistry() const { return _engineRegistry.get(); }
+  traverser::TraverserEngineRegistry* engineRegistry() const {
+    return _engineRegistry.get();
+  }
 
  private:
   std::unique_ptr<traverser::TraverserEngineRegistry> _engineRegistry;
 };
 
-} // namespace arangodb
+}  // namespace arangodb
 
 #endif

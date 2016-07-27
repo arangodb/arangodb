@@ -211,6 +211,7 @@ add_executable(${BIN_ARANGOD}
   Indexes/PrimaryIndex.cpp
   Indexes/SimpleAttributeEqualityMatcher.cpp
   Indexes/SkiplistIndex.cpp
+  InternalRestHandler/InternalRestTraverserHandler.cpp
   Replication/ContinuousSyncer.cpp
   Replication/InitialSyncer.cpp
   Replication/Syncer.cpp

@@ -21,12 +21,37 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifndef ARANGOD_INTERNAL_REST_HANDLER_INTERNAL_TRAVERSER_HANDLER_H
+#define ARANGOD_INTERNAL_REST_HANDLER_INTERNAL_TRAVERSER_HANDLER_H 1
 
-#ifndef ARANGOD_CLUSTER_CLUSTER_TRAVERSER_ENGINE_H
-#define ARANGOD_CLUSTER_CLUSTER_TRAVERSER_ENGINE_H 1
+#include "RestHandler/RestVocbaseBaseHandler.h"
 
 namespace arangodb {
 namespace traverser {
-} // namespace traverser
-} // namespace arangodb
+class TraverserEngineRegistry;
+}
+
+class InternalRestTraverserHandler : public RestVocbaseBaseHandler {
+ public:
+  explicit InternalRestTraverserHandler(GeneralRequest*, GeneralResponse*,
+                                        traverser::TraverserEngineRegistry*);
+
+ public:
+  status execute() override final;
+
+ private:
+
+  // @brief create a new Traverser Engine.
+  void createEngine();
+
+  // @brief Query an existing Traverser Engine.
+  void queryEngine();
+
+  // @brief Destroy an existing Traverser Engine.
+  void destroyEngine();
+
+ private:
+  traverser::TraverserEngineRegistry* _registry;
+};
+} //namespace arangodb
 #endif

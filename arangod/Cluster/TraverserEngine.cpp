@@ -23,3 +23,10 @@
 
 #include "TraverserEngine.h"
 
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
+
+using namespace arangodb::traverser;
+
+TraverserEngine::TraverserEngine(arangodb::velocypack::Slice info) {
+}

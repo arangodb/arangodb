@@ -26,6 +26,9 @@
 #define ARANGOD_CLUSTER_TRAVERSER_ENGINE_H 1
 
 namespace arangodb {
+namespace velocypack {
+class Slice;
+}
 namespace traverser {
 class TraverserEngine {
   friend class TraverserEngineRegistry;
@@ -37,7 +40,7 @@ class TraverserEngine {
   // We can get into undefined state if sth.
   // deletes an engine but the registry
   // does not get informed properly
-    TraverserEngine() {}
+    TraverserEngine(arangodb::velocypack::Slice);
     ~TraverserEngine() {}
 
   public:

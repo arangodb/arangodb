@@ -137,6 +137,10 @@ std::string const RestVocbaseBaseHandler::SIMPLE_REMOVE_PATH =
 
 std::string const RestVocbaseBaseHandler::UPLOAD_PATH = "/_api/upload";
 
+/// @brief Internal Traverser path
+
+std::string const RestVocbaseBaseHandler::INTERNAL_TRAVERSER_PATH = "/_internal/traverser";
+
 RestVocbaseBaseHandler::RestVocbaseBaseHandler(GeneralRequest* request,
                                                GeneralResponse* response)
     : RestBaseHandler(request, response),

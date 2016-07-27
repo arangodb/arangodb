@@ -45,7 +45,7 @@ class TraverserEngineRegistry {
   ///        It can be referred to by the returned
   ///        ID. If the returned ID is 0 something
   ///        internally went wrong.
-  TraverserEngineID createNew();
+  TraverserEngineID createNew(arangodb::velocypack::Slice);
 
   /// @brief Get the engine with the given ID.
   ///        TODO Test what happens if this pointer
@@ -68,6 +68,8 @@ class TraverserEngineRegistry {
 
     double _timeToLive;       // in seconds
     double _expires;          // UNIX UTC timestamp for expiration
+
+    EngineInfo(arangodb::velocypack::Slice);
   };
 
   /// @brief the actual map of engines
