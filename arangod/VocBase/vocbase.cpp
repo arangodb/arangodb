@@ -1061,10 +1061,27 @@ std::shared_ptr<VPackBuilder> TRI_vocbase_col_t::toVelocyPackIndexes(
   return builder;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief closes a database and all collections
-////////////////////////////////////////////////////////////////////////////////
+/// @brief returns a translation of a collection status
+char const* TRI_vocbase_col_t::statusString(TRI_vocbase_col_status_e status) {
+  switch (status) {
+    case TRI_VOC_COL_STATUS_UNLOADED:
+      return "unloaded";
+    case TRI_VOC_COL_STATUS_LOADED:
+      return "loaded";
+    case TRI_VOC_COL_STATUS_UNLOADING:
+      return "unloading";
+    case TRI_VOC_COL_STATUS_DELETED:
+      return "deleted";
+    case TRI_VOC_COL_STATUS_LOADING:
+      return "loading";
+    case TRI_VOC_COL_STATUS_CORRUPTED:
+    case TRI_VOC_COL_STATUS_NEW_BORN:
+    default:
+      return "unknown";
+  }
+}
 
+/// @brief closes a database and all collections
 void TRI_DestroyVocBase(TRI_vocbase_t* vocbase) {
   // stop replication
   if (vocbase->_replicationApplier != nullptr) {
@@ -1141,32 +1158,26 @@ void TRI_DestroyVocBase(TRI_vocbase_t* vocbase) {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief returns all known (document) collections
-////////////////////////////////////////////////////////////////////////////////
-
-std::vector<TRI_vocbase_col_t*> TRI_CollectionsVocBase(TRI_vocbase_t* vocbase) {
+std::vector<TRI_vocbase_col_t*> TRI_vocbase_t::collections() {
   std::vector<TRI_vocbase_col_t*> result;
  
-  READ_LOCKER(readLocker, vocbase->_collectionsLock);
+  READ_LOCKER(readLocker, _collectionsLock);
 
-  for (auto const& it : vocbase->_collectionsById) {
+  for (auto const& it : _collectionsById) {
     result.emplace_back(it.second);
   }
 
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief returns names of all known (document) collections
-////////////////////////////////////////////////////////////////////////////////
-
-std::vector<std::string> TRI_CollectionNamesVocBase(TRI_vocbase_t* vocbase) {
+std::vector<std::string> TRI_vocbase_t::collectionNames() {
   std::vector<std::string> result;
 
-  READ_LOCKER(readLocker, vocbase->_collectionsLock);
+  READ_LOCKER(readLocker, _collectionsLock);
 
-  for (auto const& it : vocbase->_collectionsById) {
+  for (auto const& it : _collectionsById) {
     result.emplace_back(it.second->name());
   }
 
@@ -1181,20 +1192,19 @@ std::vector<std::string> TRI_CollectionNamesVocBase(TRI_vocbase_t* vocbase) {
 /// The list of collections will be sorted if sort function is given
 ////////////////////////////////////////////////////////////////////////////////
 
-std::shared_ptr<VPackBuilder> TRI_InventoryCollectionsVocBase(
-    TRI_vocbase_t* vocbase, TRI_voc_tick_t maxTick,
+std::shared_ptr<VPackBuilder> TRI_vocbase_t::inventory(TRI_voc_tick_t maxTick,
     bool (*filter)(TRI_vocbase_col_t*, void*), void* data, bool shouldSort,
     std::function<bool(TRI_vocbase_col_t*, TRI_vocbase_col_t*)> sortCallback) {
   std::vector<TRI_vocbase_col_t*> collections;
 
   // cycle on write-lock
-  WRITE_LOCKER_EVENTUAL(writeLock, vocbase->_inventoryLock, 1000);
+  WRITE_LOCKER_EVENTUAL(writeLock, _inventoryLock, 1000);
 
   // copy collection pointers into vector so we can work with the copy without
   // the global lock
   {
-    READ_LOCKER(readLocker, vocbase->_collectionsLock);
-    collections = vocbase->_collections;
+    READ_LOCKER(readLocker, _collectionsLock);
+    collections = _collections;
   }
 
   if (shouldSort && collections.size() > 1) {
@@ -1231,52 +1241,23 @@ std::shared_ptr<VPackBuilder> TRI_InventoryCollectionsVocBase(
   return builder;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns a translation of a collection status
-////////////////////////////////////////////////////////////////////////////////
-
-char const* TRI_GetStatusStringCollectionVocBase(
-    TRI_vocbase_col_status_e status) {
-  switch (status) {
-    case TRI_VOC_COL_STATUS_UNLOADED:
-      return "unloaded";
-    case TRI_VOC_COL_STATUS_LOADED:
-      return "loaded";
-    case TRI_VOC_COL_STATUS_UNLOADING:
-      return "unloading";
-    case TRI_VOC_COL_STATUS_DELETED:
-      return "deleted";
-    case TRI_VOC_COL_STATUS_LOADING:
-      return "loading";
-    case TRI_VOC_COL_STATUS_CORRUPTED:
-    case TRI_VOC_COL_STATUS_NEW_BORN:
-    default:
-      return "unknown";
-  }
-}
-
 /// @brief gets a collection name by a collection id
 /// the name is fetched under a lock to make this thread-safe.
 /// returns empty string if the collection does not exist.
-std::string TRI_GetCollectionNameByIdVocBase(TRI_vocbase_t* vocbase,
-                                             TRI_voc_cid_t id) {
-  READ_LOCKER(readLocker, vocbase->_collectionsLock);
+std::string TRI_vocbase_t::collectionName(TRI_voc_cid_t id) {
+  READ_LOCKER(readLocker, _collectionsLock);
 
-  auto it = vocbase->_collectionsById.find(id);
+  auto it = _collectionsById.find(id);
 
-  if (it == vocbase->_collectionsById.end()) {
-    return "";
+  if (it == _collectionsById.end()) {
+    return StaticStrings::Empty;
   }
 
   return (*it).second->name();
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up a (document) collection by name
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_vocbase_col_t* TRI_LookupCollectionByNameVocBase(TRI_vocbase_t* vocbase,
-                                                     std::string const& name) {
+TRI_vocbase_col_t* TRI_vocbase_t::lookupCollection(std::string const& name) {
   if (name.empty()) {
     return nullptr;
   }
@@ -1285,31 +1266,27 @@ TRI_vocbase_col_t* TRI_LookupCollectionByNameVocBase(TRI_vocbase_t* vocbase,
   // function
   // this is safe because collection names must not start with a digit
   if (name[0] >= '0' && name[0] <= '9') {
-    return TRI_LookupCollectionByIdVocBase(vocbase, StringUtils::uint64(name));
+    return lookupCollection(StringUtils::uint64(name));
   }
 
   // otherwise we'll look up the collection by name
-  READ_LOCKER(readLocker, vocbase->_collectionsLock);
+  READ_LOCKER(readLocker, _collectionsLock);
 
-  auto it = vocbase->_collectionsByName.find(name);
+  auto it = _collectionsByName.find(name);
 
-  if (it == vocbase->_collectionsByName.end()) {
+  if (it == _collectionsByName.end()) {
     return nullptr;
   }
   return (*it).second;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up a (document) collection by identifier
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_vocbase_col_t* TRI_LookupCollectionByIdVocBase(TRI_vocbase_t* vocbase,
-                                                   TRI_voc_cid_t id) {
-  READ_LOCKER(readLocker, vocbase->_collectionsLock);
+TRI_vocbase_col_t* TRI_vocbase_t::lookupCollection(TRI_voc_cid_t id) {
+  READ_LOCKER(readLocker, _collectionsLock);
   
-  auto it = vocbase->_collectionsById.find(id);
+  auto it = _collectionsById.find(id);
 
-  if (it == vocbase->_collectionsById.end()) {
+  if (it == _collectionsById.end()) {
     return nullptr;
   }
   return (*it).second;
@@ -1512,14 +1489,10 @@ int TRI_DropCollectionVocBase(TRI_vocbase_t* vocbase,
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief renames a (document) collection
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_RenameCollectionVocBase(TRI_vocbase_t* vocbase,
-                                TRI_vocbase_col_t* collection,
-                                std::string const& newName, bool doOverride,
-                                bool writeMarker) {
+/// @brief renames a collection
+int TRI_vocbase_t::rename(TRI_vocbase_col_t* collection,
+                          std::string const& newName, bool doOverride,
+                          bool writeMarker) {
   if (!collection->_canRename) {
     return TRI_set_errno(TRI_ERROR_FORBIDDEN);
   }
@@ -1557,13 +1530,13 @@ int TRI_RenameCollectionVocBase(TRI_vocbase_t* vocbase,
     }
   }
 
-  READ_LOCKER(readLocker, vocbase->_inventoryLock);
+  READ_LOCKER(readLocker, _inventoryLock);
 
-  TRI_EVENTUAL_WRITE_LOCK_STATUS_VOCBASE_COL(collection);
-
-  int res = RenameCollection(vocbase, collection, oldName, newName);
-
-  TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
+  int res;
+  {
+    WRITE_LOCKER_EVENTUAL(locker, collection->_lock, 1000);
+    res = RenameCollection(this, collection, oldName, newName);
+  }
 
   if (res == TRI_ERROR_NO_ERROR && writeMarker) {
     // now log the operation
@@ -1575,7 +1548,7 @@ int TRI_RenameCollectionVocBase(TRI_vocbase_t* vocbase,
       builder.add("name", VPackValue(newName));
       builder.close();
 
-      arangodb::wal::CollectionMarker marker(TRI_DF_MARKER_VPACK_RENAME_COLLECTION, vocbase->_id, collection->_cid, builder.slice());
+      arangodb::wal::CollectionMarker marker(TRI_DF_MARKER_VPACK_RENAME_COLLECTION, _id, collection->_cid, builder.slice());
 
       arangodb::wal::SlotInfoCopy slotInfo =
           arangodb::wal::LogfileManager::instance()->allocateAndWrite(marker, false);

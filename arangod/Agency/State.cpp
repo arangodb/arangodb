@@ -282,7 +282,7 @@ bool State::createCollections() {
 /// Check collection by name
 bool State::checkCollection(std::string const& name) {
   if (!_collectionsChecked) {
-    return (TRI_LookupCollectionByNameVocBase(_vocbase, name) != nullptr);
+    return (_vocbase->lookupCollection(name) != nullptr);
   }
   return true;
 }

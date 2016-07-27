@@ -342,12 +342,12 @@ TRI_vocbase_col_t* Syncer::getCollectionByIdOrName(TRI_voc_cid_t cid, std::strin
   TRI_vocbase_col_t* nameCol = nullptr;
 
   if (_useCollectionId) {
-    idCol = TRI_LookupCollectionByIdVocBase(_vocbase, cid);
+    idCol = _vocbase->lookupCollection(cid);
   }
 
   if (!name.empty()) {
     // try looking up the collection by name then
-    nameCol = TRI_LookupCollectionByNameVocBase(_vocbase, name);
+    nameCol = _vocbase->lookupCollection(name);
   }
 
   if (idCol != nullptr && nameCol != nullptr) {

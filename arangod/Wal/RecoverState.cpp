@@ -576,7 +576,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
         TRI_vocbase_col_t* collection = state->releaseCollection(collectionId);
 
         if (collection == nullptr) {
-          collection = TRI_LookupCollectionByIdVocBase(vocbase, collectionId);
+          collection = vocbase->lookupCollection(collectionId);
         }
 
         if (collection == nullptr) {
@@ -594,8 +594,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
         std::string name = nameSlice.copyString();
 
         // check if other collection exist with target name
-        TRI_vocbase_col_t* other =
-            TRI_LookupCollectionByNameVocBase(vocbase, name);
+        TRI_vocbase_col_t* other = vocbase->lookupCollection(name);
 
         if (other != nullptr) {
           TRI_voc_cid_t otherCid = other->_cid;
@@ -603,8 +602,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
           TRI_DropCollectionVocBase(vocbase, other, false);
         }
 
-        int res =
-            TRI_RenameCollectionVocBase(vocbase, collection, name, true, false);
+        int res = vocbase->rename(collection, name, true, false);
 
         if (res != TRI_ERROR_NO_ERROR) {
           LOG(WARN) << "cannot rename collection " << collectionId << " in database " << databaseId << " to '" << name << "': " << TRI_errno_string(res);
@@ -698,7 +696,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
           return true;
         }
         
-        TRI_vocbase_col_t* col = TRI_LookupCollectionByIdVocBase(vocbase, collectionId);
+        TRI_vocbase_col_t* col = vocbase->lookupCollection(collectionId);
 
         if (col == nullptr) {
           // if the underlying collection gone, we can go on
@@ -769,7 +767,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
         TRI_vocbase_col_t* collection = state->releaseCollection(collectionId);
 
         if (collection == nullptr) {
-          collection = TRI_LookupCollectionByIdVocBase(vocbase, collectionId);
+          collection = vocbase->lookupCollection(collectionId);
         }
         
         if (collection != nullptr) {
@@ -788,7 +786,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
 
         if (nameSlice.isString()) {
           name = nameSlice.copyString();
-          collection = TRI_LookupCollectionByNameVocBase(vocbase, name);
+          collection = vocbase->lookupCollection(name);
 
           if (collection != nullptr) {  
             TRI_voc_cid_t otherCid = collection->_cid;
@@ -934,7 +932,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
           return true;
         }
 
-        TRI_vocbase_col_t* col = TRI_LookupCollectionByIdVocBase(vocbase, collectionId);
+        TRI_vocbase_col_t* col = vocbase->lookupCollection(collectionId);
 
         if (col == nullptr) {
           // if the underlying collection gone, we can go on
@@ -978,7 +976,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
         TRI_vocbase_col_t* collection = state->releaseCollection(collectionId);
 
         if (collection == nullptr) {
-          collection = TRI_LookupCollectionByIdVocBase(vocbase, collectionId);
+          collection = vocbase->lookupCollection(collectionId);
         }
 
         if (collection != nullptr) {

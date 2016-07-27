@@ -959,7 +959,7 @@ void RestReplicationHandler::handleCommandLoggerFollow() {
   std::string const& value6 = _request->value("collection", found);
 
   if (found) {
-    TRI_vocbase_col_t* c = TRI_LookupCollectionByNameVocBase(_vocbase, value6);
+    TRI_vocbase_col_t* c = _vocbase->lookupCollection(value6);
 
     if (c == nullptr) {
       generateError(GeneralResponse::ResponseCode::NOT_FOUND,
@@ -1154,8 +1154,8 @@ void RestReplicationHandler::handleCommandInventory() {
   // collections and indexes
   std::shared_ptr<VPackBuilder> collectionsBuilder;
   try {
-    collectionsBuilder = TRI_InventoryCollectionsVocBase(
-        _vocbase, tick, &filterCollection, (void*)&includeSystem, true,
+    collectionsBuilder = _vocbase->inventory(
+        tick, &filterCollection, (void*)&includeSystem, true,
         RestReplicationHandler::sortCollections);
     VPackSlice const collections = collectionsBuilder->slice();
 
@@ -1310,7 +1310,7 @@ int RestReplicationHandler::createCollection(VPackSlice const& slice,
   TRI_vocbase_col_t* col = nullptr;
 
   if (cid > 0) {
-    col = TRI_LookupCollectionByIdVocBase(_vocbase, cid);
+    col = _vocbase->lookupCollection(cid);
   }
 
   if (col != nullptr && (TRI_col_type_t)col->_type == (TRI_col_type_t)type) {
@@ -1557,12 +1557,12 @@ int RestReplicationHandler::processRestoreCollection(
     TRI_voc_cid_t cid = StringUtils::uint64(tmp.c_str(), tmp.length());
 
     // first look up the collection by the cid
-    col = TRI_LookupCollectionByIdVocBase(_vocbase, cid);
+    col = _vocbase->lookupCollection(cid);
   }
 
   if (col == nullptr) {
     // not found, try name next
-    col = TRI_LookupCollectionByNameVocBase(_vocbase, name);
+    col = _vocbase->lookupCollection(name);
   }
 
   // drop an existing collection if it exists
@@ -2765,8 +2765,7 @@ void RestReplicationHandler::handleCommandCreateKeys() {
     tickEnd = static_cast<TRI_voc_tick_t>(StringUtils::uint64(value));
   }
 
-  TRI_vocbase_col_t* c =
-      TRI_LookupCollectionByNameVocBase(_vocbase, collection);
+  TRI_vocbase_col_t* c = _vocbase->lookupCollection(collection);
 
   if (c == nullptr) {
     generateError(GeneralResponse::ResponseCode::NOT_FOUND,
@@ -3152,8 +3151,7 @@ void RestReplicationHandler::handleCommandDump() {
     compat28 = StringUtils::boolean(value8);
   }
 
-  TRI_vocbase_col_t* c =
-      TRI_LookupCollectionByNameVocBase(_vocbase, collection);
+  TRI_vocbase_col_t* c = _vocbase->lookupCollection(collection);
 
   if (c == nullptr) {
     generateError(GeneralResponse::ResponseCode::NOT_FOUND,
@@ -3849,7 +3847,8 @@ void RestReplicationHandler::handleCommandAddFollower() {
     return;
   }
 
-  auto col = TRI_LookupCollectionByNameVocBase(_vocbase, shard.copyString());
+  auto col = _vocbase->lookupCollection(shard.copyString());
+
   if (col == nullptr) {
     generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
                   TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
@@ -3905,7 +3904,8 @@ void RestReplicationHandler::handleCommandRemoveFollower() {
     return;
   }
 
-  auto col = TRI_LookupCollectionByNameVocBase(_vocbase, shard.copyString());
+  auto col = _vocbase->lookupCollection(shard.copyString());
+
   if (col == nullptr) {
     generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
                   TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
@@ -3965,8 +3965,8 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
   }
   std::string id = idSlice.copyString();
 
-  auto col =
-      TRI_LookupCollectionByNameVocBase(_vocbase, collection.copyString());
+  auto col = _vocbase->lookupCollection(collection.copyString());
+
   if (col == nullptr) {
     generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
                   TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,

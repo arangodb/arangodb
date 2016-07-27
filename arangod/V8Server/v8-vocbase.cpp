@@ -562,7 +562,7 @@ static void JS_WaitCollectorWal(
 
   std::string const name = TRI_ObjectToString(args[0]);
 
-  TRI_vocbase_col_t* col = TRI_LookupCollectionByNameVocBase(vocbase, name);
+  TRI_vocbase_col_t* col = vocbase->lookupCollection(name);
 
   if (col == nullptr) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
@@ -1905,7 +1905,7 @@ static void MapGetVocBase(v8::Local<v8::String> const name,
       }
     }
   } else {
-    collection = TRI_LookupCollectionByNameVocBase(vocbase, std::string(key));
+    collection = vocbase->lookupCollection(std::string(key));
   }
 
   if (collection == nullptr) {

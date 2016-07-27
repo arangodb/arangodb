@@ -89,8 +89,7 @@ void RestSimpleQueryHandler::allDocuments() {
     std::string collectionName = value.copyString();
 
     if (!collectionName.empty()) {
-      auto const* col =
-          TRI_LookupCollectionByNameVocBase(_vocbase, collectionName);
+      auto const* col = _vocbase->lookupCollection(collectionName);
 
       if (col != nullptr && collectionName.compare(col->_name) != 0) {
         // user has probably passed in a numeric collection id.

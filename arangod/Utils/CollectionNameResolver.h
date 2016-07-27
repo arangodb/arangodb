@@ -150,8 +150,7 @@ class CollectionNameResolver {
       return (*it).second;
     }
 
-    TRI_vocbase_col_t const* collection =
-        TRI_LookupCollectionByNameVocBase(_vocbase, name);
+    TRI_vocbase_col_t const* collection = _vocbase->lookupCollection(name);
 
     if (collection != nullptr) {
       _resolvedNames.emplace(name, collection);
@@ -295,7 +294,7 @@ class CollectionNameResolver {
       }
     } else {
       // exactly as in the non-cluster case
-      name = TRI_GetCollectionNameByIdVocBase(_vocbase, cid);
+      name = _vocbase->collectionName(cid);
     }
 
     if (name.empty()) {

@@ -310,9 +310,34 @@ struct TRI_vocbase_t {
   getReplicationClients();
 
   /// @brief returns whether the database is the system database
-  bool isSystem() {
-    return name() == TRI_VOC_SYSTEM_DATABASE;
-  }
+  bool isSystem() { return name() == TRI_VOC_SYSTEM_DATABASE; }
+
+  /// @brief returns all known collections
+  std::vector<TRI_vocbase_col_t*> collections();
+
+  /// @brief returns names of all known collections
+  std::vector<std::string> collectionNames();
+
+  /// @brief get a collection name by a collection id
+  /// the name is fetched under a lock to make this thread-safe.
+  /// returns empty string if the collection does not exist.
+  std::string collectionName(TRI_voc_cid_t id);
+
+  /// @brief looks up a collection by name
+  TRI_vocbase_col_t* lookupCollection(std::string const& name);
+  /// @brief looks up a collection by identifier
+  TRI_vocbase_col_t* lookupCollection(TRI_voc_cid_t id);
+
+  /// @brief returns all known collections with their parameters
+  /// and optionally indexes
+  /// the result is sorted by type and name (vertices before edges)
+  std::shared_ptr<arangodb::velocypack::Builder> inventory(
+    TRI_voc_tick_t, bool (*)(TRI_vocbase_col_t*, void*), void*,
+    bool, std::function<bool(TRI_vocbase_col_t*, TRI_vocbase_col_t*)>);
+
+  /// @brief renames a collection
+  int rename(TRI_vocbase_col_t* collection, std::string const& newName,
+             bool doOverride, bool writeMarker);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -363,6 +388,11 @@ class TRI_vocbase_col_t {
   bool canRename() const { return _canRename; }
 
  public:
+
+  /// @brief returns a translation of a collection status
+  char const* statusString() const { return statusString(_status); }
+  static char const* statusString(TRI_vocbase_col_status_e status);
+  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Transform the information for this collection to velocypack
   //////////////////////////////////////////////////////////////////////////////
@@ -424,34 +454,6 @@ class TRI_vocbase_col_t {
 
 void TRI_DestroyVocBase(TRI_vocbase_t*);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns all known collections
-////////////////////////////////////////////////////////////////////////////////
-
-std::vector<TRI_vocbase_col_t*> TRI_CollectionsVocBase(TRI_vocbase_t*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns names of all known collections
-////////////////////////////////////////////////////////////////////////////////
-
-std::vector<std::string> TRI_CollectionNamesVocBase(TRI_vocbase_t*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns all known (document) collections with their parameters
-/// and optionally indexes
-/// The result is sorted by type and name (vertices before edges)
-////////////////////////////////////////////////////////////////////////////////
-
-std::shared_ptr<arangodb::velocypack::Builder> TRI_InventoryCollectionsVocBase(
-    TRI_vocbase_t*, TRI_voc_tick_t, bool (*)(TRI_vocbase_col_t*, void*), void*,
-    bool, std::function<bool(TRI_vocbase_col_t*, TRI_vocbase_col_t*)>);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns a translation of a collection status
-////////////////////////////////////////////////////////////////////////////////
-
-char const* TRI_GetStatusStringCollectionVocBase(TRI_vocbase_col_status_e);
-
 /// @brief adds a new collection
 /// caller must hold _collectionsLock in write mode or set doLock
 TRI_vocbase_col_t* TRI_AddCollectionVocBase(bool doLock,
@@ -460,25 +462,6 @@ TRI_vocbase_col_t* TRI_AddCollectionVocBase(bool doLock,
                                             std::string const& name,
                                             TRI_voc_cid_t planId,
                                             std::string const& path);
-
-/// @brief get a collection name by a collection id
-/// the name is fetched under a lock to make this thread-safe.
-/// returns empty string if the collection does not exist.
-std::string TRI_GetCollectionNameByIdVocBase(TRI_vocbase_t*, TRI_voc_cid_t);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief looks up a (document) collection by name
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_vocbase_col_t* TRI_LookupCollectionByNameVocBase(TRI_vocbase_t* vocbase,
-                                                     std::string const& name);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief looks up a (document) collection by identifier
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_vocbase_col_t* TRI_LookupCollectionByIdVocBase(TRI_vocbase_t* vocbase,
-                                                   TRI_voc_cid_t cid);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new (document) collection from parameter set
@@ -499,13 +482,6 @@ int TRI_UnloadCollectionVocBase(TRI_vocbase_t*, TRI_vocbase_col_t*, bool);
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_DropCollectionVocBase(TRI_vocbase_t*, TRI_vocbase_col_t*, bool);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief renames a (document) collection
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_RenameCollectionVocBase(TRI_vocbase_t*, TRI_vocbase_col_t*, std::string const&,
-                                bool, bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief locks a (document) collection for usage, loading or manifesting it

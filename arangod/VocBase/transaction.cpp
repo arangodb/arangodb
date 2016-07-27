@@ -462,8 +462,7 @@ static int UseCollections(TRI_transaction_t* trx, int nestingLevel) {
             trx->_vocbase, trxCollection->_cid, status);
       } else {
         // use without usage-lock (lock already set externally)
-        trxCollection->_collection =
-            TRI_LookupCollectionByIdVocBase(trx->_vocbase, trxCollection->_cid);
+        trxCollection->_collection = trx->_vocbase->lookupCollection(trxCollection->_cid);
       }
 
       if (trxCollection->_collection == nullptr ||

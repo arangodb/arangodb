@@ -1187,7 +1187,7 @@ static void JS_NameVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
   // if we wouldn't do this, we would risk other threads modifying the name
   // while
   // we're reading it
-  std::string name(TRI_GetCollectionNameByIdVocBase(collection->_vocbase, collection->_cid));
+  std::string name(collection->_vocbase->collectionName(collection->_cid));
 
   v8::Handle<v8::Value> result = TRI_V8_STD_STRING(name);
 
@@ -1564,8 +1564,7 @@ static void JS_RenameVocbaseCol(
 
   std::string const oldName(collection->_name);
 
-  int res = TRI_RenameCollectionVocBase(collection->_vocbase, collection,
-                                        name, doOverride, true);
+  int res = collection->_vocbase->rename(collection, name, doOverride, true);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(res, "cannot rename collection");
@@ -2077,10 +2076,10 @@ static TRI_vocbase_col_t* GetCollectionFromArgument(
   // number
   if (val->IsNumber() || val->IsNumberObject()) {
     uint64_t cid = TRI_ObjectToUInt64(val, true);
-    return TRI_LookupCollectionByIdVocBase(vocbase, cid);
+    return vocbase->lookupCollection(cid);
   }
 
-  return TRI_LookupCollectionByNameVocBase(vocbase, TRI_ObjectToString(val));
+  return vocbase->lookupCollection(TRI_ObjectToString(val));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2752,7 +2751,7 @@ static void JS_CollectionsVocbase(
   if (ServerState::instance()->isCoordinator()) {
     colls = GetCollectionsCluster(vocbase);
   } else {
-    colls = TRI_CollectionsVocBase(vocbase);
+    colls = vocbase->collections();
   }
 
   std::sort(colls.begin(), colls.end(), [](TRI_vocbase_col_t const* lhs, TRI_vocbase_col_t const* rhs) -> bool {
@@ -2808,7 +2807,7 @@ static void JS_CompletionsVocbase(
       names = GetCollectionNamesCluster(vocbase);
     }
   } else {
-    names = TRI_CollectionNamesVocBase(vocbase);
+    names = vocbase->collectionNames();
   }
 
   uint32_t j = 0;
