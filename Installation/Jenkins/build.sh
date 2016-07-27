@@ -62,11 +62,11 @@ if test -z "${CXX}"; then
     CXX="/usr/bin/g++-4.9"
 fi
 
-CFLAGS="-g"
-CXXFLAGS="-g"
+CFLAGS="-g -fno-omit-frame-pointer"
+CXXFLAGS="-g -fno-omit-frame-pointer"
 LDFLAGS="-g"
-V8_CFLAGS=""
-V8_CXXFLAGS=""
+V8_CFLAGS="-fno-omit-frame-pointer"
+V8_CXXFLAGS="-fno-omit-frame-pointer"
 V8_LDFLAGS=""
 LIBS=""
 
@@ -91,6 +91,49 @@ GCC5=0
 GOLD=0
 SANITIZE=0
 VERBOSE=0
+
+case "$1" in
+    standard)
+        CFLAGS="${CFLAGS} -O3"
+        CXXFLAGS="${CXXFLAGS} -O3"
+        CONFIGURE_OPTIONS="${CONFIGURE_OPTIONS} -DCMAKE_BUILD_TYPE=${BUILD_CONFIG}"
+        
+        echo "using standard compile configuration"
+        shift
+        ;;
+
+    debug)
+        CFLAGS="${CFLAGS} -O0"
+        CXXFLAGS="${CXXFLAGS} -O0"
+        CONFIGURE_OPTIONS="${CONFIGURE_OPTIONS} --enable-v8-debug"
+
+        echo "using debug compile configuration"
+        shift
+        ;;
+
+    maintainer)
+        CFLAGS="${CFLAGS} -O3"
+        CXXFLAGS="${CXXFLAGS} -O3"
+        MAINTAINER_MODE="-DUSE_MAINTAINER_MODE=on"
+
+        echo "using maintainer mode"
+        shift
+        ;;
+    
+    scan-build)
+        MAKE_CMD_PREFIX="scan-build"
+        MAKE_PARAMS="-f Makefile"
+
+        echo "using scan-build compile configuration"
+        shift
+        ;;
+
+    *)
+        echo "using unknown compile configuration"
+        exit 1
+        ;;
+esac
+
 
 while [ $# -gt 0 ];  do
     case "$1" in
@@ -192,7 +235,8 @@ while [ $# -gt 0 ];  do
             ;;
                 
         *)
-            break
+            echo "Unknown option: $1"
+            exit 1
             ;;
     esac
 done
@@ -210,52 +254,16 @@ elif [ "$CLANG36" == 1 ]; then
     CXXFLAGS="${CXXFLAGS} -std=c++11"
 fi
 
-case "$1" in
-    standard)
-        CFLAGS="${CFLAGS} -O3"
-        CXXFLAGS="${CXXFLAGS} -O3"
-        CONFIGURE_OPTIONS="${CONFIGURE_OPTIONS} -DCMAKE_BUILD_TYPE=${BUILD_CONFIG}"
-        echo "using standard compile configuration"
-        ;;
-
-    debug)
-        CFLAGS="${CFLAGS} -O0"
-        CXXFLAGS="${CXXFLAGS} -O0"
-        CONFIGURE_OPTIONS="${CONFIGURE_OPTIONS} --enable-v8-debug"
-
-        echo "using debug compile configuration"
-        ;;
-
-    maintainer)
-        CFLAGS="${CFLAGS} -O3"
-        CXXFLAGS="${CXXFLAGS} -O3"
-        MAINTAINER_MODE="-DUSE_MAINTAINER_MODE=on"
-
-        echo "using maintainer mode"
-        ;;
-    
-    scan-build)
-        MAKE_CMD_PREFIX="scan-build"
-        MAKE_PARAMS="-f Makefile"
-
-        echo "using scan-build compile configuration"
-
-        ;;
-
-    *)
-        echo "using unknown compile configuration"
-        ;;
-esac
 
 if [ "$SANITIZE" == 1 ]; then
     if [ "$GCC5" == 1 ]; then
-        CFLAGS="${CFLAGS} -fsanitize=address -fsanitize=undefined -fno-sanitize=alignment -fno-sanitize=vptr -fno-omit-frame-pointer"
-        CXXFLAGS="${CXXFLAGS} -fsanitize=address -fsanitize=undefined -fno-sanitize=alignment -fno-sanitize=vptr -fno-omit-frame-pointer"
+        CFLAGS="${CFLAGS} -fsanitize=address -fsanitize=undefined -fno-sanitize=alignment -fno-sanitize=vptr"
+        CXXFLAGS="${CXXFLAGS} -fsanitize=address -fsanitize=undefined -fno-sanitize=alignment -fno-sanitize=vptr"
         LDFLAGS="${LDFLAGS} -pthread"
         LIBS="ubsan;asan"
     else
-        CFLAGS="${CFLAGS} -fsanitize=address -fsanitize=undefined -fno-omit-frame-pointer"
-        CXXFLAGS="${CXXFLAGS} -fsanitize=address -fsanitize=undefined -fno-omit-frame-pointer"
+        CFLAGS="${CFLAGS} -fsanitize=address -fsanitize=undefined"
+        CXXFLAGS="${CXXFLAGS} -fsanitize=address -fsanitize=undefined"
         LDFLAGS="-pthread"
     fi
 fi
@@ -313,7 +321,7 @@ if [ "${VERBOSE}" == 1 ];  then
     VERBOSE_MAKE="V=1 Verbose=1 VERBOSE=1"
 fi
 
-if [ ! -f Makefile ];  then
+if [ ! -f Makefile -o ! -f CMakeCache.txt ];  then
     CFLAGS="${CFLAGS}" CXXFLAGS="${CXXFLAGS}" LDFLAGS="${LDFLAGS}" LIBS="${LIBS}" \
           cmake .. -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_INSTALL_LOCALSTATEDIR=/var -DVARDIR=/var ${CONFIGURE_OPTIONS} ${MAINTAINER_MODE} -G "${GENERATOR}"
 fi
@@ -326,7 +334,7 @@ if [ -n "$CPACK"  -a -n "${TARGET_DIR}" ];  then
         if [ "$PACK" == "DEB" ]; then
             make prepare_debian
         fi
-    
+        
         cpack -G "$PACK"
 
         EXT=`echo $PACK|tr '[:upper:]' '[:lower:]'`
@@ -335,8 +343,9 @@ if [ -n "$CPACK"  -a -n "${TARGET_DIR}" ];  then
         else
             cp *.${EXT} ${TARGET_DIR}
         fi
+    done
 fi
-
+        
 # and install
 
 if test -n "${TARGET_DIR}";  then
