@@ -1,11 +1,15 @@
 v3.0.4 (XXXX-XX-XX)
 -------------------
 
+* fixed issue #1967
+
 * fixed issue #1962
 
 * fixed issue #1959
 
 * replaced require("internal").db by require("@arangodb").db
+
+* fixed issue #1954
 
 * fixed issue #1953
 
