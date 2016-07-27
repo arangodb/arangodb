@@ -25,11 +25,15 @@
 #ifndef ARANGOD_CLUSTER_TRAVERSER_ENGINE_H
 #define ARANGOD_CLUSTER_TRAVERSER_ENGINE_H 1
 
+#include "Basics/Common.h"
+
 namespace arangodb {
 namespace velocypack {
 class Slice;
 }
 namespace traverser {
+struct TraverserOptions;
+
 class TraverserEngine {
   friend class TraverserEngineRegistry;
 
@@ -41,9 +45,13 @@ class TraverserEngine {
   // deletes an engine but the registry
   // does not get informed properly
     TraverserEngine(arangodb::velocypack::Slice);
-    ~TraverserEngine() {}
+    ~TraverserEngine();
 
   public:
+
+
+  private:
+    std::unique_ptr<TraverserOptions> _opts;
 
 };
 } // namespace traverser

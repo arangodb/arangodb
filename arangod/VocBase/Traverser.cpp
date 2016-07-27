@@ -84,6 +84,21 @@ arangodb::traverser::TraverserOptions::LookupInfo::LookupInfo(LookupInfo const& 
   indexCondition = other.indexCondition;
 }
 
+void arangodb::traverser::TraverserOptions::LookupInfo::toVelocyPack(
+    VPackBuilder& result) const {
+  result.openObject();
+  result.add(VPackValue("handle"));
+  idxHandle.toVelocyPack(result, false);
+  result.add(VPackValue("expression"));
+  expression->toVelocyPack(result, false);
+  result.add(VPackValue("condition"));
+  indexCondition->toVelocyPack(result, false);
+  result.close();
+}
+
+arangodb::traverser::TraverserOptions::TraverserOptions(arangodb::Transaction* trx, VPackSlice info, VPackSlice collections) {
+}
+
 arangodb::traverser::TraverserOptions::~TraverserOptions() {
   for (auto& pair : _vertexExpressions) {
     if (pair.second != nullptr) {
@@ -93,6 +108,74 @@ arangodb::traverser::TraverserOptions::~TraverserOptions() {
   if (_ctx != nullptr) {
     delete _ctx;
   }
+}
+
+void arangodb::traverser::TraverserOptions::toVelocyPack(VPackBuilder& result) const {
+  // TODO what about _ctx?
+  result.openObject();
+  result.add("minDepth", VPackValue(minDepth));
+  result.add("maxDepth", VPackValue(maxDepth));
+  result.add("bfs", VPackValue(useBreadthFirst));
+
+  result.add(VPackValue("uniqueVertices"));
+  switch (uniqueVertices) {
+    case UniquenessLevel::NONE:
+      result.add(VPackValue(0));
+      break;
+    case UniquenessLevel::PATH:
+      result.add(VPackValue(1));
+      break;
+    case UniquenessLevel::GLOBAL:
+      result.add(VPackValue(2));
+      break;
+  }
+
+  result.add(VPackValue("uniqueEdges"));
+  switch (uniqueEdges) {
+    case UniquenessLevel::NONE:
+      result.add(VPackValue(0));
+      break;
+    case UniquenessLevel::PATH:
+      result.add(VPackValue(1));
+      break;
+    case UniquenessLevel::GLOBAL:
+      result.add(VPackValue(2));
+      break;
+  }
+
+  result.add(VPackValue("baseLookupInfos"));
+  result.openArray();
+  for (auto const& it: _baseLookupInfos) {
+    it.toVelocyPack(result);
+  }
+  result.close();
+
+  if (!_depthLookupInfo.empty()) {
+    result.add(VPackValue("depthLookupInfos"));
+    result.openObject();
+    for (auto const& pair : _depthLookupInfo) {
+      result.add(VPackValue(pair.first));
+      result.openArray();
+      for (auto const& it : pair.second) {
+        it.toVelocyPack(result);
+      }
+      result.close();
+    }
+    result.close();
+  }
+
+  if (!_vertexExpressions.empty()) {
+    result.add(VPackValue("depthLookupInfos"));
+    result.openObject();
+    for (auto const& pair : _vertexExpressions) {
+      result.add(VPackValue(pair.first));
+      // Do we need verbosity true here?
+      pair.second->toVelocyPack(result, false);
+    }
+    result.close();
+  }
+
+  result.close();
 }
 
 bool arangodb::traverser::TraverserOptions::vertexHasFilter(

@@ -237,6 +237,8 @@ struct TraverserOptions {
     ~LookupInfo();
 
     LookupInfo(LookupInfo const&);
+
+    void toVelocyPack(arangodb::velocypack::Builder&) const;
   };
 
  private:
@@ -268,9 +270,14 @@ struct TraverserOptions {
         uniqueEdges(UniquenessLevel::PATH) {
   }
 
+  TraverserOptions(arangodb::Transaction* trx, arangodb::velocypack::Slice,
+                   arangodb::velocypack::Slice);
+
   ~TraverserOptions();
 
   TraverserOptions(TraverserOptions const&) = delete;
+
+  void toVelocyPack(arangodb::velocypack::Builder&) const;
 
   bool vertexHasFilter(size_t) const;
 
@@ -285,6 +292,7 @@ struct TraverserOptions {
   void clearVariableValues();
 
   void setVariableValue(aql::Variable const*, aql::AqlValue const);
+
 
 };
 
