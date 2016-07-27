@@ -789,10 +789,11 @@ TRI_vocbase_t* MMFilesEngine::openExistingDatabase(TRI_voc_tick_t id, std::strin
     arangodb::VocbaseCollectionInfo info(vocbase.get(), it.get("name").copyString(), it, true);
     
     // we found a collection that is still active
+    std::string const directory = it.get("path").copyString();
     TRI_vocbase_col_t* c = nullptr;
 
     try {
-      c = TRI_AddCollectionVocBase(ConditionalWriteLocker::DoLock(), vocbase.get(), info.type(), info.id(), info.name(), info.planId(), it.get("path").copyString());
+      c = TRI_AddCollectionVocBase(ConditionalWriteLocker::DoLock(), vocbase.get(), info.type(), info.id(), info.name(), info.planId(), directory);
     } catch (...) {
       // if we caught an exception, c is still a nullptr
     }
@@ -805,7 +806,7 @@ TRI_vocbase_t* MMFilesEngine::openExistingDatabase(TRI_voc_tick_t id, std::strin
     if (!wasCleanShutdown) {
       // iterating markers may be time-consuming. we'll only do it if
       // we have to
-      // TRI_IterateTicksCollection(file.c_str(), StartupTickIterator, &_maxTick);
+      TRI_IterateTicksCollection(directory.c_str(), StartupTickIterator, &_maxTick);
     }
 
     LOG(DEBUG) << "added document collection '" << info.name() << "'";
