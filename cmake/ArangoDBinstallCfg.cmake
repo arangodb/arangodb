@@ -17,7 +17,7 @@ macro (generate_root_config name)
     FileContent "${FileContent}")
   STRING(REPLACE "@LIBEXECDIR@/arangodb3" "@ROOTDIR@/bin"
     FileContent "${FileContent}")
-  STRING(REPLACE "@SYSCONFDIR@" "@ROOTDIR@/${CMAKE_INSTALL_SYSCONFDIR_ARANGODB}" 
+  STRING(REPLACE "@SYSCONFDIR@" "@ROOTDIR@/${CMAKE_INSTALL_SYSCONFDIR_ARANGO}" 
     FileContent "${FileContent}")
   if (MSVC)
     STRING(REPLACE "@PROGRAM_SUFFIX@" ".exe"
@@ -25,7 +25,7 @@ macro (generate_root_config name)
     STRING(REGEX REPLACE "[\r\n]file =" "\n# file =" 
       FileContent "${FileContent}")
   endif ()
-  FILE(WRITE ${PROJECT_BINARY_DIR}/${CMAKE_INSTALL_SYSCONFDIR_ARANGODB}/${name}.conf "${FileContent}")
+  FILE(WRITE ${PROJECT_BINARY_DIR}/${CMAKE_INSTALL_SYSCONFDIR_ARANGO}/${name}.conf "${FileContent}")
 endmacro ()
 
 #  generates config file using the configured paths ----------------------------
@@ -35,7 +35,7 @@ macro (generate_path_config name)
     FileContent "${FileContent}")
   STRING(REPLACE "@LOCALSTATEDIR@" "${CMAKE_INSTALL_FULL_LOCALSTATEDIR}" 
     FileContent "${FileContent}")
-  FILE(WRITE ${PROJECT_BINARY_DIR}/${CMAKE_INSTALL_SYSCONFDIR_ARANGODB}/${name}.conf "${FileContent}")
+  FILE(WRITE ${PROJECT_BINARY_DIR}/${CMAKE_INSTALL_SYSCONFDIR_ARANGO}/${name}.conf "${FileContent}")
 endmacro ()
 
 # installs a config file -------------------------------------------------------
