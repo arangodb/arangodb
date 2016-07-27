@@ -38,12 +38,12 @@ To pass bind parameters into a query, they can be specified as second argument t
 !SUBSUBSECTION ES6 template strings 
 
 It is also possible to use ES6 template strings for generating AQL queries. There is
-a template string generator function named *aqlQuery*; we call it once to demonstrate
+a template string generator function named *aql*; we call it once to demonstrate
 its result, and once putting it directly into the query:
 
 ```js
 var key = 'testKey';
-aqlQuery`FOR c IN mycollection FILTER c._key == ${key} RETURN c._key`;
+aql`FOR c IN mycollection FILTER c._key == ${key} RETURN c._key`;
 { 
   "query" : "FOR c IN mycollection FILTER c._key == @value0 RETURN c._key", 
   "bindVars" : { 
@@ -56,25 +56,25 @@ aqlQuery`FOR c IN mycollection FILTER c._key == ${key} RETURN c._key`;
     @EXAMPLE_ARANGOSH_OUTPUT{02_workWithAQL_aqlQuery}
       var key = 'testKey';
       |db._query(
-      | aqlQuery`FOR c IN mycollection FILTER c._key == ${key} RETURN c._key`
+      | aql`FOR c IN mycollection FILTER c._key == ${key} RETURN c._key`
         ).toArray();
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock 02_workWithAQL_aqlQuery
 
 Arbitrary JavaScript expressions can be used in queries that are generated with the 
-*aqlQuery* template string generator. Collection objects are handled automatically:
+*aql* template string generator. Collection objects are handled automatically:
 
     @startDocuBlockInline 02_workWithAQL_aqlCollectionQuery
     @EXAMPLE_ARANGOSH_OUTPUT{02_workWithAQL_aqlCollectionQuery}
       var key = 'testKey';
-      |db._query(aqlQuery`FOR doc IN ${ db.mycollection } RETURN doc`
+      |db._query(aql`FOR doc IN ${ db.mycollection } RETURN doc`
           ).toArray();
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock 02_workWithAQL_aqlCollectionQuery
 
 Note: data-modification AQL queries normally do not return a result (unless the AQL query 
 contains an extra *RETURN* statement). When not using a *RETURN* statement in the query, the 
-*toArray* method will return an empty array. 
+*toArray* method will return an empty array.
 
 !SUBSUBSECTION Statistics and extra Information
  
