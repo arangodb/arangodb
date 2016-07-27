@@ -295,7 +295,7 @@ function makeArgsArangod(options, appDir) {
     "javascript.app-path": appDir,
     "javascript.startup-directory": JS_DIR,
     "javascript.v8-contexts": "5",
-    "http.trusted-origin": "all",
+    "http.trusted-origin": options.httpTrustedOrigin || "all",
     "log.level": "warn",
     "log.level=replication=warn": null,
     "server.allow-use-database": "true",
@@ -2858,7 +2858,11 @@ testFuncs.http_replication = function(options) {
 ////////////////////////////////////////////////////////////////////////////////
 
 testFuncs.http_server = function(options) {
-  return rubyTests(options, false);
+  var opts = {
+    "httpTrustedOrigin": "http://was-erlauben-strunz.it"
+  };
+  _.defaults(opts, options);
+  return rubyTests(opts, false);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
