@@ -2874,17 +2874,13 @@ testFuncs.http_replication = function (options) {
 // / @brief TEST: http_server
 // //////////////////////////////////////////////////////////////////////////////
 
-<<<<<<< HEAD
 testFuncs.http_server = function (options) {
-  return rubyTests(options, false);
-=======
 testFuncs.http_server = function(options) {
   var opts = {
     "httpTrustedOrigin": "http://was-erlauben-strunz.it"
   };
   _.defaults(opts, options);
   return rubyTests(opts, false);
->>>>>>> f4287f8... Fix trusted origin tests
 };
 
 // //////////////////////////////////////////////////////////////////////////////
