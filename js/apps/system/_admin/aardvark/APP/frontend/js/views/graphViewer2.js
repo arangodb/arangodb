@@ -45,6 +45,7 @@
       random1: ['#292F36', '#4ECDC4', '#F7FFF7', '#DD6363', '#FFE66D']
     },
 
+    activeNodes: [],
     selectedNodes: {},
 
     aqlMode: false,
@@ -228,8 +229,8 @@
         '<div id="calculatingGraph" style="position: absolute; left: 25px; top: 130px;">' +
         '<i class="fa fa-circle-o-notch fa-spin" style="margin-right: 10px;"></i>' +
         '<span id="calcText">Fetching graph data. Please wait ... </span></br></br></br>' +
-        '<span style="font-weight: 100; opacity: 0.6; font-size: 9pt;">If it`s taking too much time to draw the graph, please go to: </br>' +
-        '<a href="' + window.location.href + '/settings">' + window.location.href + '/settings </a></br> and adjust your settings.' +
+        '<span style="font-weight: 100; opacity: 0.6; font-size: 9pt;">If it`s taking too much time to draw the graph, please navigate to: ' +
+        '<a style="font-weight: 500" href="' + window.location.href + '/graphs">Graphs View</a></br>Click the settings icon and reset the display settings.' +
         'It is possible that the graph is too big to be handled by the browser.</span></div>'
       );
 
@@ -246,15 +247,24 @@
 
         this.setupSigma();
 
+        self.fetchStarted = new Date();
         $.ajax({
           type: 'GET',
           url: arangoHelper.databaseUrl('/_admin/aardvark/graph/' + encodeURIComponent(this.name)),
           contentType: 'application/json',
           data: ajaxData,
           success: function (data) {
-            $('#calcText').html('Calculating layout. Please wait ... ');
-            // arangoHelper.buildGraphSubNav(self.name, 'Content');
-            self.renderGraph(data, toFocus);
+            if (data.empty === true) {
+              self.renderGraph(data, toFocus);
+            } else {
+              self.fetchFinished = new Date();
+              self.calcStart = self.fetchFinished;
+              $('#calcText').html('Server response took ' + Math.abs(self.fetchFinished.getTime() - self.fetchStarted.getTime()) + ' ms. Initializing graph engine. Please wait ... ');
+              // arangoHelper.buildGraphSubNav(self.name, 'Content');
+              window.setTimeout(function () {
+                self.renderGraph(data, toFocus);
+              }, 50);
+            }
           },
           error: function (e) {
             try {
@@ -475,6 +485,7 @@
         if (error) {
           arangoHelper.arangoError('Could not create node', msg.errorMessage);
         } else {
+          $('#emptyGraph').remove();
           self.currentGraph.graph.addNode({
             id: id,
             label: id.split('/')[1] || '',
@@ -921,7 +932,7 @@
         wheel.multiSelect = true;
         wheel.clickModeRotate = false;
         wheel.slicePathFunction = slicePath().DonutSlice;
-        wheel.createWheel([icon.edit, icon.trash, icon.flag, icon.connect]);
+        wheel.createWheel([icon.edit, icon.trash, icon.flag, icon.connect, icon.expand]);
 
         wheel.navItems[0].selected = false;
         wheel.navItems[0].hovered = false;
@@ -958,6 +969,12 @@
           self.clearOldContextMenu();
         };
 
+        // function 4: mark as start node
+        wheel.navItems[4].navigateFunction = function (e) {
+          self.clearOldContextMenu();
+          self.expandNode(nodeId);
+        };
+
         // deselect active default entry
         wheel.navItems[0].selected = false;
         wheel.navItems[0].hovered = false;
@@ -975,6 +992,76 @@
       var c = document.getElementsByClassName('sigma-mouse')[0];
       var ctx = c.getContext('2d');
       ctx.clearRect(0, 0, $(c).width(), $(c).height());
+    },
+
+    expandNode: function (id) {
+      var self = this;
+      var ajaxData = {};
+
+      if (this.graphConfig) {
+        ajaxData = _.clone(this.graphConfig);
+
+        // remove not needed params
+        delete ajaxData.layout;
+        delete ajaxData.edgeType;
+        delete ajaxData.renderer;
+      }
+
+      ajaxData.query = 'FOR v, e, p IN 1..1 ANY "' + id + '" GRAPH "' + self.name + '" RETURN p';
+
+      $.ajax({
+        type: 'GET',
+        url: arangoHelper.databaseUrl('/_admin/aardvark/graph/' + encodeURIComponent(this.name)),
+        contentType: 'application/json',
+        data: ajaxData,
+        success: function (data) {
+          self.checkExpand(data, id);
+        },
+        error: function (e) {
+          arangoHelper.arangoError('Graph', 'Could not expand node: ' + id + '.');
+        }
+      });
+    },
+
+    checkExpand: function (data, origin) {
+      var self = this;
+      var newNodes = data.nodes;
+      var newEdges = data.edges;
+      var existingNodes = this.currentGraph.graph.nodes();
+
+      var found;
+      _.each(newNodes, function (newNode) {
+        found = false;
+        _.each(existingNodes, function (existingNode) {
+          if (found === false) {
+            if (newNode.id === existingNode.id) {
+              if (existingNode.id === origin) {
+                existingNode.label = existingNode.label + ' (expanded)';
+              }
+              found = true;
+            } else {
+              found = false;
+            }
+          }
+        });
+
+        if (found === false) {
+          newNode.originalColor = newNode.color;
+          self.currentGraph.graph.addNode(newNode);
+
+          _.each(newEdges, function (edge) {
+            if (edge.source === newNode.id || edge.target === newNode.id) {
+              edge.originalColor = edge.color;
+              self.currentGraph.graph.addEdge(edge);
+            }
+          });
+
+          self.startLayout(true);
+        }
+
+        // rerender graph
+        self.currentGraph.refresh();
+      });
     },
 
     drawLine: function (e) {
@@ -1084,6 +1171,7 @@
           self.selectedNodes[key] = val.id;
         });
 
+        /*
         // For instance, reset all node size as their initial size
         sigmaInstance.graph.nodes().forEach(function (node) {
           node.color = self.graphConfig.nodeColor ? self.graphConfig.nodeColor : 'rgb(46, 204, 113)';
@@ -1093,7 +1181,9 @@
         nodes.forEach(function (node) {
           node.color = 'red';
         });
+        */
 
+        self.activeNodes = nodes;
         sigmaInstance.refresh();
       });
 
@@ -1105,29 +1195,32 @@
 
       this.graphSettings = graph.settings;
 
-      if (graph.edges.length === 0) {
-        var string = 'No edges found for starting point: <span style="font-weight: 400">' + self.graphSettings.startVertex._id + '</span>';
-        $('#calculatingGraph').html(
-          '<div style="font-weight: 300; font-size: 10.5pt"><span style="font-weight: 400">Stopped. </span></br></br>' +
-          string +
-          '. Please <span id="noGraphToggle" style="cursor: pointer; color: #3498db">choose a different start node </span>or try to reload the graph. ' +
-          '<i id="reloadGraph" class="fa fa-refresh" style="cursor: pointer"></i></div>'
-        );
-        return;
-      } else {
-        var style = 'position: absolute; left: 25px; bottom: 45px;';
-        if (this.aqlMode) {
-          style = 'position: absolute; left: 30px; margin-top: -37px;';
+      if (graph.edges) {
+        if (graph.nodes) {
+          if (graph.nodes.length === 0 && graph.edges.length === 0) {
+            graph.nodes.push({
+              id: graph.settings.startVertex._id,
+              label: graph.settings.startVertex._key,
+              size: 10,
+              color: '#2ecc71',
+              x: Math.random(),
+              y: Math.random()
+            });
+          }
+
+          var style = 'position: absolute; left: 25px; bottom: 45px;';
+          if (this.aqlMode) {
+            style = 'position: absolute; left: 30px; margin-top: -37px;';
+          }
+
+          $(this.el).append(
+            '<div style="' + style + '">' +
+              '<span style="margin-right: 10px" class="arangoState">' + graph.nodes.length + ' nodes</span>' +
+                '<span class="arangoState">' + graph.edges.length + ' edges</span>' +
+                  '</div>'
+          );
         }
-
-        $(this.el).append(
-          '<div style="' + style + '">' +
-          '<span style="margin-right: 10px" class="arangoState">' + graph.nodes.length + ' nodes</span>' +
-          '<span class="arangoState">' + graph.edges.length + ' edges</span>' +
-          '</div>'
-        );
       }
-
       this.Sigma = sigma;
 
       // defaults
@@ -1170,15 +1263,29 @@
         font: 'Roboto'
       };
 
+      // halo settings
+      settings.nodeHaloColor = '#FF7A7A';
+      settings.nodeHaloStroke = false;
+      settings.nodeHaloStrokeColor = '#000';
+      settings.nodeHaloStrokeWidth = 0.5;
+      settings.nodeHaloSize = 15;
+      settings.nodeHaloClustering = false;
+      settings.nodeHaloClusteringMaxRadius = 1000;
+      settings.edgeHaloColor = '#fff';
+      settings.edgeHaloSize = 10;
+      settings.drawHalo = true;
+
       if (renderer === 'canvas') {
         settings.autoCurveSortByDirection = true;
       }
 
       // adjust display settings for big graphs
-      if (graph.nodes.length > 500) {
-        // show node label if size is 15
-        settings.labelThreshold = 15;
-        settings.hideEdgesOnMove = true;
+      if (graph.nodes) {
+        if (graph.nodes.length > 500) {
+          // show node label if size is 15
+          settings.labelThreshold = 15;
+          settings.hideEdgesOnMove = true;
+        }
       }
 
       if (this.graphConfig) {
@@ -1263,7 +1370,6 @@
             sigma.canvas.edges.autoCurve(s);
           }
         }
-        s.refresh();
 
         if (!self.aqlMode) {
           s.bind('rightClickStage', function (e) {
@@ -1345,8 +1451,27 @@
             var foundEdgeDefinitions = self.getEdgeDefinitionCollections(fromCollection, toCollection);
             self.addEdgeModal(foundEdgeDefinitions, self.contextState._from, self.contextState._to);
           } else {
-            showAttributes(e, true);
+            if (!self.dragging) {
+              // halo on active nodes:
+              self.currentGraph.renderers[0].halo({
+                nodes: self.currentGraph.graph.nodes(),
+                nodeHaloColor: '#DF0101',
+                nodeHaloSize: 100
+              });
+
+              showAttributes(e, true);
+              self.activeNodes = [e.data.node];
+              s.renderers[0].halo({
+                nodes: [e.data.node]
+              });
+            }
           }
+        });
+
+        s.renderers[0].bind('render', function (e) {
+          s.renderers[0].halo({
+            nodes: self.activeNodes
+          });
         });
 
         if (!this.aqlMode) {
@@ -1390,6 +1515,8 @@
         });
 
         s.bind('doubleClickStage', function () {
+          self.activeNodes = [];
+
           s.graph.nodes().forEach(function (n) {
             n.color = n.originalColor;
           });
@@ -1398,12 +1525,16 @@
             e.color = e.originalColor;
           });
 
+          $('.nodeInfoDiv').remove();
           s.refresh();
         });
 
         s.bind('clickStage', function () {
           self.clearOldContextMenu(true);
           self.clearMouseCanvas();
+          s.renderers[0].halo({
+            nodes: self.activeNodes
+          });
         });
       }
 
@@ -1411,7 +1542,6 @@
       if (algorithm === 'noverlap') {
         s.startNoverlap();
         // allow draggin nodes
-        sigma.plugins.dragNodes(s, s.renderers[0]);
       } else if (algorithm === 'force') {
         // add buttons for start/stopping calculation
         var style2 = 'color: rgb(64, 74, 83); cursor: pointer; position: absolute; right: 30px; bottom: 40px;';
@@ -1430,23 +1560,31 @@
         // suggestion rendering time
         var duration = 3000;
 
-        if (graph.nodes.length > 2500) {
-          duration = 5000;
-        } else if (graph.nodes.length < 50) {
-          duration = 500;
+        if (graph.nodes) {
+          if (graph.nodes.length > 2500) {
+            duration = 5000;
+          } else if (graph.nodes.length < 50) {
+            duration = 500;
+          }
         }
 
-        // dragListener = sigma.plugins.dragNodes(s, s.renderers[0]);
         window.setTimeout(function () {
           self.stopLayout();
         }, duration);
       } else if (algorithm === 'fruchtermann') {
         // Start the Fruchterman-Reingold algorithm:
         sigma.layouts.fruchtermanReingold.start(s);
-        sigma.plugins.dragNodes(s, s.renderers[0]);
-      } else {
-        sigma.plugins.dragNodes(s, s.renderers[0]);
       }
+      var dragListener = sigma.plugins.dragNodes(s, s.renderers[0]);
+
+      dragListener.bind('drag', function (event) {
+        self.dragging = true;
+      });
+      dragListener.bind('drop', function (event) {
+        window.setTimeout(function () {
+          self.dragging = false;
+        }, 400);
+      });
 
       // add listener to keep track of cursor position
       var c = document.getElementsByClassName('sigma-mouse')[0];
@@ -1505,6 +1643,12 @@
       maxNodeSize = maxNodeSize * factor;
       s.settings('maxNodeSize', maxNodeSize);
       s.refresh();
+
+      self.calcFinished = new Date();
+      // console.log('Client side calculation took ' + Math.abs(self.calcFinished.getTime() - self.calcStart.getTime()) + ' ms');
+      if (graph.empty === true) {
+        $('.sigma-background').before('<span id="emptyGraph" style="position: absolute; margin-left: 10px; margin-top: 10px;">The graph is empty. Please right-click to add a node.<span>');
+      }
     },
 
     keyUpFunction: function (event) {
@@ -1537,15 +1681,7 @@
 
         // clear selected nodes state
         this.selectedNodes = {};
-
-        this.currentGraph.graph.nodes().forEach(function (n) {
-          n.color = n.originalColor;
-        });
-
-        this.currentGraph.graph.edges().forEach(function (e) {
-          e.color = e.originalColor;
-        });
-
+        this.activeNodes = [];
         this.currentGraph.refresh();
       } else {
         $('#selectNodes').addClass('activated');
@@ -1557,12 +1693,21 @@
       }
     },
 
-    startLayout: function () {
+    startLayout: function (kill) {
+      var self = this;
+
+      if (kill === true) {
+        this.currentGraph.killForceAtlas2();
+
+        window.setTimeout(function () {
+          self.stopLayout();
+        }, 400);
+      }
+
       $('#toggleForce .fa').removeClass('fa-play').addClass('fa-pause');
       this.layouting = true;
       this.currentGraph.startForceAtlas2({
-        worker: true,
-        barnesHutOptimize: false
+        worker: true
       });
       sigma.plugins.dragNodes(this.currentGraph, this.currentGraph.renderers[0]);
     },

@@ -403,3 +403,8 @@
 * Project Home: http://swagger.io
 * GITHUB: https://github.com/swagger-api/swagger-ui
 * License: [Apache 2 license](https://github.com/swagger-api/swagger-ui/blob/master/LICENSE)
+
+#### sigma.js
+
+* GITHUB: https://github.com/jacomyal/sigma.js
+* License: [MIT License](https://github.com/jacomyal/sigma.js/blob/master/LICENSE.txt)

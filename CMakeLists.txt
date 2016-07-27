@@ -34,6 +34,8 @@ else ()
   project(ArangoDB CXX C ASM)
 endif ()
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 # where to find CMAKE modules
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_SOURCE_DIR}/cmake)
 
@@ -845,3 +847,12 @@ if (NOT USE_PRECOMPILED_V8)
   add_dependencies(arangorestore v8_build)
   add_dependencies(arangosh      v8_build)
 endif ()
+
+#copy compile commands to source dir
+if( EXISTS "${CMAKE_CURRENT_BINARY_DIR}/compile_commands.json" )
+    message(STATUS "copy compile_commands.json")
+    EXECUTE_PROCESS(COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${CMAKE_CURRENT_BINARY_DIR}/compile_commands.json
+        ${CMAKE_CURRENT_SOURCE_DIR}/compile_commands.json
+    )
+endif()

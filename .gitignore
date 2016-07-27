@@ -1,8 +1,6 @@
 tags
 build
 core.*
-build.sh
-
 *.vim
 .deps
 .dirstamp
@@ -27,10 +25,12 @@ build.sh
 *.lnk
 Thumbs.db
 
+compile_commands.json
 testresult.json
 botschaft.txt
 testsStarted
 
+build.sh
 build*/
 Build64/
 Build32/

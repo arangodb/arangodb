@@ -30,6 +30,15 @@ collections. This shouldn't be a problem for regular usage as system collections
 not contain user data and there is no need to access them from within a user
 transaction.
 
+Some operations are not allowed inside transactions in general:
+
+- creation and deletion of collections (`db._create()`, `db._drop()`, `db._rename()`)
+- creation and deletion of indexes (`db.ensure...Index()`, `db.dropIndex()`)
+
+If an attempt is made to carry out any of these operations during a transaction,
+ArangoDB will abort the transaction with error code *1653 (disallowed operation inside
+transaction)*.
+
 Finally, all collections that may be modified during a transaction must be 
 declared beforehand, i.e. using the *collections* attribute of the object passed
 to the *_executeTransaction* function. If any attempt is made to carry out a data

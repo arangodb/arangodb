@@ -75,7 +75,7 @@
       },
       'nodeLabelByCollection': {
         type: 'select',
-        name: 'Label by collection?',
+        name: 'Use collection name',
         desc: 'Set label text by collection. If activated node label attribute will be ignored.',
         yes: {
           name: 'Yes',
@@ -105,7 +105,7 @@
       },
       'nodeColorByCollection': {
         type: 'select',
-        name: 'Color by collection?',
+        name: 'Use collection color',
         no: {
           name: 'No',
           val: 'false'
@@ -132,7 +132,7 @@
       },
       'edgeLabelByCollection': {
         type: 'select',
-        name: 'Label by collection?',
+        name: 'Use collection name',
         desc: 'Set label text by collection. If activated edge label attribute will be ignored.',
         yes: {
           name: 'Yes',
@@ -162,7 +162,7 @@
       },
       'edgeColorByCollection': {
         type: 'select',
-        name: 'Color by collection?',
+        name: 'Use collection color',
         no: {
           name: 'No',
           val: 'false'
@@ -308,7 +308,7 @@
       this.userConfig.setItem('graphs', config, callback);
     },
 
-    setDefaults: function () {
+    setDefaults: function (onlySave) {
       var obj = {
         layout: 'force',
         renderer: 'canvas',
@@ -316,11 +316,11 @@
         nodeColor: '#2ecc71',
         nodeColorAttribute: '',
         nodeColorByCollection: 'true',
-        nodeLabelThreshold: 10,
+        nodeLabelThreshold: 2,
         edgeColor: '#cccccc',
         edgeColorAttribute: '',
         edgeColorByCollection: 'false',
-        edgeLabelThreshold: 10,
+        edgeLabelThreshold: 2,
         nodeLabel: '_key',
         edgeLabel: '',
         edgeType: 'arrow',
@@ -328,11 +328,17 @@
         edgeEditable: 'false',
         nodeLabelByCollection: 'false',
         edgeLabelByCollection: 'true',
-        nodeStart: ''
+        nodeStart: '',
+        barnesHutOptimize: true
       };
-      this.saveGraphSettings(null, null, null, obj);
-      this.render();
-      window.App.graphViewer2.render(this.lastFocussed);
+
+      if (onlySave === true) {
+        this.saveGraphSettings(null, null, null, obj);
+      } else {
+        this.saveGraphSettings(null, null, null, obj);
+        this.render();
+        window.App.graphViewer2.render(this.lastFocussed);
+      }
     },
 
     toggle: function () {
@@ -372,7 +378,7 @@
         $('#g_nodeLabelThreshold_label').text(this.graphConfig.nodeLabelThreshold);
         $('#g_edgeLabelThreshold_label').text(this.graphConfig.edgeLabelThreshold);
       } else {
-        this.setDefaults();
+        this.setDefaults(true);
       }
 
       // arangoHelper.buildGraphSubNav(this.name, 'Settings');

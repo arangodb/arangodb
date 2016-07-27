@@ -139,7 +139,7 @@ To do so, use the *hasNext* and *next* methods of the cursor:
     @EXAMPLE_ARANGOSH_OUTPUT{05_workWithAQL_statements4}
     ~var stmt = db._createStatement( { "query": "FOR i IN [ 1, 2 ] RETURN i * 2" } );
     ~var c = stmt.execute();
-    while (c.hasNext()) { require("internal").print(c.next()); }
+    while (c.hasNext()) { require("@arangodb").print(c.next()); }
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock 05_workWithAQL_statements4
 
@@ -185,7 +185,7 @@ or
     ~stmt.bind("one", 1);
     ~stmt.bind("two", 2);
     ~var c = stmt.execute();
-    while (c.hasNext()) { require("internal").print(c.next()); }
+    while (c.hasNext()) { require("@arangodb").print(c.next()); }
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock 05_workWithAQL_statements7
 
