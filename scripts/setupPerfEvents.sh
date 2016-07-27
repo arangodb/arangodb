@@ -25,9 +25,13 @@ echo Adding events, this takes a few seconds...
 
 addEvent() {
   x=$1
+  y=$2
+  if [ "x$y" == "x" ] ; then
+    y=$x
+  fi
   echo $x
-  perf probe -x $ARANGOD_EXECUTABLE -a $x=$x 2> /dev/null
-  perf probe -x $ARANGOD_EXECUTABLE -a ${x}Ret=$x%return 2> /dev/null
+  perf probe -x $ARANGOD_EXECUTABLE -a $x=$y 2> /dev/null
+  perf probe -x $ARANGOD_EXECUTABLE -a ${x}Ret=$y%return 2> /dev/null
 }
 echo Single document operations...
 addEvent insertLocal
@@ -43,6 +47,6 @@ addEvent replaceCoordinator
 addEvent documentCoordinator
 
 echo work method in HttpServerJob
-addEvent work@HttpServerJob.cpp
+addEvent workHttpServerJob work@HttpServerJob.cpp
 
 echo Done.
