@@ -45,7 +45,7 @@ Finally, we can print the contents of the *results* object, limited to the visit
 We will only print the name and type of each visited vertex for brevity:
 
 ```js
-require("internal").print(result.visited.vertices.map(function(vertex) {
+require("@arangodb").print(result.visited.vertices.map(function(vertex) {
   return vertex.name + " (" + vertex.type + ")";
 }));
 ```
@@ -76,7 +76,7 @@ var result = {
 var traverser = new traversal.Traverser(config);
 traverser.traverse(result, startVertex);
 
-require("internal").print(result.visited.vertices.map(function(vertex) {
+require("@arangodb").print(result.visited.vertices.map(function(vertex) {
   return vertex.name + " (" + vertex.type + ")";
 }));
 ```
@@ -162,7 +162,7 @@ var result = {
 var traverser = new traversal.Traverser(config);
 traverser.traverse(result, startVertex);
 
-require("internal").print(result.visited.vertices.map(function(vertex) {
+require("@arangodb").print(result.visited.vertices.map(function(vertex) {
   return vertex.name + " (" + vertex.type + ")";
 }));
 ```
@@ -211,7 +211,7 @@ var result = {
 var traverser = new traversal.Traverser(config);
 traverser.traverse(result, startVertex);
 
-require("internal").print(result.visited.vertices.map(function(vertex) {
+require("@arangodb").print(result.visited.vertices.map(function(vertex) {
   return vertex.name + " (" + vertex.type + ")";
 }));
 ```
@@ -388,7 +388,7 @@ var config = {
   filter: traversal.visitAllFilter,
   expander: traversal.inboundExpander,
   visitor: function (config, result, vertex, path) {
-    require("internal").print("visiting vertex", vertex.name);
+    require("@arangodb").print("visiting vertex", vertex.name);
   }
 };
 
@@ -447,7 +447,7 @@ do not have any further connected edges):
 ```js
 config.visitor = function (config, result, vertex, path, connected) {
   if (connected && connected.length === 0) {
-    require("internal").print("found a leaf-node: ", vertex);
+    require("@arangodb").print("found a leaf-node: ", vertex);
   }
 }
 ```

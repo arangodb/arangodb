@@ -25,7 +25,7 @@ For example, to determine which edges are linked to the *world* vertex, we can u
 
 ```js
 db.e.inEdges('v/world').forEach(function(edge) { 
-  require("internal").print(edge._from, "->", edge.type, "->", edge._to); 
+  require("@arangodb").print(edge._from, "->", edge.type, "->", edge._to); 
 });
 ```
 
@@ -46,7 +46,7 @@ the linked vertices, we can use each edges' *_from* and *_to* attributes as foll
 
 ```js
 db.e.inEdges('v/world').forEach(function(edge) { 
-  require("internal").print(db._document(edge._from).name, "->", edge.type, "->", db._document(edge._to).name); 
+  require("@arangodb").print(db._document(edge._from).name, "->", edge.type, "->", db._document(edge._to).name); 
 });
 ```
 
