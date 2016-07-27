@@ -1053,6 +1053,10 @@ and all client tools uses these APIs.
 In order to connect to earlier versions of ArangoDB with the client tools, an older
 version of the client tools needs to be kept installed.
 
+The preferred name for the template string generator function `aqlQuery` is now
+`aql` and is automatically available in arangosh. Elsewhere, it can be loaded
+like `const aql = require('@arangodb').aql`.
+
 !SUBSECTION Command-line options added
 
 All client tools in 3.0 provide an option `--server.max-packet-size` for controlling
