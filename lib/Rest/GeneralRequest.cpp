@@ -266,11 +266,7 @@ void GeneralRequest::setArrayValue(char* key, size_t length,
 }
 
 bool GeneralRequest::velocyPackResponse() const {
-#if 0
-  // currently deactivated
+  // needs only to be used in http case?!
   std::string const& result = header(StaticStrings::Accept);
   return (std::string::npos != result.find(StaticStrings::MimeTypeVPack));
-#else
-  return false;
-#endif
 }
