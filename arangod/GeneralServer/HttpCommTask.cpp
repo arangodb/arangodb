@@ -51,7 +51,7 @@ HttpCommTask::HttpCommTask(GeneralServer* server, TRI_socket_t sock,
       _bodyPosition(0),
       _bodyLength(0),
       _readRequestBody(false),
-      _allowMethodOverride(server->allowMethodOverride()),
+      _allowMethodOverride(GeneralServerFeature::allowMethodOverride()),
       _denyCredentials(true),
       _acceptDeflate(false),
       _newRequest(true),
@@ -299,7 +299,7 @@ bool HttpCommTask::processRead() {
           // if the request asks to allow credentials, we'll check against the
           // configured whitelist of origins
           std::vector<std::string> const& accessControlAllowOrigins =
-              _server->trustedOrigins();
+            GeneralServerFeature::accessControlAllowOrigins();
 
           if (StringUtils::boolean(allowCredentials) &&
               !accessControlAllowOrigins.empty()) {

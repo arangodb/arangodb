@@ -85,7 +85,7 @@ void GeneralCommTask::signalTask(TaskData* data) {
     }
   }
 
-  // data response
+  // buffer response
   else if (data->_type == TaskData::TASK_DATA_BUFFER) {
     data->RequestStatisticsAgent::transferTo(this);
     HttpResponse response(GeneralResponse::ResponseCode::OK);

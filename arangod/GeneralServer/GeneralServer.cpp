@@ -62,18 +62,6 @@ int GeneralServer::sendChunk(uint64_t taskId, std::string const& data) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs a new general server with dispatcher and job manager
-////////////////////////////////////////////////////////////////////////////////
-
-GeneralServer::GeneralServer(
-    bool allowMethodOverride,
-    std::vector<std::string> const& accessControlAllowOrigins)
-    : _listenTasks(),
-      _endpointList(nullptr),
-      _allowMethodOverride(allowMethodOverride),
-      _accessControlAllowOrigins(accessControlAllowOrigins) {}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief destructs a general server
 ////////////////////////////////////////////////////////////////////////////////
 
