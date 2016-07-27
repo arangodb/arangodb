@@ -221,9 +221,9 @@ elseif (CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
 endif ()
 
 if (WINDOWS)
-  set(BASE_FLAGS     "/D WIN32 /D _WINDOWS /W3 /MP" CACHE STRING "base flags")
-  set(BASE_C_FLAGS   ""                         	CACHE STRING "base C flags")
-  set(BASE_CXX_FLAGS "/GR /EHsc"                	CACHE STRING "base C++flags")
+  set(BASE_FLAGS     "/D WIN32 /D _WINDOWS /W3 /MP"      CACHE STRING "base flags")
+  set(BASE_C_FLAGS   ""                         	 CACHE STRING "base C flags")
+  set(BASE_CXX_FLAGS "/GR /EHsc"                	 CACHE STRING "base C++flags")
 else ()
   set(BASE_FLAGS     ""                                  CACHE STRING "base flags")
   set(BASE_C_FLAGS   "${CMAKE_C_FLAGS}   $ENV{CFLAGS}"   CACHE STRING "base C flags")
@@ -728,7 +728,7 @@ include_directories(${ZLIB_INCLUDE_DIR})
 add_definitions("-DARANGODB_ZLIB_VERSION=\"${ZLIB_VERSION}\"")
 
 ################################################################################
-## PATHS
+## PATHS, installation, packages
 ################################################################################
 
 include(ArangoDBMacros)
