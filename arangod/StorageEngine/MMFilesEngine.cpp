@@ -25,6 +25,7 @@
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/WriteLocker.h"
 #include "Basics/files.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
@@ -39,6 +40,9 @@
 #ifdef ARANGODB_ENABLE_ROCKSDB
 #include "Indexes/RocksDBIndex.h"
 #endif
+
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -342,20 +346,20 @@ int MMFilesEngine::getCollectionsAndIndexes(TRI_vocbase_t* vocbase,
       continue;
     }
 
-    std::string const file = FileUtils::buildFilename(path, name);
+    std::string const directory = FileUtils::buildFilename(path, name);
 
-    if (!TRI_IsDirectory(file.c_str())) {
-      LOG(DEBUG) << "ignoring non-directory '" << file << "'";
+    if (!TRI_IsDirectory(directory.c_str())) {
+      LOG(DEBUG) << "ignoring non-directory '" << directory << "'";
       continue;
     }
 
-    if (!TRI_IsWritable(file.c_str())) {
+    if (!TRI_IsWritable(directory.c_str())) {
       // the collection directory we found is not writable for the current
       // user
       // this can cause serious trouble so we will abort the server start if
       // we
       // encounter this situation
-      LOG(ERR) << "database subdirectory '" << file
+      LOG(ERR) << "database subdirectory '" << directory
                 << "' is not writable for current user";
 
       return TRI_ERROR_ARANGO_DATADIR_NOT_WRITABLE;
@@ -365,12 +369,12 @@ int MMFilesEngine::getCollectionsAndIndexes(TRI_vocbase_t* vocbase,
 
     try {
       arangodb::VocbaseCollectionInfo info =
-          arangodb::VocbaseCollectionInfo::fromFile(file.c_str(), vocbase,
+          arangodb::VocbaseCollectionInfo::fromFile(directory, vocbase,
                                                     "",  // Name is unused
                                                     true);
      
       if (info.deleted()) {
-        _deleted.emplace_back(std::make_pair(info.name(), file));
+        _deleted.emplace_back(std::make_pair(info.name(), directory));
         continue;
       }
 
@@ -383,44 +387,14 @@ int MMFilesEngine::getCollectionsAndIndexes(TRI_vocbase_t* vocbase,
         return TRI_ERROR_FAILED;
       }
 
+      // add collection info
       result.openObject();
       TRI_CreateVelocyPackCollectionInfo(info, result);
+      result.add("path", VPackValue(directory));
       result.close();
-/*
 
-      } else {
-        // we found a collection that is still active
-        TRI_col_type_e type = info.type();
-        TRI_vocbase_col_t* c = nullptr;
-
-        try {
-          c = AddCollection(vocbase, type, info.name(), info.id(), file);
-        } catch (...) {
-          // if we caught an exception, c is still a nullptr
-        }
-
-        if (c == nullptr) {
-          LOG(ERR) << "failed to add document collection from '"
-                    << file << "'";
-
-          return TRI_set_errno(TRI_ERROR_ARANGO_CORRUPTED_COLLECTION);
-        }
-
-        c->_planId = info.planId();
-        c->_status = TRI_VOC_COL_STATUS_UNLOADED;
-
-        if (!wasCleanShutdown) {
-          // iterating markers may be time-consuming. we'll only do it if
-          // we have to
-          TRI_IterateTicksCollection(file.c_str(), StartupTickIterator, &_maxTick);
-        }
-
-        LOG(DEBUG) << "added document collection '" << info.name()
-                    << "' from '" << file << "'";
-      }
-      */
     } catch (arangodb::basics::Exception const& e) {
-      std::string tmpfile = FileUtils::buildFilename(file, ".tmp");
+      std::string tmpfile = FileUtils::buildFilename(directory, ".tmp");
 
       if (TRI_ExistsFile(tmpfile.c_str())) {
         LOG(TRACE) << "ignoring temporary directory '" << tmpfile << "'";
@@ -432,7 +406,7 @@ int MMFilesEngine::getCollectionsAndIndexes(TRI_vocbase_t* vocbase,
       res = e.code();
 
       LOG(ERR) << "cannot read collection info file in directory '"
-                << file << "': " << TRI_errno_string(res);
+                << directory << "': " << TRI_errno_string(res);
 
       return res;
     }
@@ -761,10 +735,6 @@ std::string MMFilesEngine::databaseDirectory(TRI_voc_tick_t id) const {
   return _databasePath + "database-" + std::to_string(id);
 }
 
-std::string MMFilesEngine::collectionDirectory(TRI_voc_tick_t id, TRI_voc_cid_t cid) const {
-  return basics::FileUtils::buildFilename(databaseDirectory(id), "collection-" + std::to_string(cid));
-}
-
 std::string MMFilesEngine::parametersFile(TRI_voc_tick_t id) const {
   return basics::FileUtils::buildFilename(databaseDirectory(id), TRI_VOC_PARAMETER_FILE);
 }
@@ -800,7 +770,8 @@ int MMFilesEngine::waitForDeletion(std::string const& directoryName, int statusC
 }
 
 /// @brief open an existing database. internal function
-TRI_vocbase_t* MMFilesEngine::openExistingDatabase(TRI_voc_tick_t id, std::string const& name, bool wasCleanShutdown, bool isUpgrade) {
+TRI_vocbase_t* MMFilesEngine::openExistingDatabase(TRI_voc_tick_t id, std::string const& name, 
+                                                   bool wasCleanShutdown, bool isUpgrade) {
   auto vocbase = std::make_unique<TRI_vocbase_t>(TRI_VOCBASE_TYPE_NORMAL, id, name);
 
   // scan the database path for collections
@@ -814,9 +785,32 @@ TRI_vocbase_t* MMFilesEngine::openExistingDatabase(TRI_voc_tick_t id, std::strin
   VPackSlice slice = builder.slice();
   TRI_ASSERT(slice.isArray());
 
-  // vocbase is now active
-  vocbase->_state = (sig_atomic_t)TRI_VOCBASE_STATE_NORMAL;
-  
+  for (auto const& it : VPackArrayIterator(slice)) {
+    arangodb::VocbaseCollectionInfo info(vocbase.get(), it.get("name").copyString(), it, true);
+    
+    // we found a collection that is still active
+    TRI_vocbase_col_t* c = nullptr;
+
+    try {
+      c = TRI_AddCollectionVocBase(ConditionalWriteLocker::DoLock(), vocbase.get(), info.type(), info.id(), info.name(), info.planId(), it.get("path").copyString());
+    } catch (...) {
+      // if we caught an exception, c is still a nullptr
+    }
+
+    if (c == nullptr) {
+      LOG(ERR) << "failed to add document collection '" << info.name() << "'";
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_CORRUPTED_COLLECTION);
+    }
+
+    if (!wasCleanShutdown) {
+      // iterating markers may be time-consuming. we'll only do it if
+      // we have to
+      // TRI_IterateTicksCollection(file.c_str(), StartupTickIterator, &_maxTick);
+    }
+
+    LOG(DEBUG) << "added document collection '" << info.name() << "'";
+  }
+
   // start cleanup thread
   TRI_ASSERT(vocbase->_cleanupThread == nullptr);
   vocbase->_cleanupThread.reset(new CleanupThread(vocbase.get()));

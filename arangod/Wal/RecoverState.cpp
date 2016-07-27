@@ -604,7 +604,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
         }
 
         int res =
-            TRI_RenameCollectionVocBase(vocbase, collection, name.c_str(), true, false);
+            TRI_RenameCollectionVocBase(vocbase, collection, name, true, false);
 
         if (res != TRI_ERROR_NO_ERROR) {
           LOG(WARN) << "cannot rename collection " << collectionId << " in database " << databaseId << " to '" << name << "': " << TRI_errno_string(res);

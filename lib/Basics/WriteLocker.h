@@ -58,6 +58,8 @@
 
 #define TRY_WRITE_LOCKER(obj, lock) arangodb::basics::TryWriteLocker obj(&lock)
 
+#define CONDITIONAL_WRITE_LOCKER(obj, lock, condition) arangodb::basics::ConditionalWriteLocker obj(&lock, (condition))
+
 namespace arangodb {
 namespace basics {
 
@@ -183,7 +185,7 @@ class TryWriteLocker {
 
  public:
   ////////////////////////////////////////////////////////////////////////////////
-  /// @brief tries to aquire a write-lock
+  /// @brief tries to acquire a write-lock
   ///
   /// The constructor tries to aquire a write lock, the destructors unlocks the
   /// lock if we acquired it in the constructor
@@ -236,6 +238,73 @@ class TryWriteLocker {
 
   bool _isLocked;
 };
+
+class ConditionalWriteLocker {
+  ConditionalWriteLocker(ConditionalWriteLocker const&) = delete;
+  ConditionalWriteLocker& operator=(ConditionalWriteLocker const&) = delete;
+
+ public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief acquire a write-lock
+  ///
+  /// The constructor tries to write-lock the lock, the destructor unlocks the
+  /// lock if it was acquired in the constructor
+  ////////////////////////////////////////////////////////////////////////////////
+
+  ConditionalWriteLocker(ReadWriteLock* readWriteLock, bool condition)
+      : _readWriteLock(readWriteLock), _isLocked(false) {
+    if (condition) {
+      _readWriteLock->writeLock();
+      _isLocked = true;
+    }
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief releases the write-lock
+  //////////////////////////////////////////////////////////////////////////////
+
+  ~ConditionalWriteLocker() {
+    if (_isLocked) {
+      _readWriteLock->unlock();
+    }
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief whether or not we acquired the lock
+  //////////////////////////////////////////////////////////////////////////////
+
+  bool isLocked() const { return _isLocked; }
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief unlocks the read-write lock
+  //////////////////////////////////////////////////////////////////////////////
+
+  bool unlock() {
+    if (_isLocked) {
+      _readWriteLock->unlock();
+      _isLocked = false;
+      return true;
+    }
+    return false;
+  }
+
+  static constexpr bool DoLock() { return true; }
+  static constexpr bool DoNotLock() { return false; }
+
+ private:
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief the read-write lock
+  //////////////////////////////////////////////////////////////////////////////
+
+  ReadWriteLock* _readWriteLock;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief whether or not we acquired the lock
+  //////////////////////////////////////////////////////////////////////////////
+
+  bool _isLocked;
+};
+
 }
 }
 

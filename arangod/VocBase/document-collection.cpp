@@ -1185,7 +1185,7 @@ static int IterateMarkersCollection(arangodb::Transaction* trx,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_document_collection_t* TRI_CreateDocumentCollection(
-    TRI_vocbase_t* vocbase, std::string const& path, VocbaseCollectionInfo& parameters,
+    TRI_vocbase_t* vocbase, VocbaseCollectionInfo& parameters,
     TRI_voc_cid_t cid) {
   if (cid > 0) {
     TRI_UpdateTickServer(cid);
@@ -1231,7 +1231,7 @@ TRI_document_collection_t* TRI_CreateDocumentCollection(
   document->_keyGenerator = keyGenerator;
 
   TRI_collection_t* collection =
-      TRI_CreateCollection(vocbase, document, path, parameters);
+      TRI_CreateCollection(vocbase, document, parameters);
 
   if (collection == nullptr) {
     delete document;

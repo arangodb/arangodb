@@ -51,9 +51,8 @@ void ReleaseCollection(TRI_vocbase_col_t const* collection) {
 
 TRI_vocbase_col_t* CoordinatorCollection(TRI_vocbase_t* vocbase,
                                          CollectionInfo const& ci) {
-  auto c = std::make_unique<TRI_vocbase_col_t>(vocbase, ci.type(), ci.id(), ci.name());
+  auto c = std::make_unique<TRI_vocbase_col_t>(vocbase, ci.type(), ci.id(), ci.name(), ci.id(), "");
   c->_isLocal = false;
-  c->_planId = ci.id();
   c->_status = ci.status();
 
   return c.release();
@@ -180,7 +179,7 @@ v8::Handle<v8::Object> WrapCollection(v8::Isolate* isolate,
     result->Set(_DbNameKey, TRI_V8_STRING(collection->dbName().c_str()));
     result->ForceSet(
         VersionKeyHidden,
-        v8::Integer::NewFromUnsigned(isolate, collection->_internalVersion),
+        v8::Integer::NewFromUnsigned(isolate, collection->internalVersion()),
         v8::DontEnum);
   }
 

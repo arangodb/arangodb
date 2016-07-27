@@ -82,7 +82,7 @@ static int ReadTick(VPackSlice const& slice, char const* attributeName,
 
 static std::string GetConfigurationFilename(TRI_vocbase_t* vocbase) {
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  return arangodb::basics::FileUtils::buildFilename(engine->path(vocbase->_id), "REPLICATION-APPLIER-CONFIG");
+  return arangodb::basics::FileUtils::buildFilename(engine->databasePath(vocbase), "REPLICATION-APPLIER-CONFIG");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -298,7 +298,7 @@ static int LoadConfiguration(TRI_vocbase_t* vocbase,
 
 static std::string GetStateFilename(TRI_vocbase_t* vocbase) {
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  return arangodb::basics::FileUtils::buildFilename(engine->path(vocbase->_id), "REPLICATION-APPLIER-STATE");
+  return arangodb::basics::FileUtils::buildFilename(engine->databasePath(vocbase), "REPLICATION-APPLIER-STATE");
 }
 
 ////////////////////////////////////////////////////////////////////////////////

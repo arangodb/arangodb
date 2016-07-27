@@ -214,7 +214,7 @@ class VocbaseCollectionInfo {
 
   // Changes the name. Should only be called by TRI_RenameCollection
   // Use with caution!
-  void rename(char const*);
+  void rename(std::string const&);
 
   void setIsSystem(bool value) { _isSystem = value; }
 
@@ -355,7 +355,6 @@ struct TRI_collection_t {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_collection_t* TRI_CreateCollection(TRI_vocbase_t*, TRI_collection_t*,
-                                       std::string const& path,
                                        arangodb::VocbaseCollectionInfo const&);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -387,7 +386,7 @@ void TRI_CreateVelocyPackCollectionInfo(arangodb::VocbaseCollectionInfo const&,
 /// @brief renames a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_RenameCollection(TRI_collection_t*, char const*);
+int TRI_RenameCollection(TRI_collection_t*, std::string const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief iterates over a collection

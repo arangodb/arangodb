@@ -79,10 +79,7 @@ class MMFilesEngine final : public StorageEngine {
   uint64_t getMaxRevision() override;
   
   // return the path for a database
-  std::string path(TRI_voc_tick_t id) const override { return databaseDirectory(id); }
-  
-  // return the path for a collection in the database
-  std::string path(TRI_voc_tick_t id, TRI_voc_cid_t cid) const override { return collectionDirectory(id, cid); };
+  std::string databasePath(TRI_vocbase_t* vocbase) const override { return databaseDirectory(vocbase->_id); }
   
   TRI_vocbase_t* openDatabase(arangodb::velocypack::Slice const& parameters, bool isUpgrade) override;
 
@@ -211,7 +208,6 @@ class MMFilesEngine final : public StorageEngine {
                                                      bool deleted) const;
 
   std::string databaseDirectory(TRI_voc_tick_t id) const;
-  std::string collectionDirectory(TRI_voc_tick_t id, TRI_voc_cid_t cid) const;
   std::string parametersFile(TRI_voc_tick_t id) const;
   int openDatabases();
 

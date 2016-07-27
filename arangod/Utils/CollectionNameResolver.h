@@ -282,12 +282,12 @@ class CollectionNameResolver {
       auto it = _vocbase->_collectionsById.find(cid);
 
       if (it != _vocbase->_collectionsById.end()) {
-        if ((*it).second->_planId == 0) {
+        if ((*it).second->planId() == 0) {
           // DBserver local case
           name = (*it).second->name();
         } else {
           // DBserver case of a shard:
-          name = arangodb::basics::StringUtils::itoa((*it).second->_planId);
+          name = arangodb::basics::StringUtils::itoa((*it).second->planId());
           std::shared_ptr<CollectionInfo> ci =
               ClusterInfo::instance()->getCollection((*it).second->_dbName, name);
           name = ci->name();  // can be empty, if collection unknown

@@ -1177,8 +1177,12 @@ static std::string GetCollectionDirectory(std::string const& path, TRI_voc_cid_t
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_collection_t* TRI_CreateCollection(
-    TRI_vocbase_t* vocbase, TRI_collection_t* collection, std::string const& path,
+    TRI_vocbase_t* vocbase, TRI_collection_t* collection, 
     arangodb::VocbaseCollectionInfo const& parameters) {
+  
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  std::string const path = engine->databasePath(vocbase);
+
   // sanity check
   if (sizeof(TRI_df_header_marker_t) + sizeof(TRI_df_footer_marker_t) >
       parameters.maximalSize()) {
@@ -1214,8 +1218,7 @@ TRI_collection_t* TRI_CreateCollection(
   }
 
   // use a temporary directory first. this saves us from leaving an empty
-  // directory
-  // behind, an the server refusing to start
+  // directory behind, and the server refusing to start
   std::string const tmpname = dirname + ".tmp";
 
   // create directory
@@ -1660,8 +1663,8 @@ void VocbaseCollectionInfo::setVersion(TRI_col_version_t version) {
   _version = version;
 }
 
-void VocbaseCollectionInfo::rename(char const* name) {
-  TRI_CopyString(_name, name, sizeof(_name) - 1);
+void VocbaseCollectionInfo::rename(std::string const& name) {
+  TRI_CopyString(_name, name.c_str(), sizeof(_name) - 1);
 }
 
 void VocbaseCollectionInfo::setRevision(TRI_voc_rid_t rid, bool force) {
@@ -1845,7 +1848,7 @@ void TRI_CreateVelocyPackCollectionInfo(
 /// function.
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_RenameCollection(TRI_collection_t* collection, char const* name) {
+int TRI_RenameCollection(TRI_collection_t* collection, std::string const& name) {
   // Save name for rollback
   std::string oldName = collection->_info.name();
   collection->_info.rename(name);
@@ -1853,7 +1856,7 @@ int TRI_RenameCollection(TRI_collection_t* collection, char const* name) {
   int res = collection->_info.saveToFile(collection->path(), true);
   if (res != TRI_ERROR_NO_ERROR) {
     // Rollback
-    collection->_info.rename(oldName.c_str());
+    collection->_info.rename(oldName);
   }
 
   return res;

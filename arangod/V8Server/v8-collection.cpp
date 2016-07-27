@@ -1211,7 +1211,6 @@ static void JS_PathVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   std::string const path(collection->path());
-
   v8::Handle<v8::Value> result = TRI_V8_STD_STRING(path);
 
   TRI_V8_RETURN(result);
@@ -1238,7 +1237,7 @@ static void JS_PlanIdVocbaseCol(
     TRI_V8_RETURN(V8CollectionId(isolate, collection->_cid));
   }
 
-  TRI_V8_RETURN(V8CollectionId(isolate, collection->_planId));
+  TRI_V8_RETURN(V8CollectionId(isolate, collection->planId()));
   TRI_V8_TRY_CATCH_END
 }
 
@@ -1566,7 +1565,7 @@ static void JS_RenameVocbaseCol(
   std::string const oldName(collection->_name);
 
   int res = TRI_RenameCollectionVocBase(collection->_vocbase, collection,
-                                        name.c_str(), doOverride, true);
+                                        name, doOverride, true);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(res, "cannot rename collection");

@@ -27,11 +27,10 @@
 #include "Basics/Common.h"
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "VocBase/voc-types.h"
+#include "VocBase/vocbase.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
-
-struct TRI_vocbase_t;
 
 namespace arangodb {
 
@@ -86,10 +85,7 @@ class StorageEngine : public application_features::ApplicationFeature {
   virtual uint64_t getMaxRevision() = 0;
 
   // return the path for a database
-  virtual std::string path(TRI_voc_tick_t id) const = 0;
-
-  // return the path for a collection in the database
-  virtual std::string path(TRI_voc_tick_t id, TRI_voc_cid_t cid) const = 0;
+  virtual std::string databasePath(TRI_vocbase_t* vocbase) const = 0;
 
   virtual TRI_vocbase_t* openDatabase(arangodb::velocypack::Slice const& parameters, bool isUpgrade) = 0;
 

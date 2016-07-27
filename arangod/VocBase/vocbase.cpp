@@ -93,10 +93,11 @@ enum DropState {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_vocbase_col_t::TRI_vocbase_col_t(TRI_vocbase_t* vocbase, TRI_col_type_e type,
-                                     TRI_voc_cid_t cid, std::string const& name) 
+                                     TRI_voc_cid_t cid, std::string const& name,
+                                     TRI_voc_cid_t planId, std::string const& path) 
     : _vocbase(vocbase),
       _cid(cid),
-      _planId(0),
+      _planId(planId),
       _type(static_cast<TRI_col_type_t>(type)),
       _internalVersion(0),
       _lock(),
@@ -104,6 +105,7 @@ TRI_vocbase_col_t::TRI_vocbase_col_t(TRI_vocbase_t* vocbase, TRI_col_type_e type
       _collection(nullptr),
       _dbName(vocbase->name()),
       _name(name),
+      _path(path),
       _isLocal(true),
       _canDrop(true),
       _canUnload(true),
@@ -408,66 +410,69 @@ static bool DropCollectionCallback(TRI_collection_t* col, void* data) {
   return true;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a new collection
-///
-/// Caller must hold _collectionsLock in write mode
-////////////////////////////////////////////////////////////////////////////////
-
-static TRI_vocbase_col_t* AddCollection(TRI_vocbase_t* vocbase,
-                                        TRI_col_type_e type, TRI_voc_cid_t cid,
-                                        std::string const& name) {
+/// caller must hold _collectionsLock in write mode or set doLock
+TRI_vocbase_col_t* TRI_AddCollectionVocBase(bool doLock,
+                                            TRI_vocbase_t* vocbase,
+                                            TRI_col_type_e type, TRI_voc_cid_t cid,
+                                            std::string const& name,
+                                            TRI_voc_cid_t planId,
+                                            std::string const& path) {
   // create a new proxy
   auto collection =
-      std::make_unique<TRI_vocbase_col_t>(vocbase, type, cid, name);
+      std::make_unique<TRI_vocbase_col_t>(vocbase, type, cid, name, planId, path);
 
-  TRI_ASSERT(collection != nullptr);
+  {
+    CONDITIONAL_WRITE_LOCKER(writeLocker, vocbase->_collectionsLock, doLock);
 
-  // check name
-  auto it = vocbase->_collectionsByName.emplace(name, collection.get());
+    // check name
+    auto it = vocbase->_collectionsByName.emplace(name, collection.get());
 
-  if (!it.second) {
-    LOG(ERR) << "duplicate entry for collection name '" << name << "'";
-    LOG(ERR) << "collection id " << cid
-             << " has same name as already added collection "
-             << vocbase->_collectionsByName[name]->_cid;
+    if (!it.second) {
+      LOG(ERR) << "duplicate entry for collection name '" << name << "'";
+      LOG(ERR) << "collection id " << cid
+              << " has same name as already added collection "
+              << vocbase->_collectionsByName[name]->_cid;
 
-    TRI_set_errno(TRI_ERROR_ARANGO_DUPLICATE_NAME);
-
-    return nullptr;
-  }
-
-  // check collection identifier
-  TRI_ASSERT(collection->_cid == cid);
-  try {
-    auto it2 = vocbase->_collectionsById.emplace(cid, collection.get());
-
-    if (!it2.second) {
-      vocbase->_collectionsByName.erase(name);
-
-      LOG(ERR) << "duplicate collection identifier " << collection->_cid
-               << " for name '" << name << "'";
-
-      TRI_set_errno(TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER);
+      TRI_set_errno(TRI_ERROR_ARANGO_DUPLICATE_NAME);
 
       return nullptr;
     }
-  }
-  catch (...) {
-    vocbase->_collectionsByName.erase(name);
-    return nullptr;
+
+    // check collection identifier
+    TRI_ASSERT(collection->_cid == cid);
+    try {
+      auto it2 = vocbase->_collectionsById.emplace(cid, collection.get());
+
+      if (!it2.second) {
+        vocbase->_collectionsByName.erase(name);
+
+        LOG(ERR) << "duplicate collection identifier " << collection->_cid
+                << " for name '" << name << "'";
+
+        TRI_set_errno(TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER);
+
+        return nullptr;
+      }
+    }
+    catch (...) {
+      vocbase->_collectionsByName.erase(name);
+      return nullptr;
+    }
+
+    TRI_ASSERT(vocbase->_collectionsByName.size() == vocbase->_collectionsById.size());
+
+    try {
+      vocbase->_collections.emplace_back(collection.get());
+    }
+    catch (...) {
+      vocbase->_collectionsByName.erase(name);
+      vocbase->_collectionsById.erase(cid);
+      return nullptr;
+    }
   }
 
-  TRI_ASSERT(vocbase->_collectionsByName.size() == vocbase->_collectionsById.size());
-
-  try {
-    vocbase->_collections.emplace_back(collection.get());
-  }
-  catch (...) {
-    vocbase->_collectionsByName.erase(name);
-    vocbase->_collectionsById.erase(cid);
-    return nullptr;
-  }
+  collection->_status = TRI_VOC_COL_STATUS_UNLOADED;
 
   return collection.release();
 }
@@ -504,27 +509,22 @@ static TRI_vocbase_col_t* CreateCollection(
     return nullptr;
   }
 
-  // .............................................................................
   // ok, construct the collection
-  // .............................................................................
-  
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-
   TRI_document_collection_t* document =
-      TRI_CreateDocumentCollection(vocbase, engine->path(vocbase->_id), parameters, cid);
+      TRI_CreateDocumentCollection(vocbase, parameters, cid);
 
   if (document == nullptr) {
     return nullptr;
   }
 
   TRI_collection_t* col = document;
-
-  // add collection container
   TRI_vocbase_col_t* collection = nullptr;
+  TRI_voc_cid_t planId = parameters.planId();
+  col->_info.setPlanId(planId);
 
   try {
     collection =
-        AddCollection(vocbase, col->_info.type(), col->_info.id(), col->_info.name());
+        TRI_AddCollectionVocBase(ConditionalWriteLocker::DoNotLock(), vocbase, col->_info.type(), col->_info.id(), col->_info.name(), planId, col->path());
   } catch (...) {
     // if an exception is caught, collection will be a nullptr
   }
@@ -534,11 +534,6 @@ static TRI_vocbase_col_t* CreateCollection(
     TRI_FreeDocumentCollection(document);
     // TODO: does the collection directory need to be removed?
     return nullptr;
-  }
-
-  if (parameters.planId() > 0) {
-    collection->_planId = parameters.planId();
-    col->_info.setPlanId(parameters.planId());
   }
 
   // cid might have been assigned
@@ -559,8 +554,8 @@ static TRI_vocbase_col_t* CreateCollection(
 ////////////////////////////////////////////////////////////////////////////////
 
 static int RenameCollection(TRI_vocbase_t* vocbase,
-                            TRI_vocbase_col_t* collection, char const* oldName,
-                            char const* newName) {
+                            TRI_vocbase_col_t* collection, std::string const& oldName,
+                            std::string const& newName) {
   // cannot rename a corrupted collection
   if (collection->_status == TRI_VOC_COL_STATUS_CORRUPTED) {
     return TRI_set_errno(TRI_ERROR_ARANGO_CORRUPTED_COLLECTION);
@@ -986,11 +981,6 @@ static bool FilenameStringComparator(std::string const& lhs,
   return numLeft < numRight;
 }
   
-std::string TRI_vocbase_col_t::path() const {
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  return engine->path(_vocbase->_id, _cid);
-}
-
 void TRI_vocbase_col_t::toVelocyPack(VPackBuilder& builder, bool includeIndexes,
                                      TRI_voc_tick_t maxTick) {
   TRI_ASSERT(!builder.isClosed());
@@ -1265,14 +1255,9 @@ char const* TRI_GetStatusStringCollectionVocBase(
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief gets a collection name by a collection id
-///
-/// The name is fetched under a lock to make this thread-safe. Returns NULL if
-/// the collection does not exist. It is the caller's responsibility to free the
-/// name returned
-////////////////////////////////////////////////////////////////////////////////
-
+/// the name is fetched under a lock to make this thread-safe.
+/// returns empty string if the collection does not exist.
 std::string TRI_GetCollectionNameByIdVocBase(TRI_vocbase_t* vocbase,
                                              TRI_voc_cid_t id) {
   READ_LOCKER(readLocker, vocbase->_collectionsLock);
@@ -1533,7 +1518,7 @@ int TRI_DropCollectionVocBase(TRI_vocbase_t* vocbase,
 
 int TRI_RenameCollectionVocBase(TRI_vocbase_t* vocbase,
                                 TRI_vocbase_col_t* collection,
-                                char const* newName, bool doOverride,
+                                std::string const& newName, bool doOverride,
                                 bool writeMarker) {
   if (!collection->_canRename) {
     return TRI_set_errno(TRI_ERROR_FORBIDDEN);
@@ -1549,7 +1534,7 @@ int TRI_RenameCollectionVocBase(TRI_vocbase_t* vocbase,
   // old name should be different
 
   // check if names are actually different
-  if (oldName == std::string(newName)) {
+  if (oldName == newName) {
     return TRI_ERROR_NO_ERROR;
   }
 
@@ -1576,7 +1561,7 @@ int TRI_RenameCollectionVocBase(TRI_vocbase_t* vocbase,
 
   TRI_EVENTUAL_WRITE_LOCK_STATUS_VOCBASE_COL(collection);
 
-  int res = RenameCollection(vocbase, collection, oldName.c_str(), newName);
+  int res = RenameCollection(vocbase, collection, oldName, newName);
 
   TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
 
@@ -1860,7 +1845,7 @@ TRI_vocbase_t::~TRI_vocbase_t() {
   
 std::string const TRI_vocbase_t::path() {
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  return engine->path(_id);
+  return engine->databasePath(this);
 }
 
 /// @brief checks if a database name is allowed

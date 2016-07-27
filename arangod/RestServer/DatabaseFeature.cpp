@@ -143,7 +143,7 @@ void DatabaseManagerThread::run() {
 #endif
   
         LOG(TRACE) << "physically removing database directory '"
-                    << engine->path(database->_id) << "' of database '" << database->name()
+                    << engine->databasePath(database) << "' of database '" << database->name()
                     << "'";
 
         std::string path;
@@ -165,7 +165,7 @@ void DatabaseManagerThread::run() {
         }
 
         // remember db path
-        path = engine->path(database->_id);
+        path = engine->databasePath(database);
 
         TRI_DestroyVocBase(database);
 
@@ -450,6 +450,8 @@ int DatabaseFeature::createDatabaseCoordinator(TRI_voc_tick_t id, std::string co
 
   // name not yet in use, release the read lock
   auto vocbase = std::make_unique<TRI_vocbase_t>(TRI_VOCBASE_TYPE_COORDINATOR, id, name);
+  // vocbase is now active
+  vocbase->_state = (sig_atomic_t)TRI_VOCBASE_STATE_NORMAL;
 
   try {
     vocbase->_replicationApplier.reset(TRI_CreateReplicationApplier(vocbase.get()));
@@ -528,6 +530,8 @@ int DatabaseFeature::createDatabase(TRI_voc_tick_t id, std::string const& name,
     // createDatabase must return a valid database or throw
     vocbase.reset(engine->createDatabase(id, builder.slice())); 
     TRI_ASSERT(vocbase != nullptr);
+    // vocbase is now active
+    vocbase->_state = (sig_atomic_t)TRI_VOCBASE_STATE_NORMAL;
 
     try {
       vocbase->_replicationApplier.reset(TRI_CreateReplicationApplier(vocbase.get()));
@@ -1098,6 +1102,8 @@ int DatabaseFeature::iterateDatabases(VPackSlice const& databases) {
     TRI_vocbase_t* vocbase = engine->openDatabase(it, _upgrade);
     // we found a valid database
     TRI_ASSERT(vocbase != nullptr);
+    // vocbase is now active
+    vocbase->_state = (sig_atomic_t)TRI_VOCBASE_STATE_NORMAL;
     
     try {
       vocbase->_replicationApplier.reset(TRI_CreateReplicationApplier(vocbase));

@@ -343,12 +343,12 @@ class TRI_vocbase_col_t {
   TRI_vocbase_col_t() = delete;
 
   TRI_vocbase_col_t(TRI_vocbase_t* vocbase, TRI_col_type_e type,
-                    TRI_voc_cid_t cid, std::string const& name);
+                    TRI_voc_cid_t cid, std::string const& name, TRI_voc_cid_t planId,
+                    std::string const& path);
   ~TRI_vocbase_col_t();
 
   // Leftover from struct
  public:
-  std::string path() const;
   TRI_vocbase_t* vocbase() const { return _vocbase; }
   TRI_voc_cid_t cid() const { return _cid; }
   TRI_voc_cid_t planId() const { return _planId; }
@@ -356,6 +356,7 @@ class TRI_vocbase_col_t {
   uint32_t internalVersion() const { return _internalVersion; }
   std::string const& dbName() const { return _dbName; }
   std::string name() const { return _name; }
+  std::string const& path() const { return _path; }
   bool isLocal() const { return _isLocal; }
   bool canDrop() const { return _canDrop; }
   bool canUnload() const { return _canUnload; }
@@ -393,20 +394,22 @@ class TRI_vocbase_col_t {
 
  public:
   TRI_vocbase_t* _vocbase;
-
-  TRI_voc_cid_t _cid;     // local collecttion identifier
+  TRI_voc_cid_t const _cid;     // local collection identifier
+ private:
   TRI_voc_cid_t _planId;  // cluster-wide collection identifier
+ public:
   TRI_col_type_t _type;   // collection type
   uint32_t _internalVersion;  // is incremented when a collection is renamed
-
-  arangodb::basics::ReadWriteLock _lock;  // lock protecting the status and name
-
   // this is used to prevent caching of collection objects
   // with "wrong" names in the "db" object
+ public:
+  arangodb::basics::ReadWriteLock _lock;  // lock protecting the status and name
+
   TRI_vocbase_col_status_e _status;  // status of the collection
   TRI_document_collection_t* _collection;  // NULL or pointer to loaded collection
   std::string const _dbName;  // name of the database
   std::string _name;          // name of the collection
+  std::string const _path;    // storage path
 
   bool _isLocal;    // if true, the collection is local. if false,
                     // the collection is a remote (cluster) collection
@@ -449,15 +452,19 @@ std::shared_ptr<arangodb::velocypack::Builder> TRI_InventoryCollectionsVocBase(
 
 char const* TRI_GetStatusStringCollectionVocBase(TRI_vocbase_col_status_e);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get a collection name by a collection id
-///
-/// the name is fetched under a lock to make this thread-safe. returns NULL if
-/// the collection does not exist
-/// it is the caller's responsibility to free the name returned
-////////////////////////////////////////////////////////////////////////////////
+/// @brief adds a new collection
+/// caller must hold _collectionsLock in write mode or set doLock
+TRI_vocbase_col_t* TRI_AddCollectionVocBase(bool doLock,
+                                            TRI_vocbase_t* vocbase,
+                                            TRI_col_type_e type, TRI_voc_cid_t cid,
+                                            std::string const& name,
+                                            TRI_voc_cid_t planId,
+                                            std::string const& path);
 
-std::string TRI_GetCollectionNameByIdVocBase(TRI_vocbase_t*, const TRI_voc_cid_t);
+/// @brief get a collection name by a collection id
+/// the name is fetched under a lock to make this thread-safe.
+/// returns empty string if the collection does not exist.
+std::string TRI_GetCollectionNameByIdVocBase(TRI_vocbase_t*, TRI_voc_cid_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up a (document) collection by name
@@ -497,7 +504,7 @@ int TRI_DropCollectionVocBase(TRI_vocbase_t*, TRI_vocbase_col_t*, bool);
 /// @brief renames a (document) collection
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_RenameCollectionVocBase(TRI_vocbase_t*, TRI_vocbase_col_t*, char const*,
+int TRI_RenameCollectionVocBase(TRI_vocbase_t*, TRI_vocbase_col_t*, std::string const&,
                                 bool, bool);
 
 ////////////////////////////////////////////////////////////////////////////////

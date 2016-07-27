@@ -1849,15 +1849,11 @@ static void MapGetVocBase(v8::Local<v8::String> const name,
       TRI_voc_cid_t cid;
       uint32_t internalVersion;
 
-      if (lock) {
-        READ_LOCKER(readLocker, collection->_lock);
+      {
+        CONDITIONAL_READ_LOCKER(readLocker, collection->_lock, lock);
         status = collection->_status;
         cid = collection->_cid;
-        internalVersion = collection->_internalVersion;
-      } else {
-        status = collection->_status;
-        cid = collection->_cid;
-        internalVersion = collection->_internalVersion;
+        internalVersion = collection->internalVersion();
       }
 
       // check if the collection is still alive
@@ -1963,7 +1959,7 @@ static void JS_PathDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
     
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
 
-  TRI_V8_RETURN_STD_STRING(engine->path(vocbase->_id));
+  TRI_V8_RETURN_STD_STRING(engine->databasePath(vocbase));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
