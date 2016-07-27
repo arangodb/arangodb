@@ -10,6 +10,8 @@ cd ${DIR}/..
     standard \
     --rpath \
     --package RPM \
+    --builddir build-rpm \
+    --targetDir /var/tmp/ \
     --jemalloc \
 
 cd ${DIR}/..
