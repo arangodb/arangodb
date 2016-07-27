@@ -312,6 +312,9 @@ struct TRI_vocbase_t {
   /// @brief returns whether the database is the system database
   bool isSystem() { return name() == TRI_VOC_SYSTEM_DATABASE; }
 
+  /// @brief closes a database and all collections
+  void shutdown();
+
   /// @brief returns all known collections
   std::vector<TRI_vocbase_col_t*> collections();
 
@@ -448,12 +451,6 @@ class TRI_vocbase_col_t {
   bool _canRename;  // true if the collection can be renamed
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief closes a database and all collections
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_DestroyVocBase(TRI_vocbase_t*);
-
 /// @brief adds a new collection
 /// caller must hold _collectionsLock in write mode or set doLock
 TRI_vocbase_col_t* TRI_AddCollectionVocBase(bool doLock,
@@ -464,7 +461,7 @@ TRI_vocbase_col_t* TRI_AddCollectionVocBase(bool doLock,
                                             std::string const& path);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a new (document) collection from parameter set
+/// @brief creates a new collection from parameter set
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_vocbase_col_t* TRI_CreateCollectionVocBase(TRI_vocbase_t*,
@@ -472,13 +469,13 @@ TRI_vocbase_col_t* TRI_CreateCollectionVocBase(TRI_vocbase_t*,
                                                TRI_voc_cid_t cid, bool);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief unloads a (document) collection
+/// @brief unloads a collection
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_UnloadCollectionVocBase(TRI_vocbase_t*, TRI_vocbase_col_t*, bool);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief drops a (document) collection
+/// @brief drops a collection
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_DropCollectionVocBase(TRI_vocbase_t*, TRI_vocbase_col_t*, bool);
@@ -550,12 +547,6 @@ bool TRI_DropVocBase(TRI_vocbase_t*);
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_CanRemoveVocBase(TRI_vocbase_t*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the next query id
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_voc_tick_t TRI_NextQueryIdVocBase(TRI_vocbase_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gets the "throw collection not loaded error"

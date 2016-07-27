@@ -74,8 +74,6 @@ using namespace arangodb::basics;
 
 #define COLLECTION_STATUS_POLL_INTERVAL (1000 * 10)
 
-static std::atomic<TRI_voc_tick_t> QueryId(1);
-
 static std::atomic<bool> ThrowCollectionNotLoaded(false);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1082,28 +1080,28 @@ char const* TRI_vocbase_col_t::statusString(TRI_vocbase_col_status_e status) {
 }
 
 /// @brief closes a database and all collections
-void TRI_DestroyVocBase(TRI_vocbase_t* vocbase) {
+void TRI_vocbase_t::shutdown() {
   // stop replication
-  if (vocbase->_replicationApplier != nullptr) {
-    vocbase->_replicationApplier->stop(false);
+  if (_replicationApplier != nullptr) {
+    _replicationApplier->stop(false);
   }
 
   // mark all cursors as deleted so underlying collections can be freed soon
-  if (vocbase->_cursorRepository != nullptr) {
-    vocbase->_cursorRepository->garbageCollect(true);
+  if (_cursorRepository != nullptr) {
+    _cursorRepository->garbageCollect(true);
   }
 
   // mark all collection keys as deleted so underlying collections can be freed
   // soon
-  if (vocbase->_collectionKeys != nullptr) {
-    vocbase->_collectionKeys->garbageCollect(true);
+  if (_collectionKeys != nullptr) {
+    _collectionKeys->garbageCollect(true);
   }
 
   std::vector<TRI_vocbase_col_t*> collections;
 
   {
-    READ_LOCKER(writeLocker, vocbase->_collectionsLock);
-    collections = vocbase->_collections;
+    READ_LOCKER(writeLocker, _collectionsLock);
+    collections = _collections;
   }
 
   // from here on, the vocbase is unusable, i.e. no collections can be
@@ -1111,18 +1109,18 @@ void TRI_DestroyVocBase(TRI_vocbase_t* vocbase) {
 
   // starts unloading of collections
   for (auto& collection : collections) {
-    TRI_UnloadCollectionVocBase(vocbase, collection, true);
+    TRI_UnloadCollectionVocBase(this, collection, true);
   }
 
   // this will signal the compactor thread to do one last iteration
-  vocbase->_state = (sig_atomic_t)TRI_VOCBASE_STATE_SHUTDOWN_COMPACTOR;
+  _state = (sig_atomic_t)TRI_VOCBASE_STATE_SHUTDOWN_COMPACTOR;
 
-  TRI_LockCondition(&vocbase->_compactorCondition);
-  TRI_SignalCondition(&vocbase->_compactorCondition);
-  TRI_UnlockCondition(&vocbase->_compactorCondition);
+  TRI_LockCondition(&_compactorCondition);
+  TRI_SignalCondition(&_compactorCondition);
+  TRI_UnlockCondition(&_compactorCondition);
 
-  if (vocbase->_hasCompactor) {
-    int res = TRI_JoinThread(&vocbase->_compactor);
+  if (_hasCompactor) {
+    int res = TRI_JoinThread(&_compactor);
 
     if (res != TRI_ERROR_NO_ERROR) {
       LOG(ERR) << "unable to join compactor thread: " << TRI_errno_string(res);
@@ -1130,30 +1128,30 @@ void TRI_DestroyVocBase(TRI_vocbase_t* vocbase) {
   }
 
   // this will signal the cleanup thread to do one last iteration
-  vocbase->_state = (sig_atomic_t)TRI_VOCBASE_STATE_SHUTDOWN_CLEANUP;
+  _state = (sig_atomic_t)TRI_VOCBASE_STATE_SHUTDOWN_CLEANUP;
 
   {
-    CONDITION_LOCKER(locker, vocbase->_cleanupCondition);
+    CONDITION_LOCKER(locker, _cleanupCondition);
     locker.signal();
   }
 
-  if (vocbase->_cleanupThread != nullptr) {
-    vocbase->_cleanupThread->beginShutdown();  
+  if (_cleanupThread != nullptr) {
+    _cleanupThread->beginShutdown();  
 
-    while (vocbase->_cleanupThread->isRunning()) {
+    while (_cleanupThread->isRunning()) {
       usleep(5000);
     }
   
-    vocbase->_cleanupThread.reset();
+    _cleanupThread.reset();
   }
 
   // free dead collections (already dropped but pointers still around)
-  for (auto& collection : vocbase->_deadCollections) {
+  for (auto& collection : _deadCollections) {
     delete collection;
   }
 
   // free collections
-  for (auto& collection : vocbase->_collections) {
+  for (auto& collection : _collections) {
     delete collection;
   }
 }
@@ -1641,6 +1639,7 @@ TRI_vocbase_col_t* TRI_UseCollectionByNameVocBase(
 
   {
     READ_LOCKER(readLocker, vocbase->_collectionsLock);
+
     auto it = vocbase->_collectionsByName.find(name);
 
     if (it != vocbase->_collectionsByName.end()) {
@@ -1739,14 +1738,6 @@ bool TRI_CanRemoveVocBase(TRI_vocbase_t* vocbase) {
   // we are intentionally comparing with exactly 1 here, because a 1 means
   // that noone else references the database but it has been marked as deleted
   return (refCount == 1);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the next query id
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_voc_tick_t TRI_NextQueryIdVocBase(TRI_vocbase_t* vocbase) {
-  return QueryId.fetch_add(1, std::memory_order_seq_cst);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

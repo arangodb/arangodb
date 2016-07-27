@@ -167,7 +167,7 @@ void DatabaseManagerThread::run() {
         // remember db path
         path = engine->databasePath(database);
 
-        TRI_DestroyVocBase(database);
+        database->shutdown();
 
         // remove directory
         TRI_RemoveDirectory(path.c_str());
@@ -983,7 +983,7 @@ void DatabaseFeature::closeOpenDatabases() {
     TRI_vocbase_t* vocbase = p.second;
     TRI_ASSERT(vocbase != nullptr);
     TRI_ASSERT(vocbase->_type == TRI_VOCBASE_TYPE_NORMAL);
-    TRI_DestroyVocBase(vocbase);
+    vocbase->shutdown();
 
     delete vocbase;
   }
@@ -1161,7 +1161,7 @@ void DatabaseFeature::closeDroppedDatabases() {
     TRI_ASSERT(vocbase != nullptr);
 
     if (vocbase->_type == TRI_VOCBASE_TYPE_NORMAL) {
-      TRI_DestroyVocBase(vocbase);
+      vocbase->shutdown();
       delete vocbase;
     } else if (vocbase->_type == TRI_VOCBASE_TYPE_COORDINATOR) {
       delete vocbase;
