@@ -23,6 +23,8 @@ v3.0.4 (XXXX-XX-XX)
 
 * Foxx OAuth2 module now correctly passes the `access_token` to the OAuth2 server
 
+* fixed credentialed CORS requests properly respecting --http.trusted-origin
+
 
 v3.0.3 (2016-07-17)
 -------------------
