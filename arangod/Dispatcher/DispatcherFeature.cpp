@@ -167,6 +167,7 @@ void DispatcherFeature::unprepare() {
 
 void DispatcherFeature::buildDispatcher() {
   _dispatcher = new Dispatcher(SchedulerFeature::SCHEDULER);
+  _dispatcher->setProcessorAffinity(Dispatcher::STANDARD_QUEUE, _affinityCores);
   DISPATCHER = _dispatcher;
 }
 
@@ -189,7 +190,5 @@ void DispatcherFeature::buildAqlQueue() {
 }
 
 void DispatcherFeature::setProcessorAffinity(std::vector<size_t> const& cores) {
-#ifdef TRI_HAVE_THREAD_AFFINITY
-  _dispatcher->setProcessorAffinity(Dispatcher::STANDARD_QUEUE, cores);
-#endif
+  _affinityCores = cores;
 }
