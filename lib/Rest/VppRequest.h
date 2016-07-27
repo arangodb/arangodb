@@ -58,7 +58,7 @@ class VppRequest : public GeneralRequest {
              VPackBuffer<uint8_t>&& header, size_t length);
 
  public:
-  ~VppRequest();
+  ~VppRequest() {}
 
  public:
   VPackSlice payload(arangodb::velocypack::Options const*) override;

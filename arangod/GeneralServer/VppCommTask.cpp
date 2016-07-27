@@ -530,8 +530,8 @@ bool VppCommTask::processRead() {
     processResponse(&response);
   }
 
-  return true;
   */
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -769,8 +769,8 @@ void VppCommTask::sendChunk(StringBuffer* buffer) {
 
 // convert internal GeneralRequest to VppRequest
 VppRequest* VppCommTask::requestAsVpp() {
-  // VppRequest* request = dynamic_cast<VppRequest*>(_request);
-  VppRequest* request = nullptr if (request == nullptr) {
+  VppRequest* request = dynamic_cast<VppRequest*>(_request);
+  if (request == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   }
   return request;
