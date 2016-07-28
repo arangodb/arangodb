@@ -131,6 +131,7 @@ window.ArangoDocument = Backbone.Collection.extend({
         callback(false, data, 'document');
       },
       error: function (data) {
+        arangoHelper.arangoError('Error', data.responseJSON.errorMessage + ' - error number: ' + data.responseJSON.errorNum);
         self.add(true, data);
       }
     });
