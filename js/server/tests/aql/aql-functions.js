@@ -2440,6 +2440,26 @@ function ahuacatlFunctionsTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test intersect function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testIntersection11 : function () {
+      var expected = [ 1, 3 ];
+      var actual = getQueryResults("RETURN INTERSECTION([ 1, 1, 2, 2, 3, 3, 3 ], [ 1, 1, 3 ])");
+      assertEqual(expected, actual[0].sort());
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test intersect function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testIntersection12 : function () {
+      var expected = [ 3 ];
+      var actual = getQueryResults("RETURN INTERSECTION([ 1, 1, 3 ], [ 2, 2, 3 ])");
+      assertEqual(expected, actual[0].sort());
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test intersection function
 ////////////////////////////////////////////////////////////////////////////////
     
@@ -2536,6 +2556,26 @@ function ahuacatlFunctionsTestSuite () {
     testIntersectionCxx10 : function () {
       var expected = [ 2, 4, 5 ];
       var actual = getQueryResults("RETURN NOOPT(INTERSECTION([ 1, 2, 3, 3, 4, 4, 5, 1 ], [ 2, 4, 5 ]))");
+      assertEqual(expected, actual[0].sort());
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test intersect function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testIntersectionCxx11 : function () {
+      var expected = [ 1, 3 ];
+      var actual = getQueryResults("RETURN NOOPT(INTERSECTION([ 1, 1, 2, 2, 3, 3, 3 ], [ 1, 1, 3 ]))");
+      assertEqual(expected, actual[0].sort());
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test intersect function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testIntersectionCxx12 : function () {
+      var expected = [ 3 ];
+      var actual = getQueryResults("RETURN NOOPT(INTERSECTION([ 1, 1, 3 ], [ 2, 2, 3 ]))");
       assertEqual(expected, actual[0].sort());
     },
 
