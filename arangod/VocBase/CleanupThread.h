@@ -36,7 +36,7 @@ namespace arangodb {
 
 class CleanupThread : public Thread {
  public:
-  CleanupThread(TRI_vocbase_t* vocbase);
+  explicit CleanupThread(TRI_vocbase_t* vocbase);
   ~CleanupThread();
 
  protected:
