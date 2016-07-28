@@ -48,14 +48,13 @@ RestBatchHandler::~RestBatchHandler() {}
 ////////////////////////////////////////////////////////////////////////////////
 
 RestHandler::status RestBatchHandler::execute() {
-  // TODO OBI - generalize function
   HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(_response);
   if (httpResponse == nullptr) {
     std::cout << "please fix this for vpack" << std::endl;
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   }
 
-  HttpRequest* httpRequest = dynamic_cast<HttpRequest*>(_request);
+  HttpRequest const* httpRequest = dynamic_cast<HttpRequest const*>(_request);
   if (httpRequest == nullptr) {
     std::cout << "please fix this for vpack" << std::endl;
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
@@ -168,9 +167,9 @@ RestHandler::status RestBatchHandler::execute() {
 
     if (!authorization.empty()) {
       // inject Authorization header of multipart message into part message
-      httpRequest->setHeader(StaticStrings::Authorization.c_str(),
-                             StaticStrings::Authorization.size(),
-                             authorization.c_str(), authorization.size());
+      request->setHeader(StaticStrings::Authorization.c_str(),
+                         StaticStrings::Authorization.size(),
+                         authorization.c_str(), authorization.size());
     }
 
     RestHandler* handler = nullptr;
@@ -269,7 +268,7 @@ RestHandler::status RestBatchHandler::execute() {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestBatchHandler::getBoundaryBody(std::string* result) {
-  HttpRequest* req = dynamic_cast<HttpRequest*>(_request);
+  HttpRequest const* req = dynamic_cast<HttpRequest const*>(_request);
   if (req == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   }
