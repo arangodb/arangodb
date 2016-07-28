@@ -499,7 +499,13 @@ router.get("/coordshort", function(req, res) {
   var coordinatorStats = coordinators.map(coordinator => {
     var endpoint = global.ArangoClusterInfo.getServerEndpoint(coordinator);
     var response = download(endpoint.replace(/^tcp/, "http") + "/_db/_system/_admin/aardvark/statistics/short?count=" + coordinators.length);
-    return JSON.parse(response.body);
+
+    try {
+      return JSON.parse(response.body);
+    } catch (e) {
+      console.error("Couldn't read statistics response:", response.body);
+      throw e;
+    }
   });
   
   mergeHistory(coordinatorStats);
