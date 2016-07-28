@@ -41,7 +41,7 @@ ExecutionBlock::~ExecutionBlock() {
 
   _buffer.clear();
 }
-        
+
 /// @brief returns the register id for a variable id
 /// will return ExecutionNode::MaxRegisterId for an unknown variable
 RegisterId ExecutionBlock::getRegister(VariableId id) const {
@@ -81,7 +81,7 @@ bool ExecutionBlock::removeDependency(ExecutionBlock* ep) {
 }
 
 int ExecutionBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
-  DEBUG_BEGIN_BLOCK();  
+  DEBUG_BEGIN_BLOCK();
   for (auto& d : _dependencies) {
     int res = d->initializeCursor(items, pos);
 
@@ -97,7 +97,7 @@ int ExecutionBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
 
   _done = false;
   return TRI_ERROR_NO_ERROR;
-  DEBUG_END_BLOCK();  
+  DEBUG_END_BLOCK();
 }
 
 /// @brief whether or not the query was killed
@@ -176,14 +176,14 @@ void ExecutionBlock::returnBlock(AqlItemBlock*& block) {
 void ExecutionBlock::inheritRegisters(AqlItemBlock const* src,
                                       AqlItemBlock* dst, size_t srcRow,
                                       size_t dstRow) {
-  DEBUG_BEGIN_BLOCK();  
+  DEBUG_BEGIN_BLOCK();
   RegisterId const n = src->getNrRegs();
   auto planNode = getPlanNode();
 
   for (RegisterId i = 0; i < n; i++) {
     if (planNode->_regsToClear.find(i) == planNode->_regsToClear.end()) {
       auto const& value = src->getValueReference(srcRow, i);
-      
+
       if (!value.isEmpty()) {
         AqlValue a = value.clone();
         AqlValueGuard guard(a, true);
@@ -193,14 +193,14 @@ void ExecutionBlock::inheritRegisters(AqlItemBlock const* src,
       }
     }
   }
-  DEBUG_END_BLOCK();  
+  DEBUG_END_BLOCK();
 }
 
 /// @brief copy register data from one block (src) into another (dst)
 /// register values are cloned
 void ExecutionBlock::inheritRegisters(AqlItemBlock const* src,
                                       AqlItemBlock* dst, size_t row) {
-  DEBUG_BEGIN_BLOCK();  
+  DEBUG_BEGIN_BLOCK();
   RegisterId const n = src->getNrRegs();
   auto planNode = getPlanNode();
 
@@ -211,18 +211,18 @@ void ExecutionBlock::inheritRegisters(AqlItemBlock const* src,
       if (!value.isEmpty()) {
         AqlValue a = value.clone();
         AqlValueGuard guard(a, true);
-          
+
         TRI_IF_FAILURE("ExecutionBlock::inheritRegisters") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
 
         dst->setValue(0, i, a);
         guard.steal();
-      } 
+      }
     }
   }
 
-  DEBUG_END_BLOCK();  
+  DEBUG_END_BLOCK();
 }
 
 /// @brief the following is internal to pull one more block and append it to
@@ -247,7 +247,7 @@ bool ExecutionBlock::getBlock(size_t atLeast, size_t atMost) {
   docs.release();
 
   return true;
-  DEBUG_END_BLOCK();  
+  DEBUG_END_BLOCK();
 }
 
 /// @brief getSomeWithoutRegisterClearout, same as above, however, this

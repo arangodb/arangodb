@@ -852,17 +852,18 @@ void RestReplicationHandler::handleTrampolineCoordinator() {
   setResponseCode(static_cast<GeneralResponse::ResponseCode>(
       res->result->getHttpReturnCode()));
 
+  HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(_response);
   if (_response == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   }
 
-  _response->setContentType(
+  httpResponse->setContentType(
       res->result->getHeaderField(StaticStrings::ContentTypeHeader, dummy));
-  _response->body().swap(&(res->result->getBody()));
+  httpResponse->body().swap(&(res->result->getBody()));
 
   auto const& resultHeaders = res->result->getHeaderFields();
   for (auto const& it : resultHeaders) {
-    _response->setHeader(it.first, it.second);
+    httpResponse->setHeader(it.first, it.second);
   }
 }
 
@@ -1004,30 +1005,31 @@ void RestReplicationHandler::handleCommandLoggerFollow() {
         setResponseCode(GeneralResponse::ResponseCode::OK);
       }
 
-      if (_response == nullptr) {
+      HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(_response);
+      if (httpResponse == nullptr) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
       }
 
-      _response->setContentType(GeneralResponse::ContentType::DUMP);
+      httpResponse->setContentType(GeneralResponse::ContentType::DUMP);
 
       // set headers
-      _response->setHeaderNC(TRI_REPLICATION_HEADER_CHECKMORE,
-                             checkMore ? "true" : "false");
+      httpResponse->setHeaderNC(TRI_REPLICATION_HEADER_CHECKMORE,
+                                checkMore ? "true" : "false");
 
-      _response->setHeaderNC(TRI_REPLICATION_HEADER_LASTINCLUDED,
-                             StringUtils::itoa(dump._lastFoundTick));
+      httpResponse->setHeaderNC(TRI_REPLICATION_HEADER_LASTINCLUDED,
+                                StringUtils::itoa(dump._lastFoundTick));
 
-      _response->setHeaderNC(TRI_REPLICATION_HEADER_LASTTICK,
-                             StringUtils::itoa(state.lastCommittedTick));
+      httpResponse->setHeaderNC(TRI_REPLICATION_HEADER_LASTTICK,
+                                StringUtils::itoa(state.lastCommittedTick));
 
-      _response->setHeaderNC(TRI_REPLICATION_HEADER_ACTIVE, "true");
+      httpResponse->setHeaderNC(TRI_REPLICATION_HEADER_ACTIVE, "true");
 
-      _response->setHeaderNC(TRI_REPLICATION_HEADER_FROMPRESENT,
-                             dump._fromTickIncluded ? "true" : "false");
+      httpResponse->setHeaderNC(TRI_REPLICATION_HEADER_FROMPRESENT,
+                                dump._fromTickIncluded ? "true" : "false");
 
       if (length > 0) {
         // transfer ownership of the buffer contents
-        _response->body().set(dump._buffer);
+        httpResponse->body().set(dump._buffer);
 
         // to avoid double freeing
         TRI_StealStringBuffer(dump._buffer);
@@ -1104,6 +1106,7 @@ void RestReplicationHandler::handleCommandDetermineOpenTransactions() {
         setResponseCode(GeneralResponse::ResponseCode::OK);
       }
 
+      HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(_response);
       if (_response == nullptr) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
       }
@@ -1118,7 +1121,7 @@ void RestReplicationHandler::handleCommandDetermineOpenTransactions() {
 
       if (length > 0) {
         // transfer ownership of the buffer contents
-        _response->body().set(dump._buffer);
+        httpResponse->body().set(dump._buffer);
 
         // to avoid double freeing
         TRI_StealStringBuffer(dump._buffer);

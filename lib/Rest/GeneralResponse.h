@@ -115,7 +115,6 @@ class GeneralResponse {
     CONNECTION_CLOSE
   };
 
-
  public:
   // converts the response code to a string for delivering to a http client.
   static std::string responseString(ResponseCode);
@@ -127,7 +126,7 @@ class GeneralResponse {
   static ResponseCode responseCode(int);
 
   // TODO OBI - check what can be implemented in this base class
-  virtual basics::StringBuffer& body() = 0;
+  // virtual basics::StringBuffer& body() = 0;
   virtual void setContentType(ContentType type) = 0;
   virtual void setContentType(std::string const& contentType) = 0;
   virtual void setContentType(std::string&& contentType) = 0;
@@ -141,6 +140,8 @@ class GeneralResponse {
   virtual ~GeneralResponse() {}
 
  public:
+  // response codes are http response codes, but they are used in other
+  // protocols as well
   ResponseCode responseCode() const { return _responseCode; }
   void setResponseCode(ResponseCode responseCode) {
     _responseCode = responseCode;
@@ -175,8 +176,9 @@ class GeneralResponse {
                           arangodb::velocypack::Options const&) = 0;
 
  protected:
-  ResponseCode _responseCode;
-  std::unordered_map<std::string, std::string> _headers;
+  ResponseCode _responseCode;  // http response code
+  std::unordered_map<std::string, std::string>
+      _headers;  // headers/metadata map
 };
 }
 

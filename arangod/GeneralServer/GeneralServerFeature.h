@@ -66,7 +66,7 @@ class GeneralServerFeature final
   };
 
   static bool authenticationEnabled() {
-    return GENERAL_SERVER != nullptr && GENERAL_SERVER->authentication();
+    return GENERAL_SERVER != nullptr && GENERAL_SERVER->_authentication;
   }
 
   static bool hasProxyCheck() {
@@ -87,6 +87,24 @@ class GeneralServerFeature final
     }
 
     return GENERAL_SERVER->jwtSecret();
+  }
+
+  static bool allowMethodOverride() {
+    if (GENERAL_SERVER == nullptr) {
+      return false;
+    }
+
+    return GENERAL_SERVER->_allowMethodOverride;
+  }
+
+  static std::vector<std::string> const& accessControlAllowOrigins() {
+    static std::vector<std::string> empty;
+
+    if (GENERAL_SERVER == nullptr) {
+      return empty;
+    }
+
+    return GENERAL_SERVER->_accessControlAllowOrigins;
   }
 
  private:

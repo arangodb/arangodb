@@ -62,18 +62,6 @@ int GeneralServer::sendChunk(uint64_t taskId, std::string const& data) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs a new general server with dispatcher and job manager
-////////////////////////////////////////////////////////////////////////////////
-
-GeneralServer::GeneralServer(
-    bool allowMethodOverride,
-    std::vector<std::string> const& accessControlAllowOrigins)
-    : _listenTasks(),
-      _endpointList(nullptr),
-      _allowMethodOverride(allowMethodOverride),
-      _accessControlAllowOrigins(accessControlAllowOrigins) {}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief destructs a general server
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -129,7 +117,7 @@ void GeneralServer::stopListening() {
 bool GeneralServer::handleRequestAsync(GeneralCommTask* task,
                                        WorkItem::uptr<RestHandler>& handler,
                                        uint64_t* jobId) {
-  bool startThread = task->startThread();
+  bool startThread = handler->needsOwnThread();
 
   // extract the coordinator flag
   bool found;
@@ -182,7 +170,7 @@ bool GeneralServer::handleRequest(GeneralCommTask* task,
     return true;
   }
 
-  bool startThread = task->startThread();
+  bool startThread = handler->needsOwnThread();
 
   // use a dispatcher queue, handler belongs to the job
   std::unique_ptr<Job> job = std::make_unique<HttpServerJob>(this, handler);
@@ -255,7 +243,7 @@ void GeneralServer::handleRequestDirectly(RestHandler* handler,
     case RestHandler::status::FAILED:
     case RestHandler::status::DONE: {
       auto response = dynamic_cast<HttpResponse*>(handler->response());
-      task->handleResponse(response);
+      task->addResponse(response, false);
       break;
     }
 

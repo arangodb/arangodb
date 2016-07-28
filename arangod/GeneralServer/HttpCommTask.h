@@ -16,48 +16,44 @@ class HttpCommTask : public GeneralCommTask {
   HttpCommTask(GeneralServer*, TRI_socket_t, ConnectionInfo&&, double timeout);
 
   bool processRead() override;
-  virtual void processRequest() override;
 
-  void addResponse(GeneralResponse* response) override {
-    // convert from GeneralResponse to httpResponse ad dispatch request to class
-    // internal addResponse
+  // convert from GeneralResponse to httpResponse ad dispatch request to class
+  // internal addResponse
+  void addResponse(GeneralResponse* response, bool isError) override {
     HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(response);
-    if (httpResponse == nullptr) {
-      // everything is borken
+    if (httpResponse != nullptr) {
+      addResponse(httpResponse, isError);
     }
-    addResponse(httpResponse);
   };
 
  protected:
+  void handleChunk(char const*, size_t) override final;
   void completedWriteBuffer() override final;
 
  private:
-  void signalTask(TaskData*) override final;
-  // resets the internal state
-  // this method can be called to clean up when the request handling aborts
-  // prematurely
-  virtual void resetState(bool close) override final;
+  void processRequest();
+  // resets the internal state this method can be called to clean up when the
+  // request handling aborts prematurely
+  void resetState(bool close);
 
-  HttpRequest* _requestAsHttp();
-  void addResponse(HttpResponse*);
+  void addResponse(HttpResponse*, bool isError);
+
+  HttpRequest* requestAsHttp();
   void finishedChunked();
   // check the content-length header of a request and fail it is broken
   bool checkContentLength(bool expectContentLength);
-  void fillWriteBuffer();                   // fills the write buffer
   void processCorsOptions();                // handles CORS options
   std::string authenticationRealm() const;  // returns the authentication realm
   GeneralResponse::ResponseCode
   authenticateRequest();                  // checks the authentication
   void sendChunk(basics::StringBuffer*);  // sends more chunked data
-  bool handleRead() override final;
 
  private:
-  size_t _readPosition;   // current read position
-  size_t _startPosition;  // start position of current request
-  size_t _bodyPosition;   // start of the body position
-  size_t _bodyLength;     // body length
-  bool _closeRequested;   // true if a close has been requested by the client
-  bool _readRequestBody;  // true if reading the request body
+  size_t _readPosition;       // current read position
+  size_t _startPosition;      // start position of current request
+  size_t _bodyPosition;       // start of the body position
+  size_t _bodyLength;         // body length
+  bool _readRequestBody;      // true if reading the request body
   bool _allowMethodOverride;  // allow method override
   bool _denyCredentials;  // whether or not to allow credentialed requests (only
                           // CORS)
@@ -73,6 +69,12 @@ class HttpCommTask : public GeneralCommTask {
 
   // authentication real
   std::string const _authenticationRealm;
+
+  // true if within a chunked response
+  bool _isChunked = false;
+
+  // true if request is complete but not handled
+  bool _requestPending = false;
 };
 }  // rest
 }  // arangodb

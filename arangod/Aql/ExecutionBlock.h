@@ -32,13 +32,28 @@
 
 #if 0
 
-#define DEBUG_BEGIN_BLOCK() try { //
-#define DEBUG_END_BLOCK() } catch (arangodb::basics::Exception const& ex) { LOG(WARN) << "arango exception caught in " << __FILE__ << ":" << __LINE__ << ":" << ex.what(); throw; } catch (std::exception const& ex) { LOG(WARN) << "std exception caught in " << __FILE__ << ":" << __LINE__ << ": " << ex.what(); throw; } catch (...) { LOG(WARN) << "exception caught in " << __FILE__ << ":" << __LINE__; throw; } //
+#define DEBUG_BEGIN_BLOCK() try {  //
+#define DEBUG_END_BLOCK()                                                     \
+  }                                                                           \
+  catch (arangodb::basics::Exception const& ex) {                             \
+    LOG(WARN) << "arango exception caught in " << __FILE__ << ":" << __LINE__ \
+              << ":" << ex.what();                                            \
+    throw;                                                                    \
+  }                                                                           \
+  catch (std::exception const& ex) {                                          \
+    LOG(WARN) << "std exception caught in " << __FILE__ << ":" << __LINE__    \
+              << ": " << ex.what();                                           \
+    throw;                                                                    \
+  }                                                                           \
+  catch (...) {                                                               \
+    LOG(WARN) << "exception caught in " << __FILE__ << ":" << __LINE__;       \
+    throw;                                                                    \
+  }  //
 
 #else
 
-#define DEBUG_BEGIN_BLOCK() //
-#define DEBUG_END_BLOCK() //
+#define DEBUG_BEGIN_BLOCK()  //
+#define DEBUG_END_BLOCK()    //
 
 #endif
 
@@ -54,7 +69,7 @@ class ExecutionBlock {
   ExecutionBlock(ExecutionEngine*, ExecutionNode const*);
 
   virtual ~ExecutionBlock();
- 
+
  public:
   /// @brief batch size value
   static constexpr inline size_t DefaultBatchSize() { return 1000; }

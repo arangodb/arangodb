@@ -203,8 +203,8 @@ void GeneralServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
         std::remove_if(_accessControlAllowOrigins.begin(),
                        _accessControlAllowOrigins.end(),
                        [](std::string const& value) {
-          return basics::StringUtils::trim(value).empty();
-        }),
+                         return basics::StringUtils::trim(value).empty();
+                       }),
         _accessControlAllowOrigins.end());
   }
 
@@ -354,9 +354,7 @@ void GeneralServerFeature::buildServers() {
     }
   }
 
-  GeneralServer* server =
-      new GeneralServer(_allowMethodOverride,
-                        _accessControlAllowOrigins);
+  GeneralServer* server = new GeneralServer();
 
   server->setEndpointList(&endpointList);
   _servers.push_back(server);
