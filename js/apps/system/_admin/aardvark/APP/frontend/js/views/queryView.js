@@ -1646,11 +1646,12 @@
 
           _.each(result, function (obj) {
             if (obj.edges) {
-              totala += obj.edges.length;
-
               _.each(obj.edges, function (edge) {
-                if (edge._from && edge._to) {
-                  hitsa++;
+                if (edge !== null) {
+                  if (edge._from && edge._to) {
+                    hitsa++;
+                  }
+                  totala++;
                 }
               });
             }

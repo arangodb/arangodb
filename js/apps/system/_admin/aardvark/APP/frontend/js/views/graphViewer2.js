@@ -160,13 +160,15 @@
         _.each(data, function (obj) {
           if (obj.edges && obj.vertices) {
             _.each(obj.edges, function (edge) {
-              edges[edge._id] = {
-                id: edge._id,
-                source: edge._from,
-                label: edge._key,
-                color: '#cccccc',
-                target: edge._to
-              };
+              if (edge !== null) {
+                edges[edge._id] = {
+                  id: edge._id,
+                  source: edge._from,
+                  label: edge._key,
+                  color: '#cccccc',
+                  target: edge._to
+                };
+              }
             });
 
             _.each(obj.vertices, function (node) {
