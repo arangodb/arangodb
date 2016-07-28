@@ -811,8 +811,12 @@
         a.href = blobUrl;
         a.download = request.getResponseHeader("Content-Disposition").replace(/.* filename="([^")]*)"/, "$1");
         a.click();
-        window.URL.revokeObjectURL(blobUrl);
-        document.body.removeChild(a);
+
+        window.setTimeout(function () {
+          window.URL.revokeObjectURL(blobUrl);
+          document.body.removeChild(a);
+        }, 500);
+
       });
     }
   };
