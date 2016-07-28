@@ -26,12 +26,10 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RestServer/DatabaseServerFeature.h"
 #include "V8Server/V8Context.h"
 #include "V8Server/V8DealerFeature.h"
 #include "V8Server/v8-query.h"
 #include "V8Server/v8-vocbase.h"
-#include "VocBase/server.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -74,11 +72,10 @@ void CheckVersionFeature::validateOptions(
       ApplicationServer::getFeature<LoggerFeature>("Logger");
   logger->disableThreaded();
 
-  DatabaseFeature* database =
+  DatabaseFeature* databaseFeature =
       ApplicationServer::getFeature<DatabaseFeature>("Database");
-  database->disableReplicationApplier();
-  database->disableCompactor();
-  database->enableCheckVersion();
+  databaseFeature->disableReplicationApplier();
+  databaseFeature->enableCheckVersion();
 
   V8DealerFeature* v8dealer =
       ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
@@ -107,7 +104,7 @@ void CheckVersionFeature::checkVersion() {
   // run version check
   LOG(TRACE) << "starting version check";
 
-  auto* vocbase = DatabaseFeature::DATABASE->vocbase();
+  auto* vocbase = DatabaseFeature::DATABASE->systemDatabase();
 
   // enter context and isolate
   {
@@ -134,24 +131,22 @@ void CheckVersionFeature::checkVersion() {
         LOG(DEBUG) << "running database version check";
 
         // can do this without a lock as this is the startup
-        auto server = DatabaseServerFeature::SERVER;
-        auto unuser = server->_databasesProtector.use();
-        auto theLists = server->_databasesLists.load();
+        DatabaseFeature* databaseFeature = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
 
-        for (auto& p : theLists->_databases) {
-          TRI_vocbase_t* vocbase = p.second;
+        for (auto& name : databaseFeature->getDatabaseNames()) {
+          TRI_vocbase_t* vocbase = databaseFeature->lookupDatabase(name);
+
+          TRI_ASSERT(vocbase != nullptr);
 
           // special check script to be run just once in first thread (not in
-          // all)
-          // but for all databases
-
+          // all) but for all databases
           int status = TRI_CheckDatabaseVersion(vocbase, localContext);
 
           LOG(DEBUG) << "version check return status " << status;
 
           if (status < 0) {
             LOG(FATAL) << "Database version check failed for '"
-                       << vocbase->_name
+                       << vocbase->name()
                        << "'. Please inspect the logs for any errors";
             FATAL_ERROR_EXIT();
           } else if (status == 3) {
@@ -163,8 +158,7 @@ void CheckVersionFeature::checkVersion() {
       }
 
       // issue #391: when invoked with --database.auto-upgrade, the server will
-      // not always shut
-      // down
+      // not always shut down
       localContext->Exit();
     }
   }

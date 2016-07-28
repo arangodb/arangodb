@@ -28,13 +28,15 @@
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/datafile.h"
 #include "VocBase/document-collection.h"
-#include "VocBase/server.h"
+#include "VocBase/ticks.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 #include "Wal/Logfile.h"
 #include "Wal/Marker.h"
 
 namespace arangodb {
+class DatabaseFeature;
+
 namespace wal {
 
 /// @brief state that is built up when scanning a WAL logfile during recovery
@@ -43,7 +45,7 @@ struct RecoverState {
   RecoverState& operator=(RecoverState const&) = delete;
 
   /// @brief creates the recover state
-  RecoverState(TRI_server_t*, bool);
+  explicit RecoverState(bool);
 
   /// @brief destroys the recover state
   ~RecoverState();
@@ -152,7 +154,7 @@ struct RecoverState {
   /// @brief fill the secondary indexes of all collections used in recovery
   int fillIndexes();
 
-  TRI_server_t* server;
+  DatabaseFeature* databaseFeature;
   std::unordered_map<TRI_voc_tid_t, std::pair<TRI_voc_tick_t, bool>>
       failedTransactions;
   std::unordered_set<TRI_voc_cid_t> droppedCollections;

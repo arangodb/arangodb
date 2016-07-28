@@ -28,7 +28,7 @@
 #include <velocypack/Parser.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include "Basics/MutexLocker.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/tri-strings.h"
 #include "Cluster/ServerState.h"
 #include "Endpoint/ConnectionInfo.h"
@@ -36,7 +36,6 @@
 #include "Logger/Logger.h"
 #include "Ssl/SslInterface.h"
 #include "VocBase/AuthInfo.h"
-#include "VocBase/server.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb;
@@ -52,7 +51,7 @@ VocbaseContext::VocbaseContext(GeneralRequest* request, TRI_vocbase_t* vocbase,
   TRI_ASSERT(_vocbase != nullptr);
 }
 
-VocbaseContext::~VocbaseContext() { TRI_ReleaseVocBase(_vocbase); }
+VocbaseContext::~VocbaseContext() { _vocbase->release(); }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not to use special cluster authentication
@@ -83,7 +82,9 @@ bool VocbaseContext::useClusterAuthentication() const {
 GeneralResponse::ResponseCode VocbaseContext::authenticate() {
   TRI_ASSERT(_vocbase != nullptr);
 
-  if (!_vocbase->_settings.requireAuthentication) {
+  auto restServer = application_features::ApplicationServer::getFeature<GeneralServerFeature>("GeneralServer");
+
+  if (!restServer->authentication()) {
     // no authentication required at all
     return GeneralResponse::ResponseCode::OK;
   }
@@ -127,13 +128,15 @@ GeneralResponse::ResponseCode VocbaseContext::authenticate() {
 
 GeneralResponse::ResponseCode VocbaseContext::authenticateRequest(
     bool* forceOpen) {
+  
+  auto restServer = application_features::ApplicationServer::getFeature<GeneralServerFeature>("GeneralServer");
 #ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
   // check if we need to run authentication for this type of
   // endpoint
   ConnectionInfo const& ci = _request->connectionInfo();
 
   if (ci.endpointType == Endpoint::DomainType::UNIX &&
-      !_vocbase->_settings.requireAuthenticationUnixSockets) {
+      !restServer->authenticationUnixSockets()) {
     // no authentication required for unix socket domain connections
     return GeneralResponse::ResponseCode::OK;
   }
@@ -141,7 +144,7 @@ GeneralResponse::ResponseCode VocbaseContext::authenticateRequest(
 
   std::string const& path = _request->requestPath();
 
-  if (_vocbase->_settings.authenticateSystemOnly) {
+  if (restServer->authenticationSystemOnly()) {
     // authentication required, but only for /_api, /_admin etc.
 
     if (!path.empty()) {

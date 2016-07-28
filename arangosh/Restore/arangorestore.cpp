@@ -24,6 +24,7 @@
 #include "Basics/Common.h"
 
 #include "ApplicationFeatures/ConfigFeature.h"
+#include "ApplicationFeatures/GreetingsFeature.h"
 #include "ApplicationFeatures/ShutdownFeature.h"
 #include "ApplicationFeatures/TempFeature.h"
 #include "ApplicationFeatures/VersionFeature.h"
@@ -51,6 +52,7 @@ int main(int argc, char* argv[]) {
 
   server.addFeature(new ClientFeature(&server));
   server.addFeature(new ConfigFeature(&server, "arangorestore"));
+  server.addFeature(new GreetingsFeature(&server, "arangorestore"));
   server.addFeature(new LoggerFeature(&server, false));
   server.addFeature(new RandomFeature(&server));
   server.addFeature(new RestoreFeature(&server, &ret));

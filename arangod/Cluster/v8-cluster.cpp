@@ -31,7 +31,8 @@
 #include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
-#include "VocBase/server.h"
+#include "VocBase/ticks.h"
+
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 

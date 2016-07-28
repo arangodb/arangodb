@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestReplicationHandler.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/VelocyPackHelper.h"
@@ -37,6 +38,8 @@
 #include "Replication/InitialSyncer.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/Version.h"
+#include "RestServer/DatabaseFeature.h"
+#include "RestServer/ServerIdFeature.h"
 #include "Utils/CollectionGuard.h"
 #include "Utils/CollectionKeys.h"
 #include "Utils/CollectionKeysRepository.h"
@@ -46,7 +49,7 @@
 #include "VocBase/compactor.h"
 #include "VocBase/replication-applier.h"
 #include "VocBase/replication-dump.h"
-#include "VocBase/server.h"
+#include "VocBase/ticks.h"
 #include "Wal/LogfileManager.h"
 
 #include <velocypack/Builder.h>
@@ -447,7 +450,7 @@ void RestReplicationHandler::handleCommandLoggerState() {
     // "server" part
     builder.add("server", VPackValue(VPackValueType::Object));
     builder.add("version", VPackValue(ARANGODB_VERSION));
-    builder.add("serverId", VPackValue(std::to_string(TRI_GetIdServer())));
+    builder.add("serverId", VPackValue(std::to_string(ServerIdFeature::getId())));
     builder.close();
 
     // "clients" part
@@ -956,7 +959,7 @@ void RestReplicationHandler::handleCommandLoggerFollow() {
   std::string const& value6 = _request->value("collection", found);
 
   if (found) {
-    TRI_vocbase_col_t* c = TRI_LookupCollectionByNameVocBase(_vocbase, value6);
+    TRI_vocbase_col_t* c = _vocbase->lookupCollection(value6);
 
     if (c == nullptr) {
       generateError(GeneralResponse::ResponseCode::NOT_FOUND,
@@ -1151,8 +1154,8 @@ void RestReplicationHandler::handleCommandInventory() {
   // collections and indexes
   std::shared_ptr<VPackBuilder> collectionsBuilder;
   try {
-    collectionsBuilder = TRI_InventoryCollectionsVocBase(
-        _vocbase, tick, &filterCollection, (void*)&includeSystem, true,
+    collectionsBuilder = _vocbase->inventory(
+        tick, &filterCollection, (void*)&includeSystem, true,
         RestReplicationHandler::sortCollections);
     VPackSlice const collections = collectionsBuilder->slice();
 
@@ -1307,7 +1310,7 @@ int RestReplicationHandler::createCollection(VPackSlice const& slice,
   TRI_vocbase_col_t* col = nullptr;
 
   if (cid > 0) {
-    col = TRI_LookupCollectionByIdVocBase(_vocbase, cid);
+    col = _vocbase->lookupCollection(cid);
   }
 
   if (col != nullptr && (TRI_col_type_t)col->_type == (TRI_col_type_t)type) {
@@ -1322,14 +1325,14 @@ int RestReplicationHandler::createCollection(VPackSlice const& slice,
                  slice, "doCompact", true));
   TRI_ASSERT(params.waitForSync() ==
              arangodb::basics::VelocyPackHelper::getBooleanValue(
-                 slice, "waitForSync", _vocbase->_settings.defaultWaitForSync));
+                 slice, "waitForSync", application_features::ApplicationServer::getFeature<DatabaseFeature>("Database")->waitForSync()));
   TRI_ASSERT(params.isVolatile() ==
              arangodb::basics::VelocyPackHelper::getBooleanValue(
                  slice, "isVolatile", false));
   TRI_ASSERT(params.isSystem() == (name[0] == '_'));
   TRI_ASSERT(params.indexBuckets() ==
              arangodb::basics::VelocyPackHelper::getNumericValue<uint32_t>(
-                 slice, "indexBuckets", TRI_DEFAULT_INDEX_BUCKETS));
+                 slice, "indexBuckets", DatabaseFeature::DefaultIndexBuckets));
   TRI_voc_cid_t planId = 0;
   VPackSlice const planIdSlice = slice.get("planId");
   if (planIdSlice.isNumber()) {
@@ -1346,7 +1349,7 @@ int RestReplicationHandler::createCollection(VPackSlice const& slice,
     TRI_ASSERT(params.planId() == 0);
   }
 
-  col = TRI_CreateCollectionVocBase(_vocbase, params, cid, true);
+  col = _vocbase->createCollection(params, cid, true);
 
   if (col == nullptr) {
     return TRI_errno();
@@ -1554,18 +1557,18 @@ int RestReplicationHandler::processRestoreCollection(
     TRI_voc_cid_t cid = StringUtils::uint64(tmp.c_str(), tmp.length());
 
     // first look up the collection by the cid
-    col = TRI_LookupCollectionByIdVocBase(_vocbase, cid);
+    col = _vocbase->lookupCollection(cid);
   }
 
   if (col == nullptr) {
     // not found, try name next
-    col = TRI_LookupCollectionByNameVocBase(_vocbase, name);
+    col = _vocbase->lookupCollection(name);
   }
 
   // drop an existing collection if it exists
   if (col != nullptr) {
     if (dropExisting) {
-      int res = TRI_DropCollectionVocBase(_vocbase, col, true);
+      int res = _vocbase->dropCollection(col, true);
 
       if (res == TRI_ERROR_FORBIDDEN) {
         // some collections must not be dropped
@@ -1656,7 +1659,7 @@ int RestReplicationHandler::processRestoreCollectionCoordinator(
     return TRI_ERROR_NO_ERROR;
   }
 
-  std::string dbName = _vocbase->_name;
+  std::string dbName = _vocbase->name();
 
   // in a cluster, we only look up by name:
   ClusterInfo* ci = ClusterInfo::instance();
@@ -1977,7 +1980,7 @@ int RestReplicationHandler::processRestoreIndexesCoordinator(
     return TRI_ERROR_NO_ERROR;
   }
 
-  std::string dbName = _vocbase->_name;
+  std::string dbName = _vocbase->name();
 
   // in a cluster, we only look up by name:
   ClusterInfo* ci = ClusterInfo::instance();
@@ -2485,7 +2488,7 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator() {
     return;
   }
 
-  std::string dbName = _vocbase->_name;
+  std::string dbName = _vocbase->name();
   std::string errorMsg;
 
   // in a cluster, we only look up by name:
@@ -2762,8 +2765,7 @@ void RestReplicationHandler::handleCommandCreateKeys() {
     tickEnd = static_cast<TRI_voc_tick_t>(StringUtils::uint64(value));
   }
 
-  TRI_vocbase_col_t* c =
-      TRI_LookupCollectionByNameVocBase(_vocbase, collection);
+  TRI_vocbase_col_t* c = _vocbase->lookupCollection(collection);
 
   if (c == nullptr) {
     generateError(GeneralResponse::ResponseCode::NOT_FOUND,
@@ -2796,7 +2798,7 @@ void RestReplicationHandler::handleCommandCreateKeys() {
     keys->create(tickEnd);
     size_t const count = keys->count();
 
-    auto keysRepository = _vocbase->_collectionKeys;
+    auto keysRepository = _vocbase->collectionKeys();
 
     try {
       keysRepository->store(keys.get());
@@ -2857,7 +2859,7 @@ void RestReplicationHandler::handleCommandGetKeys() {
   int res = TRI_ERROR_NO_ERROR;
 
   try {
-    auto keysRepository = _vocbase->_collectionKeys;
+    auto keysRepository = _vocbase->collectionKeys();
     TRI_ASSERT(keysRepository != nullptr);
 
     auto collectionKeysId = static_cast<arangodb::CollectionKeysId>(
@@ -2971,7 +2973,7 @@ void RestReplicationHandler::handleCommandFetchKeys() {
   int res = TRI_ERROR_NO_ERROR;
 
   try {
-    auto keysRepository = _vocbase->_collectionKeys;
+    auto keysRepository = _vocbase->collectionKeys();
     TRI_ASSERT(keysRepository != nullptr);
 
     auto collectionKeysId = static_cast<arangodb::CollectionKeysId>(
@@ -3044,7 +3046,7 @@ void RestReplicationHandler::handleCommandRemoveKeys() {
 
   std::string const& id = suffix[1];
 
-  auto keys = _vocbase->_collectionKeys;
+  auto keys = _vocbase->collectionKeys();
   TRI_ASSERT(keys != nullptr);
 
   auto collectionKeysId = static_cast<arangodb::CollectionKeysId>(
@@ -3149,8 +3151,7 @@ void RestReplicationHandler::handleCommandDump() {
     compat28 = StringUtils::boolean(value8);
   }
 
-  TRI_vocbase_col_t* c =
-      TRI_LookupCollectionByNameVocBase(_vocbase, collection);
+  TRI_vocbase_col_t* c = _vocbase->lookupCollection(collection);
 
   if (c == nullptr) {
     generateError(GeneralResponse::ResponseCode::NOT_FOUND,
@@ -3265,7 +3266,7 @@ void RestReplicationHandler::handleCommandMakeSlave() {
   }
 
   std::string const database =
-      VelocyPackHelper::getStringValue(body, "database", _vocbase->_name);
+      VelocyPackHelper::getStringValue(body, "database", _vocbase->name());
   std::string const username =
       VelocyPackHelper::getStringValue(body, "username", "");
   std::string const password =
@@ -3398,7 +3399,7 @@ void RestReplicationHandler::handleCommandMakeSlave() {
     return;
   }
 
-  res = TRI_ConfigureReplicationApplier(_vocbase->_replicationApplier, &config);
+  res = TRI_ConfigureReplicationApplier(_vocbase->_replicationApplier.get(), &config);
 
   if (res != TRI_ERROR_NO_ERROR) {
     generateError(GeneralResponse::responseCode(res), res);
@@ -3449,7 +3450,7 @@ void RestReplicationHandler::handleCommandSync() {
   }
 
   std::string const database =
-      VelocyPackHelper::getStringValue(body, "database", _vocbase->_name);
+      VelocyPackHelper::getStringValue(body, "database", _vocbase->name());
   std::string const username =
       VelocyPackHelper::getStringValue(body, "username", "");
   std::string const password =
@@ -3573,7 +3574,7 @@ void RestReplicationHandler::handleCommandServerId() {
   try {
     VPackBuilder result;
     result.add(VPackValue(VPackValueType::Object));
-    std::string const serverId = StringUtils::itoa(TRI_GetIdServer());
+    std::string const serverId = StringUtils::itoa(ServerIdFeature::getId());
     result.add("serverId", VPackValue(serverId));
     result.close();
     generateResult(GeneralResponse::ResponseCode::OK, result.slice());
@@ -3636,7 +3637,7 @@ void RestReplicationHandler::handleCommandApplierSetConfig() {
   }
 
   config._database =
-      VelocyPackHelper::getStringValue(body, "database", _vocbase->_name);
+      VelocyPackHelper::getStringValue(body, "database", _vocbase->name());
 
   VPackSlice const username = body.get("username");
   if (username.isString()) {
@@ -3713,7 +3714,7 @@ void RestReplicationHandler::handleCommandApplierSetConfig() {
   }
 
   int res =
-      TRI_ConfigureReplicationApplier(_vocbase->_replicationApplier, &config);
+      TRI_ConfigureReplicationApplier(_vocbase->_replicationApplier.get(), &config);
 
   if (res != TRI_ERROR_NO_ERROR) {
     generateError(GeneralResponse::responseCode(res), res);
@@ -3846,7 +3847,8 @@ void RestReplicationHandler::handleCommandAddFollower() {
     return;
   }
 
-  auto col = TRI_LookupCollectionByNameVocBase(_vocbase, shard.copyString());
+  auto col = _vocbase->lookupCollection(shard.copyString());
+
   if (col == nullptr) {
     generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
                   TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
@@ -3902,7 +3904,8 @@ void RestReplicationHandler::handleCommandRemoveFollower() {
     return;
   }
 
-  auto col = TRI_LookupCollectionByNameVocBase(_vocbase, shard.copyString());
+  auto col = _vocbase->lookupCollection(shard.copyString());
+
   if (col == nullptr) {
     generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
                   TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
@@ -3962,8 +3965,8 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
   }
   std::string id = idSlice.copyString();
 
-  auto col =
-      TRI_LookupCollectionByNameVocBase(_vocbase, collection.copyString());
+  auto col = _vocbase->lookupCollection(collection.copyString());
+
   if (col == nullptr) {
     generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
                   TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,

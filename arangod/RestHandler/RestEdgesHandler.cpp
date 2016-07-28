@@ -254,7 +254,7 @@ bool RestEdgesHandler::readEdges(
     resultDocument.openObject();
 
     int res = getFilteredEdgesOnCoordinator(
-        _vocbase->_name, collectionName, vertexString, direction, expressions,
+        _vocbase->name(), collectionName, vertexString, direction, expressions,
         responseCode, resultDocument);
     if (res != TRI_ERROR_NO_ERROR) {
       generateError(responseCode, res);
@@ -412,7 +412,7 @@ bool RestEdgesHandler::readEdgesForMultipleVertices() {
         std::string vertexString(it.copyString());
 
         int res = getFilteredEdgesOnCoordinator(
-            _vocbase->_name, collectionName, vertexString, direction,
+            _vocbase->name(), collectionName, vertexString, direction,
             expressions, responseCode, resultDocument);
         if (res != TRI_ERROR_NO_ERROR) {
           generateError(responseCode, res);

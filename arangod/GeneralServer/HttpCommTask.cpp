@@ -31,7 +31,7 @@
 #include "GeneralServer/RestHandlerFactory.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
-#include "VocBase/server.h"  //clock
+#include "VocBase/ticks.h"  //clock
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reads data from the socket

@@ -215,7 +215,7 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
     }
 
     // result is bigger than batchSize, and a cursor will be created
-    auto cursors = _vocbase->_cursorRepository;
+    auto cursors = _vocbase->cursorRepository();
     TRI_ASSERT(cursors != nullptr);
 
     double ttl = arangodb::basics::VelocyPackHelper::getNumericValue<double>(
@@ -456,8 +456,7 @@ void RestCursorHandler::modifyCursor() {
 
   std::string const& id = suffix[0];
 
-  auto cursors =
-      static_cast<arangodb::CursorRepository*>(_vocbase->_cursorRepository);
+  auto cursors = _vocbase->cursorRepository();
   TRI_ASSERT(cursors != nullptr);
 
   auto cursorId = static_cast<arangodb::CursorId>(
@@ -526,8 +525,7 @@ void RestCursorHandler::deleteCursor() {
 
   std::string const& id = suffix[0];
 
-  auto cursors =
-      static_cast<arangodb::CursorRepository*>(_vocbase->_cursorRepository);
+  auto cursors = _vocbase->cursorRepository();
   TRI_ASSERT(cursors != nullptr);
 
   auto cursorId = static_cast<arangodb::CursorId>(

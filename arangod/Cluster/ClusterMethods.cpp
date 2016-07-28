@@ -32,7 +32,7 @@
 #include "Cluster/ClusterInfo.h"
 #include "Indexes/Index.h"
 #include "VocBase/Traverser.h"
-#include "VocBase/server.h"
+#include "VocBase/ticks.h"
 
 #include <velocypack/Buffer.h>
 #include <velocypack/Helpers.h>

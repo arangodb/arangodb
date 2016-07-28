@@ -86,8 +86,7 @@ static void JS_CreateCursor(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   // create a cursor
-  auto cursors =
-      static_cast<arangodb::CursorRepository*>(vocbase->_cursorRepository);
+  auto cursors = vocbase->cursorRepository();
 
   arangodb::aql::QueryResult result(TRI_ERROR_NO_ERROR);
   result.result = builder;
@@ -134,8 +133,7 @@ static void JS_JsonCursor(v8::FunctionCallbackInfo<v8::Value> const& args) {
       arangodb::basics::StringUtils::uint64(id));
 
   // find the cursor
-  auto cursors =
-      static_cast<arangodb::CursorRepository*>(vocbase->_cursorRepository);
+  auto cursors = vocbase->cursorRepository();
   TRI_ASSERT(cursors != nullptr);
 
   bool busy;

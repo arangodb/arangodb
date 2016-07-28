@@ -34,7 +34,7 @@
 #include "SimpleHttpClient/ConnectionManager.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "Utils/Transaction.h"
-#include "VocBase/server.h"
+#include "VocBase/ticks.h"
 
 using namespace arangodb;
 

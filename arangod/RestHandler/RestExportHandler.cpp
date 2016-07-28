@@ -274,8 +274,7 @@ void RestExportHandler::createCursor() {
       // TODO: generalize to calling handler setPayload
       response->setContentType(HttpResponse::ContentType::JSON);
 
-      auto cursors =
-          static_cast<arangodb::CursorRepository*>(_vocbase->_cursorRepository);
+      auto cursors = _vocbase->cursorRepository();
       TRI_ASSERT(cursors != nullptr);
 
       // create a cursor from the result
@@ -318,8 +317,7 @@ void RestExportHandler::modifyCursor() {
 
   std::string const& id = suffix[0];
 
-  auto cursors =
-      static_cast<arangodb::CursorRepository*>(_vocbase->_cursorRepository);
+  auto cursors = _vocbase->cursorRepository();
   TRI_ASSERT(cursors != nullptr);
 
   auto cursorId = static_cast<arangodb::CursorId>(
@@ -383,8 +381,7 @@ void RestExportHandler::deleteCursor() {
 
   std::string const& id = suffix[0];
 
-  auto cursors =
-      static_cast<arangodb::CursorRepository*>(_vocbase->_cursorRepository);
+  auto cursors = _vocbase->cursorRepository();
   TRI_ASSERT(cursors != nullptr);
 
   auto cursorId = static_cast<arangodb::CursorId>(

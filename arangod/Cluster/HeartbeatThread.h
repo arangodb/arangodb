@@ -32,9 +32,6 @@
 #include "Cluster/DBServerAgencySync.h"
 #include "Logger/Logger.h"
 
-struct TRI_server_t;
-struct TRI_vocbase_t;
-
 namespace arangodb {
 
 struct AgencyVersions {
@@ -52,11 +49,8 @@ struct AgencyVersions {
 class AgencyCallbackRegistry;
 
 class HeartbeatThread : public Thread {
-  HeartbeatThread(HeartbeatThread const&) = delete;
-  HeartbeatThread& operator=(HeartbeatThread const&) = delete;
-
  public:
-  HeartbeatThread(TRI_server_t*, AgencyCallbackRegistry*, uint64_t, uint64_t);
+  HeartbeatThread(AgencyCallbackRegistry*, uint64_t, uint64_t);
   ~HeartbeatThread();
 
  public:
@@ -143,11 +137,6 @@ class HeartbeatThread : public Thread {
   bool syncDBServerStatusQuo();
 
  private:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief server
-  //////////////////////////////////////////////////////////////////////////////
-
-  TRI_server_t* _server;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief AgencyCallbackRegistry

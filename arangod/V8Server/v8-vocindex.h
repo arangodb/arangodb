@@ -28,7 +28,6 @@
 #include "Utils/CollectionNameResolver.h"
 #include "V8/v8-globals.h"
 #include "V8Server/v8-vocbase.h"
-#include "VocBase/server.h"
 
 namespace arangodb {
 class Index;

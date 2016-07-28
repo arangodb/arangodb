@@ -34,9 +34,7 @@
 #include "V8/v8-vpack.h"
 #include "V8Server/V8Context.h"
 #include "V8Server/V8DealerFeature.h"
-#include "VocBase/server.h"
 #include "VocBase/vocbase.h"
-
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -97,7 +95,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
   DatabaseFeature* database = 
     ApplicationServer::getFeature<DatabaseFeature>("Database");
 
-  TRI_vocbase_t* const vocbase = database->vocbase();
+  TRI_vocbase_t* const vocbase = database->systemDatabase();
 
   DBServerAgencySyncResult result;
   if (vocbase == nullptr) {
@@ -108,8 +106,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
   auto plan = clusterInfo->getPlan();
   auto current = clusterInfo->getCurrent();
   
-  TRI_UseVocBase(vocbase);
-  TRI_DEFER(TRI_ReleaseVocBase(vocbase));
+  VocbaseGuard guard(vocbase);
 
   V8Context* context = V8DealerFeature::DEALER->enterContext(vocbase, true);
 

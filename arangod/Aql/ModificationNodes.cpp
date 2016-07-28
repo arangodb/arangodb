@@ -52,7 +52,7 @@ void ModificationNode::toVelocyPackHelper(VPackBuilder& builder,
   ExecutionNode::toVelocyPackHelperGeneric(builder,
                                            verbose);  // call base class method
   // Now put info about vocbase and cid in there
-  builder.add("database", VPackValue(_vocbase->_name));
+  builder.add("database", VPackValue(_vocbase->name()));
   builder.add("collection", VPackValue(_collection->getName()));
 
   // add out variables

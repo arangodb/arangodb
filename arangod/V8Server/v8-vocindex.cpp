@@ -44,6 +44,7 @@
 #include "V8Server/v8-collection.h"
 #include "V8Server/v8-vocbase.h"
 #include "V8Server/v8-vocbaseprivate.h"
+#include "VocBase/modes.h"
 
 #ifdef ARANGODB_ENABLE_ROCKSDB
 #include "Indexes/RocksDBIndex.h"
@@ -593,7 +594,7 @@ static void EnsureIndexLocal(v8::FunctionCallbackInfo<v8::Value> const& args,
   std::string const& collectionName = std::string(collection->_name);
 
   // disallow index creation in read-only mode
-  if (!TRI_IsSystemNameCollection(collectionName.c_str()) && create &&
+  if (!TRI_collection_t::IsSystemName(collectionName) && create &&
       TRI_GetOperationModeServer() == TRI_VOCBASE_MODE_NO_CREATE) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_READ_ONLY);
   }
@@ -864,7 +865,7 @@ static void CreateCollectionCoordinator(
 
   std::string const name = TRI_ObjectToString(args[0]);
 
-  if (!TRI_IsAllowedNameCollection(parameters.isSystem(), name.c_str())) {
+  if (!TRI_collection_t::IsAllowedName(parameters.isSystem(), name.c_str())) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_NAME);
   }
 
@@ -1452,13 +1453,12 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
                                    infoSlice, false);
 
   if (ServerState::instance()->isCoordinator()) {
-    CreateCollectionCoordinator(args, collectionType, vocbase->_name,
+    CreateCollectionCoordinator(args, collectionType, vocbase->name(),
                                 parameters, vocbase);
     return;
   }
 
-  TRI_vocbase_col_t const* collection =
-      TRI_CreateCollectionVocBase(vocbase, parameters, parameters.id(), true);
+  TRI_vocbase_col_t const* collection = vocbase->createCollection(parameters, parameters.id(), true);
 
   if (collection == nullptr) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_errno(), "cannot create collection");

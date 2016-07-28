@@ -3316,7 +3316,7 @@ AqlValue Functions::CurrentDatabase(
   ValidateParameters(parameters, "CURRENT_DATABASE", 0, 0);
 
   TransactionBuilderLeaser builder(trx);
-  builder->add(VPackValue(query->vocbase()->_name));
+  builder->add(VPackValue(query->vocbase()->name()));
   return AqlValue(builder.get());
 }
 

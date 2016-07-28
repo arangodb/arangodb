@@ -21,12 +21,13 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "cleanup.h"
+#include "CleanupThread.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/ConditionLocker.h"
 #include "Basics/ReadLocker.h"
+#include "Basics/WriteLocker.h"
 #include "Basics/files.h"
-#include "Basics/tri-strings.h"
 #include "Logger/Logger.h"
 #include "Utils/CursorRepository.h"
 #include "VocBase/Ditch.h"
@@ -34,40 +35,131 @@
 #include "VocBase/document-collection.h"
 #include "Wal/LogfileManager.h"
 
-using namespace arangodb::application_features;
+using namespace arangodb;
+  
+CleanupThread::CleanupThread(TRI_vocbase_t* vocbase) 
+    : Thread("Cleanup"), _vocbase(vocbase) {}
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief clean interval in microseconds
-////////////////////////////////////////////////////////////////////////////////
+CleanupThread::~CleanupThread() { shutdown(); }
 
-static int const CLEANUP_INTERVAL = (1 * 1000 * 1000);
+/// @brief cleanup event loop
+void CleanupThread::run() {
+  uint64_t iterations = 0;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief how many cleanup iterations until shadows are cleaned
-////////////////////////////////////////////////////////////////////////////////
+  TRI_ASSERT(_vocbase != nullptr);
+  TRI_ASSERT(_vocbase->_state == 1);
 
-static int const CLEANUP_CURSOR_ITERATIONS = 3;
+  std::vector<TRI_vocbase_col_t*> collections;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief how many cleanup iterations until indexes are cleaned
-////////////////////////////////////////////////////////////////////////////////
+  while (true) {
+    // keep initial _state value as vocbase->_state might change during cleanup
+    // loop
+    int state = _vocbase->_state;
 
-static int const CLEANUP_INDEX_ITERATIONS = 5;
+    ++iterations;
 
-////////////////////////////////////////////////////////////////////////////////
+    if (state == (sig_atomic_t)TRI_VOCBASE_STATE_SHUTDOWN_COMPACTOR ||
+        state == (sig_atomic_t)TRI_VOCBASE_STATE_SHUTDOWN_CLEANUP) {
+      // shadows must be cleaned before collections are handled
+      // otherwise the shadows might still hold barriers on collections
+      // and collections cannot be closed properly
+      cleanupCursors(true);
+    }
+      
+    // check if we can get the compactor lock exclusively
+    // check if compaction is currently disallowed
+    {
+      TRY_WRITE_LOCKER(locker, _vocbase->_compactionBlockers._lock);
+
+      if (locker.isLocked()) {
+        try {
+          READ_LOCKER(readLocker, _vocbase->_collectionsLock);
+          // copy all collections
+          collections = _vocbase->_collections;
+        } catch (...) {
+          collections.clear();
+        }
+
+        for (auto& collection : collections) {
+          TRI_ASSERT(collection != nullptr);
+          TRI_document_collection_t* document;
+
+          {
+            READ_LOCKER(readLocker, collection->_lock);
+            document = collection->_collection;
+          }
+
+          if (document == nullptr) {
+            // collection currently not loaded
+            continue;
+          }
+
+          TRI_ASSERT(document != nullptr);
+
+          // we're the only ones that can unload the collection, so using
+          // the collection pointer outside the lock is ok
+
+          // maybe cleanup indexes, unload the collection or some datafiles
+          // clean indexes?
+          if (iterations % cleanupIndexIterations() == 0) {
+            document->cleanupIndexes(document);
+          }
+
+          cleanupCollection(collection, document);
+        }
+      }
+    }
+
+    if (_vocbase->_state >= 1) {
+      // server is still running, clean up unused cursors
+      if (iterations % cleanupCursorIterations() == 0) {
+        cleanupCursors(false);
+
+        // clean up expired compactor locks
+        TRI_CleanupCompactorVocBase(_vocbase);
+      }
+
+      if (state == 1) {
+        CONDITION_LOCKER(locker, _vocbase->_cleanupCondition);
+        locker.wait(cleanupInterval());
+      } else if (state > 1) {
+        // prevent busy waiting
+        usleep(10000);
+      }
+    }
+
+    if (state == 3) {
+      // server shutdown
+      break;
+    }
+  }
+
+  LOG(TRACE) << "shutting down cleanup thread";
+}
+
+/// @brief clean up cursors
+void CleanupThread::cleanupCursors(bool force) {
+  // clean unused cursors
+  auto cursors = _vocbase->cursorRepository();
+  TRI_ASSERT(cursors != nullptr);
+
+  try {
+    cursors->garbageCollect(force);
+  } catch (...) {
+    LOG(WARN) << "caught exception during cursor cleanup";
+  }
+}
+
 /// @brief checks all datafiles of a collection
-////////////////////////////////////////////////////////////////////////////////
-
-static void CleanupDocumentCollection(TRI_vocbase_col_t* collection,
+void CleanupThread::cleanupCollection(TRI_vocbase_col_t* collection,
                                       TRI_document_collection_t* document) {
   // unload operations can normally only be executed when a collection is fully
   // garbage collected
   bool unloadChecked = false;
 
   // but if we are in server shutdown, we can force unloading of collections
-  bool isInShutdown = ApplicationServer::isStopping();
+  bool isInShutdown = application_features::ApplicationServer::isStopping();
 
-  TRI_ASSERT(collection != nullptr);
   TRI_ASSERT(document != nullptr);
 
   // loop until done
@@ -113,7 +205,7 @@ static void CleanupDocumentCollection(TRI_vocbase_col_t* collection,
       bool isUnloading = false;
       bool gotStatus = false;
       {
-        TRY_READ_LOCKER(readLocker, collection->_lock);
+        TRY_READ_LOCKER(readLocker, document->_lock);
 
         if (readLocker.isLocked()) {
           isUnloading = (collection->_status == TRI_VOC_COL_STATUS_UNLOADING);
@@ -142,14 +234,14 @@ static void CleanupDocumentCollection(TRI_vocbase_col_t* collection,
         // if there is still some garbage collection to perform,
         // check if the collection was deleted already
         {
-          TRY_READ_LOCKER(readLocker, collection->_lock);
+          TRY_READ_LOCKER(readLocker, document->_lock);
 
           if (readLocker.isLocked()) {
             isDeleted = (collection->_status == TRI_VOC_COL_STATUS_DELETED);
           }
         }
 
-        if (!isDeleted && TRI_IsDeletedVocBase(collection->_vocbase)) {
+        if (!isDeleted && document->_vocbase->isDropped()) {
           // the collection was not marked as deleted, but the database was
           isDeleted = true;
         }
@@ -211,119 +303,4 @@ static void CleanupDocumentCollection(TRI_vocbase_col_t* collection,
 
     // next iteration
   }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief clean up cursors
-////////////////////////////////////////////////////////////////////////////////
-
-static void CleanupCursors(TRI_vocbase_t* vocbase, bool force) {
-  // clean unused cursors
-  auto cursors =
-      static_cast<arangodb::CursorRepository*>(vocbase->_cursorRepository);
-  TRI_ASSERT(cursors != nullptr);
-
-  try {
-    cursors->garbageCollect(force);
-  } catch (...) {
-    LOG(WARN) << "caught exception during cursor cleanup";
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief cleanup event loop
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_CleanupVocBase(void* data) {
-  uint64_t iterations = 0;
-
-  TRI_vocbase_t* const vocbase = static_cast<TRI_vocbase_t*>(data);
-  TRI_ASSERT(vocbase != nullptr);
-  TRI_ASSERT(vocbase->_state == 1);
-
-  std::vector<TRI_vocbase_col_t*> collections;
-
-  while (true) {
-    // keep initial _state value as vocbase->_state might change during cleanup
-    // loop
-    int state = vocbase->_state;
-
-    ++iterations;
-
-    if (state == (sig_atomic_t)TRI_VOCBASE_STATE_SHUTDOWN_COMPACTOR ||
-        state == (sig_atomic_t)TRI_VOCBASE_STATE_SHUTDOWN_CLEANUP) {
-      // shadows must be cleaned before collections are handled
-      // otherwise the shadows might still hold barriers on collections
-      // and collections cannot be closed properly
-      CleanupCursors(vocbase, true);
-    }
-
-    // check if we can get the compactor lock exclusively
-    if (TRI_CheckAndLockCompactorVocBase(vocbase)) {
-      try {
-        READ_LOCKER(readLocker, vocbase->_collectionsLock);
-        // copy all collections
-        collections = vocbase->_collections;
-      } catch (...) {
-        collections.clear();
-      }
-
-      for (auto& collection : collections) {
-        TRI_ASSERT(collection != nullptr);
-        TRI_document_collection_t* document;
-
-        {
-          READ_LOCKER(readLocker, collection->_lock);
-          document = collection->_collection;
-        }
-
-        if (document == nullptr) {
-          // collection currently not loaded
-          continue;
-        }
-
-        TRI_ASSERT(document != nullptr);
-
-        // we're the only ones that can unload the collection, so using
-        // the collection pointer outside the lock is ok
-
-        // maybe cleanup indexes, unload the collection or some datafiles
-        // clean indexes?
-        if (iterations % (uint64_t)CLEANUP_INDEX_ITERATIONS == 0) {
-          document->cleanupIndexes(document);
-        }
-
-        CleanupDocumentCollection(collection, document);
-      }
-
-      TRI_UnlockCompactorVocBase(vocbase);
-    }
-
-    if (vocbase->_state >= 1) {
-      // server is still running, clean up unused cursors
-      if (iterations % CLEANUP_CURSOR_ITERATIONS == 0) {
-        CleanupCursors(vocbase, false);
-
-        // clean up expired compactor locks
-        TRI_CleanupCompactorVocBase(vocbase);
-      }
-
-      if (state == 1) {
-        TRI_LockCondition(&vocbase->_cleanupCondition);
-        TRI_TimedWaitCondition(&vocbase->_cleanupCondition,
-                               (uint64_t)CLEANUP_INTERVAL);
-        TRI_UnlockCondition(&vocbase->_cleanupCondition);
-      } else if (state > 1) {
-        // prevent busy waiting
-        usleep(10000);
-      }
-    }
-
-    if (state == 3) {
-      // server shutdown
-      break;
-    }
-  }
-
-  LOG(TRACE) << "shutting down cleanup thread";
 }

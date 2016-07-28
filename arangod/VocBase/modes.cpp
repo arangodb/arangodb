@@ -21,37 +21,18 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_VOC_BASE_VOCBASE_DEFAULTS_H
-#define ARANGOD_VOC_BASE_VOCBASE_DEFAULTS_H 1
+#include "modes.h"
 
-#include "Basics/Common.h"
-#include "VocBase/voc-types.h"
+/// @brief server operation mode (e.g. read-only, normal etc).
+static TRI_vocbase_operationmode_e Mode = TRI_VOCBASE_MODE_NORMAL;
 
-struct TRI_vocbase_t;
+/// @brief sets the current operation mode of the server
+int TRI_ChangeOperationModeServer(TRI_vocbase_operationmode_e mode) {
+  Mode = mode;
 
-namespace arangodb {
-namespace velocypack {
-class Builder;
-}
+  return TRI_ERROR_NO_ERROR;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief default settings
-////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the current operation server of the server
+TRI_vocbase_operationmode_e TRI_GetOperationModeServer() { return Mode; }
 
-struct TRI_vocbase_defaults_t {
-  TRI_voc_size_t defaultMaximalSize;
-  bool defaultWaitForSync;
-  bool requireAuthentication;
-  bool requireAuthenticationUnixSockets;
-  bool authenticateSystemOnly;
-  bool forceSyncProperties;
-
-  void toVelocyPack(arangodb::velocypack::Builder&) const;
-
-  std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack() const;
-
-  void applyToVocBase(TRI_vocbase_t*) const;
-};
-
-#endif

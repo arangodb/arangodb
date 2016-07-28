@@ -64,14 +64,12 @@
 #include "RestHandler/RestVersionHandler.h"
 #include "RestHandler/WorkMonitorHandler.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RestServer/DatabaseServerFeature.h"
 #include "RestServer/EndpointFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/ServerFeature.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Ssl/SslServerFeature.h"
 #include "V8Server/V8DealerFeature.h"
-#include "VocBase/server.h"
 
 #include <stdexcept>
 
@@ -219,31 +217,30 @@ void GeneralServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
   }
 }
 
-static TRI_vocbase_t* LookupDatabaseFromRequest(GeneralRequest* request,
-                                                TRI_server_t* server) {
+static TRI_vocbase_t* LookupDatabaseFromRequest(GeneralRequest* request) {
+  auto databaseFeature = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
+
   // get database name from request
   std::string const& dbName = request->databaseName();
 
-  char const* p;
   if (dbName.empty()) {
     // if no databases was specified in the request, use system database name
     // as a fallback
     request->setDatabaseName(StaticStrings::SystemDatabase);
-    p = StaticStrings::SystemDatabase.c_str();
-  } else {
-    p = dbName.c_str();
+    if (ServerState::instance()->isCoordinator()) {
+      return databaseFeature->useDatabaseCoordinator(StaticStrings::SystemDatabase);
+    }
+    return databaseFeature->useDatabase(StaticStrings::SystemDatabase);
   }
-
+  
   if (ServerState::instance()->isCoordinator()) {
-    return TRI_UseCoordinatorDatabaseServer(server, p);
+    return databaseFeature->useDatabaseCoordinator(dbName);
   }
-
-  return TRI_UseDatabaseServer(server, p);
+  return databaseFeature->useDatabase(dbName);
 }
 
 static bool SetRequestContext(GeneralRequest* request, void* data) {
-  TRI_server_t* server = static_cast<TRI_server_t*>(data);
-  TRI_vocbase_t* vocbase = LookupDatabaseFromRequest(request, server);
+  TRI_vocbase_t* vocbase = LookupDatabaseFromRequest(request);
 
   // invalid database name specified, database not found etc.
   if (vocbase == nullptr) {
@@ -287,8 +284,7 @@ void GeneralServerFeature::start() {
 
   JOB_MANAGER = _jobManager.get();
 
-  _handlerFactory.reset(new RestHandlerFactory(&SetRequestContext,
-                                               DatabaseServerFeature::SERVER));
+  _handlerFactory.reset(new RestHandlerFactory(&SetRequestContext, nullptr));
 
   HANDLER_FACTORY = _handlerFactory.get();
 

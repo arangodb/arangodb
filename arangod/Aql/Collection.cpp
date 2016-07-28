@@ -68,7 +68,7 @@ size_t Collection::count() const {
     if (arangodb::ServerState::instance()->isCoordinator()) {
       // cluster case
       uint64_t result;
-      int res = arangodb::countOnCoordinator(vocbase->_name, name, result);
+      int res = arangodb::countOnCoordinator(vocbase->name(), name, result);
       if (res != TRI_ERROR_NO_ERROR) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
             res, "could not determine number of documents in collection");
@@ -89,12 +89,12 @@ size_t Collection::count() const {
 TRI_voc_cid_t Collection::getPlanId() const {
   auto clusterInfo = arangodb::ClusterInfo::instance();
   auto collectionInfo =
-      clusterInfo->getCollection(std::string(vocbase->_name), name);
+      clusterInfo->getCollection(vocbase->name(), name);
 
   if (collectionInfo.get() == nullptr) {
     THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_INTERNAL,
                                   "collection not found '%s' -> '%s'",
-                                  vocbase->_name, name.c_str());
+                                  vocbase->name().c_str(), name.c_str());
   }
 
   return collectionInfo.get()->id();
@@ -120,11 +120,11 @@ std::vector<std::string> Collection::shardKeys() const {
   }
 
   auto collectionInfo =
-      clusterInfo->getCollection(std::string(vocbase->_name), id);
+      clusterInfo->getCollection(vocbase->name(), id);
   if (collectionInfo.get() == nullptr) {
     THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_INTERNAL,
                                   "collection not found '%s' -> '%s'",
-                                  vocbase->_name, name.c_str());
+                                  vocbase->name().c_str(), name.c_str());
   }
 
   std::vector<std::string> keys;

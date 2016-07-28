@@ -28,11 +28,11 @@
 #include "VocBase/DatafileHelper.h"
 #include "VocBase/collection.h"
 #include "VocBase/document-collection.h"
-#include "VocBase/server.h"
-#include "VocBase/vocbase.h"
+#include "VocBase/ticks.h"
 #include "Wal/DocumentOperation.h"
 #include "Wal/LogfileManager.h"
 #include "Utils/Transaction.h"
+#include "VocBase/modes.h"
 
 #ifdef ARANGODB_ENABLE_ROCKSDB
 #include "Indexes/RocksDBFeature.h"
@@ -462,8 +462,7 @@ static int UseCollections(TRI_transaction_t* trx, int nestingLevel) {
             trx->_vocbase, trxCollection->_cid, status);
       } else {
         // use without usage-lock (lock already set externally)
-        trxCollection->_collection =
-            TRI_LookupCollectionByIdVocBase(trx->_vocbase, trxCollection->_cid);
+        trxCollection->_collection = trx->_vocbase->lookupCollection(trxCollection->_cid);
       }
 
       if (trxCollection->_collection == nullptr ||
@@ -474,8 +473,8 @@ static int UseCollections(TRI_transaction_t* trx, int nestingLevel) {
 
       if (trxCollection->_accessType == TRI_TRANSACTION_WRITE &&
           TRI_GetOperationModeServer() == TRI_VOCBASE_MODE_NO_CREATE &&
-          !TRI_IsSystemNameCollection(
-              trxCollection->_collection->_collection->_info.namec_str())) {
+          !TRI_collection_t::IsSystemName(
+              trxCollection->_collection->_collection->_info.name())) {
         return TRI_ERROR_ARANGO_READ_ONLY;
       }
 
@@ -1083,7 +1082,7 @@ int TRI_AddOperationTransaction(TRI_transaction_t* trx,
     operation.handle();
 
     arangodb::aql::QueryCache::instance()->invalidate(
-        trx->_vocbase, document->_info.namec_str());
+        trx->_vocbase, document->_info.name());
 
     ++document->_uncollectedLogfileEntries;
 

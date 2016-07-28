@@ -150,13 +150,8 @@ class CollectionInfo {
             _slice, "status", (int)TRI_VOC_COL_STATUS_CORRUPTED);
   }
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief returns the collection status as a string
-  //////////////////////////////////////////////////////////////////////////////
-
-  std::string statusString() const {
-    return TRI_GetStatusStringCollectionVocBase(status());
-  }
+  std::string statusString() const { return TRI_vocbase_col_t::statusString(status()); }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns the deleted flag

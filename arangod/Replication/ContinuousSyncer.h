@@ -28,7 +28,6 @@
 #include "Replication/Syncer.h"
 #include "VocBase/replication-applier.h"
 
-struct TRI_server_t;
 struct TRI_vocbase_t;
 
 namespace arangodb {
@@ -51,7 +50,7 @@ enum RestrictType : uint32_t {
 
 class ContinuousSyncer : public Syncer {
  public:
-  ContinuousSyncer(TRI_server_t*, TRI_vocbase_t*,
+  ContinuousSyncer(TRI_vocbase_t*,
                    TRI_replication_applier_configuration_t const*,
                    TRI_voc_tick_t, bool, TRI_voc_tick_t);
 
@@ -181,12 +180,6 @@ class ContinuousSyncer : public Syncer {
                       bool&, bool&);
 
  private:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief server
-  //////////////////////////////////////////////////////////////////////////////
-
-  TRI_server_t* _server;
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief pointer to the applier state
   //////////////////////////////////////////////////////////////////////////////

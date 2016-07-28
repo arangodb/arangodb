@@ -31,7 +31,6 @@
 #include "Basics/WriteLocker.h"
 #include "Basics/conversions.h"
 #include "Basics/files.h"
-#include "Basics/json.h"
 #include "Basics/tri-strings.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ServerState.h"
@@ -47,7 +46,7 @@
 #include "V8Server/V8Context.h"
 #include "V8Server/V8DealerFeature.h"
 #include "V8Server/v8-vocbase.h"
-#include "VocBase/server.h"
+#include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb;
@@ -1274,7 +1273,7 @@ static void JS_DebugSetFailAt(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (v8g->_vocbase == nullptr) {
     TRI_V8_THROW_EXCEPTION_MEMORY();
   }
-  std::string dbname(v8g->_vocbase->_name);
+  std::string dbname(v8g->_vocbase->name());
 
   // extract arguments
   if (args.Length() != 1) {
@@ -1318,7 +1317,7 @@ static void JS_DebugRemoveFailAt(
   if (v8g->_vocbase == nullptr) {
     TRI_V8_THROW_EXCEPTION_MEMORY();
   }
-  std::string dbname(v8g->_vocbase->_name);
+  std::string dbname(v8g->_vocbase->name());
 
   // extract arguments
   if (args.Length() != 1) {
@@ -1371,7 +1370,7 @@ static void JS_DebugClearFailAt(
     if (v8g->_vocbase == nullptr) {
       TRI_V8_THROW_EXCEPTION_MEMORY();
     }
-    std::string dbname(v8g->_vocbase->_name);
+    std::string dbname(v8g->_vocbase->name());
 
     int res = clusterSendToAllServers(
         dbname, "_admin/debug/failat",

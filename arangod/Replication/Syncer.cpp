@@ -25,6 +25,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Rest/HttpRequest.h"
+#include "RestServer/ServerIdFeature.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
@@ -34,7 +35,6 @@
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/collection.h"
 #include "VocBase/document-collection.h"
-#include "VocBase/server.h"
 #include "VocBase/transaction.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
@@ -68,14 +68,14 @@ Syncer::Syncer(TRI_vocbase_t* vocbase,
       _barrierTtl(600) {
   if (configuration->_database.empty()) {
     // use name of current database
-    _databaseName = std::string(vocbase->_name);
+    _databaseName = vocbase->name();
   } else {
     // use name from configuration
     _databaseName = configuration->_database;
   }
 
   // get our own server-id
-  _localServerId = TRI_GetIdServer();
+  _localServerId = ServerIdFeature::getId();
   _localServerIdString = StringUtils::itoa(_localServerId);
 
   _configuration.update(configuration);
@@ -108,7 +108,7 @@ Syncer::Syncer(TRI_vocbase_t* vocbase,
           std::string("retrying failed HTTP request for endpoint '") +
           _configuration._endpoint +
           std::string("' for replication applier in database '" +
-                      std::string(_vocbase->_name) + "'");
+                      _vocbase->name() + "'");
     }
   }
 }
@@ -342,12 +342,12 @@ TRI_vocbase_col_t* Syncer::getCollectionByIdOrName(TRI_voc_cid_t cid, std::strin
   TRI_vocbase_col_t* nameCol = nullptr;
 
   if (_useCollectionId) {
-    idCol = TRI_LookupCollectionByIdVocBase(_vocbase, cid);
+    idCol = _vocbase->lookupCollection(cid);
   }
 
   if (!name.empty()) {
     // try looking up the collection by name then
-    nameCol = TRI_LookupCollectionByNameVocBase(_vocbase, name);
+    nameCol = _vocbase->lookupCollection(name);
   }
 
   if (idCol != nullptr && nameCol != nullptr) {
@@ -499,7 +499,7 @@ int Syncer::createCollection(VPackSlice const& slice, TRI_vocbase_col_t** dst) {
 
   VocbaseCollectionInfo params(_vocbase, name.c_str(), merged.slice(), true);
 
-  col = TRI_CreateCollectionVocBase(_vocbase, params, cid, true);
+  col = _vocbase->createCollection(params, cid, true);
 
   if (col == nullptr) {
     return TRI_errno();
@@ -527,7 +527,7 @@ int Syncer::dropCollection(VPackSlice const& slice, bool reportError) {
     return TRI_ERROR_NO_ERROR;
   }
 
-  return TRI_DropCollectionVocBase(_vocbase, col, true);
+  return _vocbase->dropCollection(col, true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

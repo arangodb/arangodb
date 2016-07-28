@@ -92,7 +92,7 @@ RestHandler::status RestQueryHandler::execute() {
 
 bool RestQueryHandler::readQueryProperties() {
   try {
-    auto queryList = static_cast<QueryList*>(_vocbase->_queries);
+    auto queryList = _vocbase->queryList();
 
     VPackBuilder result;
     result.add(VPackValue(VPackValueType::Object));
@@ -124,7 +124,7 @@ bool RestQueryHandler::readQueryProperties() {
 
 bool RestQueryHandler::readQuery(bool slow) {
   try {
-    auto queryList = static_cast<QueryList*>(_vocbase->_queries);
+    auto queryList = _vocbase->queryList();
     auto queries = slow ? queryList->listSlow() : queryList->listCurrent();
 
     VPackBuilder result;
@@ -192,7 +192,7 @@ bool RestQueryHandler::readQuery() {
 }
 
 bool RestQueryHandler::deleteQuerySlow() {
-  auto queryList = static_cast<arangodb::aql::QueryList*>(_vocbase->_queries);
+  auto queryList = _vocbase->queryList();
   queryList->clearSlow();
 
   VPackBuilder result;
@@ -208,7 +208,7 @@ bool RestQueryHandler::deleteQuerySlow() {
 
 bool RestQueryHandler::deleteQuery(std::string const& name) {
   auto id = StringUtils::uint64(name);
-  auto queryList = static_cast<arangodb::aql::QueryList*>(_vocbase->_queries);
+  auto queryList = _vocbase->queryList();
   TRI_ASSERT(queryList != nullptr);
 
   auto res = queryList->kill(id);
@@ -276,7 +276,7 @@ bool RestQueryHandler::replaceProperties() {
                   "expecting a JSON object as body");
   };
 
-  auto queryList = static_cast<arangodb::aql::QueryList*>(_vocbase->_queries);
+  auto queryList = _vocbase->queryList();
 
   try {
     bool enabled = queryList->enabled();

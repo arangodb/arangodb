@@ -36,7 +36,6 @@
 #include "Rest/GeneralRequest.h"
 #include "Rest/GeneralResponse.h"
 
-struct TRI_server_t;
 struct TRI_vocbase_t;
 
 namespace arangodb {
