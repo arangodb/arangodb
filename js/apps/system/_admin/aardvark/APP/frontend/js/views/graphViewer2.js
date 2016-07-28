@@ -245,6 +245,16 @@
           delete ajaxData.renderer;
         }
 
+        if (self.tmpStartNode) {
+          if (self.graphConfig) {
+            if (self.graphConfig.nodeStart.length === 0) {
+              ajaxData.nodeStart = self.tmpStartNode;
+            }
+          } else {
+            ajaxData.nodeStart = self.tmpStartNode;
+          }
+        }
+
         this.setupSigma();
 
         self.fetchStarted = new Date();
@@ -257,6 +267,14 @@
             if (data.empty === true) {
               self.renderGraph(data, toFocus);
             } else {
+              if (data.settings) {
+                if (data.settings.startVertex && self.graphConfig.startNode === undefined) {
+                  if (self.tmpStartNode === undefined) {
+                    self.tmpStartNode = data.settings.startVertex._id;
+                  }
+                }
+              }
+
               self.fetchFinished = new Date();
               self.calcStart = self.fetchFinished;
               $('#calcText').html('Server response took ' + Math.abs(self.fetchFinished.getTime() - self.fetchStarted.getTime()) + ' ms. Initializing graph engine. Please wait ... ');
