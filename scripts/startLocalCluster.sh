@@ -111,7 +111,6 @@ start() {
       ROLE="PRIMARY"
     elif [ "$1" == "coordinator" ]; then
       ROLE="COORDINATOR"
-      sleep 1
     fi
     TYPE=$1
     PORT=$2
