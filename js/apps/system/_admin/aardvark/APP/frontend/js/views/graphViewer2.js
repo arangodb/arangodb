@@ -723,20 +723,24 @@
       }
     },
 
-    updateColors: function () {
+    updateColors: function (nodes, edges, ncolor, ecolor) {
       var combinedName = window.App.currentDB.toJSON().name + '_' + this.name;
       var self = this;
 
       this.userConfig.fetch({
         success: function (data) {
-          self.graphConfig = data.toJSON().graphs[combinedName];
-          self.currentGraph.graph.nodes().forEach(function (n) {
-            n.color = self.graphConfig.nodeColor;
-          });
+          if (nodes === true) {
+            self.graphConfig = data.toJSON().graphs[combinedName];
+            self.currentGraph.graph.nodes().forEach(function (n) {
+              n.color = ncolor;
+            });
+          }
 
-          self.currentGraph.graph.edges().forEach(function (e) {
-            e.color = self.graphConfig.edgeColor;
-          });
+          if (edges === true) {
+            self.currentGraph.graph.edges().forEach(function (e) {
+              e.color = ecolor;
+            });
+          }
 
           self.currentGraph.refresh();
         }

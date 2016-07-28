@@ -127,6 +127,11 @@
     input,
     select {
       color: $c-black;
+
+      &:disabled {
+        cursor: not-allowed;
+        opacity: .7;
+      }
     }
 
     input {
