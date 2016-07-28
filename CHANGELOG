@@ -1,6 +1,8 @@
 devel
 -----
 
+* fixed thread affinity
+
 * replaced require("internal").db by require("@arangodb").db
 
 * added option `--skip-lines` for arangoimp
@@ -33,6 +35,8 @@ devel
 
 v3.0.4 (XXXX-XX-XX)
 -------------------
+
+* fixed issue #1970
 
 * fixed issue #1967
 

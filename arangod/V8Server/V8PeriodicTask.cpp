@@ -26,11 +26,9 @@
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include "Basics/json.h"
 #include "Dispatcher/Dispatcher.h"
 #include "Dispatcher/DispatcherFeature.h"
 #include "V8Server/V8Job.h"
-#include "VocBase/server.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -56,20 +54,11 @@ V8PeriodicTask::V8PeriodicTask(std::string const& id, std::string const& name,
                                bool allowUseDatabase)
     : Task(id, name),
       PeriodicTask(id, offset, period),
-      _vocbase(vocbase),
+      _vocbaseGuard(vocbase),
       _command(command),
       _parameters(parameters),
       _created(TRI_microtime()),
       _allowUseDatabase(allowUseDatabase) {
-  TRI_ASSERT(vocbase != nullptr);
-
-  // increase reference counter for the database used
-  TRI_UseVocBase(_vocbase);
-}
-
-V8PeriodicTask::~V8PeriodicTask() {
-  // decrease reference counter for the database used
-  TRI_ReleaseVocBase(_vocbase);
 }
 
 // get a task specific description in JSON format
@@ -79,7 +68,7 @@ void V8PeriodicTask::getDescription(VPackBuilder& builder) const {
 
   builder.add("created", VPackValue(_created));
   builder.add("command", VPackValue(_command));
-  builder.add("database", VPackValue(_vocbase->_name));
+  builder.add("database", VPackValue(_vocbaseGuard.vocbase()->name()));
 }
 
 // handles the next tick
@@ -101,7 +90,7 @@ bool V8PeriodicTask::handlePeriod() {
   }
 
   std::unique_ptr<Job> job(new V8Job(
-      _vocbase, "(function (params) { " + _command + " } )(params);",
+      _vocbaseGuard.vocbase(), "(function (params) { " + _command + " } )(params);",
       _parameters, _allowUseDatabase, this));
 
   DispatcherFeature::DISPATCHER->addJob(job, false);

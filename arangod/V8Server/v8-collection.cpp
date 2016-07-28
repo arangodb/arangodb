@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "v8-collection.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
 #include "Basics/Timers.h"
 #include "Basics/Utf8Helper.h"
@@ -32,6 +33,7 @@
 #include "Basics/WriteLocker.h"
 #include "Cluster/ClusterMethods.h"
 #include "Indexes/PrimaryIndex.h"
+#include "RestServer/DatabaseFeature.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/OperationResult.h"
 #include "Utils/SingleCollectionTransaction.h"
@@ -43,6 +45,7 @@
 #include "V8Server/v8-vocbaseprivate.h"
 #include "V8Server/v8-vocindex.h"
 #include "VocBase/KeyGenerator.h"
+#include "VocBase/modes.h"
 #include "Wal/LogfileManager.h"
 
 #include <velocypack/Builder.h>
@@ -169,7 +172,7 @@ static int ParseDocumentOrDocumentHandle(v8::Isolate* isolate,
     if (ServerState::instance()->isCoordinator()) {
       ClusterInfo* ci = ClusterInfo::instance();
       std::shared_ptr<CollectionInfo> c =
-          ci->getCollection(vocbase->_name, collectionName);
+          ci->getCollection(vocbase->name(), collectionName);
       col = CoordinatorCollection(vocbase, *c);
 
       if (col != nullptr && col->_cid == 0) {
@@ -268,7 +271,7 @@ static std::vector<TRI_vocbase_col_t*> GetCollectionsCluster(
   std::vector<TRI_vocbase_col_t*> result;
 
   std::vector<std::shared_ptr<CollectionInfo>> const collections =
-      ClusterInfo::instance()->getCollections(vocbase->_name);
+      ClusterInfo::instance()->getCollections(vocbase->name());
 
   for (auto& collection : collections) {
     TRI_vocbase_col_t* c = CoordinatorCollection(vocbase, *(collection));
@@ -293,7 +296,7 @@ static std::vector<std::string> GetCollectionNamesCluster(
   std::vector<std::string> result;
 
   std::vector<std::shared_ptr<CollectionInfo>> const collections =
-      ClusterInfo::instance()->getCollections(vocbase->_name);
+      ClusterInfo::instance()->getCollections(vocbase->name());
 
   for (auto& collection : collections) {
     std::string const& name = collection->name();
@@ -883,7 +886,7 @@ static void JS_DropVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
     return;
   }
 
-  int res = TRI_DropCollectionVocBase(collection->_vocbase, collection, true);
+  int res = collection->_vocbase->dropCollection(collection, true);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(res, "cannot drop collection");
@@ -1184,7 +1187,7 @@ static void JS_NameVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
   // if we wouldn't do this, we would risk other threads modifying the name
   // while
   // we're reading it
-  std::string name(TRI_GetCollectionNameByIdVocBase(collection->_vocbase, collection->_cid));
+  std::string name(collection->_vocbase->collectionName(collection->_cid));
 
   v8::Handle<v8::Value> result = TRI_V8_STD_STRING(name);
 
@@ -1208,7 +1211,6 @@ static void JS_PathVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   std::string const path(collection->path());
-
   v8::Handle<v8::Value> result = TRI_V8_STD_STRING(path);
 
   TRI_V8_RETURN(result);
@@ -1235,7 +1237,7 @@ static void JS_PlanIdVocbaseCol(
     TRI_V8_RETURN(V8CollectionId(isolate, collection->_cid));
   }
 
-  TRI_V8_RETURN(V8CollectionId(isolate, collection->_planId));
+  TRI_V8_RETURN(V8CollectionId(isolate, collection->planId()));
   TRI_V8_TRY_CATCH_END
 }
 
@@ -1408,7 +1410,7 @@ static void JS_PropertiesVocbaseCol(
       }  // Leave the scope and free the lock
 
       // try to write new parameter to file
-      bool doSync = document->_vocbase->_settings.forceSyncProperties;
+      bool doSync = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database")->forceSyncProperties();
       res = document->updateCollectionInfo(document->_vocbase, slice, doSync);
 
       if (res != TRI_ERROR_NO_ERROR) {
@@ -1562,8 +1564,7 @@ static void JS_RenameVocbaseCol(
 
   std::string const oldName(collection->_name);
 
-  int res = TRI_RenameCollectionVocBase(collection->_vocbase, collection,
-                                        name.c_str(), doOverride, true);
+  int res = collection->_vocbase->renameCollection(collection, name, doOverride, true);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(res, "cannot rename collection");
@@ -2075,10 +2076,10 @@ static TRI_vocbase_col_t* GetCollectionFromArgument(
   // number
   if (val->IsNumber() || val->IsNumberObject()) {
     uint64_t cid = TRI_ObjectToUInt64(val, true);
-    return TRI_LookupCollectionByIdVocBase(vocbase, cid);
+    return vocbase->lookupCollection(cid);
   }
 
-  return TRI_LookupCollectionByNameVocBase(vocbase, TRI_ObjectToString(val));
+  return vocbase->lookupCollection(TRI_ObjectToString(val));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2096,7 +2097,7 @@ static void JS_SaveVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
-  if (TRI_IsDeletedVocBase(vocbase)) {
+  if (vocbase->isDropped()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
@@ -2608,7 +2609,7 @@ static void JS_VersionVocbaseCol(
   try {
     std::string const collectionName(collection->name());
     VocbaseCollectionInfo info = VocbaseCollectionInfo::fromFile(
-        collection->pathc_str(), collection->vocbase(), collectionName.c_str(),
+        collection->path().c_str(), collection->vocbase(), collectionName.c_str(),
         false);
 
     TRI_V8_RETURN(v8::Number::New(isolate, (int)info.version()));
@@ -2687,7 +2688,7 @@ static void JS_CollectionVocbase(
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
-  if (TRI_IsDeletedVocBase(vocbase)) {
+  if (vocbase->isDropped()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
@@ -2702,7 +2703,7 @@ static void JS_CollectionVocbase(
   if (ServerState::instance()->isCoordinator()) {
     std::string const name = TRI_ObjectToString(val);
     std::shared_ptr<CollectionInfo> const ci =
-        ClusterInfo::instance()->getCollection(vocbase->_name, name);
+        ClusterInfo::instance()->getCollection(vocbase->name(), name);
 
     if ((*ci).id() == 0 || (*ci).empty()) {
       // not found
@@ -2750,11 +2751,11 @@ static void JS_CollectionsVocbase(
   if (ServerState::instance()->isCoordinator()) {
     colls = GetCollectionsCluster(vocbase);
   } else {
-    colls = TRI_CollectionsVocBase(vocbase);
+    colls = vocbase->collections();
   }
 
   std::sort(colls.begin(), colls.end(), [](TRI_vocbase_col_t const* lhs, TRI_vocbase_col_t const* rhs) -> bool {
-    return StringUtils::tolower(lhs->namec_str()) < StringUtils::tolower(rhs->namec_str());
+    return StringUtils::tolower(lhs->name()) < StringUtils::tolower(rhs->name());
   });
 
   bool error = false;
@@ -2802,11 +2803,11 @@ static void JS_CompletionsVocbase(
   std::vector<std::string> names;
 
   if (ServerState::instance()->isCoordinator()) {
-    if (ClusterInfo::instance()->doesDatabaseExist(vocbase->_name)) {
+    if (ClusterInfo::instance()->doesDatabaseExist(vocbase->name())) {
       names = GetCollectionNamesCluster(vocbase);
     }
   } else {
-    names = TRI_CollectionNamesVocBase(vocbase);
+    names = vocbase->collectionNames();
   }
 
   uint32_t j = 0;
@@ -2959,7 +2960,7 @@ static void JS_DatafilesVocbaseCol(
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_UNLOADED);
     }
 
-    structure = TRI_FileStructureCollectionDirectory(collection->pathc_str());
+    structure = TRI_FileStructureCollectionDirectory(collection->path().c_str());
   }
 
   // build result
@@ -3094,7 +3095,7 @@ static void JS_DatafileScanVocbaseCol(
 // generate the TRI_vocbase_col_t template
 // .............................................................................
 
-void TRI_InitV8collection(v8::Handle<v8::Context> context, TRI_server_t* server,
+void TRI_InitV8Collection(v8::Handle<v8::Context> context,
                           TRI_vocbase_t* vocbase, size_t const threadNumber,
                           TRI_v8_global_t* v8g, v8::Isolate* isolate,
                           v8::Handle<v8::ObjectTemplate> ArangoDBNS) {

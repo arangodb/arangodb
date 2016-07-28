@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "datafile.h"
+#include "ApplicationFeatures/PageSizeFeature.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
@@ -31,7 +32,7 @@
 #include "Basics/tri-strings.h"
 #include "Logger/Logger.h"
 #include "VocBase/DatafileHelper.h"
-#include "VocBase/server.h"
+#include "VocBase/ticks.h"
 
 #include <sstream>
 
@@ -357,11 +358,12 @@ static int TruncateAndSealDatafile(TRI_datafile_t* datafile,
 
   // this function must not be called for non-physical datafiles
   TRI_ASSERT(datafile->isPhysical(datafile));
+  size_t pageSize = PageSizeFeature::getPageSize();
 
   // use multiples of page-size
   size_t maximalSize =
-      ((vocSize + sizeof(TRI_df_footer_marker_t) + PageSize - 1) / PageSize) *
-      PageSize;
+      ((vocSize + sizeof(TRI_df_footer_marker_t) + pageSize - 1) / pageSize) *
+      pageSize;
 
   // sanity check
   if (sizeof(TRI_df_header_marker_t) + sizeof(TRI_df_footer_marker_t) >
@@ -1185,12 +1187,13 @@ TRI_datafile_t* TRI_CreateDatafile(char const* filename, TRI_voc_fid_t fid,
                                    TRI_voc_size_t maximalSize,
                                    bool withInitialMarkers) {
   TRI_datafile_t* datafile;
+  size_t pageSize = PageSizeFeature::getPageSize();
 
-  TRI_ASSERT(PageSize >= 256);
+  TRI_ASSERT(pageSize >= 256);
 
   // use multiples of page-size
   maximalSize =
-      (TRI_voc_size_t)(((maximalSize + PageSize - 1) / PageSize) * PageSize);
+      (TRI_voc_size_t)(((maximalSize + pageSize - 1) / pageSize) * pageSize);
 
   // sanity check maximal size
   if (sizeof(TRI_df_header_marker_t) + sizeof(TRI_df_footer_marker_t) >
@@ -1236,7 +1239,7 @@ TRI_datafile_t* TRI_CreateDatafile(char const* filename, TRI_voc_fid_t fid,
     }
   }
 
-  LOG(DEBUG) << "created datafile '" << datafile->getName(datafile) << "' of size " << (unsigned int)maximalSize << " and page-size " << (unsigned int)PageSize;
+  LOG(DEBUG) << "created datafile '" << datafile->getName(datafile) << "' of size " << maximalSize << " and page-size " << pageSize;
 
   return datafile;
 }

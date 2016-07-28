@@ -24,7 +24,7 @@
 /// @author Copyright 2015, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Aql/TraversalNode.h"
+#include "TraversalNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Ast.h"
 #include "Aql/TraversalOptions.h"
@@ -524,7 +524,7 @@ void TraversalNode::toVelocyPackHelper(arangodb::velocypack::Builder& nodes,
   ExecutionNode::toVelocyPackHelperGeneric(nodes,
                                            verbose);  // call base class method
 
-  nodes.add("database", VPackValue(_vocbase->_name));
+  nodes.add("database", VPackValue(_vocbase->name()));
   nodes.add("minDepth", VPackValue(_minDepth));
   nodes.add("maxDepth", VPackValue(_maxDepth));
 

@@ -389,10 +389,10 @@ static void JS_ChecksumCollection(
         // was already handled before
         VPackValueLength keyLength;
         char const* key = it.key.getString(keyLength);
-        if (keyLength > 1 && 
+        if (keyLength >= 3 && 
             key[0] == '_' &&
-            ((keyLength == 3 && memcmp(key, TRI_VOC_ATTRIBUTE_ID, 3) == 0) ||
-             (keyLength == 4 && (memcmp(key, TRI_VOC_ATTRIBUTE_KEY, 4) == 0 || memcmp(key, TRI_VOC_ATTRIBUTE_REV, 4) == 0)))) {
+            ((keyLength == 3 && memcmp(key, "_id", 3) == 0) ||
+             (keyLength == 4 && (memcmp(key, "_key", 4) == 0 || memcmp(key, "_rev", 4) == 0)))) {
           // exclude attribute
           continue;
         }

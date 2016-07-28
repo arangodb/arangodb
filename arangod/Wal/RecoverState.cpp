@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RecoverState.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
 #include "Basics/conversions.h"
 #include "Basics/files.h"
@@ -29,13 +30,17 @@
 #include "Basics/memory-map.h"
 #include "Basics/tri-strings.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Indexes/RocksDBFeature.h"
+#include "RestServer/DatabaseFeature.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utils/StandaloneTransactionContext.h"
 #include "VocBase/collection.h"
 #include "VocBase/DatafileHelper.h"
 #include "Wal/LogfileManager.h"
 #include "Wal/Slots.h"
+
+#ifdef ARANGODB_ENABLE_ROCKSDB
+#include "Indexes/RocksDBFeature.h"
+#endif
 
 #include <velocypack/Collection.h>
 #include <velocypack/Parser.h>
@@ -63,51 +68,9 @@ static inline T NumericValue(VPackSlice const& slice, char const* attribute) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
 }
 
-/// @brief get the directory for a database
-static std::string GetDatabaseDirectory(TRI_server_t* server,
-                                        TRI_voc_tick_t databaseId) {
-  std::string const dname("database-" + std::to_string(databaseId));
-  std::string const filename(arangodb::basics::FileUtils::buildFilename(server->_databasePath, dname));
-
-  return filename;
-}
-
-/// @brief wait until a database directory disappears
-static int WaitForDeletion(TRI_server_t* server, TRI_voc_tick_t databaseId,
-                           int statusCode) {
-  std::string const result = GetDatabaseDirectory(server, databaseId);
-
-  int iterations = 0;
-  // wait for at most 30 seconds for the directory to be removed
-  while (TRI_IsDirectory(result.c_str())) {
-    if (iterations == 0) {
-      LOG(TRACE) << "waiting for deletion of database directory '" << result << "', called with status code " << statusCode;
-
-      if (statusCode != TRI_ERROR_FORBIDDEN &&
-          (statusCode == TRI_ERROR_ARANGO_DATABASE_NOT_FOUND ||
-           statusCode != TRI_ERROR_NO_ERROR)) {
-        LOG(WARN) << "forcefully deleting database directory '" << result << "'";
-        TRI_RemoveDirectory(result.c_str());
-      }
-    } else if (iterations >= 30 * 10) {
-      LOG(WARN) << "unable to remove database directory '" << result << "'";
-      return TRI_ERROR_INTERNAL;
-    }
-
-    if (iterations == 5 * 10) {
-      LOG(INFO) << "waiting for deletion of database directory '" << result << "'";
-    }
-
-    ++iterations;
-    usleep(50000);
-  }
-
-  return TRI_ERROR_NO_ERROR;
-}
-
 /// @brief creates the recover state
-RecoverState::RecoverState(TRI_server_t* server, bool ignoreRecoveryErrors)
-    : server(server),
+RecoverState::RecoverState(bool ignoreRecoveryErrors)
+    : databaseFeature(nullptr),
       failedTransactions(),
       lastTick(0),
       logfilesToProcess(),
@@ -117,7 +80,10 @@ RecoverState::RecoverState(TRI_server_t* server, bool ignoreRecoveryErrors)
       ignoreRecoveryErrors(ignoreRecoveryErrors),
       errorCount(0),
       lastDatabaseId(0),
-      lastCollectionId(0) {}
+      lastCollectionId(0) {
+        
+  databaseFeature = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
+}
 
 /// @brief destroys the recover state
 RecoverState::~RecoverState() { releaseResources(); }
@@ -136,8 +102,7 @@ void RecoverState::releaseResources() {
 
   // release all databases
   for (auto it = openedDatabases.begin(); it != openedDatabases.end(); ++it) {
-    TRI_vocbase_t* vocbase = (*it).second;
-    TRI_ReleaseDatabaseServer(server, vocbase);
+    (*it).second->release();
   }
 
   openedDatabases.clear();
@@ -151,7 +116,7 @@ TRI_vocbase_t* RecoverState::useDatabase(TRI_voc_tick_t databaseId) {
     return (*it).second;
   }
 
-  TRI_vocbase_t* vocbase = TRI_UseDatabaseByIdServer(server, databaseId);
+  TRI_vocbase_t* vocbase = databaseFeature->useDatabase(databaseId);
 
   if (vocbase == nullptr) {
     return nullptr;
@@ -194,7 +159,7 @@ TRI_vocbase_t* RecoverState::releaseDatabase(TRI_voc_tick_t databaseId) {
     }
   }
 
-  TRI_ReleaseDatabaseServer(server, vocbase);
+  vocbase->release();
   openedDatabases.erase(databaseId);
 
   return vocbase;
@@ -611,7 +576,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
         TRI_vocbase_col_t* collection = state->releaseCollection(collectionId);
 
         if (collection == nullptr) {
-          collection = TRI_LookupCollectionByIdVocBase(vocbase, collectionId);
+          collection = vocbase->lookupCollection(collectionId);
         }
 
         if (collection == nullptr) {
@@ -629,17 +594,15 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
         std::string name = nameSlice.copyString();
 
         // check if other collection exist with target name
-        TRI_vocbase_col_t* other =
-            TRI_LookupCollectionByNameVocBase(vocbase, name);
+        TRI_vocbase_col_t* other = vocbase->lookupCollection(name);
 
         if (other != nullptr) {
           TRI_voc_cid_t otherCid = other->_cid;
           state->releaseCollection(otherCid);
-          TRI_DropCollectionVocBase(vocbase, other, false);
+          vocbase->dropCollection(other, false);
         }
 
-        int res =
-            TRI_RenameCollectionVocBase(vocbase, collection, name.c_str(), true, false);
+        int res = vocbase->renameCollection(collection, name, true, false);
 
         if (res != TRI_ERROR_NO_ERROR) {
           LOG(WARN) << "cannot rename collection " << collectionId << " in database " << databaseId << " to '" << name << "': " << TRI_errno_string(res);
@@ -733,7 +696,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
           return true;
         }
         
-        TRI_vocbase_col_t* col = TRI_LookupCollectionByIdVocBase(vocbase, collectionId);
+        TRI_vocbase_col_t* col = vocbase->lookupCollection(collectionId);
 
         if (col == nullptr) {
           // if the underlying collection gone, we can go on
@@ -804,12 +767,12 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
         TRI_vocbase_col_t* collection = state->releaseCollection(collectionId);
 
         if (collection == nullptr) {
-          collection = TRI_LookupCollectionByIdVocBase(vocbase, collectionId);
+          collection = vocbase->lookupCollection(collectionId);
         }
         
         if (collection != nullptr) {
           // drop an existing collection
-          TRI_DropCollectionVocBase(vocbase, collection, false);
+          vocbase->dropCollection(collection, false);
         }
 
 #ifdef ARANGODB_ENABLE_ROCKSDB
@@ -823,13 +786,13 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
 
         if (nameSlice.isString()) {
           name = nameSlice.copyString();
-          collection = TRI_LookupCollectionByNameVocBase(vocbase, name);
+          collection = vocbase->lookupCollection(name);
 
           if (collection != nullptr) {  
             TRI_voc_cid_t otherCid = collection->_cid;
 
             state->releaseCollection(otherCid);
-            TRI_DropCollectionVocBase(vocbase, collection, false);
+            vocbase->dropCollection(collection, false);
           }
         } else {
           LOG(WARN) << "empty name attribute in create collection marker for collection " << collectionId << " and database " << databaseId;
@@ -854,18 +817,14 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
 
         if (state->willBeDropped(collectionId)) {
           // in case we detect that this collection is going to be deleted anyway,
-          // set
-          // the sync properties to false temporarily
-          bool oldSync = vocbase->_settings.forceSyncProperties;
-          vocbase->_settings.forceSyncProperties = false;
-          collection =
-              TRI_CreateCollectionVocBase(vocbase, info, collectionId, false);
-          vocbase->_settings.forceSyncProperties = oldSync;
-
+          // set the sync properties to false temporarily
+          bool oldSync = state->databaseFeature->forceSyncProperties();
+          state->databaseFeature->forceSyncProperties(false);
+          collection = vocbase->createCollection(info, collectionId, false);
+          state->databaseFeature->forceSyncProperties(oldSync);
         } else {
           // collection will be kept
-          collection =
-              TRI_CreateCollectionVocBase(vocbase, info, collectionId, false);
+          collection = vocbase->createCollection(info, collectionId, false);
         }
 
         if (collection == nullptr) {
@@ -894,9 +853,8 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
 
         if (vocbase != nullptr) {
           // remove already existing database
-          int statusCode =
-              TRI_DropByIdDatabaseServer(state->server, databaseId, false, false);
-          WaitForDeletion(state->server, databaseId, statusCode);
+          // TODO: how to signal a dropDatabase failure here?
+          state->databaseFeature->dropDatabase(databaseId, false, true, false);
         }
 
         VPackSlice const nameSlice = payloadSlice.get("name");
@@ -910,27 +868,22 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
         std::string nameString = nameSlice.copyString();
 
         // remove already existing database with same name
-        vocbase =
-            TRI_LookupDatabaseByNameServer(state->server, nameString.c_str());
+        vocbase = state->databaseFeature->lookupDatabase(nameString);
 
         if (vocbase != nullptr) {
           TRI_voc_tick_t otherId = vocbase->_id;
 
           state->releaseDatabase(otherId);
-          int statusCode = TRI_DropDatabaseServer(
-              state->server, nameString.c_str(), false, false);
-          WaitForDeletion(state->server, otherId, statusCode);
+          // TODO: how to signal a dropDatabase failure here?
+          state->databaseFeature->dropDatabase(nameString, false, true, false);
         }
 
-        TRI_vocbase_defaults_t defaults;
-        TRI_GetDatabaseDefaultsServer(state->server, &defaults);
-
         vocbase = nullptr;
+        /* TODO: check what TRI_ERROR_ARANGO_DATABASE_NOT_FOUND means here 
         WaitForDeletion(state->server, databaseId,
                         TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-        int res = TRI_CreateDatabaseServer(state->server, databaseId,
-                                          nameString.c_str(), &defaults,
-                                          &vocbase, false);
+        */
+        int res = state->databaseFeature->createDatabase(databaseId, nameString, false, vocbase);
 
         if (res != TRI_ERROR_NO_ERROR) {
           LOG(WARN) << "cannot create database " << databaseId << ": " << TRI_errno_string(res);
@@ -978,7 +931,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
           return true;
         }
 
-        TRI_vocbase_col_t* col = TRI_LookupCollectionByIdVocBase(vocbase, collectionId);
+        TRI_vocbase_col_t* col = vocbase->lookupCollection(collectionId);
 
         if (col == nullptr) {
           // if the underlying collection gone, we can go on
@@ -1022,11 +975,11 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
         TRI_vocbase_col_t* collection = state->releaseCollection(collectionId);
 
         if (collection == nullptr) {
-          collection = TRI_LookupCollectionByIdVocBase(vocbase, collectionId);
+          collection = vocbase->lookupCollection(collectionId);
         }
 
         if (collection != nullptr) {
-          TRI_DropCollectionVocBase(vocbase, collection, false);
+          vocbase->dropCollection(collection, false);
         }
 #ifdef ARANGODB_ENABLE_ROCKSDB
         RocksDBFeature::dropCollection(databaseId, collectionId);
@@ -1046,7 +999,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
 
         if (vocbase != nullptr) {
           // ignore any potential error returned by this call
-          TRI_DropByIdDatabaseServer(state->server, databaseId, false, false);
+          state->databaseFeature->dropDatabase(databaseId, false, true, false);
         }
 
 #ifdef ARANGODB_ENABLE_ROCKSDB

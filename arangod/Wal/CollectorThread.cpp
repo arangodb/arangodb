@@ -38,7 +38,6 @@
 #include "VocBase/DatafileHelper.h"
 #include "VocBase/DatafileStatistics.h"
 #include "VocBase/document-collection.h"
-#include "VocBase/server.h"
 #include "Wal/Logfile.h"
 #include "Wal/LogfileManager.h"
 
@@ -248,11 +247,9 @@ static bool ScanMarker(TRI_df_marker_t const* marker, void* data,
 uint64_t const CollectorThread::Interval = 1000000;
 
 /// @brief create the collector thread
-CollectorThread::CollectorThread(LogfileManager* logfileManager,
-                                 TRI_server_t* server)
+CollectorThread::CollectorThread(LogfileManager* logfileManager)
     : Thread("WalCollector"),
       _logfileManager(logfileManager),
-      _server(server),
       _condition(),
       _operationsQueueLock(),
       _operationsQueue(),
@@ -629,7 +626,7 @@ void CollectorThread::processCollectionMarker(
 
 /// @brief process all operations for a single collection
 int CollectorThread::processCollectionOperations(CollectorCache* cache) {
-  arangodb::DatabaseGuard dbGuard(_server, cache->databaseId);
+  arangodb::DatabaseGuard dbGuard(cache->databaseId);
   TRI_vocbase_t* vocbase = dbGuard.database();
   TRI_ASSERT(vocbase != nullptr);
 
@@ -855,7 +852,7 @@ int CollectorThread::transferMarkers(Logfile* logfile,
   TRI_ASSERT(!operations.empty());
 
   // prepare database and collection
-  arangodb::DatabaseGuard dbGuard(_server, databaseId);
+  arangodb::DatabaseGuard dbGuard(databaseId);
   TRI_vocbase_t* vocbase = dbGuard.database();
   TRI_ASSERT(vocbase != nullptr);
 

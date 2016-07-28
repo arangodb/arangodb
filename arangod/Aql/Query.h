@@ -332,6 +332,9 @@ class Query {
   /// @brief create a TransactionContext
   std::shared_ptr<arangodb::TransactionContext> createTransactionContext();
 
+  /// @brief returns the next query id
+  static TRI_voc_tick_t NextId();
+
  private:
   /// @brief query id
   TRI_voc_tick_t _id;

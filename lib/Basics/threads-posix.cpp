@@ -29,8 +29,12 @@
 #include <sys/prctl.h>
 #endif
 
-#include "Logger/Logger.h"
+#ifdef ARANGODB_HAVE_THREAD_POLICY
+#include <mach/mach.h>
+#endif
+
 #include "Basics/tri-strings.h"
+#include "Logger/Logger.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief data block for thread starter
@@ -118,7 +122,9 @@ bool TRI_StartThread(TRI_thread_t* thread, TRI_tid_t* threadId,
 /// @brief waits for a thread to finish
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_JoinThread(TRI_thread_t* thread) { return pthread_join(*thread, nullptr); }
+int TRI_JoinThread(TRI_thread_t* thread) {
+  return pthread_join(*thread, nullptr);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks if we are the thread
@@ -141,7 +147,7 @@ void TRI_AllowCancelation() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_SetProcessorAffinity(TRI_thread_t* thread, size_t core) {
-#ifdef TRI_HAVE_THREAD_AFFINITY
+#ifdef ARANGODB_HAVE_THREAD_AFFINITY
 
   cpu_set_t cpuset;
 
@@ -151,7 +157,22 @@ void TRI_SetProcessorAffinity(TRI_thread_t* thread, size_t core) {
   int s = pthread_setaffinity_np(*thread, sizeof(cpu_set_t), &cpuset);
 
   if (s != 0) {
-    LOG(ERR) << "cannot set affinity to core " << core << ": " << strerror(errno);
+    LOG(ERR) << "cannot set affinity to core " << core << ": "
+             << strerror(errno);
+  }
+
+#endif
+
+#ifdef ARANGODB_HAVE_THREAD_POLICY
+
+  thread_affinity_policy_data_t policy = {(int)core};
+  auto mach_thread = pthread_mach_thread_np(*thread);
+  auto res = thread_policy_set(mach_thread, THREAD_AFFINITY_POLICY,
+                               (thread_policy_t)&policy, 1);
+
+  if (res != KERN_SUCCESS) {
+    LOG(ERR) << "cannot set affinity to core " << core << ": "
+             << strerror(errno);
   }
 
 #endif

@@ -35,7 +35,7 @@
 #include "Cluster/ClusterMethods.h"
 #include "Dispatcher/DispatcherThread.h"
 #include "V8/v8-globals.h"
-#include "VocBase/server.h"
+#include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Builder.h>
@@ -1204,7 +1204,7 @@ std::unique_ptr<ClusterCommResult> RemoteBlock::sendRequest(
   auto result = cc->syncRequest(
       clientTransactionId, coordTransactionId, _server, type,
       std::string("/_db/") + arangodb::basics::StringUtils::urlEncode(
-                                 _engine->getQuery()->trx()->vocbase()->_name) +
+                                 _engine->getQuery()->trx()->vocbase()->name()) +
           urlPart + _queryId,
       body, headers, defaultTimeOut);
 

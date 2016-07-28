@@ -23,6 +23,7 @@
 
 #include "document-collection.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryCache.h"
 #include "Basics/Barrier.h"
 #include "Basics/conversions.h"
@@ -46,6 +47,7 @@
 #include "Indexes/PrimaryIndex.h"
 #include "Indexes/SkiplistIndex.h"
 #include "Logger/Logger.h"
+#include "RestServer/DatabaseFeature.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/CollectionReadLocker.h"
 #include "Utils/CollectionWriteLocker.h"
@@ -53,9 +55,10 @@
 #include "Utils/StandaloneTransactionContext.h"
 #include "VocBase/DatafileHelper.h"
 #include "VocBase/Ditch.h"
+#include "VocBase/IndexPoolFeature.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/MasterPointers.h"
-#include "VocBase/server.h"
+#include "VocBase/ticks.h"
 #include "Wal/DocumentOperation.h"
 #include "Wal/LogfileManager.h"
 #include "Wal/Marker.h"
@@ -111,7 +114,7 @@ TRI_document_collection_t::~TRI_document_collection_t() {
 }
 
 std::string TRI_document_collection_t::label() const {
-  return std::string(_vocbase->_name) + " / " + _info.name();
+  return _vocbase->name() + " / " + _info.name();
 }
  
 ////////////////////////////////////////////////////////////////////////////////
@@ -682,7 +685,7 @@ static bool RemoveIndexFile(TRI_document_collection_t* collection,
                             TRI_idx_iid_t id) {
   // construct filename
   std::string name("index-" + std::to_string(id) + ".json");
-  std::string filename = arangodb::basics::FileUtils::buildFilename(collection->_directory, name);
+  std::string filename = arangodb::basics::FileUtils::buildFilename(collection->path(), name);
 
   int res = TRI_UnlinkFile(filename.c_str());
 
@@ -1182,7 +1185,7 @@ static int IterateMarkersCollection(arangodb::Transaction* trx,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_document_collection_t* TRI_CreateDocumentCollection(
-    TRI_vocbase_t* vocbase, char const* path, VocbaseCollectionInfo& parameters,
+    TRI_vocbase_t* vocbase, VocbaseCollectionInfo& parameters,
     TRI_voc_cid_t cid) {
   if (cid > 0) {
     TRI_UpdateTickServer(cid);
@@ -1228,7 +1231,7 @@ TRI_document_collection_t* TRI_CreateDocumentCollection(
   document->_keyGenerator = keyGenerator;
 
   TRI_collection_t* collection =
-      TRI_CreateCollection(vocbase, document, path, parameters);
+      TRI_CreateCollection(vocbase, document, parameters);
 
   if (collection == nullptr) {
     delete document;
@@ -1250,11 +1253,11 @@ TRI_document_collection_t* TRI_CreateDocumentCollection(
   document->_keyGenerator = keyGenerator;
 
   // save the parameters block (within create, no need to lock)
-  bool doSync = vocbase->_settings.forceSyncProperties;
-  int res = parameters.saveToFile(collection->_directory, doSync);
+  bool doSync = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database")->forceSyncProperties();
+  int res = parameters.saveToFile(collection->path(), doSync);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG(ERR) << "cannot save collection parameters in directory '" << collection->_directory << "': '" << TRI_last_error() << "'";
+    LOG(ERR) << "cannot save collection parameters in directory '" << collection->path() << "': '" << TRI_last_error() << "'";
 
     TRI_CloseCollection(collection);
     TRI_DestroyCollection(collection);
@@ -1263,7 +1266,7 @@ TRI_document_collection_t* TRI_CreateDocumentCollection(
   }
 
   // remove the temporary file
-  std::string tmpfile = collection->_directory + ".tmp";
+  std::string tmpfile = collection->path() + ".tmp";
   TRI_UnlinkFile(tmpfile.c_str());
 
   return document;
@@ -1443,7 +1446,7 @@ int TRI_FillIndexesDocumentCollection(arangodb::Transaction* trx,
   if (primaryIndex->size() > NotificationSizeThreshold) {
     LOG_TOPIC(TRACE, Logger::PERFORMANCE)
         << "fill-indexes-document-collection { collection: "
-        << document->_vocbase->_name << "/" << document->_info.name()
+        << document->_vocbase->name() << "/" << document->_info.name()
         << " }, indexes: " << (n - 1);
   }
 
@@ -1454,7 +1457,7 @@ int TRI_FillIndexesDocumentCollection(arangodb::Transaction* trx,
   {
     arangodb::basics::Barrier barrier(n - 1);
 
-    auto indexPool = document->_vocbase->_server->_indexPool;
+    auto indexPool = application_features::ApplicationServer::getFeature<IndexPoolFeature>("IndexPool")->getThreadPool();
 
     auto callback = [&barrier, &result](int res) -> void {
       // update the error code
@@ -1515,7 +1518,7 @@ int TRI_FillIndexesDocumentCollection(arangodb::Transaction* trx,
   LOG_TOPIC(TRACE, Logger::PERFORMANCE)
       << "[timer] " << Logger::FIXED(TRI_microtime() - start)
       << " s, fill-indexes-document-collection { collection: "
-      << document->_vocbase->_name << "/" << document->_info.name()
+      << document->_vocbase->name() << "/" << document->_info.name()
       << " }, indexes: " << (n - 1);
 
   return result.load();
@@ -1528,7 +1531,7 @@ int TRI_FillIndexesDocumentCollection(arangodb::Transaction* trx,
 TRI_document_collection_t* TRI_OpenDocumentCollection(TRI_vocbase_t* vocbase,
                                                       TRI_vocbase_col_t* col,
                                                       bool ignoreErrors) {
-  char const* path = col->pathc_str();
+  char const* path = col->path().c_str();
 
   // first open the document collection
   TRI_document_collection_t* document = nullptr;
@@ -1545,7 +1548,7 @@ TRI_document_collection_t* TRI_OpenDocumentCollection(TRI_vocbase_t* vocbase,
 
   double start = TRI_microtime();
   LOG_TOPIC(TRACE, Logger::PERFORMANCE)
-      << "open-document-collection { collection: " << vocbase->_name << "/"
+      << "open-document-collection { collection: " << vocbase->name() << "/"
       << col->name() << " }";
 
   TRI_collection_t* collection =
@@ -1599,13 +1602,13 @@ TRI_document_collection_t* TRI_OpenDocumentCollection(TRI_vocbase_t* vocbase,
     double start = TRI_microtime();
 
     LOG_TOPIC(TRACE, Logger::PERFORMANCE)
-        << "iterate-markers { collection: " << vocbase->_name << "/"
+        << "iterate-markers { collection: " << vocbase->name() << "/"
         << document->_info.name() << " }";
 
     // iterate over all markers of the collection
     res = IterateMarkersCollection(&trx, collection);
 
-    LOG_TOPIC(TRACE, Logger::PERFORMANCE) << "[timer] " << Logger::FIXED(TRI_microtime() - start) << " s, iterate-markers { collection: " << vocbase->_name << "/" << document->_info.name() << " }";
+    LOG_TOPIC(TRACE, Logger::PERFORMANCE) << "[timer] " << Logger::FIXED(TRI_microtime() - start) << " s, iterate-markers { collection: " << vocbase->name() << "/" << document->_info.name() << " }";
   } catch (arangodb::basics::Exception const& ex) {
     res = ex.code();
   } catch (std::bad_alloc const&) {
@@ -1654,7 +1657,7 @@ TRI_document_collection_t* TRI_OpenDocumentCollection(TRI_vocbase_t* vocbase,
 
   LOG_TOPIC(TRACE, Logger::PERFORMANCE)
       << "[timer] " << Logger::FIXED(TRI_microtime() - start)
-      << " s, open-document-collection { collection: " << vocbase->_name << "/"
+      << " s, open-document-collection { collection: " << vocbase->name() << "/"
       << document->_info.name() << " }";
 
   return document;
@@ -1673,9 +1676,9 @@ int TRI_CloseDocumentCollection(TRI_document_collection_t* document,
       document->_info.initialCount() != static_cast<int64_t>(idxSize)) {
     document->_info.updateCount(idxSize);
 
-    bool doSync = document->_vocbase->_settings.forceSyncProperties;
+    bool doSync = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database")->forceSyncProperties();
     // Ignore the error?
-    document->_info.saveToFile(document->_directory, doSync);
+    document->_info.saveToFile(document->path(), doSync);
   }
 
   // closes all open compactors, journals, datafiles
@@ -1714,13 +1717,12 @@ static VPackSlice ExtractFields(VPackSlice const& slice, TRI_idx_iid_t iid) {
 static int FillIndexBatch(arangodb::Transaction* trx,
                           TRI_document_collection_t* document,
                           arangodb::Index* idx) {
-  auto indexPool = document->_vocbase->_server->_indexPool;
-  TRI_ASSERT(indexPool != nullptr);
+  auto indexPool = application_features::ApplicationServer::getFeature<IndexPoolFeature>("IndexPool")->getThreadPool();
 
   double start = TRI_microtime();
 
   LOG_TOPIC(TRACE, Logger::PERFORMANCE)
-      << "fill-index-batch { collection: " << document->_vocbase->_name << "/"
+      << "fill-index-batch { collection: " << document->_vocbase->name() << "/"
       << document->_info.name() << " }, " << idx->context()
       << ", threads: " << indexPool->numThreads()
       << ", buckets: " << document->_info.indexBuckets();
@@ -1779,7 +1781,7 @@ static int FillIndexBatch(arangodb::Transaction* trx,
 
   LOG_TOPIC(TRACE, Logger::PERFORMANCE)
       << "[timer] " << Logger::FIXED(TRI_microtime() - start)
-      << " s, fill-index-batch { collection: " << document->_vocbase->_name
+      << " s, fill-index-batch { collection: " << document->_vocbase->name()
       << "/" << document->_info.name() << " }, " << idx->context()
       << ", threads: " << indexPool->numThreads()
       << ", buckets: " << document->_info.indexBuckets();
@@ -1797,7 +1799,7 @@ static int FillIndexSequential(arangodb::Transaction* trx,
   double start = TRI_microtime();
 
   LOG_TOPIC(TRACE, Logger::PERFORMANCE)
-      << "fill-index-sequential { collection: " << document->_vocbase->_name
+      << "fill-index-sequential { collection: " << document->_vocbase->name()
       << "/" << document->_info.name() << " }, " << idx->context()
       << ", buckets: " << document->_info.indexBuckets();
 
@@ -1843,7 +1845,7 @@ static int FillIndexSequential(arangodb::Transaction* trx,
 
   LOG_TOPIC(TRACE, Logger::PERFORMANCE)
       << "[timer] " << Logger::FIXED(TRI_microtime() - start)
-      << " s, fill-index-sequential { collection: " << document->_vocbase->_name
+      << " s, fill-index-sequential { collection: " << document->_vocbase->name()
       << "/" << document->_info.name() << " }, " << idx->context()
       << ", buckets: " << document->_info.indexBuckets();
 
@@ -1868,7 +1870,7 @@ static int FillIndex(arangodb::Transaction* trx,
 
   try {
     size_t nrUsed = document->primaryIndex()->size();
-    auto indexPool = document->_vocbase->_server->_indexPool;
+    auto indexPool = application_features::ApplicationServer::getFeature<IndexPoolFeature>("IndexPool")->getThreadPool();
 
     int res;
 
@@ -2133,14 +2135,15 @@ int TRI_SaveIndex(TRI_document_collection_t* document, arangodb::Index* idx,
 
   // construct filename
   std::string name("index-" + std::to_string(idx->id()) + ".json");
-  std::string filename = arangodb::basics::FileUtils::buildFilename(document->_directory, name);
+  std::string filename = arangodb::basics::FileUtils::buildFilename(document->path(), name);
 
   TRI_vocbase_t* vocbase = document->_vocbase;
 
   VPackSlice const idxSlice = builder->slice();
   // and save
+  bool doSync = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database")->forceSyncProperties();
   bool ok = arangodb::basics::VelocyPackHelper::velocyPackToFile(
-      filename.c_str(), idxSlice, document->_vocbase->_settings.forceSyncProperties);
+      filename.c_str(), idxSlice, doSync);
 
   if (!ok) {
     LOG(ERR) << "cannot save index definition: " << TRI_last_error();
@@ -2213,7 +2216,7 @@ bool TRI_DropIndexDocumentCollection(TRI_document_collection_t* document,
   arangodb::Index* found = nullptr;
   {
     arangodb::aql::QueryCache::instance()->invalidate(
-        vocbase, document->_info.namec_str());
+        vocbase, document->_info.name());
     found = document->removeIndex(iid);
   }
 
@@ -2539,7 +2542,7 @@ arangodb::Index* TRI_EnsureGeoIndex1DocumentCollection(
   if (idx != nullptr) {
     if (created) {
       arangodb::aql::QueryCache::instance()->invalidate(
-          document->_vocbase, document->_info.namec_str());
+          document->_vocbase, document->_info.name());
       int res = TRI_SaveIndex(document, idx, true);
 
       if (res != TRI_ERROR_NO_ERROR) {
@@ -2566,7 +2569,7 @@ arangodb::Index* TRI_EnsureGeoIndex2DocumentCollection(
   if (idx != nullptr) {
     if (created) {
       arangodb::aql::QueryCache::instance()->invalidate(
-          document->_vocbase, document->_info.namec_str());
+          document->_vocbase, document->_info.name());
       int res = TRI_SaveIndex(document, idx, true);
 
       if (res != TRI_ERROR_NO_ERROR) {
@@ -2695,7 +2698,7 @@ arangodb::Index* TRI_EnsureHashIndexDocumentCollection(
   if (idx != nullptr) {
     if (created) {
       arangodb::aql::QueryCache::instance()->invalidate(
-          document->_vocbase, document->_info.namec_str());
+          document->_vocbase, document->_info.name());
       int res = TRI_SaveIndex(document, idx, true);
 
       if (res != TRI_ERROR_NO_ERROR) {
@@ -2824,7 +2827,7 @@ arangodb::Index* TRI_EnsureSkiplistIndexDocumentCollection(
   if (idx != nullptr) {
     if (created) {
       arangodb::aql::QueryCache::instance()->invalidate(
-          document->_vocbase, document->_info.namec_str());
+          document->_vocbase, document->_info.name());
       int res = TRI_SaveIndex(document, idx, true);
 
       if (res != TRI_ERROR_NO_ERROR) {
@@ -2989,7 +2992,7 @@ arangodb::Index* TRI_EnsureRocksDBIndexDocumentCollection(
   if (idx != nullptr) {
     if (created) {
       arangodb::aql::QueryCache::instance()->invalidate(
-          document->_vocbase, document->_info.namec_str());
+          document->_vocbase, document->_info.name());
       int res = TRI_SaveIndex(document, idx, true);
 
       if (res != TRI_ERROR_NO_ERROR) {
@@ -3153,7 +3156,7 @@ arangodb::Index* TRI_EnsureFulltextIndexDocumentCollection(
   if (idx != nullptr) {
     if (created) {
       arangodb::aql::QueryCache::instance()->invalidate(
-          document->_vocbase, document->_info.namec_str());
+          document->_vocbase, document->_info.name());
       int res = TRI_SaveIndex(document, idx, true);
 
       if (res != TRI_ERROR_NO_ERROR) {
@@ -3438,7 +3441,7 @@ int TRI_document_collection_t::update(Transaction* trx,
       if (ServerState::isDBServer(trx->serverRole())) {
         // Need to check that no sharding keys have changed:
         if (arangodb::shardKeysChanged(
-                _vocbase->_name,
+                _vocbase->name(),
                 trx->resolver()->getCollectionNameCluster(_info.planId()),
                 VPackSlice(oldHeader->vpack()), builder->slice(), false)) {
           return TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES;
@@ -3586,7 +3589,7 @@ int TRI_document_collection_t::replace(Transaction* trx,
     if (ServerState::isDBServer(trx->serverRole())) {
       // Need to check that no sharding keys have changed:
       if (arangodb::shardKeysChanged(
-              _vocbase->_name,
+              _vocbase->name(),
               trx->resolver()->getCollectionNameCluster(_info.planId()),
               VPackSlice(oldHeader->vpack()), builder->slice(), false)) {
         return TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES;
@@ -4144,7 +4147,7 @@ int TRI_document_collection_t::newObjectForInsert(
       VPackValuePair(9ULL, VPackValueType::Custom));
   *p++ = 0xf3;  // custom type for _id
   if (ServerState::isDBServer(trx->serverRole()) &&
-      _info.namec_str()[0] != '_') {
+      _info.name()[0] != '_') {
     // db server in cluster, note: the local collections _statistics,
     // _statisticsRaw and _statistics15 (which are the only system collections)
     // must not be treated as shards but as local collections, we recognise

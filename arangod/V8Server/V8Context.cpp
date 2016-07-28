@@ -87,7 +87,7 @@ void V8Context::handleGlobalContextMethods() {
   }
 
   for (auto& type : copy) {
-    std::string func = GlobalContextMethods::code(type);
+    std::string const& func = GlobalContextMethods::code(type);
 
     LOG(DEBUG) << "executing global context method '" << func
                << "' for context " << _id;

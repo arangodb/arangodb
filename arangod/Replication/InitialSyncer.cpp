@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "InitialSyncer.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/json.h"
 #include "Basics/ReadLocker.h"
@@ -30,6 +31,7 @@
 #include "Indexes/Index.h"
 #include "Indexes/PrimaryIndex.h"
 #include "Logger/Logger.h"
+#include "RestServer/DatabaseFeature.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "Utils/CollectionGuard.h"
@@ -1623,7 +1625,7 @@ int InitialSyncer::handleSyncKeys(TRI_vocbase_col_t* col,
 int InitialSyncer::changeCollection(TRI_vocbase_col_t* col,
                                     VPackSlice const& slice) {
   arangodb::CollectionGuard guard(_vocbase, col->_cid);
-  bool doSync = _vocbase->_settings.forceSyncProperties;
+  bool doSync = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database")->forceSyncProperties();
   return guard.collection()->_collection->updateCollectionInfo(_vocbase, slice, doSync);
 }
  
@@ -1754,7 +1756,7 @@ int InitialSyncer::handleCollection(VPackSlice const& parameters,
           // regular collection
           setProgress("dropping " + collectionMsg);
 
-          int res = TRI_DropCollectionVocBase(_vocbase, col, true);
+          int res = _vocbase->dropCollection(col, true);
 
           if (res != TRI_ERROR_NO_ERROR) {
             errorMsg = "unable to drop " + collectionMsg + ": " +

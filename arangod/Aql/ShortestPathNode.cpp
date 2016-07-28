@@ -310,7 +310,7 @@ void ShortestPathNode::toVelocyPackHelper(VPackBuilder& nodes,
                                           bool verbose) const {
   ExecutionNode::toVelocyPackHelperGeneric(nodes,
                                            verbose);  // call base class method
-  nodes.add("database", VPackValue(_vocbase->_name));
+  nodes.add("database", VPackValue(_vocbase->name()));
   {
     // TODO Remove _graphJson
     auto tmp = arangodb::basics::JsonHelper::toVelocyPack(_graphJson.json());

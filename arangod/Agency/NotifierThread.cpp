@@ -26,7 +26,7 @@
 #include "Agency/NotifierThread.h"
 #include "Agency/NotifyCallback.h"
 #include "Cluster/ClusterComm.h"
-#include "VocBase/server.h"
+#include "VocBase/ticks.h"
 
 using namespace arangodb::consensus;
 

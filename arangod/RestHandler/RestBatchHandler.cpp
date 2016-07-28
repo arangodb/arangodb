@@ -56,7 +56,7 @@ RestHandler::status RestBatchHandler::execute() {
   }
 
   HttpRequest* httpRequest = dynamic_cast<HttpRequest*>(_request);
-  if (_request == nullptr) {
+  if (httpRequest == nullptr) {
     std::cout << "please fix this for vpack" << std::endl;
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   }
@@ -94,11 +94,7 @@ RestHandler::status RestBatchHandler::execute() {
   _response->setContentType(_request->header(StaticStrings::ContentTypeHeader));
 
   // http required here
-  HttpRequest* req = dynamic_cast<HttpRequest*>(_request);
-  if (req == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
-  }
-  std::string const& bodyStr = req->body();
+  std::string const& bodyStr = httpRequest->body();
   // setup some auxiliary structures to parse the multipart message
   MultipartMessage message(boundary.c_str(), boundary.size(), bodyStr.c_str(),
                            bodyStr.c_str() + bodyStr.size());
@@ -167,7 +163,7 @@ RestHandler::status RestBatchHandler::execute() {
     if (bodyLength > 0) {
       LOG(TRACE) << "part body is '" << std::string(bodyStart, bodyLength)
                  << "'";
-      httpRequest->setBody(bodyStart, bodyLength);
+      request->setBody(bodyStart, bodyLength);
     }
 
     if (!authorization.empty()) {

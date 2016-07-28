@@ -11,8 +11,12 @@
 # (to sample for 60 seconds). A file "perf.data" is written to the 
 # current directory.
 # Dump the events in this file with
-#   sudo perf script
+#   sudo perf script > perf.history
 # This logs the times when individual threads hit the events.
+# Use the program perfanalyis.cpp in this directory in the following way:
+#   sudo ./perfanalyis < perf.history > perf.statistics
+# This will group enter and exit events of functions together, compute
+# the time spent and sort by function.
 # Remove all events with
 #   sudo perf probe -d "probe_arangod:*"
 # List events with
@@ -48,5 +52,14 @@ addEvent documentCoordinator
 
 echo work method in HttpServerJob
 addEvent workHttpServerJob work@HttpServerJob.cpp
+
+echo work method in RestDocumentHandler
+addEvent executeRestReadDocument readDocument@RestDocumentHandler.cpp
+addEvent executeRestInsertDocument createDocument@RestDocumentHandler.cpp
+addEvent handleRequest handleRequest@HttpServer.cpp
+addEvent handleWrite handleWrite@SocketTask.cpp
+
+addEvent tcp_sendmsg
+addEvent tcp_recvmsg
 
 echo Done.

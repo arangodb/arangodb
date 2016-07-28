@@ -35,7 +35,7 @@
 #include "Logger/Logger.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
-#include "VocBase/server.h"
+#include "VocBase/ticks.h"
 
 #include <velocypack/Dumper.h>
 #include <velocypack/velocypack-aliases.h>
@@ -98,7 +98,6 @@ void RestAqlHandler::createQueryFromVelocyPack() {
   QueryResult res = query->prepare(_queryRegistry);
   if (res.code != TRI_ERROR_NO_ERROR) {
     LOG(ERR) << "failed to instantiate the query: " << res.details;
-
     generateError(GeneralResponse::ResponseCode::BAD,
                   TRI_ERROR_QUERY_BAD_JSON_PLAN, res.details);
     delete query;
@@ -114,14 +113,12 @@ void RestAqlHandler::createQueryFromVelocyPack() {
     ttl = arangodb::basics::StringUtils::doubleDecimal(ttlstring);
   }
 
-  // query id not set, now generate a new one
   _qId = TRI_NewTickServer();
 
   try {
     _queryRegistry->insert(_qId, query, ttl);
   } catch (...) {
     LOG(ERR) << "could not keep query in registry";
-
     generateError(GeneralResponse::ResponseCode::BAD, TRI_ERROR_INTERNAL,
                   "could not keep query in registry");
     delete query;
@@ -312,7 +309,7 @@ void RestAqlHandler::createQueryFromString() {
                          (part == "main" ? PART_MAIN : PART_DEPENDENT));
   QueryResult res = query->prepare(_queryRegistry);
   if (res.code != TRI_ERROR_NO_ERROR) {
-    LOG(ERR) << "failed to instantiate the Query: " << res.details;
+    LOG(ERR) << "failed to instantiate the query: " << res.details;
     generateError(GeneralResponse::ResponseCode::BAD,
                   TRI_ERROR_QUERY_BAD_JSON_PLAN, res.details);
     delete query;
@@ -329,6 +326,7 @@ void RestAqlHandler::createQueryFromString() {
   }
 
   _qId = TRI_NewTickServer();
+
   try {
     _queryRegistry->insert(_qId, query, ttl);
   } catch (...) {

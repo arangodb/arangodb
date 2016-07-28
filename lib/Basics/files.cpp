@@ -1660,11 +1660,9 @@ std::string TRI_LocateBinaryPath(char const* argv0) {
       files = TRI_SplitString(p, ':');
 
       for (i = 0; i < files._length; ++i) {
+        char* prefix = files._buffer[i];
+
         char* full;
-        char* prefix;
-
-        prefix = files._buffer[i];
-
         if (*prefix) {
           full = TRI_Concatenate2File(prefix, argv0);
         } else {

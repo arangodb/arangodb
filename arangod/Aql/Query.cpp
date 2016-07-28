@@ -21,7 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Aql/Query.h"
+#include "Query.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -50,10 +50,13 @@
 #include "V8Server/V8DealerFeature.h"
 #include "VocBase/Graphs.h"
 #include "VocBase/vocbase.h"
-#include "VocBase/vocbase.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
+
+namespace {
+static std::atomic<TRI_voc_tick_t> NextQueryId(1);
+}
 
 /// @brief empty string singleton
 static char const* EmptyString = "";
@@ -79,13 +82,11 @@ static_assert(sizeof(StateNames) / sizeof(std::string) ==
 /// @brief create a profile
 Profile::Profile(Query* query)
     : query(query), results(), stamp(query->startTime()), tracked(false) {
-  auto queryList = static_cast<QueryList*>(query->vocbase()->_queries);
+  auto queryList = query->vocbase()->queryList();
 
-  if (queryList != nullptr) {
-    try {
-      tracked = queryList->insert(query, stamp);
-    } catch (...) {
-    }
+  try {
+    tracked = queryList->insert(query, stamp);
+  } catch (...) {
   }
 }
 
@@ -93,13 +94,11 @@ Profile::Profile(Query* query)
 Profile::~Profile() {
   // only remove from list when the query was inserted into it...
   if (tracked) {
-    auto queryList = static_cast<QueryList*>(query->vocbase()->_queries);
+    auto queryList = query->vocbase()->queryList();
 
-    if (queryList != nullptr) {
-      try {
-        queryList->remove(query, stamp);
-      } catch (...) {
-      }
+    try {
+      queryList->remove(query, stamp);
+     } catch (...) {
     }
   }
 }
@@ -1224,7 +1223,7 @@ void Query::init() {
   TRI_ASSERT(_id == 0);
   TRI_ASSERT(_ast == nullptr);
 
-  _id = TRI_NextQueryIdVocBase(_vocbase);
+  _id = Query::NextId();
 
   TRI_ASSERT(_profile == nullptr);
   _profile = new Profile(this);
@@ -1479,4 +1478,9 @@ Graph const* Query::lookupGraphByName(std::string const& name) {
   _graphs.emplace(name, g.get());
 
   return g.release();
+}
+
+/// @brief returns the next query id
+TRI_voc_tick_t Query::NextId() {
+  return NextQueryId.fetch_add(1, std::memory_order_seq_cst);
 }

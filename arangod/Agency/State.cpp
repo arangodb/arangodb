@@ -282,7 +282,7 @@ bool State::createCollections() {
 /// Check collection by name
 bool State::checkCollection(std::string const& name) {
   if (!_collectionsChecked) {
-    return (TRI_LookupCollectionByNameVocBase(_vocbase, name) != nullptr);
+    return (_vocbase->lookupCollection(name) != nullptr);
   }
   return true;
 }
@@ -296,8 +296,7 @@ bool State::createCollection(std::string const& name) {
 
   VocbaseCollectionInfo parameters(_vocbase, name.c_str(),
                                    TRI_COL_TYPE_DOCUMENT, body.slice(), false);
-  TRI_vocbase_col_t const* collection =
-      TRI_CreateCollectionVocBase(_vocbase, parameters, parameters.id(), true);
+  TRI_vocbase_col_t const* collection = _vocbase->createCollection(parameters, parameters.id(), true);
 
   if (collection == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_errno(), "cannot create collection");

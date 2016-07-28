@@ -68,16 +68,11 @@ VelocyPackCursor::VelocyPackCursor(TRI_vocbase_t* vocbase, CursorId id,
                                    std::shared_ptr<VPackBuilder> extra,
                                    double ttl, bool hasCount)
     : Cursor(id, batchSize, extra, ttl, hasCount),
-      _vocbase(vocbase),
+      _vocbaseGuard(vocbase),
       _result(std::move(result)),
       _iterator(_result.result->slice()),
       _cached(_result.cached) {
   TRI_ASSERT(_result.result->slice().isArray());
-  TRI_UseVocBase(vocbase);
-}
-
-VelocyPackCursor::~VelocyPackCursor() {
-  TRI_ReleaseVocBase(_vocbase);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -200,15 +195,13 @@ ExportCursor::ExportCursor(TRI_vocbase_t* vocbase, CursorId id,
                            arangodb::CollectionExport* ex, size_t batchSize,
                            double ttl, bool hasCount)
     : Cursor(id, batchSize, nullptr, ttl, hasCount),
-      _vocbase(vocbase),
+      _vocbaseGuard(vocbase),
       _ex(ex),
       _size(ex->_documents->size()) {
-  TRI_UseVocBase(vocbase);
 }
 
 ExportCursor::~ExportCursor() {
   delete _ex;
-  TRI_ReleaseVocBase(_vocbase);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -272,7 +265,7 @@ static bool IncludeAttribute(
 ////////////////////////////////////////////////////////////////////////////////
 
 void ExportCursor::dump(arangodb::basics::StringBuffer& buffer) {
-  auto transactionContext = std::make_shared<StandaloneTransactionContext>(_vocbase);
+  auto transactionContext = std::make_shared<StandaloneTransactionContext>(_vocbaseGuard.vocbase());
   VPackOptions* options = transactionContext->getVPackOptions();
 
   TRI_ASSERT(_ex != nullptr);

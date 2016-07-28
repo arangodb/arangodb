@@ -23,6 +23,7 @@
 
 #include "LogfileManager.h"
 
+#include "ApplicationFeatures/PageSizeFeature.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
 #include "Basics/MutexLocker.h"
@@ -37,8 +38,8 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RestServer/DatabaseServerFeature.h"
-#include "VocBase/server.h"
+#include "RestServer/DatabasePathFeature.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 #include "Wal/AllocatorThread.h"
 #include "Wal/CollectorThread.h"
 #include "Wal/RecoverState.h"
@@ -85,7 +86,6 @@ static inline uint32_t MaxSlots() { return 1024 * 1024 * 16; }
 // create the logfile manager
 LogfileManager::LogfileManager(ApplicationServer* server)
     : ApplicationFeature(server, "LogfileManager"),
-      _server(nullptr),
       _recoverState(nullptr),
       _allowWrites(false),  // start in read-only mode
       _hasFoundLastTick(false),
@@ -114,8 +114,12 @@ LogfileManager::LogfileManager(ApplicationServer* server)
 
   setOptional(false);
   requiresElevatedPrivileges(false);
-  startsAfter("DatabaseServer");
-  startsAfter("QueryRegistry");
+  startsAfter("DatabasePath");
+  startsAfter("EngineSelector");
+
+  for (auto const& it : EngineSelectorFeature::availableEngines()) {
+    startsAfter(it);
+  }
 
   _transactions.reserve(32);
   _failedTransactions.reserve(32);
@@ -240,8 +244,8 @@ void LogfileManager::validateOptions(std::shared_ptr<options::ProgramOptions> op
 }
   
 void LogfileManager::prepare() {
-  DatabaseFeature* database = ApplicationServer::getFeature<DatabaseFeature>("Database");
-  _databasePath = database->directory();
+  auto databasePath = ApplicationServer::getFeature<DatabasePathFeature>("DatabasePath");
+  _databasePath = databasePath->directory();
 
   std::string const shutdownFile = shutdownFilename();
   bool const shutdownFileExists = basics::FileUtils::exists(shutdownFile);
@@ -264,30 +268,13 @@ void LogfileManager::prepare() {
 void LogfileManager::start() {
   Instance = this;
 
-  _server = DatabaseServerFeature::SERVER;
-  TRI_ASSERT(_server != nullptr);
-
   // needs server initialized
-  _filesize = static_cast<uint32_t>(((_filesize + PageSize - 1) / PageSize) * PageSize);
+  size_t pageSize = PageSizeFeature::getPageSize();
+  _filesize = static_cast<uint32_t>(((_filesize + pageSize - 1) / pageSize) * pageSize);
 
   if (_directory.empty()) {
     // use global configuration variable
     _directory = _databasePath;
-
-    if (!basics::FileUtils::isDirectory(_directory)) {
-      std::string systemErrorStr;
-      long errorNo;
-
-      int res = TRI_CreateRecursiveDirectory(_directory.c_str(), errorNo,
-                                             systemErrorStr);
-
-      if (res == TRI_ERROR_NO_ERROR) {
-        LOG(INFO) << "created database directory '" << _directory << "'.";
-      } else {
-        LOG(FATAL) << "unable to create database directory: " << systemErrorStr;
-        FATAL_ERROR_EXIT();
-      }
-    }
 
     // append "/journals"
     if (_directory[_directory.size() - 1] != TRI_DIR_SEPARATOR_CHAR) {
@@ -311,7 +298,7 @@ void LogfileManager::start() {
   
   // initialize some objects
   _slots = new Slots(this, _numberOfSlots, 0);
-  _recoverState = new RecoverState(_server, _ignoreRecoveryErrors);
+  _recoverState = new RecoverState(_ignoreRecoveryErrors);
 
   TRI_ASSERT(!_allowWrites);
 
@@ -443,8 +430,9 @@ bool LogfileManager::open() {
   // tell the allocator that the recovery is over now
   _allocatorThread->recoveryDone();
 
-  // unload all collections to reset statistics, start compactor threads etc.
-  res = TRI_InitDatabasesServer(_server);
+  // start compactor threads etc.
+  auto databaseFeature = ApplicationServer::getFeature<DatabaseFeature>("Database");
+  res = databaseFeature->recoveryDone();
 
   if (res != TRI_ERROR_NO_ERROR) {
     LOG(FATAL) << "could not initialize databases: " << TRI_errno_string(res);
@@ -1885,7 +1873,7 @@ void LogfileManager::stopAllocatorThread() {
 
 // start the collector thread
 int LogfileManager::startCollectorThread() {
-  _collectorThread = new CollectorThread(this, _server);
+  _collectorThread = new CollectorThread(this);
 
   if (!_collectorThread->start()) {
     delete _collectorThread;

@@ -287,6 +287,9 @@ class ConditionalReadLocker {
     }
     return false;
   }
+  
+  static constexpr bool DoLock() { return true; }
+  static constexpr bool DoNotLock() { return false; }
 
  private:
   //////////////////////////////////////////////////////////////////////////////

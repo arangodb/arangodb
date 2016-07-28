@@ -87,7 +87,7 @@ static char const* NameFromCid(TRI_replication_dump_t* dump,
   }
 
   // collection name not in cache yet
-  std::string name(TRI_GetCollectionNameByIdVocBase(dump->_vocbase, cid));
+  std::string name(dump->_vocbase->collectionName(cid));
 
   if (!name.empty()) {
     // insert into cache

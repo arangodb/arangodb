@@ -32,7 +32,6 @@
 #include "Agency/State.h"
 #include "Agency/Store.h"
 
-struct TRI_server_t;
 struct TRI_vocbase_t;
 
 namespace arangodb {
@@ -136,9 +135,6 @@ class Agent : public arangodb::Thread {
 
  private:
   Agent& operator=(VPackSlice const&);
-
-  /// @brief This server (need endpoint)
-  TRI_server_t* _server;
 
   /// @brief Vocbase for agency persistence
   TRI_vocbase_t* _vocbase;

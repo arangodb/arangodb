@@ -26,7 +26,6 @@
 #include "Basics/ConditionLocker.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
-#include "VocBase/server.h"
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Iterator.h>
@@ -339,7 +338,7 @@ bool Agent::load() {
   DatabaseFeature* database =
       ApplicationServer::getFeature<DatabaseFeature>("Database");
 
-  auto vocbase = database->vocbase();
+  auto vocbase = database->systemDatabase();
   if (vocbase == nullptr) {
     LOG_TOPIC(FATAL, Logger::AGENCY) << "could not determine _system database";
     FATAL_ERROR_EXIT();

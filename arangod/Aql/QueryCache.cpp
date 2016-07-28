@@ -242,12 +242,6 @@ void QueryCacheDatabaseEntry::invalidate(std::string const& collection) {
   _entriesByCollection.erase(it);
 }
 
-/// @brief invalidate all entries for a collection in the database-specific
-/// cache
-void QueryCacheDatabaseEntry::invalidate(char const* collection) {
-  return invalidate(std::string(collection));
-}
-
 /// @brief enforce maximum number of results
 void QueryCacheDatabaseEntry::enforceMaxResults(size_t value) {
   while (_numElements > value) {
@@ -448,7 +442,7 @@ void QueryCache::invalidate(TRI_vocbase_t* vocbase,
 }
 
 /// @brief invalidate all queries for a particular collection
-void QueryCache::invalidate(TRI_vocbase_t* vocbase, char const* collection) {
+void QueryCache::invalidate(TRI_vocbase_t* vocbase, std::string const& collection) {
   auto const part = getPart(vocbase);
   WRITE_LOCKER(writeLocker, _entriesLock[part]);
 

@@ -24,58 +24,151 @@
 #define APPLICATION_FEATURES_DATABASE_FEATURE_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "Basics/DataProtector.h"
+#include "Basics/Mutex.h"
+#include "Basics/Thread.h"
+#include "VocBase/voc-types.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
 
 struct TRI_vocbase_t;
 
 namespace arangodb {
+class DatabaseManagerThread;
+
+namespace aql {
+class QueryRegistry;
+}
+
+class DatabaseManagerThread : public Thread {
+ public:
+  DatabaseManagerThread(DatabaseManagerThread const&) = delete;
+  DatabaseManagerThread& operator=(DatabaseManagerThread const&) = delete;
+
+  DatabaseManagerThread(); 
+  ~DatabaseManagerThread();
+
+  void run() override;
+
+ private:
+  // how long will the thread pause between iterations
+  static constexpr unsigned long waitTime() {
+    return 500 * 1000;
+  }
+};
+
 class DatabaseFeature final : public application_features::ApplicationFeature {
+ friend class DatabaseManagerThread;
+
  public:
   static DatabaseFeature* DATABASE;
 
  public:
   explicit DatabaseFeature(application_features::ApplicationServer* server);
+  ~DatabaseFeature();
 
  public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
+  void prepare() override final;
   void start() override final;
   void unprepare() override final;
 
- public:
-  TRI_vocbase_t* vocbase() const { return _vocbase; }
+  int recoveryDone();
 
+ public:
+   /// @brief get the ids of all local coordinator databases
+  std::vector<TRI_voc_tick_t> getDatabaseIdsCoordinator(bool includeSystem);
+  std::vector<TRI_voc_tick_t> getDatabaseIds(bool includeSystem);
+  std::vector<std::string> getDatabaseNames();
+  std::vector<std::string> getDatabaseNamesForUser(std::string const& user);
+
+  int createDatabaseCoordinator(TRI_voc_tick_t id, std::string const& name, TRI_vocbase_t*& result);
+  int createDatabase(TRI_voc_tick_t id, std::string const& name, bool writeMarker, TRI_vocbase_t*& result);
+  int dropDatabaseCoordinator(TRI_voc_tick_t id, bool force);
+  int dropDatabase(std::string const& name, bool writeMarker, bool waitForDeletion, bool removeAppsDirectory);
+  int dropDatabase(TRI_voc_tick_t id, bool writeMarker, bool waitForDeletion, bool removeAppsDirectory);
+
+  TRI_vocbase_t* useDatabaseCoordinator(std::string const& name);
+  TRI_vocbase_t* useDatabaseCoordinator(TRI_voc_tick_t id);
+  TRI_vocbase_t* useDatabase(std::string const& name);
+  TRI_vocbase_t* useDatabase(TRI_voc_tick_t id);
+
+  TRI_vocbase_t* lookupDatabase(std::string const& name);
+
+  void useSystemDatabase();
+  TRI_vocbase_t* systemDatabase() const { return _vocbase; }
   bool ignoreDatafileErrors() const { return _ignoreDatafileErrors; }
   bool isInitiallyEmpty() const { return _isInitiallyEmpty; }
+  bool checkVersion() const { return _checkVersion; }
+  bool upgrade() const { return _upgrade; }
+  bool forceSyncProperties() const { return _forceSyncProperties; }
+  void forceSyncProperties(bool value) { _forceSyncProperties = value; }
+  bool waitForSync() const { return _defaultWaitForSync; }
+  uint64_t maximalJournalSize() const { return _maximalJournalSize; }
 
   void disableReplicationApplier() { _replicationApplier = false; }
-  void disableCompactor() { _disableCompactor = true; }
   void enableCheckVersion() { _checkVersion = true; }
   void enableUpgrade() { _upgrade = true; }
+ 
+ private:
+  void closeDatabases();
+  void updateContexts();
 
-  std::string const& directory() { return _directory; }
+  /// @brief create base app directory
+  int createBaseApplicationDirectory(std::string const& appPath, std::string const& type);
+  
+  /// @brief create app subdirectory for a database
+  int createApplicationDirectory(std::string const& name, std::string const& basePath);
+
+  /// @brief iterate over all databases in the databases directory and open them
+  int iterateDatabases(arangodb::velocypack::Slice const& databases);
+
+  /// @brief close all opened databases
+  void closeOpenDatabases();
+
+  /// @brief close all dropped databases
+  void closeDroppedDatabases();
+
+  void verifyAppPaths();
+
+  /// @brief activates deadlock detection in all existing databases
+  void enableDeadlockDetection();
+
+  /// @brief writes a create-database marker into the log
+  int writeCreateMarker(TRI_voc_tick_t id, VPackSlice const& slice);
+  
+  /// @brief writes a drop-database marker into the log
+  int writeDropMarker(TRI_voc_tick_t id);
 
  private:
-  std::string _directory;
   uint64_t _maximalJournalSize;
   bool _defaultWaitForSync;
   bool _forceSyncProperties;
   bool _ignoreDatafileErrors;
   bool _throwCollectionNotLoadedError;
 
- private:
-  void openDatabases();
-  void closeDatabases();
-  void updateContexts();
-  void shutdownCompactor();
-
- private:
   TRI_vocbase_t* _vocbase;
-  std::string _databasePath;
+  std::unique_ptr<DatabaseManagerThread> _databaseManager;
+
+  std::atomic<DatabasesLists*> _databasesLists; 
+  // TODO: Make this again a template once everybody has gcc >= 4.9.2
+  // arangodb::basics::DataProtector<64>
+  arangodb::basics::DataProtector _databasesProtector;
+  arangodb::Mutex _databasesMutex;
+
   bool _isInitiallyEmpty;
   bool _replicationApplier;
-  bool _disableCompactor;
   bool _checkVersion;
+  bool _iterateMarkersOnOpen;
   bool _upgrade;
+
+  /// @brief lock for serializing the creation of databases
+  arangodb::Mutex _databaseCreateLock;
+
+ public:
+  static uint32_t const DefaultIndexBuckets;
 };
 }
 

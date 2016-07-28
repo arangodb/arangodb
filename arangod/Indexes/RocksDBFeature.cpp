@@ -28,7 +28,7 @@
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
-#include "RestServer/DatabaseFeature.h"
+#include "RestServer/DatabasePathFeature.h"
   
 #include <rocksdb/db.h>
 #include <rocksdb/convenience.h>
@@ -65,6 +65,7 @@ RocksDBFeature::RocksDBFeature(
   setOptional(true);
   requiresElevatedPrivileges(false);
   startsAfter("LogfileManager");
+  startsAfter("DatabasePath");
 }
 
 RocksDBFeature::~RocksDBFeature() {
@@ -206,10 +207,9 @@ void RocksDBFeature::start() {
     return;
   }
 
-  // set the database path
-  DatabaseFeature* database = ApplicationServer::getFeature<DatabaseFeature>("Database");
-
-  _path = arangodb::basics::FileUtils::buildFilename(database->directory(), "rocksdb");
+  // set the database sub-directory for RocksDB
+  auto database = ApplicationServer::getFeature<DatabasePathFeature>("DatabasePath");
+  _path = database->subdirectoryName("rocksdb");
   
   LOG(TRACE) << "initializing rocksdb, path: " << _path;
   

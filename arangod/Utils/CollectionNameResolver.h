@@ -98,7 +98,7 @@ class CollectionNameResolver {
     // We have to look up the collection info:
     ClusterInfo* ci = ClusterInfo::instance();
     std::shared_ptr<CollectionInfo> cinfo =
-        ci->getCollection(DatabaseID(_vocbase->_name), name);
+        ci->getCollection(_vocbase->name(), name);
     if (cinfo->empty()) {
       return 0;
     }
@@ -150,8 +150,7 @@ class CollectionNameResolver {
       return (*it).second;
     }
 
-    TRI_vocbase_col_t const* collection =
-        TRI_LookupCollectionByNameVocBase(_vocbase, name);
+    TRI_vocbase_col_t const* collection = _vocbase->lookupCollection(name);
 
     if (collection != nullptr) {
       _resolvedNames.emplace(name, collection);
@@ -181,7 +180,7 @@ class CollectionNameResolver {
     // We have to look up the collection info:
     ClusterInfo* ci = ClusterInfo::instance();
     std::shared_ptr<CollectionInfo> cinfo =
-        ci->getCollection(DatabaseID(_vocbase->_name), name);
+        ci->getCollection(_vocbase->name(), name);
     if (cinfo->empty()) {
       return TRI_COL_TYPE_UNKNOWN;
     }
@@ -241,7 +240,7 @@ class CollectionNameResolver {
     while (tries++ < 2) {
       std::shared_ptr<CollectionInfo> ci =
           ClusterInfo::instance()->getCollection(
-              _vocbase->_name, arangodb::basics::StringUtils::itoa(cid));
+              _vocbase->name(), arangodb::basics::StringUtils::itoa(cid));
       name = ci->name();
 
       if (name.empty()) {
@@ -282,12 +281,12 @@ class CollectionNameResolver {
       auto it = _vocbase->_collectionsById.find(cid);
 
       if (it != _vocbase->_collectionsById.end()) {
-        if ((*it).second->_planId == 0) {
+        if ((*it).second->planId() == 0) {
           // DBserver local case
           name = (*it).second->name();
         } else {
           // DBserver case of a shard:
-          name = arangodb::basics::StringUtils::itoa((*it).second->_planId);
+          name = arangodb::basics::StringUtils::itoa((*it).second->planId());
           std::shared_ptr<CollectionInfo> ci =
               ClusterInfo::instance()->getCollection((*it).second->_dbName, name);
           name = ci->name();  // can be empty, if collection unknown
@@ -295,7 +294,7 @@ class CollectionNameResolver {
       }
     } else {
       // exactly as in the non-cluster case
-      name = TRI_GetCollectionNameByIdVocBase(_vocbase, cid);
+      name = _vocbase->collectionName(cid);
     }
 
     if (name.empty()) {

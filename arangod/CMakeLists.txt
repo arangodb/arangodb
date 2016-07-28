@@ -207,6 +207,10 @@ add_executable(${BIN_ARANGOD}
   Indexes/PrimaryIndex.cpp
   Indexes/SimpleAttributeEqualityMatcher.cpp
   Indexes/SkiplistIndex.cpp
+  ReadCache/CollectionRevisionCache.cpp
+  ReadCache/GlobalRevisionCache.cpp
+  ReadCache/GlobalRevisionCacheChunk.cpp
+  ReadCache/RevisionReader.cpp
   Replication/ContinuousSyncer.cpp
   Replication/InitialSyncer.cpp
   Replication/Syncer.cpp
@@ -240,14 +244,16 @@ add_executable(${BIN_ARANGOD}
   RestServer/ConsoleFeature.cpp
   RestServer/ConsoleThread.cpp
   RestServer/DatabaseFeature.cpp
-  RestServer/DatabaseServerFeature.cpp
+  RestServer/DatabasePathFeature.cpp
   RestServer/EndpointFeature.cpp
   RestServer/FileDescriptorsFeature.cpp
   RestServer/FrontendFeature.cpp
   RestServer/InitDatabaseFeature.cpp
+  RestServer/LockfileFeature.cpp
   RestServer/QueryRegistryFeature.cpp
   RestServer/ScriptFeature.cpp
   RestServer/ServerFeature.cpp
+  RestServer/ServerIdFeature.cpp
   RestServer/UnitTestsFeature.cpp
   RestServer/UpgradeFeature.cpp
   RestServer/VocbaseContext.cpp
@@ -265,6 +271,9 @@ add_executable(${BIN_ARANGOD}
   Scheduler/TimerTask.cpp
   Statistics/StatisticsFeature.cpp
   Statistics/statistics.cpp
+  StorageEngine/EngineSelectorFeature.cpp
+  StorageEngine/MMFilesEngine.cpp
+  StorageEngine/OtherEngine.cpp
   Utils/AqlTransaction.cpp
   Utils/CollectionExport.cpp
   Utils/CollectionKeys.cpp
@@ -299,26 +308,27 @@ add_executable(${BIN_ARANGOD}
   V8Server/v8-voccursor.cpp
   V8Server/v8-vocindex.cpp
   VocBase/AuthInfo.cpp
+  VocBase/CleanupThread.cpp
   VocBase/DatafileStatistics.cpp
   VocBase/Ditch.cpp
   VocBase/EdgeCollectionInfo.cpp
   VocBase/Graphs.cpp
+  VocBase/IndexPoolFeature.cpp
   VocBase/KeyGenerator.cpp
   VocBase/MasterPointers.cpp
   VocBase/PathEnumerator.cpp
   VocBase/SingleServerTraverser.cpp
   VocBase/Traverser.cpp
-  VocBase/cleanup.cpp
   VocBase/collection.cpp
   VocBase/compactor.cpp
   VocBase/datafile.cpp
   VocBase/document-collection.cpp
+  VocBase/modes.cpp
   VocBase/replication-applier.cpp
   VocBase/replication-common.cpp
   VocBase/replication-dump.cpp
-  VocBase/server.cpp
+  VocBase/ticks.cpp
   VocBase/transaction.cpp
-  VocBase/vocbase-defaults.cpp
   VocBase/vocbase.cpp
   Wal/AllocatorThread.cpp
   Wal/CollectorThread.cpp

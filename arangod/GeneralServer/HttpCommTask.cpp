@@ -31,7 +31,7 @@
 #include "GeneralServer/RestHandlerFactory.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
-#include "VocBase/server.h"
+#include "VocBase/ticks.h"  //clock
 
 using namespace arangodb;
 using namespace arangodb::basics;

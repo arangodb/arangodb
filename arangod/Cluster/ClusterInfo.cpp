@@ -2471,7 +2471,7 @@ void FollowerInfo::add(ServerID const& sid) {
   // Now tell the agency, path is
   //   Current/Collections/<dbName>/<collectionID>/<shardID>
   std::string path = "Current/Collections/";
-  path += _docColl->_vocbase->_name;
+  path += _docColl->_vocbase->name();
   path += "/";
   path += std::to_string(_docColl->_info.planId());
   path += "/";
@@ -2488,7 +2488,7 @@ void FollowerInfo::add(ServerID const& sid) {
       velocypack::Slice currentEntry =
         res.slice()[0].get(std::vector<std::string>(
           {AgencyComm::prefix(), "Current", "Collections",
-              _docColl->_vocbase->_name,
+              _docColl->_vocbase->name(),
               std::to_string(_docColl->_info.planId()),
               _docColl->_info.name()}));
       
@@ -2500,7 +2500,7 @@ void FollowerInfo::add(ServerID const& sid) {
       } else {
         auto newValue = newShardEntry(currentEntry, sid, true);
         std::string key = "Current/Collections/" +
-                          std::string(_docColl->_vocbase->_name) + "/" +
+                          _docColl->_vocbase->name() + "/" +
                           std::to_string(_docColl->_info.planId()) + "/" +
                           _docColl->_info.name();
         AgencyWriteTransaction trx;
@@ -2553,7 +2553,7 @@ void FollowerInfo::remove(ServerID const& sid) {
   // Now tell the agency, path is
   //   Current/Collections/<dbName>/<collectionID>/<shardID>
   std::string path = "Current/Collections/";
-  path += _docColl->_vocbase->_name;
+  path += _docColl->_vocbase->name();
   path += "/";
   path += std::to_string(_docColl->_info.planId());
   path += "/";
@@ -2569,7 +2569,7 @@ void FollowerInfo::remove(ServerID const& sid) {
       velocypack::Slice currentEntry =
         res.slice()[0].get(std::vector<std::string>(
           {AgencyComm::prefix(), "Current", "Collections",
-              _docColl->_vocbase->_name,
+              _docColl->_vocbase->name(),
               std::to_string(_docColl->_info.planId()),
               _docColl->_info.name()}));
 
@@ -2581,7 +2581,7 @@ void FollowerInfo::remove(ServerID const& sid) {
       } else {
         auto newValue = newShardEntry(currentEntry, sid, false);
         std::string key = "Current/Collections/" +
-                          std::string(_docColl->_vocbase->_name) + "/" +
+                          _docColl->_vocbase->name() + "/" +
                           std::to_string(_docColl->_info.planId()) + "/" +
                           _docColl->_info.name();
         AgencyWriteTransaction trx;

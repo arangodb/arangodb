@@ -26,7 +26,7 @@
 
 #include "Basics/Common.h"
 #include "VocBase/replication-applier.h"
-#include "VocBase/server.h"
+#include "VocBase/ticks.h"
 #include "VocBase/transaction.h"
 
 class TRI_replication_applier_configuration_t;

@@ -33,9 +33,7 @@
 #include "Rest/GeneralResponse.h"
 #include "Rest/Version.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RestServer/DatabaseServerFeature.h"
 #include "V8Server/V8DealerFeature.h"
-#include "VocBase/server.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -114,9 +112,8 @@ static void raceForClusterBootstrap() {
 
     LOG_TOPIC(DEBUG, Logger::STARTUP)
         << "raceForClusterBootstrap: race won, we do the bootstrap";
-    auto vocbase = DatabaseFeature::DATABASE->vocbase();
-    V8DealerFeature::DEALER->loadJavascriptFiles(
-        vocbase, "server/bootstrap/cluster-bootstrap.js", 0);
+    auto vocbase = DatabaseFeature::DATABASE->systemDatabase();
+    V8DealerFeature::DEALER->loadJavascriptFiles(vocbase, "server/bootstrap/cluster-bootstrap.js", 0);
 
     LOG_TOPIC(DEBUG, Logger::STARTUP)
         << "raceForClusterBootstrap: bootstrap done";
@@ -136,7 +133,7 @@ static void raceForClusterBootstrap() {
 }
 
 void BootstrapFeature::start() {
-  auto vocbase = DatabaseFeature::DATABASE->vocbase();
+  auto vocbase = DatabaseFeature::DATABASE->systemDatabase();
 
   auto ss = ServerState::instance();
   if (ss->isCoordinator()) {
@@ -169,34 +166,25 @@ void BootstrapFeature::start() {
 }
 
 void BootstrapFeature::unprepare() {
-  auto server =
-      ApplicationServer::getFeature<DatabaseServerFeature>("DatabaseServer");
-
-  TRI_server_t* s = server->SERVER;
-
   // notify all currently running queries about the shutdown
+  auto databaseFeature = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
+
   if (ServerState::instance()->isCoordinator()) {
-    std::vector<TRI_voc_tick_t> ids =
-        TRI_GetIdsCoordinatorDatabaseServer(s, true);
-    for (auto& id : ids) {
-      TRI_vocbase_t* vocbase = TRI_UseByIdCoordinatorDatabaseServer(s, id);
+    for (auto& id : databaseFeature->getDatabaseIdsCoordinator(true)) {
+      TRI_vocbase_t* vocbase = databaseFeature->useDatabase(id);
 
       if (vocbase != nullptr) {
-        vocbase->_queries->killAll(true);
-        TRI_ReleaseVocBase(vocbase);
+        vocbase->queryList()->killAll(true);
+        vocbase->release();
       }
     }
   } else {
-    std::vector<std::string> names;
-    int res = TRI_GetDatabaseNamesServer(s, names);
-    if (res == TRI_ERROR_NO_ERROR) {
-      for (auto& name : names) {
-        TRI_vocbase_t* vocbase = TRI_UseDatabaseServer(s, name.c_str());
+    for (auto& name : databaseFeature->getDatabaseNames()) {
+      TRI_vocbase_t* vocbase = databaseFeature->useDatabase(name);
 
-        if (vocbase != nullptr) {
-          vocbase->_queries->killAll(true);
-          TRI_ReleaseVocBase(vocbase);
-        }
+      if (vocbase != nullptr) {
+        vocbase->queryList()->killAll(true);
+        vocbase->release();
       }
     }
   }

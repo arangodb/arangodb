@@ -23,18 +23,17 @@
 
 #include "Supervision.h"
 
-#include "Agent.h"
-#include "CleanOutServer.h"
-#include "FailedLeader.h"
-#include "FailedServer.h"
-#include "MoveShard.h"
-#include "Job.h"
-#include "Store.h"
-
+#include "Agency/Agent.h"
+#include "Agency/CleanOutServer.h"
+#include "Agency/FailedLeader.h"
+#include "Agency/FailedServer.h"
+#include "Agency/MoveShard.h"
+#include "Agency/Job.h"
+#include "Agency/Store.h"
 #include "Basics/ConditionLocker.h"
-#include "VocBase/server.h"
 
 #include <thread>
+
 using namespace arangodb;
 
 using namespace arangodb::consensus;

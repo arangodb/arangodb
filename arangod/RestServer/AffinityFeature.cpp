@@ -63,12 +63,20 @@ void AffinityFeature::prepare() {
     return;
   }
 
-  DispatcherFeature* dispatcher = 
+#if !(defined(ARANGODB_HAVE_THREAD_AFFINITY) || \
+      defined(ARANGODB_HAVE_THREAD_POLICY))
+
+  LOG(WARN) << "thread affinity is not supported on this operating system";
+  _threadAffinity = 0;
+
+#else
+
+  DispatcherFeature* dispatcher =
       ApplicationServer::getFeature<DispatcherFeature>("Dispatcher");
 
   _nd = (dispatcher != nullptr) ? dispatcher->concurrency() : 0;
 
-  SchedulerFeature* scheduler = 
+  SchedulerFeature* scheduler =
       ApplicationServer::getFeature<SchedulerFeature>("Scheduler");
 
   _ns = (scheduler != nullptr) ? scheduler->concurrency() : 0;
@@ -158,30 +166,24 @@ void AffinityFeature::prepare() {
       dispatcher->setProcessorAffinity(_pd);
     }
   }
+
+#endif
 }
 
 void AffinityFeature::start() {
   if (0 < _threadAffinity) {
     LOG(INFO) << "the server has " << _n << " (hyper) cores, using " << _ns
               << " scheduler thread(s), " << _nd << " dispatcher thread(s)";
-
-    if (0 < _ns) {
-      LOG(DEBUG) << "scheduler cores: " << _ps;
-    }
-
-    if (0 < _nd) {
-      LOG(DEBUG) << "dispatcher cores: " << _pd;
-    }
   } else {
-    DispatcherFeature* dispatcher = 
+    DispatcherFeature* dispatcher =
         ApplicationServer::getFeature<DispatcherFeature>("Dispatcher");
-    SchedulerFeature* scheduler = 
+    SchedulerFeature* scheduler =
         ApplicationServer::getFeature<SchedulerFeature>("Scheduler");
 
     size_t nd = (dispatcher == nullptr ? 0 : dispatcher->concurrency());
     size_t ns = (scheduler == nullptr ? 0 : scheduler->concurrency());
 
     LOG(INFO) << "the server has " << _n << " (hyper) cores, using " << ns
-                << " scheduler thread(s), " << nd << " dispatcher thread(s)";
+              << " scheduler thread(s), " << nd << " dispatcher thread(s)";
   }
 }

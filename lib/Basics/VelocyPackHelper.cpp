@@ -409,7 +409,7 @@ std::shared_ptr<VPackBuilder> VelocyPackHelper::velocyPackFromFile(
   size_t length;
   char* content = TRI_SlurpFile(TRI_UNKNOWN_MEM_ZONE, path.c_str(), &length);
   if (content != nullptr) {
-    // The Parser might THROW
+    // The Parser might throw;
     std::shared_ptr<VPackBuilder> b;
     try {
       auto b = VPackParser::fromJson(reinterpret_cast<uint8_t const*>(content),
@@ -477,10 +477,10 @@ static bool PrintVelocyPack(int fd, VPackSlice const& slice,
 /// @brief writes a VelocyPack to a file
 ////////////////////////////////////////////////////////////////////////////////
 
-bool VelocyPackHelper::velocyPackToFile(char const* filename,
+bool VelocyPackHelper::velocyPackToFile(std::string const& filename,
                                         VPackSlice const& slice,
                                         bool syncFile) {
-  std::string const tmp = std::string(filename) + ".tmp";
+  std::string const tmp = filename + ".tmp";
 
   // remove a potentially existing temporary file
   if (TRI_ExistsFile(tmp.c_str())) {
@@ -525,7 +525,7 @@ bool VelocyPackHelper::velocyPackToFile(char const* filename,
     return false;
   }
 
-  res = TRI_RenameFile(tmp.c_str(), filename);
+  res = TRI_RenameFile(tmp.c_str(), filename.c_str());
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_set_errno(res);

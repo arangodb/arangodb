@@ -23,6 +23,8 @@
 
 #include "collection.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/PageSizeFeature.h"
 #include "Basics/FileUtils.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StringUtils.h"
@@ -33,9 +35,12 @@
 #include "Basics/tri-strings.h"
 #include "Logger/Logger.h"
 #include "Random/RandomGenerator.h"
+#include "RestServer/DatabaseFeature.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/StorageEngine.h"
 #include "VocBase/DatafileHelper.h"
 #include "VocBase/document-collection.h"
-#include "VocBase/server.h"
+#include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Collection.h>
@@ -80,13 +85,44 @@ static uint64_t GetNumericFilenamePart(char const* filename) {
   return StringUtils::uint64(pos2 + 1, pos1 - pos2 - 1);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief updates the parameter info block
-///
-/// You must hold the @ref TRI_WRITE_LOCK_STATUS_VOCBASE_COL when calling this
-/// function.
-////////////////////////////////////////////////////////////////////////////////
+/// @brief checks if a collection name is allowed
+/// Returns true if the name is allowed and false otherwise
+bool TRI_collection_t::IsAllowedName(bool allowSystem, std::string const& name) {
+  bool ok;
+  char const* ptr;
+  size_t length = 0;
 
+  // check allow characters: must start with letter or underscore if system is
+  // allowed
+  for (ptr = name.c_str(); *ptr; ++ptr) {
+    if (length == 0) {
+      if (allowSystem) {
+        ok = (*ptr == '_') || ('a' <= *ptr && *ptr <= 'z') ||
+             ('A' <= *ptr && *ptr <= 'Z');
+      } else {
+        ok = ('a' <= *ptr && *ptr <= 'z') || ('A' <= *ptr && *ptr <= 'Z');
+      }
+    } else {
+      ok = (*ptr == '_') || (*ptr == '-') || ('0' <= *ptr && *ptr <= '9') ||
+           ('a' <= *ptr && *ptr <= 'z') || ('A' <= *ptr && *ptr <= 'Z');
+    }
+
+    if (!ok) {
+      return false;
+    }
+
+    ++length;
+  }
+
+  // invalid name length
+  if (length == 0 || length > TRI_COL_NAME_LENGTH) {
+    return false;
+  }
+
+  return true;
+}
+  
+/// @brief updates the parameter info block
 int TRI_collection_t::updateCollectionInfo(TRI_vocbase_t* vocbase,
                                            VPackSlice const& slice,
                                            bool doSync) {
@@ -100,13 +136,10 @@ int TRI_collection_t::updateCollectionInfo(TRI_vocbase_t* vocbase,
     }
   }
 
-  return _info.saveToFile(_directory, doSync);
+  return _info.saveToFile(path(), doSync);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief seal a datafile
-////////////////////////////////////////////////////////////////////////////////
-
 int TRI_collection_t::sealDatafile(TRI_datafile_t* datafile, bool isCompactor) {
   int res = TRI_SealDatafile(datafile);
 
@@ -116,8 +149,7 @@ int TRI_collection_t::sealDatafile(TRI_datafile_t* datafile, bool isCompactor) {
   } else if (!isCompactor && datafile->isPhysical(datafile)) {
     // rename the file
     std::string dname("datafile-" + std::to_string(datafile->_fid) + ".db");
-    std::string filename =
-        arangodb::basics::FileUtils::buildFilename(_directory, dname);
+    std::string filename = arangodb::basics::FileUtils::buildFilename(path(), dname);
 
     bool ok = TRI_RenameDatafile(datafile, filename.c_str());
 
@@ -133,10 +165,7 @@ int TRI_collection_t::sealDatafile(TRI_datafile_t* datafile, bool isCompactor) {
   return res;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief rotate the active journal - will do nothing if there is no journal
-////////////////////////////////////////////////////////////////////////////////
-
 int TRI_collection_t::rotateActiveJournal() {
   WRITE_LOCKER(writeLocker, _filesLock);
 
@@ -438,8 +467,7 @@ TRI_datafile_t* TRI_collection_t::createDatafile(TRI_voc_fid_t fid,
     }
 
     jname.append(std::to_string(fid) + ".db");
-    std::string filename =
-        arangodb::basics::FileUtils::buildFilename(document->_directory, jname);
+    std::string filename = arangodb::basics::FileUtils::buildFilename(path(), jname);
 
     TRI_IF_FAILURE("CreateJournalDocumentCollection") {
       // simulate disk full
@@ -539,8 +567,7 @@ TRI_datafile_t* TRI_collection_t::createDatafile(TRI_voc_fid_t fid,
   if (!isCompactor && datafile->isPhysical(datafile)) {
     // and use the correct name
     std::string jname("journal-" + std::to_string(datafile->_fid) + ".db");
-    std::string filename =
-        arangodb::basics::FileUtils::buildFilename(document->_directory, jname);
+    std::string filename = arangodb::basics::FileUtils::buildFilename(path(), jname);
 
     bool ok = TRI_RenameDatafile(datafile, filename.c_str());
 
@@ -684,7 +711,7 @@ static bool DatafileComparator(TRI_datafile_t const* lhs,
 ////////////////////////////////////////////////////////////////////////////////
 
 static void InitCollection(TRI_vocbase_t* vocbase, TRI_collection_t* collection,
-                           std::string const& directory,
+                           std::string const& path,
                            VocbaseCollectionInfo const& info) {
   TRI_ASSERT(collection != nullptr);
 
@@ -694,7 +721,7 @@ static void InitCollection(TRI_vocbase_t* vocbase, TRI_collection_t* collection,
   collection->_tickMax = 0;
   collection->_state = TRI_COL_STATE_WRITE;
   collection->_lastError = 0;
-  collection->_directory = directory;
+  collection->_path = path;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -845,7 +872,7 @@ static TRI_col_file_structure_t ScanCollectionDirectory(char const* path) {
 
 static bool CheckCollection(TRI_collection_t* collection, bool ignoreErrors) {
   LOG_TOPIC(TRACE, Logger::DATAFILES) << "check collection directory '"
-                                      << collection->_directory << "'";
+                                      << collection->path() << "'";
 
   std::vector<TRI_datafile_t*> all;
   std::vector<TRI_datafile_t*> compactors;
@@ -855,8 +882,7 @@ static bool CheckCollection(TRI_collection_t* collection, bool ignoreErrors) {
   bool stop = false;
 
   // check files within the directory
-  std::vector<std::string> files =
-      TRI_FilesDirectory(collection->_directory.c_str());
+  std::vector<std::string> files = TRI_FilesDirectory(collection->path().c_str());
 
   for (auto const& file : files) {
     std::vector<std::string> parts = StringUtils::split(file, '.');
@@ -881,7 +907,7 @@ static bool CheckCollection(TRI_collection_t* collection, bool ignoreErrors) {
     }
 
     std::string filename =
-        FileUtils::buildFilename(collection->_directory, file);
+        FileUtils::buildFilename(collection->path(), file);
     std::string filetype = next[0];
     next.erase(next.begin());
     std::string qualifier = StringUtils::join(next, '-');
@@ -923,7 +949,7 @@ static bool CheckCollection(TRI_collection_t* collection, bool ignoreErrors) {
       if (filetype == "compaction") {
         std::string relName = "datafile-" + qualifier + "." + extension;
         std::string newName =
-            FileUtils::buildFilename(collection->_directory, relName);
+            FileUtils::buildFilename(collection->path(), relName);
 
         if (FileUtils::exists(newName)) {
           // we have a compaction-xxxx and a datafile-xxxx file. we'll keep
@@ -1044,8 +1070,7 @@ static bool CheckCollection(TRI_collection_t* collection, bool ignoreErrors) {
   if (!stop) {
     for (auto& datafile : sealed) {
       std::string dname("datafile-" + std::to_string(datafile->_fid) + ".db");
-      std::string filename = arangodb::basics::FileUtils::buildFilename(
-          collection->_directory, dname);
+      std::string filename = arangodb::basics::FileUtils::buildFilename(collection->path(), dname);
 
       bool ok = TRI_RenameDatafile(datafile, filename.c_str());
 
@@ -1157,11 +1182,7 @@ static bool IterateFiles(std::vector<std::string> const& files,
 /// @brief get the full directory name for a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static std::string GetCollectionDirectory(char const* path, char const* name,
-                                          TRI_voc_cid_t cid) {
-  TRI_ASSERT(path != nullptr);
-  TRI_ASSERT(name != nullptr);
-
+static std::string GetCollectionDirectory(std::string const& path, TRI_voc_cid_t cid) {
   std::string filename("collection-");
   filename.append(std::to_string(cid));
   filename.push_back('-');
@@ -1175,8 +1196,12 @@ static std::string GetCollectionDirectory(char const* path, char const* name,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_collection_t* TRI_CreateCollection(
-    TRI_vocbase_t* vocbase, TRI_collection_t* collection, char const* path,
+    TRI_vocbase_t* vocbase, TRI_collection_t* collection, 
     arangodb::VocbaseCollectionInfo const& parameters) {
+  
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  std::string const path = engine->databasePath(vocbase);
+
   // sanity check
   if (sizeof(TRI_df_header_marker_t) + sizeof(TRI_df_footer_marker_t) >
       parameters.maximalSize()) {
@@ -1189,17 +1214,16 @@ TRI_collection_t* TRI_CreateCollection(
     return nullptr;
   }
 
-  if (!TRI_IsDirectory(path)) {
+  if (!TRI_IsDirectory(path.c_str())) {
     TRI_set_errno(TRI_ERROR_ARANGO_DATADIR_INVALID);
 
-    LOG(ERR) << "cannot create collection '" << path
-             << "', path is not a directory";
+    LOG(ERR) << "cannot create collection '" << path << "', path is not a directory";
 
     return nullptr;
   }
 
   std::string const dirname =
-      GetCollectionDirectory(path, parameters.namec_str(), parameters.id());
+      GetCollectionDirectory(path, parameters.id());
 
   // directory must not exist
   if (TRI_ExistsFile(dirname.c_str())) {
@@ -1212,8 +1236,7 @@ TRI_collection_t* TRI_CreateCollection(
   }
 
   // use a temporary directory first. this saves us from leaving an empty
-  // directory
-  // behind, an the server refusing to start
+  // directory behind, and the server refusing to start
   std::string const tmpname = dirname + ".tmp";
 
   // create directory
@@ -1266,22 +1289,6 @@ TRI_collection_t* TRI_CreateCollection(
 
   // now we have the collection directory in place with the correct name and a
   // .tmp file in it
-
-  // create collection structure
-  if (collection == nullptr) {
-    try {
-      TRI_collection_t* tmp = new TRI_collection_t(vocbase, parameters);
-      collection = tmp;
-    } catch (std::exception&) {
-      collection = nullptr;
-    }
-
-    if (collection == nullptr) {
-      LOG(ERR) << "cannot create collection '" << path << "': out of memory";
-
-      return nullptr;
-    }
-  }
 
   InitCollection(vocbase, collection, dirname, parameters);
 
@@ -1353,7 +1360,7 @@ VocbaseCollectionInfo::VocbaseCollectionInfo(CollectionInfo const& other)
 }
 
 VocbaseCollectionInfo::VocbaseCollectionInfo(TRI_vocbase_t* vocbase,
-                                             char const* name,
+                                             std::string const& name,
                                              TRI_col_type_e type,
                                              TRI_voc_size_t maximalSize,
                                              VPackSlice const& keyOptions)
@@ -1362,22 +1369,28 @@ VocbaseCollectionInfo::VocbaseCollectionInfo(TRI_vocbase_t* vocbase,
       _revision(0),
       _cid(0),
       _planId(0),
-      _maximalSize(vocbase->_settings.defaultMaximalSize),
+      _maximalSize(32 * 1024 * 1024), // just to have a default
       _initialCount(-1),
-      _indexBuckets(TRI_DEFAULT_INDEX_BUCKETS),
+      _indexBuckets(DatabaseFeature::DefaultIndexBuckets),
       _keyOptions(nullptr),
       _isSystem(false),
       _deleted(false),
       _doCompact(true),
       _isVolatile(false),
-      _waitForSync(vocbase->_settings.defaultWaitForSync) {
+      _waitForSync(false) {
+
+  auto database = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
+  _maximalSize = database->maximalJournalSize();
+  _waitForSync = database->waitForSync();
+
+  size_t pageSize = PageSizeFeature::getPageSize();
   _maximalSize =
-      static_cast<TRI_voc_size_t>((maximalSize / PageSize) * PageSize);
+      static_cast<TRI_voc_size_t>((maximalSize / pageSize) * pageSize);
   if (_maximalSize == 0 && maximalSize != 0) {
-    _maximalSize = static_cast<TRI_voc_size_t>(PageSize);
+    _maximalSize = static_cast<TRI_voc_size_t>(pageSize);
   }
   memset(_name, 0, sizeof(_name));
-  TRI_CopyString(_name, name, sizeof(_name) - 1);
+  TRI_CopyString(_name, name.c_str(), sizeof(_name) - 1);
 
   if (!keyOptions.isNone()) {
     VPackBuilder builder;
@@ -1387,14 +1400,14 @@ VocbaseCollectionInfo::VocbaseCollectionInfo(TRI_vocbase_t* vocbase,
 }
 
 VocbaseCollectionInfo::VocbaseCollectionInfo(TRI_vocbase_t* vocbase,
-                                             char const* name,
-                                             VPackSlice const& options,
+                                             std::string const& name,
+                                             VPackSlice const& options, 
                                              bool forceIsSystem)
     : VocbaseCollectionInfo(vocbase, name, TRI_COL_TYPE_DOCUMENT, options,
                             forceIsSystem) {}
 
 VocbaseCollectionInfo::VocbaseCollectionInfo(TRI_vocbase_t* vocbase,
-                                             char const* name,
+                                             std::string const& name,
                                              TRI_col_type_e type,
                                              VPackSlice const& options,
                                              bool forceIsSystem)
@@ -1403,37 +1416,41 @@ VocbaseCollectionInfo::VocbaseCollectionInfo(TRI_vocbase_t* vocbase,
       _revision(0),
       _cid(0),
       _planId(0),
-      _maximalSize(vocbase->_settings.defaultMaximalSize),
+      _maximalSize(32 * 1024 * 1024), // just to have a default
       _initialCount(-1),
-      _indexBuckets(TRI_DEFAULT_INDEX_BUCKETS),
+      _indexBuckets(DatabaseFeature::DefaultIndexBuckets),
       _keyOptions(nullptr),
       _isSystem(false),
       _deleted(false),
       _doCompact(true),
       _isVolatile(false),
-      _waitForSync(vocbase->_settings.defaultWaitForSync) {
+      _waitForSync(false) {
+  
+  auto database = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
+  _maximalSize = database->maximalJournalSize();
+  _waitForSync = database->waitForSync();
+
   memset(_name, 0, sizeof(_name));
 
-  if (name != nullptr && *name != '\0') {
-    TRI_CopyString(_name, name, sizeof(_name) - 1);
-  }
+  TRI_CopyString(_name, name.c_str(), sizeof(_name) - 1);
 
   if (options.isObject()) {
     TRI_voc_size_t maximalSize;
     if (options.hasKey("journalSize")) {
       maximalSize =
           arangodb::basics::VelocyPackHelper::getNumericValue<TRI_voc_size_t>(
-              options, "journalSize", vocbase->_settings.defaultMaximalSize);
+              options, "journalSize", _maximalSize);
     } else {
       maximalSize =
           arangodb::basics::VelocyPackHelper::getNumericValue<TRI_voc_size_t>(
-              options, "maximalSize", vocbase->_settings.defaultMaximalSize);
+              options, "maximalSize", _maximalSize);
     }
 
+    size_t pageSize = PageSizeFeature::getPageSize();
     _maximalSize =
-        static_cast<TRI_voc_size_t>((maximalSize / PageSize) * PageSize);
+        static_cast<TRI_voc_size_t>((maximalSize / pageSize) * pageSize);
     if (_maximalSize == 0 && maximalSize != 0) {
-      _maximalSize = static_cast<TRI_voc_size_t>(PageSize);
+      _maximalSize = static_cast<TRI_voc_size_t>(pageSize);
     }
 
     if (options.hasKey("count")) {
@@ -1445,12 +1462,12 @@ VocbaseCollectionInfo::VocbaseCollectionInfo(TRI_vocbase_t* vocbase,
     _doCompact = arangodb::basics::VelocyPackHelper::getBooleanValue(
         options, "doCompact", true);
     _waitForSync = arangodb::basics::VelocyPackHelper::getBooleanValue(
-        options, "waitForSync", vocbase->_settings.defaultWaitForSync);
+        options, "waitForSync", _waitForSync);
     _isVolatile = arangodb::basics::VelocyPackHelper::getBooleanValue(
         options, "isVolatile", false);
     _indexBuckets =
         arangodb::basics::VelocyPackHelper::getNumericValue<uint32_t>(
-            options, "indexBuckets", TRI_DEFAULT_INDEX_BUCKETS);
+            options, "indexBuckets", DatabaseFeature::DefaultIndexBuckets);
     _type = static_cast<TRI_col_type_e>(
         arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(
             options, "type", _type));
@@ -1545,7 +1562,7 @@ VocbaseCollectionInfo::VocbaseCollectionInfo(TRI_vocbase_t* vocbase,
         "indexBuckets must be a two-power between 1 and 1024");
   }
 
-  if (!TRI_IsAllowedNameCollection(_isSystem || forceIsSystem, _name)) {
+  if (!TRI_collection_t::IsAllowedName(_isSystem || forceIsSystem, _name)) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_NAME);
   }
 
@@ -1554,7 +1571,7 @@ VocbaseCollectionInfo::VocbaseCollectionInfo(TRI_vocbase_t* vocbase,
 }
 
 VocbaseCollectionInfo VocbaseCollectionInfo::fromFile(
-    char const* path, TRI_vocbase_t* vocbase, char const* collectionName,
+    std::string const& path, TRI_vocbase_t* vocbase, std::string const& collectionName,
     bool versionWarning) {
   // find parameter file
   std::string filename =
@@ -1602,7 +1619,7 @@ VocbaseCollectionInfo VocbaseCollectionInfo::fromFile(
   VocbaseCollectionInfo info(vocbase, collectionName, slice, isSystemValue);
 
   // warn about wrong version of the collection
-  if (versionWarning && info.version() < TRI_COL_VERSION_20) {
+  if (versionWarning && info.version() < TRI_COL_VERSION) {
     if (info.name()[0] != '\0') {
       // only warn if the collection version is older than expected, and if it's
       // not a shape collection
@@ -1642,9 +1659,6 @@ uint32_t VocbaseCollectionInfo::indexBuckets() const { return _indexBuckets; }
 // name of the collection
 std::string VocbaseCollectionInfo::name() const { return std::string(_name); }
 
-// name of the collection as c string
-char const* VocbaseCollectionInfo::namec_str() const { return _name; }
-
 // options for key creation
 std::shared_ptr<arangodb::velocypack::Buffer<uint8_t> const>
 VocbaseCollectionInfo::keyOptions() const {
@@ -1670,8 +1684,8 @@ void VocbaseCollectionInfo::setVersion(TRI_col_version_t version) {
   _version = version;
 }
 
-void VocbaseCollectionInfo::rename(char const* name) {
-  TRI_CopyString(_name, name, sizeof(_name) - 1);
+void VocbaseCollectionInfo::rename(std::string const& name) {
+  TRI_CopyString(_name, name.c_str(), sizeof(_name) - 1);
 }
 
 void VocbaseCollectionInfo::setRevision(TRI_voc_rid_t rid, bool force) {
@@ -1729,20 +1743,19 @@ void VocbaseCollectionInfo::update(VPackSlice const& slice, bool preferDefaults,
 
   if (preferDefaults) {
     if (vocbase != nullptr) {
+      auto database = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
+
       _doCompact = arangodb::basics::VelocyPackHelper::getBooleanValue(
           slice, "doCompact", true);
       _waitForSync = arangodb::basics::VelocyPackHelper::getBooleanValue(
-          slice, "waitForSync", vocbase->_settings.defaultWaitForSync);
+          slice, "waitForSync", database->waitForSync());
       if (slice.hasKey("journalSize")) {
         _maximalSize = arangodb::basics::VelocyPackHelper::getNumericValue<int>(
-            slice, "journalSize", vocbase->_settings.defaultMaximalSize);
+            slice, "journalSize", database->maximalJournalSize());
       } else {
         _maximalSize = arangodb::basics::VelocyPackHelper::getNumericValue<int>(
-            slice, "maximalSize", vocbase->_settings.defaultMaximalSize);
+            slice, "maximalSize", database->maximalJournalSize());
       }
-      _indexBuckets =
-          arangodb::basics::VelocyPackHelper::getNumericValue<uint32_t>(
-              slice, "indexBuckets", TRI_DEFAULT_INDEX_BUCKETS);
     } else {
       _doCompact = arangodb::basics::VelocyPackHelper::getBooleanValue(
           slice, "doCompact", true);
@@ -1757,10 +1770,10 @@ void VocbaseCollectionInfo::update(VPackSlice const& slice, bool preferDefaults,
             arangodb::basics::VelocyPackHelper::getNumericValue<TRI_voc_size_t>(
                 slice, "maximalSize", TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE);
       }
-      _indexBuckets =
-          arangodb::basics::VelocyPackHelper::getNumericValue<uint32_t>(
-              slice, "indexBuckets", TRI_DEFAULT_INDEX_BUCKETS);
     }
+    _indexBuckets =
+        arangodb::basics::VelocyPackHelper::getNumericValue<uint32_t>(
+            slice, "indexBuckets", DatabaseFeature::DefaultIndexBuckets);
   } else {
     _doCompact = arangodb::basics::VelocyPackHelper::getBooleanValue(
         slice, "doCompact", _doCompact);
@@ -1795,7 +1808,7 @@ void VocbaseCollectionInfo::update(VocbaseCollectionInfo const& other) {
   _initialCount = other.initialCount();
   _indexBuckets = other.indexBuckets();
 
-  TRI_CopyString(_name, other.namec_str(), sizeof(_name) - 1);
+  TRI_CopyString(_name, other.name().c_str(), sizeof(_name) - 1);
 
   _keyOptions = other.keyOptions();
 
@@ -1859,15 +1872,15 @@ void TRI_CreateVelocyPackCollectionInfo(
 /// function.
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_RenameCollection(TRI_collection_t* collection, char const* name) {
+int TRI_RenameCollection(TRI_collection_t* collection, std::string const& name) {
   // Save name for rollback
   std::string oldName = collection->_info.name();
   collection->_info.rename(name);
 
-  int res = collection->_info.saveToFile(collection->_directory, true);
+  int res = collection->_info.saveToFile(collection->path(), true);
   if (res != TRI_ERROR_NO_ERROR) {
     // Rollback
-    collection->_info.rename(oldName.c_str());
+    collection->_info.rename(oldName);
   }
 
   return res;
@@ -1923,21 +1936,21 @@ TRI_collection_t* TRI_OpenCollection(TRI_vocbase_t* vocbase,
     double start = TRI_microtime();
 
     LOG_TOPIC(TRACE, Logger::PERFORMANCE)
-        << "open-collection { collection: " << vocbase->_name << "/"
+        << "open-collection { collection: " << vocbase->name() << "/"
         << collection->_info.name();
 
     // check for journals and datafiles
     bool ok = CheckCollection(collection, ignoreErrors);
 
     if (!ok) {
-      LOG(DEBUG) << "cannot open '" << collection->_directory
+      LOG(DEBUG) << "cannot open '" << collection->path()
                  << "', check failed";
       return nullptr;
     }
 
     LOG_TOPIC(TRACE, Logger::PERFORMANCE)
         << "[timer] " << Logger::FIXED(TRI_microtime() - start)
-        << " s, open-collection { collection: " << vocbase->_name << "/"
+        << " s, open-collection { collection: " << vocbase->name() << "/"
         << collection->_info.name() << " }";
 
     return collection;
@@ -2002,55 +2015,3 @@ bool TRI_IterateTicksCollection(char const* const path,
   return IterateFiles(structure.journals, iterator, data);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief determine whether a collection name is a system collection name
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_IsSystemNameCollection(char const* name) {
-  if (name == nullptr) {
-    return false;
-  }
-
-  return *name == '_';
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if a collection name is allowed
-///
-/// Returns true if the name is allowed and false otherwise
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_IsAllowedNameCollection(bool allowSystem, char const* name) {
-  bool ok;
-  char const* ptr;
-  size_t length = 0;
-
-  // check allow characters: must start with letter or underscore if system is
-  // allowed
-  for (ptr = name; *ptr; ++ptr) {
-    if (length == 0) {
-      if (allowSystem) {
-        ok = (*ptr == '_') || ('a' <= *ptr && *ptr <= 'z') ||
-             ('A' <= *ptr && *ptr <= 'Z');
-      } else {
-        ok = ('a' <= *ptr && *ptr <= 'z') || ('A' <= *ptr && *ptr <= 'Z');
-      }
-    } else {
-      ok = (*ptr == '_') || (*ptr == '-') || ('0' <= *ptr && *ptr <= '9') ||
-           ('a' <= *ptr && *ptr <= 'z') || ('A' <= *ptr && *ptr <= 'Z');
-    }
-
-    if (!ok) {
-      return false;
-    }
-
-    ++length;
-  }
-
-  // invalid name length
-  if (length == 0 || length > TRI_COL_NAME_LENGTH) {
-    return false;
-  }
-
-  return true;
-}

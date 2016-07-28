@@ -62,7 +62,7 @@ void IndexNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
                                            verbose);  // call base class method
 
   // Now put info about vocbase and cid in there
-  nodes.add("database", VPackValue(_vocbase->_name));
+  nodes.add("database", VPackValue(_vocbase->name()));
   nodes.add("collection", VPackValue(_collection->getName()));
   nodes.add(VPackValue("outVariable"));
   _outVariable->toVelocyPack(nodes);

@@ -1,8 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -18,19 +17,25 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
+/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_VOC_BASE_CLEANUP_H
-#define ARANGOD_VOC_BASE_CLEANUP_H 1
+#include "PageSizeFeature.h"
 
-#include "Basics/Common.h"
-#include "VocBase/vocbase.h"
+using namespace arangodb;
+using namespace arangodb::basics;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief cleanup event loop
-////////////////////////////////////////////////////////////////////////////////
+size_t PageSizeFeature::PageSize = 0;
 
-void TRI_CleanupVocBase(void*);
+PageSizeFeature::PageSizeFeature(
+    application_features::ApplicationServer* server)
+    : ApplicationFeature(server, "PageSize") {
+  setOptional(false);
+  requiresElevatedPrivileges(false);
+  startsAfter("Logger");
+}
 
-#endif
+void PageSizeFeature::prepare() {
+  PageSize = static_cast<size_t>(getpagesize());
+  LOG(TRACE) << "page size is " << PageSize;
+}

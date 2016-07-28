@@ -89,9 +89,7 @@ TraversalBlock::TraversalBlock(ExecutionEngine* engine, TraversalNode const* ep)
 
   if (arangodb::ServerState::instance()->isCoordinator()) {
     _traverser.reset(new arangodb::traverser::ClusterTraverser(
-        ep->edgeColls(), opts,
-        std::string(_trx->vocbase()->_name, strlen(_trx->vocbase()->_name)),
-        _trx));
+        ep->edgeColls(), opts, _trx->vocbase()->name(), _trx));
   } else {
     _traverser.reset(
         new arangodb::traverser::SingleServerTraverser(opts, _trx));
