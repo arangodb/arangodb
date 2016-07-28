@@ -43,6 +43,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/JsonHelper.h"
 #include "Basics/SmallVector.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/tri-strings.h"
 #include "Basics/VelocyPackHelper.h"
 
@@ -701,7 +702,7 @@ ExecutionNode* ExecutionPlan::fromNodeTraversal(ExecutionNode* previous,
     for (size_t i = 0; i < n; ++i) {
       auto member = start->getMember(i);
       if (member->type == NODE_TYPE_OBJECT_ELEMENT &&
-          member->getString() == TRI_VOC_ATTRIBUTE_ID) {
+          member->getString() == StaticStrings::IdString) {
         start = member->getMember(0);
         break;
       }
@@ -756,7 +757,7 @@ AstNode const* ExecutionPlan::parseTraversalVertexNode(ExecutionNode* previous,
     for (size_t i = 0; i < n; ++i) {
       auto member = vertex->getMember(i);
       if (member->type == NODE_TYPE_OBJECT_ELEMENT &&
-          member->getString() == TRI_VOC_ATTRIBUTE_ID) {
+          member->getString() == StaticStrings::IdString) {
         vertex = member->getMember(0);
         break;
       }
