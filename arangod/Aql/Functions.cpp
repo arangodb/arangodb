@@ -2289,7 +2289,11 @@ AqlValue Functions::Intersection (triagens::aql::Query* query,
           if (it != values.end()) {
             // already seen
             TRI_ASSERT((*it).second > 0);
-            ++((*it).second);
+            if ((*it).second < i) {
+              (*it).second = 0;
+            } else {
+              (*it).second = i + 1;
+            }
           }
         }
       }
