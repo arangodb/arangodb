@@ -42,20 +42,37 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-VppCommTask::VppCommTask(GeneralServer* server, TRI_socket_t sock,
-                         ConnectionInfo&& info, double timeout)
-    : Task("VppCommTask"),
-      GeneralCommTask(server, sock, std::move(info), timeout),
-      _requestType(GeneralRequest::RequestType::ILLEGAL),
-      _fullUrl() {
-  _protocol = "vpp";
-  // connectionStatisticsAgentSetVpp();
-}
-
 namespace {
 constexpr size_t getChunkHeaderLength(bool oneChunk) {
   return (oneChunk ? 2 * sizeof(uint32_t) + 1 * sizeof(uint64_t)
                    : 2 * sizeof(uint32_t) + 2 * sizeof(uint64_t));
+}
+VPackOffsets findAndValidateVPacks(char const* chunkBegin, char const* chunkEnd,
+                                   bool messageInOneChunk) {
+  auto chunkHeaderLength = getChunkHeaderLength(messageInOneChunk);
+
+  VPackValidator validator;
+
+  // validate Header VelocyPack
+  auto vpHeaderStart = chunkBegin + chunkHeaderLength;
+  // check for slice start to the end of Chunk
+  // isSubPart allows the slice to be shorter than the checked buffer.
+  validator.validate(vpHeaderStart, std::distance(vpHeaderStart, chunkEnd),
+                     /*isSubPart =*/true);
+
+  // check if there is payload and locate the start
+  VPackSlice vpHeader(vpHeaderStart);
+  auto vpHeaderLen = vpHeader.byteSize();
+  auto vpPayloadStart = vpHeaderStart + vpHeaderLen;
+  if (vpPayloadStart == chunkEnd) {
+    // possible compare with request type in header if payload is required
+    return VPackOffsets(vpHeaderStart, chunkEnd);  // no payload
+  }
+
+  // validate Payplad VelocyPack
+  validator.validate(vpPayloadStart, std::distance(vpPayloadStart, chunkEnd),
+                     /*isSubPart =*/false);
+  return VPackOffsets(vpHeaderStart, vpPayloadStart, chunkEnd);
 }
 }
 
@@ -159,7 +176,6 @@ VppCommTask::ChunkHeader VppCommTask::readChunkHeader() {
 
   auto cursor = _readBuffer->begin();
 
-  uint32_t vpChunkLength;
   std::memcpy(&header._length, cursor, sizeof(header._length));
   cursor += sizeof(header._length);
 
@@ -175,7 +191,7 @@ VppCommTask::ChunkHeader VppCommTask::readChunkHeader() {
   return header;
 }
 
-bool VppCommTask::chunkComplete() {
+bool VppCommTask::isChunkComplete() {
   auto start = _readBuffer->begin();
   std::size_t length = std::distance(start, _readBuffer->end());
   auto& prv = _processReadVariables;
@@ -195,48 +211,38 @@ bool VppCommTask::chunkComplete() {
   return true;
 }
 
-std::pair<std::size_t, std::size_t> VppCommTask::validateChunkOnBuffer(
-    std::size_t chunkLength) {
-  auto readBufferStart = _readBuffer->begin();
-  auto chunkHeaderLength = getChunkHeaderLength(true);
-  auto sliceStart = readBufferStart + chunkHeaderLength;
-  auto sliceLength = chunkLength - chunkHeaderLength;
-
-  VPackValidator validator;
-
-  // check for slice start to the end of Chunk
-  // isSubPart allows the slice to be shorter than the checked buffer.
-  validator.validate(sliceStart, sliceLength, /*isSubPart =*/true);
-  VPackSlice vppHeader(sliceStart);
-
-  auto vppHeaderLen = vppHeader.byteSize();
-  sliceStart += vppHeaderLen;
-  sliceLength += vppHeaderLen;
-  validator.validate(sliceStart, sliceLength, /*isSubPart =*/true);
-  VPackSlice vppPayload(sliceStart);
-  auto vppPayloadLen = vppPayload.byteSize();
-  return std::pair<std::size_t, std::size_t>(vppHeaderLen,
-                                             vppHeaderLen + vppPayloadLen);
-}
-
 // reads data from the socket
 bool VppCommTask::processRead() {
-  auto readBufferStart = _readBuffer->begin();
-  if (readBufferStart == nullptr || !chunkComplete()) {
+  auto chunkBegin = _readBuffer->begin();
+  if (chunkBegin == nullptr || !isChunkComplete()) {
     return true;  // no data or incomplete
   }
 
-  auto header = readChunkHeader();
+  auto chunkHeader = readChunkHeader();
+  auto chunkEnd = chunkBegin + chunkHeader._length;
 
-  if (header._isFirst && header._chunk == 1) {  // one chunk one message
-    validateChunkOnBuffer(header._length);
+  // CASE 1: message is in one chunk
+  if (chunkHeader._isFirst && chunkHeader._chunk == 1) {
+    VPackOffsets offsets = findAndValidateVPacks(chunkBegin, chunkEnd, true);
     VPackMessage message;
+    message._buffer.append(offsets._begin,
+                           std::distance(offsets._begin, offsets._end));
+    message._header = VPackSlice(message._buffer.data());
 
+    if (offsets._payloadBegin) {
+      message._payload =
+          VPackSlice(message._buffer.data() +
+                     std::distance(offsets._begin, offsets._payloadBegin));
+    }
+    // free buffer form chunkBegin to chunkBegin + chunkHeader._lenght
     // execute
   }
 
-  auto incompleteMessageItr = _incompleteMessages.find(header._messageId);
-  if (header._isFirst) {  // first chunk of multi chunk message
+  // CASE 2:  message is in multiple chunks
+  auto incompleteMessageItr = _incompleteMessages.find(chunkHeader._messageId);
+
+  // CASE 2a: chunk starts new message
+  if (chunkHeader._isFirst) {  // first chunk of multi chunk message
     if (incompleteMessageItr != _incompleteMessages.end()) {
       throw std::logic_error(
           "Message should be first but is already in the Map of incomplete "
@@ -245,20 +251,24 @@ bool VppCommTask::processRead() {
 
     // append to VPackBuffer in incomplete Message
 
-    auto numberOfChunks = header._chunk;
+    auto numberOfChunks = chunkHeader._chunk;
     auto chunkNumber = 1;
     // set message length
+
+    // CASE 2b: chunk continues a message
   } else {  // followup chunk of some mesage
     if (incompleteMessageItr == _incompleteMessages.end()) {
       throw std::logic_error("found message without previous part");
     }
     auto& im = incompleteMessageItr->second;  // incomplete Message
-    auto chunkNumber = header._chunk;
+    auto chunkNumber = chunkHeader._chunk;
 
     // append to VPackBuffer in incomplete Message
 
+    // MESSAGE COMPLETE
     if (chunkNumber == im._numberOfChunks) {
       // VPackMessage message;
+      // free buffer form chunkBegin to chunkBegin + chunkHeader._lenght
       // execute
     }
   }

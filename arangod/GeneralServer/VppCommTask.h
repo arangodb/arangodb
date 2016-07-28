@@ -4,14 +4,34 @@
 #include "GeneralServer/GeneralCommTask.h"
 #include "lib/Rest/VppResponse.h"
 #include "lib/Rest/VppRequest.h"
+
+#include <stdexcept>
+
 namespace arangodb {
 namespace rest {
 
 struct VPackMessage {
-  uint32_t _length;  // lenght of total message in bytes
+  VPackMessage() : _buffer(), _header(), _payload() {}
   VPackBuffer<uint8_t> _buffer;
   VPackSlice _header;
   VPackSlice _payload;
+};
+
+struct VPackOffsets {
+  VPackOffsets(char const* begin, char const* end,
+               char const* payloadBegin = nullptr)
+      : _begin(begin),
+        _end(end),
+        _headBegin(begin),
+        _headEnd(payloadBegin ? payloadBegin : end),
+        _payloadBegin(payloadBegin),
+        _payloadEnd(payloadBegin ? end : nullptr) {}
+  char const* _begin;
+  char const* _end;
+  char const* _headBegin;
+  char const* _headEnd;
+  char const* _payloadBegin;
+  char const* _payloadEnd;
 };
 
 class VppCommTask : public GeneralCommTask {
@@ -26,10 +46,10 @@ class VppCommTask : public GeneralCommTask {
   // internal addResponse
   void addResponse(GeneralResponse* response, bool isError) override {
     VppResponse* vppResponse = dynamic_cast<VppResponse*>(response);
-    if (vppResponse != nullptr) {
-      addResponse(vppResponse, isError);
+    if (vppResponse == nullptr) {
+      throw std::logic_error("invalid response or response Type");
     }
-    // else throw? do nothing?!!??!!
+    addResponse(vppResponse, isError);
   };
 
  protected:
@@ -46,20 +66,22 @@ class VppCommTask : public GeneralCommTask {
 
  private:
   using MessageID = uint64_t;
+
   struct IncompleteVPackMessage {
     uint32_t _length;  // lenght of total message in bytes
     std::size_t _numberOfChunks;
     VPackBuffer<uint8_t> _chunks;
-    std::vector<std::pair<std::size_t, std::size_t>> _chunkOffesesAndLengths;
-    std::vector<std::size_t> _vpackOffsets;  // offset to slice in buffer
+    // std::vector<std::pair<std::size_t, std::size_t>> _chunkOffesesAndLengths;
+    // std::vector<std::size_t> _vpackOffsets;  // offset to slice in buffer
   };
-
   std::unordered_map<MessageID, IncompleteVPackMessage> _incompleteMessages;
 
   struct ProcessReadVariables {
-    bool _currentChunkLength;  // size of chunk processed or 0 when expectiong
-                               // new chunk
+    uint32_t
+        _currentChunkLength;  // size of chunk processed or 0 when expectiong
+                              // new chunk
   };
+  ProcessReadVariables _processReadVariables;
 
   struct ChunkHeader {
     uint32_t _length;
@@ -68,15 +90,8 @@ class VppCommTask : public GeneralCommTask {
     bool _isFirst;
   };
 
-  bool chunkComplete();           // subfunction of processRead
+  bool isChunkComplete();         // subfunction of processRead
   ChunkHeader readChunkHeader();  // subfuncaion of processRead
-  // validates chunk on read _readBuffer and returns
-  // offsets to Payload VPack and The End of Message.
-  std::pair<std::size_t, std::size_t> validateChunkOnBuffer(std::size_t);
-
-  ProcessReadVariables _processReadVariables;
-  GeneralRequest::RequestType _requestType;  // type of request (GET, POST, ...)
-  std::string _fullUrl;                      // value of requested URL
 
   // user
   // authenticated or not
