@@ -234,7 +234,7 @@ struct TraverserOptions {
     aql::Expression* expression;
     aql::AstNode* indexCondition;
 
-    LookupInfo() : expression(nullptr), indexCondition(nullptr){};
+    LookupInfo();
     ~LookupInfo();
 
     LookupInfo(LookupInfo const&);

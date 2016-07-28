@@ -444,9 +444,10 @@ QueryResult Query::prepare(QueryRegistry* registry) {
     _isModificationQuery = parser->isModificationQuery();
 
     // create the transaction object, but do not start it yet
-    auto trx = std::make_unique<arangodb::AqlTransaction>(
+    arangodb::AqlTransaction* trx = new arangodb::AqlTransaction(
         createTransactionContext(), _collections.collections(),
         _part == PART_MAIN);
+    _trx = trx;
 
     bool planRegisters;
 
@@ -455,7 +456,6 @@ QueryResult Query::prepare(QueryRegistry* registry) {
       int res = trx->begin();
 
       if (res != TRI_ERROR_NO_ERROR) {
-        _trx = trx.release(); // Probably not needed here
         return transactionError(res);
       }
 
@@ -469,7 +469,6 @@ QueryResult Query::prepare(QueryRegistry* registry) {
 
       if (plan.get() == nullptr) {
         // oops
-        _trx = trx.release(); // Probably not needed here
         return QueryResult(TRI_ERROR_INTERNAL,
                            "failed to create query execution engine");
       }
@@ -501,7 +500,6 @@ QueryResult Query::prepare(QueryRegistry* registry) {
       }
 
       if (res != TRI_ERROR_NO_ERROR) {
-        _trx = trx.release(); // Probably not needed here
         return transactionError(res);
       }
 
@@ -509,7 +507,6 @@ QueryResult Query::prepare(QueryRegistry* registry) {
       plan.reset(ExecutionPlan::instantiateFromVelocyPack(parser->ast(), _queryBuilder->slice()));
       if (plan.get() == nullptr) {
         // oops
-        _trx = trx.release(); // Probably not needed here
         return QueryResult(TRI_ERROR_INTERNAL);
       }
 
@@ -533,7 +530,6 @@ QueryResult Query::prepare(QueryRegistry* registry) {
     _plan = plan.release();
     _parser = parser.release();
     _engine = engine;
-    _trx = trx.release();
     return QueryResult();
   } catch (arangodb::basics::Exception const& ex) {
     cleanupPlanAndEngine(ex.code());

@@ -74,6 +74,12 @@ void arangodb::traverser::ShortestPath::vertexToVelocyPack(Transaction* trx, siz
   }
 }
 
+arangodb::traverser::TraverserOptions::LookupInfo::LookupInfo()
+    : expression(nullptr), indexCondition(nullptr) {
+  // NOTE: We need exactly one in this case for the optimizer to update
+  idxHandles.resize(1);
+};
+
 arangodb::traverser::TraverserOptions::LookupInfo::~LookupInfo() {
   if (expression != nullptr) {
     delete expression;
