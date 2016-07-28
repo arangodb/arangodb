@@ -53,7 +53,7 @@ endif ()
 
 set(ARANGODB_VERSION_MAJOR      "3")
 set(ARANGODB_VERSION_MINOR      "0")
-set(ARANGODB_VERSION_REVISION   "x-devel")
+set(ARANGODB_VERSION_REVISION   "x_devel")
 
 set(ARANGODB_VERSION
     "${ARANGODB_VERSION_MAJOR}.${ARANGODB_VERSION_MINOR}.${ARANGODB_VERSION_REVISION}")
@@ -841,3 +841,12 @@ if (NOT USE_PRECOMPILED_V8)
   add_dependencies(arangorestore v8_build)
   add_dependencies(arangosh      v8_build)
 endif ()
+
+# this section triggers the sub-builds for the client packages.
+
+set(BUILD_DIR ${CMAKE_CURRENT_BINARY_DIR}/packages/arangodb-client)
+configure_file(cmake/packages/package-client.txt ${BUILD_DIR}/CMakeLists.txt @ONLY)
+add_custom_target(package-arongodb-client COMMAND ${CMAKE_COMMAND} . 
+  COMMAND ${CMAKE_CPACK_COMMAND} -G DEB
+  COMMAND cp *.deb ${PROJECT_BINARY_DIR} 
+  WORKING_DIRECTORY ${BUILD_DIR})

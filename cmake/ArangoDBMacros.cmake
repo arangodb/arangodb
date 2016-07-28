@@ -1,7 +1,7 @@
-#if(NOT DEFINED CMAKE_INSTALL_SYSCONFDIR)
-#  set(CMAKE_INSTALL_SYSCONFDIR "etc/arangodb3" CACHE PATH "read-only single-machine data (etc)")
-#endif()
 include(GNUInstallDirs)
+
+set(CMAKE_INSTALL_SYSCONFDIR_ARANGO "${CMAKE_INSTALL_SYSCONFDIR}/arangodb3" CACHE PATH "read-only single-machine data (etc)")
+set(CMAKE_INSTALL_FULL_SYSCONFDIR_ARANGO "${CMAKE_INSTALL_FULL_SYSCONFDIR}/arangodb3" CACHE PATH "read-only single-machine data (etc)")
 
 file(TO_NATIVE_PATH "${CMAKE_INSTALL_FULL_SYSCONFDIR}" ETCDIR_NATIVE)
 STRING(REGEX REPLACE "\\\\" "\\\\\\\\" ETCDIR_ESCAPED "${ETCDIR_NATIVE}")
@@ -62,6 +62,8 @@ configure_file(
   "${CMAKE_BINARY_DIR}/CMakeCPackOptions.cmake" @ONLY)
 set(CPACK_PROJECT_CONFIG_FILE "${CMAKE_BINARY_DIR}/CMakeCPackOptions.cmake")
 
+# Finally: user cpack
+include(CPack)
 
 # Custom targets ----------------------------------------------------------------
 # love
@@ -69,9 +71,7 @@ add_custom_target (love
   COMMENT "ArangoDB loves you."
   COMMAND ""
   )
- 
-# Finally: user cpack
-include(CPack)
+
 
 ################################################################################
 ### @brief install client-side JavaScript files
@@ -119,8 +119,6 @@ install(
 install(
   DIRECTORY ${PROJECT_BINARY_DIR}/var/lib/arangodb3-apps
   DESTINATION ${CMAKE_INSTALL_FULL_LOCALSTATEDIR}/lib)
-
-
 
 
 # sub directories --------------------------------------------------------------
