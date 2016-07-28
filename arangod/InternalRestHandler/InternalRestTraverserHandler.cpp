@@ -23,6 +23,7 @@
 
 #include "InternalRestTraverserHandler.h"
 
+#include "Basics/ScopeGuard.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/TraverserEngine.h"
 #include "Cluster/TraverserEngineRegistry.h"
@@ -112,6 +113,87 @@ void InternalRestTraverserHandler::createEngine() {
 }
 
 void InternalRestTraverserHandler::queryEngine() {
+  std::vector<std::string> const& suffix = _request->suffix();
+  if (suffix.size() != 2) {
+    generateError(
+        GeneralResponse::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+        "expected PUT " + INTERNAL_TRAVERSER_PATH + "/[vertex|edge|lock]/<TraverserEngineId>");
+    return;
+  }
+
+  std::string const& option = suffix[0];
+  auto engineId = static_cast<traverser::TraverserEngineID>(basics::StringUtils::uint64(suffix[1]));
+  if (engineId == 0) {
+    generateError(
+        GeneralResponse::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+        "expected TraveserEngineId to be an integer number");
+    return;
+  
+  }
+  traverser::TraverserEngine* engine = _registry->get(engineId);
+  if (engine == nullptr) {
+    generateError(
+        GeneralResponse::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+        "invalid TraverserEngineId");
+    return;
+  }
+
+  auto& registry = _registry; // For the guard
+  arangodb::basics::ScopeGuard guard{
+      []() -> void {},
+      [registry, &engineId]() -> void { registry->returnEngine(engineId); }};
+
+  if (option == "lock") {
+    engine->lockCollections();
+    generateResult(GeneralResponse::ResponseCode::OK,
+                   arangodb::basics::VelocyPackHelper::TrueValue());
+    return;
+  }
+
+  bool parseSuccess = true;
+  std::shared_ptr<VPackBuilder> parsedBody =
+      parseVelocyPackBody(&VPackOptions::Defaults, parseSuccess);
+
+  if (!parseSuccess) {
+    generateError(
+        GeneralResponse::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+        "expecting a valid object containing the keys 'depth' and 'keys'");
+    return;
+  }
+
+  VPackSlice body = parsedBody->slice();
+  VPackSlice depthSlice = body.get("depth");
+
+  if (!depthSlice.isInteger()) {
+    generateError(
+        GeneralResponse::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+        "expecting 'depth' to be an integer value");
+    return;
+  }
+
+  VPackSlice keysSlice = body.get("keys");
+
+  if (!keysSlice.isString() && !keysSlice.isArray()) {
+    generateError(
+        GeneralResponse::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+        "expecting 'keys' to be a string or an array value.");
+    return;
+  }
+
+  VPackBuilder result;
+  if (option == "edge") {
+    engine->getEdges(keysSlice, depthSlice.getNumericValue<size_t>(), result);
+  } else if (option == "vertex") {
+    engine->getVertexData(keysSlice, depthSlice.getNumericValue<size_t>(), result);
+  } else {
+    // PATH Info wrong other error
+    generateError(
+        GeneralResponse::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
+        "");
+    return;
+  }
+
+  generateResult(GeneralResponse::ResponseCode::OK, result.slice());
 }
 
 void InternalRestTraverserHandler::destroyEngine() {

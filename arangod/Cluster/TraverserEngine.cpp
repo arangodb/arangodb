@@ -111,6 +111,10 @@ TraverserEngine::~TraverserEngine() {
 }
 
 void TraverserEngine::getEdges(VPackSlice vertex, size_t depth, VPackBuilder& builder) {
+  if (!_didLock) {
+    // We try to read the edges before the collections are locked. Invalid access
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_COLLECTION_LOCK_FAILED);
+  }
   TRI_ASSERT(vertex.isString() || vertex.isArray());
   size_t cursorId = 0;
   size_t read = 0;
@@ -162,6 +166,10 @@ void TraverserEngine::getEdges(VPackSlice vertex, size_t depth, VPackBuilder& bu
 }
 
 void TraverserEngine::getVertexData(VPackSlice vertex, size_t depth, VPackBuilder& builder) {
+  if (!_didLock) {
+    // We try to read the edges before the collections are locked. Invalid access
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_COLLECTION_LOCK_FAILED);
+  }
   // TODO use external or internal builder for result
   // Alternative: Dump directly into body.
   TRI_ASSERT(vertex.isString() || vertex.isArray());
@@ -237,4 +245,5 @@ void TraverserEngine::lockCollections() {
       THROW_ARANGO_EXCEPTION(res);
     }
   }
+  _didLock = true;
 }
