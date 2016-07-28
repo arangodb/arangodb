@@ -416,6 +416,11 @@
         nodeIds.push(id);
       });
 
+      if (nodeIds.length === 0) {
+        arangoHelper.arangoNotification('Graph', 'No nodes selected.');
+        return;
+      }
+
       var buttons = []; var tableContent = [];
 
       tableContent.push(
@@ -1171,9 +1176,13 @@
         // Do something with the selected nodes
         var nodes = event.data;
 
-        _.each(nodes, function (val, key) {
-          self.selectedNodes[key] = val.id;
-        });
+        if (nodes.length === 0) {
+          self.selectedNodes = [];
+        } else {
+          _.each(nodes, function (val, key) {
+            self.selectedNodes[key] = val.id;
+          });
+        }
 
         /*
         // For instance, reset all node size as their initial size
