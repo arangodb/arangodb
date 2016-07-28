@@ -493,10 +493,14 @@ int DatabaseFeature::createDatabase(TRI_voc_tick_t id, std::string const& name,
   if (!TRI_vocbase_t::IsAllowedName(false, name)) {
     return TRI_ERROR_ARANGO_DATABASE_NAME_INVALID;
   }
+    
+  if (id == 0) {
+    id = TRI_NewTickServer();
+  }
+
 
   std::unique_ptr<TRI_vocbase_t> vocbase;
   VPackBuilder builder;
-  int res;
 
   // the create lock makes sure no one else is creating a database while we're
   // inside
@@ -512,11 +516,6 @@ int DatabaseFeature::createDatabase(TRI_voc_tick_t id, std::string const& name,
         // name already in use
         return TRI_ERROR_ARANGO_DUPLICATE_NAME;
       }
-    }
-
-    // create the database directory
-    if (id == 0) {
-      id = TRI_NewTickServer();
     }
 
     builder.openObject();
@@ -589,10 +588,11 @@ int DatabaseFeature::createDatabase(TRI_voc_tick_t id, std::string const& name,
         delete oldLists;
       }
     }
-
   }  // release _databaseCreateLock
 
   // write marker into log
+  int res = TRI_ERROR_NO_ERROR;
+
   if (writeMarker) {
     res = writeCreateMarker(id, builder.slice());
   }

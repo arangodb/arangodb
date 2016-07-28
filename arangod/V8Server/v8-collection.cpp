@@ -886,7 +886,7 @@ static void JS_DropVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
     return;
   }
 
-  int res = TRI_DropCollectionVocBase(collection->_vocbase, collection, true);
+  int res = collection->_vocbase->dropCollection(collection, true);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(res, "cannot drop collection");

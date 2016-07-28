@@ -184,7 +184,14 @@ enum TRI_vocbase_type_e {
 
 /// @brief database
 struct TRI_vocbase_t {
- friend class arangodb::StorageEngine;
+  friend class arangodb::StorageEngine;
+
+  /// @brief states for dropping
+  enum DropState {
+   DROP_EXIT,    // drop done, nothing else to do
+   DROP_AGAIN,   // drop not done, must try again
+   DROP_PERFORM  // drop done, must perform actual cleanup routine
+  };
 
   TRI_vocbase_t(TRI_vocbase_type_e type, TRI_voc_tick_t id, std::string const& name);
   ~TRI_vocbase_t();
@@ -354,6 +361,10 @@ struct TRI_vocbase_t {
                                       TRI_voc_cid_t cid, bool writeMarker);
 
 
+  /// @brief drops a collection
+  int dropCollection(TRI_vocbase_col_t* collection, bool writeMarker);
+
+
   /// @brief adds a new collection
   /// caller must hold _collectionsLock in write mode or set doLock
  private:
@@ -363,13 +374,27 @@ struct TRI_vocbase_t {
                                         TRI_voc_cid_t planId,
                                         std::string const& path);
 
+  /// @brief removes a collection from the global list of collections
+  /// This function is called when a collection is dropped.
+  bool unregisterCollection(TRI_vocbase_col_t* collection);
+
+  /// @brief creates a new collection, worker function
   TRI_vocbase_col_t* createCollectionWorker(
       arangodb::VocbaseCollectionInfo& parameters,
       TRI_voc_cid_t& cid, bool writeMarker, VPackBuilder& builder);
 
+  /// @brief renames a collection, worker function
   int renameCollectionWorker(TRI_vocbase_col_t* collection, 
                              std::string const& oldName,
                              std::string const& newName);
+
+  /// @brief drops a collection, worker function
+  int dropCollectionWorker(TRI_vocbase_col_t* collection,
+                            bool writeMarker, DropState& state);
+
+  /// @brief write a drop collection marker into the log
+  int writeDropCollectionMarker(TRI_voc_cid_t collectionId,
+                                std::string const& name);
 };
 
 // scope guard for a database
@@ -506,12 +531,6 @@ class TRI_vocbase_col_t {
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_UnloadCollectionVocBase(TRI_vocbase_t*, TRI_vocbase_col_t*, bool);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief drops a collection
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_DropCollectionVocBase(TRI_vocbase_t*, TRI_vocbase_col_t*, bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief locks a (document) collection for usage, loading or manifesting it

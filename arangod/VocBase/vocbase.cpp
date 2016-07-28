@@ -73,13 +73,6 @@ using namespace arangodb::basics;
 
 static std::atomic<bool> ThrowCollectionNotLoaded(false);
 
-/// @brief states for TRI_DropCollectionVocBase()
-enum DropState {
-  DROP_EXIT,    // drop done, nothing else to do
-  DROP_AGAIN,   // drop not done, must try again
-  DROP_PERFORM  // drop done, must perform actual cleanup routine
-};
-
 /// @brief collection constructor
 TRI_vocbase_col_t::TRI_vocbase_col_t(TRI_vocbase_t* vocbase, TRI_col_type_e type,
                                      TRI_voc_cid_t cid, std::string const& name,
@@ -183,13 +176,9 @@ TRI_vocbase_col_t* TRI_vocbase_t::registerCollection(bool doLock,
   return collection.release();
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief write a drop collection marker into the log
-////////////////////////////////////////////////////////////////////////////////
-
-static int WriteDropCollectionMarker(TRI_vocbase_t* vocbase,
-                                     TRI_voc_cid_t collectionId,
-                                     std::string const& name) {
+int TRI_vocbase_t::writeDropCollectionMarker(TRI_voc_cid_t collectionId,
+                                             std::string const& name) {
   int res = TRI_ERROR_NO_ERROR;
 
   try {
@@ -199,7 +188,7 @@ static int WriteDropCollectionMarker(TRI_vocbase_t* vocbase,
     builder.add("name", VPackValue(name));
     builder.close();
 
-    arangodb::wal::CollectionMarker marker(TRI_DF_MARKER_VPACK_DROP_COLLECTION, vocbase->_id, collectionId, builder.slice());
+    arangodb::wal::CollectionMarker marker(TRI_DF_MARKER_VPACK_DROP_COLLECTION, _id, collectionId, builder.slice());
 
     arangodb::wal::SlotInfoCopy slotInfo =
         arangodb::wal::LogfileManager::instance()->allocateAndWrite(marker, false);
@@ -221,32 +210,26 @@ static int WriteDropCollectionMarker(TRI_vocbase_t* vocbase,
   return res;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief removes a collection name from the global list of collections
-///
 /// This function is called when a collection is dropped.
-/// note: the collection must be write-locked for this operation
-////////////////////////////////////////////////////////////////////////////////
-
-static bool UnregisterCollection(TRI_vocbase_t* vocbase,
-                                 TRI_vocbase_col_t* collection) {
+bool TRI_vocbase_t::unregisterCollection(TRI_vocbase_col_t* collection) {
   TRI_ASSERT(collection != nullptr);
   std::string const colName(collection->name());
 
-  WRITE_LOCKER(writeLocker, vocbase->_collectionsLock);
+  WRITE_LOCKER(writeLocker, _collectionsLock);
 
   // pre-condition
-  TRI_ASSERT(vocbase->_collectionsByName.size() == vocbase->_collectionsById.size());
+  TRI_ASSERT(_collectionsByName.size() == _collectionsById.size());
 
   // only if we find the collection by its id, we can delete it by name
-  if (vocbase->_collectionsById.erase(collection->_cid) > 0) {
+  if (_collectionsById.erase(collection->_cid) > 0) {
     // this is because someone else might have created a new collection with the
     // same name, but with a different id
-    vocbase->_collectionsByName.erase(colName);
+    _collectionsByName.erase(colName);
   }
 
   // post-condition
-  TRI_ASSERT(vocbase->_collectionsByName.size() == vocbase->_collectionsById.size());
+  TRI_ASSERT(_collectionsByName.size() == _collectionsById.size());
 
   return true;
 }
@@ -529,10 +512,7 @@ TRI_vocbase_col_t* TRI_vocbase_t::createCollectionWorker(
   return collection;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief renames a collection
-////////////////////////////////////////////////////////////////////////////////
-
+/// @brief renames a collection, worker function
 int TRI_vocbase_t::renameCollectionWorker(TRI_vocbase_col_t* collection, 
                             std::string const& oldName,
                             std::string const& newName) {
@@ -797,42 +777,32 @@ static int LoadCollectionVocBase(TRI_vocbase_t* vocbase,
   return TRI_set_errno(TRI_ERROR_INTERNAL);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief drops a (document) collection
-////////////////////////////////////////////////////////////////////////////////
-
-static int DropCollection(TRI_vocbase_t* vocbase, TRI_vocbase_col_t* collection,
+/// @brief drops a collection, worker function
+int TRI_vocbase_t::dropCollectionWorker(TRI_vocbase_col_t* collection,
                           bool writeMarker, DropState& state) {
   state = DROP_EXIT;
   std::string const colName(collection->name());
 
   TRI_EVENTUAL_WRITE_LOCK_STATUS_VOCBASE_COL(collection);
 
-  arangodb::aql::QueryCache::instance()->invalidate(vocbase, colName.c_str());
+  arangodb::aql::QueryCache::instance()->invalidate(this, colName.c_str());
 
-  // .............................................................................
   // collection already deleted
-  // .............................................................................
-
   if (collection->_status == TRI_VOC_COL_STATUS_DELETED) {
     // mark collection as deleted
-    UnregisterCollection(vocbase, collection);
+    unregisterCollection(collection);
 
     TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
 
     return TRI_ERROR_NO_ERROR;
   }
 
-  // .............................................................................
   // collection is unloaded
-  // .............................................................................
-
-  else if (collection->_status == TRI_VOC_COL_STATUS_UNLOADED) {
+  if (collection->_status == TRI_VOC_COL_STATUS_UNLOADED) {
     try {
       arangodb::VocbaseCollectionInfo info =
           arangodb::VocbaseCollectionInfo::fromFile(collection->path(),
-                                                    collection->vocbase(),
-                                                    colName, true);
+                                                    this, colName, true);
       if (!info.deleted()) {
         info.setDeleted(true);
 
@@ -856,11 +826,11 @@ static int DropCollection(TRI_vocbase_t* vocbase, TRI_vocbase_col_t* collection,
     }
 
     collection->_status = TRI_VOC_COL_STATUS_DELETED;
-    UnregisterCollection(vocbase, collection);
+    unregisterCollection(collection);
     TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
 
     if (writeMarker) {
-      WriteDropCollectionMarker(vocbase, collection->_cid, collection->name());
+      writeDropCollectionMarker(collection->_cid, collection->name());
     }
 
     DropCollectionCallback(nullptr, collection);
@@ -868,11 +838,8 @@ static int DropCollection(TRI_vocbase_t* vocbase, TRI_vocbase_col_t* collection,
     return TRI_ERROR_NO_ERROR;
   }
 
-  // .............................................................................
   // collection is loading
-  // .............................................................................
-
-  else if (collection->_status == TRI_VOC_COL_STATUS_LOADING) {
+  if (collection->_status == TRI_VOC_COL_STATUS_LOADING) {
     // loop until status changes
 
     TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
@@ -882,18 +849,15 @@ static int DropCollection(TRI_vocbase_t* vocbase, TRI_vocbase_col_t* collection,
     return TRI_ERROR_NO_ERROR;
   }
 
-  // .............................................................................
   // collection is loaded
-  // .............................................................................
-
-  else if (collection->_status == TRI_VOC_COL_STATUS_LOADED ||
+  if (collection->_status == TRI_VOC_COL_STATUS_LOADED ||
            collection->_status == TRI_VOC_COL_STATUS_UNLOADING) {
     collection->_collection->_info.setDeleted(true);
 
     bool doSync = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database")->forceSyncProperties();
     doSync = (doSync && !arangodb::wal::LogfileManager::instance()->isInRecovery());
     VPackSlice slice;
-    int res = collection->_collection->updateCollectionInfo(vocbase, slice, doSync);
+    int res = collection->_collection->updateCollectionInfo(this, slice, doSync);
 
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
@@ -902,29 +866,23 @@ static int DropCollection(TRI_vocbase_t* vocbase, TRI_vocbase_col_t* collection,
     }
 
     collection->_status = TRI_VOC_COL_STATUS_DELETED;
-
-    UnregisterCollection(vocbase, collection);
+    unregisterCollection(collection);
     TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
 
     if (writeMarker) {
-      WriteDropCollectionMarker(vocbase, collection->_cid, collection->name());
+      writeDropCollectionMarker(collection->_cid, collection->name());
     }
 
     state = DROP_PERFORM;
     return TRI_ERROR_NO_ERROR;
   }
 
-  // .............................................................................
   // unknown status
-  // .............................................................................
+  TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
 
-  else {
-    TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
+  LOG(WARN) << "internal error in dropCollection";
 
-    LOG(WARN) << "internal error in TRI_DropCollectionVocBase";
-
-    return TRI_set_errno(TRI_ERROR_INTERNAL);
-  }
+  return TRI_set_errno(TRI_ERROR_INTERNAL);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1417,12 +1375,8 @@ int TRI_UnloadCollectionVocBase(TRI_vocbase_t* vocbase,
   return TRI_ERROR_NO_ERROR;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief drops a (document) collection
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_DropCollectionVocBase(TRI_vocbase_t* vocbase,
-                              TRI_vocbase_col_t* collection, bool writeMarker) {
+/// @brief drops a collection
+int TRI_vocbase_t::dropCollection(TRI_vocbase_col_t* collection, bool writeMarker) {
   TRI_ASSERT(collection != nullptr);
 
   if (!collection->_canDrop &&
@@ -1434,9 +1388,9 @@ int TRI_DropCollectionVocBase(TRI_vocbase_t* vocbase,
     DropState state = DROP_EXIT;
     int res;
     {
-      READ_LOCKER(readLocker, vocbase->_inventoryLock);
+      READ_LOCKER(readLocker, _inventoryLock);
 
-      res = DropCollection(vocbase, collection, writeMarker, state);
+      res = dropCollectionWorker(collection, writeMarker, state);
     }
 
     if (state == DROP_PERFORM) {
@@ -1449,7 +1403,7 @@ int TRI_DropCollectionVocBase(TRI_vocbase_t* vocbase,
             __FILE__, __LINE__);
 
         // wake up the cleanup thread
-        CONDITION_LOCKER(locker, vocbase->_cleanupCondition);
+        CONDITION_LOCKER(locker, _cleanupCondition);
         locker.signal();
       }
     }
