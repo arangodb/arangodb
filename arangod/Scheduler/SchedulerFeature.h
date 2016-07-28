@@ -65,6 +65,7 @@ class SchedulerFeature final : public application_features::ApplicationFeature {
   void buildScheduler();
 
  private:
+  std::vector<size_t> _affinityCores;
   rest::Scheduler* _scheduler;
   std::vector<rest::Task*> _tasks;
 };

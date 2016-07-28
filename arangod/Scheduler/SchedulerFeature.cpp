@@ -24,8 +24,8 @@
 #include "SchedulerFeature.h"
 
 #ifdef _WIN32
-#include <windows.h>
 #include <stdio.h>
+#include <windows.h>
 #endif
 
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -98,8 +98,7 @@ void SchedulerFeature::validateOptions(
 
     if (n <= 4) {
       _nrSchedulerThreads = 1;
-    }
-    else {
+    } else {
       _nrSchedulerThreads = 2;
     }
   }
@@ -152,9 +151,7 @@ void SchedulerFeature::stop() {
   }
 }
 
-void SchedulerFeature::unprepare() {
-  SCHEDULER = nullptr;
-}
+void SchedulerFeature::unprepare() { SCHEDULER = nullptr; }
 
 #ifdef _WIN32
 bool CtrlHandler(DWORD eventType) {
@@ -272,7 +269,10 @@ class HangupTask : public SignalTask {
 #endif
 
 void SchedulerFeature::buildScheduler() {
-  _scheduler = new SchedulerLibev(static_cast<size_t>(_nrSchedulerThreads), static_cast<int>(_backend));
+  _scheduler = new SchedulerLibev(static_cast<size_t>(_nrSchedulerThreads),
+                                  static_cast<int>(_backend));
+  _scheduler->setProcessorAffinity(_affinityCores);
+
   SCHEDULER = _scheduler;
 }
 
@@ -313,21 +313,5 @@ void SchedulerFeature::buildHangupHandler() {
 }
 
 void SchedulerFeature::setProcessorAffinity(std::vector<size_t> const& cores) {
-#ifdef TRI_HAVE_THREAD_AFFINITY
-  size_t j = 0;
-
-  for (uint32_t i = 0; i < _nrSchedulerThreads; ++i) {
-    size_t c = cores[j];
-
-    LOG(DEBUG) << "using core " << c << " for scheduler thread " << i;
-
-    _scheduler->setProcessorAffinity(i, c);
-
-    ++j;
-
-    if (j >= cores.size()) {
-      j = 0;
-    }
-  }
-#endif
+  _affinityCores = cores;
 }

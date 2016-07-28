@@ -36,12 +36,11 @@
 // --Section--                                                processor features
 // -----------------------------------------------------------------------------
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief padding
-////////////////////////////////////////////////////////////////////////////////
+// padding
 
 #if defined(__amd64__) || defined(__amd64) || defined(__x86_64__) || \
-    defined(__x86_64) || defined(_M_X64) || defined(_M_AMD64) || defined(__aarch64__)
+    defined(__x86_64) || defined(_M_X64) || defined(_M_AMD64) ||     \
+    defined(__aarch64__)
 #undef TRI_PADDING_32
 #else
 #define TRI_PADDING_32 1
@@ -55,9 +54,7 @@
 
 #define TRI_PLATFORM "solaris"
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief necessary defines and includes
-////////////////////////////////////////////////////////////////////////////////
+// necessary defines and includes
 
 #define TRI_UNDEF_ERR 1
 
@@ -65,16 +62,12 @@
 
 #define TRI_HAVE_PSTACK 1
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief enabled features
-////////////////////////////////////////////////////////////////////////////////
+// enabled features
 
 #define ARANGODB_ENABLE_SYSLOG 1
 #define ARANGODB_ENABLE_SYSLOG_STRINGS 1
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief available include files
-////////////////////////////////////////////////////////////////////////////////
+// available include files
 
 #define TRI_HAVE_ARPA_INET_H 1
 #define TRI_HAVE_DIRENT_H 1
@@ -96,11 +89,7 @@
 #define TRI_HAVE_TERMIOS_H 1
 #define TRI_HAVE_UNISTD_H 1
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief available functions
-////////////////////////////////////////////////////////////////////////////////
-
-#undef TRI_HAVE_GETLINE /* TODO(fc) remove when we are using the new ProgramOptions */
+// available functions
 
 #define ARANGODB_HAVE_FORK 1
 #define ARANGODB_HAVE_GETGRGID 1
@@ -109,7 +98,7 @@
 #define ARANGODB_HAVE_GETPWNAM 1
 #define ARANGODB_HAVE_GETPWUID 1
 #define ARANGODB_HAVE_GETRUSAGE 1
-#undef  ARANGODB_HAVE_GETTID
+#undef ARANGODB_HAVE_GETTID
 #define ARANGODB_HAVE_GMTIME_R 1
 #undef ARANGODB_HAVE_GMTIME_S
 #undef ARANGODB_HAVE_INITGROUPS
@@ -121,9 +110,7 @@
 #define TRI_srandom ::srand
 #define TRI_random ::rand
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief available features
-////////////////////////////////////////////////////////////////////////////////
+// available features
 
 #define TRI_HAVE_POSIX 1
 
@@ -139,9 +126,7 @@
 
 #define TRI_MISSING_MEMRCHR 1
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief files
-////////////////////////////////////////////////////////////////////////////////
+// files
 
 #define TRI_DIR_SEPARATOR_CHAR '/'
 #define TRI_DIR_SEPARATOR_STR "/"
@@ -176,9 +161,7 @@
 #define TRI_SYSTEM_ERROR() \
   {}
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sockets
-////////////////////////////////////////////////////////////////////////////////
+// sockets
 
 #define TRI_CONNECT_AI_FLAGS (AI_PASSIVE | AI_NUMERICSERV | AI_ALL)
 
@@ -188,9 +171,7 @@
 #define TRI_READ_SOCKET(a, b, c, d) TRI_readsocket((a), (b), (c), (d))
 #define TRI_WRITE_SOCKET(a, b, c, d) TRI_writesocket((a), (b), (c), (d))
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief user and group types
-////////////////////////////////////////////////////////////////////////////////
+// user and group types
 
 #define TRI_uid_t uid_t
 #define TRI_gid_t gid_t
@@ -205,23 +186,17 @@
 
 #define TRI_PLATFORM "darwin"
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief necessary defines and includes
-////////////////////////////////////////////////////////////////////////////////
+// necessary defines and includes
 
 #include <stdint.h>
 
 #define ARANGODB_GETRUSAGE_MAXRSS_UNIT 1
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief enabled features
-////////////////////////////////////////////////////////////////////////////////
+// enabled features
 
 #define ARANGODB_ENABLE_SYSLOG 1
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief available include files
-////////////////////////////////////////////////////////////////////////////////
+// available include files
 
 #define TRI_HAVE_ARPA_INET_H 1
 #define TRI_HAVE_DIRENT_H 1
@@ -243,14 +218,11 @@
 #define TRI_HAVE_TERMIOS_H 1
 #define TRI_HAVE_UNISTD_H 1
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief available functions
-////////////////////////////////////////////////////////////////////////////////
+// available functions
 
 #define ARANGODB_HAVE_FORK 1
 #define ARANGODB_HAVE_GETGRGID 1
 #define ARANGODB_HAVE_GETGRNAM 1
-#undef TRI_HAVE_GETLINE
 #define ARANGODB_HAVE_GETPPID 1
 #define ARANGODB_HAVE_GETPWNAM 1
 #define ARANGODB_HAVE_GETPWUID 1
@@ -267,13 +239,12 @@
 #define TRI_random random
 #define TRI_srandom srandom
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief available features
-////////////////////////////////////////////////////////////////////////////////
+// available features
 
 #define TRI_HAVE_POSIX 1
 
 #define ARANGODB_HAVE_DOMAIN_SOCKETS 1
+#define ARANGODB_HAVE_THREAD_POLICY 1
 #define TRI_HAVE_MACH 1
 #define TRI_HAVE_MACOS_MEM_STATS 1
 #define TRI_HAVE_POSIX_MMAP 1
@@ -288,17 +259,11 @@
 
 #define TRI_SC_NPROCESSORS_ONLN 1
 
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
-#define TRI_HAVE_GETLINE 1
-#endif
-
 #if __llvm__ == 1
 #define thread_local __thread
 #endif
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief alignment and limits
-////////////////////////////////////////////////////////////////////////////////
+// alignment and limits
 
 #if __WORDSIZE == 64
 #define TRI_SIZEOF_SIZE_T (8)
@@ -316,9 +281,7 @@
 #endif
 #endif
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief files
-////////////////////////////////////////////////////////////////////////////////
+// files
 
 #define TRI_DIR_SEPARATOR_CHAR '/'
 #define TRI_DIR_SEPARATOR_STR "/"
@@ -353,9 +316,7 @@
 #define TRI_SYSTEM_ERROR() \
   {}
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sockets
-////////////////////////////////////////////////////////////////////////////////
+// sockets
 
 #define TRI_CONNECT_AI_FLAGS (AI_PASSIVE | AI_NUMERICSERV | AI_ALL)
 
@@ -365,9 +326,7 @@
 #define TRI_READ_SOCKET(a, b, c, d) TRI_readsocket((a), (b), (c), (d))
 #define TRI_WRITE_SOCKET(a, b, c, d) TRI_writesocket((a), (b), (c), (d))
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief user and group types
-////////////////////////////////////////////////////////////////////////////////
+// user and group types
 
 #define TRI_uid_t uid_t
 #define TRI_gid_t gid_t
@@ -380,9 +339,7 @@
 
 #ifdef __FreeBSD__
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief necessary defines and includes
-////////////////////////////////////////////////////////////////////////////////
+// necessary defines and includes
 
 #define TRI_PLATFORM "freebsd"
 
@@ -396,15 +353,11 @@
 
 #define ARANGODB_GETRUSAGE_MAXRSS_UNIT 1024
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief enabled features
-////////////////////////////////////////////////////////////////////////////////
+// enabled features
 
 #define ARANGODB_ENABLE_SYSLOG 1
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief available include files
-////////////////////////////////////////////////////////////////////////////////
+// available include files
 
 #define TRI_HAVE_DIRENT_H 1
 #define TRI_HAVE_DLFCN_H 1
@@ -426,13 +379,10 @@
 #define TRI_HAVE_SYS_TYPES_H 1
 #define TRI_HAVE_SYS_WAIT_H 1
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief available functions
-////////////////////////////////////////////////////////////////////////////////
+// available functions
 
 #define ARANGODB_HAVE_GETGRGID 1
 #define ARANGODB_HAVE_GETGRNAM 1
-#define TRI_HAVE_GETLINE 1
 #define ARANGODB_HAVE_GETPPID 1
 #define ARANGODB_HAVE_GETPWNAM 1
 #define ARANGODB_HAVE_GETPWUID 1
@@ -449,9 +399,7 @@
 #define TRI_random ::rand
 #define TRI_srandom ::srand
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief available features
-////////////////////////////////////////////////////////////////////////////////
+// available features
 
 #define TRI_HAVE_POSIX 1
 
@@ -465,9 +413,7 @@
 
 #define TRI_HAVE_ANONYMOUS_MMAP 1
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief alignment and limits
-////////////////////////////////////////////////////////////////////////////////
+// alignment and limits
 
 #if __WORDSIZE == 64
 #define TRI_SIZEOF_SIZE_T (8)
@@ -477,9 +423,7 @@
 #define TRI_ALIGNOF_VOIDP (4)
 #endif
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief files
-////////////////////////////////////////////////////////////////////////////////
+// files
 
 #define TRI_DIR_SEPARATOR_CHAR '/'
 #define TRI_DIR_SEPARATOR_STR "/"
@@ -514,9 +458,7 @@
 #define TRI_SYSTEM_ERROR() \
   {}
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sockets
-////////////////////////////////////////////////////////////////////////////////
+// sockets
 
 #define TRI_CONNECT_AI_FLAGS (AI_PASSIVE | AI_NUMERICSERV)
 
@@ -526,9 +468,7 @@
 #define TRI_READ_SOCKET(a, b, c, d) TRI_readsocket((a), (b), (c), (d))
 #define TRI_WRITE_SOCKET(a, b, c, d) TRI_writesocket((a), (b), (c), (d))
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief user and group types
-////////////////////////////////////////////////////////////////////////////////
+// user and group types
 
 #define TRI_uid_t uid_t
 #define TRI_gid_t gid_t
@@ -541,9 +481,7 @@
 
 #ifdef __linux__
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief necessary defines and includes
-////////////////////////////////////////////////////////////////////////////////
+// necessary defines and includes
 
 #define TRI_PLATFORM "linux"
 
@@ -567,15 +505,11 @@
 
 #define ARANGODB_GETRUSAGE_MAXRSS_UNIT 1024
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief enabled features
-////////////////////////////////////////////////////////////////////////////////
+// enabled features
 
 #define ARANGODB_ENABLE_SYSLOG 1
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief available include files
-////////////////////////////////////////////////////////////////////////////////
+// available include files
 
 #define TRI_HAVE_ARPA_INET_H 1
 #define TRI_HAVE_DIRENT_H 1
@@ -598,14 +532,11 @@
 #define TRI_HAVE_TERMIOS_H 1
 #define TRI_HAVE_UNISTD_H 1
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief available functions
-////////////////////////////////////////////////////////////////////////////////
+// available functions
 
 #define ARANGODB_HAVE_FORK 1
 #define ARANGODB_HAVE_GETGRGID 1
 #define ARANGODB_HAVE_GETGRNAM 1
-#define TRI_HAVE_GETLINE 1
 #define ARANGODB_HAVE_GETPPID 1
 #define ARANGODB_HAVE_GETPWNAM 1
 #define ARANGODB_HAVE_GETPWUID 1
@@ -621,21 +552,19 @@
 
 #define TRI_HAVE_PRCTL 1
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief available features
-////////////////////////////////////////////////////////////////////////////////
+// available features
 
 #define TRI_GCC_THREAD_LOCAL_STORAGE 1
 
 #define TRI_HAVE_POSIX 1
 
-#define TRI_HAVE_LINUX_PROC 1
 #define ARANGODB_HAVE_DOMAIN_SOCKETS 1
+#define ARANGODB_HAVE_THREAD_AFFINITY 1
+#define TRI_HAVE_LINUX_PROC 1
 #define TRI_HAVE_POSIX_MMAP 1
 #define TRI_HAVE_POSIX_PWD_GRP 1
 #define TRI_HAVE_POSIX_THREADS 1
 #define TRI_HAVE_SC_PHYS_PAGES 1
-#define TRI_HAVE_THREAD_AFFINITY 1
 #define TRI_HAVE_SETLK 1
 
 #define TRI_HAVE_ANONYMOUS_MMAP 1
@@ -645,9 +574,7 @@
 #define TRI_random ::rand
 #define TRI_srandom ::srand
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief alignment and limits
-////////////////////////////////////////////////////////////////////////////////
+// alignment and limits
 
 #if __WORDSIZE == 64
 #define TRI_SIZEOF_SIZE_T (8)
@@ -657,9 +584,7 @@
 #define TRI_ALIGNOF_VOIDP (4)
 #endif
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief files
-////////////////////////////////////////////////////////////////////////////////
+// files
 
 #define TRI_DIR_SEPARATOR_CHAR '/'
 #define TRI_DIR_SEPARATOR_STR "/"
@@ -694,9 +619,7 @@
 #define TRI_SYSTEM_ERROR() \
   {}
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sockets
-////////////////////////////////////////////////////////////////////////////////
+// sockets
 
 #define TRI_CONNECT_AI_FLAGS (AI_PASSIVE | AI_NUMERICSERV | AI_ALL)
 
@@ -706,9 +629,7 @@
 #define TRI_READ_SOCKET(a, b, c, d) TRI_readsocket((a), (b), (c), (d))
 #define TRI_WRITE_SOCKET(a, b, c, d) TRI_writesocket((a), (b), (c), (d))
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief user and group types
-////////////////////////////////////////////////////////////////////////////////
+// user and group types
 
 #define TRI_uid_t uid_t
 #define TRI_gid_t gid_t
@@ -721,9 +642,7 @@
 
 #if defined(_WIN32) && defined(_MSC_VER)
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief necessary defines and includes
-////////////////////////////////////////////////////////////////////////////////
+// necessary defines and includes
 
 #ifdef _WIN64
 #define TRI_PLATFORM "win64"
@@ -749,26 +668,18 @@
 
 //#define _CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES     1
 
-#include <stdio.h>
-#include <io.h>
 #include <WinSock2.h>
+#include <io.h>
+#include <stdio.h>
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief enabled features
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief available include files
-////////////////////////////////////////////////////////////////////////////////
+// available include files
 
 #define TRI_HAVE_DIRECT_H 1
 #define TRI_HAVE_PROCESS_H 1
 #define TRI_HAVE_SIGNAL_H 1
 #define TRI_HAVE_WINSOCK2_H 1
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief available functions
-////////////////////////////////////////////////////////////////////////////////
+// available functions
 
 #undef ARANGODB_HAVE_GETGRGID
 #undef ARANGODB_HAVE_GETGRNAM
@@ -802,9 +713,7 @@
 #define tzset _tzset
 #define usleep TRI_usleep
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief available features
-////////////////////////////////////////////////////////////////////////////////
+// available features
 
 #define YY_NO_UNISTD_H 1
 
@@ -851,9 +760,7 @@ typedef unsigned char bool;
 
 #define thread_local __declspec(thread)
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief alignment and limits
-////////////////////////////////////////////////////////////////////////////////
+// alignment and limits
 
 #if __WORDSIZE == 64
 #define TRI_SIZEOF_SIZE_T (8)
@@ -863,9 +770,7 @@ typedef unsigned char bool;
 #define TRI_ALIGNOF_VOIDP (4)
 #endif
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief files
-////////////////////////////////////////////////////////////////////////////////
+// files
 
 #define TRI_DIR_SEPARATOR_CHAR '\\'
 #define TRI_DIR_SEPARATOR_STR "\\"
@@ -908,20 +813,18 @@ typedef unsigned char bool;
 
 // system error string macro requires ERRORBUF to instantiate its buffer before.
 
-#define TRI_SYSTEM_ERROR()                                                      \
-  if (FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, NULL, GetLastError(), 0,        \
-                windowsErrorBuf, sizeof(windowsErrorBuf), NULL) == 0) {         \
-    memcpy(&windowsErrorBuf[0], "unknown error\0", strlen("unknown error\0"));  \
-  }                                                                             \
+#define TRI_SYSTEM_ERROR()                                                     \
+  if (FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, NULL, GetLastError(), 0,       \
+                    windowsErrorBuf, sizeof(windowsErrorBuf), NULL) == 0) {    \
+    memcpy(&windowsErrorBuf[0], "unknown error\0", strlen("unknown error\0")); \
+  }                                                                            \
   errno = TRI_MapSystemError(GetLastError())
 
 #define STDERR_FILENO 2
 #define STDIN_FILENO 0
 #define STDOUT_FILENO 1
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sockets
-////////////////////////////////////////////////////////////////////////////////
+// sockets
 
 #define TRI_CONNECT_AI_FLAGS (AI_PASSIVE | AI_NUMERICSERV | AI_ALL)
 
@@ -931,16 +834,14 @@ typedef unsigned char bool;
 #define TRI_READ_SOCKET(a, b, c, d) TRI_readsocket((a), (b), (c), (d))
 #define TRI_WRITE_SOCKET(a, b, c, d) TRI_writesocket((a), (b), (c), (d))
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief user and group types
-////////////////////////////////////////////////////////////////////////////////
+// user and group types
 
 // under windows group identifiers and user identifiers are
 // security identifiers (SID) which is a variable length structure
 // which can (should) not be accessed directly.
 
-#define TRI_uid_t void *
-#define TRI_gid_t void *
+#define TRI_uid_t void*
+#define TRI_gid_t void*
 
 #endif
 
