@@ -3625,8 +3625,11 @@ testFuncs.ssl_server = function(options) {
       }
     };
   }
-
-  return rubyTests(options, true);
+  var opts = {
+    "httpTrustedOrigin": "http://was-erlauben-strunz.it"
+  };
+  _.defaults(opts, options);
+  return rubyTests(opts, true);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
