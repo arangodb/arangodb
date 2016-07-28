@@ -26,9 +26,19 @@
 #define ARANGOD_CLUSTER_TRAVERSER_ENGINE_H 1
 
 #include "Basics/Common.h"
+#include "Aql/Collections.h"
+
+struct TRI_vocbase_t;
 
 namespace arangodb {
+
+class Transaction;
+
+namespace aql {
+class Collections;
+}
 namespace velocypack {
+class Builder;
 class Slice;
 }
 namespace traverser {
@@ -44,14 +54,25 @@ class TraverserEngine {
   // We can get into undefined state if sth.
   // deletes an engine but the registry
   // does not get informed properly
-    TraverserEngine(arangodb::velocypack::Slice);
+    TraverserEngine(TRI_vocbase_t*, arangodb::velocypack::Slice);
     ~TraverserEngine();
 
   public:
+   void getEdges(arangodb::velocypack::Slice, size_t,
+                 arangodb::velocypack::Builder&);
 
+   void getVertexData(arangodb::velocypack::Slice, size_t,
+                      arangodb::velocypack::Builder&);
+
+   void lockCollections();
 
   private:
     std::unique_ptr<TraverserOptions> _opts;
+    arangodb::Transaction* _trx;
+    arangodb::aql::Collections _collections;
+    std::vector<std::string> _toLock;
+    std::vector<std::string> _vertexShards;
+    bool _didLock;
 
 };
 } // namespace traverser

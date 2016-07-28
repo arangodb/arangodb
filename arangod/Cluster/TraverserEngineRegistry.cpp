@@ -31,9 +31,10 @@
 
 using namespace arangodb::traverser;
 
-TraverserEngineRegistry::EngineInfo::EngineInfo(VPackSlice info)
+TraverserEngineRegistry::EngineInfo::EngineInfo(TRI_vocbase_t* vocbase,
+                                                VPackSlice info)
     : _isInUse(false),
-      _engine(new TraverserEngine(info)),
+      _engine(new TraverserEngine(vocbase, info)),
       _timeToLive(0),
       _expires(0) {}
 
@@ -62,12 +63,13 @@ TraverserEngineRegistry::~TraverserEngineRegistry() {
 }
 
 /// @brief Create a new Engine and return it's id
-TraverserEngineID TraverserEngineRegistry::createNew(VPackSlice engineInfo) {
+TraverserEngineID TraverserEngineRegistry::createNew(TRI_vocbase_t* vocbase,
+                                                     VPackSlice engineInfo) {
   WRITE_LOCKER(writeLocker, _lock);
   TraverserEngineID id = TRI_NewTickServer();
   TRI_ASSERT(_engines.find(id) == _engines.end());
   try {
-    auto info = std::make_unique<EngineInfo>(engineInfo);
+    auto info = std::make_unique<EngineInfo>(vocbase, engineInfo);
     _engines.emplace(id, info.get());
     info.release();
   } catch (...) {

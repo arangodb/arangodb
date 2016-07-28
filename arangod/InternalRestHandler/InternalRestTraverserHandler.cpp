@@ -103,7 +103,7 @@ void InternalRestTraverserHandler::createEngine() {
   }
 
   // TODO create correctly
-  traverser::TraverserEngineID id = _registry->createNew(parsedBody->slice());
+  traverser::TraverserEngineID id = _registry->createNew(_vocbase, parsedBody->slice());
   VPackBuilder resultBuilder;
   resultBuilder.add(VPackValue(id));
 

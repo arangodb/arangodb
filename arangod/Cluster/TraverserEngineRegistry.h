@@ -27,6 +27,8 @@
 #include "Basics/ReadWriteLock.h"
 #include "VocBase/voc-types.h"
 
+struct TRI_vocbase_t;
+
 namespace arangodb {
 namespace traverser {
 
@@ -45,7 +47,7 @@ class TraverserEngineRegistry {
   ///        It can be referred to by the returned
   ///        ID. If the returned ID is 0 something
   ///        internally went wrong.
-  TraverserEngineID createNew(arangodb::velocypack::Slice);
+  TraverserEngineID createNew(TRI_vocbase_t*, arangodb::velocypack::Slice);
 
   /// @brief Get the engine with the given ID.
   ///        TODO Test what happens if this pointer
@@ -69,7 +71,7 @@ class TraverserEngineRegistry {
     double _timeToLive;       // in seconds
     double _expires;          // UNIX UTC timestamp for expiration
 
-    EngineInfo(arangodb::velocypack::Slice);
+    EngineInfo(TRI_vocbase_t*, arangodb::velocypack::Slice);
   };
 
   /// @brief the actual map of engines

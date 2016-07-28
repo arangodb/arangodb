@@ -64,6 +64,10 @@ class SortCondition;
 struct Variable;
 }
 
+namespace traverser {
+class TraverserEngine;
+}
+
 //////////////////////////////////////////////////////////////////////////////
 /// @brief forward declarations
 //////////////////////////////////////////////////////////////////////////////
@@ -74,6 +78,8 @@ struct OperationCursor;
 class TransactionContext;
 
 class Transaction {
+  friend class traverser::TraverserEngine;
+
  public:
 
   double const TRX_FOLLOWER_TIMEOUT = 3.0;
