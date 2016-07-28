@@ -145,7 +145,7 @@
 
       // render
       this.graphData.modified = this.parseData(this.graphData.original, this.graphData.graphInfo);
-      this.renderGraph(this.graphData.modified);
+      this.renderGraph(this.graphData.modified, null, true);
     },
 
     parseData: function (data, type) {
@@ -639,7 +639,7 @@
       }
       var key = $('.modal-body #new-edge-key-attr').last().val();
 
-      var callback = function (error, data) {
+      var callback = function (error, data, msg) {
         if (!error) {
           // success
           if (self.graphConfig.edgeEditable === 'true') {
@@ -667,7 +667,7 @@
           }
           self.currentGraph.refresh();
         } else {
-          arangoHelper.arangoError('Graph', 'Could not create edge.');
+          arangoHelper.arangoError('Could not create edge', msg.errorMessage);
         }
 
         // then clear states
@@ -1223,7 +1223,7 @@
       return lasso;
     },
 
-    renderGraph: function (graph, toFocus) {
+    renderGraph: function (graph, toFocus, aqlMode) {
       var self = this;
 
       this.graphSettings = graph.settings;
@@ -1591,14 +1591,10 @@
         self.startLayout();
 
         // suggestion rendering time
-        var duration = 3000;
+        var duration = graph.nodes.length;
 
-        if (graph.nodes) {
-          if (graph.nodes.length > 2500) {
-            duration = 5000;
-          } else if (graph.nodes.length < 50) {
-            duration = 500;
-          }
+        if (duration < 250) {
+          duration = 250;
         }
 
         window.setTimeout(function () {
@@ -1673,9 +1669,11 @@
         factor = 0.7;
       }
 
-      maxNodeSize = maxNodeSize * factor;
-      s.settings('maxNodeSize', maxNodeSize);
-      s.refresh();
+      if (!aqlMode) {
+        maxNodeSize = maxNodeSize * factor;
+        s.settings('maxNodeSize', maxNodeSize);
+        s.refresh();
+      }
 
       self.calcFinished = new Date();
       // console.log('Client side calculation took ' + Math.abs(self.calcFinished.getTime() - self.calcStart.getTime()) + ' ms');

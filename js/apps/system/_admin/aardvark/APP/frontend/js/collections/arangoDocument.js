@@ -56,7 +56,7 @@ window.ArangoDocument = Backbone.Collection.extend({
         callback(false, data);
       },
       error: function (data) {
-        callback(true, data);
+        callback(true, data._id, data.responseJSON);
       }
     });
   },
