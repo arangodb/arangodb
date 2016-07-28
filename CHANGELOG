@@ -1,6 +1,8 @@
 v3.0.4 (XXXX-XX-XX)
 -------------------
 
+* fix handling of empty AQL query strings
+
 * fixed issue in `INTERSECTION` AQL function with duplicate elements
   in the source arrays
 
