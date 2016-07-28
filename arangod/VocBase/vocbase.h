@@ -54,6 +54,7 @@ class VocbaseAuthInfo;
 class VocbaseCollectionInfo;
 class CollectionKeysRepository;
 class CursorRepository;
+class StorageEngine;
 class Thread;
 }
 
@@ -177,44 +178,26 @@ constexpr size_t TRI_JOURNAL_MINIMAL_SIZE = 1024 * 1024; // 1 MB
 
 #endif
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief document handle separator as character
-////////////////////////////////////////////////////////////////////////////////
-
 constexpr char TRI_DOCUMENT_HANDLE_SEPARATOR_CHR = '/';
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief document handle separator as string
-////////////////////////////////////////////////////////////////////////////////
-
 constexpr auto TRI_DOCUMENT_HANDLE_SEPARATOR_STR = "/";
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief index handle separator as character
-////////////////////////////////////////////////////////////////////////////////
-
 constexpr char TRI_INDEX_HANDLE_SEPARATOR_CHR = '/';
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief index handle separator as string
-////////////////////////////////////////////////////////////////////////////////
-
 constexpr auto TRI_INDEX_HANDLE_SEPARATOR_STR = "/";
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief collection enum
-////////////////////////////////////////////////////////////////////////////////
-
 enum TRI_col_type_e {
   TRI_COL_TYPE_UNKNOWN = 0,           // only used when initializing
   TRI_COL_TYPE_DOCUMENT = 2,
   TRI_COL_TYPE_EDGE = 3
 };
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief database state
-////////////////////////////////////////////////////////////////////////////////
-
 enum TRI_vocbase_state_e {
   TRI_VOCBASE_STATE_INACTIVE = 0,
   TRI_VOCBASE_STATE_NORMAL = 1,
@@ -223,22 +206,16 @@ enum TRI_vocbase_state_e {
   TRI_VOCBASE_STATE_FAILED_VERSION = 4
 };
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief database type
-////////////////////////////////////////////////////////////////////////////////
-
 enum TRI_vocbase_type_e {
   TRI_VOCBASE_TYPE_NORMAL = 0,
   TRI_VOCBASE_TYPE_COORDINATOR = 1
 };
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief database
-///
-/// For the lock handling, see the document "LOCKS.md".
-////////////////////////////////////////////////////////////////////////////////
-
 struct TRI_vocbase_t {
+ friend class arangodb::StorageEngine;
+
   TRI_vocbase_t(TRI_vocbase_type_e type, TRI_voc_tick_t id, std::string const& name);
   ~TRI_vocbase_t();
 
@@ -395,8 +372,34 @@ struct TRI_vocbase_t {
     bool, std::function<bool(TRI_vocbase_col_t*, TRI_vocbase_col_t*)>);
 
   /// @brief renames a collection
-  int rename(TRI_vocbase_col_t* collection, std::string const& newName,
-             bool doOverride, bool writeMarker);
+  int renameCollection(TRI_vocbase_col_t* collection, std::string const& newName,
+                       bool doOverride, bool writeMarker);
+
+  /// @brief creates a new collection from parameter set
+  /// collection id (cid) is normally passed with a value of 0
+  /// this means that the system will assign a new collection id automatically
+  /// using a cid of > 0 is supported to import dumps from other servers etc.
+  /// but the functionality is not advertised
+  TRI_vocbase_col_t* createCollection(arangodb::VocbaseCollectionInfo& parameters,
+                                      TRI_voc_cid_t cid, bool writeMarker);
+
+
+  /// @brief adds a new collection
+  /// caller must hold _collectionsLock in write mode or set doLock
+ private:
+  TRI_vocbase_col_t* registerCollection(bool doLock,
+                                        TRI_col_type_e type, TRI_voc_cid_t cid,
+                                        std::string const& name,
+                                        TRI_voc_cid_t planId,
+                                        std::string const& path);
+
+  TRI_vocbase_col_t* createCollectionWorker(
+      arangodb::VocbaseCollectionInfo& parameters,
+      TRI_voc_cid_t& cid, bool writeMarker, VPackBuilder& builder);
+
+  int renameCollectionWorker(TRI_vocbase_col_t* collection, 
+                             std::string const& oldName,
+                             std::string const& newName);
 };
 
 // scope guard for a database
@@ -527,23 +530,6 @@ class TRI_vocbase_col_t {
   bool _canUnload;  // true if the collection can be unloaded
   bool _canRename;  // true if the collection can be renamed
 };
-
-/// @brief adds a new collection
-/// caller must hold _collectionsLock in write mode or set doLock
-TRI_vocbase_col_t* TRI_AddCollectionVocBase(bool doLock,
-                                            TRI_vocbase_t* vocbase,
-                                            TRI_col_type_e type, TRI_voc_cid_t cid,
-                                            std::string const& name,
-                                            TRI_voc_cid_t planId,
-                                            std::string const& path);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a new collection from parameter set
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_vocbase_col_t* TRI_CreateCollectionVocBase(TRI_vocbase_t*,
-                                               arangodb::VocbaseCollectionInfo&,
-                                               TRI_voc_cid_t cid, bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief unloads a collection

@@ -602,7 +602,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
           TRI_DropCollectionVocBase(vocbase, other, false);
         }
 
-        int res = vocbase->rename(collection, name, true, false);
+        int res = vocbase->renameCollection(collection, name, true, false);
 
         if (res != TRI_ERROR_NO_ERROR) {
           LOG(WARN) << "cannot rename collection " << collectionId << " in database " << databaseId << " to '" << name << "': " << TRI_errno_string(res);
@@ -820,12 +820,11 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
           // set the sync properties to false temporarily
           bool oldSync = state->databaseFeature->forceSyncProperties();
           state->databaseFeature->forceSyncProperties(false);
-          collection = TRI_CreateCollectionVocBase(vocbase, info, collectionId, false);
+          collection = vocbase->createCollection(info, collectionId, false);
           state->databaseFeature->forceSyncProperties(oldSync);
         } else {
           // collection will be kept
-          collection =
-              TRI_CreateCollectionVocBase(vocbase, info, collectionId, false);
+          collection = vocbase->createCollection(info, collectionId, false);
         }
 
         if (collection == nullptr) {

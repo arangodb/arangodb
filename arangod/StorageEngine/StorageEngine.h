@@ -46,7 +46,7 @@ class StorageEngine : public application_features::ApplicationFeature {
     setOptional(true);
     // storage engines must not use elevated privileges for files etc
     requiresElevatedPrivileges(false);
-    // TODO: determine more sensible startup order for storage engine
+    
     startsAfter("DatabasePath");
     startsAfter("EngineSelector");
     startsAfter("FileDescriptors");
@@ -200,6 +200,12 @@ class StorageEngine : public application_features::ApplicationFeature {
   virtual void removeDocumentRevision(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId,
                                       arangodb::velocypack::Slice const& document) = 0;
 
+ protected:
+  TRI_vocbase_col_t* registerCollection(bool doLock, TRI_vocbase_t* vocbase, TRI_col_type_e type, TRI_voc_cid_t cid, 
+                                        std::string const& name, TRI_voc_cid_t planId, std::string const& path) {
+    return vocbase->registerCollection(doLock, type, cid, name, planId, path);
+  }
+ 
  private:
   std::string const _typeName;
 };

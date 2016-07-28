@@ -755,7 +755,7 @@ int ContinuousSyncer::renameCollection(VPackSlice const& slice) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
 
-  return _vocbase->rename(col, name, true, true);
+  return _vocbase->renameCollection(col, name, true, true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

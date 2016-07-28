@@ -1458,8 +1458,7 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
     return;
   }
 
-  TRI_vocbase_col_t const* collection =
-      TRI_CreateCollectionVocBase(vocbase, parameters, parameters.id(), true);
+  TRI_vocbase_col_t const* collection = vocbase->createCollection(parameters, parameters.id(), true);
 
   if (collection == nullptr) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_errno(), "cannot create collection");

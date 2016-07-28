@@ -1349,7 +1349,7 @@ int RestReplicationHandler::createCollection(VPackSlice const& slice,
     TRI_ASSERT(params.planId() == 0);
   }
 
-  col = TRI_CreateCollectionVocBase(_vocbase, params, cid, true);
+  col = _vocbase->createCollection(params, cid, true);
 
   if (col == nullptr) {
     return TRI_errno();
