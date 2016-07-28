@@ -33,6 +33,11 @@
 #include "Scheduler/SchedulerFeature.h"
 #include "VocBase/server.h"
 
+#include <velocypack/Validator.h>
+#include <velocypack/velocypack-aliases.h>
+
+#include <stdexcept>
+
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
@@ -41,22 +46,17 @@ VppCommTask::VppCommTask(GeneralServer* server, TRI_socket_t sock,
                          ConnectionInfo&& info, double timeout)
     : Task("VppCommTask"),
       GeneralCommTask(server, sock, std::move(info), timeout),
-      _readPosition(0),
-      _startPosition(0),
-      _bodyPosition(0),
-      _bodyLength(0),
-      _readRequestBody(false),
-      _allowMethodOverride(GeneralServerFeature::allowMethodOverride()),
-      _denyCredentials(true),
-      _acceptDeflate(false),
-      _newRequest(true),
       _requestType(GeneralRequest::RequestType::ILLEGAL),
-      _fullUrl(),
-      _origin(),
-      _sinceCompactification(0),
-      _originalBodyLength(0) {
+      _fullUrl() {
   _protocol = "vpp";
   // connectionStatisticsAgentSetVpp();
+}
+
+namespace {
+constexpr size_t getChunkHeaderLength(bool oneChunk) {
+  return (oneChunk ? 2 * sizeof(uint32_t) + 1 * sizeof(uint64_t)
+                   : 2 * sizeof(uint32_t) + 2 * sizeof(uint64_t));
+}
 }
 
 void VppCommTask::addResponse(VppResponse* response, bool isError) {
@@ -154,34 +154,122 @@ void VppCommTask::addResponse(VppResponse* response, bool isError) {
   */
 }
 
-// reads data from the socket
-bool VppCommTask::processRead() {
-  /*
-  if (_requestPending || _readBuffer->c_str() == nullptr) {
+VppCommTask::ChunkHeader VppCommTask::readChunkHeader() {
+  VppCommTask::ChunkHeader header;
+
+  auto cursor = _readBuffer->begin();
+
+  uint32_t vpChunkLength;
+  std::memcpy(&header._length, cursor, sizeof(header._length));
+  cursor += sizeof(header._length);
+
+  uint32_t chunkX;
+  std::memcpy(&chunkX, cursor, sizeof(chunkX));
+  cursor += sizeof(chunkX);
+
+  header._isFirst = chunkX & 0x1;
+  header._chunk = chunkX >> 1;
+
+  std::memcpy(&header._messageId, cursor, sizeof(header._messageId));
+
+  return header;
+}
+
+bool VppCommTask::chunkComplete() {
+  auto start = _readBuffer->begin();
+  std::size_t length = std::distance(start, _readBuffer->end());
+  auto& prv = _processReadVariables;
+
+  if (!prv._currentChunkLength && length < sizeof(uint32_t)) {
+    return false;
+  }
+  if (!prv._currentChunkLength) {
+    // read chunk length
+    std::memcpy(&prv._currentChunkLength, start, sizeof(uint32_t));
+  }
+  if (length < prv._currentChunkLength) {
+    // chunk not complete
     return false;
   }
 
-  bool handleRequest = false;
+  return true;
+}
 
-  // still trying to read the header fields
-  if (!_readRequestBody) {
-    char const* ptr = _readBuffer->c_str() + _readPosition;
-    char const* etr = _readBuffer->end();
+std::pair<std::size_t, std::size_t> VppCommTask::validateChunkOnBuffer(
+    std::size_t chunkLength) {
+  auto readBufferStart = _readBuffer->begin();
+  auto chunkHeaderLength = getChunkHeaderLength(true);
+  auto sliceStart = readBufferStart + chunkHeaderLength;
+  auto sliceLength = chunkLength - chunkHeaderLength;
 
-    if (ptr == etr) {
-      return false;
+  VPackValidator validator;
+
+  // check for slice start to the end of Chunk
+  // isSubPart allows the slice to be shorter than the checked buffer.
+  validator.validate(sliceStart, sliceLength, /*isSubPart =*/true);
+  VPackSlice vppHeader(sliceStart);
+
+  auto vppHeaderLen = vppHeader.byteSize();
+  sliceStart += vppHeaderLen;
+  sliceLength += vppHeaderLen;
+  validator.validate(sliceStart, sliceLength, /*isSubPart =*/true);
+  VPackSlice vppPayload(sliceStart);
+  auto vppPayloadLen = vppPayload.byteSize();
+  return std::pair<std::size_t, std::size_t>(vppHeaderLen,
+                                             vppHeaderLen + vppPayloadLen);
+}
+
+// reads data from the socket
+bool VppCommTask::processRead() {
+  auto readBufferStart = _readBuffer->begin();
+  if (readBufferStart == nullptr || !chunkComplete()) {
+    return true;  // no data or incomplete
+  }
+
+  auto header = readChunkHeader();
+
+  if (header._isFirst && header._chunk == 1) {  // one chunk one message
+    validateChunkOnBuffer(header._length);
+    VPackMessage message;
+
+    // execute
+  }
+
+  auto incompleteMessageItr = _incompleteMessages.find(header._messageId);
+  if (header._isFirst) {  // first chunk of multi chunk message
+    if (incompleteMessageItr != _incompleteMessages.end()) {
+      throw std::logic_error(
+          "Message should be first but is already in the Map of incomplete "
+          "messages");
     }
 
-    // starting a new request
-    if (_newRequest) {
-      // acquire a new statistics entry for the request
-      RequestStatisticsAgent::acquire();
+    // append to VPackBuffer in incomplete Message
 
-#if USE_DEV_TIMERS
+    auto numberOfChunks = header._chunk;
+    auto chunkNumber = 1;
+    // set message length
+  } else {  // followup chunk of some mesage
+    if (incompleteMessageItr == _incompleteMessages.end()) {
+      throw std::logic_error("found message without previous part");
+    }
+    auto& im = incompleteMessageItr->second;  // incomplete Message
+    auto chunkNumber = header._chunk;
+
+    // append to VPackBuffer in incomplete Message
+
+    if (chunkNumber == im._numberOfChunks) {
+      // VPackMessage message;
+      // execute
+    }
+  }
+  // clean buffer up to lenght of chunk
+  return true;
+
+  /*
       if (RequestStatisticsAgent::_statistics != nullptr) {
         RequestStatisticsAgent::_statistics->_id = (void*)this;
       }
-#endif
+  #endif
 
       _newRequest = false;
       _startPosition = _readPosition;
@@ -233,7 +321,8 @@ bool VppCommTask::processRead() {
                  << std::string(_readBuffer->c_str() + _startPosition,
                                 _readPosition - _startPosition);
 
-      // check that we know, how to serve this request and update the connection
+      // check that we know, how to serve this request and update the
+  connection
       // information, i. e. client and server addresses and ports and create a
       // request context for that request
       _request = new VppRequest(
@@ -302,13 +391,16 @@ bool VppCommTask::processRead() {
                 // strip trailing slash
                 auto result = std::find(accessControlAllowOrigins.begin(),
                                         accessControlAllowOrigins.end(),
-                                        _origin.substr(0, _origin.size() - 1));
-                _denyCredentials = (result == accessControlAllowOrigins.end());
+                                        _origin.substr(0, _origin.size() -
+  1));
+                _denyCredentials = (result ==
+  accessControlAllowOrigins.end());
               } else {
                 auto result =
                     std::find(accessControlAllowOrigins.begin(),
                               accessControlAllowOrigins.end(), _origin);
-                _denyCredentials = (result == accessControlAllowOrigins.end());
+                _denyCredentials = (result ==
+  accessControlAllowOrigins.end());
               }
             } else {
               TRI_ASSERT(_denyCredentials);
@@ -374,10 +466,10 @@ bool VppCommTask::processRead() {
       }
 
       //
-.............................................................................
+  .............................................................................
       // check if server is active
       //
-.............................................................................
+  .............................................................................
 
       Scheduler const* scheduler = SchedulerFeature::SCHEDULER;
 
@@ -430,7 +522,8 @@ bool VppCommTask::processRead() {
     }
 
     // read "bodyLength" from read buffer and add this body to "vppRequest"
-    requestAsVpp()->setBody(_readBuffer->c_str() + _bodyPosition, _bodyLength);
+    requestAsVpp()->setBody(_readBuffer->c_str() + _bodyPosition,
+  _bodyLength);
 
     LOG(TRACE) << "" << std::string(_readBuffer->c_str() + _bodyPosition,
                                     _bodyLength);
@@ -441,14 +534,14 @@ bool VppCommTask::processRead() {
   }
 
   //
-.............................................................................
+  .............................................................................
   // request complete
   //
   // we have to delete request in here or pass it to a handler, which will
   // delete
   // it
   //
-.............................................................................
+  .............................................................................
 
   if (!handleRequest) {
     return false;
@@ -463,10 +556,10 @@ bool VppCommTask::processRead() {
   resetState(false);
 
   //
-.............................................................................
+  .............................................................................
   // keep-alive handling
   //
-.............................................................................
+  .............................................................................
 
   std::string connectionType =
       StringUtils::tolower(_request->header(StaticStrings::Connection));
@@ -492,10 +585,10 @@ bool VppCommTask::processRead() {
   // header sent)
 
   //
-.............................................................................
+  .............................................................................
   // authenticate
   //
-.............................................................................
+  .............................................................................
 
   GeneralResponse::ResponseCode authResult = authenticateRequest();
 
@@ -584,108 +677,27 @@ void VppCommTask::processRequest() {
 
   // create a handler and execute
   executeRequest(_request,
-                 new VppResponse(GeneralResponse::ResponseCode::SERVER_ERROR));
+                 new
+  VppResponse(GeneralResponse::ResponseCode::SERVER_ERROR));
                 */
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief chunking is finished
-////////////////////////////////////////////////////////////////////////////////
-
-void VppCommTask::finishedChunked() {
-  auto buffer = std::make_unique<StringBuffer>(TRI_UNKNOWN_MEM_ZONE, 6, true);
-  buffer->appendText(TRI_CHAR_LENGTH_PAIR("0\r\n\r\n"));
-  buffer->ensureNullTerminated();
-
-  _writeBuffers.push_back(buffer.get());
-  buffer.release();
-  _writeBuffersStats.push_back(nullptr);
-
-  _isChunked = false;
-  _requestPending = false;
-
-  fillWriteBuffer();
-  processRead();
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// check the content-length header of a request and fail it is broken
-////////////////////////////////////////////////////////////////////////////////
-
-bool VppCommTask::checkContentLength(bool expectContentLength) {
-  /*
-  int64_t const bodyLength = _request->contentLength();
-
-  if (bodyLength < 0) {
-    // bad request, body length is < 0. this is a client error
-    handleSimpleError(GeneralResponse::ResponseCode::LENGTH_REQUIRED);
-    return false;
-  }
-
-  if (!expectContentLength && bodyLength > 0) {
-    // content-length header was sent but the request method does not support
-    // that
-    // we'll warn but read the body anyway
-    LOG(WARN) << "received vpp GET/HEAD request with content-length, this "
-                 "should not happen";
-  }
-
-  if ((size_t)bodyLength > MaximalBodySize) {
-    LOG(WARN) << "maximal body size is " << MaximalBodySize
-              << ", request body size is " << bodyLength;
-
-    // request entity too large
-    handleSimpleError(GeneralResponse::ResponseCode::REQUEST_ENTITY_TOO_LARGE);
-    return false;
-  }
-
-  // set instance variable to content-length value
-  _bodyLength = (size_t)bodyLength;
-  _originalBodyLength = _bodyLength;
-
-  if (_bodyLength > 0) {
-    // we'll read the body
-    _readRequestBody = true;
-  }
-
-  // everything's fine
-  */
-  return true;
-}
-
-void VppCommTask::handleChunk(char const* data, size_t len) {
-  /*
-  if (0 == len) {
-    finishedChunked();
-  } else {
-    StringBuffer* buffer = new StringBuffer(TRI_UNKNOWN_MEM_ZONE, len);
-
-    buffer->appendHex(len);
-    buffer->appendText(TRI_CHAR_LENGTH_PAIR("\r\n"));
-    buffer->appendText(data, len);
-    buffer->appendText(TRI_CHAR_LENGTH_PAIR("\r\n"));
-
-    sendChunk(buffer);
-  }
-  */
-}
-
 void VppCommTask::completedWriteBuffer() {
-  _writeBuffer = nullptr;
-  _writeLength = 0;
-
-  if (_writeBufferStatistics != nullptr) {
-    _writeBufferStatistics->_writeEnd = TRI_StatisticsTime();
-    TRI_ReleaseRequestStatistics(_writeBufferStatistics);
-    _writeBufferStatistics = nullptr;
-  }
-
-  fillWriteBuffer();
-
-  if (!_clientClosed && _closeRequested && !hasWriteBuffer() &&
-      _writeBuffers.empty() && !_isChunked) {
-    _clientClosed = true;
-  }
+  //  _writeBuffer = nullptr;
+  //  _writeLength = 0;
+  //
+  //  if (_writeBufferStatistics != nullptr) {
+  //    _writeBufferStatistics->_writeEnd = TRI_StatisticsTime();
+  //    TRI_ReleaseRequestStatistics(_writeBufferStatistics);
+  //    _writeBufferStatistics = nullptr;
+  //  }
+  //
+  //  fillWriteBuffer();
+  //
+  //  if (!_clientClosed && _closeRequested && !hasWriteBuffer() &&
+  //      _writeBuffers.empty() && !_isChunked) {
+  //    _clientClosed = true;
+  //  }
 }
 
 void VppCommTask::resetState(bool close) {
@@ -735,37 +747,27 @@ void VppCommTask::resetState(bool close) {
   */
 }
 
-GeneralResponse::ResponseCode VppCommTask::authenticateRequest() {
-  auto context = (_request == nullptr) ? nullptr : _request->requestContext();
-
-  if (context == nullptr && _request != nullptr) {
-    bool res =
-        GeneralServerFeature::HANDLER_FACTORY->setRequestContext(_request);
-
-    if (!res) {
-      return GeneralResponse::ResponseCode::NOT_FOUND;
-    }
-
-    context = _request->requestContext();
-  }
-
-  if (context == nullptr) {
-    return GeneralResponse::ResponseCode::SERVER_ERROR;
-  }
-
-  return context->authenticate();
-}
-
-void VppCommTask::sendChunk(StringBuffer* buffer) {
-  if (_isChunked) {
-    TRI_ASSERT(buffer != nullptr);
-    _writeBuffers.push_back(buffer);
-    _writeBuffersStats.push_back(nullptr);
-    fillWriteBuffer();
-  } else {
-    delete buffer;
-  }
-}
+// GeneralResponse::ResponseCode VppCommTask::authenticateRequest() {
+//   auto context = (_request == nullptr) ? nullptr :
+//   _request->requestContext();
+//
+//   if (context == nullptr && _request != nullptr) {
+//     bool res =
+//         GeneralServerFeature::HANDLER_FACTORY->setRequestContext(_request);
+//
+//     if (!res) {
+//       return GeneralResponse::ResponseCode::NOT_FOUND;
+//     }
+//
+//     context = _request->requestContext();
+//   }
+//
+//   if (context == nullptr) {
+//     return GeneralResponse::ResponseCode::SERVER_ERROR;
+//   }
+//
+//   return context->authenticate();
+// }
 
 // convert internal GeneralRequest to VppRequest
 VppRequest* VppCommTask::requestAsVpp() {

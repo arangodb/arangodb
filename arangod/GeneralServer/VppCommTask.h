@@ -7,6 +7,13 @@
 namespace arangodb {
 namespace rest {
 
+struct VPackMessage {
+  uint32_t _length;  // lenght of total message in bytes
+  VPackBuffer<uint8_t> _buffer;
+  VPackSlice _header;
+  VPackSlice _payload;
+};
+
 class VppCommTask : public GeneralCommTask {
  public:
   VppCommTask(GeneralServer*, TRI_socket_t, ConnectionInfo&&, double timeout);
@@ -26,7 +33,6 @@ class VppCommTask : public GeneralCommTask {
   };
 
  protected:
-  void handleChunk(char const*, size_t) override final;
   void completedWriteBuffer() override final;
 
  private:
@@ -36,44 +42,45 @@ class VppCommTask : public GeneralCommTask {
   void resetState(bool close);
 
   void addResponse(VppResponse*, bool isError);
-
   VppRequest* requestAsVpp();
-  void finishedChunked();
-  // check the content-length header of a request and fail it is broken
-  bool checkContentLength(bool expectContentLength);
-
-  std::string authenticationRealm() const;  // returns the authentication realm
-  GeneralResponse::ResponseCode
-  authenticateRequest();                  // checks the authentication
-  void sendChunk(basics::StringBuffer*);  // sends more chunked data
 
  private:
-  size_t _readPosition;       // current read position
-  size_t _startPosition;      // start position of current request
-  size_t _bodyPosition;       // start of the body position
-  size_t _bodyLength;         // body length
-  bool _readRequestBody;      // true if reading the request body
-  bool _allowMethodOverride;  // allow method override
-  bool _denyCredentials;  // whether or not to allow credentialed requests (only
-                          // CORS)
-  bool _acceptDeflate;    // whether the client accepts deflate algorithm
-  bool _newRequest;       // new request started
+  using MessageID = uint64_t;
+  struct IncompleteVPackMessage {
+    uint32_t _length;  // lenght of total message in bytes
+    std::size_t _numberOfChunks;
+    VPackBuffer<uint8_t> _chunks;
+    std::vector<std::pair<std::size_t, std::size_t>> _chunkOffesesAndLengths;
+    std::vector<std::size_t> _vpackOffsets;  // offset to slice in buffer
+  };
+
+  std::unordered_map<MessageID, IncompleteVPackMessage> _incompleteMessages;
+
+  struct ProcessReadVariables {
+    bool _currentChunkLength;  // size of chunk processed or 0 when expectiong
+                               // new chunk
+  };
+
+  struct ChunkHeader {
+    uint32_t _length;
+    uint32_t _chunk;
+    uint64_t _messageId;
+    bool _isFirst;
+  };
+
+  bool chunkComplete();           // subfunction of processRead
+  ChunkHeader readChunkHeader();  // subfuncaion of processRead
+  // validates chunk on read _readBuffer and returns
+  // offsets to Payload VPack and The End of Message.
+  std::pair<std::size_t, std::size_t> validateChunkOnBuffer(std::size_t);
+
+  ProcessReadVariables _processReadVariables;
   GeneralRequest::RequestType _requestType;  // type of request (GET, POST, ...)
   std::string _fullUrl;                      // value of requested URL
-  std::string _origin;  // value of the vpp origin header the client sent (if
-                        // any, CORS only)
-  size_t
-      _sinceCompactification;  // number of requests since last compactification
-  size_t _originalBodyLength;
 
-  // authentication real
-  std::string const _authenticationRealm;
-
-  // true if within a chunked response
-  bool _isChunked = false;
-
-  // true if request is complete but not handled
-  bool _requestPending = false;
+  // user
+  // authenticated or not
+  // database aus url
 };
 }  // rest
 }  // arangodb
