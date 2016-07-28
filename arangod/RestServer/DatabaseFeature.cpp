@@ -89,7 +89,7 @@ void DatabaseManagerThread::run() {
       auto theLists = databaseFeature->_databasesLists.load();
 
       for (TRI_vocbase_t* vocbase : theLists->_droppedDatabases) {
-        if (!TRI_CanRemoveVocBase(vocbase)) {
+        if (!vocbase->canBeDropped()) {
           continue;
         }
 
@@ -205,7 +205,7 @@ void DatabaseManagerThread::run() {
         for (auto& p : theLists->_coordinatorDatabases) {
           TRI_vocbase_t* vocbase = p.second;
           TRI_ASSERT(vocbase != nullptr);
-          auto cursorRepository = vocbase->_cursorRepository;
+          auto cursorRepository = vocbase->cursorRepository();
 
           try {
             cursorRepository->garbageCollect(false);
@@ -460,7 +460,7 @@ int DatabaseFeature::createDatabaseCoordinator(TRI_voc_tick_t id, std::string co
   }
 
   // increase reference counter
-  TRI_UseVocBase(vocbase.get());
+  vocbase->use();
   vocbase->_state = (sig_atomic_t)TRI_VOCBASE_STATE_NORMAL;
 
   {
@@ -569,7 +569,7 @@ int DatabaseFeature::createDatabase(TRI_voc_tick_t id, std::string const& name,
       }
 
       // increase reference counter
-      TRI_UseVocBase(vocbase.get());
+      vocbase->use();
     }
 
     {
@@ -634,7 +634,7 @@ int DatabaseFeature::dropDatabaseCoordinator(TRI_voc_tick_t id, bool force) {
     _databasesProtector.scan();
     delete oldLists;
 
-    if (TRI_DropVocBase(vocbase)) {
+    if (vocbase->markAsDropped()) {
       LOG(INFO) << "dropping coordinator database '" << vocbase->name() << "'";
       res = TRI_ERROR_NO_ERROR;
     }
@@ -691,7 +691,7 @@ int DatabaseFeature::dropDatabase(std::string const& name, bool writeMarker, boo
   // invalidate all entries for the database
   arangodb::aql::QueryCache::instance()->invalidate(vocbase);
   
-  if (!TRI_DropVocBase(vocbase)) {
+  if (!vocbase->markAsDropped()) {
     // deleted by someone else?
     return TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
   }
@@ -837,7 +837,7 @@ TRI_vocbase_t* DatabaseFeature::useDatabaseCoordinator(TRI_voc_tick_t id) {
     TRI_vocbase_t* vocbase = p.second;
 
     if (vocbase->_id == id) {
-      bool result TRI_UNUSED = TRI_UseVocBase(vocbase);
+      bool result TRI_UNUSED = vocbase->use();
 
       // if we got here, no one else can have deleted the database
       TRI_ASSERT(result == true);
@@ -851,30 +851,30 @@ TRI_vocbase_t* DatabaseFeature::useDatabaseCoordinator(std::string const& name) 
   auto unuser(_databasesProtector.use());
   auto theLists = _databasesLists.load();
   
-  TRI_vocbase_t* vocbase = nullptr;
   auto it = theLists->_coordinatorDatabases.find(name);
 
   if (it != theLists->_coordinatorDatabases.end()) {
-    vocbase = it->second;
-    TRI_UseVocBase(vocbase);
+    TRI_vocbase_t* vocbase = it->second;
+    vocbase->use();
+    return vocbase;
   }
-
-  return vocbase;
+  
+  return nullptr;
 }
 
 TRI_vocbase_t* DatabaseFeature::useDatabase(std::string const& name) {
   auto unuser(_databasesProtector.use());
   auto theLists = _databasesLists.load();
 
-  TRI_vocbase_t* vocbase = nullptr;
   auto it = theLists->_databases.find(name);
 
   if (it != theLists->_databases.end()) {
-    vocbase = it->second;
-    TRI_UseVocBase(vocbase);
+    TRI_vocbase_t* vocbase = it->second;
+    vocbase->use();
+    return vocbase;
   }
 
-  return vocbase;
+  return nullptr;
 }
 
 TRI_vocbase_t* DatabaseFeature::useDatabase(TRI_voc_tick_t id) {
@@ -885,18 +885,12 @@ TRI_vocbase_t* DatabaseFeature::useDatabase(TRI_voc_tick_t id) {
     TRI_vocbase_t* vocbase = p.second;
 
     if (vocbase->_id == id) {
-      TRI_UseVocBase(vocbase);
+      vocbase->use();
       return vocbase;
     }
   }
 
   return nullptr;
-}
-
-/// @brief release a previously used database
-/// this will decrease the reference-counter for the database
-void DatabaseFeature::releaseDatabase(TRI_vocbase_t* vocbase) {
-  TRI_ReleaseVocBase(vocbase);
 }
 
 /// @brief lookup a database by its name, not increasing its reference count

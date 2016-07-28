@@ -1366,7 +1366,7 @@ static void JS_QueriesPropertiesAql(
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
-  auto queryList = static_cast<arangodb::aql::QueryList*>(vocbase->_queries);
+  auto queryList = vocbase->queryList();
   TRI_ASSERT(queryList != nullptr);
 
   if (args.Length() > 1) {
@@ -1442,7 +1442,7 @@ static void JS_QueriesCurrentAql(
     TRI_V8_THROW_EXCEPTION_USAGE("AQL_QUERIES_CURRENT()");
   }
 
-  auto queryList = static_cast<arangodb::aql::QueryList*>(vocbase->_queries);
+  auto queryList = vocbase->queryList();
   TRI_ASSERT(queryList != nullptr);
 
   try {
@@ -1486,7 +1486,7 @@ static void JS_QueriesSlowAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
-  auto queryList = static_cast<arangodb::aql::QueryList*>(vocbase->_queries);
+  auto queryList = vocbase->queryList();
   TRI_ASSERT(queryList != nullptr);
 
   if (args.Length() == 1) {
@@ -1545,7 +1545,7 @@ static void JS_QueriesKillAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   auto id = TRI_ObjectToUInt64(args[0], true);
 
-  auto queryList = static_cast<arangodb::aql::QueryList*>(vocbase->_queries);
+  auto queryList = vocbase->queryList();
   TRI_ASSERT(queryList != nullptr);
 
   auto res = queryList->kill(id);
@@ -2042,7 +2042,7 @@ static void JS_UseDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
   }
 
-  if (TRI_IsDeletedVocBase(vocbase)) {
+  if (vocbase->isDropped()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
@@ -2068,7 +2068,7 @@ static void JS_UseDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   v8g->_vocbase = vocbase;
   TRI_ASSERT(orig != vocbase);
-  databaseFeature->releaseDatabase(static_cast<TRI_vocbase_t*>(orig));
+  static_cast<TRI_vocbase_t*>(orig)->release();
 
   TRI_V8_RETURN(WrapVocBase(isolate, vocbase));
 }
@@ -2305,7 +2305,7 @@ static void CreateDatabaseCoordinator(
   // and switch back
   v8g->_vocbase = orig;
 
-  TRI_ReleaseVocBase(vocbase);
+  vocbase->release();
 
   TRI_V8_RETURN_TRUE();
 }
@@ -2394,7 +2394,7 @@ static void JS_CreateDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8g->_vocbase = orig;
 
   // finally decrease the reference-counter
-  TRI_ReleaseVocBase(database);
+  database->release();
 
   TRI_V8_RETURN_TRUE();
 }
@@ -2419,7 +2419,7 @@ static void DropDatabaseCoordinator(
   }
 
   TRI_voc_tick_t const id = vocbase->_id;
-  TRI_ReleaseVocBase(vocbase);
+  vocbase->release();
 
   ClusterInfo* ci = ClusterInfo::instance();
   std::string errorMsg;
@@ -2441,7 +2441,7 @@ static void DropDatabaseCoordinator(
       break;
     }
 
-    TRI_ReleaseVocBase(vocbase);
+    vocbase->release();
     // sleep
     usleep(10000);
   }

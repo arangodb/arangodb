@@ -85,7 +85,7 @@ class StorageEngine : public application_features::ApplicationFeature {
   virtual uint64_t getMaxRevision() = 0;
 
   // return the path for a database
-  virtual std::string databasePath(TRI_vocbase_t* vocbase) const = 0;
+  virtual std::string databasePath(TRI_vocbase_t const* vocbase) const = 0;
 
   virtual TRI_vocbase_t* openDatabase(arangodb::velocypack::Slice const& parameters, bool isUpgrade) = 0;
 

@@ -545,10 +545,14 @@ V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase,
       v8g->_vocbase = vocbase;
       v8g->_allowUseDatabase = allowUseDatabase;
 
-      TRI_UseVocBase(vocbase);
+      vocbase->use();
 
-      LOG(TRACE) << "entering V8 context " << context->_id;
-      context->handleGlobalContextMethods();
+      try {
+        LOG(TRACE) << "entering V8 context " << context->_id;
+        context->handleGlobalContextMethods();
+      } catch (...) {
+        // ignore errors here
+      }
     }
   }
 
@@ -578,7 +582,7 @@ void V8DealerFeature::exitContext(V8Context* context) {
 
     TRI_ASSERT(vocbase != nullptr);
     // release last recently used vocbase
-    TRI_ReleaseVocBase(vocbase);
+    vocbase->release();
 
     // check for cancelation requests
     canceled = v8g->_canceled;

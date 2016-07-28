@@ -534,7 +534,7 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
           HasRunOnce = true;
         }
       } else {
-        TRI_ReleaseVocBase(vocbase);
+        vocbase->release();
       }
     }
 

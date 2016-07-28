@@ -106,8 +106,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
   auto plan = clusterInfo->getPlan();
   auto current = clusterInfo->getCurrent();
   
-  TRI_UseVocBase(vocbase);
-  TRI_DEFER(TRI_ReleaseVocBase(vocbase));
+  VocbaseGuard guard(vocbase);
 
   V8Context* context = V8DealerFeature::DEALER->enterContext(vocbase, true);
 

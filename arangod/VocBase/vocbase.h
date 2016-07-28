@@ -27,6 +27,7 @@
 #include "Basics/Common.h"
 #include "Basics/ConditionVariable.h"
 #include "Basics/DeadlockDetector.h"
+#include "Basics/Exceptions.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/StringUtils.h"
 #include "Basics/threads.h"
@@ -267,10 +268,11 @@ struct TRI_vocbase_t {
 
   // structures for user-defined volatile data
   void* _userStructures;
-  arangodb::aql::QueryList* _queries;
-  arangodb::CursorRepository* _cursorRepository;
-  arangodb::CollectionKeysRepository* _collectionKeys;
-
+ private:
+  std::unique_ptr<arangodb::aql::QueryList> _queries;
+  std::unique_ptr<arangodb::CursorRepository> _cursorRepository;
+  std::unique_ptr<arangodb::CollectionKeysRepository> _collectionKeys;
+ public:
   bool _hasCompactor;
   bool _isOwnAppsDirectory;
 
@@ -303,14 +305,68 @@ struct TRI_vocbase_t {
   /// @brief checks if a database name is allowed
   /// returns true if the name is allowed and false otherwise
   static bool IsAllowedName(bool allowSystem, std::string const& name);
-  std::string const name() { return _name; }
-  std::string const path();
+  std::string const& name() const { return _name; }
+  std::string path() const;
   void updateReplicationClient(TRI_server_id_t, TRI_voc_tick_t);
   std::vector<std::tuple<TRI_server_id_t, double, TRI_voc_tick_t>>
   getReplicationClients();
 
+  arangodb::aql::QueryList* queryList() const { return _queries.get(); }
+  arangodb::CursorRepository* cursorRepository() const { return _cursorRepository.get(); }
+  arangodb::CollectionKeysRepository* collectionKeys() const { return _collectionKeys.get(); }
+
+  /// @brief whether or not the vocbase has been marked as deleted
+  inline bool isDropped() const {
+    auto refCount = _refCount.load();
+    // if the stored value is odd, it means the database has been marked as
+    // deleted
+    return (refCount % 2 == 1);
+  }
+
+  /// @brief increase the reference counter for a database
+  bool use() {
+    // increase the reference counter by 2.
+    // this is because we use odd values to indicate that the database has been
+    // marked as deleted
+    auto oldValue = _refCount.fetch_add(2, std::memory_order_release);
+    // check if the deleted bit is set
+    return (oldValue % 2 != 1);
+  }
+
+  /// @brief decrease the reference counter for a database
+  void release() {
+    // decrease the reference counter by 2.
+    // this is because we use odd values to indicate that the database has been
+    // marked as deleted
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+      auto oldValue = _refCount.fetch_sub(2, std::memory_order_release);
+      TRI_ASSERT(oldValue >= 2);
+#else
+      _refCount.fetch_sub(2, std::memory_order_release);
+#endif
+  }
+
+  /// @brief returns whether the database can be dropped
+  bool canBeDropped() const {
+    if (isSystem()) {
+      return false;
+    }
+    auto refCount = _refCount.load();
+    // we are intentionally comparing with exactly 1 here, because a 1 means
+    // that noone else references the database but it has been marked as deleted
+    return (refCount == 1);
+  }
+
+  /// @brief marks a database as deleted
+  bool markAsDropped() {
+    auto oldValue = _refCount.fetch_or(1, std::memory_order_release);
+    // if the previously stored value is odd, it means the database has already
+    // been marked as deleted
+    return (oldValue % 2 == 0);
+  }
+
   /// @brief returns whether the database is the system database
-  bool isSystem() { return name() == TRI_VOC_SYSTEM_DATABASE; }
+  bool isSystem() const { return name() == TRI_VOC_SYSTEM_DATABASE; }
 
   /// @brief closes a database and all collections
   void shutdown();
@@ -341,6 +397,27 @@ struct TRI_vocbase_t {
   /// @brief renames a collection
   int rename(TRI_vocbase_col_t* collection, std::string const& newName,
              bool doOverride, bool writeMarker);
+};
+
+// scope guard for a database
+// ensures that a database 
+class VocbaseGuard {
+ public:
+  VocbaseGuard() = delete;
+  VocbaseGuard(VocbaseGuard const&) = delete;
+  VocbaseGuard& operator=(VocbaseGuard const&) = delete;
+
+  explicit VocbaseGuard(TRI_vocbase_t* vocbase) : _vocbase(vocbase) {
+    if (!_vocbase->use()) {
+      // database already dropped
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+    }
+  }
+  ~VocbaseGuard() { _vocbase->release(); }
+  TRI_vocbase_t* vocbase() const { return _vocbase; }
+
+ private:
+  TRI_vocbase_t* _vocbase;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -517,36 +594,6 @@ TRI_vocbase_col_t* TRI_UseCollectionByNameVocBase(TRI_vocbase_t*, char const*,
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_ReleaseCollectionVocBase(TRI_vocbase_t*, TRI_vocbase_col_t*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not the vocbase has been marked as deleted
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_IsDeletedVocBase(TRI_vocbase_t*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief increase the reference counter for a database
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_UseVocBase(TRI_vocbase_t*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief decrease the reference counter for a database
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_ReleaseVocBase(TRI_vocbase_t*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief marks a database as deleted
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_DropVocBase(TRI_vocbase_t*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns whether the database can be removed
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_CanRemoveVocBase(TRI_vocbase_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gets the "throw collection not loaded error"

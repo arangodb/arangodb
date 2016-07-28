@@ -51,7 +51,7 @@ VocbaseContext::VocbaseContext(GeneralRequest* request, TRI_vocbase_t* vocbase,
   TRI_ASSERT(_vocbase != nullptr);
 }
 
-VocbaseContext::~VocbaseContext() { TRI_ReleaseVocBase(_vocbase); }
+VocbaseContext::~VocbaseContext() { _vocbase->release(); }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not to use special cluster authentication

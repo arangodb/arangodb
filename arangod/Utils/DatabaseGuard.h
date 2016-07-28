@@ -21,8 +21,8 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_UTILS_DATABASE_GUARD_H
-#define ARANGOD_UTILS_DATABASE_GUARD_H 1
+#ifndef ARANGOD_UTILS_vocbase_GUARD_H
+#define ARANGOD_UTILS_vocbase_GUARD_H 1
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
@@ -42,12 +42,12 @@ class DatabaseGuard {
   //////////////////////////////////////////////////////////////////////////////
 
   explicit DatabaseGuard(TRI_voc_tick_t id)
-      : _database(nullptr) {
+      : _vocbase(nullptr) {
     
     auto databaseFeature = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
-    _database = databaseFeature->useDatabase(id);
+    _vocbase = databaseFeature->useDatabase(id);
 
-    if (_database == nullptr) {
+    if (_vocbase == nullptr) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
     }
   }
@@ -56,13 +56,13 @@ class DatabaseGuard {
   /// @brief create the guard, using a database name
   //////////////////////////////////////////////////////////////////////////////
 
-  explicit DatabaseGuard(char const* name)
-      : _database(nullptr) {
+  explicit DatabaseGuard(std::string const& name)
+      : _vocbase(nullptr) {
       
     auto databaseFeature = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
-    _database = databaseFeature->useDatabase(name);
+    _vocbase = databaseFeature->useDatabase(name);
 
-    if (_database == nullptr) {
+    if (_vocbase == nullptr) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
     }
   }
@@ -72,10 +72,8 @@ class DatabaseGuard {
   //////////////////////////////////////////////////////////////////////////////
 
   ~DatabaseGuard() {
-    if (_database != nullptr) {
-      auto databaseFeature = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
-      databaseFeature->releaseDatabase(_database);
-    }
+    TRI_ASSERT(_vocbase != nullptr);
+    _vocbase->release();
   }
 
  public:
@@ -83,7 +81,7 @@ class DatabaseGuard {
   /// @brief return the database pointer
   //////////////////////////////////////////////////////////////////////////////
 
-  inline TRI_vocbase_t* database() const { return _database; }
+  inline TRI_vocbase_t* database() const { return _vocbase; }
 
  private:
 
@@ -91,7 +89,7 @@ class DatabaseGuard {
   /// @brief pointer to database
   //////////////////////////////////////////////////////////////////////////////
 
-  TRI_vocbase_t* _database;
+  TRI_vocbase_t* _vocbase;
 };
 }
 

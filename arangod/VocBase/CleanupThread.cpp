@@ -140,8 +140,7 @@ void CleanupThread::run() {
 /// @brief clean up cursors
 void CleanupThread::cleanupCursors(bool force) {
   // clean unused cursors
-  auto cursors =
-      static_cast<arangodb::CursorRepository*>(_vocbase->_cursorRepository);
+  auto cursors = _vocbase->cursorRepository();
   TRI_ASSERT(cursors != nullptr);
 
   try {
@@ -242,7 +241,7 @@ void CleanupThread::cleanupCollection(TRI_vocbase_col_t* collection,
           }
         }
 
-        if (!isDeleted && TRI_IsDeletedVocBase(document->_vocbase)) {
+        if (!isDeleted && document->_vocbase->isDropped()) {
           // the collection was not marked as deleted, but the database was
           isDeleted = true;
         }

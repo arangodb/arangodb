@@ -68,7 +68,7 @@ class OtherEngine final : public StorageEngine {
   uint64_t getMaxRevision() override;
   
   // return the path for a database
-  std::string databasePath(TRI_vocbase_t*) const override { return "none"; }
+  std::string databasePath(TRI_vocbase_t const*) const override { return "none"; }
   
   TRI_vocbase_t* openDatabase(arangodb::velocypack::Slice const& parameters, bool isUpgrade) override { 
     return nullptr; 

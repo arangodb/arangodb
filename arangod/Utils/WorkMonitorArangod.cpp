@@ -95,7 +95,7 @@ bool WorkMonitor::cancelAql(WorkDescription* desc) {
 
     LOG(WARN) << "cancel query " << id << " in " << vocbase;
 
-    auto queryList = static_cast<arangodb::aql::QueryList*>(vocbase->_queries);
+    auto queryList = vocbase->queryList();
     auto res = queryList->kill(id);
 
     if (res != TRI_ERROR_NO_ERROR) {

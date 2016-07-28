@@ -2798,7 +2798,7 @@ void RestReplicationHandler::handleCommandCreateKeys() {
     keys->create(tickEnd);
     size_t const count = keys->count();
 
-    auto keysRepository = _vocbase->_collectionKeys;
+    auto keysRepository = _vocbase->collectionKeys();
 
     try {
       keysRepository->store(keys.get());
@@ -2859,7 +2859,7 @@ void RestReplicationHandler::handleCommandGetKeys() {
   int res = TRI_ERROR_NO_ERROR;
 
   try {
-    auto keysRepository = _vocbase->_collectionKeys;
+    auto keysRepository = _vocbase->collectionKeys();
     TRI_ASSERT(keysRepository != nullptr);
 
     auto collectionKeysId = static_cast<arangodb::CollectionKeysId>(
@@ -2973,7 +2973,7 @@ void RestReplicationHandler::handleCommandFetchKeys() {
   int res = TRI_ERROR_NO_ERROR;
 
   try {
-    auto keysRepository = _vocbase->_collectionKeys;
+    auto keysRepository = _vocbase->collectionKeys();
     TRI_ASSERT(keysRepository != nullptr);
 
     auto collectionKeysId = static_cast<arangodb::CollectionKeysId>(
@@ -3046,7 +3046,7 @@ void RestReplicationHandler::handleCommandRemoveKeys() {
 
   std::string const& id = suffix[1];
 
-  auto keys = _vocbase->_collectionKeys;
+  auto keys = _vocbase->collectionKeys();
   TRI_ASSERT(keys != nullptr);
 
   auto collectionKeysId = static_cast<arangodb::CollectionKeysId>(

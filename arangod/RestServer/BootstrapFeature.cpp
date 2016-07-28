@@ -174,8 +174,8 @@ void BootstrapFeature::unprepare() {
       TRI_vocbase_t* vocbase = databaseFeature->useDatabase(id);
 
       if (vocbase != nullptr) {
-        vocbase->_queries->killAll(true);
-        TRI_ReleaseVocBase(vocbase);
+        vocbase->queryList()->killAll(true);
+        vocbase->release();
       }
     }
   } else {
@@ -183,8 +183,8 @@ void BootstrapFeature::unprepare() {
       TRI_vocbase_t* vocbase = databaseFeature->useDatabase(name);
 
       if (vocbase != nullptr) {
-        vocbase->_queries->killAll(true);
-        TRI_ReleaseVocBase(vocbase);
+        vocbase->queryList()->killAll(true);
+        vocbase->release();
       }
     }
   }

@@ -115,7 +115,7 @@ static void WeakCollectionCallback(const v8::WeakCallbackData<
   v8g->decreaseActiveExternals();
 
   // decrease the reference-counter for the database
-  TRI_ReleaseVocBase(collection->_vocbase);
+  collection->_vocbase->release();
 
 // find the persistent handle
 #if ARANGODB_ENABLE_MAINTAINER_MODE
@@ -157,15 +157,20 @@ v8::Handle<v8::Object> WrapCollection(v8::Isolate* isolate,
 
     if (it == v8g->JSCollections.end()) {
       // increase the reference-counter for the database
-      TRI_UseVocBase(collection->_vocbase);
-      auto externalCollection = v8::External::New(isolate, nonconstCollection);
+      collection->_vocbase->use();
+      try {
+        auto externalCollection = v8::External::New(isolate, nonconstCollection);
 
-      result->SetInternalField(SLOT_COLLECTION, externalCollection);
+        result->SetInternalField(SLOT_COLLECTION, externalCollection);
 
-      v8g->JSCollections[nonconstCollection].Reset(isolate, externalCollection);
-      v8g->JSCollections[nonconstCollection].SetWeak(
-          &v8g->JSCollections[nonconstCollection], WeakCollectionCallback);
-      v8g->increaseActiveExternals();
+        v8g->JSCollections[nonconstCollection].Reset(isolate, externalCollection);
+        v8g->JSCollections[nonconstCollection].SetWeak(
+            &v8g->JSCollections[nonconstCollection], WeakCollectionCallback);
+        v8g->increaseActiveExternals();
+      } catch (...) {
+        collection->_vocbase->release();
+        throw;
+      }
     } else {
       auto myCollection = v8::Local<v8::External>::New(isolate, it->second);
 

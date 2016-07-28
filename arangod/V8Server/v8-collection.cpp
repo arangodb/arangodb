@@ -2097,7 +2097,7 @@ static void JS_SaveVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
-  if (TRI_IsDeletedVocBase(vocbase)) {
+  if (vocbase->isDropped()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
@@ -2688,7 +2688,7 @@ static void JS_CollectionVocbase(
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
-  if (TRI_IsDeletedVocBase(vocbase)) {
+  if (vocbase->isDropped()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 

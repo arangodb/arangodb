@@ -1087,15 +1087,11 @@ void TRI_vocbase_t::shutdown() {
   }
 
   // mark all cursors as deleted so underlying collections can be freed soon
-  if (_cursorRepository != nullptr) {
-    _cursorRepository->garbageCollect(true);
-  }
+  _cursorRepository->garbageCollect(true);
 
   // mark all collection keys as deleted so underlying collections can be freed
   // soon
-  if (_collectionKeys != nullptr) {
-    _collectionKeys->garbageCollect(true);
-  }
+  _collectionKeys->garbageCollect(true);
 
   std::vector<TRI_vocbase_col_t*> collections;
 
@@ -1679,68 +1675,6 @@ void TRI_ReleaseCollectionVocBase(TRI_vocbase_t* vocbase,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not the vocbase has been marked as deleted
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_IsDeletedVocBase(TRI_vocbase_t* vocbase) {
-  auto refCount = vocbase->_refCount.load();
-  // if the stored value is odd, it means the database has been marked as
-  // deleted
-  return (refCount % 2 == 1);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief increase the reference counter for a database
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_UseVocBase(TRI_vocbase_t* vocbase) {
-  // increase the reference counter by 2.
-  // this is because we use odd values to indicate that the database has been
-  // marked as deleted
-  auto oldValue = vocbase->_refCount.fetch_add(2, std::memory_order_release);
-  // check if the deleted bit is set
-  return (oldValue % 2 != 1);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief decrease the reference counter for a database
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_ReleaseVocBase(TRI_vocbase_t* vocbase) {
-// decrease the reference counter by 2.
-// this is because we use odd values to indicate that the database has been
-// marked as deleted
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  auto oldValue = vocbase->_refCount.fetch_sub(2, std::memory_order_release);
-  TRI_ASSERT(oldValue >= 2);
-#else
-  vocbase->_refCount.fetch_sub(2, std::memory_order_release);
-#endif
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief marks a database as deleted
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_DropVocBase(TRI_vocbase_t* vocbase) {
-  auto oldValue = vocbase->_refCount.fetch_or(1, std::memory_order_release);
-  // if the previously stored value is odd, it means the database has already
-  // been marked as deleted
-  return (oldValue % 2 == 0);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns whether the database can be removed
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_CanRemoveVocBase(TRI_vocbase_t* vocbase) {
-  auto refCount = vocbase->_refCount.load();
-  // we are intentionally comparing with exactly 1 here, because a 1 means
-  // that noone else references the database but it has been marked as deleted
-  return (refCount == 1);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief gets the "throw collection not loaded error"
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1768,14 +1702,11 @@ TRI_vocbase_t::TRI_vocbase_t(TRI_vocbase_type_e type, TRI_voc_tick_t id,
       _refCount(0),
       _deadlockDetector(false),
       _userStructures(nullptr),
-      _queries(nullptr),
-      _cursorRepository(nullptr),
-      _collectionKeys(nullptr),
       _hasCompactor(false),
       _isOwnAppsDirectory(true) {
-  _queries = new arangodb::aql::QueryList(this);
-  _cursorRepository = new arangodb::CursorRepository(this);
-  _collectionKeys = new arangodb::CollectionKeysRepository();
+  _queries.reset(new arangodb::aql::QueryList(this));
+  _cursorRepository.reset(new arangodb::CursorRepository(this));
+  _collectionKeys.reset(new arangodb::CollectionKeysRepository());
 
   // init collections
   _collections.reserve(32);
@@ -1801,13 +1732,9 @@ TRI_vocbase_t::~TRI_vocbase_t() {
   _cleanupThread.reset();
 
   TRI_DestroyCondition(&_compactorCondition);
-
-  delete _cursorRepository;
-  delete _collectionKeys;
-  delete _queries;
 }
   
-std::string const TRI_vocbase_t::path() {
+std::string TRI_vocbase_t::path() const {
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   return engine->databasePath(this);
 }

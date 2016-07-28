@@ -102,7 +102,7 @@ void RecoverState::releaseResources() {
 
   // release all databases
   for (auto it = openedDatabases.begin(); it != openedDatabases.end(); ++it) {
-    databaseFeature->releaseDatabase((*it).second);
+    (*it).second->release();
   }
 
   openedDatabases.clear();
@@ -159,7 +159,7 @@ TRI_vocbase_t* RecoverState::releaseDatabase(TRI_voc_tick_t databaseId) {
     }
   }
 
-  databaseFeature->releaseDatabase(vocbase);
+  vocbase->release();
   openedDatabases.erase(databaseId);
 
   return vocbase;

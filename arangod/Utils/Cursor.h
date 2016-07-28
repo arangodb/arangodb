@@ -28,10 +28,9 @@
 #include "Basics/StringBuffer.h"
 #include "Aql/QueryResult.h"
 #include "VocBase/voc-types.h"
+#include "VocBase/vocbase.h"
 
 #include <velocypack/Iterator.h>
-
-struct TRI_vocbase_t;
 
 namespace arangodb {
 namespace velocypack {
@@ -116,7 +115,7 @@ class VelocyPackCursor : public Cursor {
                    std::shared_ptr<arangodb::velocypack::Builder>, double,
                    bool);
 
-  ~VelocyPackCursor();
+  ~VelocyPackCursor() = default;
 
  public:
   bool hasNext() override final;
@@ -128,7 +127,7 @@ class VelocyPackCursor : public Cursor {
   void dump(arangodb::basics::StringBuffer&) override final;
 
  private:
-  TRI_vocbase_t* _vocbase;
+  VocbaseGuard _vocbaseGuard;
   aql::QueryResult _result;
   arangodb::velocypack::ArrayIterator _iterator;
   bool _cached;
@@ -151,7 +150,7 @@ class ExportCursor : public Cursor {
   void dump(arangodb::basics::StringBuffer&) override final;
 
  private:
-  TRI_vocbase_t* _vocbase;
+  VocbaseGuard _vocbaseGuard;
   arangodb::CollectionExport* _ex;
   size_t const _size;
 };

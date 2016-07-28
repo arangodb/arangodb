@@ -82,13 +82,11 @@ static_assert(sizeof(StateNames) / sizeof(std::string) ==
 /// @brief create a profile
 Profile::Profile(Query* query)
     : query(query), results(), stamp(query->startTime()), tracked(false) {
-  auto queryList = static_cast<QueryList*>(query->vocbase()->_queries);
+  auto queryList = query->vocbase()->queryList();
 
-  if (queryList != nullptr) {
-    try {
-      tracked = queryList->insert(query, stamp);
-    } catch (...) {
-    }
+  try {
+    tracked = queryList->insert(query, stamp);
+  } catch (...) {
   }
 }
 
@@ -96,13 +94,11 @@ Profile::Profile(Query* query)
 Profile::~Profile() {
   // only remove from list when the query was inserted into it...
   if (tracked) {
-    auto queryList = static_cast<QueryList*>(query->vocbase()->_queries);
+    auto queryList = query->vocbase()->queryList();
 
-    if (queryList != nullptr) {
-      try {
-        queryList->remove(query, stamp);
-      } catch (...) {
-      }
+    try {
+      queryList->remove(query, stamp);
+     } catch (...) {
     }
   }
 }

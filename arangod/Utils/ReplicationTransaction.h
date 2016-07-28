@@ -24,8 +24,6 @@
 #ifndef ARANGOD_UTILS_REPLICATION_TRANSACTION_H
 #define ARANGOD_UTILS_REPLICATION_TRANSACTION_H 1
 
-#include "ApplicationFeatures/ApplicationServer.h"
-#include "RestServer/DatabaseFeature.h"
 #include "Utils/StandaloneTransactionContext.h"
 #include "Utils/Transaction.h"
 #include "VocBase/ticks.h"
@@ -37,25 +35,15 @@ namespace arangodb {
 
 class ReplicationTransaction : public Transaction {
  public:
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief create the transaction
-  //////////////////////////////////////////////////////////////////////////////
-
   ReplicationTransaction(TRI_vocbase_t* vocbase)
       : Transaction(StandaloneTransactionContext::Create(vocbase)) {
 
-    auto databaseFeature = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
-    databaseFeature->useDatabase(vocbase->name());
+    _vocbase->use();
   }
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief end the transaction
-  //////////////////////////////////////////////////////////////////////////////
-
-  ~ReplicationTransaction() { 
-    auto databaseFeature = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
-    databaseFeature->releaseDatabase(vocbase());
-  }
+  ~ReplicationTransaction() { _vocbase->release(); }
 
  public:
 
