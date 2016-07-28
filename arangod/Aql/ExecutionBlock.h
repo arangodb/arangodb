@@ -43,7 +43,7 @@
 #endif
 
 namespace arangodb {
-class AqlTransaction;
+class Transaction;
 
 namespace aql {
 
@@ -181,7 +181,7 @@ class ExecutionBlock {
   ExecutionEngine* _engine;
 
   /// @brief the transaction for this query
-  arangodb::AqlTransaction* _trx;
+  arangodb::Transaction* _trx;
 
   /// @brief our corresponding ExecutionNode node
   ExecutionNode const* _exeNode;

@@ -25,6 +25,7 @@
 
 #include "Basics/ScopeGuard.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Cluster/ServerState.h"
 #include "Cluster/TraverserEngine.h"
 #include "Cluster/TraverserEngineRegistry.h"
 #include "RestServer/TraverserEngineRegistryFeature.h"
@@ -40,12 +41,10 @@ InternalRestTraverserHandler::InternalRestTraverserHandler(
     }
 
 RestHandler::status InternalRestTraverserHandler::execute() {
-#if 0
   if (!ServerState::instance()->isDBServer()) {
     generateForbidden();
     return status::DONE;
   }
-#endif
 
   // extract the sub-request type
   auto const type = _request->requestType();
@@ -103,7 +102,6 @@ void InternalRestTraverserHandler::createEngine() {
     return;
   }
 
-  // TODO create correctly
   traverser::TraverserEngineID id = _registry->createNew(_vocbase, parsedBody->slice());
   VPackBuilder resultBuilder;
   resultBuilder.add(VPackValue(id));

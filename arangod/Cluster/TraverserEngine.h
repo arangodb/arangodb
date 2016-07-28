@@ -36,6 +36,7 @@ class Transaction;
 
 namespace aql {
 class Collections;
+class Query;
 }
 namespace velocypack {
 class Builder;
@@ -68,6 +69,7 @@ class TraverserEngine {
 
   private:
     std::unique_ptr<TraverserOptions> _opts;
+    arangodb::aql::Query* _query;
     arangodb::Transaction* _trx;
     arangodb::aql::Collections _collections;
     std::vector<std::string> _toLock;

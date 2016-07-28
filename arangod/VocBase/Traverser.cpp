@@ -23,7 +23,9 @@
 
 #include "Traverser.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Aql/Ast.h"
 #include "Aql/Expression.h"
+#include "Aql/Query.h"
 #include "Indexes/EdgeIndex.h"
 #include "Utils/Transaction.h"
 #include "Utils/TransactionContext.h"
@@ -78,8 +80,59 @@ arangodb::traverser::TraverserOptions::LookupInfo::~LookupInfo() {
   }
 }
 
+arangodb::traverser::TraverserOptions::LookupInfo::LookupInfo(
+    arangodb::aql::Query* query, VPackSlice const& info, VPackSlice const& shards) {
+  TRI_ASSERT(shards.isArray());
+  idxHandles.reserve(shards.length());
+
+  VPackSlice read = info.get("handle");
+  if (!read.isObject()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_BAD_PARAMETER,
+        "Each lookup requires handle to be an object");
+  }
+
+  read = read.get("id");
+  if (!read.isString()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_BAD_PARAMETER,
+        "Each handle requires id to be a string");
+  }
+  std::string idxId = read.copyString();
+  auto trx = query->trx();
+
+  for (auto const& it : VPackArrayIterator(shards)) {
+    if (!it.isString()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_BAD_PARAMETER,
+          "Shards have to be a list of strings");
+    }
+    idxHandles.emplace_back(trx->getIndexByIdentifier(it.copyString(), idxId));
+  }
+
+  read = info.get("expression");
+  if (!read.isObject()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_BAD_PARAMETER,
+        "Each lookup requires expression to be an object");
+  }
+  arangodb::basics::Json expJson(TRI_UNKNOWN_MEM_ZONE,
+      arangodb::basics::VelocyPackHelper::velocyPackToJson(read));
+  expression = new aql::Expression(query->ast(), expJson);
+
+  read = info.get("condition");
+  if (!read.isObject()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_BAD_PARAMETER,
+        "Each lookup requires condition to be an object");
+  }
+  arangodb::basics::Json condJson(TRI_UNKNOWN_MEM_ZONE,
+      arangodb::basics::VelocyPackHelper::velocyPackToJson(read));
+  indexCondition = new aql::AstNode(query->ast(), condJson); 
+}
+
 arangodb::traverser::TraverserOptions::LookupInfo::LookupInfo(LookupInfo const& other) {
-  idxHandle = other.idxHandle;
+  idxHandles = other.idxHandles;
   expression = other.expression->clone();
   indexCondition = other.indexCondition;
 }
@@ -88,7 +141,9 @@ void arangodb::traverser::TraverserOptions::LookupInfo::toVelocyPack(
     VPackBuilder& result) const {
   result.openObject();
   result.add(VPackValue("handle"));
-  idxHandle.toVelocyPack(result, false);
+  // We only run toVelocyPack on Coordinator.
+  TRI_ASSERT(idxHandles.size() == 1);
+  idxHandles[0].toVelocyPack(result, false);
   result.add(VPackValue("expression"));
   expression->toVelocyPack(result, false);
   result.add(VPackValue("condition"));
@@ -96,7 +151,132 @@ void arangodb::traverser::TraverserOptions::LookupInfo::toVelocyPack(
   result.close();
 }
 
-arangodb::traverser::TraverserOptions::TraverserOptions(arangodb::Transaction* trx, VPackSlice info, VPackSlice collections) {
+arangodb::traverser::TraverserOptions::TraverserOptions(
+    arangodb::aql::Query* query, VPackSlice info, VPackSlice collections)
+    : _trx(query->trx()), _ctx(new aql::FixedVarExpressionContext()) {
+      // NOTE collections is an array of arrays of strings
+  VPackSlice read = info.get("minDepth");
+  if (!read.isInteger()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "The options require a minDepth");
+  }
+  minDepth = read.getNumber<uint64_t>();
+
+  read = info.get("maxDepth");
+  if (!read.isInteger()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "The options require a maxDepth");
+  }
+  maxDepth = read.getNumber<uint64_t>();
+
+  read = info.get("bfs");
+  if (!read.isBoolean()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "The options require a bfs");
+  }
+  useBreadthFirst = read.getBool();
+
+  read = info.get("uniqueVertices");
+  if (!read.isInteger()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                   "The options require a uniqueVertices");
+  }
+  size_t i = read.getNumber<size_t>();
+  switch (i) {
+    case 0:
+      uniqueVertices = UniquenessLevel::NONE;
+      break;
+    case 1:
+      uniqueVertices = UniquenessLevel::PATH;
+      break;
+    case 2:
+      uniqueVertices = UniquenessLevel::GLOBAL;
+      break;
+    default:
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                     "The options require a uniqueVertices");
+  }
+
+  read = info.get("uniqueEdges");
+  if (!read.isInteger()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                   "The options require a uniqueEdges");
+  }
+  i = read.getNumber<size_t>();
+  switch (i) {
+    case 0:
+      uniqueEdges = UniquenessLevel::NONE;
+      break;
+    case 1:
+      uniqueEdges = UniquenessLevel::PATH;
+      break;
+    case 2:
+      uniqueEdges = UniquenessLevel::GLOBAL;
+      break;
+    default:
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                     "The options require a uniqueEdges");
+  }
+
+  read = info.get("baseLookupInfos");
+  if (!read.isArray()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                   "The options require a baseLookupInfos");
+  }
+
+  size_t length = read.length();
+  TRI_ASSERT(read.length() == collections.length());
+  _baseLookupInfos.reserve(length);
+  for (size_t j = 0; j < length; ++j) {
+    _baseLookupInfos.emplace_back(query, read.at(j), collections.at(j));
+  }
+
+  read = info.get("depthLookupInfo");
+  if (!read.isNone()) {
+    if (!read.isObject()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_BAD_PARAMETER,
+          "The options require depthLookupInfo to be an object");
+    }
+
+    _depthLookupInfo.reserve(read.length());
+    for (auto const& depth : VPackObjectIterator(read)) {
+      auto it = _depthLookupInfo.emplace(depth.key.getNumber<size_t>(), std::vector<LookupInfo>());
+      TRI_ASSERT(it.second);
+      VPackSlice list = depth.value;
+      it.first->second.reserve(length);
+      for (size_t j = 0; j < length; ++j) {
+        it.first->second.emplace_back(query, list.at(j), collections.at(j));
+      }
+    }
+  }
+
+  read = info.get("vertexExpressions");
+  if (!read.isNone()) {
+    if (!read.isObject()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_BAD_PARAMETER,
+          "The options require vertexExpressions to be an object");
+    }
+
+    _vertexExpressions.reserve(read.length());
+    for (auto const& info : VPackObjectIterator(read)) {
+      arangodb::basics::Json infoJson(TRI_UNKNOWN_MEM_ZONE,
+          arangodb::basics::VelocyPackHelper::velocyPackToJson(info.value));
+      auto it =
+          _vertexExpressions.emplace(info.key.getNumber<size_t>(),
+                                   new aql::Expression(query->ast(), infoJson));
+      TRI_ASSERT(it.second);
+    }
+  }
+
+
+
+
+
+  read = info.get("tmpVar");
+  if (!read.isObject()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                   "The options require a tmpVar");
+  }
+  _tmpVar = query->ast()->variables()->createVariable(read);
 }
 
 arangodb::traverser::TraverserOptions::~TraverserOptions() {
@@ -111,7 +291,6 @@ arangodb::traverser::TraverserOptions::~TraverserOptions() {
 }
 
 void arangodb::traverser::TraverserOptions::toVelocyPack(VPackBuilder& result) const {
-  // TODO what about _ctx?
   result.openObject();
   result.add("minDepth", VPackValue(minDepth));
   result.add("maxDepth", VPackValue(maxDepth));
@@ -151,7 +330,7 @@ void arangodb::traverser::TraverserOptions::toVelocyPack(VPackBuilder& result) c
   result.close();
 
   if (!_depthLookupInfo.empty()) {
-    result.add(VPackValue("depthLookupInfos"));
+    result.add(VPackValue("depthLookupInfo"));
     result.openObject();
     for (auto const& pair : _depthLookupInfo) {
       result.add(VPackValue(pair.first));
@@ -165,7 +344,7 @@ void arangodb::traverser::TraverserOptions::toVelocyPack(VPackBuilder& result) c
   }
 
   if (!_vertexExpressions.empty()) {
-    result.add(VPackValue("depthLookupInfos"));
+    result.add(VPackValue("vertexExpressions"));
     result.openObject();
     for (auto const& pair : _vertexExpressions) {
       result.add(VPackValue(pair.first));
@@ -174,6 +353,9 @@ void arangodb::traverser::TraverserOptions::toVelocyPack(VPackBuilder& result) c
     }
     result.close();
   }
+
+  result.add(VPackValue("tmpVar"));
+  _tmpVar->toVelocyPack(result);
 
   result.close();
 }
@@ -271,8 +453,10 @@ arangodb::traverser::TraverserOptions::nextCursor(VPackSlice vertex,
     TRI_ASSERT(idNode->type == aql::NODE_TYPE_VALUE);
     TRI_ASSERT(idNode->isValueType(aql::VALUE_TYPE_STRING));
     idNode->setStringValue(vid, vidLength);
-    opCursors.emplace_back(_trx->indexScanForCondition(
-        info.idxHandle, node, _tmpVar, UINT64_MAX, 1000, false));
+    for (auto const& it : info.idxHandles) {
+      opCursors.emplace_back(_trx->indexScanForCondition(
+          it, node, _tmpVar, UINT64_MAX, 1000, false));
+    }
   }
   return allCursor.release();
 }

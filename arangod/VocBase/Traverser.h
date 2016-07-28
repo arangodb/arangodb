@@ -44,6 +44,7 @@ class Slice;
 namespace aql {
 struct AstNode;
 class Expression;
+class Query;
 class TraversalNode;
 }
 namespace traverser {
@@ -229,7 +230,7 @@ struct TraverserOptions {
   struct LookupInfo {
     // This struct does only take responsibility for the expression
     // NOTE: The expression can be nullptr!
-    arangodb::Transaction::IndexHandle idxHandle;
+    std::vector<arangodb::Transaction::IndexHandle> idxHandles;
     aql::Expression* expression;
     aql::AstNode* indexCondition;
 
@@ -237,6 +238,9 @@ struct TraverserOptions {
     ~LookupInfo();
 
     LookupInfo(LookupInfo const&);
+
+    LookupInfo(arangodb::aql::Query*, arangodb::velocypack::Slice const&,
+               arangodb::velocypack::Slice const&);
 
     void toVelocyPack(arangodb::velocypack::Builder&) const;
   };
@@ -270,7 +274,7 @@ struct TraverserOptions {
         uniqueEdges(UniquenessLevel::PATH) {
   }
 
-  TraverserOptions(arangodb::Transaction* trx, arangodb::velocypack::Slice,
+  TraverserOptions(arangodb::aql::Query*, arangodb::velocypack::Slice,
                    arangodb::velocypack::Slice);
 
   ~TraverserOptions();

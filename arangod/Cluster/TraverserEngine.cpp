@@ -24,6 +24,7 @@
 #include "TraverserEngine.h"
 
 #include "Basics/Exceptions.h"
+#include "Aql/Query.h"
 #include "Utils/AqlTransaction.h"
 #include "VocBase/Traverser.h"
 
@@ -40,7 +41,11 @@ static const std::string TOLOCK = "tolock";
 
 TraverserEngine::TraverserEngine(TRI_vocbase_t* vocbase,
                                  arangodb::velocypack::Slice info)
-    : _opts(nullptr), _trx(nullptr), _collections(vocbase), _didLock(false) {
+    : _opts(nullptr),
+      _query(nullptr),
+      _trx(nullptr),
+      _collections(vocbase),
+      _didLock(false) {
   VPackSlice optsSlice = info.get(OPTIONS);
   if (optsSlice.isNone() || !optsSlice.isObject()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -104,7 +109,11 @@ TraverserEngine::TraverserEngine(TRI_vocbase_t* vocbase,
   _trx = new arangodb::AqlTransaction(
       arangodb::StandaloneTransactionContext::Create(vocbase),
       _collections.collections(), false);
-  _opts.reset(new TraverserOptions(_trx, optsSlice, edgesSlice));
+  auto params = std::make_shared<VPackBuilder>();
+  auto opts = std::make_shared<VPackBuilder>();
+  _query = new aql::Query(true, vocbase, "", 0, params, opts, aql::PART_DEPENDENT);
+  _query->injectTransaction(_trx);
+  _opts.reset(new TraverserOptions(_query, optsSlice, edgesSlice));
 }
 
 TraverserEngine::~TraverserEngine() {

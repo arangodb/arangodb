@@ -24,7 +24,8 @@
 /// @author Copyright 2015, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Aql/TraversalNode.h"
+#include "TraversalNode.h"
+#include "Aql/Collection.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Ast.h"
 #include "Aql/SortCondition.h"
@@ -863,7 +864,7 @@ void TraversalNode::fillTraversalOptions(
 #warning hard-coded nrItems.
         res = trx->getBestIndexHandleForFilterCondition(
             _edgeColls[i], infoIn.indexCondition, _tmpObjVariable, 1000,
-            infoIn.idxHandle);
+            infoIn.idxHandles[0]);
         TRI_ASSERT(res);  // Right now we have an enforced edge index which will
                           // always fit.
         opts->_baseLookupInfos.emplace_back(std::move(infoIn));
@@ -874,7 +875,7 @@ void TraversalNode::fillTraversalOptions(
 #warning hard-coded nrItems.
     res = trx->getBestIndexHandleForFilterCondition(
         _edgeColls[i], info.indexCondition, _tmpObjVariable, 1000,
-        info.idxHandle);
+        info.idxHandles[0]);
     TRI_ASSERT(res);  // Right now we have an enforced edge index which will
                       // always fit.
     opts->_baseLookupInfos.emplace_back(std::move(info));
@@ -909,7 +910,7 @@ void TraversalNode::fillTraversalOptions(
 #warning hard-coded nrItems.
           res = trx->getBestIndexHandleForFilterCondition(
               _edgeColls[i], infoIn.indexCondition, _tmpObjVariable, 1000,
-              infoIn.idxHandle);
+              infoIn.idxHandles[0]);
           TRI_ASSERT(
               res);  // Right now we have an enforced edge index which will
                      // always fit.
@@ -923,7 +924,7 @@ void TraversalNode::fillTraversalOptions(
 #warning hard-coded nrItems.
       res = trx->getBestIndexHandleForFilterCondition(
           _edgeColls[i], info.indexCondition, _tmpObjVariable, 1000,
-          info.idxHandle);
+          info.idxHandles[0]);
       TRI_ASSERT(res);  // Right now we have an enforced edge index which will
                         // always fit.
       infos.emplace_back(std::move(info));

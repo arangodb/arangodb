@@ -3177,6 +3177,19 @@ std::vector<std::shared_ptr<Index>> Transaction::indexesForCollection(
   return result;
 }
 
+
+/// @brief Lock all collections. Only works for selected sub-classes
+
+int Transaction::lockCollections() {
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}
+
+/// @brief Clone this transaction. Only works for selected sub-classes
+
+Transaction* Transaction::clone() const {
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}
+
 //////////////////////////////////////////////////////////////////////////////
 /// @brief Get all indexes for a collection name, coordinator case
 //////////////////////////////////////////////////////////////////////////////

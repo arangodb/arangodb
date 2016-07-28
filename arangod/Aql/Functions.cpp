@@ -47,6 +47,7 @@
 #include "Random/UniformCharacter.h"
 #include "Ssl/SslInterface.h"
 #include "Utils/CollectionNameResolver.h"
+#include "Utils/TransactionContext.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;

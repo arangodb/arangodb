@@ -644,6 +644,14 @@ class Transaction {
   std::vector<std::shared_ptr<arangodb::Index>> indexesForCollection(
       std::string const&);
 
+/// @brief Lock all collections. Only works for selected sub-classes
+
+   virtual int lockCollections();
+
+/// @brief Clone this transaction. Only works for selected sub-classes
+
+   virtual Transaction* clone() const;
+
  private:
   
   //////////////////////////////////////////////////////////////////////////////
