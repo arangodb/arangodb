@@ -109,8 +109,6 @@ void MMFilesEngine::validateOptions(std::shared_ptr<options::ProgramOptions>) {
 void MMFilesEngine::prepare() {
   TRI_ASSERT(EngineSelectorFeature::ENGINE = this);
 
-  LOG(INFO) << "MMFilesEngine::prepare()";
- 
   // get base path from DatabaseServerFeature 
   auto database = application_features::ApplicationServer::getFeature<DatabasePathFeature>("DatabasePath");
   _basePath = database->directory();
@@ -124,8 +122,6 @@ void MMFilesEngine::prepare() {
 void MMFilesEngine::start() {
   TRI_ASSERT(EngineSelectorFeature::ENGINE = this);
   
-  LOG(INFO) << "MMFilesEngine::start()";
-
   // test if the "databases" directory is present and writable
   verifyDirectories();
   
@@ -156,13 +152,9 @@ void MMFilesEngine::start() {
 // write requests to the storage engine after this call
 void MMFilesEngine::stop() {
   TRI_ASSERT(EngineSelectorFeature::ENGINE = this);
-  
-  LOG(INFO) << "MMFilesEngine::stop()";
 }
 
 void MMFilesEngine::recoveryDone(TRI_vocbase_t* vocbase) {    
-  LOG(INFO) << "MMFilesEngine::recoveryDone() " << vocbase->name();
-
   DatabaseFeature* databaseFeature = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
 
   if (!databaseFeature->checkVersion() && !databaseFeature->upgrade()) {
@@ -296,7 +288,7 @@ void MMFilesEngine::getDatabases(arangodb::velocypack::Builder& result) {
       // database is deleted, skip it!
       LOG(DEBUG) << "found dropped database in directory '" << directory << "'";
       LOG(DEBUG) << "removing superfluous database directory '" << directory << "'";
-/* TODO
+
 #ifdef ARANGODB_ENABLE_ROCKSDB
       // delete persistent indexes for this database
       TRI_voc_tick_t id = static_cast<TRI_voc_tick_t>(
@@ -304,9 +296,8 @@ void MMFilesEngine::getDatabases(arangodb::velocypack::Builder& result) {
       RocksDBFeature::dropDatabase(id);
 #endif
 
-      TRI_RemoveDirectory(directory.c_str());
+      dropDatabaseDirectory(directory);
       continue;
-*/
     }
 
     VPackSlice nameSlice = parameters.get("name");
@@ -442,10 +433,9 @@ TRI_vocbase_t* MMFilesEngine::openDatabase(VPackSlice const& parameters, bool is
 // the WAL entry for the database creation will be written *after* the call
 // to "createDatabase" returns
 TRI_vocbase_t* MMFilesEngine::createDatabase(TRI_voc_tick_t id, arangodb::velocypack::Slice const& data) {
-  std::string const path = databaseDirectory(id);
   std::string const name = data.get("name").copyString();
 
-  waitForDeletion(path, TRI_ERROR_NO_ERROR);
+  waitUntilDeletion(id, true);
   
   int res = createDatabaseDirectory(id, name);
 
@@ -458,24 +448,52 @@ TRI_vocbase_t* MMFilesEngine::createDatabase(TRI_voc_tick_t id, arangodb::velocy
 
 // asks the storage engine to drop the specified database and persist the 
 // deletion info. Note that physical deletion of the database data must not 
-// be carried out by this call, as there may
-// still be readers of the database's data. It is recommended that this operation
-// only sets a deletion flag for the database but let's an async task perform
-// the actual deletion. The async task can later call the callback function to 
-// check whether the physical deletion of the database is possible.
+// be carried out by this call, as there may still be readers of the database's data. 
+// It is recommended that this operation only sets a deletion flag for the database 
+// but let's an async task perform the actual deletion. 
 // the WAL entry for database deletion will be written *after* the call
-// to "dropDatabase" returns
-int MMFilesEngine::dropDatabase(TRI_vocbase_t* vocbase, bool waitForDeletion, 
-                                std::function<bool()> const& canRemovePhysically) {
-  std::string const directory = databaseDirectory(vocbase->_id);
-
-  int res = saveDatabaseParameters(vocbase->_id, vocbase->name(), true);
-
-  if (res == TRI_ERROR_NO_ERROR && waitForDeletion) {
-    this->waitForDeletion(directory, TRI_ERROR_NO_ERROR);
-  }
-  return res;
+// to "prepareDropDatabase" returns
+int MMFilesEngine::prepareDropDatabase(TRI_vocbase_t* vocbase) {
+  std::string const path = databaseDirectory(vocbase->_id);
+  
+  return saveDatabaseParameters(vocbase->_id, vocbase->name(), true);
 }
+
+// perform a physical deletion of the database      
+int MMFilesEngine::dropDatabase(TRI_vocbase_t* vocbase) {
+  return dropDatabaseDirectory(databaseDirectory(vocbase->_id));
+}
+
+/// @brief wait until a database directory disappears
+int MMFilesEngine::waitUntilDeletion(TRI_voc_tick_t id, bool force) {
+  std::string const path = databaseDirectory(id);
+  
+  int iterations = 0;
+  // wait for at most 30 seconds for the directory to be removed
+  while (TRI_IsDirectory(path.c_str())) {
+    if (iterations == 0) {
+      LOG(TRACE) << "waiting for deletion of database directory '" << path << "'";
+    } else if (iterations >= 30 * 20) {
+      LOG(WARN) << "unable to remove database directory '" << path << "'";
+
+      if (force) {
+        LOG(WARN) << "forcefully deleting database directory '" << path << "'";
+        return dropDatabaseDirectory(path);
+      }
+      return TRI_ERROR_INTERNAL;
+    }
+
+    if (iterations == 5 * 20) {
+      LOG(INFO) << "waiting for deletion of database directory '" << path << "'";
+    }
+
+    ++iterations;
+    usleep(50000);
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
+
 
 // asks the storage engine to create a collection as specified in the VPack
 // Slice object and persist the creation info. It is guaranteed by the server 
@@ -739,36 +757,6 @@ std::string MMFilesEngine::parametersFile(TRI_voc_tick_t id) const {
   return basics::FileUtils::buildFilename(databaseDirectory(id), TRI_VOC_PARAMETER_FILE);
 }
 
-/// @brief wait until a database directory disappears
-int MMFilesEngine::waitForDeletion(std::string const& directoryName, int statusCode) {
-  int iterations = 0;
-  // wait for at most 30 seconds for the directory to be removed
-  while (TRI_IsDirectory(directoryName.c_str())) {
-    if (iterations == 0) {
-      LOG(TRACE) << "waiting for deletion of database directory '" << directoryName << "', called with status code " << statusCode;
-
-      if (statusCode != TRI_ERROR_FORBIDDEN &&
-          (statusCode == TRI_ERROR_ARANGO_DATABASE_NOT_FOUND ||
-           statusCode != TRI_ERROR_NO_ERROR)) {
-        LOG(WARN) << "forcefully deleting database directory '" << directoryName << "'";
-        TRI_RemoveDirectory(directoryName.c_str());
-      }
-    } else if (iterations >= 30 * 10) {
-      LOG(WARN) << "unable to remove database directory '" << directoryName << "'";
-      return TRI_ERROR_INTERNAL;
-    }
-
-    if (iterations == 5 * 10) {
-      LOG(INFO) << "waiting for deletion of database directory '" << directoryName << "'";
-    }
-
-    ++iterations;
-    usleep(50000);
-  }
-
-  return TRI_ERROR_NO_ERROR;
-}
-
 /// @brief open an existing database. internal function
 TRI_vocbase_t* MMFilesEngine::openExistingDatabase(TRI_voc_tick_t id, std::string const& name, 
                                                    bool wasCleanShutdown, bool isUpgrade) {
@@ -822,4 +810,9 @@ TRI_vocbase_t* MMFilesEngine::openExistingDatabase(TRI_voc_tick_t id, std::strin
   }
 
   return vocbase.release();
+}
+      
+/// @brief physically erases the database directory
+int MMFilesEngine::dropDatabaseDirectory(std::string const& path) {
+  return TRI_RemoveDirectory(path.c_str());
 }

@@ -89,14 +89,18 @@ class OtherEngine final : public StorageEngine {
 
   // asks the storage engine to drop the specified database and persist the 
   // deletion info. Note that physical deletion of the database data must not 
-  // be carried out by this call, as there may
-  // still be readers of the database's data. It is recommended that this operation
-  // only sets a deletion flag for the database but let's an async task perform
-  // the actual deletion. The async task can later call the callback function to 
-  // check whether the physical deletion of the database is possible.
+  // be carried out by this call, as there may still be readers of the database's data. 
+  // It is recommended that this operation only sets a deletion flag for the database 
+  // but let's an async task perform the actual deletion. 
   // the WAL entry for database deletion will be written *after* the call
-  // to "dropDatabase" returns
-  int dropDatabase(TRI_vocbase_t* vocbase, bool waitForDeletion, std::function<bool()> const& canRemovePhysically) override;
+  // to "prepareDropDatabase" returns
+  int prepareDropDatabase(TRI_vocbase_t* vocbase) override;
+  
+  // perform a physical deletion of the database      
+  int dropDatabase(TRI_vocbase_t* vocbase) override;
+  
+  /// @brief wait until a database directory disappears
+  int waitUntilDeletion(TRI_voc_tick_t id, bool force) override;
 
   // asks the storage engine to create a collection as specified in the VPack
   // Slice object and persist the creation info. It is guaranteed by the server 

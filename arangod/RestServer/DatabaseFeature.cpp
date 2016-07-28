@@ -101,7 +101,6 @@ void DatabaseManagerThread::run() {
 
     if (database != nullptr) {
       // found a database to delete, now remove it from the struct
-
       {
         MUTEX_LOCKER(mutexLocker, databaseFeature->_databasesMutex);
 
@@ -164,13 +163,8 @@ void DatabaseManagerThread::run() {
           }
         }
 
-        // remember db path
-        path = engine->databasePath(database);
-
         database->shutdown();
-
-        // remove directory
-        TRI_RemoveDirectory(path.c_str());
+        engine->dropDatabase(database);
       }
 
       delete database;
@@ -651,61 +645,70 @@ int DatabaseFeature::dropDatabase(std::string const& name, bool writeMarker, boo
     return TRI_ERROR_FORBIDDEN;
   }
 
-  TRI_voc_tick_t id = 0;
-  MUTEX_LOCKER(mutexLocker, _databasesMutex);
-
-  auto oldLists = _databasesLists.load();
-  decltype(oldLists) newLists = nullptr;
-  TRI_vocbase_t* vocbase = nullptr;
-  try {
-    newLists = new DatabasesLists(*oldLists);
-
-    auto it = newLists->_databases.find(name);
-    if (it == newLists->_databases.end()) {
-      // not found
-      delete newLists;
-      return TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
-    } else {
-      vocbase = it->second;
-      id = vocbase->_id;
-      // mark as deleted
-      TRI_ASSERT(vocbase->_type == TRI_VOCBASE_TYPE_NORMAL);
-
-      newLists->_databases.erase(it);
-      newLists->_droppedDatabases.insert(vocbase);
-    }
-  } catch (...) {
-    delete newLists;
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
-
-  TRI_ASSERT(vocbase != nullptr);
-  TRI_ASSERT(id != 0);
-
-  _databasesLists = newLists;
-  _databasesProtector.scan();
-  delete oldLists;
-
-  vocbase->_isOwnAppsDirectory = removeAppsDirectory;
-
-  // invalidate all entries for the database
-  arangodb::aql::QueryCache::instance()->invalidate(vocbase);
-  
-  if (!vocbase->markAsDropped()) {
-    // deleted by someone else?
-    return TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
-  }
-
-  auto callback = []() -> bool { return true; };
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  int res = engine->dropDatabase(vocbase, waitForDeletion, callback);
+  std::string path;
+  TRI_voc_tick_t id = 0;
+  int res;
+  {
+    MUTEX_LOCKER(mutexLocker, _databasesMutex);
+
+    auto oldLists = _databasesLists.load();
+    decltype(oldLists) newLists = nullptr;
+    TRI_vocbase_t* vocbase = nullptr;
+    try {
+      newLists = new DatabasesLists(*oldLists);
+
+      auto it = newLists->_databases.find(name);
+      if (it == newLists->_databases.end()) {
+        // not found
+        delete newLists;
+        return TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
+      } else {
+        vocbase = it->second;
+        id = vocbase->_id;
+        // mark as deleted
+        TRI_ASSERT(vocbase->_type == TRI_VOCBASE_TYPE_NORMAL);
     
-  if (res == TRI_ERROR_NO_ERROR) {
-    if (writeMarker) {
-      // TODO: what shall happen in case writeDropMarker() fails?
-      writeDropMarker(id);
+        if (!vocbase->markAsDropped()) {
+          // deleted by someone else?
+          return TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
+        }
+
+        newLists->_databases.erase(it);
+        newLists->_droppedDatabases.insert(vocbase);
+      }
+    } catch (...) {
+      delete newLists;
+      return TRI_ERROR_OUT_OF_MEMORY;
+    }
+
+    TRI_ASSERT(vocbase != nullptr);
+    TRI_ASSERT(id != 0);
+
+    _databasesLists = newLists;
+    _databasesProtector.scan();
+    delete oldLists;
+
+    vocbase->_isOwnAppsDirectory = removeAppsDirectory;
+    path = vocbase->path();
+
+    // invalidate all entries for the database
+    arangodb::aql::QueryCache::instance()->invalidate(vocbase);
+
+    res = engine->prepareDropDatabase(vocbase);
+      
+    if (res == TRI_ERROR_NO_ERROR) {
+      if (writeMarker) {
+        // TODO: what shall happen in case writeDropMarker() fails?
+        writeDropMarker(id);
+      }
     }
   }
+  
+  if (res == TRI_ERROR_NO_ERROR && waitForDeletion) {
+    engine->waitUntilDeletion(id, true);
+  }
+
   return res;
 }
 
@@ -1027,7 +1030,7 @@ int DatabaseFeature::createApplicationDirectory(std::string const& name, std::st
     return TRI_ERROR_NO_ERROR;
   }
 
-  std::string const path = basics::FileUtils::buildFilename(basics::FileUtils::buildFilename(basePath, "db"), name);
+  std::string const path = basics::FileUtils::buildFilename(basics::FileUtils::buildFilename(basePath, "_db"), name);
   int res = TRI_ERROR_NO_ERROR;
 
   if (!TRI_IsDirectory(path.c_str())) {
@@ -1052,7 +1055,7 @@ int DatabaseFeature::createApplicationDirectory(std::string const& name, std::st
                 << "' for database '" << name << "': " << errorMessage;
     }
   }
-
+  
   return res;
 }
 

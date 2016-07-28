@@ -1937,10 +1937,11 @@ static void MapGetVocBase(v8::Local<v8::String> const name,
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_VersionServer(v8::FunctionCallbackInfo<v8::Value> const& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   TRI_V8_RETURN(TRI_V8_ASCII_STRING(ARANGODB_VERSION));
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1948,7 +1949,7 @@ static void JS_VersionServer(v8::FunctionCallbackInfo<v8::Value> const& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_PathDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
@@ -1960,6 +1961,7 @@ static void JS_PathDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
 
   TRI_V8_RETURN_STD_STRING(engine->databasePath(vocbase));
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1967,7 +1969,7 @@ static void JS_PathDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_IdDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
@@ -1977,6 +1979,7 @@ static void JS_IdDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   TRI_V8_RETURN(V8TickId(isolate, vocbase->_id));
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1984,7 +1987,7 @@ static void JS_IdDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_NameDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
@@ -1995,6 +1998,7 @@ static void JS_NameDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   std::string const n = vocbase->name();
   TRI_V8_RETURN_STD_STRING(n);
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2003,7 +2007,7 @@ static void JS_NameDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
 static void JS_IsSystemDatabase(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
@@ -2013,6 +2017,7 @@ static void JS_IsSystemDatabase(
   }
 
   TRI_V8_RETURN(v8::Boolean::New(isolate, vocbase->isSystem()));
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2020,7 +2025,7 @@ static void JS_IsSystemDatabase(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_UseDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   if (args.Length() != 1) {
@@ -2071,6 +2076,7 @@ static void JS_UseDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   static_cast<TRI_vocbase_t*>(orig)->release();
 
   TRI_V8_RETURN(WrapVocBase(isolate, vocbase));
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2147,7 +2153,7 @@ static void ListDatabasesCoordinator(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_Databases(v8::FunctionCallbackInfo<v8::Value> const& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   uint32_t const argc = args.Length();
@@ -2188,17 +2194,11 @@ static void JS_Databases(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   TRI_V8_RETURN(result);
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a new database, case of a coordinator in a cluster
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief helper function for the agency
-///
-/// `place` can be "/Target", "/Plan" or "/Current" and name is the database
-/// name.
 ////////////////////////////////////////////////////////////////////////////////
 
 static void CreateDatabaseCoordinator(
@@ -2315,6 +2315,7 @@ static void CreateDatabaseCoordinator(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_CreateDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
@@ -2397,6 +2398,7 @@ static void JS_CreateDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   database->release();
 
   TRI_V8_RETURN_TRUE();
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2454,7 +2456,7 @@ static void DropDatabaseCoordinator(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_DropDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   if (args.Length() != 1) {
@@ -2496,6 +2498,7 @@ static void JS_DropDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8ReloadRouting(isolate);
 
   TRI_V8_RETURN_TRUE();
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
