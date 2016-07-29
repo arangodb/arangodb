@@ -43,18 +43,9 @@ using namespace arangodb::basics;
 using namespace arangodb::rest;
 
 namespace {
-constexpr size_t getChunkHeaderLength(bool oneChunk) {
-  return (oneChunk ? 2 * sizeof(uint32_t) + 1 * sizeof(uint64_t)
-                   : 2 * sizeof(uint32_t) + 2 * sizeof(uint64_t));
-}
-VPackOffsets findAndValidateVPacks(char const* chunkBegin, char const* chunkEnd,
-                                   bool messageInOneChunk) {
-  auto chunkHeaderLength = getChunkHeaderLength(messageInOneChunk);
-
+std::size_t findAndValidateVPacks(char const* vpHeaderStart,
+                                  char const* chunkEnd) {
   VPackValidator validator;
-
-  // validate Header VelocyPack
-  auto vpHeaderStart = chunkBegin + chunkHeaderLength;
   // check for slice start to the end of Chunk
   // isSubPart allows the slice to be shorter than the checked buffer.
   validator.validate(vpHeaderStart, std::distance(vpHeaderStart, chunkEnd),
@@ -65,14 +56,13 @@ VPackOffsets findAndValidateVPacks(char const* chunkBegin, char const* chunkEnd,
   auto vpHeaderLen = vpHeader.byteSize();
   auto vpPayloadStart = vpHeaderStart + vpHeaderLen;
   if (vpPayloadStart == chunkEnd) {
-    // possible compare with request type in header if payload is required
-    return VPackOffsets(vpHeaderStart, chunkEnd);  // no payload
+    return 0;  // no payload available
   }
 
-  // validate Payplad VelocyPack
+  // validate Payload VelocyPack
   validator.validate(vpPayloadStart, std::distance(vpPayloadStart, chunkEnd),
                      /*isSubPart =*/false);
-  return VPackOffsets(vpHeaderStart, vpPayloadStart, chunkEnd);
+  return std::distance(vpHeaderStart, vpPayloadStart);
 }
 }
 
@@ -176,8 +166,8 @@ VppCommTask::ChunkHeader VppCommTask::readChunkHeader() {
 
   auto cursor = _readBuffer->begin();
 
-  std::memcpy(&header._length, cursor, sizeof(header._length));
-  cursor += sizeof(header._length);
+  std::memcpy(&header._chunkLength, cursor, sizeof(header._chunkLength));
+  cursor += sizeof(header._chunkLength);
 
   uint32_t chunkX;
   std::memcpy(&chunkX, cursor, sizeof(chunkX));
@@ -187,6 +177,17 @@ VppCommTask::ChunkHeader VppCommTask::readChunkHeader() {
   header._chunk = chunkX >> 1;
 
   std::memcpy(&header._messageId, cursor, sizeof(header._messageId));
+  cursor += sizeof(header._messageId);
+
+  // extract total len of message
+  if (header._isFirst && header._chunk == 1) {
+    std::memcpy(&header._messageLength, cursor, sizeof(header._messageLength));
+    cursor += sizeof(header._messageLength);
+  } else {
+    header._messageLength = 0;  // not needed
+  }
+
+  header._headerLength = std::distance(_readBuffer->begin(), cursor);
 
   return header;
 }
@@ -219,23 +220,20 @@ bool VppCommTask::processRead() {
   }
 
   auto chunkHeader = readChunkHeader();
-  auto chunkEnd = chunkBegin + chunkHeader._length;
+  auto chunkEnd = chunkBegin + chunkHeader._chunkLength;
+  auto vpackBegin = chunkBegin + chunkHeader._headerLength;
+  bool do_execute = false;
 
   // CASE 1: message is in one chunk
   if (chunkHeader._isFirst && chunkHeader._chunk == 1) {
-    VPackOffsets offsets = findAndValidateVPacks(chunkBegin, chunkEnd, true);
+    std::size_t payloadOffset = findAndValidateVPacks(vpackBegin, chunkEnd);
     VPackMessage message;
-    message._buffer.append(offsets._begin,
-                           std::distance(offsets._begin, offsets._end));
+    message._buffer.append(vpackBegin, std::distance(vpackBegin, chunkEnd));
     message._header = VPackSlice(message._buffer.data());
-
-    if (offsets._payloadBegin) {
-      message._payload =
-          VPackSlice(message._buffer.data() +
-                     std::distance(offsets._begin, offsets._payloadBegin));
+    if (payloadOffset) {
+      message._payload = VPackSlice(message._buffer.data() + payloadOffset);
     }
-    // free buffer form chunkBegin to chunkBegin + chunkHeader._lenght
-    // execute
+    do_execute = true;
   }
 
   // CASE 2:  message is in multiple chunks
@@ -249,11 +247,14 @@ bool VppCommTask::processRead() {
           "messages");
     }
 
-    // append to VPackBuffer in incomplete Message
-
-    auto numberOfChunks = chunkHeader._chunk;
-    auto chunkNumber = 1;
-    // set message length
+    IncompleteVPackMessage message(chunkHeader._messageLength,
+                                   chunkHeader._chunk /*number of chunks*/);
+    message._buffer.append(vpackBegin, std::distance(vpackBegin, chunkEnd));
+    auto insertPair = _incompleteMessages.insert(
+        std::make_pair(chunkHeader._messageId, std::move(message)));
+    if (!insertPair.second) {
+      throw std::logic_error("insert failed");
+    }
 
     // CASE 2b: chunk continues a message
   } else {  // followup chunk of some mesage
@@ -261,18 +262,27 @@ bool VppCommTask::processRead() {
       throw std::logic_error("found message without previous part");
     }
     auto& im = incompleteMessageItr->second;  // incomplete Message
-    auto chunkNumber = chunkHeader._chunk;
-
-    // append to VPackBuffer in incomplete Message
+    im._currentChunk++;
+    assert(im._currentChunk == chunkHeader._chunk);
+    im._buffer.append(vpackBegin, std::distance(vpackBegin, chunkEnd));
 
     // MESSAGE COMPLETE
-    if (chunkNumber == im._numberOfChunks) {
-      // VPackMessage message;
-      // free buffer form chunkBegin to chunkBegin + chunkHeader._lenght
-      // execute
+    if (im._currentChunk == im._numberOfChunks) {
+      std::size_t payloadOffset = findAndValidateVPacks(
+          reinterpret_cast<char const*>(im._buffer.data()),
+          reinterpret_cast<const char*>(im._buffer.data() +
+                                        im._buffer.byteSize()));
+      VPackMessage message;
+      message._buffer = std::move(im._buffer);
+      message._header = VPackSlice(message._buffer.data());
+      if (payloadOffset) {
+        message._payload = VPackSlice(message._buffer.data() + payloadOffset);
+      }
+      do_execute = true;
     }
   }
-  // clean buffer up to lenght of chunk
+  (void)do_execute;
+  // clean buffer up to length of chunk
   return true;
 
   /*

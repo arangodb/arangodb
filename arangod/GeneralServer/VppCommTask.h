@@ -17,23 +17,6 @@ struct VPackMessage {
   VPackSlice _payload;
 };
 
-struct VPackOffsets {
-  VPackOffsets(char const* begin, char const* end,
-               char const* payloadBegin = nullptr)
-      : _begin(begin),
-        _end(end),
-        _headBegin(begin),
-        _headEnd(payloadBegin ? payloadBegin : end),
-        _payloadBegin(payloadBegin),
-        _payloadEnd(payloadBegin ? end : nullptr) {}
-  char const* _begin;
-  char const* _end;
-  char const* _headBegin;
-  char const* _headEnd;
-  char const* _payloadBegin;
-  char const* _payloadEnd;
-};
-
 class VppCommTask : public GeneralCommTask {
  public:
   VppCommTask(GeneralServer*, TRI_socket_t, ConnectionInfo&&, double timeout);
@@ -68,11 +51,15 @@ class VppCommTask : public GeneralCommTask {
   using MessageID = uint64_t;
 
   struct IncompleteVPackMessage {
+    IncompleteVPackMessage(uint32_t length, std::size_t numberOfChunks)
+        : _length(length),
+          _buffer(_length),
+          _numberOfChunks(numberOfChunks),
+          _currentChunk(1UL) {}
     uint32_t _length;  // lenght of total message in bytes
+    VPackBuffer<uint8_t> _buffer;
     std::size_t _numberOfChunks;
-    VPackBuffer<uint8_t> _chunks;
-    // std::vector<std::pair<std::size_t, std::size_t>> _chunkOffesesAndLengths;
-    // std::vector<std::size_t> _vpackOffsets;  // offset to slice in buffer
+    std::size_t _currentChunk;
   };
   std::unordered_map<MessageID, IncompleteVPackMessage> _incompleteMessages;
 
@@ -84,9 +71,11 @@ class VppCommTask : public GeneralCommTask {
   ProcessReadVariables _processReadVariables;
 
   struct ChunkHeader {
-    uint32_t _length;
+    std::size_t _headerLength;
+    uint32_t _chunkLength;
     uint32_t _chunk;
     uint64_t _messageId;
+    uint64_t _messageLength;
     bool _isFirst;
   };
 
