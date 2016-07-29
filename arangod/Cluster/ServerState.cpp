@@ -56,7 +56,8 @@ ServerState::ServerState()
       _idOfPrimary(""),
       _state(STATE_UNDEFINED),
       _initialized(false),
-      _clusterEnabled(false) {
+      _clusterEnabled(false),
+      _foxxmaster("") {
   storeRole(ROLE_UNDEFINED);
 }
 
@@ -84,6 +85,8 @@ std::string ServerState::roleToString(ServerState::RoleEnum role) {
       return "SECONDARY";
     case ROLE_COORDINATOR:
       return "COORDINATOR";
+    case ROLE_AGENT:
+      return "AGENT";
   }
 
   TRI_ASSERT(false);
@@ -991,4 +994,16 @@ bool ServerState::storeRole(RoleEnum role) {
   }
   _role.store(role, std::memory_order_release);
   return true;
+}
+
+bool ServerState::isFoxxmaster() {
+  return !isRunningInCluster() || _foxxmaster == getId();
+}
+
+std::string const& ServerState::getFoxxmaster() {
+  return _foxxmaster;
+}
+
+void ServerState::setFoxxmaster(std::string const& foxxmaster) {
+  _foxxmaster = foxxmaster;
 }
