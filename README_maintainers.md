@@ -666,7 +666,7 @@ to continue, once all processes have been start up in the debugger.
 ArangoDB on Mesos
 =================
 
-This will spawn a temporary local mesos cluster.
+This will spawn a **temporary** local mesos cluster.
 
 Requirements:
 
