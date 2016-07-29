@@ -56,7 +56,7 @@ window.ArangoDocument = Backbone.Collection.extend({
         callback(false, data);
       },
       error: function (data) {
-        callback(true, data);
+        callback(true, data._id, data.responseJSON);
       }
     });
   },
@@ -131,6 +131,7 @@ window.ArangoDocument = Backbone.Collection.extend({
         callback(false, data, 'document');
       },
       error: function (data) {
+        arangoHelper.arangoError('Error', data.responseJSON.errorMessage + ' - error number: ' + data.responseJSON.errorNum);
         self.add(true, data);
       }
     });

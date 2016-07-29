@@ -296,7 +296,14 @@
       var callback = function () {
         if (window.App.graphViewer2) {
           if (color !== '' && color !== undefined) {
-            window.App.graphViewer2.updateColors();
+            var nodes = !$('#g_nodeColor').is(':disabled');
+            var edges = !$('#g_edgeColor').is(':disabled');
+            window.App.graphViewer2.updateColors(
+              nodes,
+              edges,
+              $('#g_nodeColor').val(),
+              $('#g_edgeColor').val()
+            );
           } else {
             window.App.graphViewer2.render(self.lastFocussed);
           }
@@ -361,6 +368,26 @@
       this.getGraphSettings(true);
     },
 
+    handleDependencies: function () {
+      // node color
+      if ($('#g_nodeColorByCollection').val() === 'true') {
+        $('#g_nodeColorAttribute').prop('disabled', true);
+        $('#g_nodeColor').prop('disabled', true);
+      }
+      if ($('#g_nodeColorAttribute').val() !== '') {
+        $('#g_nodeColor').prop('disabled', true);
+      }
+
+      // edge color
+      if ($('#g_edgeColorByCollection').val() === 'true') {
+        $('#g_edgeColorAttribute').prop('disabled', true);
+        $('#g_edgeColor').prop('disabled', true);
+      }
+      if ($('#g_edgeColorAttribute').val() !== '') {
+        $('#g_edgeColor').prop('disabled', true);
+      }
+    },
+
     continueRender: function () {
       $(this.el).html(this.template.render({
         general: this.general,
@@ -381,10 +408,7 @@
         this.setDefaults(true);
       }
 
-      // arangoHelper.buildGraphSubNav(this.name, 'Settings');
-
-      // load graph settings from local storage
-      // apply those values to view then
+      this.handleDependencies();
     }
 
   });
