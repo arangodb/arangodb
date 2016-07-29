@@ -282,21 +282,21 @@ function syncCollectionFinalize (database, collname, from, config) {
       delete transactions[entry.tid];
     } else if (entry.type === mType.REPLICATION_INDEX_CREATE) {
       try {
-        coll.ensureIndex(entry.index);
+        coll.ensureIndex(entry.data);
       } catch(errx) {
         console.error('syncCollectionFinalize: ensureIndex', entry, JSON.stringify(errx));
         throw errx;
       }
     } else if (entry.type === mType.REPLICATION_INDEX_DROP) {
       try {
-        coll.dropIndex(entry.id);
+        coll.dropIndex(entry.data.id);
       } catch(errx) {
         console.error('syncCollectionFinalize: dropIndex', entry, JSON.stringify(errx));
         throw errx;
       }
     } else if (entry.type === mType.REPLICATION_COLLECTION_CHANGE) {
       try {
-        coll.properties(entry.collection);
+        coll.properties(entry.data);
       } catch(errx) {
         console.error('syncCollectionFinalize: properties', entry, JSON.stringify(errx));
         throw errx;
