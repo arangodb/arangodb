@@ -36,6 +36,9 @@ v3.0.4 (XXXX-XX-XX)
 
 * fixed a crash in V8Periodic task (forgotten lock)
 
+* fixed two bugs in synchronous replication (syncCollectionFinalize)
+
+
 v3.0.3 (2016-07-17)
 -------------------
 
