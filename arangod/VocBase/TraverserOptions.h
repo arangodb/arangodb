@@ -108,24 +108,24 @@ struct TraverserOptions {
 
   explicit TraverserOptions(arangodb::Transaction* trx)
       : _trx(trx),
+        _tmpVar(nullptr),
         _ctx(new aql::FixedVarExpressionContext()),
         minDepth(1),
         maxDepth(1),
         useBreadthFirst(false),
         uniqueVertices(UniquenessLevel::NONE),
-        uniqueEdges(UniquenessLevel::PATH) {
-  }
+        uniqueEdges(UniquenessLevel::PATH) {}
 
   TraverserOptions(arangodb::Transaction*, arangodb::basics::Json const&);
 
   TraverserOptions(arangodb::aql::Query*, arangodb::velocypack::Slice,
                    arangodb::velocypack::Slice);
 
-  ~TraverserOptions();
-
   /// @brief This copy constructor is only working during planning phase.
   ///        After planning this node should not be copied anywhere.
   TraverserOptions(TraverserOptions const&);
+
+  ~TraverserOptions();
 
   /// @brief Build a velocypack for cloning in the plan.
   void toVelocyPack(arangodb::velocypack::Builder&) const;

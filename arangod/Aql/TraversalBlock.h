@@ -73,7 +73,7 @@ class TraversalBlock : public ExecutionBlock {
   size_t _posInPaths;
 
   /// @brief Options for the travereser
-  std::unique_ptr<arangodb::traverser::TraverserOptions> _opts;
+  arangodb::traverser::TraverserOptions* _opts;
 
   /// @brief Traverser object
   std::unique_ptr<arangodb::traverser::Traverser> _traverser;

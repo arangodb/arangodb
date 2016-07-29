@@ -70,10 +70,10 @@ static uint64_t checkTraversalDepthValue(AstNode const* node) {
   return static_cast<uint64_t>(v);
 }
 
-static traverser::TraverserOptions CreateTraversalOptions(
+static std::unique_ptr<traverser::TraverserOptions> CreateTraversalOptions(
     Transaction* trx, AstNode const* direction, AstNode const* optionsNode) {
 
-  traverser::TraverserOptions options(trx);
+  auto options = std::make_unique<traverser::TraverserOptions>(trx);
 
   TRI_ASSERT(direction != nullptr);
   TRI_ASSERT(direction->type == NODE_TYPE_DIRECTION);
@@ -83,14 +83,14 @@ static traverser::TraverserOptions CreateTraversalOptions(
 
   if (steps->isNumericValue()) {
     // Check if a double value is integer
-    options.minDepth = checkTraversalDepthValue(steps);
-    options.maxDepth = options.minDepth;
+    options->minDepth = checkTraversalDepthValue(steps);
+    options->maxDepth = options->minDepth;
   } else if (steps->type == NODE_TYPE_RANGE) {
     // Range depth
-    options.minDepth = checkTraversalDepthValue(steps->getMember(0));
-    options.maxDepth = checkTraversalDepthValue(steps->getMember(1));
+    options->minDepth = checkTraversalDepthValue(steps->getMember(0));
+    options->maxDepth = checkTraversalDepthValue(steps->getMember(1));
 
-    if (options.maxDepth < options.minDepth) {
+    if (options->maxDepth < options->minDepth) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE,
                                      "invalid traversal depth");
     }
@@ -112,29 +112,27 @@ static traverser::TraverserOptions CreateTraversalOptions(
         TRI_ASSERT(value->isConstant());
 
         if (name == "bfs") {
-          options.useBreadthFirst = value->isTrue();
+          options->useBreadthFirst = value->isTrue();
         } else if (name == "uniqueVertices" && value->isStringValue()) {
           if (value->stringEquals("path", true)) {
-            options.uniqueVertices =
+            options->uniqueVertices =
                 arangodb::traverser::TraverserOptions::UniquenessLevel::PATH;
           } else if (value->stringEquals("global", true)) {
-            options.uniqueVertices =
+            options->uniqueVertices =
                 arangodb::traverser::TraverserOptions::UniquenessLevel::GLOBAL;
           }
         } else if (name == "uniqueEdges" && value->isStringValue()) {
           if (value->stringEquals("none", true)) {
-            options.uniqueEdges =
+            options->uniqueEdges =
                 arangodb::traverser::TraverserOptions::UniquenessLevel::NONE;
           } else if (value->stringEquals("global", true)) {
-            options.uniqueEdges =
+            options->uniqueEdges =
                 arangodb::traverser::TraverserOptions::UniquenessLevel::GLOBAL;
           }
         }
       }
-
     }
   }
-
   return options;
 }
 
@@ -755,8 +753,8 @@ ExecutionNode* ExecutionPlan::fromNodeTraversal(ExecutionNode* previous,
     previous = calc;
   }
 
-  traverser::TraverserOptions options = CreateTraversalOptions(
-      getAst()->query()->trx(), direction, node->getMember(3));
+  auto options = CreateTraversalOptions(getAst()->query()->trx(), direction,
+                                        node->getMember(3));
 
   // First create the node
   auto travNode = new TraversalNode(this, nextId(), _ast->query()->vocbase(),

@@ -42,7 +42,7 @@ using namespace arangodb::aql;
 TraversalBlock::TraversalBlock(ExecutionEngine* engine, TraversalNode const* ep)
     : ExecutionBlock(engine, ep),
       _posInPaths(0),
-      _opts(new traverser::TraverserOptions(_trx)),
+      _opts(nullptr),
       _traverser(nullptr),
       _useRegister(false),
       _usedConstant(false),
@@ -60,16 +60,16 @@ TraversalBlock::TraversalBlock(ExecutionEngine* engine, TraversalNode const* ep)
     _inRegs.emplace_back(it->second.registerId);
   }
 
-  ep->fillTraversalOptions(_opts.get(), _trx);
+  _opts = ep->options();
 
   if (arangodb::ServerState::instance()->isCoordinator()) {
     _traverser.reset(new arangodb::traverser::ClusterTraverser(
-        ep->edgeColls(), _opts.get(),
+        ep->edgeColls(), _opts,
         std::string(_trx->vocbase()->_name, strlen(_trx->vocbase()->_name)),
         _trx));
   } else {
     _traverser.reset(
-        new arangodb::traverser::SingleServerTraverser(_opts.get(), _trx));
+        new arangodb::traverser::SingleServerTraverser(_opts, _trx));
   }
   if (!ep->usesInVariable()) {
     _vertexId = ep->getStartVertex();

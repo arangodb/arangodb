@@ -114,7 +114,7 @@ static TRI_edge_direction_e parseDirection (AstNode const* node) {
 TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id,
                              TRI_vocbase_t* vocbase, AstNode const* direction,
                              AstNode const* start, AstNode const* graph,
-                             traverser::TraverserOptions const& options)
+                             std::unique_ptr<traverser::TraverserOptions>& options)
     : ExecutionNode(plan, id),
       _vocbase(vocbase),
       _vertexOutVariable(nullptr),
@@ -123,7 +123,6 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id,
       _inVariable(nullptr),
       _graphObj(nullptr),
       _condition(nullptr),
-      _options(options),
       _specializedNeighborsSearch(false),
       _tmpObjVariable(_plan->getAst()->variables()->createTemporaryVariable()),
       _tmpObjVarNode(_plan->getAst()->createNodeReference(_tmpObjVariable)),
@@ -131,11 +130,13 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id,
       _fromCondition(nullptr),
       _toCondition(nullptr),
       _globalEdgeCondition(nullptr),
-      _globalVertexCondition(nullptr) {
+      _globalVertexCondition(nullptr),
+      _optionsBuild(false) {
   TRI_ASSERT(_vocbase != nullptr);
   TRI_ASSERT(direction != nullptr);
   TRI_ASSERT(start != nullptr);
   TRI_ASSERT(graph != nullptr);
+  _options.reset(options.release());
 
   auto ast = _plan->getAst();
   // Let us build the conditions on _from and _to. Just in case we need them.
@@ -280,7 +281,7 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id,
                              Variable const* inVariable,
                              std::string const& vertexId,
                              std::vector<TRI_edge_direction_e> directions,
-                             traverser::TraverserOptions const& options)
+                             std::unique_ptr<traverser::TraverserOptions>& options)
     : ExecutionNode(plan, id),
       _vocbase(vocbase),
       _vertexOutVariable(nullptr),
@@ -291,10 +292,12 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id,
       _directions(directions),
       _graphObj(nullptr),
       _condition(nullptr),
-      _options(options),
       _specializedNeighborsSearch(false),
       _fromCondition(nullptr),
-      _toCondition(nullptr) {
+      _toCondition(nullptr),
+      _optionsBuild(false) {
+
+  _options.reset(options.release());
   _graphJson = arangodb::basics::Json(arangodb::basics::Json::Array, edgeColls.size());
 
   for (auto& it : edgeColls) {
@@ -313,7 +316,6 @@ TraversalNode::TraversalNode(ExecutionPlan* plan,
       _inVariable(nullptr),
       _graphObj(nullptr),
       _condition(nullptr),
-      _options(_plan->getAst()->query()->trx(), base),
       _specializedNeighborsSearch(false),
       _tmpObjVariable(nullptr),
       _tmpObjVarNode(nullptr),
@@ -321,7 +323,10 @@ TraversalNode::TraversalNode(ExecutionPlan* plan,
       _fromCondition(nullptr),
       _toCondition(nullptr),
       _globalEdgeCondition(nullptr),
-      _globalVertexCondition(nullptr) {
+      _globalVertexCondition(nullptr),
+      _optionsBuild(false) {
+  _options = std::make_unique<arangodb::traverser::TraverserOptions>(
+      _plan->getAst()->query()->trx(), base);
   auto dirList = base.get("directions");
   TRI_ASSERT(dirList.json() != nullptr);
   for (size_t i = 0; i < dirList.size(); ++i) {
@@ -512,9 +517,9 @@ int TraversalNode::checkIsOutVariable(size_t variableId) const {
 /// @brief check whether an access is inside the specified range
 bool TraversalNode::isInRange(uint64_t depth, bool isEdge) const {
   if (isEdge) {
-    return (depth < _options.maxDepth);
+    return (depth < _options->maxDepth);
   }
-  return (depth <= _options.maxDepth);
+  return (depth <= _options->maxDepth);
 }
 
 /// @brief check if all directions are equal
@@ -604,7 +609,7 @@ void TraversalNode::toVelocyPackHelper(arangodb::velocypack::Builder& nodes,
   }
 
   nodes.add(VPackValue("traversalFlags"));
-  _options.toVelocyPack(nodes);
+  _options->toVelocyPack(nodes);
 
   // Traversal Filter Conditions
 
@@ -666,9 +671,11 @@ void TraversalNode::toVelocyPackHelper(arangodb::velocypack::Builder& nodes,
 /// @brief clone ExecutionNode recursively
 ExecutionNode* TraversalNode::clone(ExecutionPlan* plan, bool withDependencies,
                                     bool withProperties) const {
-  auto c =
-      new TraversalNode(plan, _id, _vocbase, _edgeColls, _inVariable, _vertexId,
-                        _directions, _options);
+  TRI_ASSERT(!_optionsBuild);
+  auto tmp =
+      std::make_unique<arangodb::traverser::TraverserOptions>(*_options.get());
+  auto c = new TraversalNode(plan, _id, _vocbase, _edgeColls, _inVariable,
+                             _vertexId, _directions, tmp);
 
   if (usesVertexOutVariable()) {
     auto vertexOutVariable = _vertexOutVariable;
@@ -783,27 +790,25 @@ double TraversalNode::estimateCost(size_t& nrItems) const {
   }
   nrItems = static_cast<size_t>(
       incoming *
-      std::pow(expectedEdgesPerDepth, static_cast<double>(_options.maxDepth)));
+      std::pow(expectedEdgesPerDepth, static_cast<double>(_options->maxDepth)));
   if (nrItems == 0 && incoming > 0) {
     nrItems = 1;  // min value
   }
   return depCost + nrItems;
 }
 
-void TraversalNode::fillTraversalOptions(
-    arangodb::traverser::TraverserOptions* opts,
-    arangodb::Transaction* trx) const {
-  opts->minDepth = _options.minDepth;
-  opts->maxDepth = _options.maxDepth;
-  opts->_tmpVar = _tmpObjVariable;
+void TraversalNode::prepareOptions() {
+  TRI_ASSERT(!_optionsBuild);
+  _options->_tmpVar = _tmpObjVariable;
 
   size_t numEdgeColls = _edgeColls.size();
   AstNode* condition = nullptr;
   bool res = false;
   EdgeConditionBuilder globalEdgeConditionBuilder(this);
   Ast* ast = _plan->getAst();
+  auto trx = ast->query()->trx();
 
-  opts->_baseLookupInfos.reserve(numEdgeColls);
+  _options->_baseLookupInfos.reserve(numEdgeColls);
   // Compute Edge Indexes. First default indexes:
   for (size_t i = 0; i < numEdgeColls; ++i) {
     auto dir = _directions[i];
@@ -833,7 +838,7 @@ void TraversalNode::fillTraversalOptions(
             infoIn.idxHandles[0]);
         TRI_ASSERT(res);  // Right now we have an enforced edge index which will
                           // always fit.
-        opts->_baseLookupInfos.emplace_back(std::move(infoIn));
+        _options->_baseLookupInfos.emplace_back(std::move(infoIn));
 
         break;
     }
@@ -844,11 +849,12 @@ void TraversalNode::fillTraversalOptions(
         info.idxHandles[0]);
     TRI_ASSERT(res);  // Right now we have an enforced edge index which will
                       // always fit.
-    opts->_baseLookupInfos.emplace_back(std::move(info));
+    _options->_baseLookupInfos.emplace_back(std::move(info));
   }
 
   for (std::pair<size_t, EdgeConditionBuilder> it : _edgeConditions) {
-    auto ins = opts->_depthLookupInfo.emplace(it.first, std::vector<traverser::TraverserOptions::LookupInfo>());
+    auto ins = _options->_depthLookupInfo.emplace(
+        it.first, std::vector<traverser::TraverserOptions::LookupInfo>());
     TRI_ASSERT(ins.second);
     auto& infos = ins.first->second;
     infos.reserve(numEdgeColls);
@@ -898,13 +904,10 @@ void TraversalNode::fillTraversalOptions(
   }
 
   for (auto& it : _vertexConditions) {
-    opts->_vertexExpressions.emplace(it.first, new Expression(ast, it.second));
-    TRI_ASSERT(!opts->_vertexExpressions[it.first]->isV8());
+    _options->_vertexExpressions.emplace(it.first, new Expression(ast, it.second));
+    TRI_ASSERT(!_options->_vertexExpressions[it.first]->isV8());
   }
-
-  opts->useBreadthFirst = _options.useBreadthFirst;
-  opts->uniqueVertices = _options.uniqueVertices;
-  opts->uniqueEdges = _options.uniqueEdges;
+  _optionsBuild = true;
 }
 
 /// @brief remember the condition to execute for early traversal abortion.
@@ -962,6 +965,10 @@ void TraversalNode::registerGlobalCondition(bool isConditionOnEdge,
   } else {
     _globalVertexCondition = condition;
   }
+}
+
+arangodb::traverser::TraverserOptions* TraversalNode::options() const {
+  return _options.get();
 }
 
 AstNode* TraversalNode::getTemporaryRefNode() const {

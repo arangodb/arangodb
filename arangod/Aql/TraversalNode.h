@@ -73,7 +73,7 @@ class TraversalNode : public ExecutionNode {
   TraversalNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
                 AstNode const* direction, AstNode const* start,
                 AstNode const* graph,
-                traverser::TraverserOptions const& options);
+                std::unique_ptr<traverser::TraverserOptions>& options);
 
   TraversalNode(ExecutionPlan* plan, arangodb::basics::Json const& base);
 
@@ -87,7 +87,7 @@ class TraversalNode : public ExecutionNode {
                 std::vector<std::string> const& edgeColls,
                 Variable const* inVariable, std::string const& vertexId,
                 std::vector<TRI_edge_direction_e> directions,
-                traverser::TraverserOptions const& options);
+                std::unique_ptr<traverser::TraverserOptions>& options);
 
  public:
   /// @brief return the type of the node
@@ -192,11 +192,6 @@ class TraversalNode : public ExecutionNode {
 
   std::string const getStartVertex() const { return _vertexId; }
 
-  /// @brief Fill the traversal options with all values known to this node or
-  ///        with default values.
-  void fillTraversalOptions(arangodb::traverser::TraverserOptions* opts,
-                            arangodb::Transaction*) const;
-
   std::vector<std::string> const edgeColls() const { return _edgeColls; }
 
   /// @brief remember the condition to execute for early traversal abortion.
@@ -225,17 +220,26 @@ class TraversalNode : public ExecutionNode {
 
   void specializeToNeighborsSearch();
 
-  traverser::TraverserOptions const* options() const { return &_options; }
+  traverser::TraverserOptions* options() const;
 
   AstNode* getTemporaryRefNode() const;
 
   void getConditionVariables(std::vector<Variable const*>&) const;
 
+  /// @brief Compute the traversal options containing the expressions
+  ///        MUST! be called after optimization and before creation
+  ///        of blocks.
+  void prepareOptions();
+
+ private:
+
 #ifdef TRI_ENABLE_MAINTAINER_MODE
   void checkConditionsDefined() const;
 #endif
 
+
  private:
+
   /// @brief the database
   TRI_vocbase_t* _vocbase;
 
@@ -273,7 +277,7 @@ class TraversalNode : public ExecutionNode {
   std::unordered_set<Variable const*> _conditionVariables;
 
   /// @brief Options for traversals
-  traverser::TraverserOptions _options;
+  std::unique_ptr<traverser::TraverserOptions> _options;
 
   /// @brief Defines if you use a specialized neighbors search instead of general purpose
   ///        traversal
@@ -308,6 +312,11 @@ class TraversalNode : public ExecutionNode {
 
   /// @brief List of all depth specific conditions for vertices
   std::unordered_map<size_t, AstNode*> _vertexConditions;
+
+  /// @brief Flag if options are already prepared. After
+  ///        this flag was set the node cannot be cloned
+  ///        any more.
+  bool _optionsBuild;
 
 };
 

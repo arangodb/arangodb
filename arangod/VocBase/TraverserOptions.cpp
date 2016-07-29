@@ -116,8 +116,20 @@ void arangodb::traverser::TraverserOptions::LookupInfo::buildEngineInfo(
 }
 
 arangodb::traverser::TraverserOptions::TraverserOptions(
-    arangodb::Transaction* trx, Json const& json) {
+    arangodb::Transaction* trx, Json const& json)
+    : _trx(trx),
+      _tmpVar(nullptr),
+      _ctx(new aql::FixedVarExpressionContext()),
+      minDepth(1),
+      maxDepth(1),
+      useBreadthFirst(false),
+      uniqueVertices(UniquenessLevel::NONE),
+      uniqueEdges(UniquenessLevel::PATH) {
   Json obj = json.get("traversalFlags");
+
+  minDepth = JsonHelper::getNumericValue<uint64_t>(obj.json(), "minDepth", 1);
+  maxDepth = JsonHelper::getNumericValue<uint64_t>(obj.json(), "maxDepth", 1);
+  TRI_ASSERT(minDepth <= maxDepth);
   useBreadthFirst = JsonHelper::getBooleanValue(obj.json(), "bfs", false);
   std::string tmp = JsonHelper::getStringValue(obj.json(), "uniqueVertices", "");
   if (tmp == "path") {
@@ -146,7 +158,14 @@ arangodb::traverser::TraverserOptions::TraverserOptions(
 
 arangodb::traverser::TraverserOptions::TraverserOptions(
     arangodb::aql::Query* query, VPackSlice info, VPackSlice collections)
-    : _trx(query->trx()), _ctx(new aql::FixedVarExpressionContext()) {
+    : _trx(query->trx()),
+      _tmpVar(nullptr),
+      _ctx(new aql::FixedVarExpressionContext()),
+      minDepth(1),
+      maxDepth(1),
+      useBreadthFirst(false),
+      uniqueVertices(UniquenessLevel::NONE),
+      uniqueEdges(UniquenessLevel::PATH) {
       // NOTE collections is an array of arrays of strings
   VPackSlice read = info.get("minDepth");
   if (!read.isInteger()) {
@@ -271,6 +290,22 @@ arangodb::traverser::TraverserOptions::TraverserOptions(
   _tmpVar = query->ast()->variables()->createVariable(read);
 }
 
+arangodb::traverser::TraverserOptions::TraverserOptions(
+    TraverserOptions const& other)
+    : _trx(other._trx),
+      _tmpVar(nullptr),
+      _ctx(new aql::FixedVarExpressionContext()),
+      minDepth(other.minDepth),
+      maxDepth(other.maxDepth),
+      useBreadthFirst(other.useBreadthFirst),
+      uniqueVertices(other.uniqueVertices),
+      uniqueEdges(other.uniqueEdges) {
+  TRI_ASSERT(other._baseLookupInfos.empty());
+  TRI_ASSERT(other._depthLookupInfo.empty());
+  TRI_ASSERT(other._vertexExpressions.empty());
+  TRI_ASSERT(other._tmpVar == nullptr);
+}
+
 arangodb::traverser::TraverserOptions::~TraverserOptions() {
   for (auto& pair : _vertexExpressions) {
     if (pair.second != nullptr) {
@@ -282,24 +317,11 @@ arangodb::traverser::TraverserOptions::~TraverserOptions() {
   }
 }
 
-arangodb::traverser::TraverserOptions::TraverserOptions(TraverserOptions const& other) {
-  TRI_ASSERT(_baseLookupInfos.empty());
-  TRI_ASSERT(_depthLookupInfo.empty());
-  TRI_ASSERT(_vertexExpressions.empty());
-  TRI_ASSERT(_tmpVar == nullptr);
-
-  _trx = other._trx;
-  _ctx = new aql::FixedVarExpressionContext();
-  minDepth = other.minDepth;
-  maxDepth = other.maxDepth;
-  useBreadthFirst = other.useBreadthFirst;
-  uniqueVertices = other.uniqueVertices;
-  uniqueEdges = other.uniqueEdges;
-}
-
 void arangodb::traverser::TraverserOptions::toVelocyPack(VPackBuilder& builder) const {
   VPackObjectBuilder guard(&builder);
 
+  builder.add("minDepth", VPackValue(minDepth));
+  builder.add("maxDepth", VPackValue(maxDepth));
   builder.add("bfs", VPackValue(useBreadthFirst));
 
   switch (uniqueVertices) {

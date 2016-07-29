@@ -206,6 +206,10 @@ struct Instanciator final : public WalkerWorker<ExecutionNode> {
   virtual void after(ExecutionNode* en) override final {
     ExecutionBlock* block = nullptr;
     {
+      if (en->getType() == ExecutionNode::TRAVERSAL) {
+        // We have to prepare the options before we build the block
+        static_cast<TraversalNode*>(en)->prepareOptions();
+      }
       std::unique_ptr<ExecutionBlock> eb(CreateBlock(engine, en, cache));
 
       if (eb == nullptr) {
