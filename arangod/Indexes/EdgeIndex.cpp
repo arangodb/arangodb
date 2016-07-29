@@ -32,7 +32,7 @@
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/Transaction.h"
 #include "Utils/TransactionContext.h"
-#include "VocBase/document-collection.h"
+#include "VocBase/collection.h"
 #include "VocBase/transaction.h"
 
 #include <velocypack/Iterator.h>

@@ -26,7 +26,10 @@
 
 #include "Basics/Common.h"
 #include "V8/v8-utils.h"
-#include "v8-vocbase.h"
+#include "V8Server/v8-vocbase.h"
+#include "VocBase/voc-types.h"
+
+#include <velocypack/Builder.h>
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wrapped class for TRI_vocbase_t

@@ -3,7 +3,7 @@
 #define ARANGOD_WAL_DOCUMENT_OPERATION_H 1
 
 #include "Basics/Common.h"
-#include "VocBase/document-collection.h"
+#include "VocBase/collection.h"
 #include "VocBase/MasterPointers.h"
 #include "VocBase/voc-types.h"
 #include "Wal/Marker.h"

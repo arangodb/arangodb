@@ -29,7 +29,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
 #include "Utils/TransactionContext.h"
-#include "VocBase/document-collection.h"
+#include "VocBase/collection.h"
 #include "VocBase/transaction.h"
 
 #include <velocypack/Iterator.h>

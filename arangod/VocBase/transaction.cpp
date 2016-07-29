@@ -27,7 +27,6 @@
 #include "Basics/Exceptions.h"
 #include "VocBase/DatafileHelper.h"
 #include "VocBase/collection.h"
-#include "VocBase/document-collection.h"
 #include "VocBase/ticks.h"
 #include "Wal/DocumentOperation.h"
 #include "Wal/LogfileManager.h"

@@ -31,7 +31,7 @@
 #include "Indexes/RocksDBFeature.h"
 #include "Indexes/RocksDBKeyComparator.h"
 #include "Utils/Transaction.h"
-#include "VocBase/document-collection.h"
+#include "VocBase/collection.h"
 
 #include <rocksdb/utilities/optimistic_transaction_db.h>
 #include <rocksdb/utilities/transaction.h>

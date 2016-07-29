@@ -41,7 +41,6 @@
 #include "Basics/WriteLocker.h"
 #include "Basics/conversions.h"
 #include "Basics/files.h"
-#include "Basics/hashes.h"
 #include "Basics/locks.h"
 #include "Basics/memory-map.h"
 #include "Basics/threads.h"
@@ -54,8 +53,8 @@
 #include "Utils/CursorRepository.h"
 #include "V8Server/v8-user-structures.h"
 #include "VocBase/Ditch.h"
+#include "VocBase/collection.h"
 #include "VocBase/compactor.h"
-#include "VocBase/document-collection.h"
 #include "VocBase/replication-applier.h"
 #include "VocBase/ticks.h"
 #include "VocBase/transaction.h"
@@ -271,7 +270,7 @@ static bool UnloadCollectionCallback(TRI_collection_t* col, void* data) {
     return false;
   }
 
-  TRI_document_collection_t* document = collection->_collection;
+  TRI_collection_t* document = collection->_collection;
 
   TRI_ASSERT(document != nullptr);
 
@@ -317,7 +316,7 @@ bool TRI_vocbase_t::DropCollectionCallback(TRI_collection_t* col, void* data) {
   // .............................................................................
 
   if (collection->_collection != nullptr) {
-    TRI_document_collection_t* document = collection->_collection;
+    TRI_collection_t* document = collection->_collection;
 
     int res = TRI_CloseDocumentCollection(document, false);
 
@@ -469,7 +468,7 @@ TRI_vocbase_col_t* TRI_vocbase_t::createCollectionWorker(
   }
 
   // ok, construct the collection
-  TRI_document_collection_t* document = nullptr;
+  TRI_collection_t* document = nullptr;
   try {
     document = TRI_CreateDocumentCollection(this, parameters, cid);
   } catch (...) {
@@ -733,7 +732,7 @@ int TRI_vocbase_t::loadCollection(TRI_vocbase_col_t* collection,
       ignoreDatafileErrors = DatabaseFeature::DATABASE->ignoreDatafileErrors();
     }
 
-    TRI_document_collection_t* document = nullptr;
+    TRI_collection_t* document = nullptr;
     try {
       document = TRI_OpenDocumentCollection(this, collection, ignoreDatafileErrors);
     } catch (...) {

@@ -31,8 +31,8 @@
 #include "Logger/Logger.h"
 #include "Utils/CursorRepository.h"
 #include "VocBase/Ditch.h"
+#include "VocBase/collection.h"
 #include "VocBase/compactor.h"
-#include "VocBase/document-collection.h"
 #include "Wal/LogfileManager.h"
 
 using namespace arangodb;
@@ -82,7 +82,7 @@ void CleanupThread::run() {
 
         for (auto& collection : collections) {
           TRI_ASSERT(collection != nullptr);
-          TRI_document_collection_t* document;
+          TRI_collection_t* document;
 
           {
             READ_LOCKER(readLocker, collection->_lock);
@@ -152,7 +152,7 @@ void CleanupThread::cleanupCursors(bool force) {
 
 /// @brief checks all datafiles of a collection
 void CleanupThread::cleanupCollection(TRI_vocbase_col_t* collection,
-                                      TRI_document_collection_t* document) {
+                                      TRI_collection_t* document) {
   // unload operations can normally only be executed when a collection is fully
   // garbage collected
   bool unloadChecked = false;

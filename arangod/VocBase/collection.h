@@ -636,4 +636,16 @@ struct TRI_collection_t {
 TRI_collection_t* TRI_CreateCollection(TRI_vocbase_t*, TRI_collection_t*,
                                        arangodb::VocbaseCollectionInfo const&);
 
+/// @brief creates a new collection
+TRI_collection_t* TRI_CreateDocumentCollection(
+    TRI_vocbase_t*, arangodb::VocbaseCollectionInfo&,
+    TRI_voc_cid_t);
+
+/// @brief opens an existing collection
+TRI_collection_t* TRI_OpenDocumentCollection(TRI_vocbase_t*,
+                                             TRI_vocbase_col_t*, bool);
+
+/// @brief closes an open collection
+int TRI_CloseDocumentCollection(TRI_collection_t*, bool);
+
 #endif

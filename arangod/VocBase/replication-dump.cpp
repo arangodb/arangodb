@@ -28,7 +28,7 @@
 #include "VocBase/collection.h"
 #include "VocBase/DatafileHelper.h"
 #include "VocBase/datafile.h"
-#include "VocBase/document-collection.h"
+#include "VocBase/collection.h"
 #include "VocBase/vocbase.h"
 #include "Wal/Logfile.h"
 #include "Wal/LogfileManager.h"
@@ -146,7 +146,7 @@ static void IterateDatafiles(std::vector<TRI_datafile_t*> const& datafiles,
 ////////////////////////////////////////////////////////////////////////////////
 
 static std::vector<df_entry_t> GetRangeDatafiles(
-    TRI_document_collection_t* document, TRI_voc_tick_t dataMin,
+    TRI_collection_t* document, TRI_voc_tick_t dataMin,
     TRI_voc_tick_t dataMax) {
   LOG(TRACE) << "getting datafiles in data range " << dataMin << " - " << dataMax;
 
@@ -457,7 +457,7 @@ static bool MustReplicateWalMarker(
 ////////////////////////////////////////////////////////////////////////////////
 
 static int DumpCollection(TRI_replication_dump_t* dump,
-                          TRI_document_collection_t* document,
+                          TRI_collection_t* document,
                           TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId,
                           TRI_voc_tick_t dataMin, TRI_voc_tick_t dataMax,
                           bool withTicks) {
@@ -617,7 +617,7 @@ int TRI_DumpCollectionReplication(TRI_replication_dump_t* dump,
   auto customTypeHandler = dump->_transactionContext->orderCustomTypeHandler();
   dump->_vpackOptions.customTypeHandler = customTypeHandler.get();
 
-  TRI_document_collection_t* document = col->_collection;
+  TRI_collection_t* document = col->_collection;
 
   // create a barrier so the underlying collection is not unloaded
   auto b = document->ditches()->createReplicationDitch(__FILE__, __LINE__);

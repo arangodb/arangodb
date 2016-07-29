@@ -46,9 +46,9 @@
 #include "Utils/TransactionContext.h"
 #include "VocBase/DatafileHelper.h"
 #include "VocBase/Ditch.h"
-#include "VocBase/document-collection.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/MasterPointers.h"
+#include "VocBase/collection.h"
 #include "VocBase/ticks.h"
 #include "Wal/LogfileManager.h"
 
@@ -588,7 +588,7 @@ DocumentDitch* Transaction::orderDitch(TRI_voc_cid_t cid) {
 
   TRI_ASSERT(trxCollection->_collection != nullptr);
 
-  TRI_document_collection_t* document =
+  TRI_collection_t* document =
       trxCollection->_collection->_collection;
   TRI_ASSERT(document != nullptr);
 
@@ -951,7 +951,7 @@ void Transaction::extractKeyAndRevFromDocument(VPackSlice slice,
 /// added to the builder in the argument as a single object.
 //////////////////////////////////////////////////////////////////////////////
 
-void Transaction::buildDocumentIdentity(TRI_document_collection_t* document,
+void Transaction::buildDocumentIdentity(TRI_collection_t* document,
                                         VPackBuilder& builder,
                                         TRI_voc_cid_t cid,
                                         StringRef const& key,
@@ -1242,7 +1242,7 @@ void Transaction::invokeOnAllElements(std::string const& collectionName,
   
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName); 
   TRI_transaction_collection_t* trxCol = trxCollection(cid);
-  TRI_document_collection_t* document = documentCollection(trxCol);
+  TRI_collection_t* document = documentCollection(trxCol);
 
   orderDitch(cid); // will throw when it fails
 
@@ -1293,7 +1293,7 @@ int Transaction::documentFastPath(std::string const& collectionName,
   }
 
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName); 
-  TRI_document_collection_t* document = documentCollection(trxCollection(cid));
+  TRI_collection_t* document = documentCollection(trxCollection(cid));
 
   orderDitch(cid); // will throw when it fails
 
@@ -1331,7 +1331,7 @@ int Transaction::documentFastPathLocal(std::string const& collectionName,
   TRI_ASSERT(getStatus() == TRI_TRANSACTION_RUNNING);
 
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName); 
-  TRI_document_collection_t* document = documentCollection(trxCollection(cid));
+  TRI_collection_t* document = documentCollection(trxCollection(cid));
 
   orderDitch(cid); // will throw when it fails
 
@@ -1416,7 +1416,7 @@ OperationResult Transaction::documentLocal(std::string const& collectionName,
                                            OperationOptions& options) {
   TIMER_START(TRANSACTION_DOCUMENT_LOCAL);
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName); 
-  TRI_document_collection_t* document = documentCollection(trxCollection(cid));
+  TRI_collection_t* document = documentCollection(trxCollection(cid));
 
   if (!options.silent) {
     orderDitch(cid); // will throw when it fails
@@ -1575,7 +1575,7 @@ OperationResult Transaction::insertLocal(std::string const& collectionName,
                                          OperationOptions& options) {
   TIMER_START(TRANSACTION_INSERT_LOCAL);
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName); 
-  TRI_document_collection_t* document = documentCollection(trxCollection(cid));
+  TRI_collection_t* document = documentCollection(trxCollection(cid));
 
   // First see whether or not we have to do synchronous replication:
   std::shared_ptr<std::vector<ServerID> const> followers;
@@ -1919,7 +1919,7 @@ OperationResult Transaction::modifyLocal(
     TRI_voc_document_operation_e operation) {
 
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName); 
-  TRI_document_collection_t* document = documentCollection(trxCollection(cid));
+  TRI_collection_t* document = documentCollection(trxCollection(cid));
   
   if (options.returnOld || options.returnNew) {
     orderDitch(cid); // will throw when it fails 
@@ -2187,7 +2187,7 @@ OperationResult Transaction::removeLocal(std::string const& collectionName,
                                          VPackSlice const value,
                                          OperationOptions& options) {
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName); 
-  TRI_document_collection_t* document = documentCollection(trxCollection(cid));
+  TRI_collection_t* document = documentCollection(trxCollection(cid));
   
   if (options.returnOld) {
     orderDitch(cid); // will throw when it fails 
@@ -2494,7 +2494,7 @@ OperationResult Transaction::truncateLocal(std::string const& collectionName,
     return OperationResult(res);
   }
  
-  TRI_document_collection_t* document = documentCollection(trxCollection(cid));
+  TRI_collection_t* document = documentCollection(trxCollection(cid));
   
   VPackBuilder keyBuilder;
   auto primaryIndex = document->primaryIndex();
@@ -2629,7 +2629,7 @@ OperationResult Transaction::countLocal(std::string const& collectionName) {
     return OperationResult(res);
   }
  
-  TRI_document_collection_t* document = documentCollection(trxCollection(cid));
+  TRI_collection_t* document = documentCollection(trxCollection(cid));
 
   uint64_t num = document->_numberDocuments;
 
@@ -2867,7 +2867,7 @@ std::unique_ptr<OperationCursor> Transaction::indexScan(
   }
 
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName); 
-  TRI_document_collection_t* document = documentCollection(trxCollection(cid));
+  TRI_collection_t* document = documentCollection(trxCollection(cid));
   
   orderDitch(cid); // will throw when it fails 
 
@@ -2938,7 +2938,7 @@ std::unique_ptr<OperationCursor> Transaction::indexScan(
 /// @brief return the collection
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_document_collection_t* Transaction::documentCollection(
+TRI_collection_t* Transaction::documentCollection(
       TRI_transaction_collection_t const* trxCollection) const {
   TRI_ASSERT(_trx != nullptr);
   TRI_ASSERT(trxCollection != nullptr);
@@ -2953,7 +2953,7 @@ TRI_document_collection_t* Transaction::documentCollection(
 /// @brief return the collection
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_document_collection_t* Transaction::documentCollection(
+TRI_collection_t* Transaction::documentCollection(
       TRI_voc_cid_t cid) const {
   TRI_ASSERT(_trx != nullptr);
   TRI_ASSERT(getStatus() == TRI_TRANSACTION_RUNNING);
@@ -3039,7 +3039,7 @@ int Transaction::addCollection(std::string const& name, TRI_transaction_type_e t
 /// @brief test if a collection is already locked
 ////////////////////////////////////////////////////////////////////////////////
 
-bool Transaction::isLocked(TRI_document_collection_t* document,
+bool Transaction::isLocked(TRI_collection_t* document,
                 TRI_transaction_type_e type) {
   if (_trx == nullptr || getStatus() != TRI_TRANSACTION_RUNNING) {
     return false;
@@ -3090,7 +3090,7 @@ std::vector<std::shared_ptr<Index>> Transaction::indexesForCollection(
   // For a DBserver we use the local case.
 
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName); 
-  TRI_document_collection_t* document = documentCollection(trxCollection(cid));
+  TRI_collection_t* document = documentCollection(trxCollection(cid));
 
   // Wrap fake shared pointers around the raw pointers:
   std::shared_ptr<Index> dummy;
@@ -3256,7 +3256,7 @@ Transaction::IndexHandle Transaction::getIndexByIdentifier(
   }
 
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName); 
-  TRI_document_collection_t* document = documentCollection(trxCollection(cid));
+  TRI_collection_t* document = documentCollection(trxCollection(cid));
 
   if (indexHandle.empty()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,

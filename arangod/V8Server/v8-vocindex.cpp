@@ -590,7 +590,7 @@ static void EnsureIndexLocal(v8::FunctionCallbackInfo<v8::Value> const& args,
     TRI_V8_THROW_EXCEPTION(res);
   }
 
-  TRI_document_collection_t* document = trx.documentCollection();
+  TRI_collection_t* document = trx.documentCollection();
   std::string const& collectionName = std::string(collection->_name);
 
   // disallow index creation in read-only mode
@@ -1056,7 +1056,7 @@ static void CreateCollectionCoordinator(
       ArrayBuilder ab(&velocy, "indexes");
 
       // create a dummy primary index
-      TRI_document_collection_t* doc = nullptr;
+      TRI_collection_t* doc = nullptr;
       std::unique_ptr<arangodb::PrimaryIndex> primaryIndex(
           new arangodb::PrimaryIndex(doc));
 
@@ -1207,7 +1207,7 @@ static void JS_DropIndexVocbaseCol(
     TRI_V8_THROW_EXCEPTION(res);
   }
 
-  TRI_document_collection_t* document = trx.documentCollection();
+  TRI_collection_t* document = trx.documentCollection();
 
   auto idx = TRI_LookupIndexByHandle(isolate, trx.resolver(), collection,
                                      args[0], true);
@@ -1304,7 +1304,7 @@ static void JS_GetIndexesVocbaseCol(
   // READ-LOCK start
   trx.lockRead();
 
-  TRI_document_collection_t* document = trx.documentCollection();
+  TRI_collection_t* document = trx.documentCollection();
   std::string const& collectionName = std::string(collection->_name);
 
   // get list of indexes

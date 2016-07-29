@@ -266,7 +266,7 @@ public:
 
   bool vertexMatchesConditions(std::string const&, size_t);
 
-  std::vector<TRI_document_collection_t*> _edgeCols;
+  std::vector<TRI_collection_t*> _edgeCols;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Outer top level transaction

@@ -41,7 +41,7 @@
 #include "Utils/StandaloneTransactionContext.h"
 #include "VocBase/DatafileHelper.h"
 #include "VocBase/DatafileStatistics.h"
-#include "VocBase/document-collection.h"
+#include "VocBase/collection.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 
@@ -139,7 +139,7 @@ static int const COMPACTOR_INTERVAL = (1 * 1000 * 1000);
 
 struct compaction_initial_context_t {
   arangodb::Transaction* _trx;
-  TRI_document_collection_t* _document;
+  TRI_collection_t* _document;
   int64_t _targetSize;
   TRI_voc_fid_t _fid;
   bool _keepDeletions;
@@ -152,7 +152,7 @@ struct compaction_initial_context_t {
 
 struct compaction_context_t {
   arangodb::Transaction* _trx;
-  TRI_document_collection_t* _document;
+  TRI_collection_t* _document;
   TRI_datafile_t* _compactor;
   DatafileStatisticsContainer _dfi;
   bool _keepDeletions;
@@ -168,7 +168,7 @@ struct compaction_info_t {
 };
 
 /// @brief determine the number of documents in the collection
-static uint64_t GetNumberOfDocuments(TRI_document_collection_t* document) {
+static uint64_t GetNumberOfDocuments(TRI_collection_t* document) {
   TRI_vocbase_t* vocbase = document->_vocbase;
 
   SingleCollectionTransaction trx(StandaloneTransactionContext::Create(vocbase), document->_info.id(), TRI_TRANSACTION_READ);
@@ -189,7 +189,7 @@ static uint64_t GetNumberOfDocuments(TRI_document_collection_t* document) {
 /// @brief write a copy of the marker into the datafile
 ////////////////////////////////////////////////////////////////////////////////
 
-static int CopyMarker(TRI_document_collection_t* document,
+static int CopyMarker(TRI_collection_t* document,
                       TRI_datafile_t* compactor, TRI_df_marker_t const* marker,
                       TRI_df_marker_t** result) {
   int res = TRI_ReserveElementDatafile(compactor, marker->getSize(), result, 0);
@@ -208,8 +208,7 @@ static int CopyMarker(TRI_document_collection_t* document,
 ////////////////////////////////////////////////////////////////////////////////
 
 static void DropDatafileCallback(TRI_datafile_t* datafile, void* data) {
-  TRI_document_collection_t* document =
-      static_cast<TRI_document_collection_t*>(data);
+  TRI_collection_t* document = static_cast<TRI_collection_t*>(data);
   TRI_voc_fid_t fid = datafile->_fid;
   
   std::string copy;
@@ -274,7 +273,7 @@ static void RenameDatafileCallback(TRI_datafile_t* datafile, void* data) {
   auto* context = static_cast<compaction_context_t*>(data);
   TRI_datafile_t* compactor = context->_compactor;
   
-  TRI_document_collection_t* document = context->_document;
+  TRI_collection_t* document = context->_document;
 
   bool ok = false;
   TRI_ASSERT(datafile->_fid == compactor->_fid);
@@ -325,7 +324,7 @@ static void RenameDatafileCallback(TRI_datafile_t* datafile, void* data) {
 static bool Compactifier(TRI_df_marker_t const* marker, void* data,
                          TRI_datafile_t* datafile) {
   auto* context = static_cast<compaction_context_t*>(data);
-  TRI_document_collection_t* document = context->_document;
+  TRI_collection_t* document = context->_document;
   TRI_voc_fid_t const targetFid = context->_compactor->_fid;
 
   TRI_df_marker_type_t const type = marker->getType();
@@ -399,7 +398,7 @@ static bool Compactifier(TRI_df_marker_t const* marker, void* data,
 /// @brief remove an empty compactor file
 ////////////////////////////////////////////////////////////////////////////////
 
-static int RemoveCompactor(TRI_document_collection_t* document,
+static int RemoveCompactor(TRI_collection_t* document,
                            TRI_datafile_t* compactor) {
   LOG_TOPIC(DEBUG, Logger::COMPACTOR) << "removing empty compaction file '" << compactor->getName(compactor) << "'";
 
@@ -431,7 +430,7 @@ static int RemoveCompactor(TRI_document_collection_t* document,
 /// @brief remove an empty datafile
 ////////////////////////////////////////////////////////////////////////////////
 
-static int RemoveDatafile(TRI_document_collection_t* document,
+static int RemoveDatafile(TRI_collection_t* document,
                           TRI_datafile_t* df) {
   LOG_TOPIC(DEBUG, Logger::COMPACTOR) << "removing empty datafile '" << df->getName(df) << "'";
 
@@ -456,7 +455,7 @@ static int RemoveDatafile(TRI_document_collection_t* document,
 static bool CalculateSize(TRI_df_marker_t const* marker, void* data,
                           TRI_datafile_t* datafile) {
   auto* context = static_cast<compaction_initial_context_t*>(data);
-  TRI_document_collection_t* document = context->_document;
+  TRI_collection_t* document = context->_document;
 
   TRI_df_marker_type_t const type = marker->getType();
 
@@ -495,7 +494,7 @@ static bool CalculateSize(TRI_df_marker_t const* marker, void* data,
 ////////////////////////////////////////////////////////////////////////////////
 
 static compaction_initial_context_t InitCompaction(
-    arangodb::Transaction* trx, TRI_document_collection_t* document,
+    arangodb::Transaction* trx, TRI_collection_t* document,
     std::vector<compaction_info_t> const& toCompact) {
   compaction_initial_context_t context;
 
@@ -555,7 +554,7 @@ static compaction_initial_context_t InitCompaction(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void CompactifyDatafiles(
-    TRI_document_collection_t* document,
+    TRI_collection_t* document,
     std::vector<compaction_info_t> const& toCompact) {
   TRI_datafile_t* compactor;
   compaction_context_t context;
@@ -738,7 +737,7 @@ static void CompactifyDatafiles(
 /// @brief checks all datafiles of a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool CompactifyDocumentCollection(TRI_document_collection_t* document) {
+static bool CompactifyDocumentCollection(TRI_collection_t* document) {
   // we can hopefully get away without the lock here...
   //  if (! document->isFullyCollected()) {
   //    return false;
@@ -1132,7 +1131,7 @@ void TRI_CompactorVocBase(void* data) {
               continue;
             }
 
-            TRI_document_collection_t* document = collection->_collection;
+            TRI_collection_t* document = collection->_collection;
 
             if (document == nullptr) {
               continue;

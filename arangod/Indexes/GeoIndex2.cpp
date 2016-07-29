@@ -23,7 +23,7 @@
 
 #include "GeoIndex2.h"
 #include "Logger/Logger.h"
-#include "VocBase/document-collection.h"
+#include "VocBase/collection.h"
 #include "VocBase/transaction.h"
 
 using namespace arangodb;

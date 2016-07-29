@@ -105,10 +105,10 @@ int32_t const WRP_VOCBASE_COL_TYPE = 2;
 
 struct CollectionDitchInfo {
   arangodb::DocumentDitch* ditch;
-  TRI_document_collection_t* col;
+  TRI_collection_t* col;
 
   CollectionDitchInfo(arangodb::DocumentDitch* ditch,
-                      TRI_document_collection_t* col)
+                      TRI_collection_t* col)
       : ditch(ditch), col(col) {}
 };
 

@@ -952,7 +952,7 @@ static TRI_doc_collection_info_t* GetFigures(TRI_vocbase_col_t* collection) {
   // READ-LOCK start
   trx.lockRead();
 
-  TRI_document_collection_t* document = collection->_collection;
+  TRI_collection_t* document = collection->_collection;
   TRI_doc_collection_info_t* info = document->figures();
 
   trx.finish(res);
@@ -1111,7 +1111,7 @@ static void JS_LeaderResign(v8::FunctionCallbackInfo<v8::Value> const& args) {
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_V8_THROW_EXCEPTION(res);
     }
-    TRI_document_collection_t* docColl = trx.documentCollection();
+    TRI_collection_t* docColl = trx.documentCollection();
     docColl->followers()->clear();
   }
 
@@ -1364,7 +1364,7 @@ static void JS_PropertiesVocbaseCol(
     return;
   }
 
-  TRI_document_collection_t* document = collection->_collection;
+  TRI_collection_t* document = collection->_collection;
 
   // check if we want to change some parameters
   if (0 < args.Length()) {
@@ -2056,7 +2056,7 @@ static void JS_RotateVocbaseCol(
 
   TRI_THROW_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(collection);
 
-  TRI_document_collection_t* document = collection->_collection;
+  TRI_collection_t* document = collection->_collection;
 
   int res = document->rotateActiveJournal();
 

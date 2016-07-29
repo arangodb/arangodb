@@ -39,7 +39,6 @@
 #include "velocypack/velocypack-aliases.h"
 
 struct TRI_collection_t;
-struct TRI_document_collection_t;
 class TRI_replication_applier_t;
 class TRI_vocbase_col_t;
 
@@ -537,7 +536,7 @@ class TRI_vocbase_col_t {
   arangodb::basics::ReadWriteLock _lock;  // lock protecting the status and name
 
   TRI_vocbase_col_status_e _status;  // status of the collection
-  TRI_document_collection_t* _collection;  // NULL or pointer to loaded collection
+  TRI_collection_t* _collection;  // NULL or pointer to loaded collection
   std::string const _dbName;  // name of the database
   std::string _name;          // name of the collection
   std::string const _path;    // storage path

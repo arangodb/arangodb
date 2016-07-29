@@ -36,7 +36,7 @@
 #include "V8/v8-vpack.h"
 #include "V8Server/v8-vocbase.h"
 #include "V8Server/v8-vocindex.h"
-#include "VocBase/document-collection.h"
+#include "VocBase/collection.h"
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Builder.h>
@@ -365,7 +365,7 @@ static void JS_ChecksumCollection(
   trx.orderDitch(col->_cid); // will throw when it fails
   
   // get last tick
-  TRI_document_collection_t* document = trx.documentCollection();
+  TRI_collection_t* document = trx.documentCollection();
   std::string const revisionId = std::to_string(document->_info.revision());
   uint64_t hash = 0;
         

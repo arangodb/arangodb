@@ -1775,7 +1775,7 @@ int RestReplicationHandler::processRestoreCollectionCoordinator(
 
     // create a dummy primary index
     {
-      TRI_document_collection_t* doc = nullptr;
+      TRI_collection_t* doc = nullptr;
       std::unique_ptr<arangodb::PrimaryIndex> primaryIndex(
           new arangodb::PrimaryIndex(doc));
       toMerge.openObject();
@@ -1882,7 +1882,7 @@ int RestReplicationHandler::processRestoreIndexes(VPackSlice const& collection,
   try {
     CollectionGuard guard(_vocbase, name.c_str());
 
-    TRI_document_collection_t* document = guard.collection()->_collection;
+    TRI_collection_t* document = guard.collection()->_collection;
 
     SingleCollectionTransaction trx(
         StandaloneTransactionContext::Create(_vocbase), document->_info.id(),
@@ -3858,7 +3858,7 @@ void RestReplicationHandler::handleCommandAddFollower() {
     return;
   }
 
-  TRI_document_collection_t* docColl = col->_collection;
+  TRI_collection_t* docColl = col->_collection;
   if (docColl == nullptr) {
     generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
                   TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED,
@@ -3915,7 +3915,7 @@ void RestReplicationHandler::handleCommandRemoveFollower() {
     return;
   }
 
-  TRI_document_collection_t* docColl = col->_collection;
+  TRI_collection_t* docColl = col->_collection;
   if (docColl == nullptr) {
     generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
                   TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED,
@@ -3989,7 +3989,7 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
     }
   }
 
-  TRI_document_collection_t* docColl = col->_collection;
+  TRI_collection_t* docColl = col->_collection;
   if (docColl == nullptr) {
     generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
                   TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED,

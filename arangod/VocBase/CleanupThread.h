@@ -27,7 +27,7 @@
 #include "Basics/Common.h"
 #include "Basics/Thread.h"
 
-struct TRI_document_collection_t;
+struct TRI_collection_t;
 struct TRI_vocbase_col_t;
 struct TRI_vocbase_t;
 
@@ -56,7 +56,7 @@ class CleanupThread : public Thread {
   void cleanupCursors(bool force);
 
   /// @brief checks all datafiles of a collection
-  void cleanupCollection(TRI_vocbase_col_t* collection, TRI_document_collection_t* document);
+  void cleanupCollection(TRI_vocbase_col_t* collection, TRI_collection_t* document);
 
  private:
   TRI_vocbase_t* _vocbase;

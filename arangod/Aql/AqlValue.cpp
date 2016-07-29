@@ -27,7 +27,6 @@
 #include "Utils/AqlTransaction.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-vpack.h"
-#include "VocBase/document-collection.h"
 
 #include <velocypack/Buffer.h>
 #include <velocypack/Iterator.h>

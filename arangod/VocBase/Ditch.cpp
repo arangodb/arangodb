@@ -24,7 +24,7 @@
 #include "Ditch.h"
 #include "Logger/Logger.h"
 #include "Basics/MutexLocker.h"
-#include "VocBase/document-collection.h"
+#include "VocBase/collection.h"
 
 using namespace arangodb;
 

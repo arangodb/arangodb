@@ -206,7 +206,7 @@ TRI_vocbase_col_t* RecoverState::useCollection(TRI_vocbase_t* vocbase,
     return nullptr;
   }
 
-  TRI_document_collection_t* document = collection->_collection;
+  TRI_collection_t* document = collection->_collection;
   TRI_ASSERT(document != nullptr);
 
   // disable secondary indexes for the moment
@@ -221,7 +221,7 @@ TRI_vocbase_col_t* RecoverState::useCollection(TRI_vocbase_t* vocbase,
 /// the collection will be opened after this call and inserted into a local
 /// cache for faster lookups
 /// returns nullptr if the collection does not exist
-TRI_document_collection_t* RecoverState::getCollection(
+TRI_collection_t* RecoverState::getCollection(
     TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId) {
   TRI_vocbase_t* vocbase = useDatabase(databaseId);
 
@@ -238,7 +238,7 @@ TRI_document_collection_t* RecoverState::getCollection(
     return nullptr;
   }
 
-  TRI_document_collection_t* document = collection->_collection;
+  TRI_collection_t* document = collection->_collection;
   TRI_ASSERT(document != nullptr);
 
   return document;
@@ -635,7 +635,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
           return true;
         }
 
-        TRI_document_collection_t* document =
+        TRI_collection_t* document =
             state->getCollection(databaseId, collectionId);
 
         if (document == nullptr) {
@@ -685,7 +685,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
           return true;
         }
 
-        TRI_document_collection_t* document =
+        TRI_collection_t* document =
             state->getCollection(databaseId, collectionId);
 
         if (document == nullptr) {
@@ -922,7 +922,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
           return true;
         }
 
-        TRI_document_collection_t* document =
+        TRI_collection_t* document =
             state->getCollection(databaseId, collectionId);
         if (document == nullptr) {
           // if the underlying collection gone, we can go on
@@ -1145,7 +1145,7 @@ int RecoverState::fillIndexes() {
   for (auto it = openedCollections.begin(); it != openedCollections.end();
        ++it) {
     TRI_vocbase_col_t* collection = (*it).second;
-    TRI_document_collection_t* document = collection->_collection;
+    TRI_collection_t* document = collection->_collection;
 
     TRI_ASSERT(document != nullptr);
 

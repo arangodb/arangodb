@@ -27,12 +27,13 @@
 #include "Basics/Common.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/datafile.h"
-#include "VocBase/document-collection.h"
 #include "VocBase/ticks.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 #include "Wal/Logfile.h"
 #include "Wal/Marker.h"
+
+struct TRI_collection_t;
 
 namespace arangodb {
 class DatabaseFeature;
@@ -124,7 +125,7 @@ struct RecoverState {
   /// the collection will be opened after this call and inserted into a local
   /// cache for faster lookups
   /// returns nullptr if the collection does not exist
-  TRI_document_collection_t* getCollection(TRI_voc_tick_t, TRI_voc_cid_t);
+  TRI_collection_t* getCollection(TRI_voc_tick_t, TRI_voc_cid_t);
 
   /// @brief executes a single operation inside a transaction
   int executeSingleOperation(
