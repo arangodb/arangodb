@@ -321,6 +321,7 @@ struct TRI_collection_t {
   void addIndexFile(std::string const&);
   int removeIndexFile(TRI_idx_iid_t);
   std::string const& path() const { return _path; }
+  std::string label() const;
 
  private:
   /// @brief seal a datafile
@@ -346,6 +347,9 @@ struct TRI_collection_t {
   std::vector<TRI_datafile_t*> _datafiles;   // all datafiles
   std::vector<TRI_datafile_t*> _journals;    // all journals
   std::vector<TRI_datafile_t*> _compactors;  // all compactor files
+  
+  // lock for indexes
+  arangodb::basics::ReadWriteLock _lock;
  private:
   std::vector<std::string> _indexFiles;   // all index filenames
 };

@@ -87,7 +87,6 @@ using namespace arangodb::basics;
 
 TRI_document_collection_t::TRI_document_collection_t(TRI_vocbase_t* vocbase)
     : TRI_collection_t(vocbase),
-      _lock(),
       _nextCompactionStartIndex(0),
       _lastCompactionStatus(nullptr),
       _useSecondaryIndexes(true),
@@ -113,10 +112,6 @@ TRI_document_collection_t::~TRI_document_collection_t() {
   delete _keyGenerator;
 }
 
-std::string TRI_document_collection_t::label() const {
-  return _vocbase->name() + " / " + _info.name();
-}
- 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief update statistics for a collection
 /// note: the write-lock for the collection must be held to call this

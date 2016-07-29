@@ -97,14 +97,6 @@ struct TRI_document_collection_t : public TRI_collection_t {
 
   ~TRI_document_collection_t();
 
-  std::string label() const;
-  
-  // ...........................................................................
-  // this lock protects the indexes and _headers attributes
-  // ...........................................................................
-
-  arangodb::basics::ReadWriteLock _lock;
-
  private:
   arangodb::Mutex _compactionStatusLock;
   size_t _nextCompactionStartIndex;

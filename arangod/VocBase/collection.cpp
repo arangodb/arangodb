@@ -121,6 +121,10 @@ bool TRI_collection_t::IsAllowedName(bool allowSystem, std::string const& name) 
 
   return true;
 }
+
+std::string TRI_collection_t::label() const {
+  return _vocbase->name() + " / " + _info.name();
+}
   
 /// @brief updates the parameter info block
 int TRI_collection_t::updateCollectionInfo(TRI_vocbase_t* vocbase,
