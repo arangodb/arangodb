@@ -324,6 +324,7 @@ void HeartbeatThread::runCoordinator() {
     AgencyReadTransaction trx(std::vector<std::string>(
         {_agency.prefixPath() + "Plan/Version",
          _agency.prefixPath() + "Current/Version",
+         _agency.prefixPath() + "Current/Foxxmaster",
          _agency.prefixPath() + "Sync/Commands/" + _myId,
          _agency.prefixPath() + "Sync/UserVersion"}));
     AgencyCommResult result = _agency.sendTransactionWithFailover(trx);
@@ -336,6 +337,14 @@ void HeartbeatThread::runCoordinator() {
           << "Looking at Sync/Commands/" + _myId;
 
       handleStateChange(result);
+
+      VPackSlice foxxmasterSlice = result.slice()[0].get(
+          std::vector<std::string>({_agency.prefix(), "Current", "Foxxmaster"})
+      );
+      
+      if (foxxmasterSlice.isString()) {
+        ServerState::instance()->setFoxxmaster(foxxmasterSlice.copyString());
+      }
 
       VPackSlice versionSlice = result.slice()[0].get(
           std::vector<std::string>({_agency.prefix(), "Plan", "Version"}));
