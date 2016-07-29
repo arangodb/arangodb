@@ -1901,8 +1901,7 @@ int RestReplicationHandler::processRestoreIndexes(VPackSlice const& collection,
 
       // {"id":"229907440927234","type":"hash","unique":false,"fields":["x","Y"]}
 
-      res = TRI_FromVelocyPackIndexDocumentCollection(&trx, document, idxDef,
-                                                      &idx);
+      res = document->indexFromVelocyPack(&trx, idxDef, &idx);
 
       if (res == TRI_ERROR_NOT_IMPLEMENTED) {
         continue;
@@ -1915,7 +1914,7 @@ int RestReplicationHandler::processRestoreIndexes(VPackSlice const& collection,
       } else {
         TRI_ASSERT(idx != nullptr);
 
-        res = TRI_SaveIndex(document, idx, true);
+        res = document->saveIndex(idx, true);
 
         if (res != TRI_ERROR_NO_ERROR) {
           errorMsg =

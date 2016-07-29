@@ -26,7 +26,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
-#include "VocBase/document-collection.h"
+#include "VocBase/collection.h"
 #include "VocBase/transaction.h"
 
 namespace arangodb {
@@ -36,11 +36,8 @@ class CollectionWriteLocker {
   CollectionWriteLocker(CollectionWriteLocker const&) = delete;
   CollectionWriteLocker& operator=(CollectionWriteLocker const&) = delete;
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief create the locker
-  //////////////////////////////////////////////////////////////////////////////
-
-  CollectionWriteLocker(TRI_document_collection_t* document, bool doLock)
+  CollectionWriteLocker(TRI_collection_t* document, bool doLock)
       : _document(document), _doLock(false) {
     if (doLock) {
       int res = _document->beginWriteTimed(0, TRI_TRANSACTION_DEFAULT_SLEEP_DURATION);
@@ -53,16 +50,10 @@ class CollectionWriteLocker {
     }
   }
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief destroy the locker
-  //////////////////////////////////////////////////////////////////////////////
-
   ~CollectionWriteLocker() { unlock(); }
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief release the lock
-  //////////////////////////////////////////////////////////////////////////////
-
   inline void unlock() {
     if (_doLock) {
       _document->endWrite();
@@ -71,16 +62,10 @@ class CollectionWriteLocker {
   }
 
  private:
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief collection pointer
-  //////////////////////////////////////////////////////////////////////////////
+  TRI_collection_t* _document;
 
-  TRI_document_collection_t* _document;
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief lock flag
-  //////////////////////////////////////////////////////////////////////////////
-
   bool _doLock;
 };
 }

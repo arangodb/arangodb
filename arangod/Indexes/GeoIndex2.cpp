@@ -34,7 +34,7 @@ using namespace arangodb;
 ////////////////////////////////////////////////////////////////////////////////
 
 GeoIndex2::GeoIndex2(
-    TRI_idx_iid_t iid, TRI_document_collection_t* collection,
+    TRI_idx_iid_t iid, TRI_collection_t* collection,
     std::vector<std::vector<arangodb::basics::AttributeName>> const& fields,
     std::vector<std::string> const& path, bool geoJson)
     : Index(iid, collection, fields, false, true),
@@ -57,7 +57,7 @@ GeoIndex2::GeoIndex2(
 ////////////////////////////////////////////////////////////////////////////////
 
 GeoIndex2::GeoIndex2(
-    TRI_idx_iid_t iid, TRI_document_collection_t* collection,
+    TRI_idx_iid_t iid, TRI_collection_t* collection,
     std::vector<std::vector<arangodb::basics::AttributeName>> const& fields,
     std::vector<std::vector<std::string>> const& paths)
     : Index(iid, collection, fields, false, true),

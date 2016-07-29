@@ -999,11 +999,11 @@ class ClusterInfo {
 class FollowerInfo {
   std::shared_ptr<std::vector<ServerID> const> _followers;
   Mutex                                        _mutex;
-  TRI_document_collection_t*                   _docColl;
+  TRI_collection_t*                            _docColl;
 
  public:
 
-  explicit FollowerInfo(TRI_document_collection_t* d) 
+  explicit FollowerInfo(TRI_collection_t* d) 
     : _followers(new std::vector<ServerID>()), _docColl(d) { }
 
   //////////////////////////////////////////////////////////////////////////////

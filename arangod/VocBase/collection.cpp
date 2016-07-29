@@ -25,34 +25,93 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/PageSizeFeature.h"
+#include "Aql/QueryCache.h"
+#include "Basics/Barrier.h"
 #include "Basics/FileUtils.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StringUtils.h"
+#include "Basics/ThreadPool.h"
+#include "Basics/Timers.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/files.h"
 #include "Basics/memory-map.h"
 #include "Basics/tri-strings.h"
+#include "Cluster/ServerState.h"
+#include "Cluster/ClusterMethods.h"
+#include "FulltextIndex/fulltext-index.h"
 #include "Indexes/EdgeIndex.h"
+#include "Indexes/FulltextIndex.h"
+#include "Indexes/GeoIndex2.h"
+#include "Indexes/HashIndex.h"
 #include "Indexes/PrimaryIndex.h"
+#include "Indexes/SkiplistIndex.h"
 #include "Logger/Logger.h"
 #include "Random/RandomGenerator.h"
 #include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
+#include "Utils/CollectionNameResolver.h"
+#include "Utils/CollectionReadLocker.h"
+#include "Utils/CollectionWriteLocker.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utils/StandaloneTransactionContext.h"
 #include "VocBase/DatafileHelper.h"
+#include "VocBase/IndexPoolFeature.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
+#include "Wal/DocumentOperation.h"
+#include "Wal/LogfileManager.h"
+#include "Wal/Marker.h"
+#include "Wal/Slots.h"
+
+#ifdef ARANGODB_ENABLE_ROCKSDB
+#include "Indexes/RocksDBIndex.h"
+
+#include <rocksdb/db.h>
+#include <rocksdb/options.h>
+#include <rocksdb/utilities/optimistic_transaction_db.h>
+#include <rocksdb/utilities/transaction.h>
+#endif
 
 #include <velocypack/Collection.h>
+#include <velocypack/Iterator.h>
+#include <velocypack/Value.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
+
+int TRI_AddOperationTransaction(TRI_transaction_t*,
+                                arangodb::wal::DocumentOperation&, bool&);
+
+/// @brief helper struct for filling indexes
+class IndexFiller {
+ public:
+  IndexFiller(arangodb::Transaction* trx, TRI_collection_t* document,
+              arangodb::Index* idx, std::function<void(int)> callback)
+      : _trx(trx), _document(document), _idx(idx), _callback(callback) {}
+
+  void operator()() {
+    int res = TRI_ERROR_INTERNAL;
+
+    try {
+      res = _document->fillIndex(_trx, _idx);
+    } catch (...) {
+    }
+
+    _callback(res);
+  }
+
+ private:
+  arangodb::Transaction* _trx;
+  TRI_collection_t* _document;
+  arangodb::Index* _idx;
+  std::function<void(int)> _callback;
+};
+
 
 struct OpenIndexIteratorContext {
   arangodb::Transaction* trx;
@@ -82,8 +141,7 @@ static bool OpenIndexIterator(std::string const& filename, void* data) {
   arangodb::Transaction* trx = ctx->trx;
   TRI_collection_t* document = ctx->collection;
 
-  int res = TRI_FromVelocyPackIndexDocumentCollection(trx, reinterpret_cast<TRI_document_collection_t*>(document),
-                                                      description, nullptr);
+  int res = document->indexFromVelocyPack(trx, description, nullptr);
 
   if (res != TRI_ERROR_NO_ERROR) {
     // error was already printed if we get here
@@ -91,6 +149,26 @@ static bool OpenIndexIterator(std::string const& filename, void* data) {
   }
 
   return true;
+}
+
+/// @brief converts extracts a field list from a VelocyPack object
+///        Does not copy any data, caller has to make sure that data
+///        in slice stays valid until this return value is destroyed.
+static VPackSlice ExtractFields(VPackSlice const& slice, TRI_idx_iid_t iid) {
+  VPackSlice fld = slice.get("fields");
+  if (!fld.isArray()) {
+    LOG(ERR) << "ignoring index " << iid << ", 'fields' must be an array";
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
+  }
+
+  for (auto const& sub : VPackArrayIterator(fld)) {
+    if (!sub.isString()) {
+      LOG(ERR) << "ignoring index " << iid
+               << ", 'fields' must be an array of attribute paths";
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
+    }
+  }
+  return fld;
 }
 
 /// @brief ensures that an error code is set in all required places
@@ -103,12 +181,6 @@ static void EnsureErrorCode(int code) {
   TRI_set_errno(code);
   errno = code;
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief extract the numeric part from a filename
-/// the filename must look like this: /.*type-abc\.ending$/, where abc is
-/// a number, and type and ending are arbitrary letters
-////////////////////////////////////////////////////////////////////////////////
 
 static uint64_t GetNumericFilenamePart(char const* filename) {
   char const* pos1 = strrchr(filename, '.');
@@ -141,6 +213,11 @@ TRI_collection_t::TRI_collection_t(TRI_vocbase_t* vocbase)
         _nextCompactionStartIndex(0),
         _lastCompactionStatus(nullptr),
         _useSecondaryIndexes(true) {
+  
+  setCompactionStatus("compaction not yet started");
+  if (ServerState::instance()->isDBServer()) {
+    _followers.reset(new FollowerInfo(this));
+  }
 }
   
 TRI_collection_t::TRI_collection_t(TRI_vocbase_t* vocbase, arangodb::VocbaseCollectionInfo const& info) 
@@ -1210,7 +1287,7 @@ void TRI_collection_t::addIndexFile(std::string const& filename) {
 /// @brief removes an index file from the _indexFiles vector
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_collection_t::removeIndexFile(TRI_idx_iid_t id) {
+bool TRI_collection_t::removeIndexFileFromVector(TRI_idx_iid_t id) {
   READ_LOCKER(readLocker, _filesLock);
 
   for (auto it = _indexFiles.begin(); it != _indexFiles.end(); ++it) {
@@ -1251,24 +1328,6 @@ void TRI_collection_t::iterateIndexes(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief compare two filenames, based on the numeric part contained in
-/// the filename. this is used to sort datafile filenames on startup
-////////////////////////////////////////////////////////////////////////////////
-
-static bool FilenameComparator(std::string const& lhs, std::string const& rhs) {
-  char const* l = lhs.c_str();
-  char const* r = rhs.c_str();
-
-  uint64_t const numLeft = GetNumericFilenamePart(l);
-  uint64_t const numRight = GetNumericFilenamePart(r);
-
-  if (numLeft != numRight) {
-    return numLeft < numRight;
-  }
-  return false;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief compare two datafiles, based on the numeric part contained in
 /// the filename
 ////////////////////////////////////////////////////////////////////////////////
@@ -1302,148 +1361,6 @@ static void InitCollection(TRI_vocbase_t* vocbase, TRI_collection_t* collection,
   collection->_state = TRI_COL_STATE_WRITE;
   collection->_lastError = 0;
   collection->_path = path;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief scans a collection and locates all files
-////////////////////////////////////////////////////////////////////////////////
-
-static TRI_col_file_structure_t ScanCollectionDirectory(char const* path) {
-  LOG_TOPIC(TRACE, Logger::DATAFILES) << "scanning collection directory '"
-                                      << path << "'";
-
-  TRI_col_file_structure_t structure;
-
-  // check files within the directory
-  std::vector<std::string> files = TRI_FilesDirectory(path);
-
-  for (auto const& file : files) {
-    std::vector<std::string> parts = StringUtils::split(file, '.');
-
-    if (parts.size() < 2 || parts.size() > 3 || parts[0].empty()) {
-      LOG_TOPIC(DEBUG, Logger::DATAFILES)
-          << "ignoring file '" << file
-          << "' because it does not look like a datafile";
-      continue;
-    }
-
-    std::string filename = FileUtils::buildFilename(path, file);
-    std::string extension = parts[1];
-    std::string isDead = (parts.size() > 2) ? parts[2] : "";
-
-    std::vector<std::string> next = StringUtils::split(parts[0], "-");
-
-    if (next.size() < 2) {
-      LOG_TOPIC(DEBUG, Logger::DATAFILES)
-          << "ignoring file '" << file
-          << "' because it does not look like a datafile";
-      continue;
-    }
-
-    std::string filetype = next[0];
-    next.erase(next.begin());
-    std::string qualifier = StringUtils::join(next, '-');
-
-    // .............................................................................
-    // file is dead
-    // .............................................................................
-
-    if (!isDead.empty()) {
-      if (isDead == "dead") {
-        FileUtils::remove(filename);
-      } else {
-        LOG_TOPIC(DEBUG, Logger::DATAFILES)
-            << "ignoring file '" << file
-            << "' because it does not look like a datafile";
-      }
-
-      continue;
-    }
-
-    // .............................................................................
-    // file is an index
-    // .............................................................................
-
-    if (filetype == "index" && extension == "json") {
-      structure.indexes.emplace_back(filename);
-      continue;
-    }
-
-    // .............................................................................
-    // file is a journal or datafile
-    // .............................................................................
-
-    if (extension == "db") {
-      // file is a journal
-      if (filetype == "journal") {
-        structure.journals.emplace_back(filename);
-      }
-
-      // file is a datafile
-      else if (filetype == "datafile") {
-        structure.datafiles.emplace_back(filename);
-      }
-
-      // file is a left-over compaction file. rename it back
-      else if (filetype == "compaction") {
-        std::string relName = "datafile-" + qualifier + "." + extension;
-        std::string newName = FileUtils::buildFilename(path, relName);
-
-        if (FileUtils::exists(newName)) {
-          // we have a compaction-xxxx and a datafile-xxxx file. we'll keep
-          // the datafile
-
-          FileUtils::remove(filename);
-
-          LOG_TOPIC(WARN, Logger::DATAFILES)
-              << "removing left-over compaction file '" << filename << "'";
-
-          continue;
-        } else {
-          // this should fail, but shouldn't do any harm either...
-          FileUtils::remove(newName);
-
-          // rename the compactor to a datafile
-          int res = TRI_RenameFile(filename.c_str(), newName.c_str());
-
-          if (res != TRI_ERROR_NO_ERROR) {
-            LOG_TOPIC(ERR, Logger::DATAFILES)
-                << "unable to rename compaction file '" << filename << "'";
-            continue;
-          }
-        }
-
-        structure.datafiles.emplace_back(filename);
-      }
-
-      // temporary file, we can delete it!
-      else if (filetype == "temp") {
-        LOG_TOPIC(WARN, Logger::DATAFILES)
-            << "found temporary file '" << filename
-            << "', which is probably a left-over. deleting it";
-        FileUtils::remove(filename);
-      }
-
-      // ups, what kind of file is that
-      else {
-        LOG_TOPIC(ERR, Logger::DATAFILES) << "unknown datafile type '" << file
-                                          << "'";
-      }
-    }
-  }
-
-  // now sort the files in the structures that we created.
-  // the sorting allows us to iterate the files in the correct order
-  std::sort(structure.journals.begin(), structure.journals.end(),
-            FilenameComparator);
-  std::sort(structure.compactors.begin(), structure.compactors.end(),
-            FilenameComparator);
-  std::sort(structure.datafiles.begin(), structure.datafiles.end(),
-            FilenameComparator);
-  std::sort(structure.indexes.begin(), structure.indexes.end(),
-            FilenameComparator);
-
-  return structure;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1720,32 +1637,6 @@ bool TRI_collection_t::closeDataFiles(std::vector<TRI_datafile_t*> const& files)
   }
 
   return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief iterate over a set of datafiles, identified by filenames
-/// note: the files will be opened and closed
-////////////////////////////////////////////////////////////////////////////////
-
-static bool IterateFiles(std::vector<std::string> const& files,
-                         bool (*iterator)(TRI_df_marker_t const*, void*,
-                                          TRI_datafile_t*),
-                         void* data) {
-  TRI_ASSERT(iterator != nullptr);
-
-  for (auto const& filename : files) {
-    LOG(DEBUG) << "iterating over collection journal file '" << filename << "'";
-
-    TRI_datafile_t* datafile = TRI_OpenDatafile(filename.c_str(), true);
-
-    if (datafile != nullptr) {
-      TRI_IterateDatafile(datafile, iterator, data);
-      TRI_CloseDatafile(datafile);
-      TRI_FreeDatafile(datafile);
-    }
-  }
-
-  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2252,7 +2143,7 @@ int VocbaseCollectionInfo::saveToFile(std::string const& path,
 
   VPackBuilder builder;
   builder.openObject();
-  TRI_CreateVelocyPackCollectionInfo(*this, builder);
+  toVelocyPack(builder);
   builder.close();
 
   bool ok = VelocyPackHelper::velocyPackToFile(filename.c_str(),
@@ -2358,46 +2249,41 @@ void VocbaseCollectionInfo::update(VocbaseCollectionInfo const& other) {
   _waitForSync = other.waitForSync();
 }
 
-std::shared_ptr<VPackBuilder> TRI_CreateVelocyPackCollectionInfo(
-    arangodb::VocbaseCollectionInfo const& info) {
-  // This function might throw
+std::shared_ptr<VPackBuilder> VocbaseCollectionInfo::toVelocyPack() const {
   auto builder = std::make_shared<VPackBuilder>();
   builder->openObject();
-  TRI_CreateVelocyPackCollectionInfo(info, *builder);
+  toVelocyPack(*builder);
   builder->close();
   return builder;
 }
 
-void TRI_CreateVelocyPackCollectionInfo(
-    arangodb::VocbaseCollectionInfo const& info, VPackBuilder& builder) {
-  // This function might throw
-  //
+void VocbaseCollectionInfo::toVelocyPack(VPackBuilder& builder) const {
   TRI_ASSERT(!builder.isClosed());
 
-  std::string cidString = std::to_string(info.id());
-  std::string planIdString = std::to_string(info.planId());
+  std::string cidString = std::to_string(id());
+  std::string planIdString = std::to_string(planId());
 
-  builder.add("version", VPackValue(info.version()));
-  builder.add("type", VPackValue(info.type()));
+  builder.add("version", VPackValue(version()));
+  builder.add("type", VPackValue(type()));
   builder.add("cid", VPackValue(cidString));
 
-  if (info.planId() > 0) {
+  if (planId() > 0) {
     builder.add("planId", VPackValue(planIdString));
   }
 
-  if (info.initialCount() >= 0) {
-    builder.add("count", VPackValue(info.initialCount()));
+  if (initialCount() >= 0) {
+    builder.add("count", VPackValue(initialCount()));
   }
-  builder.add("indexBuckets", VPackValue(info.indexBuckets()));
-  builder.add("deleted", VPackValue(info.deleted()));
-  builder.add("doCompact", VPackValue(info.doCompact()));
-  builder.add("maximalSize", VPackValue(info.maximalSize()));
-  builder.add("name", VPackValue(info.name()));
-  builder.add("isVolatile", VPackValue(info.isVolatile()));
-  builder.add("waitForSync", VPackValue(info.waitForSync()));
-  builder.add("isSystem", VPackValue(info.isSystem()));
+  builder.add("indexBuckets", VPackValue(indexBuckets()));
+  builder.add("deleted", VPackValue(deleted()));
+  builder.add("doCompact", VPackValue(doCompact()));
+  builder.add("maximalSize", VPackValue(maximalSize()));
+  builder.add("name", VPackValue(name()));
+  builder.add("isVolatile", VPackValue(isVolatile()));
+  builder.add("waitForSync", VPackValue(waitForSync()));
+  builder.add("isSystem", VPackValue(isSystem()));
 
-  auto opts = info.keyOptions();
+  auto opts = keyOptions();
   if (opts.get() != nullptr) {
     VPackSlice const slice(opts->data());
     builder.add("keyOptions", slice);
@@ -2422,10 +2308,7 @@ int TRI_collection_t::rename(std::string const& name) {
   return res;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief iterates over a collection
-////////////////////////////////////////////////////////////////////////////////
-
 bool TRI_collection_t::iterateDatafiles(std::function<bool(TRI_df_marker_t const*, TRI_datafile_t*)> const& cb) {
   if (!iterateDatafilesVector(_datafiles, cb) ||
       !iterateDatafilesVector(_compactors, cb) ||
@@ -2435,10 +2318,7 @@ bool TRI_collection_t::iterateDatafiles(std::function<bool(TRI_df_marker_t const
   return true;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief opens an existing collection
-////////////////////////////////////////////////////////////////////////////////
-
 int TRI_collection_t::open(std::string const& path, bool ignoreErrors) {
   if (!TRI_IsDirectory(path.c_str())) {
     LOG(ERR) << "cannot open '" << path << "', not a directory or not found";
@@ -2482,10 +2362,7 @@ int TRI_collection_t::open(std::string const& path, bool ignoreErrors) {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief closes an open collection
-////////////////////////////////////////////////////////////////////////////////
-
 int TRI_collection_t::close() {
   // close compactor files
   closeDataFiles(_compactors);
@@ -2499,40 +2376,2744 @@ int TRI_collection_t::close() {
   return TRI_ERROR_NO_ERROR;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns information about the collection files
-////////////////////////////////////////////////////////////////////////////////
+/// @brief garbage-collect a collection's indexes
+int TRI_collection_t::cleanupIndexes() {
+  int res = TRI_ERROR_NO_ERROR;
 
-TRI_col_file_structure_t TRI_FileStructureCollectionDirectory(
-    char const* path) {
-  return ScanCollectionDirectory(path);
+  // cleaning indexes is expensive, so only do it if the flag is set for the
+  // collection
+  if (_cleanupIndexes > 0) {
+    WRITE_LOCKER(writeLocker, _lock);
+
+    for (auto& idx : allIndexes()) {
+      if (idx->type() == arangodb::Index::TRI_IDX_TYPE_FULLTEXT_INDEX) {
+        res = idx->cleanup();
+
+        if (res != TRI_ERROR_NO_ERROR) {
+          break;
+        }
+      }
+    }
+  }
+
+  return res;
+}
+
+/// @brief fill the additional (non-primary) indexes
+int TRI_collection_t::fillIndexes(arangodb::Transaction* trx,
+                                  TRI_vocbase_col_t* collection) {
+  // distribute the work to index threads plus this thread
+  auto const& indexes = allIndexes();
+  size_t const n = indexes.size();
+
+  if (n == 1) {
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  double start = TRI_microtime();
+
+  // only log performance infos for indexes with more than this number of
+  // entries
+  static size_t const NotificationSizeThreshold = 131072;
+  auto primaryIndex = this->primaryIndex();
+
+  if (primaryIndex->size() > NotificationSizeThreshold) {
+    LOG_TOPIC(TRACE, Logger::PERFORMANCE)
+        << "fill-indexes-document-collection { collection: "
+        << _vocbase->name() << "/" << _info.name()
+        << " }, indexes: " << (n - 1);
+  }
+
+  TRI_ASSERT(n > 1);
+
+  std::atomic<int> result(TRI_ERROR_NO_ERROR);
+
+  {
+    arangodb::basics::Barrier barrier(n - 1);
+
+    auto indexPool = application_features::ApplicationServer::getFeature<IndexPoolFeature>("IndexPool")->getThreadPool();
+
+    auto callback = [&barrier, &result](int res) -> void {
+      // update the error code
+      if (res != TRI_ERROR_NO_ERROR) {
+        int expected = TRI_ERROR_NO_ERROR;
+        result.compare_exchange_strong(expected, res,
+                                       std::memory_order_acquire);
+      }
+
+      barrier.join();
+    };
+
+    // now actually fill the secondary indexes
+    for (size_t i = 1; i < n; ++i) {
+      auto idx = indexes[i];
+
+      // index threads must come first, otherwise this thread will block the
+      // loop and
+      // prevent distribution to threads
+      if (indexPool != nullptr && i != (n - 1)) {
+        try {
+          // move task into thread pool
+          IndexFiller indexTask(trx, this, idx, callback);
+
+          static_cast<arangodb::basics::ThreadPool*>(indexPool)
+              ->enqueue(indexTask);
+        } catch (...) {
+          // set error code
+          int expected = TRI_ERROR_NO_ERROR;
+          result.compare_exchange_strong(expected, TRI_ERROR_INTERNAL,
+                                         std::memory_order_acquire);
+
+          barrier.join();
+        }
+      } else {
+        // fill index in this thread
+        int res;
+
+        try {
+          res = fillIndex(trx, idx);
+        } catch (...) {
+          res = TRI_ERROR_INTERNAL;
+        }
+
+        if (res != TRI_ERROR_NO_ERROR) {
+          int expected = TRI_ERROR_NO_ERROR;
+          result.compare_exchange_strong(expected, res,
+                                         std::memory_order_acquire);
+        }
+
+        barrier.join();
+      }
+    }
+
+    // barrier waits here until all threads have joined
+  }
+
+  LOG_TOPIC(TRACE, Logger::PERFORMANCE)
+      << "[timer] " << Logger::FIXED(TRI_microtime() - start)
+      << " s, fill-indexes-document-collection { collection: "
+      << _vocbase->name() << "/" << _info.name()
+      << " }, indexes: " << (n - 1);
+
+  return result.load();
+}
+
+/// @brief reads an element from the document collection
+int TRI_collection_t::read(Transaction* trx, std::string const& key,
+                           TRI_doc_mptr_t* mptr, bool lock) {
+  return read(trx, StringRef(key.c_str(), key.size()), mptr, lock);
+}
+
+int TRI_collection_t::read(Transaction* trx, StringRef const& key,
+                           TRI_doc_mptr_t* mptr, bool lock) {
+  TRI_ASSERT(mptr != nullptr);
+  mptr->setVPack(nullptr);  
+
+  TransactionBuilderLeaser builder(trx);
+  builder->add(VPackValuePair(key.data(), key.size(), VPackValueType::String));
+  VPackSlice slice = builder->slice();
+
+  {
+    TRI_IF_FAILURE("ReadDocumentNoLock") {
+      // test what happens if no lock can be acquired
+      return TRI_ERROR_DEBUG;
+    }
+
+    TRI_IF_FAILURE("ReadDocumentNoLockExcept") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+
+    CollectionReadLocker collectionLocker(this, lock);
+
+    TRI_doc_mptr_t* header;
+    int res = lookupDocument(trx, slice, header);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      return res;
+    }
+
+    // we found a document, now copy it over
+    *mptr = *header;
+  }
+
+  TRI_ASSERT(mptr->vpack() != nullptr);
+
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief iterate over the markers in a collection's datafiles
-///
-/// this function may be called on server startup for all collections, in order
-/// to get the last tick value used
+/// @brief inserts a document or edge into the collection
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_IterateTicksCollection(char const* const path,
-                                bool (*iterator)(TRI_df_marker_t const*, void*,
-                                                 TRI_datafile_t*),
-                                void* data) {
-  TRI_ASSERT(iterator != nullptr);
+int TRI_collection_t::insert(Transaction* trx, VPackSlice const slice,
+                             TRI_doc_mptr_t* mptr,
+                             OperationOptions& options,
+                             TRI_voc_tick_t& resultMarkerTick,
+                             bool lock) {
+  resultMarkerTick = 0;
+  VPackSlice fromSlice;
+  VPackSlice toSlice;
 
-  TRI_col_file_structure_t structure = ScanCollectionDirectory(path);
-  LOG(TRACE) << "iterating ticks of journal '" << path << "'";
+  bool const isEdgeCollection = (_info.type() == TRI_COL_TYPE_EDGE);
 
-  if (structure.journals.empty()) {
-    // no journal found for collection. should not happen normally, but if
-    // it does, we need to grab the ticks from the datafiles, too
-    return IterateFiles(structure.datafiles, iterator, data);
+  if (isEdgeCollection) {
+    // _from:
+    fromSlice = slice.get(StaticStrings::FromString);
+    if (!fromSlice.isString()) {
+      return TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE;
+    }
+    VPackValueLength len;
+    char const* docId = fromSlice.getString(len);
+    size_t split;
+    if (!TRI_ValidateDocumentIdKeyGenerator(docId, static_cast<size_t>(len), &split)) {
+      return TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE;
+    }
+    // _to:
+    toSlice = slice.get(StaticStrings::ToString);
+    if (!toSlice.isString()) {
+      return TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE;
+    }
+    docId = toSlice.getString(len);
+    if (!TRI_ValidateDocumentIdKeyGenerator(docId, static_cast<size_t>(len), &split)) {
+      return TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE;
+    }
   }
 
-  // compactor files don't need to be iterated... they just contain data
-  // copied
-  // from other files, so their tick values will never be any higher
-  return IterateFiles(structure.journals, iterator, data);
+  uint64_t hash = 0;
+  
+  TransactionBuilderLeaser builder(trx);
+  VPackSlice newSlice;
+  int res = TRI_ERROR_NO_ERROR;
+  if (options.recoveryMarker == nullptr) {
+    TIMER_START(TRANSACTION_NEW_OBJECT_FOR_INSERT);
+    res = newObjectForInsert(trx, slice, fromSlice, toSlice, isEdgeCollection, hash, *builder.get(), options.isRestore);
+    TIMER_STOP(TRANSACTION_NEW_OBJECT_FOR_INSERT);
+    if (res != TRI_ERROR_NO_ERROR) {
+      return res;
+    }
+    newSlice = builder->slice();
+  } else {
+    TRI_ASSERT(slice.isObject());
+    // we can get away with the fast hash function here, as key values are 
+    // restricted to strings
+    hash = Transaction::extractKeyFromDocument(slice).hashString();
+    newSlice = slice;
+  }
+    
+  TRI_ASSERT(mptr != nullptr);
+  mptr->setVPack(nullptr);
+
+  // create marker
+  arangodb::wal::CrudMarker insertMarker(TRI_DF_MARKER_VPACK_DOCUMENT, TRI_MarkerIdTransaction(trx->getInternals()), newSlice);
+
+  arangodb::wal::Marker const* marker;
+  if (options.recoveryMarker == nullptr) {
+    marker = &insertMarker;
+  } else {
+    marker = options.recoveryMarker;
+  }
+
+  // now insert into indexes
+  {
+    TRI_IF_FAILURE("InsertDocumentNoLock") {
+      // test what happens if no lock can be acquired
+      return TRI_ERROR_DEBUG;
+    }
+
+    arangodb::wal::DocumentOperation operation(
+        trx, marker, this, TRI_VOC_DOCUMENT_OPERATION_INSERT);
+
+    // DocumentOperation has taken over the ownership for the marker
+    TRI_ASSERT(operation.marker != nullptr);
+
+    TRI_IF_FAILURE("InsertDocumentNoHeader") {
+      // test what happens if no header can be acquired
+      return TRI_ERROR_DEBUG;
+    }
+
+    TRI_IF_FAILURE("InsertDocumentNoHeaderExcept") {
+      // test what happens if no header can be acquired
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+    
+    arangodb::CollectionWriteLocker collectionLocker(this, lock);
+
+    // create a new header
+    TRI_doc_mptr_t* header = operation.header = _masterPointers.request();
+
+    if (header == nullptr) {
+      // out of memory. no harm done here. just return the error
+      return TRI_ERROR_OUT_OF_MEMORY;
+    }
+
+    // update the header we got
+    void* mem = operation.marker->vpack();
+    TRI_ASSERT(mem != nullptr);
+    header->setHash(hash);
+    header->setVPack(mem);  // PROTECTED by trx in trxCollection
+
+    TRI_ASSERT(VPackSlice(header->vpack()).isObject());
+
+    // insert into indexes
+    res = insertDocument(trx, header, operation, mptr, options.waitForSync);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      operation.revert();
+    } else {
+      TRI_ASSERT(mptr->vpack() != nullptr);  
+
+      // store the tick that was used for writing the document        
+      resultMarkerTick = operation.tick;
+    }
+  }
+  
+  return res;
+}
+
+/// @brief updates a document or edge in a collection
+int TRI_collection_t::update(Transaction* trx,
+                             VPackSlice const newSlice, 
+                             TRI_doc_mptr_t* mptr,
+                             OperationOptions& options,
+                             TRI_voc_tick_t& resultMarkerTick,
+                             bool lock,
+                             VPackSlice& prevRev,
+                             TRI_doc_mptr_t& previous) {
+  resultMarkerTick = 0;
+
+  if (!newSlice.isObject()) {
+    return TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID;
+  }
+ 
+  // initialize the result
+  TRI_ASSERT(mptr != nullptr);
+  mptr->setVPack(nullptr);
+  prevRev = VPackSlice();
+
+  TRI_voc_rid_t revisionId = 0;
+  if (options.isRestore) {
+    VPackSlice oldRev = TRI_ExtractRevisionIdAsSlice(newSlice);
+    if (!oldRev.isString()) {
+      return TRI_ERROR_ARANGO_DOCUMENT_REV_BAD;
+    }
+    bool isOld;
+    revisionId = TRI_StringToRid(oldRev.copyString(), isOld);
+    if (isOld) {
+      // Do not tolerate old revision IDs
+      revisionId = TRI_HybridLogicalClock();
+    }
+  } else {
+    revisionId = TRI_HybridLogicalClock();
+  }
+    
+  VPackSlice key = newSlice.get(StaticStrings::KeyString);
+  if (key.isNone()) {
+    return TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
+  }
+  
+  bool const isEdgeCollection = (_info.type() == TRI_COL_TYPE_EDGE);
+  
+  int res;
+  {
+    TRI_IF_FAILURE("UpdateDocumentNoLock") { return TRI_ERROR_DEBUG; }
+
+    arangodb::CollectionWriteLocker collectionLocker(this, lock);
+    
+    // get the header pointer of the previous revision
+    TRI_doc_mptr_t* oldHeader;
+    res = lookupDocument(trx, key, oldHeader);
+    if (res != TRI_ERROR_NO_ERROR) {
+      return res;
+    }
+
+    TRI_IF_FAILURE("UpdateDocumentNoMarker") {
+      // test what happens when no marker can be created
+      return TRI_ERROR_DEBUG;
+    }
+
+    TRI_IF_FAILURE("UpdateDocumentNoMarkerExcept") {
+      // test what happens when no marker can be created
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+
+    prevRev = oldHeader->revisionIdAsSlice();
+    previous = *oldHeader;
+
+    // Check old revision:
+    if (!options.ignoreRevs) {
+      VPackSlice expectedRevSlice = newSlice.get(StaticStrings::RevString);
+      int res = checkRevision(trx, expectedRevSlice, prevRev);
+      if (res != TRI_ERROR_NO_ERROR) {
+        return res;
+      }
+    }
+
+    if (newSlice.length() <= 1) {
+      // no need to do anything
+      *mptr = *oldHeader;
+      return TRI_ERROR_NO_ERROR;
+    }
+
+    // merge old and new values 
+    TransactionBuilderLeaser builder(trx);
+    if (options.recoveryMarker == nullptr) {
+      mergeObjectsForUpdate(
+        trx, VPackSlice(oldHeader->vpack()), newSlice, isEdgeCollection,
+        TRI_RidToString(revisionId), options.mergeObjects, options.keepNull,
+        *builder.get());
+ 
+      if (ServerState::isDBServer(trx->serverRole())) {
+        // Need to check that no sharding keys have changed:
+        if (arangodb::shardKeysChanged(
+                _vocbase->name(),
+                trx->resolver()->getCollectionNameCluster(_info.planId()),
+                VPackSlice(oldHeader->vpack()), builder->slice(), false)) {
+          return TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES;
+        }
+      }
+    }
+
+    // create marker
+    arangodb::wal::CrudMarker updateMarker(TRI_DF_MARKER_VPACK_DOCUMENT, TRI_MarkerIdTransaction(trx->getInternals()), builder->slice());
+  
+    arangodb::wal::Marker const* marker;
+    if (options.recoveryMarker == nullptr) {
+      marker = &updateMarker;
+    } else {
+      marker = options.recoveryMarker;
+    }
+    
+    arangodb::wal::DocumentOperation operation(
+        trx, marker, this, TRI_VOC_DOCUMENT_OPERATION_UPDATE);
+
+    // DocumentOperation has taken over the ownership for the marker
+    TRI_ASSERT(operation.marker != nullptr);
+
+    operation.header = oldHeader;
+    operation.init();
+
+    res = updateDocument(trx, revisionId, oldHeader, operation, mptr, options.waitForSync);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      operation.revert();
+    } else if (options.waitForSync) {
+      // store the tick that was used for writing the new document        
+      resultMarkerTick = operation.tick;
+    }
+  }
+  
+  if (res == TRI_ERROR_NO_ERROR) {
+    TRI_ASSERT(mptr->vpack() != nullptr); 
+  }
+
+  return res;
+}
+
+/// @brief replaces a document or edge in a collection
+int TRI_collection_t::replace(Transaction* trx,
+                              VPackSlice const newSlice, 
+                              TRI_doc_mptr_t* mptr,
+                              OperationOptions& options,
+                              TRI_voc_tick_t& resultMarkerTick,
+                              bool lock,
+                              VPackSlice& prevRev,
+                              TRI_doc_mptr_t& previous) {
+  resultMarkerTick = 0;
+
+  if (!newSlice.isObject()) {
+    return TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID;
+  }
+
+  prevRev = VPackSlice();
+  VPackSlice fromSlice;
+  VPackSlice toSlice;
+
+  bool const isEdgeCollection = (_info.type() == TRI_COL_TYPE_EDGE);
+  
+  if (isEdgeCollection) {
+    fromSlice = newSlice.get(StaticStrings::FromString);
+    if (!fromSlice.isString()) {
+      return TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE;
+    }
+    toSlice = newSlice.get(StaticStrings::ToString);
+    if (!toSlice.isString()) {
+      return TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE;
+    }
+  }
+
+  // initialize the result
+  TRI_ASSERT(mptr != nullptr);
+  mptr->setVPack(nullptr);
+
+  TRI_voc_rid_t revisionId = 0;
+  if (options.isRestore) {
+    VPackSlice oldRev = TRI_ExtractRevisionIdAsSlice(newSlice);
+    if (!oldRev.isString()) {
+      return TRI_ERROR_ARANGO_DOCUMENT_REV_BAD;
+    }
+    bool isOld;
+    revisionId = TRI_StringToRid(oldRev.copyString(), isOld);
+    if (isOld) {
+      // Do not tolerate old revision ticks:
+      revisionId = TRI_HybridLogicalClock();
+    }
+  } else {
+    revisionId = TRI_HybridLogicalClock();
+  }
+  
+  int res;
+  {
+    TRI_IF_FAILURE("ReplaceDocumentNoLock") { return TRI_ERROR_DEBUG; }
+
+    arangodb::CollectionWriteLocker collectionLocker(this, lock);
+    
+    // get the header pointer of the previous revision
+    TRI_doc_mptr_t* oldHeader;
+    VPackSlice key = newSlice.get(StaticStrings::KeyString);
+    if (key.isNone()) {
+      return TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
+    }
+    res = lookupDocument(trx, key, oldHeader);
+    if (res != TRI_ERROR_NO_ERROR) {
+      return res;
+    }
+
+    TRI_IF_FAILURE("ReplaceDocumentNoMarker") {
+      // test what happens when no marker can be created
+      return TRI_ERROR_DEBUG;
+    }
+
+    TRI_IF_FAILURE("ReplaceDocumentNoMarkerExcept") {
+      // test what happens when no marker can be created
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+
+    prevRev = oldHeader->revisionIdAsSlice();
+    previous = *oldHeader;
+
+    // Check old revision:
+    if (!options.ignoreRevs) {
+      VPackSlice expectedRevSlice = newSlice.get(StaticStrings::RevString);
+      int res = checkRevision(trx, expectedRevSlice, prevRev);
+      if (res != TRI_ERROR_NO_ERROR) {
+        return res;
+      }
+    }
+
+    // merge old and new values 
+    TransactionBuilderLeaser builder(trx);
+    newObjectForReplace(
+        trx, VPackSlice(oldHeader->vpack()),
+        newSlice, fromSlice, toSlice, isEdgeCollection,
+        TRI_RidToString(revisionId), *builder.get());
+
+    if (ServerState::isDBServer(trx->serverRole())) {
+      // Need to check that no sharding keys have changed:
+      if (arangodb::shardKeysChanged(
+              _vocbase->name(),
+              trx->resolver()->getCollectionNameCluster(_info.planId()),
+              VPackSlice(oldHeader->vpack()), builder->slice(), false)) {
+        return TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES;
+      }
+    }
+
+    // create marker
+    arangodb::wal::CrudMarker replaceMarker(TRI_DF_MARKER_VPACK_DOCUMENT, TRI_MarkerIdTransaction(trx->getInternals()), builder->slice());
+  
+    arangodb::wal::Marker const* marker;
+    if (options.recoveryMarker == nullptr) {
+      marker = &replaceMarker;
+    } else {
+      marker = options.recoveryMarker;
+    }
+
+    arangodb::wal::DocumentOperation operation(trx, marker, this, TRI_VOC_DOCUMENT_OPERATION_REPLACE);
+    
+    // DocumentOperation has taken over the ownership for the marker
+    TRI_ASSERT(operation.marker != nullptr);
+    
+    operation.header = oldHeader;
+    operation.init();
+
+    res = updateDocument(trx, revisionId, oldHeader, operation, mptr, options.waitForSync);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      operation.revert();
+    } else if (options.waitForSync) {
+      // store the tick that was used for writing the document        
+      resultMarkerTick = operation.tick;
+    }
+  }
+  
+  if (res == TRI_ERROR_NO_ERROR) {
+    TRI_ASSERT(mptr->vpack() != nullptr); 
+  }
+
+  return res;
+}
+
+/// @brief removes a document or edge
+int TRI_collection_t::remove(arangodb::Transaction* trx,
+                             VPackSlice const slice,
+                             OperationOptions& options,
+                             TRI_voc_tick_t& resultMarkerTick,
+                             bool lock,
+                             VPackSlice& prevRev,
+                             TRI_doc_mptr_t& previous) {
+  resultMarkerTick = 0;
+
+  // create remove marker
+  TRI_voc_rid_t revisionId = 0;
+  if (options.isRestore) {
+    VPackSlice oldRev = TRI_ExtractRevisionIdAsSlice(slice);
+    if (!oldRev.isString()) {
+      revisionId = TRI_HybridLogicalClock();
+    } else {
+      bool isOld;
+      revisionId = TRI_StringToRid(oldRev.copyString(), isOld);
+      if (isOld) {
+        // Do not tolerate old revisions
+        revisionId = TRI_HybridLogicalClock();
+      }
+    }
+  } else {
+    revisionId = TRI_HybridLogicalClock();
+  }
+  
+  TransactionBuilderLeaser builder(trx);
+  newObjectForRemove(
+      trx, slice, TRI_RidToString(revisionId), *builder.get());
+
+  prevRev = VPackSlice();
+
+  TRI_IF_FAILURE("RemoveDocumentNoMarker") {
+    // test what happens when no marker can be created
+    return TRI_ERROR_DEBUG;
+  }
+
+  TRI_IF_FAILURE("RemoveDocumentNoMarkerExcept") {
+    // test what happens if no marker can be created
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+  
+  // create marker
+  arangodb::wal::CrudMarker removeMarker(TRI_DF_MARKER_VPACK_REMOVE, TRI_MarkerIdTransaction(trx->getInternals()), builder->slice());
+  
+  arangodb::wal::Marker const* marker;
+  if (options.recoveryMarker == nullptr) {
+    marker = &removeMarker;
+  } else {
+    marker = options.recoveryMarker;
+  }
+
+  int res;
+  {
+    TRI_IF_FAILURE("RemoveDocumentNoLock") {
+      // test what happens if no lock can be acquired
+      return TRI_ERROR_DEBUG;
+    }
+
+    arangodb::wal::DocumentOperation operation(trx, marker, this, TRI_VOC_DOCUMENT_OPERATION_REMOVE);
+
+    // DocumentOperation has taken over the ownership for the marker
+    TRI_ASSERT(operation.marker != nullptr);
+
+    VPackSlice key;
+    if (slice.isString()) {
+      key = slice;
+    } else {
+      key = slice.get(StaticStrings::KeyString);
+    }
+    TRI_ASSERT(!key.isNone());
+    
+    arangodb::CollectionWriteLocker collectionLocker(this, lock);
+    
+    // get the header pointer of the previous revision
+    TRI_doc_mptr_t* oldHeader = nullptr;
+    res = lookupDocument(trx, key, oldHeader);
+    if (res != TRI_ERROR_NO_ERROR) {
+      return res;
+    }
+
+    TRI_ASSERT(oldHeader != nullptr);
+    prevRev = oldHeader->revisionIdAsSlice();
+    previous = *oldHeader;
+
+    // Check old revision:
+    if (!options.ignoreRevs && slice.isObject()) {
+      VPackSlice expectedRevSlice = slice.get(StaticStrings::RevString);
+      int res = checkRevision(trx, expectedRevSlice, prevRev);
+      if (res != TRI_ERROR_NO_ERROR) {
+        return res;
+      }
+    }
+
+    // we found a document to remove
+    TRI_ASSERT(oldHeader != nullptr);
+    operation.header = oldHeader;
+    operation.init();
+
+    // delete from indexes
+    res = deleteSecondaryIndexes(trx, oldHeader, false);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      insertSecondaryIndexes(trx, oldHeader, true);
+      return res;
+    }
+
+    res = deletePrimaryIndex(trx, oldHeader);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      insertSecondaryIndexes(trx, oldHeader, true);
+      return res;
+    }
+
+    operation.indexed();
+    _numberDocuments--;
+
+    TRI_IF_FAILURE("RemoveDocumentNoOperation") { return TRI_ERROR_DEBUG; }
+
+    TRI_IF_FAILURE("RemoveDocumentNoOperationExcept") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+  
+    res = TRI_AddOperationTransaction(trx->getInternals(), operation, options.waitForSync);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      operation.revert();
+    } else {
+      // store the tick that was used for removing the document        
+      resultMarkerTick = operation.tick;
+    }
+  }
+  
+  return res;
+}
+
+/// @brief looks up a document by key, low level worker
+/// the caller must make sure the read lock on the collection is held
+/// the key must be a string slice, no revision check is performed
+int TRI_collection_t::lookupDocument(
+    arangodb::Transaction* trx, VPackSlice const key,
+    TRI_doc_mptr_t*& header) {
+  
+  if (!key.isString()) {
+    return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
+  }
+
+  header = primaryIndex()->lookupKey(trx, key);
+
+  if (header == nullptr) {
+    return TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+/// @brief checks the revision of a document
+int TRI_collection_t::checkRevision(Transaction* trx,
+                                    VPackSlice const expected,
+                                    VPackSlice const found) {
+  if (!expected.isNone() && found != expected) {
+    return TRI_ERROR_ARANGO_CONFLICT;
+  }
+  return TRI_ERROR_NO_ERROR;
+}
+
+/// @brief updates an existing document, low level worker
+/// the caller must make sure the write lock on the collection is held
+int TRI_collection_t::updateDocument(arangodb::Transaction* trx,
+                          TRI_voc_rid_t revisionId,
+                          TRI_doc_mptr_t* oldHeader,
+                          arangodb::wal::DocumentOperation& operation,
+                          TRI_doc_mptr_t* mptr, bool& waitForSync) {
+
+  // save the old data, remember
+  TRI_doc_mptr_t oldData = *oldHeader;
+
+  // remove old document from secondary indexes
+  // (it will stay in the primary index as the key won't change)
+  int res = deleteSecondaryIndexes(trx, oldHeader, false);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    // re-enter the document in case of failure, ignore errors during rollback
+    insertSecondaryIndexes(trx, oldHeader, true);
+    return res;
+  }
+
+  // update header
+  TRI_doc_mptr_t* newHeader = oldHeader;
+
+  // update the header. this will modify oldHeader, too !!!
+  void* mem = operation.marker->vpack(); 
+  TRI_ASSERT(mem != nullptr);
+  newHeader->setVPack(mem);
+
+  // insert new document into secondary indexes
+  res = insertSecondaryIndexes(trx, newHeader, false);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    // rollback
+    deleteSecondaryIndexes(trx, newHeader, true);
+
+    // copy back old header data
+    oldHeader->copy(oldData);
+
+    insertSecondaryIndexes(trx, oldHeader, true);
+
+    return res;
+  }
+
+  operation.indexed();
+
+  TRI_IF_FAILURE("UpdateDocumentNoOperation") { return TRI_ERROR_DEBUG; }
+
+  TRI_IF_FAILURE("UpdateDocumentNoOperationExcept") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+
+  res = TRI_AddOperationTransaction(trx->getInternals(), operation, waitForSync);
+
+  if (res == TRI_ERROR_NO_ERROR) {
+    // write new header into result
+    *mptr = *newHeader;
+  }
+
+  return res;
+}
+
+/// @brief insert a document, low level worker
+/// the caller must make sure the write lock on the collection is held
+int TRI_collection_t::insertDocument(
+    arangodb::Transaction* trx, TRI_doc_mptr_t* header,
+    arangodb::wal::DocumentOperation& operation, TRI_doc_mptr_t* mptr,
+    bool& waitForSync) {
+  TRI_ASSERT(header != nullptr);
+  TRI_ASSERT(mptr != nullptr);
+
+  // .............................................................................
+  // insert into indexes
+  // .............................................................................
+
+  // insert into primary index first
+  int res = insertPrimaryIndex(trx, header);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    // insert has failed
+    return res;
+  }
+
+  // insert into secondary indexes
+  res = insertSecondaryIndexes(trx, header, false);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    deleteSecondaryIndexes(trx, header, true);
+    deletePrimaryIndex(trx, header);
+    return res;
+  }
+
+  _numberDocuments++;
+
+  operation.indexed();
+
+  TRI_IF_FAILURE("InsertDocumentNoOperation") { return TRI_ERROR_DEBUG; }
+
+  TRI_IF_FAILURE("InsertDocumentNoOperationExcept") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+
+  res = TRI_AddOperationTransaction(trx->getInternals(), operation, waitForSync);
+
+  if (res == TRI_ERROR_NO_ERROR) {
+    *mptr = *header;
+  }
+
+  return res;
+}
+
+/// @brief creates a new entry in the primary index
+int TRI_collection_t::insertPrimaryIndex(arangodb::Transaction* trx,
+                                         TRI_doc_mptr_t* header) {
+  TRI_IF_FAILURE("InsertPrimaryIndex") { return TRI_ERROR_DEBUG; }
+
+  TRI_doc_mptr_t* found;
+
+  TRI_ASSERT(header != nullptr);
+  TRI_ASSERT(header->vpack() != nullptr); 
+
+  // insert into primary index
+  int res = primaryIndex()->insertKey(trx, header, (void const**)&found);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return res;
+  }
+
+  if (found == nullptr) {
+    // success
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  return TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED;
+}
+
+/// @brief creates a new entry in the secondary indexes
+int TRI_collection_t::insertSecondaryIndexes(
+    arangodb::Transaction* trx, TRI_doc_mptr_t const* header, bool isRollback) {
+  TRI_IF_FAILURE("InsertSecondaryIndexes") { return TRI_ERROR_DEBUG; }
+
+  bool const useSecondary = useSecondaryIndexes();
+  if (!useSecondary && _persistentIndexes == 0) {
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  int result = TRI_ERROR_NO_ERROR;
+
+  auto const& indexes = allIndexes();
+  size_t const n = indexes.size();
+
+  for (size_t i = 1; i < n; ++i) {
+    auto idx = indexes[i];
+
+    if (!useSecondary && !idx->isPersistent()) {
+      continue;
+    }
+
+    int res = idx->insert(trx, header, isRollback);
+
+    // in case of no-memory, return immediately
+    if (res == TRI_ERROR_OUT_OF_MEMORY) {
+      return res;
+    } 
+    if (res != TRI_ERROR_NO_ERROR) {
+      if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED ||
+          result == TRI_ERROR_NO_ERROR) {
+        // "prefer" unique constraint violated
+        result = res;
+      }
+    }
+  }
+
+  return result;
+}
+
+/// @brief deletes an entry from the primary index
+int TRI_collection_t::deletePrimaryIndex(
+    arangodb::Transaction* trx, TRI_doc_mptr_t const* header) {
+  TRI_IF_FAILURE("DeletePrimaryIndex") { return TRI_ERROR_DEBUG; }
+
+  auto found = primaryIndex()->removeKey(
+      trx, Transaction::extractKeyFromDocument(VPackSlice(header->vpack())));
+
+  if (found == nullptr) {
+    return TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+/// @brief deletes an entry from the secondary indexes
+int TRI_collection_t::deleteSecondaryIndexes(
+    arangodb::Transaction* trx, TRI_doc_mptr_t const* header, bool isRollback) {
+
+  bool const useSecondary = useSecondaryIndexes();
+  if (!useSecondary && _persistentIndexes == 0) {
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  TRI_IF_FAILURE("DeleteSecondaryIndexes") { return TRI_ERROR_DEBUG; }
+
+  int result = TRI_ERROR_NO_ERROR;
+
+  auto const& indexes = allIndexes();
+  size_t const n = indexes.size();
+
+  for (size_t i = 1; i < n; ++i) {
+    auto idx = indexes[i];
+    
+    if (!useSecondary && !idx->isPersistent()) {
+      continue;
+    }
+
+    int res = idx->remove(trx, header, isRollback);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      // an error occurred
+      result = res;
+    }
+  }
+
+  return result;
+}
+
+/// @brief new object for insert, computes the hash of the key
+int TRI_collection_t::newObjectForInsert(
+    Transaction* trx,
+    VPackSlice const& value,
+    VPackSlice const& fromSlice,
+    VPackSlice const& toSlice,
+    bool isEdgeCollection,
+    uint64_t& hash,
+    VPackBuilder& builder,
+    bool isRestore) {
+
+  TRI_voc_tick_t newRev = 0;
+  builder.openObject();
+  
+  // add system attributes first, in this order:
+  // _key, _id, _from, _to, _rev 
+
+  // _key
+  VPackSlice s = value.get(StaticStrings::KeyString);
+  if (s.isNone()) {
+    TRI_ASSERT(!isRestore);   // need key in case of restore
+    newRev = TRI_HybridLogicalClock();
+    std::string keyString = _keyGenerator->generate(TRI_NewTickServer());
+    if (keyString.empty()) {
+      return TRI_ERROR_ARANGO_OUT_OF_KEYS;
+    }
+    uint8_t* where = builder.add(StaticStrings::KeyString,
+                                 VPackValue(keyString));
+    s = VPackSlice(where);  // point to newly built value, the string
+  } else if (!s.isString()) {
+    return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
+  } else {
+    std::string keyString = s.copyString();
+    int res = _keyGenerator->validate(keyString, isRestore);
+    if (res != TRI_ERROR_NO_ERROR) {
+      return res;
+    }
+    builder.add(StaticStrings::KeyString, s);
+  }
+  
+  // _id
+  uint8_t* p = builder.add(StaticStrings::IdString,
+      VPackValuePair(9ULL, VPackValueType::Custom));
+  *p++ = 0xf3;  // custom type for _id
+  if (ServerState::isDBServer(trx->serverRole()) &&
+      _info.name()[0] != '_') {
+    // db server in cluster, note: the local collections _statistics,
+    // _statisticsRaw and _statistics15 (which are the only system collections)
+    // must not be treated as shards but as local collections, we recognise
+    // this by looking at the first letter of the collection name in _info
+    DatafileHelper::StoreNumber<uint64_t>(p, _info.planId(), sizeof(uint64_t));
+  } else {
+    // local server
+    DatafileHelper::StoreNumber<uint64_t>(p, _info.id(), sizeof(uint64_t));
+  }
+  // we can get away with the fast hash function here, as key values are 
+  // restricted to strings
+  hash = s.hashString();
+
+  // _from and _to
+  if (isEdgeCollection) {
+    TRI_ASSERT(!fromSlice.isNone());
+    TRI_ASSERT(!toSlice.isNone());
+    builder.add(StaticStrings::FromString, fromSlice);
+    builder.add(StaticStrings::ToString, toSlice);
+  }
+
+  // _rev
+  std::string newRevSt;
+  if (isRestore) {
+    VPackSlice oldRev = TRI_ExtractRevisionIdAsSlice(value);
+    if (!oldRev.isString()) {
+      return TRI_ERROR_ARANGO_DOCUMENT_REV_BAD;
+    }
+    bool isOld;
+    TRI_voc_rid_t oldRevision = TRI_StringToRid(oldRev.copyString(), isOld);
+    if (isOld) {
+      oldRevision = TRI_HybridLogicalClock();
+    }
+    newRevSt = TRI_RidToString(oldRevision);
+  } else {
+    if (newRev == 0) {
+      newRev = TRI_HybridLogicalClock();
+    }
+    newRevSt = TRI_RidToString(newRev);
+  }
+  builder.add(StaticStrings::RevString, VPackValue(newRevSt));
+  
+  // add other attributes after the system attributes
+  TRI_SanitizeObjectWithEdges(value, builder);
+
+  builder.close();
+  return TRI_ERROR_NO_ERROR;
+} 
+
+/// @brief new object for replace, oldValue must have _key and _id correctly set
+void TRI_collection_t::newObjectForReplace(
+    Transaction* trx,
+    VPackSlice const& oldValue,
+    VPackSlice const& newValue,
+    VPackSlice const& fromSlice,
+    VPackSlice const& toSlice,
+    bool isEdgeCollection,
+    std::string const& rev,
+    VPackBuilder& builder) {
+
+  builder.openObject();
+
+  // add system attributes first, in this order:
+  // _key, _id, _from, _to, _rev
+  
+  // _key
+  VPackSlice s = oldValue.get(StaticStrings::KeyString);
+  TRI_ASSERT(!s.isNone());
+  builder.add(StaticStrings::KeyString, s);
+
+  // _id
+  s = oldValue.get(StaticStrings::IdString);
+  TRI_ASSERT(!s.isNone());
+  builder.add(StaticStrings::IdString, s);
+
+  // _from and _to here
+  if (isEdgeCollection) {
+    TRI_ASSERT(!fromSlice.isNone());
+    TRI_ASSERT(!toSlice.isNone());
+    builder.add(StaticStrings::FromString, fromSlice);
+    builder.add(StaticStrings::ToString, toSlice);
+  }
+  
+  // _rev
+  builder.add(StaticStrings::RevString, VPackValue(rev));
+  
+  // add other attributes after the system attributes
+  TRI_SanitizeObjectWithEdges(newValue, builder);
+
+  builder.close();
+} 
+
+/// @brief merge two objects for update, oldValue must have correctly set
+/// _key and _id attributes
+void TRI_collection_t::mergeObjectsForUpdate(
+      arangodb::Transaction* trx,
+      VPackSlice const& oldValue,
+      VPackSlice const& newValue,
+      bool isEdgeCollection,
+      std::string const& rev,
+      bool mergeObjects, bool keepNull,
+      VPackBuilder& b) {
+
+  b.openObject();
+
+  VPackSlice keySlice = oldValue.get(StaticStrings::KeyString);
+  VPackSlice idSlice = oldValue.get(StaticStrings::IdString);
+  TRI_ASSERT(!keySlice.isNone());
+  TRI_ASSERT(!idSlice.isNone());
+  
+  // Find the attributes in the newValue object:
+  VPackSlice fromSlice;
+  VPackSlice toSlice;
+
+  std::unordered_map<std::string, VPackSlice> newValues;
+  { 
+    VPackObjectIterator it(newValue, false);
+    while (it.valid()) {
+      std::string key = it.key().copyString();
+      if (!key.empty() && key[0] == '_' &&
+          (key == StaticStrings::KeyString ||
+           key == StaticStrings::IdString ||
+           key == StaticStrings::RevString ||
+           key == StaticStrings::FromString ||
+           key == StaticStrings::ToString)) {
+        // note _from and _to and ignore _id, _key and _rev
+        if (key == StaticStrings::FromString) {
+          fromSlice = it.value();
+        } else if (key == StaticStrings::ToString) {
+          toSlice = it.value();
+        } // else do nothing
+      } else {
+        // regular attribute
+        newValues.emplace(std::move(key), it.value());
+      }
+
+      it.next();
+    }
+  }
+
+  if (isEdgeCollection) {
+    if (fromSlice.isNone()) {
+      fromSlice = oldValue.get(StaticStrings::FromString);
+    }
+    if (toSlice.isNone()) {
+      toSlice = oldValue.get(StaticStrings::ToString);
+    }
+  }
+
+  // add system attributes first, in this order:
+  // _key, _id, _from, _to, _rev
+
+  // _key
+  b.add(StaticStrings::KeyString, keySlice);
+
+  // _id
+  b.add(StaticStrings::IdString, idSlice);
+
+  // _from, _to
+  if (isEdgeCollection) {
+    TRI_ASSERT(!fromSlice.isNone());
+    TRI_ASSERT(!toSlice.isNone());
+    b.add(StaticStrings::FromString, fromSlice);
+    b.add(StaticStrings::ToString, toSlice);
+  }
+
+  // _rev
+  b.add(StaticStrings::RevString, VPackValue(rev));
+
+  // add other attributes after the system attributes
+  { 
+    VPackObjectIterator it(oldValue, false);
+    while (it.valid()) {
+      std::string key = it.key().copyString();
+      // exclude system attributes in old value now
+      if (!key.empty() && key[0] == '_' &&
+          (key == StaticStrings::KeyString ||
+           key == StaticStrings::IdString ||
+           key == StaticStrings::RevString ||
+           key == StaticStrings::FromString ||
+           key == StaticStrings::ToString)) {
+        it.next();
+        continue;
+      }
+      
+      auto found = newValues.find(key);
+
+      if (found == newValues.end()) {
+        // use old value
+        b.add(key, it.value());
+      } else if (mergeObjects && it.value().isObject() &&
+                  (*found).second.isObject()) {
+        // merge both values
+        auto& value = (*found).second;
+        if (keepNull || (!value.isNone() && !value.isNull())) {
+          VPackBuilder sub = VPackCollection::merge(it.value(), value, 
+                                                    true, !keepNull);
+          b.add(key, sub.slice());
+        }
+        // clear the value in the map so its not added again
+        (*found).second = VPackSlice();
+      } else {
+        // use new value
+        auto& value = (*found).second;
+        if (keepNull || (!value.isNone() && !value.isNull())) {
+          b.add(key, value);
+        }
+        // clear the value in the map so its not added again
+        (*found).second = VPackSlice();
+      }
+      it.next();
+    }
+  }
+
+  // add remaining values that were only in new object
+  for (auto& it : newValues) {
+    auto& s = it.second;
+    if (s.isNone()) {
+      continue;
+    }
+    if (!keepNull && s.isNull()) {
+      continue;
+    }
+    b.add(std::move(it.first), s);
+  }
+
+  b.close();
+}
+
+/// @brief new object for remove, must have _key set
+void TRI_collection_t::newObjectForRemove(
+    Transaction* trx,
+    VPackSlice const& oldValue,
+    std::string const& rev,
+    VPackBuilder& builder) {
+
+  // create an object consisting of _key and _rev (in this order)
+  builder.openObject();
+  if (oldValue.isString()) {
+    builder.add(StaticStrings::KeyString, oldValue);
+  } else {
+    VPackSlice s = oldValue.get(StaticStrings::KeyString);
+    TRI_ASSERT(s.isString());
+    builder.add(StaticStrings::KeyString, s);
+  }
+  builder.add(StaticStrings::RevString, VPackValue(rev));
+  builder.close();
+} 
+
+/// @brief rolls back a document operation
+int TRI_collection_t::rollbackOperation(arangodb::Transaction* trx, 
+                                        TRI_voc_document_operation_e type, 
+                                        TRI_doc_mptr_t* header,
+                                        TRI_doc_mptr_t const* oldData) {
+  if (type == TRI_VOC_DOCUMENT_OPERATION_INSERT) {
+    // ignore any errors we're getting from this
+    deletePrimaryIndex(trx, header);
+    deleteSecondaryIndexes(trx, header, true);
+
+    TRI_ASSERT(_numberDocuments > 0);
+    _numberDocuments--;
+
+    return TRI_ERROR_NO_ERROR;
+  } else if (type == TRI_VOC_DOCUMENT_OPERATION_UPDATE ||
+             type == TRI_VOC_DOCUMENT_OPERATION_REPLACE) {
+    // copy the existing header's state
+    TRI_doc_mptr_t copy = *header;
+
+    // remove the current values from the indexes
+    deleteSecondaryIndexes(trx, header, true);
+    // revert to the old state
+    header->copy(*oldData);
+    // re-insert old state
+    int res = insertSecondaryIndexes(trx, header, true);
+    // revert again to the new state, because other parts of the new state
+    // will be reverted at some other place
+    header->copy(copy);
+
+    return res;
+  } else if (type == TRI_VOC_DOCUMENT_OPERATION_REMOVE) {
+    int res = insertPrimaryIndex(trx, header);
+
+    if (res == TRI_ERROR_NO_ERROR) {
+      res = insertSecondaryIndexes(trx, header, true);
+      _numberDocuments++;
+    } else {
+      LOG(ERR) << "error rolling back remove operation";
+    }
+    return res;
+  }
+
+  return TRI_ERROR_INTERNAL;
+}
+
+/// @brief fill an index in batches
+int TRI_collection_t::fillIndexBatch(arangodb::Transaction* trx,
+                                     arangodb::Index* idx) {
+  auto indexPool = application_features::ApplicationServer::getFeature<IndexPoolFeature>("IndexPool")->getThreadPool();
+
+  double start = TRI_microtime();
+
+  LOG_TOPIC(TRACE, Logger::PERFORMANCE)
+      << "fill-index-batch { collection: " << _vocbase->name() << "/"
+      << _info.name() << " }, " << idx->context()
+      << ", threads: " << indexPool->numThreads()
+      << ", buckets: " << _info.indexBuckets();
+
+  // give the index a size hint
+  auto primaryIndex = this->primaryIndex();
+
+  auto nrUsed = primaryIndex->size();
+
+  idx->sizeHint(trx, nrUsed);
+
+  // process documents a million at a time
+  size_t blockSize = 1024 * 1024;
+
+  if (nrUsed < blockSize) {
+    blockSize = nrUsed;
+  }
+  if (blockSize == 0) {
+    blockSize = 1;
+  }
+
+  int res = TRI_ERROR_NO_ERROR;
+
+  std::vector<TRI_doc_mptr_t const*> documents;
+  documents.reserve(blockSize);
+
+  if (nrUsed > 0) {
+    arangodb::basics::BucketPosition position;
+    uint64_t total = 0;
+    while (true) {
+      TRI_doc_mptr_t const* mptr =
+          primaryIndex->lookupSequential(trx, position, total);
+
+      if (mptr == nullptr) {
+        break;
+      }
+
+      documents.emplace_back(mptr);
+
+      if (documents.size() == blockSize) {
+        res = idx->batchInsert(trx, &documents, indexPool->numThreads());
+        documents.clear();
+
+        // some error occurred
+        if (res != TRI_ERROR_NO_ERROR) {
+          break;
+        }
+      }
+    }
+  }
+
+  // process the remainder of the documents
+  if (res == TRI_ERROR_NO_ERROR && !documents.empty()) {
+    res = idx->batchInsert(trx, &documents, indexPool->numThreads());
+  }
+
+  LOG_TOPIC(TRACE, Logger::PERFORMANCE)
+      << "[timer] " << Logger::FIXED(TRI_microtime() - start)
+      << " s, fill-index-batch { collection: " << _vocbase->name()
+      << "/" << _info.name() << " }, " << idx->context()
+      << ", threads: " << indexPool->numThreads()
+      << ", buckets: " << _info.indexBuckets();
+
+  return res;
+}
+
+/// @brief fill an index sequentially
+int TRI_collection_t::fillIndexSequential(arangodb::Transaction* trx,
+                                          arangodb::Index* idx) {
+  double start = TRI_microtime();
+
+  LOG_TOPIC(TRACE, Logger::PERFORMANCE)
+      << "fill-index-sequential { collection: " << _vocbase->name()
+      << "/" << _info.name() << " }, " << idx->context()
+      << ", buckets: " << _info.indexBuckets();
+
+  // give the index a size hint
+  auto primaryIndex = this->primaryIndex();
+  size_t nrUsed = primaryIndex->size();
+
+  idx->sizeHint(trx, nrUsed);
+
+  if (nrUsed > 0) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    static int const LoopSize = 10000;
+    int counter = 0;
+    int loops = 0;
+#endif
+
+    arangodb::basics::BucketPosition position;
+    uint64_t total = 0;
+
+    while (true) {
+      TRI_doc_mptr_t const* mptr =
+          primaryIndex->lookupSequential(trx, position, total);
+
+      if (mptr == nullptr) {
+        break;
+      }
+
+      int res = idx->insert(trx, mptr, false);
+
+      if (res != TRI_ERROR_NO_ERROR) {
+        return res;
+      }
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+      if (++counter == LoopSize) {
+        counter = 0;
+        ++loops;
+        LOG(TRACE) << "indexed " << (LoopSize * loops)
+                   << " documents of collection " << _info.id();
+      }
+#endif
+    }
+  }
+
+  LOG_TOPIC(TRACE, Logger::PERFORMANCE)
+      << "[timer] " << Logger::FIXED(TRI_microtime() - start)
+      << " s, fill-index-sequential { collection: " << _vocbase->name()
+      << "/" << _info.name() << " }, " << idx->context()
+      << ", buckets: " << _info.indexBuckets();
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+/// @brief initializes an index with all existing documents
+int TRI_collection_t::fillIndex(arangodb::Transaction* trx,
+                                arangodb::Index* idx,
+                                bool skipPersistent) {
+  if (!useSecondaryIndexes()) {
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  if (idx->isPersistent() && skipPersistent) {
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  try {
+    size_t nrUsed = primaryIndex()->size();
+    auto indexPool = application_features::ApplicationServer::getFeature<IndexPoolFeature>("IndexPool")->getThreadPool();
+
+    int res;
+
+    if (indexPool != nullptr && idx->hasBatchInsert() && nrUsed > 256 * 1024 &&
+        _info.indexBuckets() > 1) {
+      // use batch insert if there is an index pool,
+      // the collection has more than one index bucket
+      // and it contains a significant amount of documents
+      res = fillIndexBatch(trx, idx);
+    } else {
+      res = fillIndexSequential(trx, idx);
+    }
+
+    return res;
+  } catch (arangodb::basics::Exception const& ex) {
+    return ex.code();
+  } catch (std::bad_alloc&) {
+    return TRI_ERROR_OUT_OF_MEMORY;
+  } catch (...) {
+    return TRI_ERROR_INTERNAL;
+  }
+}
+
+/// @brief saves an index
+int TRI_collection_t::saveIndex(arangodb::Index* idx, bool writeMarker) {
+  // convert into JSON
+  std::shared_ptr<VPackBuilder> builder;
+  try {
+    builder = idx->toVelocyPack(false);
+  } catch (...) {
+    LOG(ERR) << "cannot save index definition.";
+    return TRI_set_errno(TRI_ERROR_INTERNAL);
+  }
+  if (builder == nullptr) {
+    LOG(ERR) << "cannot save index definition.";
+    return TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+  }
+
+  // construct filename
+  std::string name("index-" + std::to_string(idx->id()) + ".json");
+  std::string filename = arangodb::basics::FileUtils::buildFilename(path(), name);
+
+  VPackSlice const idxSlice = builder->slice();
+  // and save
+  bool doSync = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database")->forceSyncProperties();
+  bool ok = arangodb::basics::VelocyPackHelper::velocyPackToFile(
+      filename.c_str(), idxSlice, doSync);
+
+  if (!ok) {
+    LOG(ERR) << "cannot save index definition: " << TRI_last_error();
+
+    return TRI_errno();
+  }
+
+  if (!writeMarker) {
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  int res = TRI_ERROR_NO_ERROR;
+
+  try {
+    arangodb::wal::CollectionMarker marker(TRI_DF_MARKER_VPACK_CREATE_INDEX, _vocbase->_id, _info.id(), idxSlice);
+
+    arangodb::wal::SlotInfoCopy slotInfo =
+        arangodb::wal::LogfileManager::instance()->allocateAndWrite(marker, false);
+
+    if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
+      THROW_ARANGO_EXCEPTION(slotInfo.errorCode);
+    }
+
+    return TRI_ERROR_NO_ERROR;
+  } catch (arangodb::basics::Exception const& ex) {
+    res = ex.code();
+  } catch (...) {
+    res = TRI_ERROR_INTERNAL;
+  }
+
+  // TODO: what to do here?
+  return res;
+}
+
+/// @brief returns a description of all indexes
+/// the caller must have read-locked the underlying collection!
+std::vector<std::shared_ptr<VPackBuilder>> TRI_collection_t::indexesToVelocyPack(bool withFigures) {
+  auto const& indexes = allIndexes();
+
+  std::vector<std::shared_ptr<VPackBuilder>> result;
+  result.reserve(indexes.size());
+
+  for (auto const& idx : indexes) {
+    auto builder = idx->toVelocyPack(withFigures);
+
+    // shouldn't fail because of reserve
+    result.emplace_back(builder);
+  }
+
+  return result;
+}
+
+/// @brief removes an index file
+bool TRI_collection_t::removeIndexFile(TRI_idx_iid_t id) {
+  // construct filename
+  std::string name("index-" + std::to_string(id) + ".json");
+  std::string filename = arangodb::basics::FileUtils::buildFilename(path(), name);
+
+  int res = TRI_UnlinkFile(filename.c_str());
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    LOG(ERR) << "cannot remove index definition: " << TRI_last_error();
+    return false;
+  }
+
+  return true;
+}
+
+/// @brief drops an index, including index file removal and replication
+bool TRI_collection_t::dropIndex(TRI_idx_iid_t iid, bool writeMarker) {
+  if (iid == 0) {
+    // invalid index id or primary index
+    return true;
+  }
+
+  arangodb::Index* found = nullptr;
+  {
+    arangodb::aql::QueryCache::instance()->invalidate(
+        _vocbase, _info.name());
+    found = removeIndex(iid);
+  }
+
+  if (found != nullptr) {
+    bool result = removeIndexFile(found->id());
+
+    delete found;
+    found = nullptr;
+
+    if (writeMarker) {
+      int res = TRI_ERROR_NO_ERROR;
+
+      try {
+        VPackBuilder markerBuilder;
+        markerBuilder.openObject();
+        markerBuilder.add("id", VPackValue(iid));
+        markerBuilder.close();
+
+        arangodb::wal::CollectionMarker marker(TRI_DF_MARKER_VPACK_DROP_INDEX, _vocbase->_id, _info.id(), markerBuilder.slice());
+        
+        arangodb::wal::SlotInfoCopy slotInfo =
+            arangodb::wal::LogfileManager::instance()->allocateAndWrite(marker, false);
+
+        if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
+          THROW_ARANGO_EXCEPTION(slotInfo.errorCode);
+        }
+
+        return true;
+      } catch (arangodb::basics::Exception const& ex) {
+        res = ex.code();
+      } catch (...) {
+        res = TRI_ERROR_INTERNAL;
+      }
+
+      LOG(WARN) << "could not save index drop marker in log: " << TRI_errno_string(res);
+    }
+
+    // TODO: what to do here?
+    return result;
+  }
+
+  return false;
+}
+
+/// @brief finds a path based, unique or non-unique index
+static arangodb::Index* LookupPathIndexDocumentCollection(
+    TRI_collection_t* collection,
+    std::vector<std::vector<arangodb::basics::AttributeName>> const& paths,
+    arangodb::Index::IndexType type, int sparsity, bool unique,
+    bool allowAnyAttributeOrder) {
+  for (auto const& idx : collection->allIndexes()) {
+    if (idx->type() != type) {
+      continue;
+    }
+
+    // .........................................................................
+    // Now perform checks which are specific to the type of index
+    // .........................................................................
+
+    switch (idx->type()) {
+      case arangodb::Index::TRI_IDX_TYPE_HASH_INDEX: {
+        auto hashIndex = static_cast<arangodb::HashIndex*>(idx);
+
+        if (unique != hashIndex->unique() ||
+            (sparsity != -1 && sparsity != (hashIndex->sparse() ? 1 : 0))) {
+          continue;
+        }
+        break;
+      }
+
+      case arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX: {
+        auto skiplistIndex = static_cast<arangodb::SkiplistIndex*>(idx);
+
+        if (unique != skiplistIndex->unique() ||
+            (sparsity != -1 && sparsity != (skiplistIndex->sparse() ? 1 : 0))) {
+          continue;
+        }
+        break;
+      }
+      
+#ifdef ARANGODB_ENABLE_ROCKSDB
+      case arangodb::Index::TRI_IDX_TYPE_ROCKSDB_INDEX: {
+        auto rocksDBIndex = static_cast<arangodb::RocksDBIndex*>(idx);
+
+        if (unique != rocksDBIndex->unique() ||
+            (sparsity != -1 && sparsity != (rocksDBIndex->sparse() ? 1 : 0))) {
+          continue;
+        }
+        break;
+      }
+#endif
+
+      default: { continue; }
+    }
+
+    // .........................................................................
+    // check that the number of paths (fields) in the index matches that
+    // of the number of attributes
+    // .........................................................................
+
+    auto const& idxFields = idx->fields();
+    size_t const n = idxFields.size();
+
+    if (n != paths.size()) {
+      continue;
+    }
+
+    // .........................................................................
+    // go through all the attributes and see if they match
+    // .........................................................................
+
+    bool found = true;
+
+    if (allowAnyAttributeOrder) {
+      // any permutation of attributes is allowed
+      for (size_t i = 0; i < n; ++i) {
+        found = false;
+        size_t fieldSize = idxFields[i].size();
+
+        for (size_t j = 0; j < n; ++j) {
+          if (fieldSize == paths[j].size()) {
+            bool allEqual = true;
+            for (size_t k = 0; k < fieldSize; ++k) {
+              if (idxFields[j][k] != paths[j][k]) {
+                allEqual = false;
+                break;
+              }
+            }
+            if (allEqual) {
+              found = true;
+              break;
+            }
+          }
+        }
+
+        if (!found) {
+          break;
+        }
+      }
+    } else {
+      // attributes need to be present in a given order
+      for (size_t i = 0; i < n; ++i) {
+        size_t fieldSize = idxFields[i].size();
+        if (fieldSize == paths[i].size()) {
+          for (size_t k = 0; k < fieldSize; ++k) {
+            if (idxFields[i][k] != paths[i][k]) {
+              found = false;
+              break;
+            }
+          }
+          if (!found) {
+            break;
+          }
+        } else {
+          found = false;
+          break;
+        }
+      }
+    }
+
+    // stop if we found a match
+    if (found) {
+      return idx;
+    }
+  }
+
+  return nullptr;
+}
+
+/// @brief restores a path based index (template)
+static int PathBasedIndexFromVelocyPack(
+    arangodb::Transaction* trx, TRI_collection_t* document,
+    VPackSlice const& definition, TRI_idx_iid_t iid,
+    arangodb::Index* (*creator)(arangodb::Transaction*,
+                                TRI_collection_t*,
+                                std::vector<std::string> const&, TRI_idx_iid_t,
+                                bool, bool, bool&),
+    arangodb::Index** dst) {
+  if (dst != nullptr) {
+    *dst = nullptr;
+  }
+
+  // extract fields
+  VPackSlice fld;
+  try {
+    fld = ExtractFields(definition, iid);
+  } catch (arangodb::basics::Exception const& e) {
+    return TRI_set_errno(e.code());
+  }
+  VPackValueLength fieldCount = fld.length();
+
+  // extract the list of fields
+  if (fieldCount < 1) {
+    LOG(ERR) << "ignoring index " << iid
+             << ", need at least one attribute path";
+
+    return TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
+  }
+
+  // determine if the index is unique or non-unique
+  VPackSlice bv = definition.get("unique");
+
+  if (!bv.isBoolean()) {
+    LOG(ERR) << "ignoring index " << iid
+             << ", could not determine if unique or non-unique";
+    return TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
+  }
+
+  bool unique = bv.getBoolean();
+
+  // determine sparsity
+  bool sparse = false;
+
+  bv = definition.get("sparse");
+
+  if (bv.isBoolean()) {
+    sparse = bv.getBoolean();
+  } else {
+    // no sparsity information given for index
+    // now use pre-2.5 defaults: unique hash indexes were sparse, all other
+    // indexes were non-sparse
+    bool isHashIndex = false;
+    VPackSlice typeSlice = definition.get("type");
+    if (typeSlice.isString()) {
+      isHashIndex = typeSlice.copyString() == "hash";
+    }
+
+    if (isHashIndex && unique) {
+      sparse = true;
+    }
+  }
+
+  // Initialize the vector in which we store the fields on which the hashing
+  // will be based.
+  std::vector<std::string> attributes;
+  attributes.reserve(static_cast<size_t>(fieldCount));
+
+  // find fields
+  for (auto const& fieldStr : VPackArrayIterator(fld)) {
+    attributes.emplace_back(fieldStr.copyString());
+  }
+
+  // create the index
+  bool created;
+  auto idx = creator(trx, document, attributes, iid, sparse, unique, created);
+
+  if (dst != nullptr) {
+    *dst = idx;
+  }
+
+  if (idx == nullptr) {
+    LOG(ERR) << "cannot create index " << iid << " in collection '" << document->_info.name() << "'";
+    return TRI_errno();
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+/// @brief converts attribute names to lists of names
+static int NamesByAttributeNames(
+    std::vector<std::string> const& attributes,
+    std::vector<std::vector<arangodb::basics::AttributeName>>& names,
+    bool isHashIndex) {
+  names.reserve(attributes.size());
+
+  // copy attributes, because we may need to sort them
+  std::vector<std::string> copy = attributes;
+
+  if (isHashIndex) {
+    // for a hash index, an index on ["a", "b"] is the same as an index on ["b", "a"].
+    // by sorting index attributes we can make sure the above the index variants are
+    // normalized and will be treated the same
+    std::sort(copy.begin(), copy.end());
+  }
+
+  for (auto const& name : copy) {
+    std::vector<arangodb::basics::AttributeName> attrNameList;
+    TRI_ParseAttributeString(name, attrNameList);
+    TRI_ASSERT(!attrNameList.empty());
+    std::vector<std::string> joinedNames;
+    TRI_AttributeNamesJoinNested(attrNameList, joinedNames, true);
+    names.emplace_back(attrNameList);
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+/// @brief adds a geo index to a collection
+static arangodb::Index* CreateGeoIndexDocumentCollection(
+    arangodb::Transaction* trx, TRI_collection_t* document,
+    std::string const& location, std::string const& latitude,
+    std::string const& longitude, bool geoJson, TRI_idx_iid_t iid,
+    bool& created) {
+
+  arangodb::Index* idx = nullptr;
+  created = false;
+  std::unique_ptr<arangodb::GeoIndex2> geoIndex;
+  if (!location.empty()) {
+    // Use the version with one value
+    std::vector<std::string> loc =
+        arangodb::basics::StringUtils::split(location, ".");
+
+    // check, if we know the index
+    idx = document->lookupGeoIndex1(loc, geoJson);
+
+    if (idx != nullptr) {
+      LOG(TRACE) << "geo-index already created for location '" << location << "'";
+      return idx;
+    }
+
+    if (iid == 0) {
+      iid = arangodb::Index::generateId();
+    }
+
+    geoIndex.reset(new arangodb::GeoIndex2(
+        iid, document,
+        std::vector<std::vector<arangodb::basics::AttributeName>>{
+            {{location, false}}},
+        loc, geoJson));
+
+    LOG(TRACE) << "created geo-index for location '" << location << "'";
+  } else if (!longitude.empty() && !latitude.empty()) {
+    // Use the version with two values
+    std::vector<std::string> lat =
+        arangodb::basics::StringUtils::split(latitude, ".");
+
+    std::vector<std::string> lon =
+        arangodb::basics::StringUtils::split(longitude, ".");
+
+    // check, if we know the index
+    idx = document->lookupGeoIndex2(lat, lon);
+
+    if (idx != nullptr) {
+      LOG(TRACE) << "geo-index already created for latitude '" << latitude
+                 << "' and longitude '" << longitude << "'";
+      return idx;
+    }
+
+    if (iid == 0) {
+      iid = arangodb::Index::generateId();
+    }
+
+    geoIndex.reset(new arangodb::GeoIndex2(
+        iid, document,
+        std::vector<std::vector<arangodb::basics::AttributeName>>{
+            {{latitude, false}}, {{longitude, false}}},
+        std::vector<std::vector<std::string>>{lat, lon}));
+
+    LOG(TRACE) << "created geo-index for latitude '" << latitude
+               << "' and longitude '" << longitude << "'";
+  } else {
+    TRI_set_errno(TRI_ERROR_INTERNAL);
+    LOG(TRACE) << "expecting either 'location' or 'latitude' and 'longitude'";
+    return nullptr;
+  }
+
+  idx = static_cast<arangodb::GeoIndex2*>(geoIndex.get());
+
+  if (idx == nullptr) {
+    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+    return nullptr;
+  }
+
+  // initializes the index with all existing documents
+  int res = document->fillIndex(trx, idx);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_set_errno(res);
+
+    return nullptr;
+  }
+
+  // and store index
+  try {
+    document->addIndex(idx);
+    geoIndex.release();
+  } catch (...) {
+    TRI_set_errno(res);
+
+    return nullptr;
+  }
+
+  created = true;
+
+  return idx;
+}
+
+/// @brief restores an index
+static int GeoIndexFromVelocyPack(arangodb::Transaction* trx,
+                                  TRI_collection_t* document,
+                                  VPackSlice const& definition,
+                                  TRI_idx_iid_t iid, arangodb::Index** dst) {
+  if (dst != nullptr) {
+    *dst = nullptr;
+  }
+
+  VPackSlice const type = definition.get("type");
+
+  if (!type.isString()) {
+    return TRI_ERROR_INTERNAL;
+  }
+
+  std::string typeStr = type.copyString();
+
+  // extract fields
+  VPackSlice fld;
+  try {
+    fld = ExtractFields(definition, iid);
+  } catch (arangodb::basics::Exception const& e) {
+    return TRI_set_errno(e.code());
+  }
+  VPackValueLength fieldCount = fld.length();
+
+  arangodb::Index* idx = nullptr;
+
+  // list style
+  if (typeStr == "geo1") {
+    // extract geo json
+    bool geoJson = arangodb::basics::VelocyPackHelper::getBooleanValue(
+        definition, "geoJson", false);
+
+    // need just one field
+    if (fieldCount == 1) {
+      VPackSlice loc = fld.at(0);
+      bool created;
+
+      idx = CreateGeoIndexDocumentCollection(trx, document, loc.copyString(),
+                                             std::string(), std::string(),
+                                             geoJson, iid, created);
+
+      if (dst != nullptr) {
+        *dst = idx;
+      }
+
+      return idx == nullptr ? TRI_errno() : TRI_ERROR_NO_ERROR;
+    } else {
+      LOG(ERR) << "ignoring " << typeStr << "-index " << iid
+               << ", 'fields' must be a list with 1 entries";
+
+      return TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
+    }
+  }
+
+  // attribute style
+  else if (typeStr == "geo2") {
+    if (fieldCount == 2) {
+      VPackSlice lat = fld.at(0);
+      VPackSlice lon = fld.at(1);
+
+      bool created;
+
+      idx = CreateGeoIndexDocumentCollection(trx, document, std::string(),
+                                             lat.copyString(), lon.copyString(),
+                                             false, iid, created);
+
+      if (dst != nullptr) {
+        *dst = idx;
+      }
+
+      return idx == nullptr ? TRI_errno() : TRI_ERROR_NO_ERROR;
+    } else {
+      LOG(ERR) << "ignoring " << typeStr << "-index " << iid
+               << ", 'fields' must be a list with 2 entries";
+
+      return TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
+    }
+  } else {
+    TRI_ASSERT(false);
+  }
+
+  return TRI_ERROR_NO_ERROR;  // shut the vc++ up
+}
+
+/// @brief finds a geo index, list style
+arangodb::Index* TRI_collection_t::lookupGeoIndex1(
+    std::vector<std::string> const& location, bool geoJson) {
+
+  for (auto const& idx : allIndexes()) {
+    if (idx->type() == arangodb::Index::TRI_IDX_TYPE_GEO1_INDEX) {
+      auto geoIndex = static_cast<arangodb::GeoIndex2*>(idx);
+
+      if (geoIndex->isSame(location, geoJson)) {
+        return idx;
+      }
+    }
+  }
+
+  return nullptr;
+}
+
+/// @brief finds a geo index, attribute style
+arangodb::Index* TRI_collection_t::lookupGeoIndex2(std::vector<std::string> const& latitude,
+    std::vector<std::string> const& longitude) {
+  for (auto const& idx : allIndexes()) {
+    if (idx->type() == arangodb::Index::TRI_IDX_TYPE_GEO2_INDEX) {
+      auto geoIndex = static_cast<arangodb::GeoIndex2*>(idx);
+
+      if (geoIndex->isSame(latitude, longitude)) {
+        return idx;
+      }
+    }
+  }
+
+  return nullptr;
+}
+
+/// @brief ensures that a geo index exists, list style
+arangodb::Index* TRI_collection_t::ensureGeoIndex1(
+    arangodb::Transaction* trx, TRI_idx_iid_t iid, 
+    std::string const& location, bool geoJson, bool& created) {
+
+  auto idx =
+      CreateGeoIndexDocumentCollection(trx, this, location, std::string(),
+                                       std::string(), geoJson, iid, created);
+
+  if (idx != nullptr) {
+    if (created) {
+      arangodb::aql::QueryCache::instance()->invalidate(
+          _vocbase, _info.name());
+      int res = saveIndex(idx, true);
+
+      if (res != TRI_ERROR_NO_ERROR) {
+        idx = nullptr;
+      }
+    }
+  }
+
+  return idx;
+}
+
+/// @brief ensures that a geo index exists, attribute style
+arangodb::Index* TRI_collection_t::ensureGeoIndex2(
+    arangodb::Transaction* trx, TRI_idx_iid_t iid, std::string const& latitude,
+    std::string const& longitude, bool& created) {
+
+  auto idx = CreateGeoIndexDocumentCollection(
+      trx, this, std::string(), latitude, longitude, false, iid, created);
+
+  if (idx != nullptr) {
+    if (created) {
+      arangodb::aql::QueryCache::instance()->invalidate(
+          _vocbase, _info.name());
+      int res = saveIndex(idx, true);
+
+      if (res != TRI_ERROR_NO_ERROR) {
+        idx = nullptr;
+      }
+    }
+  }
+
+  return idx;
+}
+
+/// @brief adds a hash index to the collection
+static arangodb::Index* CreateHashIndexDocumentCollection(
+    arangodb::Transaction* trx, TRI_collection_t* document,
+    std::vector<std::string> const& attributes, TRI_idx_iid_t iid, bool sparse,
+    bool unique, bool& created) {
+  created = false;
+  std::vector<std::vector<arangodb::basics::AttributeName>> fields;
+
+  int res = NamesByAttributeNames(attributes, fields, true);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return nullptr;
+  }
+
+  // ...........................................................................
+  // Attempt to find an existing index which matches the attributes above.
+  // If a suitable index is found, return that one otherwise we need to create
+  // a new one.
+  // ...........................................................................
+
+  int sparsity = sparse ? 1 : 0;
+  auto idx = LookupPathIndexDocumentCollection(
+      document, fields, arangodb::Index::TRI_IDX_TYPE_HASH_INDEX, sparsity,
+      unique, false);
+
+  if (idx != nullptr) {
+    LOG(TRACE) << "hash-index already created";
+
+    return idx;
+  }
+
+  if (iid == 0) {
+    iid = arangodb::Index::generateId();
+  }
+
+  // create the hash index. we'll provide it with the current number of
+  // documents
+  // in the collection so the index can do a sensible memory preallocation
+  auto hashIndex = std::make_unique<arangodb::HashIndex>(iid, document, fields,
+                                                         unique, sparse);
+  idx = static_cast<arangodb::Index*>(hashIndex.get());
+
+  // initializes the index with all existing documents
+  res = document->fillIndex(trx, idx);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_set_errno(res);
+
+    return nullptr;
+  }
+
+  // store index and return
+  try {
+    document->addIndex(idx);
+    hashIndex.release();
+  } catch (...) {
+    TRI_set_errno(res);
+
+    return nullptr;
+  }
+
+  created = true;
+
+  return idx;
+}
+
+/// @brief restores an index
+static int HashIndexFromVelocyPack(arangodb::Transaction* trx,
+                                   TRI_collection_t* document,
+                                   VPackSlice const& definition,
+                                   TRI_idx_iid_t iid, arangodb::Index** dst) {
+  return PathBasedIndexFromVelocyPack(trx, document, definition, iid,
+                                      CreateHashIndexDocumentCollection, dst);
+}
+
+/// @brief finds a hash index (unique or non-unique)
+arangodb::Index* TRI_collection_t::lookupHashIndex(
+    std::vector<std::string> const& attributes, int sparsity, bool unique) {
+  std::vector<std::vector<arangodb::basics::AttributeName>> fields;
+
+  int res = NamesByAttributeNames(attributes, fields, true);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return nullptr;
+  }
+
+  return LookupPathIndexDocumentCollection(
+      this, fields, arangodb::Index::TRI_IDX_TYPE_HASH_INDEX, sparsity,
+      unique, true);
+}
+
+/// @brief ensures that a hash index exists
+arangodb::Index* TRI_collection_t::ensureHashIndex(
+    arangodb::Transaction* trx, TRI_idx_iid_t iid, std::vector<std::string> const& attributes, bool sparse,
+    bool unique, bool& created) {
+
+  auto idx = CreateHashIndexDocumentCollection(trx, this, attributes, iid,
+                                               sparse, unique, created);
+
+  if (idx != nullptr) {
+    if (created) {
+      arangodb::aql::QueryCache::instance()->invalidate(
+          _vocbase, _info.name());
+      int res = saveIndex(idx, true);
+
+      if (res != TRI_ERROR_NO_ERROR) {
+        idx = nullptr;
+      }
+    }
+  }
+
+  return idx;
+}
+
+/// @brief adds a skiplist index to the collection
+static arangodb::Index* CreateSkiplistIndexDocumentCollection(
+    arangodb::Transaction* trx, TRI_collection_t* document,
+    std::vector<std::string> const& attributes, TRI_idx_iid_t iid, bool sparse,
+    bool unique, bool& created) {
+  created = false;
+  std::vector<std::vector<arangodb::basics::AttributeName>> fields;
+
+  int res = NamesByAttributeNames(attributes, fields, false);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return nullptr;
+  }
+
+  // ...........................................................................
+  // Attempt to find an existing index which matches the attributes above.
+  // If a suitable index is found, return that one otherwise we need to create
+  // a new one.
+  // ...........................................................................
+
+  int sparsity = sparse ? 1 : 0;
+  auto idx = LookupPathIndexDocumentCollection(
+      document, fields, arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX, sparsity,
+      unique, false);
+
+  if (idx != nullptr) {
+    LOG(TRACE) << "skiplist-index already created";
+
+    return idx;
+  }
+
+  if (iid == 0) {
+    iid = arangodb::Index::generateId();
+  }
+
+  // Create the skiplist index
+  auto skiplistIndex = std::make_unique<arangodb::SkiplistIndex>(
+      iid, document, fields, unique, sparse);
+  idx = static_cast<arangodb::Index*>(skiplistIndex.get());
+
+  // initializes the index with all existing documents
+  res = document->fillIndex(trx, idx);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_set_errno(res);
+
+    return nullptr;
+  }
+
+  // store index and return
+  try {
+    document->addIndex(idx);
+    skiplistIndex.release();
+  } catch (...) {
+    TRI_set_errno(res);
+
+    return nullptr;
+  }
+
+  created = true;
+
+  return idx;
+}
+
+/// @brief restores an index
+static int SkiplistIndexFromVelocyPack(arangodb::Transaction* trx,
+                                       TRI_collection_t* document,
+                                       VPackSlice const& definition,
+                                       TRI_idx_iid_t iid,
+                                       arangodb::Index** dst) {
+  return PathBasedIndexFromVelocyPack(trx, document, definition, iid,
+                                      CreateSkiplistIndexDocumentCollection,
+                                      dst);
+}
+
+/// @brief finds a skiplist index (unique or non-unique)
+arangodb::Index* TRI_collection_t::lookupSkiplistIndex(
+    std::vector<std::string> const& attributes, int sparsity, bool unique) {
+  std::vector<std::vector<arangodb::basics::AttributeName>> fields;
+
+  int res = NamesByAttributeNames(attributes, fields, false);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return nullptr;
+  }
+
+  return LookupPathIndexDocumentCollection(
+      this, fields, arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX, sparsity,
+      unique, true);
+}
+
+/// @brief ensures that a skiplist index exists
+arangodb::Index* TRI_collection_t::ensureSkiplistIndex(
+    arangodb::Transaction* trx, TRI_idx_iid_t iid, 
+    std::vector<std::string> const& attributes, bool sparse,
+    bool unique, bool& created) {
+
+  auto idx = CreateSkiplistIndexDocumentCollection(
+      trx, this, attributes, iid, sparse, unique, created);
+
+  if (idx != nullptr) {
+    if (created) {
+      arangodb::aql::QueryCache::instance()->invalidate(
+          _vocbase, _info.name());
+      int res = saveIndex(idx, true);
+
+      if (res != TRI_ERROR_NO_ERROR) {
+        idx = nullptr;
+      }
+    }
+  }
+
+  return idx;
+}
+
+static arangodb::Index* LookupFulltextIndexDocumentCollection(
+    TRI_collection_t* document, std::string const& attribute,
+    int minWordLength) {
+  for (auto const& idx : document->allIndexes()) {
+    if (idx->type() == arangodb::Index::TRI_IDX_TYPE_FULLTEXT_INDEX) {
+      auto fulltextIndex = static_cast<arangodb::FulltextIndex*>(idx);
+
+      if (fulltextIndex->isSame(attribute, minWordLength)) {
+        return idx;
+      }
+    }
+  }
+
+  return nullptr;
+}
+
+/// @brief adds a rocksdb index to the collection
+static arangodb::Index* CreateRocksDBIndexDocumentCollection(
+    arangodb::Transaction* trx, TRI_collection_t* document,
+    std::vector<std::string> const& attributes, TRI_idx_iid_t iid, bool sparse,
+    bool unique, bool& created) {
+
+#ifdef ARANGODB_ENABLE_ROCKSDB
+  created = false;
+  std::vector<std::vector<arangodb::basics::AttributeName>> fields;
+
+  int res = NamesByAttributeNames(attributes, fields, false);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return nullptr;
+  }
+
+  // ...........................................................................
+  // Attempt to find an existing index which matches the attributes above.
+  // If a suitable index is found, return that one otherwise we need to create
+  // a new one.
+  // ...........................................................................
+
+  int sparsity = sparse ? 1 : 0;
+  auto idx = LookupPathIndexDocumentCollection(
+      document, fields, arangodb::Index::TRI_IDX_TYPE_ROCKSDB_INDEX, sparsity,
+      unique, false);
+
+  if (idx != nullptr) {
+    LOG(TRACE) << "rocksdb-index already created";
+
+    return idx;
+  }
+
+  if (iid == 0) {
+    iid = arangodb::Index::generateId();
+  }
+
+  // Create the index
+  auto rocksDBIndex = std::make_unique<arangodb::RocksDBIndex>(
+      iid, document, fields, unique, sparse);
+  idx = static_cast<arangodb::Index*>(rocksDBIndex.get());
+
+  // initializes the index with all existing documents
+  res = document->fillIndex(trx, idx, false);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_set_errno(res);
+
+    return nullptr;
+  }
+  
+  auto rocksTransaction = trx->rocksTransaction();
+  TRI_ASSERT(rocksTransaction != nullptr);
+  auto status = rocksTransaction->Commit();
+  if (!status.ok()) {
+    // TODO:
+  }
+  auto t = trx->getInternals();
+  delete t->_rocksTransaction;
+  t->_rocksTransaction = nullptr;
+
+  // store index and return
+  try {
+    document->addIndex(idx);
+    rocksDBIndex.release();
+  } catch (...) {
+    TRI_set_errno(res);
+
+    return nullptr;
+  }
+
+  created = true;
+
+  return idx;
+
+#else
+  TRI_set_errno(TRI_ERROR_NOT_IMPLEMENTED);
+  created = false;
+  return nullptr;
+#endif
+}
+
+/// @brief restores an index
+#ifdef ARANGODB_ENABLE_ROCKSDB
+static int RocksDBIndexFromVelocyPack(arangodb::Transaction* trx,
+                                      TRI_collection_t* document,
+                                      VPackSlice const& definition,
+                                      TRI_idx_iid_t iid,
+                                      arangodb::Index** dst) {
+  return PathBasedIndexFromVelocyPack(trx, document, definition, iid,
+                                      CreateRocksDBIndexDocumentCollection,
+                                      dst);
+}
+#endif
+
+/// @brief finds a rocksdb index (unique or non-unique)
+arangodb::Index* TRI_collection_t::lookupRocksDBIndex(
+    std::vector<std::string> const& attributes, int sparsity, bool unique) {
+  std::vector<std::vector<arangodb::basics::AttributeName>> fields;
+
+  int res = NamesByAttributeNames(attributes, fields, false);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return nullptr;
+  }
+
+  return LookupPathIndexDocumentCollection(
+      this, fields, arangodb::Index::TRI_IDX_TYPE_ROCKSDB_INDEX, sparsity,
+      unique, true);
+}
+
+/// @brief ensures that a RocksDB index exists
+arangodb::Index* TRI_collection_t::ensureRocksDBIndex(
+    arangodb::Transaction* trx, TRI_idx_iid_t iid, 
+    std::vector<std::string> const& attributes, bool sparse,
+    bool unique, bool& created) {
+
+  auto idx = CreateRocksDBIndexDocumentCollection(
+      trx, this, attributes, iid, sparse, unique, created);
+
+  if (idx != nullptr) {
+    if (created) {
+      arangodb::aql::QueryCache::instance()->invalidate(
+          _vocbase, _info.name());
+      int res = saveIndex(idx, true);
+
+      if (res != TRI_ERROR_NO_ERROR) {
+        idx = nullptr;
+      }
+    }
+  }
+
+  return idx;
+}
+
+/// @brief adds a fulltext index to the collection
+static arangodb::Index* CreateFulltextIndexDocumentCollection(
+    arangodb::Transaction* trx, TRI_collection_t* document,
+    std::string const& attribute, int minWordLength, TRI_idx_iid_t iid,
+    bool& created) {
+  created = false;
+
+  // ...........................................................................
+  // Attempt to find an existing index with the same attribute
+  // If a suitable index is found, return that one otherwise we need to create
+  // a new one.
+  // ...........................................................................
+
+  auto idx =
+      LookupFulltextIndexDocumentCollection(document, attribute, minWordLength);
+
+  if (idx != nullptr) {
+    LOG(TRACE) << "fulltext-index already created";
+
+    return idx;
+  }
+
+  if (iid == 0) {
+    iid = arangodb::Index::generateId();
+  }
+
+  // Create the fulltext index
+  auto fulltextIndex = std::make_unique<arangodb::FulltextIndex>(
+      iid, document, attribute, minWordLength);
+  idx = static_cast<arangodb::Index*>(fulltextIndex.get());
+
+  // initializes the index with all existing documents
+  int res = document->fillIndex(trx, idx);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_set_errno(res);
+
+    return nullptr;
+  }
+
+  // store index and return
+  try {
+    document->addIndex(idx);
+    fulltextIndex.release();
+  } catch (...) {
+    TRI_set_errno(res);
+
+    return nullptr;
+  }
+
+  created = true;
+
+  return idx;
+}
+
+/// @brief restores an index
+static int FulltextIndexFromVelocyPack(arangodb::Transaction* trx,
+                                       TRI_collection_t* document,
+                                       VPackSlice const& definition,
+                                       TRI_idx_iid_t iid,
+                                       arangodb::Index** dst) {
+  if (dst != nullptr) {
+    *dst = nullptr;
+  }
+
+  // extract fields
+  VPackSlice fld;
+  try {
+    fld = ExtractFields(definition, iid);
+  } catch (arangodb::basics::Exception const& e) {
+    return TRI_set_errno(e.code());
+  }
+  VPackValueLength fieldCount = fld.length();
+
+  // extract the list of fields
+  if (fieldCount != 1) {
+    LOG(ERR) << "ignoring index " << iid
+             << ", has an invalid number of attributes";
+
+    return TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
+  }
+
+  VPackSlice value = fld.at(0);
+
+  if (!value.isString()) {
+    return TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
+  }
+
+  std::string const attribute = value.copyString();
+
+  int minWordLengthValue =
+      arangodb::basics::VelocyPackHelper::getNumericValue<int>(
+          definition, "minLength", TRI_FULLTEXT_MIN_WORD_LENGTH_DEFAULT);
+
+  // create the index
+  auto idx = LookupFulltextIndexDocumentCollection(document, attribute,
+                                                   minWordLengthValue);
+
+  if (idx == nullptr) {
+    bool created;
+    idx = CreateFulltextIndexDocumentCollection(
+        trx, document, attribute, minWordLengthValue, iid, created);
+  }
+
+  if (dst != nullptr) {
+    *dst = idx;
+  }
+
+  if (idx == nullptr) {
+    LOG(ERR) << "cannot create fulltext index " << iid;
+    return TRI_errno();
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+/// @brief finds a fulltext index (unique or non-unique)
+arangodb::Index* TRI_collection_t::lookupFulltextIndex(std::string const& attribute,
+    int minWordLength) {
+  return LookupFulltextIndexDocumentCollection(this, attribute,
+                                               minWordLength);
+}
+
+/// @brief ensures that a fulltext index exists
+arangodb::Index* TRI_collection_t::ensureFulltextIndex(
+    arangodb::Transaction* trx, TRI_idx_iid_t iid, std::string const& attribute, int minWordLength,
+    bool& created) {
+  auto idx = CreateFulltextIndexDocumentCollection(trx, this, attribute,
+                                                   minWordLength, iid, created);
+
+  if (idx != nullptr) {
+    if (created) {
+      arangodb::aql::QueryCache::instance()->invalidate(
+          _vocbase, _info.name());
+      int res = saveIndex(idx, true);
+
+      if (res != TRI_ERROR_NO_ERROR) {
+        idx = nullptr;
+      }
+    }
+  }
+
+  return idx;
+}
+
+/// @brief create an index, based on a VelocyPack description
+int TRI_collection_t::indexFromVelocyPack(arangodb::Transaction* trx, 
+    VPackSlice const& slice, arangodb::Index** idx) {
+
+  if (idx != nullptr) {
+    *idx = nullptr;
+  }
+  
+  if (!slice.isObject()) {
+    return TRI_ERROR_INTERNAL;
+  }
+
+  // extract the type
+  VPackSlice type = slice.get("type");
+
+  if (!type.isString()) {
+    return TRI_ERROR_INTERNAL;
+  }
+  std::string typeStr = type.copyString();
+
+  // extract the index identifier
+  VPackSlice iis = slice.get("id");
+
+  TRI_idx_iid_t iid;
+  if (iis.isNumber()) {
+    iid = iis.getNumericValue<TRI_idx_iid_t>();
+  } else if (iis.isString()) {
+    std::string tmp = iis.copyString();
+    iid = static_cast<TRI_idx_iid_t>(StringUtils::uint64(tmp));
+  } else {
+    LOG(ERR) << "ignoring index, index identifier could not be located";
+
+    return TRI_ERROR_INTERNAL;
+  }
+
+  TRI_UpdateTickServer(iid);
+
+  if (typeStr == "geo1" || typeStr == "geo2") {
+    return GeoIndexFromVelocyPack(trx, this, slice, iid, idx);
+  }
+
+  if (typeStr == "hash") {
+    return HashIndexFromVelocyPack(trx, this, slice, iid, idx);
+  }
+
+  if (typeStr == "skiplist") {
+    return SkiplistIndexFromVelocyPack(trx, this, slice, iid, idx);
+  }
+  
+  // ...........................................................................
+  // ROCKSDB INDEX
+  // ...........................................................................
+  if (typeStr == "persistent" || typeStr == "rocksdb") {
+#ifdef ARANGODB_ENABLE_ROCKSDB
+    return RocksDBIndexFromVelocyPack(trx, this, slice, iid, idx);
+#else
+    LOG(ERR) << "index type not supported in this build";
+    return TRI_ERROR_NOT_IMPLEMENTED;
+#endif
+  }
+
+  if (typeStr == "fulltext") {
+    return FulltextIndexFromVelocyPack(trx, this, slice, iid, idx);
+  }
+
+  if (typeStr == "edge") {
+    // we should never get here, as users cannot create their own edge indexes
+    LOG(ERR) << "logic error. there should never be a JSON file describing an "
+                "edges index";
+    return TRI_ERROR_INTERNAL;
+  }
+
+  // default:
+  LOG(WARN) << "index type '" << typeStr
+            << "' is not supported in this version of ArangoDB and is ignored";
+
+  return TRI_ERROR_NOT_IMPLEMENTED;
 }
 

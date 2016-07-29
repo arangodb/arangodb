@@ -63,7 +63,7 @@ static void ExtractWords(std::vector<std::string>& words,
 }
 
 FulltextIndex::FulltextIndex(TRI_idx_iid_t iid,
-                             TRI_document_collection_t* collection,
+                             TRI_collection_t* collection,
                              std::string const& attribute, int minWordLength)
     : Index(iid, collection,
             std::vector<std::vector<arangodb::basics::AttributeName>>{

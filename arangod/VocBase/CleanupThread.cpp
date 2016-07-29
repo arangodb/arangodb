@@ -102,7 +102,7 @@ void CleanupThread::run() {
           // maybe cleanup indexes, unload the collection or some datafiles
           // clean indexes?
           if (iterations % cleanupIndexIterations() == 0) {
-            document->cleanupIndexes(document);
+            document->cleanupIndexes();
           }
 
           cleanupCollection(collection, document);

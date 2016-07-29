@@ -47,27 +47,29 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 
-std::string const MMFilesEngine::EngineName("MMFiles");
+namespace {
 
-/// @brief this iterator is called on startup for journal and compactor file
-/// of a collection
-/// it will check the ticks of all markers and update the internal tick
-/// counter accordingly. this is done so we'll not re-assign an already used
-/// tick value
-static bool StartupTickIterator(TRI_df_marker_t const* marker, void* data,
-                                TRI_datafile_t* datafile) {
-  auto tick = static_cast<TRI_voc_tick_t*>(data);
-  TRI_voc_tick_t markerTick = marker->getTick();
-  
-  if (markerTick > *tick) {
-    *tick = markerTick;
+/// @brief extract the numeric part from a filename
+/// the filename must look like this: /.*type-abc\.ending$/, where abc is
+/// a number, and type and ending are arbitrary letters
+static uint64_t GetNumericFilenamePartFromDatafile(std::string const& filename) {
+  char const* pos1 = strrchr(filename.c_str(), '.');
+
+  if (pos1 == nullptr) {
+    return 0;
   }
 
-  return true;
+  char const* pos2 = strrchr(filename.c_str(), '-');
+
+  if (pos2 == nullptr || pos2 > pos1) {
+    return 0;
+  }
+
+  return basics::StringUtils::uint64(pos2 + 1, pos1 - pos2 - 1);
 }
 
 /// @brief extract the numeric part from a filename
-static uint64_t GetNumericFilenamePart(std::string const& filename) {
+static uint64_t GetNumericFilenamePartFromDatabase(std::string const& filename) {
   char const* pos = strrchr(filename.c_str(), '-');
 
   if (pos == nullptr) {
@@ -79,11 +81,23 @@ static uint64_t GetNumericFilenamePart(std::string const& filename) {
 
 /// @brief compare two filenames, based on the numeric part contained in
 /// the filename. this is used to sort database filenames on startup
-struct DatabaseIdStringComparator {
+struct DatafileIdStringComparator {
   bool operator()(std::string const& lhs, std::string const& rhs) const {
-    return GetNumericFilenamePart(lhs) < GetNumericFilenamePart(rhs);
+    return GetNumericFilenamePartFromDatafile(lhs) < GetNumericFilenamePartFromDatafile(rhs);
   }
 };
+
+/// @brief compare two filenames, based on the numeric part contained in
+/// the filename. this is used to sort database filenames on startup
+struct DatabaseIdStringComparator {
+  bool operator()(std::string const& lhs, std::string const& rhs) const {
+    return GetNumericFilenamePartFromDatabase(lhs) < GetNumericFilenamePartFromDatabase(rhs);
+  }
+};
+
+}
+
+std::string const MMFilesEngine::EngineName("MMFiles");
 
 // create the storage engine
 MMFilesEngine::MMFilesEngine(application_features::ApplicationServer* server)
@@ -197,7 +211,7 @@ void MMFilesEngine::getDatabases(arangodb::velocypack::Builder& result) {
   for (auto const& name : files) {
     TRI_ASSERT(!name.empty());
     
-    TRI_voc_tick_t id = GetNumericFilenamePart(name);
+    TRI_voc_tick_t id = GetNumericFilenamePartFromDatabase(name);
 
     if (id == 0) {
       // invalid id
@@ -380,7 +394,7 @@ int MMFilesEngine::getCollectionsAndIndexes(TRI_vocbase_t* vocbase,
 
       // add collection info
       result.openObject();
-      TRI_CreateVelocyPackCollectionInfo(info, result);
+      info.toVelocyPack(result);
       result.add("path", VPackValue(directory));
       result.close();
 
@@ -585,6 +599,132 @@ void MMFilesEngine::addDocumentRevision(TRI_voc_tick_t databaseId, TRI_voc_cid_t
 void MMFilesEngine::removeDocumentRevision(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId,
                                            arangodb::velocypack::Slice const& document) {
 }
+
+/// @brief scans a collection and locates all files
+MMFilesEngineCollectionFiles MMFilesEngine::scanCollectionDirectory(std::string const& path) {
+  LOG_TOPIC(TRACE, Logger::DATAFILES) << "scanning collection directory '"
+                                      << path << "'";
+
+  MMFilesEngineCollectionFiles structure;
+
+  // check files within the directory
+  std::vector<std::string> files = TRI_FilesDirectory(path.c_str());
+
+  for (auto const& file : files) {
+    std::vector<std::string> parts = StringUtils::split(file, '.');
+
+    if (parts.size() < 2 || parts.size() > 3 || parts[0].empty()) {
+      LOG_TOPIC(DEBUG, Logger::DATAFILES)
+          << "ignoring file '" << file
+          << "' because it does not look like a datafile";
+      continue;
+    }
+
+    std::string filename = FileUtils::buildFilename(path, file);
+    std::string extension = parts[1];
+    std::string isDead = (parts.size() > 2) ? parts[2] : "";
+
+    std::vector<std::string> next = StringUtils::split(parts[0], "-");
+
+    if (next.size() < 2) {
+      LOG_TOPIC(DEBUG, Logger::DATAFILES)
+          << "ignoring file '" << file
+          << "' because it does not look like a datafile";
+      continue;
+    }
+
+    std::string filetype = next[0];
+    next.erase(next.begin());
+    std::string qualifier = StringUtils::join(next, '-');
+
+    // file is dead
+    if (!isDead.empty()) {
+      if (isDead == "dead") {
+        FileUtils::remove(filename);
+      } else {
+        LOG_TOPIC(DEBUG, Logger::DATAFILES)
+            << "ignoring file '" << file
+            << "' because it does not look like a datafile";
+      }
+
+      continue;
+    }
+
+    // file is an index
+    if (filetype == "index" && extension == "json") {
+      structure.indexes.emplace_back(filename);
+      continue;
+    }
+
+    // file is a journal or datafile
+    if (extension == "db") {
+      // file is a journal
+      if (filetype == "journal") {
+        structure.journals.emplace_back(filename);
+      }
+
+      // file is a datafile
+      else if (filetype == "datafile") {
+        structure.datafiles.emplace_back(filename);
+      }
+
+      // file is a left-over compaction file. rename it back
+      else if (filetype == "compaction") {
+        std::string relName = "datafile-" + qualifier + "." + extension;
+        std::string newName = FileUtils::buildFilename(path, relName);
+
+        if (FileUtils::exists(newName)) {
+          // we have a compaction-xxxx and a datafile-xxxx file. we'll keep
+          // the datafile
+
+          FileUtils::remove(filename);
+
+          LOG_TOPIC(WARN, Logger::DATAFILES)
+              << "removing left-over compaction file '" << filename << "'";
+
+          continue;
+        } else {
+          // this should fail, but shouldn't do any harm either...
+          FileUtils::remove(newName);
+
+          // rename the compactor to a datafile
+          int res = TRI_RenameFile(filename.c_str(), newName.c_str());
+
+          if (res != TRI_ERROR_NO_ERROR) {
+            LOG_TOPIC(ERR, Logger::DATAFILES)
+                << "unable to rename compaction file '" << filename << "'";
+            continue;
+          }
+        }
+
+        structure.datafiles.emplace_back(filename);
+      }
+
+      // temporary file, we can delete it!
+      else if (filetype == "temp") {
+        LOG_TOPIC(WARN, Logger::DATAFILES)
+            << "found temporary file '" << filename
+            << "', which is probably a left-over. deleting it";
+        FileUtils::remove(filename);
+      }
+
+      // ups, what kind of file is that
+      else {
+        LOG_TOPIC(ERR, Logger::DATAFILES) << "unknown datafile type '" << file
+                                          << "'";
+      }
+    }
+  }
+
+  // now sort the files in the structures that we created.
+  // the sorting allows us to iterate the files in the correct order
+  std::sort(structure.journals.begin(), structure.journals.end(), DatafileIdStringComparator());
+  std::sort(structure.compactors.begin(), structure.compactors.end(), DatafileIdStringComparator());
+  std::sort(structure.datafiles.begin(), structure.datafiles.end(), DatafileIdStringComparator());
+  std::sort(structure.indexes.begin(), structure.indexes.end(), DatafileIdStringComparator());
+
+  return structure;
+}
   
 void MMFilesEngine::verifyDirectories() {
   if (!TRI_IsDirectory(_basePath.c_str())) {
@@ -647,6 +787,7 @@ std::vector<std::string> MMFilesEngine::getDatabaseNames() const {
 
   return databases;
 }
+
 
 /// @brief create a new database directory 
 int MMFilesEngine::createDatabaseDirectory(TRI_voc_tick_t id,
@@ -794,7 +935,7 @@ TRI_vocbase_t* MMFilesEngine::openExistingDatabase(TRI_voc_tick_t id, std::strin
     if (!wasCleanShutdown) {
       // iterating markers may be time-consuming. we'll only do it if
       // we have to
-      TRI_IterateTicksCollection(directory.c_str(), StartupTickIterator, &_maxTick);
+      findMaxTickInJournals(directory);
     }
 
     LOG(DEBUG) << "added document collection '" << info.name() << "'";
@@ -816,3 +957,54 @@ TRI_vocbase_t* MMFilesEngine::openExistingDatabase(TRI_voc_tick_t id, std::strin
 int MMFilesEngine::dropDatabaseDirectory(std::string const& path) {
   return TRI_RemoveDirectory(path.c_str());
 }
+
+/// @brief iterate over a set of datafiles, identified by filenames
+/// note: the files will be opened and closed
+bool MMFilesEngine::iterateFiles(std::vector<std::string> const& files) {
+  /// @brief this iterator is called on startup for journal and compactor file
+  /// of a collection
+  /// it will check the ticks of all markers and update the internal tick
+  /// counter accordingly. this is done so we'll not re-assign an already used
+  /// tick value
+  auto cb = [this](TRI_df_marker_t const* marker, TRI_datafile_t* datafile) -> bool {
+    TRI_voc_tick_t markerTick = marker->getTick();
+  
+    if (markerTick > _maxTick) {
+      _maxTick = markerTick;
+    }
+    return true;
+  };
+
+  for (auto const& filename : files) {
+    LOG(DEBUG) << "iterating over collection journal file '" << filename << "'";
+
+    TRI_datafile_t* datafile = TRI_OpenDatafile(filename.c_str(), true);
+
+    if (datafile != nullptr) {
+      TRI_IterateDatafile(datafile, cb);
+      TRI_CloseDatafile(datafile);
+      TRI_FreeDatafile(datafile);
+    }
+  }
+
+  return true;
+}
+
+/// @brief iterate over the markers in the collection's journals
+/// this function is called on server startup for all collections. we do this
+/// to get the last tick used in a collection
+bool MMFilesEngine::findMaxTickInJournals(std::string const& path) {
+  LOG(TRACE) << "iterating ticks of journal '" << path << "'";
+  MMFilesEngineCollectionFiles structure = scanCollectionDirectory(path);
+
+  if (structure.journals.empty()) {
+    // no journal found for collection. should not happen normally, but if
+    // it does, we need to grab the ticks from the datafiles, too
+    return iterateFiles(structure.datafiles);
+  }
+
+  // compactor files don't need to be iterated... they just contain data
+  // copied from other files, so their tick values will never be any higher
+  return iterateFiles(structure.journals);
+}
+

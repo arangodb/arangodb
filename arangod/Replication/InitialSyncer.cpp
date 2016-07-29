@@ -1865,8 +1865,7 @@ int InitialSyncer::handleCollection(VPackSlice const& parameters,
                 }
               }
 
-              res = TRI_FromVelocyPackIndexDocumentCollection(&trx, document,
-                                                              idxDef, &idx);
+              res = document->indexFromVelocyPack(&trx, idxDef, &idx);
 
               if (res != TRI_ERROR_NO_ERROR) {
                 errorMsg = "could not create index: " +
@@ -1875,7 +1874,7 @@ int InitialSyncer::handleCollection(VPackSlice const& parameters,
               } else {
                 TRI_ASSERT(idx != nullptr);
 
-                res = TRI_SaveIndex(document, idx, true);
+                res = document->saveIndex(idx, true);
 
                 if (res != TRI_ERROR_NO_ERROR) {
                   errorMsg = "could not save index: " +

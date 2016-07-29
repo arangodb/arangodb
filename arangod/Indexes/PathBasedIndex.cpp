@@ -51,7 +51,7 @@ arangodb::aql::AstNode const* PathBasedIndex::PermutationState::getValue()
 ////////////////////////////////////////////////////////////////////////////////
 
 PathBasedIndex::PathBasedIndex(
-    TRI_idx_iid_t iid, TRI_document_collection_t* collection,
+    TRI_idx_iid_t iid, TRI_collection_t* collection,
     std::vector<std::vector<arangodb::basics::AttributeName>> const& fields,
     bool unique, bool sparse, bool allowPartialIndex)
     : Index(iid, collection, fields, unique, sparse),

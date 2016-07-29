@@ -38,8 +38,6 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
-struct TRI_document_collection_t;
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief hash index query parameter
 ////////////////////////////////////////////////////////////////////////////////
@@ -153,7 +151,7 @@ class HashIndex final : public PathBasedIndex {
  public:
   HashIndex() = delete;
 
-  HashIndex(TRI_idx_iid_t, struct TRI_document_collection_t*,
+  HashIndex(TRI_idx_iid_t, TRI_collection_t*,
             std::vector<std::vector<arangodb::basics::AttributeName>> const&,
             bool, bool);
 

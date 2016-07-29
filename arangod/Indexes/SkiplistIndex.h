@@ -350,7 +350,7 @@ class SkiplistIndex final : public PathBasedIndex {
   SkiplistIndex() = delete;
 
   SkiplistIndex(
-      TRI_idx_iid_t, struct TRI_document_collection_t*,
+      TRI_idx_iid_t, TRI_collection_t*,
       std::vector<std::vector<arangodb::basics::AttributeName>> const&, bool,
       bool);
 

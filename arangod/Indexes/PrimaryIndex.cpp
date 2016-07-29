@@ -150,7 +150,7 @@ void AnyIndexIterator::reset() {
 }
 
 
-PrimaryIndex::PrimaryIndex(TRI_document_collection_t* collection)
+PrimaryIndex::PrimaryIndex(TRI_collection_t* collection)
     : Index(0, collection,
             std::vector<std::vector<arangodb::basics::AttributeName>>(
                 {{{StaticStrings::KeyString, false}}}),

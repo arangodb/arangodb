@@ -95,7 +95,7 @@ void RecoverState::releaseResources() {
   for (auto it = openedCollections.begin(); it != openedCollections.end();
        ++it) {
     TRI_vocbase_col_t* collection = (*it).second;
-    TRI_ReleaseCollectionVocBase(collection->_vocbase, collection);
+    collection->_vocbase->releaseCollection(collection);
   }
 
   openedCollections.clear();
@@ -149,8 +149,7 @@ TRI_vocbase_t* RecoverState::releaseDatabase(TRI_voc_tick_t databaseId) {
     if (collection->_vocbase->_id == databaseId) {
       // correct database, now release the collection
       TRI_ASSERT(vocbase == collection->_vocbase);
-
-      TRI_ReleaseCollectionVocBase(vocbase, collection);
+      vocbase->releaseCollection(collection);
       // get new iterator position
       it2 = openedCollections.erase(it2);
     } else {
@@ -176,7 +175,7 @@ TRI_vocbase_col_t* RecoverState::releaseCollection(TRI_voc_cid_t collectionId) {
   TRI_vocbase_col_t* collection = (*it).second;
 
   TRI_ASSERT(collection != nullptr);
-  TRI_ReleaseCollectionVocBase(collection->_vocbase, collection);
+  collection->_vocbase->releaseCollection(collection);
   openedCollections.erase(collectionId);
 
   return collection;
@@ -195,8 +194,7 @@ TRI_vocbase_col_t* RecoverState::useCollection(TRI_vocbase_t* vocbase,
 
   TRI_set_errno(TRI_ERROR_NO_ERROR);
   TRI_vocbase_col_status_e status;  // ignored here
-  TRI_vocbase_col_t* collection =
-      TRI_UseCollectionByIdVocBase(vocbase, collectionId, status);
+  TRI_vocbase_col_t* collection = vocbase->useCollection(collectionId, status);
 
   if (collection == nullptr) {
     res = TRI_errno();
@@ -724,8 +722,8 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
     
           arangodb::SingleCollectionTransaction trx(arangodb::StandaloneTransactionContext::Create(vocbase),
             collectionId, TRI_TRANSACTION_WRITE);
-          int res = TRI_FromVelocyPackIndexDocumentCollection(&trx, document,
-                                                              payloadSlice, nullptr);
+          int res = document->indexFromVelocyPack(&trx, payloadSlice, nullptr);
+
           if (res != TRI_ERROR_NO_ERROR) {
             LOG(WARN) << "cannot create index " << indexId << ", collection " << collectionId << " in database " << databaseId;
             ++state->errorCount;
@@ -939,8 +937,8 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
         }
 
         // ignore any potential error returned by this call
-        TRI_DropIndexDocumentCollection(document, indexId, false);
-        document->removeIndexFile(indexId);
+        document->dropIndex(indexId, false);
+        document->removeIndexFileFromVector(indexId); // TODO
         document->removeIndex(indexId);
 
 #ifdef ARANGODB_ENABLE_ROCKSDB
@@ -1157,7 +1155,7 @@ int RecoverState::fillIndexes() {
     arangodb::SingleCollectionTransaction trx(arangodb::StandaloneTransactionContext::Create(collection->_vocbase),
         document->_info.id(), TRI_TRANSACTION_WRITE);
 
-    int res = TRI_FillIndexesDocumentCollection(&trx, collection, document);
+    int res = document->fillIndexes(&trx, collection);
 
     if (res != TRI_ERROR_NO_ERROR) {
       return res;

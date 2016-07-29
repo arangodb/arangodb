@@ -34,6 +34,9 @@
 #include "Cluster/ClusterMethods.h"
 #include "Indexes/PrimaryIndex.h"
 #include "RestServer/DatabaseFeature.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/MMFilesEngine.h"
+#include "StorageEngine/StorageEngine.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/OperationResult.h"
 #include "Utils/SingleCollectionTransaction.h"
@@ -248,7 +251,7 @@ static TRI_vocbase_col_t const* UseCollection(
     }
 
     TRI_vocbase_col_status_e status;
-    res = TRI_UseCollectionVocBase(col->_vocbase, col, status);
+    res = col->_vocbase->useCollection(col, status);
 
     if (res == TRI_ERROR_NO_ERROR && col->_collection != nullptr) {
       // no error
@@ -1421,7 +1424,7 @@ static void JS_PropertiesVocbaseCol(
       try {
         VPackBuilder infoBuilder;
         infoBuilder.openObject();
-        TRI_CreateVelocyPackCollectionInfo(document->_info, infoBuilder);
+        document->_info.toVelocyPack(infoBuilder);
         infoBuilder.close();
 
         // now log the property changes
@@ -2573,7 +2576,7 @@ static void JS_UnloadVocbaseCol(
         databaseName, StringUtils::itoa(collection->_cid),
         TRI_VOC_COL_STATUS_UNLOADED);
   } else {
-    res = TRI_UnloadCollectionVocBase(collection->_vocbase, collection, false);
+    res = collection->_vocbase->unloadCollection(collection, false);
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -2951,7 +2954,12 @@ static void JS_DatafilesVocbaseCol(
 
   TRI_THROW_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(collection);
 
-  TRI_col_file_structure_t structure;
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  if (std::string(engine->typeName()) != MMFilesEngine::EngineName) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "operation only supported in MMFiles engine");
+  }
+   
+  MMFilesEngineCollectionFiles structure;
   {
     READ_LOCKER(readLocker, collection->_lock);
 
@@ -2960,7 +2968,7 @@ static void JS_DatafilesVocbaseCol(
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_UNLOADED);
     }
 
-    structure = TRI_FileStructureCollectionDirectory(collection->path().c_str());
+    structure = dynamic_cast<MMFilesEngine*>(engine)->scanCollectionDirectory(collection->path());
   }
 
   // build result

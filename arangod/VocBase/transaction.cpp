@@ -184,7 +184,7 @@ static void FreeOperations(TRI_transaction_t* trx) {
       continue;
     }
 
-    TRI_document_collection_t* document =
+    TRI_collection_t* document =
         trxCollection->_collection->_collection;
 
     if (mustRollback) {
@@ -352,7 +352,7 @@ static int LockCollection(TRI_transaction_collection_t* trxCollection,
   TRI_ASSERT(trxCollection->_collection->_collection != nullptr);
   TRI_ASSERT(!IsLocked(trxCollection));
 
-  TRI_document_collection_t* document = trxCollection->_collection->_collection;
+  TRI_collection_t* document = trxCollection->_collection->_collection;
   uint64_t timeout = trx->_timeout;
   if (HasHint(trxCollection->_transaction, TRI_TRANSACTION_HINT_TRY_LOCK)) {
     // give up if we cannot acquire the lock instantly
@@ -406,7 +406,7 @@ static int UnlockCollection(TRI_transaction_collection_t* trxCollection,
   TRI_ASSERT(trxCollection->_collection->_collection != nullptr);
   TRI_ASSERT(IsLocked(trxCollection));
 
-  TRI_document_collection_t* document = trxCollection->_collection->_collection;
+  TRI_collection_t* document = trxCollection->_collection->_collection;
 
   if (trxCollection->_nestingLevel < nestingLevel) {
     // only process our own collections
@@ -458,8 +458,7 @@ static int UseCollections(TRI_transaction_t* trx, int nestingLevel) {
         // use and usage-lock
         TRI_vocbase_col_status_e status;
         LOG_TRX(trx, nestingLevel) << "using collection " << trxCollection->_cid;
-        trxCollection->_collection = TRI_UseCollectionByIdVocBase(
-            trx->_vocbase, trxCollection->_cid, status);
+        trxCollection->_collection = trx->_vocbase->useCollection(trxCollection->_cid, status);
       } else {
         // use without usage-lock (lock already set externally)
         trxCollection->_collection = trx->_vocbase->lookupCollection(trxCollection->_cid);
@@ -580,7 +579,7 @@ static int ReleaseCollections(TRI_transaction_t* trx, int nestingLevel) {
       // unuse collection, remove usage-lock
       LOG_TRX(trx, nestingLevel) << "unusing collection " << trxCollection->_cid;
 
-      TRI_ReleaseCollectionVocBase(trx->_vocbase, trxCollection->_collection);
+      trx->_vocbase->releaseCollection(trxCollection->_collection);
       trxCollection->_collection = nullptr;
     }
   }
@@ -974,7 +973,7 @@ int TRI_AddOperationTransaction(TRI_transaction_t* trx,
                                 bool& waitForSync) {
   TRI_ASSERT(operation.header != nullptr);
 
-  TRI_document_collection_t* document = operation.document;
+  TRI_collection_t* document = operation.document;
   bool const isSingleOperationTransaction = IsSingleOperationTransaction(trx);
 
   if (HasHint(trx, TRI_TRANSACTION_HINT_RECOVERY)) {

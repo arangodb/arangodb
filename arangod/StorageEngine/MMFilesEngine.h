@@ -31,6 +31,14 @@
 
 namespace arangodb {
 
+/// @brief collection file structure
+struct MMFilesEngineCollectionFiles {
+  std::vector<std::string> journals;
+  std::vector<std::string> compactors;
+  std::vector<std::string> datafiles;
+  std::vector<std::string> indexes;
+};
+
 class MMFilesEngine final : public StorageEngine {
  public:
 
@@ -196,6 +204,9 @@ class MMFilesEngine final : public StorageEngine {
   // from the storage engine's realm
   void removeDocumentRevision(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId,
                               arangodb::velocypack::Slice const& document) override;
+
+  /// @brief scans a collection and locates all files
+  MMFilesEngineCollectionFiles scanCollectionDirectory(std::string const& path);
   
  private:
   void verifyDirectories(); 
@@ -225,6 +236,13 @@ class MMFilesEngine final : public StorageEngine {
 
   /// @brief physically erases the database directory
   int dropDatabaseDirectory(std::string const& path);
+
+  /// @brief iterate over a set of datafiles, identified by filenames
+  /// note: the files will be opened and closed
+  bool iterateFiles(std::vector<std::string> const& files);
+
+  /// @brief find the maximum tick in a collection's journals
+  bool findMaxTickInJournals(std::string const& path);
 
  public:
   static std::string const EngineName;

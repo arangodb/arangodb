@@ -41,8 +41,7 @@ static int const SLOT_COLLECTION = 2;
 ////////////////////////////////////////////////////////////////////////////////
 
 void ReleaseCollection(TRI_vocbase_col_t const* collection) {
-  TRI_ReleaseCollectionVocBase(collection->_vocbase,
-                               const_cast<TRI_vocbase_col_t*>(collection));
+  collection->_vocbase->releaseCollection(const_cast<TRI_vocbase_col_t*>(collection));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
