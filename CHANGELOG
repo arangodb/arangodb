@@ -34,6 +34,7 @@ v3.0.4 (XXXX-XX-XX)
 
 * fixed credentialed CORS requests properly respecting --http.trusted-origin
 
+* fixed a crash in V8Periodic task (forgotten lock)
 
 v3.0.3 (2016-07-17)
 -------------------
