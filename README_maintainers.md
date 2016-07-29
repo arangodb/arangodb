@@ -666,14 +666,17 @@ to continue, once all processes have been start up in the debugger.
 ArangoDB on Mesos
 =================
 
+This will spawn a temporary local mesos cluster.
+
 Requirements:
 
 - Somewhat recent linux
-- docker
+- docker 1.10+
 - curl
 - jq
 - git
 - at least 8GB RAM
+- fully open firewall inside the docker network
 
 To startup a local mesos cluster:
 
@@ -747,10 +750,12 @@ docker inspect mesos-cluster | jq '.[0].NetworkSettings.Networks.bridge.IPAddres
 And deploy the modified file to your local mesos cluster:
 
 ```
-curl -X POST $(docker inspect mesos-cluster | jq -r '.[0].NetworkSettings.Networks.bridge.IPAddress'):8080/v2/apps -d @arangodb3.json -H "Content-Type: application/json" | jq .
+curl -X POST $(docker inspect mesos-cluster |
+jq -r '.[0].NetworkSettings.Networks.bridge.IPAddress'):8080/v2/apps -d @arangodb3.json -H "Content-Type: application/json" |
+jq .
 ```
 
-Point your webbrowser to `$(docker inspect mesos-cluster | jq -r '.[0].NetworkSettings.Networks.bridge.IPAddress')`:8080.
+Point your webbrowser to the IP of your mesos-cluster (see above) on port 8080.
 
 Wait until arangodb is healthy.
 
