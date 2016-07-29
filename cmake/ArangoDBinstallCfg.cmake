@@ -1,10 +1,10 @@
 ################################################################################
 ## INSTALL
 ################################################################################
-include(GNUInstallDirs)
-
 set(CMAKE_INSTALL_SYSCONFDIR_ARANGO "${CMAKE_INSTALL_SYSCONFDIR}/arangodb3" CACHE PATH "read-only single-machine data (etc)")
 set(CMAKE_INSTALL_FULL_SYSCONFDIR_ARANGO "${CMAKE_INSTALL_FULL_SYSCONFDIR}/arangodb3" CACHE PATH "read-only single-machine data (etc)")
+set(CMAKE_INSTALL_FULL_DATAROOTDIR_ARANGO "${CMAKE_INSTALL_DATAROOTDIR}/arangodb3" CACHE PATH "read-only data (share)")
+set(CMAKE_INSTALL_DATAROOTDIR_ARANGO "${CMAKE_INSTALL_FULL_DATAROOTDIR}/arangodb3" CACHE PATH "read-only data (share)")
 
 # Global macros ----------------------------------------------------------------
 macro (generate_root_config name)
@@ -31,7 +31,7 @@ endmacro ()
 #  generates config file using the configured paths ----------------------------
 macro (generate_path_config name)
   FILE(READ "${PROJECT_SOURCE_DIR}/etc/arangodb3/${name}.conf.in" FileContent)
-  STRING(REPLACE "@PKGDATADIR@" "${CMAKE_INSTALL_FULL_DATAROOTDIR}/"
+  STRING(REPLACE "@PKGDATADIR@" "${CMAKE_INSTALL_DATAROOTDIR_ARANGO}"
     FileContent "${FileContent}")
   STRING(REPLACE "@LOCALSTATEDIR@" "${CMAKE_INSTALL_FULL_LOCALSTATEDIR}" 
     FileContent "${FileContent}")

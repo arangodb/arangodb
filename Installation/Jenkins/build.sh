@@ -331,9 +331,9 @@ git rev-parse HEAD > ../last_compiled_version.sha
 
 if [ -n "$CPACK"  -a -n "${TARGET_DIR}" ];  then
     for PACK in ${CPACK}; do 
-        if [ "$PACK" == "DEB" ]; then
-            make prepare_debian
-        fi
+#        if [ "$PACK" == "DEB" ]; then
+#            make prepare_debian
+#        fi
         
         cpack -G "$PACK"
 
