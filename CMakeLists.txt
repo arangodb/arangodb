@@ -34,6 +34,8 @@ else ()
   project(arangodb3 CXX C ASM)
 endif ()
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 # where to find CMAKE modules
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_SOURCE_DIR}/cmake)
 
@@ -842,7 +844,15 @@ if (NOT USE_PRECOMPILED_V8)
   add_dependencies(arangosh      v8_build)
 endif ()
 
-# this section triggers the sub-builds for the client packages.
+
+#copy compile commands to source dir
+if( EXISTS "${CMAKE_CURRENT_BINARY_DIR}/compile_commands.json" )
+    message(STATUS "copy compile_commands.json")
+    EXECUTE_PROCESS(COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${CMAKE_CURRENT_BINARY_DIR}/compile_commands.json
+        ${CMAKE_CURRENT_SOURCE_DIR}/compile_commands.json
+    )
+endif()
 
 set(BUILD_DIR ${CMAKE_CURRENT_BINARY_DIR}/packages/arangodb-client)
 configure_file(cmake/packages/package-client.txt ${BUILD_DIR}/CMakeLists.txt @ONLY)
@@ -850,3 +860,4 @@ add_custom_target(package-arongodb-client COMMAND ${CMAKE_COMMAND} .
   COMMAND ${CMAKE_CPACK_COMMAND} -G DEB
   COMMAND cp *.deb ${PROJECT_BINARY_DIR} 
   WORKING_DIRECTORY ${BUILD_DIR})
+

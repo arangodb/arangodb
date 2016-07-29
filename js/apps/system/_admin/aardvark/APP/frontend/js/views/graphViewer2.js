@@ -45,6 +45,7 @@
       random1: ['#292F36', '#4ECDC4', '#F7FFF7', '#DD6363', '#FFE66D']
     },
 
+    activeNodes: [],
     selectedNodes: {},
 
     aqlMode: false,
@@ -101,12 +102,12 @@
     },
 
     downloadSVG: function () {
-      var self = this;
-
-      this.currentGraph.toSVG({
+      var size = parseInt($('#graph-container').width(), 10);
+      sigma.plugins.image(this.currentGraph, this.currentGraph.renderers[0], {
         download: true,
-        filename: self.name + '.svg',
-        size: 1000
+        size: size,
+        background: 'white',
+        zoom: true
       });
     },
 
@@ -144,7 +145,7 @@
 
       // render
       this.graphData.modified = this.parseData(this.graphData.original, this.graphData.graphInfo);
-      this.renderGraph(this.graphData.modified);
+      this.renderGraph(this.graphData.modified, null, true);
     },
 
     parseData: function (data, type) {
@@ -159,13 +160,15 @@
         _.each(data, function (obj) {
           if (obj.edges && obj.vertices) {
             _.each(obj.edges, function (edge) {
-              edges[edge._id] = {
-                id: edge._id,
-                source: edge._from,
-                label: edge._key,
-                color: '#cccccc',
-                target: edge._to
-              };
+              if (edge !== null) {
+                edges[edge._id] = {
+                  id: edge._id,
+                  source: edge._from,
+                  label: edge._key,
+                  color: '#cccccc',
+                  target: edge._to
+                };
+              }
             });
 
             _.each(obj.vertices, function (node) {
@@ -228,8 +231,8 @@
         '<div id="calculatingGraph" style="position: absolute; left: 25px; top: 130px;">' +
         '<i class="fa fa-circle-o-notch fa-spin" style="margin-right: 10px;"></i>' +
         '<span id="calcText">Fetching graph data. Please wait ... </span></br></br></br>' +
-        '<span style="font-weight: 100; opacity: 0.6; font-size: 9pt;">If it`s taking too much time to draw the graph, please go to: </br>' +
-        '<a href="' + window.location.href + '/settings">' + window.location.href + '/settings </a></br> and adjust your settings.' +
+        '<span style="font-weight: 100; opacity: 0.6; font-size: 9pt;">If it`s taking too much time to draw the graph, please navigate to: ' +
+        '<a style="font-weight: 500" href="' + window.location.href + '/graphs">Graphs View</a></br>Click the settings icon and reset the display settings.' +
         'It is possible that the graph is too big to be handled by the browser.</span></div>'
       );
 
@@ -244,17 +247,44 @@
           delete ajaxData.renderer;
         }
 
+        if (self.tmpStartNode) {
+          if (self.graphConfig) {
+            if (self.graphConfig.nodeStart.length === 0) {
+              ajaxData.nodeStart = self.tmpStartNode;
+            }
+          } else {
+            ajaxData.nodeStart = self.tmpStartNode;
+          }
+        }
+
         this.setupSigma();
 
+        self.fetchStarted = new Date();
         $.ajax({
           type: 'GET',
           url: arangoHelper.databaseUrl('/_admin/aardvark/graph/' + encodeURIComponent(this.name)),
           contentType: 'application/json',
           data: ajaxData,
           success: function (data) {
-            $('#calcText').html('Calculating layout. Please wait ... ');
-            // arangoHelper.buildGraphSubNav(self.name, 'Content');
-            self.renderGraph(data, toFocus);
+            if (data.empty === true) {
+              self.renderGraph(data, toFocus);
+            } else {
+              if (data.settings) {
+                if (data.settings.startVertex && self.graphConfig.startNode === undefined) {
+                  if (self.tmpStartNode === undefined) {
+                    self.tmpStartNode = data.settings.startVertex._id;
+                  }
+                }
+              }
+
+              self.fetchFinished = new Date();
+              self.calcStart = self.fetchFinished;
+              $('#calcText').html('Server response took ' + Math.abs(self.fetchFinished.getTime() - self.fetchStarted.getTime()) + ' ms. Initializing graph engine. Please wait ... ');
+              // arangoHelper.buildGraphSubNav(self.name, 'Content');
+              window.setTimeout(function () {
+                self.renderGraph(data, toFocus);
+              }, 50);
+            }
           },
           error: function (e) {
             try {
@@ -340,7 +370,7 @@
       this.cursorY = e.y;
     },
 
-    deleteNode: function (id) {
+    deleteNode: function (e, id) {
       var self = this;
       var documentKey;
       var collectionId;
@@ -393,7 +423,7 @@
       try {
         var arr = JSON.parse($('#delete-nodes-arr-id').text());
         _.each(arr, function (id) {
-          self.deleteNode(id);
+          self.deleteNode(null, id);
         });
       } catch (ignore) {
       }
@@ -405,6 +435,11 @@
       _.each(this.selectedNodes, function (id) {
         nodeIds.push(id);
       });
+
+      if (nodeIds.length === 0) {
+        arangoHelper.arangoNotification('Graph', 'No nodes selected.');
+        return;
+      }
 
       var buttons = []; var tableContent = [];
 
@@ -465,6 +500,9 @@
     addNode: function () {
       var self = this;
 
+      var x = self.addNodeX / 100;
+      var y = self.addNodeY / 100;
+
       var collectionId = $('.modal-body #new-node-collection-attr').val();
       var key = $('.modal-body #new-node-key-attr').last().val();
 
@@ -472,13 +510,14 @@
         if (error) {
           arangoHelper.arangoError('Could not create node', msg.errorMessage);
         } else {
+          $('#emptyGraph').remove();
           self.currentGraph.graph.addNode({
             id: id,
             label: id.split('/')[1] || '',
             size: self.graphConfig.nodeSize || Math.random(),
             color: self.graphConfig.nodeColor || '#2ecc71',
-            x: self.cursorX,
-            y: self.cursorY
+            x: x,
+            y: y
           });
 
           window.modalView.hide();
@@ -600,7 +639,7 @@
       }
       var key = $('.modal-body #new-edge-key-attr').last().val();
 
-      var callback = function (error, data) {
+      var callback = function (error, data, msg) {
         if (!error) {
           // success
           if (self.graphConfig.edgeEditable === 'true') {
@@ -628,7 +667,7 @@
           }
           self.currentGraph.refresh();
         } else {
-          arangoHelper.arangoError('Graph', 'Could not create edge.');
+          arangoHelper.arangoError('Could not create edge', msg.errorMessage);
         }
 
         // then clear states
@@ -709,20 +748,24 @@
       }
     },
 
-    updateColors: function () {
+    updateColors: function (nodes, edges, ncolor, ecolor) {
       var combinedName = window.App.currentDB.toJSON().name + '_' + this.name;
       var self = this;
 
       this.userConfig.fetch({
         success: function (data) {
-          self.graphConfig = data.toJSON().graphs[combinedName];
-          self.currentGraph.graph.nodes().forEach(function (n) {
-            n.color = self.graphConfig.nodeColor;
-          });
+          if (nodes === true) {
+            self.graphConfig = data.toJSON().graphs[combinedName];
+            self.currentGraph.graph.nodes().forEach(function (n) {
+              n.color = ncolor;
+            });
+          }
 
-          self.currentGraph.graph.edges().forEach(function (e) {
-            e.color = self.graphConfig.edgeColor;
-          });
+          if (edges === true) {
+            self.currentGraph.graph.edges().forEach(function (e) {
+              e.color = ecolor;
+            });
+          }
 
           self.currentGraph.refresh();
         }
@@ -918,7 +961,7 @@
         wheel.multiSelect = true;
         wheel.clickModeRotate = false;
         wheel.slicePathFunction = slicePath().DonutSlice;
-        wheel.createWheel([icon.edit, icon.trash, icon.play, icon.connect]);
+        wheel.createWheel([icon.edit, icon.trash, icon.flag, icon.connect, icon.expand]);
 
         wheel.navItems[0].selected = false;
         wheel.navItems[0].hovered = false;
@@ -955,13 +998,19 @@
           self.clearOldContextMenu();
         };
 
+        // function 4: mark as start node
+        wheel.navItems[4].navigateFunction = function (e) {
+          self.clearOldContextMenu();
+          self.expandNode(nodeId);
+        };
+
         // deselect active default entry
         wheel.navItems[0].selected = false;
         wheel.navItems[0].hovered = false;
       };
 
       $('#nodeContextMenu').css('left', x + 115);
-      $('#nodeContextMenu').css('top', y + 72);
+      $('#nodeContextMenu').css('top', y + 71);
       $('#nodeContextMenu').width(100);
       $('#nodeContextMenu').height(100);
 
@@ -972,6 +1021,76 @@
       var c = document.getElementsByClassName('sigma-mouse')[0];
       var ctx = c.getContext('2d');
       ctx.clearRect(0, 0, $(c).width(), $(c).height());
+    },
+
+    expandNode: function (id) {
+      var self = this;
+      var ajaxData = {};
+
+      if (this.graphConfig) {
+        ajaxData = _.clone(this.graphConfig);
+
+        // remove not needed params
+        delete ajaxData.layout;
+        delete ajaxData.edgeType;
+        delete ajaxData.renderer;
+      }
+
+      ajaxData.query = 'FOR v, e, p IN 1..1 ANY "' + id + '" GRAPH "' + self.name + '" RETURN p';
+
+      $.ajax({
+        type: 'GET',
+        url: arangoHelper.databaseUrl('/_admin/aardvark/graph/' + encodeURIComponent(this.name)),
+        contentType: 'application/json',
+        data: ajaxData,
+        success: function (data) {
+          self.checkExpand(data, id);
+        },
+        error: function (e) {
+          arangoHelper.arangoError('Graph', 'Could not expand node: ' + id + '.');
+        }
+      });
+    },
+
+    checkExpand: function (data, origin) {
+      var self = this;
+      var newNodes = data.nodes;
+      var newEdges = data.edges;
+      var existingNodes = this.currentGraph.graph.nodes();
+
+      var found;
+      _.each(newNodes, function (newNode) {
+        found = false;
+        _.each(existingNodes, function (existingNode) {
+          if (found === false) {
+            if (newNode.id === existingNode.id) {
+              if (existingNode.id === origin) {
+                existingNode.label = existingNode.label + ' (expanded)';
+              }
+              found = true;
+            } else {
+              found = false;
+            }
+          }
+        });
+
+        if (found === false) {
+          newNode.originalColor = newNode.color;
+          self.currentGraph.graph.addNode(newNode);
+
+          _.each(newEdges, function (edge) {
+            if (edge.source === newNode.id || edge.target === newNode.id) {
+              edge.originalColor = edge.color;
+              self.currentGraph.graph.addEdge(edge);
+            }
+          });
+
+          self.startLayout(true);
+        }
+
+        // rerender graph
+        self.currentGraph.refresh();
+      });
     },
 
     drawLine: function (e) {
@@ -989,6 +1108,7 @@
         ctx.beginPath();
         ctx.moveTo(fromX, fromY);
         ctx.lineTo(toX, toY);
+        ctx.strokeStyle = this.newEdgeColor;
         ctx.stroke();
       }
     },
@@ -1021,7 +1141,7 @@
 
     setStartNode: function (id) {
       this.graphConfig.nodeStart = id;
-      this.graphSettingsView.saveGraphSettings(null, id);
+      this.graphSettingsView.saveGraphSettings(undefined, undefined, id);
     },
 
     editNode: function (id) {
@@ -1076,10 +1196,15 @@
         // Do something with the selected nodes
         var nodes = event.data;
 
-        _.each(nodes, function (val, key) {
-          self.selectedNodes[key] = val.id;
-        });
+        if (nodes.length === 0) {
+          self.selectedNodes = [];
+        } else {
+          _.each(nodes, function (val, key) {
+            self.selectedNodes[key] = val.id;
+          });
+        }
 
+        /*
         // For instance, reset all node size as their initial size
         sigmaInstance.graph.nodes().forEach(function (node) {
           node.color = self.graphConfig.nodeColor ? self.graphConfig.nodeColor : 'rgb(46, 204, 113)';
@@ -1089,42 +1214,46 @@
         nodes.forEach(function (node) {
           node.color = 'red';
         });
+        */
 
+        self.activeNodes = nodes;
         sigmaInstance.refresh();
       });
 
       return lasso;
     },
 
-    renderGraph: function (graph, toFocus) {
+    renderGraph: function (graph, toFocus, aqlMode) {
       var self = this;
-      console.log(graph);
 
       this.graphSettings = graph.settings;
 
-      if (graph.edges.length === 0) {
-        var string = 'No edges found for starting point: <span style="font-weight: 400">' + self.graphSettings.startVertex._id + '</span>';
-        $('#calculatingGraph').html(
-          '<div style="font-weight: 300; font-size: 10.5pt"><span style="font-weight: 400">Stopped. </span></br></br>' +
-          string +
-          '. Please <span id="noGraphToggle" style="cursor: pointer; color: #3498db">choose a different start node </span>or try to reload the graph. ' +
-          '<i id="reloadGraph" class="fa fa-refresh" style="cursor: pointer"></i></div>'
-        );
-        return;
-      } else {
-        var style = 'position: absolute; left: 25px; bottom: 45px;';
-        if (this.aqlMode) {
-          style = 'position: absolute; left: 30px; margin-top: -37px;';
+      if (graph.edges) {
+        if (graph.nodes) {
+          if (graph.nodes.length === 0 && graph.edges.length === 0) {
+            graph.nodes.push({
+              id: graph.settings.startVertex._id,
+              label: graph.settings.startVertex._key,
+              size: 10,
+              color: '#2ecc71',
+              x: Math.random(),
+              y: Math.random()
+            });
+          }
+
+          var style = 'position: absolute; left: 25px; bottom: 45px;';
+          if (this.aqlMode) {
+            style = 'position: absolute; left: 30px; margin-top: -37px;';
+          }
+
+          $(this.el).append(
+            '<div style="' + style + '">' +
+              '<span style="margin-right: 10px" class="arangoState">' + graph.nodes.length + ' nodes</span>' +
+                '<span class="arangoState">' + graph.edges.length + ' edges</span>' +
+                  '</div>'
+          );
         }
-
-        $(this.el).append(
-          '<div style="' + style + '">' +
-          '<span style="margin-right: 10px" class="arangoState">' + graph.nodes.length + ' nodes</span>' +
-          '<span class="arangoState">' + graph.edges.length + ' edges</span>' +
-          '</div>'
-        );
       }
-
       this.Sigma = sigma;
 
       // defaults
@@ -1145,35 +1274,51 @@
         }
       }
 
+      // sigmajs graph settings
       var settings = {
+        borderSize: 3,
+        defaultNodeBorderColor: '#8c8c8c',
         doubleClickEnabled: false,
-        minNodeSize: 3.5,
+        minNodeSize: 20,
         minEdgeSize: 1,
         maxEdgeSize: 4,
         enableEdgeHovering: true,
-        edgeHoverColor: '#000',
-        defaultEdgeHoverColor: '#000',
-        defaultEdgeType: 'line',
+        edgeHoverColor: '#8c8c8c',
+        defaultEdgeHoverColor: '#8c8c8c',
+        defaultEdgeType: 'arrow',
         edgeHoverSizeRatio: 2,
         edgeHoverExtremities: true,
+        nodesPowRatio: 1,
         // lasso settings
         autoRescale: true,
         mouseEnabled: true,
         touchEnabled: true,
-        nodesPowRatio: 1,
-        font: 'Roboto',
-        edgesPowRatio: 1
+        font: 'Roboto'
       };
+
+      // halo settings
+      settings.nodeHaloColor = '#FF7A7A';
+      settings.nodeHaloStroke = false;
+      settings.nodeHaloStrokeColor = '#000';
+      settings.nodeHaloStrokeWidth = 0.5;
+      settings.nodeHaloSize = 15;
+      settings.nodeHaloClustering = false;
+      settings.nodeHaloClusteringMaxRadius = 1000;
+      settings.edgeHaloColor = '#fff';
+      settings.edgeHaloSize = 10;
+      settings.drawHalo = true;
 
       if (renderer === 'canvas') {
         settings.autoCurveSortByDirection = true;
       }
 
       // adjust display settings for big graphs
-      if (graph.nodes.length > 500) {
-        // show node label if size is 15
-        settings.labelThreshold = 15;
-        settings.hideEdgesOnMove = true;
+      if (graph.nodes) {
+        if (graph.nodes.length > 500) {
+          // show node label if size is 15
+          settings.labelThreshold = 15;
+          settings.hideEdgesOnMove = true;
+        }
       }
 
       if (this.graphConfig) {
@@ -1258,62 +1403,75 @@
             sigma.canvas.edges.autoCurve(s);
           }
         }
-        s.refresh();
 
         if (!self.aqlMode) {
           s.bind('rightClickStage', function (e) {
+            self.addNodeX = e.data.captor.x;
+            self.addNodeY = e.data.captor.y;
             self.createContextMenu(e);
             self.clearMouseCanvas();
           });
         }
 
-        s.bind('overNode', function (e) {
+        var showAttributes = function (e, node) {
           $('.nodeInfoDiv').remove();
+
           if (self.contextState.createEdge === false) {
-            var callback = function (error, data) {
-              if (!error) {
-                var obj = {};
-                var counter = 0;
-                var more = false;
-
-                _.each(data, function (val, key) {
-                  if (counter < 15) {
-                    if (typeof val === 'string') {
-                      if (val.length > 10) {
-                        obj[key] = val.substr(0, 15) + ' ...';
-                      } else {
-                        obj[key] = val;
-                      }
-                    }
-                  } else {
-                    more = true;
+            if (window.location.hash.indexOf('graph') > -1) {
+              var callback = function (error, data) {
+                if (!error) {
+                  var attributes = '';
+                  attributes += 'ID <span class="nodeId">' + data._id + '</span>';
+                  if (Object.keys(data).length > 3) {
+                    attributes += 'KEYS ';
                   }
-                  counter++;
-                });
+                  _.each(data, function (value, key) {
+                    if (key !== '_key' && key !== '_id' && key !== '_rev' && key !== '_from' && key !== '_to') {
+                      attributes += '<span class="nodeAttribute">' + key + '</span>';
+                    }
+                  });
+                  var string = '<div id="nodeInfoDiv" class="nodeInfoDiv">' + attributes + '</div>';
 
-                var string = '<div id="nodeInfoDiv" class="nodeInfoDiv">' +
-                  '<pre>' + JSON.stringify(obj, null, 2);
-
-                if (more) {
-                  string = string.substr(0, string.length - 2);
-                  string += ' \n\n  ... \n\n } </pre></div>';
-                } else {
-                  string += '</pre></div>';
+                  $(self.el).append(string);
                 }
+              };
 
-                $(self.el).append(string);
+              if (node) {
+                self.documentStore.getDocument(e.data.node.id.split('/')[0], e.data.node.id.split('/')[1], callback);
+              } else {
+                self.documentStore.getDocument(e.data.edge.id.split('/')[0], e.data.edge.id.split('/')[1], callback);
               }
-            };
+            }
+          }
+        };
 
-            self.documentStore.getDocument(e.data.node.id.split('/')[0], e.data.node.id.split('/')[1], callback);
+        s.bind('overNode', function (e) {
+          if (self.contextState.createEdge === true) {
+            self.newEdgeColor = '#ff0000';
+          } else {
+            self.newEdgeColor = '#000000';
           }
         });
 
+        s.bind('clickEdge', function (e) {
+          showAttributes(e, false);
+        });
+
+        /*
         s.bind('outNode', function (e) {
           if (self.contextState.createEdge === false) {
             $('.nodeInfoDiv').remove();
           }
         });
+        */
+
+        /*
+        s.bind('outEdge', function (e) {
+          if (self.contextState.createEdge === false) {
+            $('.nodeInfoDiv').remove();
+          }
+        });
+       */
 
         s.bind('clickNode', function (e) {
           if (self.contextState.createEdge === true) {
@@ -1325,7 +1483,28 @@
             // validate edgeDefinitions
             var foundEdgeDefinitions = self.getEdgeDefinitionCollections(fromCollection, toCollection);
             self.addEdgeModal(foundEdgeDefinitions, self.contextState._from, self.contextState._to);
+          } else {
+            if (!self.dragging) {
+              // halo on active nodes:
+              self.currentGraph.renderers[0].halo({
+                nodes: self.currentGraph.graph.nodes(),
+                nodeHaloColor: '#DF0101',
+                nodeHaloSize: 100
+              });
+
+              showAttributes(e, true);
+              self.activeNodes = [e.data.node];
+              s.renderers[0].halo({
+                nodes: [e.data.node]
+              });
+            }
           }
+        });
+
+        s.renderers[0].bind('render', function (e) {
+          s.renderers[0].halo({
+            nodes: self.activeNodes
+          });
         });
 
         if (!this.aqlMode) {
@@ -1369,6 +1548,8 @@
         });
 
         s.bind('doubleClickStage', function () {
+          self.activeNodes = [];
+
           s.graph.nodes().forEach(function (n) {
             n.color = n.originalColor;
           });
@@ -1377,12 +1558,16 @@
             e.color = e.originalColor;
           });
 
+          $('.nodeInfoDiv').remove();
           s.refresh();
         });
 
         s.bind('clickStage', function () {
           self.clearOldContextMenu(true);
           self.clearMouseCanvas();
+          s.renderers[0].halo({
+            nodes: self.activeNodes
+          });
         });
       }
 
@@ -1390,7 +1575,6 @@
       if (algorithm === 'noverlap') {
         s.startNoverlap();
         // allow draggin nodes
-        sigma.plugins.dragNodes(s, s.renderers[0]);
       } else if (algorithm === 'force') {
         // add buttons for start/stopping calculation
         var style2 = 'color: rgb(64, 74, 83); cursor: pointer; position: absolute; right: 30px; bottom: 40px;';
@@ -1407,25 +1591,29 @@
         self.startLayout();
 
         // suggestion rendering time
-        var duration = 3000;
+        var duration = graph.nodes.length;
 
-        if (graph.nodes.length > 2500) {
-          duration = 5000;
-        } else if (graph.nodes.length < 50) {
-          duration = 500;
+        if (duration < 250) {
+          duration = 250;
         }
 
-        // dragListener = sigma.plugins.dragNodes(s, s.renderers[0]);
         window.setTimeout(function () {
           self.stopLayout();
         }, duration);
       } else if (algorithm === 'fruchtermann') {
         // Start the Fruchterman-Reingold algorithm:
         sigma.layouts.fruchtermanReingold.start(s);
-        sigma.plugins.dragNodes(s, s.renderers[0]);
-      } else {
-        sigma.plugins.dragNodes(s, s.renderers[0]);
       }
+      var dragListener = sigma.plugins.dragNodes(s, s.renderers[0]);
+
+      dragListener.bind('drag', function (event) {
+        self.dragging = true;
+      });
+      dragListener.bind('drop', function (event) {
+        window.setTimeout(function () {
+          self.dragging = false;
+        }, 400);
+      });
 
       // add listener to keep track of cursor position
       var c = document.getElementsByClassName('sigma-mouse')[0];
@@ -1469,6 +1657,29 @@
       }
       // clear up info div
       $('#calculatingGraph').remove();
+
+      // make nodes a bit bigger
+      var maxNodeSize = s.settings('maxNodeSize');
+      var factor = 1;
+      var length = s.graph.nodes().length;
+
+      if (length < 100) {
+        factor = 2.5;
+      } else if (length < 1000) {
+        factor = 0.7;
+      }
+
+      if (!aqlMode) {
+        maxNodeSize = maxNodeSize * factor;
+        s.settings('maxNodeSize', maxNodeSize);
+        s.refresh();
+      }
+
+      self.calcFinished = new Date();
+      // console.log('Client side calculation took ' + Math.abs(self.calcFinished.getTime() - self.calcStart.getTime()) + ' ms');
+      if (graph.empty === true) {
+        $('.sigma-background').before('<span id="emptyGraph" style="position: absolute; margin-left: 10px; margin-top: 10px;">The graph is empty. Please right-click to add a node.<span>');
+      }
     },
 
     keyUpFunction: function (event) {
@@ -1501,15 +1712,7 @@
 
         // clear selected nodes state
         this.selectedNodes = {};
-
-        this.currentGraph.graph.nodes().forEach(function (n) {
-          n.color = n.originalColor;
-        });
-
-        this.currentGraph.graph.edges().forEach(function (e) {
-          e.color = e.originalColor;
-        });
-
+        this.activeNodes = [];
         this.currentGraph.refresh();
       } else {
         $('#selectNodes').addClass('activated');
@@ -1521,12 +1724,21 @@
       }
     },
 
-    startLayout: function () {
+    startLayout: function (kill) {
+      var self = this;
+
+      if (kill === true) {
+        this.currentGraph.killForceAtlas2();
+
+        window.setTimeout(function () {
+          self.stopLayout();
+        }, 400);
+      }
+
       $('#toggleForce .fa').removeClass('fa-play').addClass('fa-pause');
       this.layouting = true;
       this.currentGraph.startForceAtlas2({
-        worker: true,
-        barnesHutOptimize: false
+        worker: true
       });
       sigma.plugins.dragNodes(this.currentGraph, this.currentGraph.renderers[0]);
     },

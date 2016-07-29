@@ -20,7 +20,6 @@
               <div class="pure-u-1-1 left heading"><%=val.name%></div>
             <% } else { %>
             <div class="<%= genClass %> left">
-              <i title="<%=val.desc%>" class="fa fa-info-circle gv-tooltips" aria-hidden="true"></i>
               <%=val.name%>
             </div>
             <div class="<%= genClass2 %> left">
@@ -45,13 +44,14 @@
 
               <% if (val.type === 'range') { %>
                 <label id="g_<%=key%>_label" class="rangeLabel">1</label>
-                <input id="g_<%=key%>" type='range' min="0" max="30" val="1"/>
+                <input id="g_<%=key%>" type='range' min="0" max="9" val="1"/>
               <% } %>
 
               <% if (val.type === 'color') { %>
                 <input id="g_<%=key%>" type='color' name='color' value="<%=VALUE%>"/>
               <% } %>
 
+              <i title="<%=val.desc%>" class="fa fa-info-circle gv-tooltips" aria-hidden="true"></i>
               </div>
             <% } %>
 
@@ -69,7 +69,6 @@
               <div class="pure-u-1-1 left heading"><%=val.name%></div>
             <% } else { %>
               <div class="<%= genClass %> left">
-                <i title="<%=val.desc%>" class="fa fa-info-circle gv-tooltips" aria-hidden="true"></i>
                 <%=val.name%>
               </div>
 
@@ -96,7 +95,7 @@
 
                 <% if (val.type === 'range') { %>
                   <label id="g_<%=key%>_label" class="rangeLabel">1</label>
-                  <input id="g_<%=key%>" type='range' min="0" max="30" val="1"/>
+                  <input id="g_<%=key%>" type='range' min="0" max="9" val="1"/>
                 <% } %>
 
                 <% if (val.type === 'select') { %>
@@ -108,17 +107,17 @@
                       <% }); %>
                     </select>
                 <% } %>
-
+                <i title="<%=val.desc%>" class="fa fa-info-circle gv-tooltips" aria-hidden="true"></i>
               </div>
             <% } %>
           <% }); %>
         </div>
 
+        <div class="pure-u-1-1">
+          <button id="saveGraphSettings" style="margin-top: 20px; margin-right: 10px;" class="button-success pull-right">Save</button>
+          <button id="restoreGraphSettings" style="margin-top: 20px;" class="button-success pull-right">Restore defaults</button>
+        </div>
       </div>
-
-
-    <button id="saveGraphSettings" style="margin-top: 20px; margin-right: 10px;" class="button-success pull-right">Save</button>
-    <button id="restoreGraphSettings" style="margin-top: 20px;" class="button-success pull-right">Restore defaults</button>
   </div>
 
 </script>

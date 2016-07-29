@@ -104,64 +104,6 @@ int gettimeofday(struct timeval* tv, void* tz) {
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief gets a line
-////////////////////////////////////////////////////////////////////////////////
-
-#if !defined(TRI_HAVE_GETLINE)
-
-static int const line_size = 256;
-
-ssize_t getline(char** lineptr, size_t* n, FILE* stream) {
-  // sanity checks
-  if (lineptr == nullptr || n == nullptr || stream == nullptr) {
-    return -1;
-  }
-
-  // allocate the line the first time
-  if (*lineptr == nullptr) {
-    *lineptr = (char*)TRI_SystemAllocate(line_size, false);
-
-    if (*lineptr == nullptr) {
-      return -1;
-    }
-
-    *n = line_size;
-  }
-
-  // clear the line
-  memset(*lineptr, '\0', *n);
-
-  size_t indx = 0;
-  int c;
-  while ((c = getc(stream)) != EOF) {
-    // check if more memory is needed
-    if (indx >= *n) {
-      *lineptr = (char*)realloc(*lineptr, *n + line_size);
-
-      if (*lineptr == nullptr) {
-        return -1;
-      }
-
-      // clear the rest of the line
-      memset(*lineptr + *n, '\0', line_size);
-      *n += line_size;
-    }
-
-    // push the result in the line
-    (*lineptr)[indx++] = c;
-
-    // bail out
-    if (c == '\n') {
-      break;
-    }
-  }
-
-  return (c == EOF) ? -1 : (ssize_t)indx;
-}
-
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief safe localtime
 ////////////////////////////////////////////////////////////////////////////////
 

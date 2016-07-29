@@ -27,7 +27,7 @@
       'layout': {
         type: 'select',
         name: 'Layout algorithm',
-        desc: 'Different graph displaying algorithms. No overlap is very fast, force is slower and fruchtermann is the slowest. The calculation time strongly depends on your nodes and edges counts.',
+        desc: 'Different graph algorithms. No overlap is very fast, force is slower and fruchtermann is the slowest. The calculation time strongly depends on your nodes and edges counts.',
         noverlap: {
           name: 'No overlap',
           val: 'noverlap'
@@ -75,15 +75,15 @@
       },
       'nodeLabelByCollection': {
         type: 'select',
-        name: 'Label by coll?',
+        name: 'Use collection name',
         desc: 'Set label text by collection. If activated node label attribute will be ignored.',
-        no: {
-          name: 'No',
-          val: 'false'
-        },
         yes: {
           name: 'Yes',
           val: 'true'
+        },
+        no: {
+          name: 'No',
+          val: 'false'
         }
       },
       'nodeLabelThreshold': {
@@ -100,12 +100,12 @@
       },
       'nodeColorAttribute': {
         type: 'string',
-        name: 'Colorize attr',
+        name: 'Color attribute',
         desc: 'If an attribute is given, nodes will then be colorized by the attribute. This setting ignores default node color if set.'
       },
       'nodeColorByCollection': {
         type: 'select',
-        name: 'Colorize by coll?',
+        name: 'Use collection color',
         no: {
           name: 'No',
           val: 'false'
@@ -132,15 +132,15 @@
       },
       'edgeLabelByCollection': {
         type: 'select',
-        name: 'Label by coll?',
+        name: 'Use collection name',
         desc: 'Set label text by collection. If activated edge label attribute will be ignored.',
-        no: {
-          name: 'No',
-          val: 'false'
-        },
         yes: {
           name: 'Yes',
           val: 'true'
+        },
+        no: {
+          name: 'No',
+          val: 'false'
         }
       },
       'edgeLabelThreshold': {
@@ -157,12 +157,12 @@
       },
       'edgeColorAttribute': {
         type: 'string',
-        name: 'Colorize attr',
+        name: 'Color attribute',
         desc: 'If an attribute is given, edges will then be colorized by the attribute. This setting ignores default edge color if set.'
       },
       'edgeColorByCollection': {
         type: 'select',
-        name: 'Colorize by coll?',
+        name: 'Use collection color',
         no: {
           name: 'No',
           val: 'false'
@@ -296,7 +296,14 @@
       var callback = function () {
         if (window.App.graphViewer2) {
           if (color !== '' && color !== undefined) {
-            window.App.graphViewer2.updateColors();
+            var nodes = !$('#g_nodeColor').is(':disabled');
+            var edges = !$('#g_edgeColor').is(':disabled');
+            window.App.graphViewer2.updateColors(
+              nodes,
+              edges,
+              $('#g_nodeColor').val(),
+              $('#g_edgeColor').val()
+            );
           } else {
             window.App.graphViewer2.render(self.lastFocussed);
           }
@@ -308,31 +315,37 @@
       this.userConfig.setItem('graphs', config, callback);
     },
 
-    setDefaults: function () {
+    setDefaults: function (onlySave) {
       var obj = {
         layout: 'force',
         renderer: 'canvas',
         depth: '2',
         nodeColor: '#2ecc71',
         nodeColorAttribute: '',
-        nodeColorByCollection: 'false',
-        nodeLabelThreshold: 10,
+        nodeColorByCollection: 'true',
+        nodeLabelThreshold: 2,
         edgeColor: '#cccccc',
         edgeColorAttribute: '',
         edgeColorByCollection: 'false',
-        edgeLabelThreshold: 10,
+        edgeLabelThreshold: 2,
         nodeLabel: '_key',
         edgeLabel: '',
-        edgeType: 'line',
+        edgeType: 'arrow',
         nodeSize: '',
         edgeEditable: 'false',
         nodeLabelByCollection: 'false',
-        edgeLabelByCollection: 'false',
-        nodeStart: ''
+        edgeLabelByCollection: 'true',
+        nodeStart: '',
+        barnesHutOptimize: true
       };
-      this.saveGraphSettings(null, null, null, obj);
-      this.render();
-      window.App.graphViewer2.render(this.lastFocussed);
+
+      if (onlySave === true) {
+        this.saveGraphSettings(null, null, null, obj);
+      } else {
+        this.saveGraphSettings(null, null, null, obj);
+        this.render();
+        window.App.graphViewer2.render(this.lastFocussed);
+      }
     },
 
     toggle: function () {
@@ -355,6 +368,26 @@
       this.getGraphSettings(true);
     },
 
+    handleDependencies: function () {
+      // node color
+      if ($('#g_nodeColorByCollection').val() === 'true') {
+        $('#g_nodeColorAttribute').prop('disabled', true);
+        $('#g_nodeColor').prop('disabled', true);
+      }
+      if ($('#g_nodeColorAttribute').val() !== '') {
+        $('#g_nodeColor').prop('disabled', true);
+      }
+
+      // edge color
+      if ($('#g_edgeColorByCollection').val() === 'true') {
+        $('#g_edgeColorAttribute').prop('disabled', true);
+        $('#g_edgeColor').prop('disabled', true);
+      }
+      if ($('#g_edgeColorAttribute').val() !== '') {
+        $('#g_edgeColor').prop('disabled', true);
+      }
+    },
+
     continueRender: function () {
       $(this.el).html(this.template.render({
         general: this.general,
@@ -372,13 +405,10 @@
         $('#g_nodeLabelThreshold_label').text(this.graphConfig.nodeLabelThreshold);
         $('#g_edgeLabelThreshold_label').text(this.graphConfig.edgeLabelThreshold);
       } else {
-        this.setDefaults();
+        this.setDefaults(true);
       }
 
-      // arangoHelper.buildGraphSubNav(this.name, 'Settings');
-
-      // load graph settings from local storage
-      // apply those values to view then
+      this.handleDependencies();
     }
 
   });

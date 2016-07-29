@@ -375,13 +375,6 @@
       if (string === 'JSON') {
         $('#outputEditor' + count).show();
 
-        $('#sentWrapper' + count).hide();
-        $('#outputGraph' + count).hide();
-        $('#outputTable' + count).hide();
-      } else if (string === 'AQL') {
-        $('#sentWrapper' + count).show();
-
-        $('#outputEditor' + count).hide();
         $('#outputGraph' + count).hide();
         $('#outputTable' + count).hide();
       } else if (string === 'Table') {
@@ -389,13 +382,11 @@
 
         $('#outputGraph' + count).hide();
         $('#outputEditor' + count).hide();
-        $('#sentWrapper' + count).hide();
       } else if (string === 'Graph') {
         $('#outputGraph' + count).show();
 
         $('#outputTable' + count).hide();
         $('#outputEditor' + count).hide();
-        $('#sentWrapper' + count).hide();
       }
 
       // deselect editors
@@ -465,6 +456,11 @@
 
       var self = this;
       var queryData = this.readQueryData();
+
+      if (queryData === 'false') {
+        return;
+      }
+
       $('#outputEditorWrapper' + counter + ' .queryExecutionTime').text('');
       this.execPending = false;
 
@@ -584,7 +580,7 @@
 
     fillSelectBoxes: function () {
       // fill select box with # of results
-      var querySize = 1000;
+      var querySize = 100;
       var sizeBox = $('#querySize');
       sizeBox.empty();
 
@@ -1005,6 +1001,14 @@
       });
 
       this.aqlEditor.commands.addCommand({
+        name: 'executeSelectedQuery',
+        bindKey: {win: 'Ctrl-Alt-Return', mac: 'Command-Alt-Return', linux: 'Ctrl-Alt-Return'},
+        exec: function () {
+          self.executeQuery(undefined, true);
+        }
+      });
+
+      this.aqlEditor.commands.addCommand({
         name: 'saveQuery',
         bindKey: {win: 'Ctrl-Shift-S', mac: 'Command-Shift-S', linux: 'Ctrl-Shift-S'},
         exec: function () {
@@ -1257,7 +1261,7 @@
       return quit;
     },
 
-    executeQuery: function () {
+    executeQuery: function (e, selected) {
       if (this.verifyQueryAndParams()) {
         return;
       }
@@ -1294,45 +1298,52 @@
       sentBindParamEditor.setReadOnly(true);
       this.setEditorAutoHeight(sentBindParamEditor);
 
-      this.fillResult(outputEditor, sentQueryEditor, counter);
+      this.fillResult(outputEditor, sentQueryEditor, counter, selected);
       this.outputCounter++;
     },
 
-    readQueryData: function () {
+    readQueryData: function (selected) {
       // var selectedText = this.aqlEditor.session.getTextRange(this.aqlEditor.getSelectionRange())
       var sizeBox = $('#querySize');
       var data = {
-        query: this.aqlEditor.getValue(),
         id: 'currentFrontendQuery'
       };
 
-      if (sizeBox.val() === 'all') {
-        data.batchSize = 1000000;
+      if (selected) {
+        data.query = this.aqlEditor.getSelectedText();
       } else {
-        data.batchSize = parseInt(sizeBox.val(), 10);
+        data.query = this.aqlEditor.getValue();
+      }
+      if (data.query.length === 0) {
+        if (selected) {
+          arangoHelper.arangoError('Query', 'Your query selection is empty!');
+        } else {
+          arangoHelper.arangoError('Query', 'Your query is empty!');
+        }
+        data = false;
+      } else {
+        if (sizeBox.val() === 'all') {
+          data.batchSize = 1000000;
+        } else {
+          data.batchSize = parseInt(sizeBox.val(), 10);
+        }
+
+        if (Object.keys(this.bindParamTableObj).length > 0) {
+          data.bindVars = this.bindParamTableObj;
+        }
       }
 
-      // var parsedBindVars = {}, tmpVar
-      if (Object.keys(this.bindParamTableObj).length > 0) {
-        /*
-        _.each(this.bindParamTableObj, function(value, key) {
-          try {
-            tmpVar = JSON.parse(value)
-          }
-          catch (e) {
-            tmpVar = value
-          }
-          parsedBindVars[key] = tmpVar
-        });*/
-        data.bindVars = this.bindParamTableObj;
-      }
       return JSON.stringify(data);
     },
 
-    fillResult: function (outputEditor, sentQueryEditor, counter) {
+    fillResult: function (outputEditor, sentQueryEditor, counter, selected) {
       var self = this;
 
-      var queryData = this.readQueryData();
+      var queryData = this.readQueryData(selected);
+
+      if (queryData === 'false') {
+        return;
+      }
 
       if (queryData) {
         sentQueryEditor.setValue(self.aqlEditor.getValue(), 1);
@@ -1605,7 +1616,7 @@
               if (error.code === 409) {
                 return;
               }
-              if (error.code !== 400 && error.code !== 404) {
+              if (error.code !== 400 && error.code !== 404 && error.code !== 500) {
                 arangoHelper.arangoNotification('Query', 'Successfully aborted.');
               }
             }
@@ -1635,11 +1646,12 @@
 
           _.each(result, function (obj) {
             if (obj.edges) {
-              totala += obj.edges.length;
-
               _.each(obj.edges, function (edge) {
-                if (edge._from && edge._to) {
-                  hitsa++;
+                if (edge !== null) {
+                  if (edge._from && edge._to) {
+                    hitsa++;
+                  }
+                  totala++;
                 }
               });
             }

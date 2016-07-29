@@ -323,6 +323,8 @@ void Query::setExecutionTime() {
 
 /// @brief extract a region from the query
 std::string Query::extractRegion(int line, int column) const {
+  TRI_ASSERT(_queryString != nullptr);
+
   // note: line numbers reported by bison/flex start at 1, columns start at 0
   int currentLine = 1;
   int currentColumn = 0;
@@ -330,7 +332,7 @@ std::string Query::extractRegion(int line, int column) const {
   char c;
   char const* p = _queryString;
 
-  while ((c = *p)) {
+  while ((static_cast<size_t>(p - _queryString) < _queryLength) && (c = *p)) {
     if (currentLine > line ||
         (currentLine >= line && currentColumn >= column)) {
       break;

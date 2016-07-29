@@ -41,6 +41,22 @@ ExecutionBlock::~ExecutionBlock() {
 
   _buffer.clear();
 }
+        
+/// @brief returns the register id for a variable id
+/// will return ExecutionNode::MaxRegisterId for an unknown variable
+RegisterId ExecutionBlock::getRegister(VariableId id) const {
+  auto it = _exeNode->getRegisterPlan()->varInfo.find(id);
+
+  if (it != _exeNode->getRegisterPlan()->varInfo.end()) {
+    return (*it).second.registerId;
+  }
+  return ExecutionNode::MaxRegisterId;
+}
+
+RegisterId ExecutionBlock::getRegister(Variable const* variable) const {
+  TRI_ASSERT(variable != nullptr);
+  return getRegister(variable->id);
+}
 
 /// @brief determine the number of rows in a vector of blocks
 size_t ExecutionBlock::countBlocksRows(

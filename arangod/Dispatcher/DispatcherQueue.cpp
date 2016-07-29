@@ -23,11 +23,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "DispatcherQueue.h"
+
 #include "Basics/ConditionLocker.h"
-#include "Logger/Logger.h"
 #include "Basics/MutexLocker.h"
 #include "Dispatcher/DispatcherThread.h"
 #include "Dispatcher/Job.h"
+#include "Logger/Logger.h"
 
 using namespace arangodb::rest;
 
@@ -38,7 +39,8 @@ using namespace arangodb::rest;
 DispatcherQueue::DispatcherQueue(Scheduler* scheduler, Dispatcher* dispatcher,
                                  size_t id,
                                  Dispatcher::newDispatcherThread_fptr creator,
-                                 size_t nrThreads, size_t nrExtra, size_t maxSize)
+                                 size_t nrThreads, size_t nrExtra,
+                                 size_t maxSize)
     : _id(id),
       _nrThreads(nrThreads),
       _nrExtra(nrExtra),
@@ -65,7 +67,7 @@ DispatcherQueue::DispatcherQueue(Scheduler* scheduler, Dispatcher* dispatcher,
       _jobs(),
       _jobPositions(_maxSize) {
   // keep a list of all jobs
-  _jobs = new std::atomic<Job*>[maxSize];
+  _jobs = new std::atomic<Job*>[ maxSize ];
 
   // and a list of positions into this array
   for (size_t i = 0; i < maxSize; ++i) {
@@ -361,8 +363,8 @@ void DispatcherQueue::startQueueThread(bool force) {
   if (!_affinityCores.empty()) {
     size_t c = _affinityCores[_affinityPos];
 
-    LOG(DEBUG) << "using core " << c << " for standard dispatcher thread";
-
+    LOG_TOPIC(DEBUG, Logger::THREADS) << "using core " << c
+                                      << " for standard dispatcher thread";
     thread->setProcessorAffinity(c);
 
     ++_affinityPos;

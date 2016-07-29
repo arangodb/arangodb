@@ -296,7 +296,7 @@ function makeArgsArangod (options, appDir) {
     'javascript.app-path': appDir,
     'javascript.startup-directory': JS_DIR,
     'javascript.v8-contexts': '5',
-    'http.trusted-origin': 'all',
+    'http.trusted-origin': options.httpTrustedOrigin || 'all',
     'log.level': 'warn',
     'log.level=replication=warn': null,
     'server.allow-use-database': 'true',
@@ -2874,8 +2874,12 @@ testFuncs.http_replication = function (options) {
 // / @brief TEST: http_server
 // //////////////////////////////////////////////////////////////////////////////
 
-testFuncs.http_server = function (options) {
-  return rubyTests(options, false);
+testFuncs.http_server = function(options) {
+  var opts = {
+    "httpTrustedOrigin": "http://was-erlauben-strunz.it"
+  };
+  _.defaults(opts, options);
+  return rubyTests(opts, false);
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -3090,6 +3094,7 @@ const recoveryTests = [
   'create-with-temp',
   'create-with-temp-old',
   'create-collection-fail',
+  'create-collection-tmpfile',
   'create-database-existing',
   'create-database-fail',
   'empty-datafiles',
@@ -3644,8 +3649,11 @@ testFuncs.ssl_server = function (options) {
       }
     };
   }
-
-  return rubyTests(options, true);
+  var opts = {
+    "httpTrustedOrigin": "http://was-erlauben-strunz.it"
+  };
+  _.defaults(opts, options);
+  return rubyTests(opts, true);
 };
 
 // //////////////////////////////////////////////////////////////////////////////

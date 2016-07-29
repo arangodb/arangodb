@@ -184,6 +184,8 @@ void Dispatcher::reportStatus() {
 
 void Dispatcher::setProcessorAffinity(size_t id,
                                       std::vector<size_t> const& cores) {
+  LOG_TOPIC(DEBUG, Logger::THREADS) << "dispatcher cores: " << cores;
+
   DispatcherQueue* queue;
 
   if (id >= _queues.size() || (queue = _queues[id]) == nullptr) {

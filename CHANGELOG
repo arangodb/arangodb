@@ -1,6 +1,8 @@
 devel
 -----
 
+* fixed thread affinity
+
 * replaced require("internal").db by require("@arangodb").db
 
 * added option `--skip-lines` for arangoimp
@@ -34,11 +36,22 @@ devel
 v3.0.4 (XXXX-XX-XX)
 -------------------
 
+* fixed issue in `INTERSECTION` AQL function with duplicate elements
+  in the source arrays
+
+* fixed issue #1970
+
+* fixed issue #1968
+
+* fixed issue #1967
+
 * fixed issue #1962
 
 * fixed issue #1959
 
 * replaced require("internal").db by require("@arangodb").db
+
+* fixed issue #1954
 
 * fixed issue #1953
 

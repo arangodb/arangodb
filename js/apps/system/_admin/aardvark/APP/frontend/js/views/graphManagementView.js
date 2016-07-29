@@ -47,7 +47,7 @@
     redirectToGraphViewer: function (e) {
       var name = $(e.currentTarget).attr('id');
       name = name.substr(0, name.length - 5);
-      window.location = window.location + '/' + encodeURIComponent(name);
+      window.location.hash = window.location.hash.substr(0, window.location.hash.length - 1) + '2/' + encodeURIComponent(name);
     },
 
     // please remove this when gv2 is launched
@@ -620,6 +620,9 @@
           window.modalView.createDeleteButton('Delete', this.deleteGraph.bind(this))
         );
         buttons.push(
+          window.modalView.createNotificationButton('Reset display settings', this.resetDisplaySettings.bind(this))
+        );
+        buttons.push(
           window.modalView.createSuccessButton('Save', this.saveEditedGraph.bind(this))
         );
       } else {
@@ -750,6 +753,17 @@
           '</fieldset>'
         );
       }
+    },
+
+    resetDisplaySettings: function () {
+      var graphName = $('#editGraphName').val();
+
+      var test = new window.GraphSettingsView({
+        name: graphName,
+        userConfig: window.App.userConfig
+      });
+      test.setDefaults(true);
+      test.remove();
     },
 
     showHideDefinition: function (e) {

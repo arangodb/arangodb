@@ -64,7 +64,7 @@ bool Parser::configureWriteQuery(AstNode const* collectionNode,
 QueryResult Parser::parse(bool withDetails) {
   char const* q = queryString();
 
-  if (q == nullptr || *q == '\0') {
+  if (q == nullptr || *q == '\0' || remainingLength() == 0) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_EMPTY);
   }
 

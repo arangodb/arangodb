@@ -17,6 +17,8 @@ The `db` object represents the current database and lets you access collections 
 **Examples**
 
 ```js
+const db = require('@arangodb').db;
+
 const thirteen = db._query('RETURN 5 + 8')[0];
 ```
 
@@ -33,6 +35,8 @@ To find out more about AQL see the [AQL documentation](../../AQL/index.html).
 **Examples**
 
 ```js
+const aql = require('@arangodb').aql;
+
 const filterValue = 23;
 const mydata = db._collection('mydata');
 const result = db._query(aql`
@@ -53,6 +57,8 @@ For a complete list of the error names and codes you may encounter see the [appe
 **Examples**
 
 ```js
+const errors = require('@arangodb').errors;
+
 try {
   mydata.document('does-not-exist');
 } catch (e) {
