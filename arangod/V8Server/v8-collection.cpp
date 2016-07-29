@@ -1698,6 +1698,9 @@ static void ModifyVocbaseCol(TRI_voc_document_operation_e operation,
   if (args.Length() > 2) {
     parseReplaceAndUpdateOptions(isolate, args, options, operation);
   }
+  if (options.isRestore) {
+    options.ignoreRevs = true;
+  }
 
   // Find collection and vocbase
   TRI_vocbase_col_t const* col =
@@ -1718,7 +1721,10 @@ static void ModifyVocbaseCol(TRI_voc_document_operation_e operation,
   auto workOnOneSearchVal = [&](v8::Local<v8::Value> const searchVal, bool isBabies) {
     std::string collName;
     if (!ExtractDocumentHandle(isolate, searchVal, collName,
-                               updateBuilder, true)) {
+                               updateBuilder, !options.isRestore)) {
+      // If this is no restore, then we must extract the _rev from the
+      // search value. If options.isRestore is set, the _rev value must
+      // be taken from the new value, see below in workOnOneDocument!
       if (!isBabies) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
       } else {
@@ -1739,6 +1745,25 @@ static void ModifyVocbaseCol(TRI_voc_document_operation_e operation,
 
     if (res != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(res);
+    }
+
+    if (options.isRestore) {
+      // In this case we have to extract the _rev entry from newVal:
+      TRI_GET_GLOBALS();
+      v8::Handle<v8::Object> obj = newVal->ToObject();
+      TRI_GET_GLOBAL_STRING(_RevKey);
+      if (!obj->HasRealNamedProperty(_RevKey)) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_REV_BAD);
+      }
+      v8::Handle<v8::Value> revVal = obj->Get(_RevKey);
+      if (!revVal->IsString()) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_REV_BAD);
+      }
+      v8::String::Utf8Value str(revVal);
+      if (*str == nullptr) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_REV_BAD);
+      }
+      updateBuilder.add(StaticStrings::RevString, VPackValue(*str));
     }
   };
 
