@@ -26,7 +26,11 @@
 
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
-#include "VocBase/datafile.h"
+#include "Cluster/ClusterInfo.h"
+#include "VocBase/DatafileStatistics.h"
+#include "VocBase/Ditch.h"
+#include "VocBase/MasterPointer.h"
+#include "VocBase/MasterPointers.h"
 #include "VocBase/vocbase.h"
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -50,6 +54,11 @@
 
 namespace arangodb {
 class CollectionInfo;
+class EdgeIndex;
+class Index;
+class KeyGenerator;
+class PrimaryIndex;
+class Transaction;
 namespace velocypack {
 template <typename T>
 class Buffer;
@@ -57,28 +66,67 @@ class Slice;
 }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief current collection version
-////////////////////////////////////////////////////////////////////////////////
-
 #define TRI_COL_VERSION 5
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief predefined collection name for users
-////////////////////////////////////////////////////////////////////////////////
-
 #define TRI_COL_NAME_USERS "_users"
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief predefined collection name for statistics
-////////////////////////////////////////////////////////////////////////////////
-
 #define TRI_COL_NAME_STATISTICS "_statistics"
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief collection file structure
-////////////////////////////////////////////////////////////////////////////////
+/// @brief read locks the documents and indexes
+#define TRI_READ_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(a) \
+  a->_lock.readLock()
 
+/// @brief tries to read lock the documents and indexes
+#define TRI_TRY_READ_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(a) \
+  a->_lock.tryReadLock()
+
+/// @brief read unlocks the documents and indexes
+#define TRI_READ_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(a) \
+  a->_lock.unlock()
+
+/// @brief write locks the documents and indexes
+#define TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(a) \
+  a->_lock.writeLock()
+
+/// @brief tries to write lock the documents and indexes
+#define TRI_TRY_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(a) \
+  a->_lock.tryWriteLock()
+
+/// @brief write unlocks the documents and indexes
+#define TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(a) \
+  a->_lock.unlock()
+
+/// @brief collection info
+struct TRI_doc_collection_info_t {
+  TRI_voc_ssize_t _numberDatafiles;
+  TRI_voc_ssize_t _numberJournalfiles;
+  TRI_voc_ssize_t _numberCompactorfiles;
+
+  TRI_voc_ssize_t _numberAlive;
+  TRI_voc_ssize_t _numberDead;
+  TRI_voc_ssize_t _numberDeletions;
+  TRI_voc_ssize_t _numberIndexes;
+
+  int64_t _sizeAlive;
+  int64_t _sizeDead;
+  int64_t _sizeIndexes;
+
+  int64_t _datafileSize;
+  int64_t _journalfileSize;
+  int64_t _compactorfileSize;
+
+  TRI_voc_tick_t _tickMax;
+  uint64_t _uncollectedLogfileEntries;
+  uint64_t _numberDocumentDitches;
+  char const* _waitingForDitch;
+  char const* _lastCompactionStatus;
+  char _lastCompactionStamp[21];
+};
+
+/// @brief collection file structure
 struct TRI_col_file_structure_t {
   std::vector<std::string> journals;
   std::vector<std::string> compactors;
@@ -86,10 +134,7 @@ struct TRI_col_file_structure_t {
   std::vector<std::string> indexes;
 };
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief state of the datafile
-////////////////////////////////////////////////////////////////////////////////
-
 enum TRI_col_state_e {
   TRI_COL_STATE_CLOSED = 1,      // collection is closed
   TRI_COL_STATE_READ = 2,        // collection is opened read only
@@ -98,18 +143,12 @@ enum TRI_col_state_e {
   TRI_COL_STATE_WRITE_ERROR = 5  // an error has occurred while writing
 };
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief collection version
-////////////////////////////////////////////////////////////////////////////////
-
 typedef uint32_t TRI_col_version_t;
 
 namespace arangodb {
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief collection info block saved to disk as json
-////////////////////////////////////////////////////////////////////////////////
-
 class VocbaseCollectionInfo {
  private:
   TRI_col_version_t _version;   // collection version
@@ -133,8 +172,8 @@ class VocbaseCollectionInfo {
   bool _waitForSync;  // if true, wait for msync
 
  public:
-  VocbaseCollectionInfo() {};
-  ~VocbaseCollectionInfo() {};
+  VocbaseCollectionInfo() = default;
+  ~VocbaseCollectionInfo() = default;
 
   explicit VocbaseCollectionInfo(CollectionInfo const&);
 
@@ -212,7 +251,7 @@ class VocbaseCollectionInfo {
 
   void setVersion(TRI_col_version_t);
 
-  // Changes the name. Should only be called by TRI_RenameCollection
+  // Changes the name. Should only be called by TRI_collection_t::rename()
   // Use with caution!
   void rename(std::string const&);
 
@@ -260,24 +299,16 @@ class VocbaseCollectionInfo {
 
 }  // namespace arangodb
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief collection
-////////////////////////////////////////////////////////////////////////////////
-
 struct TRI_collection_t {
  public:
   TRI_collection_t(TRI_collection_t const&) = delete;
   TRI_collection_t& operator=(TRI_collection_t const&) = delete;
-
   TRI_collection_t() = delete;
   
-  explicit TRI_collection_t(TRI_vocbase_t* vocbase)
-      : _vocbase(vocbase), _tickMax(0), _state(TRI_COL_STATE_WRITE), _lastError(0) {}
+  explicit TRI_collection_t(TRI_vocbase_t* vocbase);
+  TRI_collection_t(TRI_vocbase_t* vocbase, arangodb::VocbaseCollectionInfo const& info);
 
-  TRI_collection_t(TRI_vocbase_t* vocbase, arangodb::VocbaseCollectionInfo const& info)
-      : _vocbase(vocbase), _tickMax(0), _info(info), _state(TRI_COL_STATE_WRITE), _lastError(0) {}
-
-  ~TRI_collection_t() = default;
+  ~TRI_collection_t();
 
  public:
   /// @brief determine whether a collection name is a system collection name
@@ -291,8 +322,36 @@ struct TRI_collection_t {
   /// @brief checks if a collection name is allowed
   /// returns true if the name is allowed and false otherwise
   static bool IsAllowedName(bool isSystem, std::string const& name);
+  
+  void setLastRevision(TRI_voc_rid_t, bool force);
 
+  bool isFullyCollected();
+
+  void setNextCompactionStartIndex(size_t);
+  size_t getNextCompactionStartIndex();
+  void setCompactionStatus(char const*);
+  void getCompactionStatus(char const*&, char*, size_t);
+  
+  void addIndex(arangodb::Index*);
+  std::vector<arangodb::Index*> const& allIndexes() const;
+  arangodb::Index* lookupIndex(TRI_idx_iid_t) const;
+  arangodb::PrimaryIndex* primaryIndex();
+  arangodb::EdgeIndex* edgeIndex();
+  arangodb::Index* removeIndex(TRI_idx_iid_t);
+ 
+  /// @brief enumerate all indexes of the collection, but don't fill them yet
+  int detectIndexes(arangodb::Transaction*);
+ 
   void iterateIndexes(std::function<bool(std::string const&, void*)> const&, void*);
+  
+  TRI_doc_collection_info_t* figures();
+
+  int beginRead();
+  int endRead();
+  int beginWrite();
+  int endWrite();
+  int beginReadTimed(uint64_t, uint64_t);
+  int beginWriteTimed(uint64_t, uint64_t);
 
   /// @brief updates the parameter info block
   int updateCollectionInfo(TRI_vocbase_t* vocbase,
@@ -322,6 +381,28 @@ struct TRI_collection_t {
   int removeIndexFile(TRI_idx_iid_t);
   std::string const& path() const { return _path; }
   std::string label() const;
+  
+  std::unique_ptr<arangodb::FollowerInfo> const& followers() const {
+    return _followers;
+  }
+  
+  arangodb::Ditches* ditches() { return &_ditches; }
+  
+  inline bool useSecondaryIndexes() const { return _useSecondaryIndexes; }
+
+  void useSecondaryIndexes(bool value) { _useSecondaryIndexes = value; }
+
+  /// @brief renames a collection
+  int rename(std::string const& name);
+
+  /// @brief iterates over a collection
+  bool iterateDatafiles(std::function<bool(TRI_df_marker_t const*, TRI_datafile_t*)> const&);
+
+  /// @brief opens an existing collection
+  int open(std::string const& path, bool ignoreErrors);
+
+  /// @brief closes an open collection
+  int close();
 
  private:
   /// @brief seal a datafile
@@ -330,6 +411,12 @@ struct TRI_collection_t {
   TRI_datafile_t* createDatafile(TRI_voc_fid_t fid,
                                  TRI_voc_size_t journalSize, 
                                  bool isCompactor);
+
+  /// @brief closes the datafiles passed in the vector
+  bool closeDataFiles(std::vector<TRI_datafile_t*> const& files);
+  
+  bool iterateDatafilesVector(std::vector<TRI_datafile_t*> const& files,
+                              std::function<bool(TRI_df_marker_t const*, TRI_datafile_t*)> const& cb);
 
  public:
   TRI_vocbase_t* _vocbase;
@@ -342,6 +429,11 @@ struct TRI_collection_t {
   TRI_col_state_e _state;  // state of the collection
   int _lastError;          // last (critical) error
   std::string _path;
+  
+  // the following contains in the cluster/DBserver case the information
+  // which other servers are in sync with this shard. It is unset in all
+  // other cases.
+  std::unique_ptr<arangodb::FollowerInfo> _followers;
 
   arangodb::basics::ReadWriteLock _filesLock;
   std::vector<TRI_datafile_t*> _datafiles;   // all datafiles
@@ -350,68 +442,55 @@ struct TRI_collection_t {
   
   // lock for indexes
   arangodb::basics::ReadWriteLock _lock;
+  
+  arangodb::DatafileStatistics _datafileStatistics;
+  
+  mutable arangodb::Ditches _ditches;
+
+  arangodb::MasterPointers _masterPointers;
+
+  std::unique_ptr<arangodb::KeyGenerator> _keyGenerator;
+
+  std::vector<arangodb::Index*> _indexes;
+
+  std::atomic<int64_t> _uncollectedLogfileEntries;
+  int64_t _numberDocuments;
+  arangodb::basics::ReadWriteLock _compactionLock;
+  double _lastCompaction;
+  
+  // whether or not any of the indexes may need to be garbage-collected
+  // this flag may be modifying when an index is added to a collection
+  // if true, the cleanup thread will periodically call the cleanup functions of
+  // the collection's indexes that support cleanup
+  size_t _cleanupIndexes;
+
+  // number of persistent indexes
+  size_t _persistentIndexes;
+
+ protected:
+  arangodb::Mutex _compactionStatusLock;
+  size_t _nextCompactionStartIndex;
+  char const* _lastCompactionStatus;
+  char _lastCompactionStamp[21];
+
+  // whether or not secondary indexes should be filled
+  bool _useSecondaryIndexes;
+
  private:
   std::vector<std::string> _indexFiles;   // all index filenames
 };
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new collection
-////////////////////////////////////////////////////////////////////////////////
-
 TRI_collection_t* TRI_CreateCollection(TRI_vocbase_t*, TRI_collection_t*,
                                        arangodb::VocbaseCollectionInfo const&);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief frees the memory allocated, but does not free the pointer
-///
-/// Note that the collection must be closed first.
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_DestroyCollection(TRI_collection_t*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief frees the memory allocated and frees the pointer
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_FreeCollection(TRI_collection_t*);
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief convert a parameter info block to velocypack
-////////////////////////////////////////////////////////////////////////////////
-
 std::shared_ptr<arangodb::velocypack::Builder>
 TRI_CreateVelocyPackCollectionInfo(arangodb::VocbaseCollectionInfo const&);
 
 // Expects the builder to be in an open Object state
 void TRI_CreateVelocyPackCollectionInfo(arangodb::VocbaseCollectionInfo const&,
                                         arangodb::velocypack::Builder&);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief renames a collection
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_RenameCollection(TRI_collection_t*, std::string const&);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief iterates over a collection
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_IterateCollection(TRI_collection_t*, bool (*)(TRI_df_marker_t const*,
-                                                       void*, TRI_datafile_t*),
-                           void*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief opens an existing collection
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_collection_t* TRI_OpenCollection(TRI_vocbase_t*, TRI_collection_t*,
-                                     char const*, bool);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief closes an open collection
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_CloseCollection(TRI_collection_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns information about the collection files

@@ -290,7 +290,7 @@ static bool UnloadCollectionCallback(TRI_collection_t* col, void* data) {
     return true;
   }
 
-  TRI_FreeDocumentCollection(document);
+  delete document;
 
   collection->_status = TRI_VOC_COL_STATUS_UNLOADED;
   collection->_collection = nullptr;
@@ -332,7 +332,7 @@ bool TRI_vocbase_t::DropCollectionCallback(TRI_collection_t* col, void* data) {
       return true;
     }
 
-    TRI_FreeDocumentCollection(document);
+    delete document;
 
     collection->_collection = nullptr;
   }
@@ -491,7 +491,7 @@ TRI_vocbase_col_t* TRI_vocbase_t::createCollectionWorker(
 
   if (collection == nullptr) {
     TRI_CloseDocumentCollection(document, false);
-    TRI_FreeDocumentCollection(document);
+    delete document;
     // TODO: does the collection directory need to be removed?
     return nullptr;
   }
@@ -564,7 +564,7 @@ int TRI_vocbase_t::renameCollectionWorker(TRI_vocbase_col_t* collection,
     else if (collection->_status == TRI_VOC_COL_STATUS_LOADED ||
              collection->_status == TRI_VOC_COL_STATUS_UNLOADING ||
              collection->_status == TRI_VOC_COL_STATUS_LOADING) {
-      int res = TRI_RenameCollection(collection->_collection, newName);
+      int res = collection->_collection->rename(newName);
 
       if (res != TRI_ERROR_NO_ERROR) {
         return TRI_set_errno(res);

@@ -205,7 +205,7 @@ struct TRI_vocbase_t {
 
   std::atomic<uint64_t> _refCount;
 
-  arangodb::basics::DeadlockDetector<TRI_document_collection_t>
+  arangodb::basics::DeadlockDetector<TRI_collection_t>
       _deadlockDetector;
 
   arangodb::basics::ReadWriteLock _collectionsLock;  // collection iterator lock

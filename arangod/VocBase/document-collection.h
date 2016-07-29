@@ -40,11 +40,8 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
-class EdgeIndex;
 class Index;
-class KeyGenerator;
 struct OperationOptions;
-class PrimaryIndex;
 class Transaction;
 namespace velocypack {
 class Builder;
@@ -56,36 +53,6 @@ struct DocumentOperation;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief collection info
-////////////////////////////////////////////////////////////////////////////////
-
-struct TRI_doc_collection_info_t {
-  TRI_voc_ssize_t _numberDatafiles;
-  TRI_voc_ssize_t _numberJournalfiles;
-  TRI_voc_ssize_t _numberCompactorfiles;
-
-  TRI_voc_ssize_t _numberAlive;
-  TRI_voc_ssize_t _numberDead;
-  TRI_voc_ssize_t _numberDeletions;
-  TRI_voc_ssize_t _numberIndexes;
-
-  int64_t _sizeAlive;
-  int64_t _sizeDead;
-  int64_t _sizeIndexes;
-
-  int64_t _datafileSize;
-  int64_t _journalfileSize;
-  int64_t _compactorfileSize;
-
-  TRI_voc_tick_t _tickMax;
-  uint64_t _uncollectedLogfileEntries;
-  uint64_t _numberDocumentDitches;
-  char const* _waitingForDitch;
-  char const* _lastCompactionStatus;
-  char _lastCompactionStamp[21];
-};
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief document collection with global read-write lock
 ///
 /// A document collection is a collection with a single read-write lock. This
@@ -95,85 +62,7 @@ struct TRI_doc_collection_info_t {
 struct TRI_document_collection_t : public TRI_collection_t {
   explicit TRI_document_collection_t(TRI_vocbase_t* vocbase);
 
-  ~TRI_document_collection_t();
-
- private:
-  arangodb::Mutex _compactionStatusLock;
-  size_t _nextCompactionStartIndex;
-  char const* _lastCompactionStatus;
-  char _lastCompactionStamp[21];
-
-  // whether or not secondary indexes should be filled
-  bool _useSecondaryIndexes;
-
-  // the following contains in the cluster/DBserver case the information
-  // which other servers are in sync with this shard. It is unset in all
-  // other cases.
-  std::unique_ptr<arangodb::FollowerInfo> _followers;
-
  public:
-  arangodb::DatafileStatistics _datafileStatistics;
-
-  std::unique_ptr<arangodb::FollowerInfo> const& followers() const {
-    return _followers;
-  }
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief update statistics for a collection
-  /// note: the write-lock for the collection must be held to call this
-  ////////////////////////////////////////////////////////////////////////////////
-
-  void setLastRevision(TRI_voc_rid_t, bool force);
-
-  bool isFullyCollected();
-
-  void setNextCompactionStartIndex(size_t);
-  size_t getNextCompactionStartIndex();
-  void setCompactionStatus(char const*);
-  void getCompactionStatus(char const*&, char*, size_t);
-
-  inline bool useSecondaryIndexes() const { return _useSecondaryIndexes; }
-
-  void useSecondaryIndexes(bool value) { _useSecondaryIndexes = value; }
-
-  void addIndex(arangodb::Index*);
-  std::vector<arangodb::Index*> const& allIndexes() const;
-  arangodb::Index* lookupIndex(TRI_idx_iid_t) const;
-  arangodb::PrimaryIndex* primaryIndex();
-  arangodb::EdgeIndex* edgeIndex();
-
-  arangodb::Ditches* ditches() { return &_ditches; }
-  mutable arangodb::Ditches _ditches;
-
-  arangodb::MasterPointers _masterPointers;
-
-  arangodb::KeyGenerator* _keyGenerator;
-
-  std::vector<arangodb::Index*> _indexes;
-
-  std::atomic<int64_t> _uncollectedLogfileEntries;
-  int64_t _numberDocuments;
-  arangodb::basics::ReadWriteLock _compactionLock;
-  double _lastCompaction;
-
-  // whether or not any of the indexes may need to be garbage-collected
-  // this flag may be modifying when an index is added to a collection
-  // if true, the cleanup thread will periodically call the cleanup functions of
-  // the collection's indexes that support cleanup
-  size_t _cleanupIndexes;
-
-  // number of persistent indexes
-  size_t _persistentIndexes;
-
-  int beginRead();
-  int endRead();
-  int beginWrite();
-  int endWrite();
-  int beginReadTimed(uint64_t, uint64_t);
-  int beginWriteTimed(uint64_t, uint64_t);
-
-  TRI_doc_collection_info_t* figures();
-
   // function that is called to garbage-collect the collection's indexes
   int (*cleanupIndexes)(struct TRI_document_collection_t*);
 
@@ -194,11 +83,6 @@ struct TRI_document_collection_t : public TRI_collection_t {
   int rollbackOperation(arangodb::Transaction*, TRI_voc_document_operation_e, 
                         TRI_doc_mptr_t*, TRI_doc_mptr_t const*);
   
-  arangodb::Index* removeIndex(TRI_idx_iid_t);
-  
-  /// @brief enumerate all indexes of the collection, but don't fill them yet
-  int detectIndexes(arangodb::Transaction*);
-
  private:
 
   int lookupDocument(arangodb::Transaction*, arangodb::velocypack::Slice const,
@@ -272,223 +156,99 @@ struct TRI_document_collection_t : public TRI_collection_t {
       arangodb::velocypack::Builder& builder);
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief read locks the documents and indexes
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_READ_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(a) \
-  a->_lock.readLock()
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tries to read lock the documents and indexes
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_TRY_READ_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(a) \
-  a->_lock.tryReadLock()
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief read unlocks the documents and indexes
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_READ_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(a) \
-  a->_lock.unlock()
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief write locks the documents and indexes
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(a) \
-  a->_lock.writeLock()
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tries to write lock the documents and indexes
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_TRY_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(a) \
-  a->_lock.tryWriteLock()
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief write unlocks the documents and indexes
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(a) \
-  a->_lock.unlock()
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new collection
-////////////////////////////////////////////////////////////////////////////////
-
 TRI_document_collection_t* TRI_CreateDocumentCollection(
     TRI_vocbase_t*, arangodb::VocbaseCollectionInfo&,
     TRI_voc_cid_t);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief frees the memory allocated, but does not free the pointer
-///
-/// Note that the collection must be closed first.
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_DestroyDocumentCollection(TRI_document_collection_t*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief frees the memory allocated and frees the pointer
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_FreeDocumentCollection(TRI_document_collection_t*);
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create an index, based on a VelocyPack description
-////////////////////////////////////////////////////////////////////////////////
-
 int TRI_FromVelocyPackIndexDocumentCollection(
     arangodb::Transaction*, TRI_document_collection_t*,
     arangodb::velocypack::Slice const&, arangodb::Index**);
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief fill the additional (non-primary) indexes
-////////////////////////////////////////////////////////////////////////////////
-
 int TRI_FillIndexesDocumentCollection(arangodb::Transaction*,
                                       TRI_vocbase_col_t*,
                                       TRI_document_collection_t*);
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief opens an existing collection
-////////////////////////////////////////////////////////////////////////////////
-
 TRI_document_collection_t* TRI_OpenDocumentCollection(TRI_vocbase_t*,
                                                       TRI_vocbase_col_t*, bool);
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief closes an open collection
-////////////////////////////////////////////////////////////////////////////////
-
 int TRI_CloseDocumentCollection(TRI_document_collection_t*, bool);
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief saves an index
-////////////////////////////////////////////////////////////////////////////////
-
 int TRI_SaveIndex(TRI_document_collection_t*, arangodb::Index*,
                   bool writeMarker);
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a description of all indexes
-///
 /// the caller must have read-locked the underyling collection!
-////////////////////////////////////////////////////////////////////////////////
-
 std::vector<std::shared_ptr<arangodb::velocypack::Builder>>
 TRI_IndexesDocumentCollection(TRI_document_collection_t*, bool);
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief drops an index, including index file removal and replication
-////////////////////////////////////////////////////////////////////////////////
-
 bool TRI_DropIndexDocumentCollection(TRI_document_collection_t*, TRI_idx_iid_t,
                                      bool);
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief finds a geo index, list style
-///
 /// Note that the caller must hold at least a read-lock.
-////////////////////////////////////////////////////////////////////////////////
-
 arangodb::Index* TRI_LookupGeoIndex1DocumentCollection(
     TRI_document_collection_t*, std::vector<std::string> const&, bool);
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief finds a geo index, attribute style
-///
 /// Note that the caller must hold at least a read-lock.
-////////////////////////////////////////////////////////////////////////////////
-
 arangodb::Index* TRI_LookupGeoIndex2DocumentCollection(
     TRI_document_collection_t*, std::vector<std::string> const&,
     std::vector<std::string> const&);
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a geo index exists, list style
-////////////////////////////////////////////////////////////////////////////////
-
 arangodb::Index* TRI_EnsureGeoIndex1DocumentCollection(
     arangodb::Transaction*, TRI_document_collection_t*, TRI_idx_iid_t,
     std::string const&, bool, bool&);
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a geo index exists, attribute style
-////////////////////////////////////////////////////////////////////////////////
-
 arangodb::Index* TRI_EnsureGeoIndex2DocumentCollection(
     arangodb::Transaction*, TRI_document_collection_t*, TRI_idx_iid_t,
     std::string const&, std::string const&, bool&);
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief finds a hash index
-///
 /// @note The caller must hold at least a read-lock.
-///
 /// @note The @FA{paths} must be sorted.
-////////////////////////////////////////////////////////////////////////////////
-
 arangodb::Index* TRI_LookupHashIndexDocumentCollection(
     TRI_document_collection_t*, std::vector<std::string> const&, int, bool);
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a hash index exists
-////////////////////////////////////////////////////////////////////////////////
-
 arangodb::Index* TRI_EnsureHashIndexDocumentCollection(
     arangodb::Transaction* trx, TRI_document_collection_t*, TRI_idx_iid_t,
     std::vector<std::string> const&, bool, bool, bool&);
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief finds a skiplist index
-///
 /// Note that the caller must hold at least a read-lock.
-////////////////////////////////////////////////////////////////////////////////
-
 arangodb::Index* TRI_LookupSkiplistIndexDocumentCollection(
     TRI_document_collection_t*, std::vector<std::string> const&, int, bool);
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a skiplist index exists
-////////////////////////////////////////////////////////////////////////////////
-
 arangodb::Index* TRI_EnsureSkiplistIndexDocumentCollection(
     arangodb::Transaction* trx, TRI_document_collection_t*, TRI_idx_iid_t,
     std::vector<std::string> const&, bool, bool, bool&);
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief finds a RocksDB index
-///
 /// Note that the caller must hold at least a read-lock.
-////////////////////////////////////////////////////////////////////////////////
-
 arangodb::Index* TRI_LookupRocksDBIndexDocumentCollection(
     TRI_document_collection_t*, std::vector<std::string> const&, int, bool);
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a RocksDB index exists
-////////////////////////////////////////////////////////////////////////////////
-
 arangodb::Index* TRI_EnsureRocksDBIndexDocumentCollection(
     arangodb::Transaction* trx, TRI_document_collection_t*, TRI_idx_iid_t,
     std::vector<std::string> const&, bool, bool, bool&);
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief finds a fulltext index
-///
 /// Note that the caller must hold at least a read-lock.
-////////////////////////////////////////////////////////////////////////////////
-
 arangodb::Index* TRI_LookupFulltextIndexDocumentCollection(
     TRI_document_collection_t*, std::string const&, int);
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a fulltext index exists
-////////////////////////////////////////////////////////////////////////////////
-
 arangodb::Index* TRI_EnsureFulltextIndexDocumentCollection(
     arangodb::Transaction* trx, TRI_document_collection_t*, TRI_idx_iid_t,
     std::string const&, int, bool&);

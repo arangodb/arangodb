@@ -27,7 +27,6 @@
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
 
-struct TRI_document_collection_t;
 struct TRI_collection_t;
 struct TRI_datafile_t;
 
@@ -103,7 +102,7 @@ class Ditch {
   /// @brief return the associated collection
   //////////////////////////////////////////////////////////////////////////////
 
-  struct TRI_document_collection_t* collection() const;
+  TRI_collection_t* collection() const;
 
  protected:
   Ditches* _ditches;
@@ -285,7 +284,7 @@ class Ditches {
   Ditches& operator=(Ditches const&) = delete;
   Ditches() = delete;
 
-  explicit Ditches(struct TRI_document_collection_t*);
+  explicit Ditches(TRI_collection_t*);
   ~Ditches();
 
  public:
@@ -299,7 +298,7 @@ class Ditches {
   /// @brief return the associated collection
   //////////////////////////////////////////////////////////////////////////////
 
-  TRI_document_collection_t* collection() const;
+  TRI_collection_t* collection() const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief run a user-defined function under the lock
@@ -417,7 +416,7 @@ class Ditches {
   void unlink(Ditch*);
 
  private:
-  struct TRI_document_collection_t* _collection;
+  TRI_collection_t* _collection;
 
   arangodb::Mutex _lock;
   Ditch* _begin;

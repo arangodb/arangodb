@@ -33,12 +33,17 @@
 #include "Basics/files.h"
 #include "Basics/memory-map.h"
 #include "Basics/tri-strings.h"
+#include "Indexes/EdgeIndex.h"
+#include "Indexes/PrimaryIndex.h"
 #include "Logger/Logger.h"
 #include "Random/RandomGenerator.h"
 #include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
+#include "Utils/SingleCollectionTransaction.h"
+#include "Utils/StandaloneTransactionContext.h"
 #include "VocBase/DatafileHelper.h"
+#include "VocBase/KeyGenerator.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
@@ -49,10 +54,46 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief ensures that an error code is set in all required places
-////////////////////////////////////////////////////////////////////////////////
+struct OpenIndexIteratorContext {
+  arangodb::Transaction* trx;
+  TRI_collection_t* collection;
+};
 
+/// @brief iterator for index open
+static bool OpenIndexIterator(std::string const& filename, void* data) {
+  // load VelocyPack description of the index
+  std::shared_ptr<VPackBuilder> builder;
+  try {
+    builder = arangodb::basics::VelocyPackHelper::velocyPackFromFile(filename.c_str());
+  } catch (...) {
+    // Failed to parse file
+    LOG(ERR) << "failed to parse index definition from '" << filename << "'";
+    return false;
+  }
+
+  VPackSlice description = builder->slice();
+  // VelocyPack must be an index description
+  if (!description.isObject()) {
+    LOG(ERR) << "cannot read index definition from '" << filename << "'";
+    return false;
+  }
+
+  auto ctx = static_cast<OpenIndexIteratorContext*>(data);
+  arangodb::Transaction* trx = ctx->trx;
+  TRI_collection_t* document = ctx->collection;
+
+  int res = TRI_FromVelocyPackIndexDocumentCollection(trx, reinterpret_cast<TRI_document_collection_t*>(document),
+                                                      description, nullptr);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    // error was already printed if we get here
+    return false;
+  }
+
+  return true;
+}
+
+/// @brief ensures that an error code is set in all required places
 static void EnsureErrorCode(int code) {
   if (code == TRI_ERROR_NO_ERROR) {
     // must have an error code
@@ -83,6 +124,533 @@ static uint64_t GetNumericFilenamePart(char const* filename) {
   }
 
   return StringUtils::uint64(pos2 + 1, pos1 - pos2 - 1);
+}
+  
+TRI_collection_t::TRI_collection_t(TRI_vocbase_t* vocbase)
+      : _vocbase(vocbase), 
+        _tickMax(0), 
+        _state(TRI_COL_STATE_WRITE), 
+        _lastError(0),
+        _ditches(this),
+        _masterPointers(),
+        _uncollectedLogfileEntries(0),
+        _numberDocuments(0),
+        _lastCompaction(0.0),
+        _cleanupIndexes(0), 
+        _persistentIndexes(0),
+        _nextCompactionStartIndex(0),
+        _lastCompactionStatus(nullptr),
+        _useSecondaryIndexes(true) {
+}
+  
+TRI_collection_t::TRI_collection_t(TRI_vocbase_t* vocbase, arangodb::VocbaseCollectionInfo const& info) 
+      : _vocbase(vocbase), 
+        _tickMax(0), 
+        _info(info), 
+        _state(TRI_COL_STATE_WRITE), 
+        _lastError(0),
+        _ditches(this),
+        _masterPointers(),
+        _uncollectedLogfileEntries(0),
+        _numberDocuments(0),
+        _lastCompaction(0.0),
+        _cleanupIndexes(0), 
+        _persistentIndexes(0),
+        _nextCompactionStartIndex(0),
+        _lastCompactionStatus(nullptr),
+        _useSecondaryIndexes(true) {
+}
+
+TRI_collection_t::~TRI_collection_t() {
+  this->close();
+
+  _ditches.destroy();
+
+  _info.clearKeyOptions();
+  
+  // free memory allocated for indexes
+  for (auto& idx : allIndexes()) {
+    delete idx;
+  }
+
+  for (auto& it : _datafiles) {
+    TRI_FreeDatafile(it);
+  }
+  for (auto& it : _journals) {
+    TRI_FreeDatafile(it);
+  }
+  for (auto& it : _compactors) {
+    TRI_FreeDatafile(it);
+  }
+}
+
+/// @brief update statistics for a collection
+/// note: the write-lock for the collection must be held to call this
+void TRI_collection_t::setLastRevision(TRI_voc_rid_t rid, bool force) {
+  if (rid > 0) {
+    _info.setRevision(rid, force);
+  }
+}
+
+/// @brief whether or not a collection is fully collected
+bool TRI_collection_t::isFullyCollected() {
+  READ_LOCKER(readLocker, _lock);
+
+  int64_t uncollected = _uncollectedLogfileEntries.load();
+
+  return (uncollected == 0);
+}
+
+void TRI_collection_t::setNextCompactionStartIndex(size_t index) {
+  MUTEX_LOCKER(mutexLocker, _compactionStatusLock);
+  _nextCompactionStartIndex = index;
+}
+
+size_t TRI_collection_t::getNextCompactionStartIndex() {
+  MUTEX_LOCKER(mutexLocker, _compactionStatusLock);
+  return _nextCompactionStartIndex;
+}
+
+void TRI_collection_t::setCompactionStatus(char const* reason) {
+  TRI_ASSERT(reason != nullptr);
+  struct tm tb;
+  time_t tt = time(nullptr);
+  TRI_gmtime(tt, &tb);
+
+  MUTEX_LOCKER(mutexLocker, _compactionStatusLock);
+  _lastCompactionStatus = reason;
+
+  strftime(&_lastCompactionStamp[0], sizeof(_lastCompactionStamp),
+           "%Y-%m-%dT%H:%M:%SZ", &tb);
+}
+
+void TRI_collection_t::getCompactionStatus(char const*& reason,
+                                           char* dst, size_t maxSize) {
+  memset(dst, 0, maxSize);
+  if (maxSize > sizeof(_lastCompactionStamp)) {
+    maxSize = sizeof(_lastCompactionStamp);
+  }
+  MUTEX_LOCKER(mutexLocker, _compactionStatusLock);
+  reason = _lastCompactionStatus;
+  memcpy(dst, &_lastCompactionStamp[0], maxSize);
+}
+
+/// @brief read locks a collection
+int TRI_collection_t::beginRead() {
+  if (arangodb::Transaction::_makeNolockHeaders != nullptr) {
+    std::string collName(_info.name());
+    auto it = arangodb::Transaction::_makeNolockHeaders->find(collName);
+    if (it != arangodb::Transaction::_makeNolockHeaders->end()) {
+      // do not lock by command
+      // LOCKING-DEBUG
+      // std::cout << "BeginRead blocked: " << document->_info._name <<
+      // std::endl;
+      return TRI_ERROR_NO_ERROR;
+    }
+  }
+  // LOCKING-DEBUG
+  // std::cout << "BeginRead: " << document->_info._name << std::endl;
+  TRI_READ_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(this);
+
+  try {
+    _vocbase->_deadlockDetector.addReader(this, false);
+  } catch (...) {
+    TRI_READ_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(this);
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+/// @brief read unlocks a collection
+int TRI_collection_t::endRead() {
+  if (arangodb::Transaction::_makeNolockHeaders != nullptr) {
+    std::string collName(_info.name());
+    auto it = arangodb::Transaction::_makeNolockHeaders->find(collName);
+    if (it != arangodb::Transaction::_makeNolockHeaders->end()) {
+      // do not lock by command
+      // LOCKING-DEBUG
+      // std::cout << "EndRead blocked: " << document->_info._name << std::endl;
+      return TRI_ERROR_NO_ERROR;
+    }
+  }
+
+  try {
+    _vocbase->_deadlockDetector.unsetReader(this);
+  } catch (...) {
+  }
+
+  // LOCKING-DEBUG
+  // std::cout << "EndRead: " << document->_info._name << std::endl;
+  TRI_READ_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(this);
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+/// @brief write locks a collection
+int TRI_collection_t::beginWrite() {
+  if (arangodb::Transaction::_makeNolockHeaders != nullptr) {
+    std::string collName(_info.name());
+    auto it = arangodb::Transaction::_makeNolockHeaders->find(collName);
+    if (it != arangodb::Transaction::_makeNolockHeaders->end()) {
+      // do not lock by command
+      // LOCKING-DEBUG
+      // std::cout << "BeginWrite blocked: " << document->_info._name <<
+      // std::endl;
+      return TRI_ERROR_NO_ERROR;
+    }
+  }
+  // LOCKING_DEBUG
+  // std::cout << "BeginWrite: " << document->_info._name << std::endl;
+  TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(this);
+
+  // register writer
+  try {
+    _vocbase->_deadlockDetector.addWriter(this, false);
+  } catch (...) {
+    TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(this);
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+/// @brief write unlocks a collection
+int TRI_collection_t::endWrite() {
+  if (arangodb::Transaction::_makeNolockHeaders != nullptr) {
+    std::string collName(_info.name());
+    auto it = arangodb::Transaction::_makeNolockHeaders->find(collName);
+    if (it != arangodb::Transaction::_makeNolockHeaders->end()) {
+      // do not lock by command
+      // LOCKING-DEBUG
+      // std::cout << "EndWrite blocked: " << document->_info._name <<
+      // std::endl;
+      return TRI_ERROR_NO_ERROR;
+    }
+  }
+
+  // unregister writer
+  try {
+    _vocbase->_deadlockDetector.unsetWriter(this);
+  } catch (...) {
+    // must go on here to unlock the lock
+  }
+
+  // LOCKING-DEBUG
+  // std::cout << "EndWrite: " << document->_info._name << std::endl;
+  TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(this);
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+/// @brief read locks a collection, with a timeout (in µseconds)
+int TRI_collection_t::beginReadTimed(uint64_t timeout,
+                                     uint64_t sleepPeriod) {
+  if (arangodb::Transaction::_makeNolockHeaders != nullptr) {
+    std::string collName(_info.name());
+    auto it = arangodb::Transaction::_makeNolockHeaders->find(collName);
+    if (it != arangodb::Transaction::_makeNolockHeaders->end()) {
+      // do not lock by command
+      // LOCKING-DEBUG
+      // std::cout << "BeginReadTimed blocked: " << document->_info._name <<
+      // std::endl;
+      return TRI_ERROR_NO_ERROR;
+    }
+  }
+  uint64_t waited = 0;
+  if (timeout == 0) {
+    // we don't allow looping forever. limit waiting to 15 minutes max.
+    timeout = 15 * 60 * 1000 * 1000;
+  }
+
+  // LOCKING-DEBUG
+  // std::cout << "BeginReadTimed: " << document->_info._name << std::endl;
+  int iterations = 0;
+  bool wasBlocked = false;
+
+  while (!TRI_TRY_READ_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(this)) {
+    try {
+      if (!wasBlocked) {
+        // insert reader
+        wasBlocked = true;
+        if (_vocbase->_deadlockDetector.setReaderBlocked(this) ==
+            TRI_ERROR_DEADLOCK) {
+          // deadlock
+          LOG(TRACE) << "deadlock detected while trying to acquire read-lock on collection '" << _info.name() << "'";
+          return TRI_ERROR_DEADLOCK;
+        }
+        LOG(TRACE) << "waiting for read-lock on collection '" << _info.name() << "'";
+      } else if (++iterations >= 5) {
+        // periodically check for deadlocks
+        TRI_ASSERT(wasBlocked);
+        iterations = 0;
+        if (_vocbase->_deadlockDetector.detectDeadlock(this, false) ==
+            TRI_ERROR_DEADLOCK) {
+          // deadlock
+          _vocbase->_deadlockDetector.unsetReaderBlocked(this);
+          LOG(TRACE) << "deadlock detected while trying to acquire read-lock on collection '" << _info.name() << "'";
+          return TRI_ERROR_DEADLOCK;
+        }
+      }
+    } catch (...) {
+      // clean up!
+      if (wasBlocked) {
+        _vocbase->_deadlockDetector.unsetReaderBlocked(this);
+      }
+      // always exit
+      return TRI_ERROR_OUT_OF_MEMORY;
+    }
+
+#ifdef _WIN32
+    usleep((unsigned long)sleepPeriod);
+#else
+    usleep((useconds_t)sleepPeriod);
+#endif
+
+    waited += sleepPeriod;
+
+    if (waited > timeout) {
+      _vocbase->_deadlockDetector.unsetReaderBlocked(this);
+      LOG(TRACE) << "timed out waiting for read-lock on collection '" << _info.name() << "'";
+      return TRI_ERROR_LOCK_TIMEOUT;
+    }
+  }
+
+  try {
+    // when we are here, we've got the read lock
+    _vocbase->_deadlockDetector.addReader(this, wasBlocked);
+  } catch (...) {
+    TRI_READ_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(this);
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+/// @brief write locks a collection, with a timeout
+int TRI_collection_t::beginWriteTimed(uint64_t timeout,
+                                      uint64_t sleepPeriod) {
+  if (arangodb::Transaction::_makeNolockHeaders != nullptr) {
+    std::string collName(_info.name());
+    auto it = arangodb::Transaction::_makeNolockHeaders->find(collName);
+    if (it != arangodb::Transaction::_makeNolockHeaders->end()) {
+      // do not lock by command
+      // LOCKING-DEBUG
+      // std::cout << "BeginWriteTimed blocked: " << document->_info._name <<
+      // std::endl;
+      return TRI_ERROR_NO_ERROR;
+    }
+  }
+  uint64_t waited = 0;
+  if (timeout == 0) {
+    // we don't allow looping forever. limit waiting to 15 minutes max.
+    timeout = 15 * 60 * 1000 * 1000;
+  }
+
+  // LOCKING-DEBUG
+  // std::cout << "BeginWriteTimed: " << document->_info._name << std::endl;
+  int iterations = 0;
+  bool wasBlocked = false;
+
+  while (!TRI_TRY_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(this)) {
+    try {
+      if (!wasBlocked) {
+        // insert writer
+        wasBlocked = true;
+        if (_vocbase->_deadlockDetector.setWriterBlocked(this) ==
+            TRI_ERROR_DEADLOCK) {
+          // deadlock
+          LOG(TRACE) << "deadlock detected while trying to acquire write-lock on collection '" << _info.name() << "'";
+          return TRI_ERROR_DEADLOCK;
+        }
+        LOG(TRACE) << "waiting for write-lock on collection '" << _info.name() << "'";
+      } else if (++iterations >= 5) {
+        // periodically check for deadlocks
+        TRI_ASSERT(wasBlocked);
+        iterations = 0;
+        if (_vocbase->_deadlockDetector.detectDeadlock(this, true) ==
+            TRI_ERROR_DEADLOCK) {
+          // deadlock
+          _vocbase->_deadlockDetector.unsetWriterBlocked(this);
+          LOG(TRACE) << "deadlock detected while trying to acquire write-lock on collection '" << _info.name() << "'";
+          return TRI_ERROR_DEADLOCK;
+        }
+      }
+    } catch (...) {
+      // clean up!
+      if (wasBlocked) {
+        _vocbase->_deadlockDetector.unsetWriterBlocked(this);
+      }
+      // always exit
+      return TRI_ERROR_OUT_OF_MEMORY;
+    }
+
+#ifdef _WIN32
+    usleep((unsigned long)sleepPeriod);
+#else
+    usleep((useconds_t)sleepPeriod);
+#endif
+
+    waited += sleepPeriod;
+
+    if (waited > timeout) {
+      _vocbase->_deadlockDetector.unsetWriterBlocked(this);
+      LOG(TRACE) << "timed out waiting for write-lock on collection '" << _info.name() << "'";
+      return TRI_ERROR_LOCK_TIMEOUT;
+    }
+  }
+
+  try {
+    // register writer
+    _vocbase->_deadlockDetector.addWriter(this, wasBlocked);
+  } catch (...) {
+    TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(this);
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+/// @brief returns information about the collection
+/// note: the collection lock must be held when calling this function
+TRI_doc_collection_info_t* TRI_collection_t::figures() {
+  // prefill with 0's to init counters
+  auto info = static_cast<TRI_doc_collection_info_t*>(TRI_Allocate(
+          TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_doc_collection_info_t), true));
+
+  if (info == nullptr) {
+    return nullptr;
+  }
+
+  DatafileStatisticsContainer dfi = _datafileStatistics.all();
+  info->_numberAlive += static_cast<TRI_voc_ssize_t>(dfi.numberAlive);
+  info->_numberDead += static_cast<TRI_voc_ssize_t>(dfi.numberDead);
+  info->_numberDeletions += static_cast<TRI_voc_ssize_t>(dfi.numberDeletions);
+
+  info->_sizeAlive += dfi.sizeAlive;
+  info->_sizeDead += dfi.sizeDead;
+
+  // add the file sizes for datafiles and journals
+  TRI_collection_t* base = this;
+
+  for (auto& df : base->_datafiles) {
+    info->_datafileSize += (int64_t)df->_initSize;
+    ++info->_numberDatafiles;
+  }
+
+  for (auto& df : base->_journals) {
+    info->_journalfileSize += (int64_t)df->_initSize;
+    ++info->_numberJournalfiles;
+  }
+
+  for (auto& df : base->_compactors) {
+    info->_compactorfileSize += (int64_t)df->_initSize;
+    ++info->_numberCompactorfiles;
+  }
+
+  // add index information
+  info->_numberIndexes = 0;
+  info->_sizeIndexes = 0;
+
+  info->_sizeIndexes += static_cast<int64_t>(_masterPointers.memory());
+
+  for (auto const& idx : allIndexes()) {
+    info->_sizeIndexes += idx->memory();
+    info->_numberIndexes++;
+  }
+
+  info->_uncollectedLogfileEntries = _uncollectedLogfileEntries;
+  info->_tickMax = _tickMax;
+
+  info->_numberDocumentDitches = _ditches.numDocumentDitches();
+  info->_waitingForDitch = _ditches.head();
+
+  // fills in compaction status
+  getCompactionStatus(info->_lastCompactionStatus,
+                      &info->_lastCompactionStamp[0],
+                      sizeof(info->_lastCompactionStamp));
+
+  return info;
+}
+
+/// @brief add an index to the collection
+/// note: this may throw. it's the caller's responsibility to catch and clean up
+void TRI_collection_t::addIndex(arangodb::Index* idx) {
+  _indexes.emplace_back(idx);
+
+  // update statistics
+  if (idx->type() == arangodb::Index::TRI_IDX_TYPE_FULLTEXT_INDEX) {
+    ++_cleanupIndexes;
+  }
+  if (idx->isPersistent()) {
+    ++_persistentIndexes;
+  }
+}
+
+/// @brief get an index by id
+arangodb::Index* TRI_collection_t::removeIndex(TRI_idx_iid_t iid) {
+  size_t const n = _indexes.size();
+
+  for (size_t i = 0; i < n; ++i) {
+    arangodb::Index* idx = _indexes[i];
+
+    if (!idx->canBeDropped()) {
+      continue;
+    }
+
+    if (idx->id() == iid) {
+      // found!
+      idx->drop();
+
+      _indexes.erase(_indexes.begin() + i);
+
+      // update statistics
+      if (idx->type() == arangodb::Index::TRI_IDX_TYPE_FULLTEXT_INDEX) {
+        --_cleanupIndexes;
+      }
+      if (idx->isPersistent()) {
+        --_persistentIndexes;
+      }
+
+      return idx;
+    }
+  }
+
+  // not found
+  return nullptr;
+}
+
+/// @brief get all indexes of the collection
+std::vector<arangodb::Index*> const& TRI_collection_t::allIndexes() const {
+  return _indexes;
+}
+
+/// @brief return the primary index
+arangodb::PrimaryIndex* TRI_collection_t::primaryIndex() {
+  TRI_ASSERT(!_indexes.empty());
+  // the primary index must be the index at position #0
+  return static_cast<arangodb::PrimaryIndex*>(_indexes[0]);
+}
+
+/// @brief return the collection's edge index, if it exists
+arangodb::EdgeIndex* TRI_collection_t::edgeIndex() {
+  if (_indexes.size() >= 2 &&
+      _indexes[1]->type() == arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX) {
+    // edge index must be the index at position #1
+    return static_cast<arangodb::EdgeIndex*>(_indexes[1]);
+  }
+
+  return nullptr;
+}
+
+/// @brief get an index by id
+arangodb::Index* TRI_collection_t::lookupIndex(TRI_idx_iid_t iid) const {
+  for (auto const& it : _indexes) {
+    if (it->id() == iid) {
+      return it;
+    }
+  }
+  return nullptr;
 }
 
 /// @brief checks if a collection name is allowed
@@ -656,10 +1224,18 @@ int TRI_collection_t::removeIndexFile(TRI_idx_iid_t id) {
   return false;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief iterates over all index files of a collection
-////////////////////////////////////////////////////////////////////////////////
+/// @brief enumerate all indexes of the collection, but don't fill them yet
+int TRI_collection_t::detectIndexes(arangodb::Transaction* trx) {
+  OpenIndexIteratorContext ctx;
+  ctx.trx = trx;
+  ctx.collection = this;
 
+  iterateIndexes(OpenIndexIterator, static_cast<void*>(&ctx));
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+/// @brief iterates over all index files of a collection
 void TRI_collection_t::iterateIndexes(
     std::function<bool(std::string const&, void*)> const& callback,
     void* data) {
@@ -1117,18 +1693,11 @@ static bool CheckCollection(TRI_collection_t* collection, bool ignoreErrors) {
   return true;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief iterate over all datafiles in a vector
-////////////////////////////////////////////////////////////////////////////////
-
-static bool IterateDatafilesVector(std::vector<TRI_datafile_t*> const& files,
-                                   bool (*iterator)(TRI_df_marker_t const*,
-                                                    void*, TRI_datafile_t*),
-                                   void* data) {
-  TRI_ASSERT(iterator != nullptr);
-
+bool TRI_collection_t::iterateDatafilesVector(std::vector<TRI_datafile_t*> const& files,
+                                              std::function<bool(TRI_df_marker_t const*, TRI_datafile_t*)> const& cb) {
   for (auto const& datafile : files) {
-    if (!TRI_IterateDatafile(datafile, iterator, data)) {
+    if (!TRI_IterateDatafile(datafile, cb)) {
       return false;
     }
 
@@ -1141,11 +1710,8 @@ static bool IterateDatafilesVector(std::vector<TRI_datafile_t*> const& files,
   return true;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief closes the datafiles passed in the vector
-////////////////////////////////////////////////////////////////////////////////
-
-static bool CloseDataFiles(std::vector<TRI_datafile_t*> const& files) {
+bool TRI_collection_t::closeDataFiles(std::vector<TRI_datafile_t*> const& files) {
   bool result = true;
 
   for (auto const& datafile : files) {
@@ -1300,37 +1866,6 @@ TRI_collection_t* TRI_CreateCollection(
   TRI_UnlinkFile(tmpfile2.c_str());
 
   return collection;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief frees the memory allocated, but does not free the pointer
-///
-/// Note that the collection must be closed first.
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_DestroyCollection(TRI_collection_t* collection) {
-  TRI_ASSERT(collection);
-  collection->_info.clearKeyOptions();
-
-  for (auto& it : collection->_datafiles) {
-    TRI_FreeDatafile(it);
-  }
-  for (auto& it : collection->_journals) {
-    TRI_FreeDatafile(it);
-  }
-  for (auto& it : collection->_compactors) {
-    TRI_FreeDatafile(it);
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief frees the memory allocated and frees the pointer
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_FreeCollection(TRI_collection_t* collection) {
-  TRI_ASSERT(collection);
-  TRI_DestroyCollection(collection);
-  delete collection;
 }
 
 VocbaseCollectionInfo::VocbaseCollectionInfo(CollectionInfo const& other)
@@ -1869,22 +2404,19 @@ void TRI_CreateVelocyPackCollectionInfo(
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief renames a collection
-///
 /// You must hold the @ref TRI_WRITE_LOCK_STATUS_VOCBASE_COL when calling this
 /// function.
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_RenameCollection(TRI_collection_t* collection, std::string const& name) {
+int TRI_collection_t::rename(std::string const& name) {
   // Save name for rollback
-  std::string oldName = collection->_info.name();
-  collection->_info.rename(name);
+  std::string oldName = _info.name();
+  _info.rename(name);
 
-  int res = collection->_info.saveToFile(collection->path(), true);
+  int res = _info.saveToFile(path(), true);
+
   if (res != TRI_ERROR_NO_ERROR) {
     // Rollback
-    collection->_info.rename(oldName);
+    _info.rename(oldName);
   }
 
   return res;
@@ -1894,74 +2426,59 @@ int TRI_RenameCollection(TRI_collection_t* collection, std::string const& name) 
 /// @brief iterates over a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_IterateCollection(TRI_collection_t* collection,
-                           bool (*iterator)(TRI_df_marker_t const*, void*,
-                                            TRI_datafile_t*),
-                           void* data) {
-  TRI_ASSERT(iterator != nullptr);
-
-  bool result;
-  if (!IterateDatafilesVector(collection->_datafiles, iterator, data) ||
-      !IterateDatafilesVector(collection->_compactors, iterator, data) ||
-      !IterateDatafilesVector(collection->_journals, iterator, data)) {
-    result = false;
-  } else {
-    result = true;
+bool TRI_collection_t::iterateDatafiles(std::function<bool(TRI_df_marker_t const*, TRI_datafile_t*)> const& cb) {
+  if (!iterateDatafilesVector(_datafiles, cb) ||
+      !iterateDatafilesVector(_compactors, cb) ||
+      !iterateDatafilesVector(_journals, cb)) {
+    return false;
   }
-
-  return result;
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief opens an existing collection
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_collection_t* TRI_OpenCollection(TRI_vocbase_t* vocbase,
-                                     TRI_collection_t* collection,
-                                     char const* path, bool ignoreErrors) {
-  TRI_ASSERT(collection != nullptr);
-
-  if (!TRI_IsDirectory(path)) {
-    TRI_set_errno(TRI_ERROR_ARANGO_DATADIR_INVALID);
-
+int TRI_collection_t::open(std::string const& path, bool ignoreErrors) {
+  if (!TRI_IsDirectory(path.c_str())) {
     LOG(ERR) << "cannot open '" << path << "', not a directory or not found";
-
-    return nullptr;
+    return TRI_ERROR_ARANGO_DATADIR_INVALID;
   }
 
   try {
     // read parameters, no need to lock as we are opening the collection
     VocbaseCollectionInfo info =
-        VocbaseCollectionInfo::fromFile(path, vocbase,
+        VocbaseCollectionInfo::fromFile(path, _vocbase,
                                         "",  // Name will be set later on
                                         true);
-    InitCollection(vocbase, collection, std::string(path), info);
+    InitCollection(_vocbase, this, path, info);
 
     double start = TRI_microtime();
 
     LOG_TOPIC(TRACE, Logger::PERFORMANCE)
-        << "open-collection { collection: " << vocbase->name() << "/"
-        << collection->_info.name();
+        << "open-collection { collection: " << _vocbase->name() << "/"
+        << _info.name();
 
     // check for journals and datafiles
-    bool ok = CheckCollection(collection, ignoreErrors);
+    bool ok = CheckCollection(this, ignoreErrors);
 
     if (!ok) {
-      LOG(DEBUG) << "cannot open '" << collection->path()
-                 << "', check failed";
-      return nullptr;
+      LOG(DEBUG) << "cannot open '" << path << "', check failed";
+      return TRI_ERROR_INTERNAL;
     }
 
     LOG_TOPIC(TRACE, Logger::PERFORMANCE)
         << "[timer] " << Logger::FIXED(TRI_microtime() - start)
-        << " s, open-collection { collection: " << vocbase->name() << "/"
-        << collection->_info.name() << " }";
+        << " s, open-collection { collection: " << _vocbase->name() << "/"
+        << _info.name() << " }";
 
-    return collection;
-  } catch (...) {
-    LOG(ERR) << "cannot load collection parameter file '" << path
-             << "': " << TRI_last_error();
-    return nullptr;
+    return TRI_ERROR_NO_ERROR;
+  } catch (basics::Exception const& ex) {
+    LOG(ERR) << "cannot load collection parameter file '" << path << "': " << ex.what();
+    return ex.code();
+  } catch (std::exception const& ex) {
+    LOG(ERR) << "cannot load collection parameter file '" << path << "': " << ex.what();
+    return TRI_ERROR_INTERNAL;
   }
 }
 
@@ -1969,15 +2486,15 @@ TRI_collection_t* TRI_OpenCollection(TRI_vocbase_t* vocbase,
 /// @brief closes an open collection
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_CloseCollection(TRI_collection_t* collection) {
+int TRI_collection_t::close() {
   // close compactor files
-  CloseDataFiles(collection->_compactors);
+  closeDataFiles(_compactors);
 
   // close journal files
-  CloseDataFiles(collection->_journals);
+  closeDataFiles(_journals);
 
   // close datafiles
-  CloseDataFiles(collection->_datafiles);
+  closeDataFiles(_datafiles);
 
   return TRI_ERROR_NO_ERROR;
 }

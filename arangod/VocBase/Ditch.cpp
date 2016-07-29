@@ -41,7 +41,7 @@ Ditch::~Ditch() {}
 /// @brief return the associated collection
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_document_collection_t* Ditch::collection() const {
+TRI_collection_t* Ditch::collection() const {
   return _ditches->collection();
 }
 
@@ -127,7 +127,7 @@ DropCollectionDitch::DropCollectionDitch(
 
 DropCollectionDitch::~DropCollectionDitch() {}
 
-Ditches::Ditches(TRI_document_collection_t* collection)
+Ditches::Ditches(TRI_collection_t* collection)
     : _collection(collection),
       _lock(),
       _begin(nullptr),
@@ -170,7 +170,7 @@ void Ditches::destroy() {
 /// @brief return the associated collection
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_document_collection_t* Ditches::collection() const { return _collection; }
+TRI_collection_t* Ditches::collection() const { return _collection; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief run a user-defined function under the lock
