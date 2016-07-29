@@ -112,10 +112,11 @@ void InternalRestTraverserHandler::createEngine() {
 
 void InternalRestTraverserHandler::queryEngine() {
   std::vector<std::string> const& suffix = _request->suffix();
-  if (suffix.size() != 2) {
+  size_t count = suffix.size();
+  if (count < 2 || count > 3) {
     generateError(
         GeneralResponse::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-        "expected PUT " + INTERNAL_TRAVERSER_PATH + "/[vertex|edge|lock]/<TraverserEngineId>");
+        "expected PUT " + INTERNAL_TRAVERSER_PATH + "/[vertex|edge]/<TraverserEngineId>");
     return;
   }
 
@@ -142,9 +143,26 @@ void InternalRestTraverserHandler::queryEngine() {
       [registry, &engineId]() -> void { registry->returnEngine(engineId); }};
 
   if (option == "lock") {
-    engine->lockCollections();
+    if (count != 3) {
+      generateError(
+          GeneralResponse::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+          "expected PUT " + INTERNAL_TRAVERSER_PATH + "/lock/<TraverserEngineId>/<shardId>");
+      return;
+    }
+    if (!engine->lockCollection(suffix[2])) {
+      generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
+                    TRI_ERROR_HTTP_SERVER_ERROR, "lock lead to an exception");
+      return;
+    }
     generateResult(GeneralResponse::ResponseCode::OK,
                    arangodb::basics::VelocyPackHelper::TrueValue());
+    return;
+  }
+
+  if (count != 2) {
+    generateError(
+        GeneralResponse::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+        "expected PUT " + INTERNAL_TRAVERSER_PATH + "/[vertex|edge]/<TraverserEngineId>");
     return;
   }
 

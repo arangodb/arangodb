@@ -65,17 +65,15 @@ class TraverserEngine {
    void getVertexData(arangodb::velocypack::Slice, size_t,
                       arangodb::velocypack::Builder&);
 
-   void lockCollections();
+   bool lockCollection(std::string const&);
 
   private:
     std::unique_ptr<TraverserOptions> _opts;
     arangodb::aql::Query* _query;
     arangodb::Transaction* _trx;
     arangodb::aql::Collections _collections;
-    std::vector<std::string> _toLock;
+    std::unordered_set<std::string> _locked;
     std::vector<std::string> _vertexShards;
-    bool _didLock;
-
 };
 } // namespace traverser
 } // namespace arangodb
