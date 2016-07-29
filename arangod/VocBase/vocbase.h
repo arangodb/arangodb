@@ -38,6 +38,7 @@
 #include "velocypack/Builder.h"
 #include "velocypack/velocypack-aliases.h"
 
+struct TRI_collection_t;
 struct TRI_document_collection_t;
 class TRI_replication_applier_t;
 class TRI_vocbase_col_t;
@@ -363,6 +364,8 @@ struct TRI_vocbase_t {
 
   /// @brief drops a collection
   int dropCollection(TRI_vocbase_col_t* collection, bool writeMarker);
+
+  static bool DropCollectionCallback(TRI_collection_t* col, void* data);
 
 
   /// @brief adds a new collection

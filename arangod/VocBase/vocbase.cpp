@@ -300,11 +300,8 @@ static bool UnloadCollectionCallback(TRI_collection_t* col, void* data) {
   return true;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief drops a collection
-////////////////////////////////////////////////////////////////////////////////
-
-static bool DropCollectionCallback(TRI_collection_t* col, void* data) {
+bool TRI_vocbase_t::DropCollectionCallback(TRI_collection_t* col, void* data) {
   TRI_vocbase_col_t* collection = static_cast<TRI_vocbase_col_t*>(data);
   std::string const name(collection->name());
 
