@@ -663,6 +663,112 @@ up in the GNU debugger in separate windows (using `xterm`s). In that
 case one has to hit ENTER in the original terminal where the script runs
 to continue, once all processes have been start up in the debugger.
 
+ArangoDB on Mesos
+=================
+
+Requirements:
+
+- Somewhat recent linux
+- docker
+- curl
+- jq
+- git
+- at least 8GB RAM
+
+To startup a local mesos cluster:
+
+```
+git clone https://github.com/m0ppers/mesos-cluster
+cd mesos-cluster
+mkdir /tmp/mesos-cluster
+./start-cluster.sh /tmp/mesos-cluster/ --num-slaves=5 --rm --name mesos-cluster
+```
+
+Then save the following configuration to a local file and name it `arangodb3.json`:
+
+```
+{
+  "id": "arangodb",
+  "cpus": 0.25,
+  "mem": 256.0,
+  "ports": [0, 0, 0],
+  "instances": 1,
+  "args": [
+    "framework",
+    "--framework_name=arangodb",
+    "--master=zk://172.17.0.2:2181/mesos",
+    "--zk=zk://172.17.0.2:2181/arangodb",
+    "--user=",
+    "--principal=pri",
+    "--role=arangodb",
+    "--mode=cluster",
+    "--async_replication=false",
+    "--minimal_resources_agent=mem(*):512;cpus(*):0.25;disk(*):512",
+    "--minimal_resources_dbserver=mem(*):1024;cpus(*):0.25;disk(*):1024",
+    "--minimal_resources_secondary=mem(*):1024;cpus(*):0.25;disk(*):1024",
+    "--minimal_resources_coordinator=mem(*):1024;cpus(*):0.25;disk(*):1024",
+    "--nr_agents=3",
+    "--nr_dbservers=2",
+    "--nr_coordinators=2",
+    "--failover_timeout=86400",
+    "--arangodb_privileged_image=false",
+    "--arangodb_force_pull_image=true",
+    "--arangodb_image=arangodb/arangodb-mesos:3.0",
+    "--secondaries_with_dbservers=false",
+    "--coordinators_with_dbservers=false"
+  ],
+  "container": {
+    "type": "DOCKER",
+    "docker": {
+      "image": "arangodb/arangodb-mesos-framework:3.0",
+      "network": "HOST"
+    }
+  },
+  "healthChecks": [
+    {
+      "protocol": "HTTP",
+      "path": "/framework/v1/health.json",
+      "gracePeriodSeconds": 3,
+      "intervalSeconds": 10,
+      "portIndex": 0,
+      "timeoutSeconds": 10,
+      "maxConsecutiveFailures": 0
+    }
+  ]
+}
+```
+
+Adjust the lines `--master` and `--zk` to match the IP of your mesos-cluster:
+
+```
+docker inspect mesos-cluster | jq '.[0].NetworkSettings.Networks.bridge.IPAddress'
+```
+
+And deploy the modified file to your local mesos cluster:
+
+```
+curl -X POST $(docker inspect mesos-cluster | jq -r '.[0].NetworkSettings.Networks.bridge.IPAddress'):8080/v2/apps -d @arangodb3.json -H "Content-Type: application/json" | jq .
+```
+
+Point your webbrowser to `$(docker inspect mesos-cluster | jq -r '.[0].NetworkSettings.Networks.bridge.IPAddress')`:8080.
+
+Wait until arangodb is healthy.
+
+Then click on `arangodb`.
+
+On the following screen click on the first port next to the IP Address of your cluster.
+
+Deploying a locally changed version
+-----------------------------------
+
+Create local docker images using the following repositories:
+
+https://github.com/arangodb/arangodb-docker
+https://github.com/arangodb/arangodb-mesos-docker
+https://github.com/arangodb/arangodb-mesos-framework
+
+Then adjust the docker images in the config and redeploy.
+
 --------------------------------------------------------------------------------
 Front-End (WebUI)
 =========
