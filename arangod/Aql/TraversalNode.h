@@ -27,8 +27,7 @@
 #include "Aql/ExecutionNode.h"
 #include "Aql/Condition.h"
 #include "Aql/Graphs.h"
-#include "Aql/TraversalOptions.h"
-#include "VocBase/Traverser.h"
+#include "VocBase/TraverserOptions.h"
 
 namespace arangodb {
 namespace aql {
@@ -73,7 +72,8 @@ class TraversalNode : public ExecutionNode {
  public:
   TraversalNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
                 AstNode const* direction, AstNode const* start,
-                AstNode const* graph, TraversalOptions const& options);
+                AstNode const* graph,
+                traverser::TraverserOptions const& options);
 
   TraversalNode(ExecutionPlan* plan, arangodb::basics::Json const& base);
 
@@ -86,8 +86,8 @@ class TraversalNode : public ExecutionNode {
   TraversalNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
                 std::vector<std::string> const& edgeColls,
                 Variable const* inVariable, std::string const& vertexId,
-                std::vector<TRI_edge_direction_e> directions, uint64_t minDepth,
-                uint64_t maxDepth, TraversalOptions const& options);
+                std::vector<TRI_edge_direction_e> directions,
+                traverser::TraverserOptions const& options);
 
  public:
   /// @brief return the type of the node
@@ -209,15 +209,7 @@ class TraversalNode : public ExecutionNode {
   int checkIsOutVariable(size_t variableId) const;
 
   /// @brief check whether an access is inside the specified range
-  bool isInRange(uint64_t thisIndex, bool isEdge) const {
-    if (isEdge) {
-      return (thisIndex < _maxDepth);
-    }
-    return (thisIndex <= _maxDepth);
-  }
-
-  /// @brief check whecher min..max actualy span a range
-  bool isRangeValid() const { return _maxDepth >= _minDepth; }
+  bool isInRange(uint64_t,  bool) const;
 
   /// @brief register a filter condition on a given search depth.
   ///        If this condition is not fulfilled a traversal will abort.
@@ -233,10 +225,7 @@ class TraversalNode : public ExecutionNode {
 
   void specializeToNeighborsSearch();
 
-  uint64_t minDepth() const { return _minDepth; }
-  uint64_t maxDepth() const { return _maxDepth; }
-
-  TraversalOptions const* options() const { return &_options; }
+  traverser::TraverserOptions const* options() const { return &_options; }
 
   AstNode* getTemporaryRefNode() const;
 
@@ -268,12 +257,6 @@ class TraversalNode : public ExecutionNode {
   /// @brief input graphJson only used for serialization & info
   arangodb::basics::Json _graphJson;
 
-  /// @brief The minimal depth included in the result
-  uint64_t _minDepth;
-
-  /// @brief The maximal depth searched and included in the result
-  uint64_t _maxDepth;
-
   /// @brief The directions edges are followed
   std::vector<TRI_edge_direction_e> _directions;
 
@@ -290,7 +273,7 @@ class TraversalNode : public ExecutionNode {
   std::unordered_set<Variable const*> _conditionVariables;
 
   /// @brief Options for traversals
-  TraversalOptions _options;
+  traverser::TraverserOptions _options;
 
   /// @brief Defines if you use a specialized neighbors search instead of general purpose
   ///        traversal

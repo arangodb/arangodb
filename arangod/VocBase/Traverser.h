@@ -29,7 +29,6 @@
 #include "Basics/ShortestPathFinder.h"
 #include "Aql/AqlValue.h"
 #include "Aql/AstNode.h"
-#include "Aql/FixedVarExpressionContext.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/Transaction.h"
 #include "VocBase/voc-types.h"
@@ -45,23 +44,10 @@ namespace aql {
 struct AstNode;
 class Expression;
 class Query;
-class TraversalNode;
 }
 namespace traverser {
 
-/// @brief Abstract class used in the traversals
-/// to abstract away access to indexes / DBServers.
-/// Returns edges as VelocyPack.
-
-class EdgeCursor {
- public:
-  EdgeCursor() {}
-  virtual ~EdgeCursor() {}
-
-  virtual bool next(std::vector<arangodb::velocypack::Slice>&, size_t&) = 0;
-  virtual bool readAll(std::unordered_set<arangodb::velocypack::Slice>&,
-                       size_t&) = 0;
-};
+struct TraverserOptions;
 
 #warning Deprecated
 class TraverserExpression {
@@ -217,87 +203,6 @@ class TraversalPath {
   //////////////////////////////////////////////////////////////////////////////
 
   size_t _readDocuments;
-};
-
-struct TraverserOptions {
-  friend class arangodb::aql::TraversalNode;
-
- public:
-  enum UniquenessLevel { NONE, PATH, GLOBAL };
-
- private:
-
-  struct LookupInfo {
-    // This struct does only take responsibility for the expression
-    // NOTE: The expression can be nullptr!
-    std::vector<arangodb::Transaction::IndexHandle> idxHandles;
-    aql::Expression* expression;
-    aql::AstNode* indexCondition;
-
-    LookupInfo();
-    ~LookupInfo();
-
-    LookupInfo(LookupInfo const&);
-
-    LookupInfo(arangodb::aql::Query*, arangodb::velocypack::Slice const&,
-               arangodb::velocypack::Slice const&);
-
-    void toVelocyPack(arangodb::velocypack::Builder&) const;
-  };
-
- private:
-  arangodb::Transaction* _trx;
-  std::vector<LookupInfo> _baseLookupInfos;
-  std::unordered_map<size_t, std::vector<LookupInfo>> _depthLookupInfo;
-  std::unordered_map<size_t, aql::Expression*> _vertexExpressions;
-  aql::Variable const* _tmpVar;
-  aql::FixedVarExpressionContext* _ctx;
-
- public:
-  uint64_t minDepth;
-
-  uint64_t maxDepth;
-
-  bool useBreadthFirst;
-
-  UniquenessLevel uniqueVertices;
-
-  UniquenessLevel uniqueEdges;
-
-  explicit TraverserOptions(arangodb::Transaction* trx)
-      : _trx(trx),
-        _ctx(new aql::FixedVarExpressionContext()),
-        minDepth(1),
-        maxDepth(1),
-        useBreadthFirst(false),
-        uniqueVertices(UniquenessLevel::NONE),
-        uniqueEdges(UniquenessLevel::PATH) {
-  }
-
-  TraverserOptions(arangodb::aql::Query*, arangodb::velocypack::Slice,
-                   arangodb::velocypack::Slice);
-
-  ~TraverserOptions();
-
-  TraverserOptions(TraverserOptions const&) = delete;
-
-  void toVelocyPack(arangodb::velocypack::Builder&) const;
-
-  bool vertexHasFilter(size_t) const;
-
-  bool evaluateEdgeExpression(arangodb::velocypack::Slice,
-                              arangodb::velocypack::Slice, size_t,
-                              size_t) const;
-
-  bool evaluateVertexExpression(arangodb::velocypack::Slice, size_t) const;
-
-  EdgeCursor* nextCursor(arangodb::velocypack::Slice, size_t) const;
-
-  void clearVariableValues();
-
-  void setVariableValue(aql::Variable const*, aql::AqlValue const);
-
-
 };
 
 class Traverser {

@@ -29,25 +29,12 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Ast.h"
 #include "Aql/SortCondition.h"
-#include "Aql/TraversalOptions.h"
 #include "Indexes/Index.h"
+#include "Utils/CollectionNameResolver.h"
+#include "VocBase/TraverserOptions.h"
 
 using namespace arangodb::basics;
 using namespace arangodb::aql;
-
-static uint64_t checkTraversalDepthValue(AstNode const* node) {
-  if (!node->isNumericValue()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE,
-                                   "invalid traversal depth");
-  }
-  double v = node->getDoubleValue();
-  double intpart;
-  if (modf(v, &intpart) != 0.0 || v < 0.0) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE,
-                                   "invalid traversal depth");
-  }
-  return static_cast<uint64_t>(v);
-}
 
 TraversalNode::EdgeConditionBuilder::EdgeConditionBuilder(
     TraversalNode const* tn)
@@ -127,7 +114,7 @@ static TRI_edge_direction_e parseDirection (AstNode const* node) {
 TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id,
                              TRI_vocbase_t* vocbase, AstNode const* direction,
                              AstNode const* start, AstNode const* graph,
-                             TraversalOptions const& options)
+                             traverser::TraverserOptions const& options)
     : ExecutionNode(plan, id),
       _vocbase(vocbase),
       _vertexOutVariable(nullptr),
@@ -180,26 +167,6 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id,
   // Member 0 is the direction. Already the correct Integer.
   // Is not inserted by user but by enum.
   TRI_edge_direction_e baseDirection = parseDirection(direction->getMember(0));
-
-  auto steps = direction->getMember(1);
-
-  if (steps->isNumericValue()) {
-    // Check if a double value is integer
-    _minDepth = checkTraversalDepthValue(steps);
-    _maxDepth = _minDepth;
-  } else if (steps->type == NODE_TYPE_RANGE) {
-    // Range depth
-    _minDepth = checkTraversalDepthValue(steps->getMember(0));
-    _maxDepth = checkTraversalDepthValue(steps->getMember(1));
-
-    if (_maxDepth < _minDepth) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE,
-                                     "invalid traversal depth");
-    }
-  } else {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE,
-                                   "invalid traversal depth");
-  }
 
   std::unordered_map<std::string, TRI_edge_direction_e> seenCollections;
 
@@ -307,11 +274,13 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id,
 }
 
 /// @brief Internal constructor to clone the node.
-TraversalNode::TraversalNode(
-    ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
-    std::vector<std::string> const& edgeColls, Variable const* inVariable,
-    std::string const& vertexId, std::vector<TRI_edge_direction_e> directions,
-    uint64_t minDepth, uint64_t maxDepth, TraversalOptions const& options)
+TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id,
+                             TRI_vocbase_t* vocbase,
+                             std::vector<std::string> const& edgeColls,
+                             Variable const* inVariable,
+                             std::string const& vertexId,
+                             std::vector<TRI_edge_direction_e> directions,
+                             traverser::TraverserOptions const& options)
     : ExecutionNode(plan, id),
       _vocbase(vocbase),
       _vertexOutVariable(nullptr),
@@ -319,8 +288,6 @@ TraversalNode::TraversalNode(
       _pathOutVariable(nullptr),
       _inVariable(inVariable),
       _vertexId(vertexId),
-      _minDepth(minDepth),
-      _maxDepth(maxDepth),
       _directions(directions),
       _graphObj(nullptr),
       _condition(nullptr),
@@ -346,6 +313,7 @@ TraversalNode::TraversalNode(ExecutionPlan* plan,
       _inVariable(nullptr),
       _graphObj(nullptr),
       _condition(nullptr),
+      _options(_plan->getAst()->query()->trx(), base),
       _specializedNeighborsSearch(false),
       _tmpObjVariable(nullptr),
       _tmpObjVarNode(nullptr),
@@ -354,10 +322,6 @@ TraversalNode::TraversalNode(ExecutionPlan* plan,
       _toCondition(nullptr),
       _globalEdgeCondition(nullptr),
       _globalVertexCondition(nullptr) {
-  _minDepth =
-      arangodb::basics::JsonHelper::stringUInt64(base.json(), "minDepth");
-  _maxDepth =
-      arangodb::basics::JsonHelper::stringUInt64(base.json(), "maxDepth");
   auto dirList = base.get("directions");
   TRI_ASSERT(dirList.json() != nullptr);
   for (size_t i = 0; i < dirList.size(); ++i) {
@@ -471,11 +435,6 @@ TraversalNode::TraversalNode(ExecutionPlan* plan,
     _pathOutVariable = varFromJson(plan->getAst(), base, "pathOutVariable");
   }
 
-  // Flags
-  if (base.has("traversalFlags")) {
-    _options = TraversalOptions(base);
-  }
-
   // Temporary Filter Objects
   TRI_ASSERT(base.has("tmpObjVariable"));
   _tmpObjVariable = varFromJson(plan->getAst(), base, "tmpObjVariable");
@@ -550,6 +509,14 @@ int TraversalNode::checkIsOutVariable(size_t variableId) const {
   return -1;
 }
 
+/// @brief check whether an access is inside the specified range
+bool TraversalNode::isInRange(uint64_t depth, bool isEdge) const {
+  if (isEdge) {
+    return (depth < _options.maxDepth);
+  }
+  return (depth <= _options.maxDepth);
+}
+
 /// @brief check if all directions are equal
 bool TraversalNode::allDirectionsEqual() const {
   if (_directions.empty()) {
@@ -581,8 +548,6 @@ void TraversalNode::toVelocyPackHelper(arangodb::velocypack::Builder& nodes,
                                            verbose);  // call base class method
 
   nodes.add("database", VPackValue(_vocbase->_name));
-  nodes.add("minDepth", VPackValue(_minDepth));
-  nodes.add("maxDepth", VPackValue(_maxDepth));
 
   {
     // TODO Remove _graphJson
@@ -703,7 +668,7 @@ ExecutionNode* TraversalNode::clone(ExecutionPlan* plan, bool withDependencies,
                                     bool withProperties) const {
   auto c =
       new TraversalNode(plan, _id, _vocbase, _edgeColls, _inVariable, _vertexId,
-                        _directions, _minDepth, _maxDepth, _options);
+                        _directions, _options);
 
   if (usesVertexOutVariable()) {
     auto vertexOutVariable = _vertexOutVariable;
@@ -816,8 +781,9 @@ double TraversalNode::estimateCost(size_t& nrItems) const {
       }
     }
   }
-  nrItems =
-      static_cast<size_t>(incoming * std::pow(expectedEdgesPerDepth, static_cast<double>(_maxDepth)));
+  nrItems = static_cast<size_t>(
+      incoming *
+      std::pow(expectedEdgesPerDepth, static_cast<double>(_options.maxDepth)));
   if (nrItems == 0 && incoming > 0) {
     nrItems = 1;  // min value
   }
@@ -827,8 +793,8 @@ double TraversalNode::estimateCost(size_t& nrItems) const {
 void TraversalNode::fillTraversalOptions(
     arangodb::traverser::TraverserOptions* opts,
     arangodb::Transaction* trx) const {
-  opts->minDepth = _minDepth;
-  opts->maxDepth = _maxDepth;
+  opts->minDepth = _options.minDepth;
+  opts->maxDepth = _options.maxDepth;
   opts->_tmpVar = _tmpObjVariable;
 
   size_t numEdgeColls = _edgeColls.size();

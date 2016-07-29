@@ -156,7 +156,6 @@ add_executable(${BIN_ARANGOD}
   Aql/TraversalBlock.cpp
   Aql/TraversalConditionFinder.cpp
   Aql/TraversalNode.cpp
-  Aql/TraversalOptions.cpp
   Aql/V8Expression.cpp
   Aql/Variable.cpp
   Aql/VariableGenerator.cpp
@@ -314,6 +313,7 @@ add_executable(${BIN_ARANGOD}
   VocBase/PathEnumerator.cpp
   VocBase/SingleServerTraverser.cpp
   VocBase/Traverser.cpp
+  VocBase/TraverserOptions.cpp
   VocBase/cleanup.cpp
   VocBase/collection.cpp
   VocBase/compactor.cpp

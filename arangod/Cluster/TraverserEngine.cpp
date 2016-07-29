@@ -26,7 +26,8 @@
 #include "Basics/Exceptions.h"
 #include "Aql/Query.h"
 #include "Utils/AqlTransaction.h"
-#include "VocBase/Traverser.h"
+#include "Utils/CollectionNameResolver.h"
+#include "VocBase/TraverserOptions.h"
 
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>

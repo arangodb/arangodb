@@ -28,6 +28,7 @@
 #include "Aql/AqlValue.h"
 #include "Utils/OperationCursor.h"
 #include "VocBase/PathEnumerator.h"
+#include "VocBase/TraverserOptions.h"
 
 namespace arangodb {
 

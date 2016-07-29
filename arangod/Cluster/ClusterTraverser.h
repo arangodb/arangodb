@@ -25,6 +25,7 @@
 #define ARANGOD_CLUSTER_CLUSTER_TRAVERSER_H 1
 
 #include "VocBase/Traverser.h"
+#include "VocBase/TraverserOptions.h"
 #include "VocBase/PathEnumerator.h"
 
 namespace arangodb {

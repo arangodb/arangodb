@@ -23,6 +23,7 @@
 
 #include "PathEnumerator.h"
 #include "VocBase/Traverser.h"
+#include "VocBase/TraverserOptions.h"
 
 using DepthFirstEnumerator = arangodb::traverser::DepthFirstEnumerator;
 using BreadthFirstEnumerator = arangodb::traverser::BreadthFirstEnumerator;

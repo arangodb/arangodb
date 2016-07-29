@@ -42,6 +42,7 @@
 #include "Basics/SmallVector.h"
 #include "Basics/StaticStrings.h"
 #include "Utils/Transaction.h"
+#include "VocBase/TraverserOptions.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -3669,12 +3670,6 @@ void arangodb::aql::optimizeTraversalsRule(Optimizer* opt,
         continue;
       }
       
-      if (traversal->maxDepth() > 100) {
-        // neighbors search is recursive... do not use recursive version if
-        // depth is potentially high
-        continue;
-      }
-
       /*
       if (!traversal->expressions()->empty()) {
         // traversal has filter expressions
@@ -3687,8 +3682,14 @@ void arangodb::aql::optimizeTraversalsRule(Optimizer* opt,
         continue;
       }
       
-      TraversalOptions const* options = traversal->options();
+      traverser::TraverserOptions const* options = traversal->options();
       TRI_ASSERT(options != nullptr);
+
+      if (options->maxDepth > 100) {
+        // neighbors search is recursive... do not use recursive version if
+        // depth is potentially high
+        continue;
+      }
 
       if (options->uniqueVertices != traverser::TraverserOptions::GLOBAL ||
           options->uniqueEdges != traverser::TraverserOptions::NONE) {

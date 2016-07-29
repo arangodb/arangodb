@@ -382,10 +382,6 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
         }
       }
 
-      if (!conditionIsImpossible) {
-        conditionIsImpossible = !node->isRangeValid();
-      }
-
       // TODO: we can't execute if we condition->normalize(_plan); in
       // generateCodeNode
       if (!conditionIsImpossible) {

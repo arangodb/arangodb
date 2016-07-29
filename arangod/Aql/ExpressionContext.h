@@ -29,8 +29,9 @@
 
 namespace arangodb {
 namespace aql {
-  struct AqlValue;
-  struct Variable;
+
+struct AqlValue;
+struct Variable;
 
 class ExpressionContext {
   public:

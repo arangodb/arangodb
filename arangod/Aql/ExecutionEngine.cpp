@@ -386,6 +386,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
   // names of sharded collections that we have already seen on a DBserver
   // this is relevant to decide whether or not the engine there is a main
   // query or a dependent one.
+
   std::unordered_map<std::string, std::string> queryIds;
   // this map allows to find the queries which are the parts of the big
   // query. There are two cases, the first is for the remote queries on
@@ -403,6 +404,15 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
   // DBservers and used when we instantiate the ones on the
   // coordinator. Note that the main query and engine is not put into
   // this map at all.
+
+  std::unordered_map<std::string, std::vector<std::string>> traverserEngines;
+  // This map allows to find all traverser engine parts of the query.
+  // The first value is the engine id. The second value is a list of
+  // shards this engine is responsible for.
+  // All shards that are not yet in queryIds have to be locked by
+  // one of the traverserEngines.
+  // TraverserEngines will always give the PART_MAIN to other parts
+  // of the queries if they desire them.
 
   CoordinatorInstanciator(Query* query, QueryRegistry* queryRegistry)
       : query(query),
@@ -717,6 +727,12 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     }
   }
 
+  void buildTraverserEngineForDBServer() {
+  }
+
+  void buildTraverserEnginesForNode(TraversalNode* en) {
+  }
+
   /// @brief buildEngines, build engines on DBservers and coordinator
   ExecutionEngine* buildEngines() {
     ExecutionEngine* engine = nullptr;
@@ -796,6 +812,12 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
       }
       // For the coordinator we do not care about main or part:
       engines.emplace_back(currentLocation, currentEngineId, part, en->id());
+    }
+
+    if (nodeType == ExecutionNode::TRAVERSAL) {
+#warning I have no fucking idea if this is the right place
+      buildTraverserEnginesForNode(static_cast<TraversalNode*>(en));
+      TRI_ASSERT(false);
     }
 
     return false;
@@ -885,6 +907,8 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
             }
           }
         }
+
+
         // Second round, this time we deal with the coordinator pieces
         // and tell them the lockedShards as well, we need to copy, since
         // they want to delete independently:
