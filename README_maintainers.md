@@ -666,14 +666,18 @@ to continue, once all processes have been start up in the debugger.
 ArangoDB on Mesos
 =================
 
+This will spawn a **temporary** local mesos cluster.
+
 Requirements:
 
 - Somewhat recent linux
-- docker
+- docker 1.10+
 - curl
-- jq
+- sed (for file editing)
+- jq (for json parsing)
 - git
 - at least 8GB RAM
+- fully open firewall inside the docker network
 
 To startup a local mesos cluster:
 
@@ -741,16 +745,25 @@ Then save the following configuration to a local file and name it `arangodb3.jso
 Adjust the lines `--master` and `--zk` to match the IP of your mesos-cluster:
 
 ```
-docker inspect mesos-cluster | jq '.[0].NetworkSettings.Networks.bridge.IPAddress'
+MESOS_IP=`docker inspect mesos-cluster | \
+  jq '.[0].NetworkSettings.Networks.bridge.IPAddress' | \
+  sed 's;";;g'`
+sed -i -e "s;172.17.0.2;${MESOS_IP};g" arangodb3.json
 ```
 
 And deploy the modified file to your local mesos cluster:
 
 ```
-curl -X POST $(docker inspect mesos-cluster | jq -r '.[0].NetworkSettings.Networks.bridge.IPAddress'):8080/v2/apps -d @arangodb3.json -H "Content-Type: application/json" | jq .
+MESOS_IP=`docker inspect mesos-cluster | \
+  jq '.[0].NetworkSettings.Networks.bridge.IPAddress' | \
+  sed 's;";;g'`
+curl -X POST ${MESOS_IP}:8080/v2/apps \
+      -d @arangodb3.json \
+      -H "Content-Type: application/json" | \
+  jq .
 ```
 
-Point your webbrowser to `$(docker inspect mesos-cluster | jq -r '.[0].NetworkSettings.Networks.bridge.IPAddress')`:8080.
+Point your webbrowser to the IP of your `echo "http://${MESOS_IP}:8080"`.
 
 Wait until arangodb is healthy.
 
@@ -767,7 +780,7 @@ https://github.com/arangodb/arangodb-docker
 https://github.com/arangodb/arangodb-mesos-docker
 https://github.com/arangodb/arangodb-mesos-framework
 
-Then adjust the docker images in the config and redeploy.
+Then adjust the docker images in the config (`arangodb3.json`) and redeploy it using the curl command above.
 
 --------------------------------------------------------------------------------
 Front-End (WebUI)

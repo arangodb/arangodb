@@ -109,6 +109,7 @@ void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     disable();
     return;
   }
+  ServerState::instance()->setRole(ServerState::ROLE_AGENT);
 
   // Agency size
   if (_size < 1) {
