@@ -44,7 +44,7 @@ DstDurationT clockOffset(
         std::chrono::duration_cast<SrcDurationT>(std::chrono::nanoseconds{300}),
     const int limit = 10000) {
   if (std::is_same<SrcClockT, DstClockT>::value) {
-    return DstDurationT{};
+    return SrcClockT::from_time_t(0).time_since_epoch();
   }
 
   auto itercnt = 0;
