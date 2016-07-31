@@ -1,6 +1,10 @@
 devel
 -----
 
+* added a memory expection of V8 memory gets to low
+
+* fixed epoch computation in hybrid logical clock
+
 * fixed thread affinity
 
 * replaced require("internal").db by require("@arangodb").db

@@ -721,8 +721,7 @@ QueryResult Query::execute(QueryRegistry* registry) {
   }
 }
 
-/// @brief execute an AQL query
-/// may only be called with an active V8 handle scope
+// execute an AQL query: may only be called with an active V8 handle scope
 QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
   LOG_TOPIC(DEBUG, Logger::QUERIES) << TRI_microtime() - _startTime << " "
       << "Query::executeV8" << " this: " << (uintptr_t) this;
@@ -828,6 +827,10 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
 
               if (!val.isEmpty()) {
                 result.result->Set(j++, val.toV8(isolate, _trx));
+              }
+
+              if (V8PlatformFeature::isOutOfMemory(isolate)) {
+                THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
               }
             }
           }
