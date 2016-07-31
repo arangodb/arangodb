@@ -23,8 +23,8 @@
 
 #include "ConsoleThread.h"
 
-#include <iostream>
 #include <v8.h>
+#include <iostream>
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/MutexLocker.h"
@@ -157,13 +157,19 @@ start_pretty_print();
     }
 
     while (!isStopping() && !_userAborted.load()) {
-      if (nrCommands >= gcInterval) {
+      if (nrCommands >= gcInterval ||
+          V8PlatformFeature::isOutOfMemory(isolate)) {
         TRI_RunGarbageCollectionV8(isolate, 0.5);
         nrCommands = 0;
+
+        // needs to be reset after the garbage collection
+        V8PlatformFeature::resetOutOfMemory(isolate);
       }
 
       std::string input;
       bool eof;
+
+      isolate->CancelTerminateExecution();
 
       {
         MUTEX_LOCKER(mutexLocker, serverConsoleMutex);

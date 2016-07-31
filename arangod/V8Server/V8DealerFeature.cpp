@@ -568,6 +568,27 @@ void V8DealerFeature::exitContext(V8Context* context) {
 
   bool canceled = false;
 
+  if (V8PlatformFeature::isOutOfMemory(isolate)) {
+    static double const availableTime = 300.0;
+
+    v8::HandleScope scope(isolate);
+    {
+      auto localContext =
+          v8::Local<v8::Context>::New(isolate, context->_context);
+      localContext->Enter();
+
+      {
+        v8::Context::Scope contextScope(localContext);
+        TRI_RunGarbageCollectionV8(isolate, availableTime);
+      }
+
+      // needs to be reset after the garbage collection
+      V8PlatformFeature::resetOutOfMemory(isolate);
+
+      localContext->Exit();
+    }
+  }
+
   // update data for later garbage collection
   {
     TRI_GET_GLOBALS();
@@ -858,10 +879,7 @@ void V8DealerFeature::initializeContext(size_t i) {
           "V8Platform");
   TRI_ASSERT(v8platform != nullptr);
 
-  v8::Isolate::CreateParams createParams;
-  createParams.array_buffer_allocator = v8platform->arrayBufferAllocator();
-  v8::Isolate* isolate = v8::Isolate::New(createParams);
-
+  v8::Isolate* isolate = v8platform->createIsolate();
   V8Context* context = _contexts[i] = new V8Context();
 
   TRI_ASSERT(context->_locker == nullptr);
