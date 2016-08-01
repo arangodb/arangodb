@@ -334,7 +334,8 @@ std::string ServerState::roleToAgencyKey(ServerState::RoleEnum role) {
 
     case ROLE_SECONDARY:
     case ROLE_UNDEFINED:
-    case ROLE_SINGLE: {}
+    case ROLE_SINGLE:
+    case ROLE_AGENT: {}
   }
   return "INVALID_CLUSTER_ROLE";
 }

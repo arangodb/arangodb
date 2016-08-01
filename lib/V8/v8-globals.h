@@ -26,11 +26,9 @@
 
 #include "Basics/Common.h"
 
-#include <v8.h>
+#include "ApplicationFeatures/V8PlatformFeature.h"
 
 struct TRI_vocbase_t;
-
-static const uint32_t V8DataSlot = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shortcut for fetching the isolate from the thread context
@@ -45,7 +43,6 @@ static const uint32_t V8DataSlot = 0;
 #define TRI_V8_TRY_CATCH_BEGIN(isolateVar) \
   auto isolateVar = args.GetIsolate();     \
   try {
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief macro to terminate a try-catch sequence for V8 callbacks
 ////////////////////////////////////////////////////////////////////////////////
@@ -76,7 +73,7 @@ static const uint32_t V8DataSlot = 0;
   v8::String::NewFromOneByte(isolate, (uint8_t const*)(name), \
                              v8::String::kNormalString, (int)strlen(name))
 
-#define TRI_V8_ASCII_STD_STRING(isolate, name)                   \
+#define TRI_V8_ASCII_STD_STRING(isolate, name)                        \
   v8::String::NewFromOneByte(isolate, (uint8_t const*)(name.c_str()), \
                              v8::String::kNormalString, (int)name.size())
 
@@ -135,11 +132,11 @@ static const uint32_t V8DataSlot = 0;
 /// @brief shortcut for current v8 globals and scope
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_V8_CURRENT_GLOBALS_AND_SCOPE                           \
-  TRI_v8_global_t* v8g =                                           \
-      static_cast<TRI_v8_global_t*>(isolate->GetData(V8DataSlot)); \
-  v8::HandleScope scope(isolate);                                  \
-  do {                                                             \
+#define TRI_V8_CURRENT_GLOBALS_AND_SCOPE                            \
+  TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(             \
+      isolate->GetData(arangodb::V8PlatformFeature::V8_DATA_SLOT)); \
+  v8::HandleScope scope(isolate);                                   \
+  do {                                                              \
   } while (0)
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -403,13 +400,13 @@ static const uint32_t V8DataSlot = 0;
 ///   implicitly requires 'isolate' to be available
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_GET_GLOBALS() \
-  TRI_v8_global_t* v8g =  \
-      static_cast<TRI_v8_global_t*>(isolate->GetData(V8DataSlot))
+#define TRI_GET_GLOBALS()                               \
+  TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>( \
+      isolate->GetData(arangodb::V8PlatformFeature::V8_DATA_SLOT))
 
-#define TRI_GET_GLOBALS2(isolate) \
-  TRI_v8_global_t* v8g =  \
-      static_cast<TRI_v8_global_t*>(isolate->GetData(V8DataSlot))
+#define TRI_GET_GLOBALS2(isolate)                       \
+  TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>( \
+      isolate->GetData(arangodb::V8PlatformFeature::V8_DATA_SLOT))
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief fetch a string-member from the global into the local scope of the
