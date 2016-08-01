@@ -170,8 +170,6 @@ class GeneralRequest {
   virtual std::unordered_map<std::string, std::string> values() const = 0;
   virtual std::unordered_map<std::string, std::vector<std::string>>
   arrayValues() const = 0;
-  virtual void setArrayValue(std::string const& key,
-                             std::string const& value) = 0;
 
   bool velocyPackResponse() const;
 

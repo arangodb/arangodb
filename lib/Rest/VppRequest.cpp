@@ -38,6 +38,10 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 
+std::string const VppRequest::_bla = "";
+std::unordered_map<std::string, std::string> VppRequest::_blam =
+    std::unordered_map<std::string, std::string>();
+
 VppRequest::VppRequest(ConnectionInfo const& connectionInfo,
                        VPackBuffer<uint8_t>&& header, size_t length)
     : GeneralRequest(connectionInfo),

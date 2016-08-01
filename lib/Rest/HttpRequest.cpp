@@ -411,6 +411,11 @@ void HttpRequest::parseHeader(size_t length) {
   }
 }
 
+void HttpRequest::setArrayValue(std::string const&& key,
+                                std::string const&& value) {
+  _arrayValues[key].emplace_back(value);
+}
+
 void HttpRequest::setArrayValue(char* key, size_t length, char const* value) {
   _arrayValues[std::string(key, length)].emplace_back(value);
 }

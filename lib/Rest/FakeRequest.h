@@ -57,6 +57,47 @@ class FakeRequest : public GeneralRequest {
     //_headers = headers;  // this is from the base class
   }
 
+  // get value from headers map. The key must be lowercase.
+  std::string const& header(std::string const& key) const override {
+    throw std::logic_error("not implemented");
+    return "";
+  }
+  std::string const& header(std::string const& key,
+                            bool& found) const override {
+    throw std::logic_error("not implemented");
+    return "";
+  }
+
+  // return headers map
+  virtual std::unordered_map<std::string, std::string> const& headers()
+      const override {
+    throw std::logic_error("not implemented");
+    return std::unordered_map<std::string, std::string>();
+  }
+
+  virtual std::string const& value(std::string const& key) const override {
+    throw std::logic_error("not implemented");
+    return "";
+  }
+  virtual std::string const& value(std::string const& key,
+                                   bool& found) const override {
+    throw std::logic_error("not implemented");
+    return "";
+  }
+  virtual std::unordered_map<std::string, std::string> values() const override {
+    throw std::logic_error("not implemented");
+    return std::unordered_map<std::string, std::string>();
+  }
+  virtual std::unordered_map<std::string, std::vector<std::string>>
+  arrayValues() const override {
+    throw std::logic_error("not implemented");
+    return std::unordered_map<std::string, std::vector<std::string>>();
+  }
+  virtual void setArrayValue(std::string const& key,
+                             std::string const& value) override {
+    throw std::logic_error("not implemented");
+  }
+
  private:
   std::unordered_map<std::string, std::string> _cookies;
   ContentType _contentType;

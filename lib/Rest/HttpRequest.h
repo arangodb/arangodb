@@ -97,7 +97,6 @@ class HttpRequest : public GeneralRequest {
       const override {
     return _arrayValues;
   }
-  void setArrayValue(std::string const& key, std::string const& value) override;
 
   std::string const& cookieValue(std::string const& key) const;
   std::string const& cookieValue(std::string const& key, bool& found) const;
@@ -121,9 +120,17 @@ class HttpRequest : public GeneralRequest {
   /// @brief sets a key-only header
   void setHeader(char const* key, size_t keyLength);
 
+  static HttpRequest* createFakeRequest(
+      ContentType contentType, char const* body, int64_t contentLength,
+      std::unordered_map<std::string, std::string> headers) {
+    return new HttpRequest(contentType, body, contentLength,
+                           std::move(headers));
+  }
+
  protected:
   void setValue(char const* key, char const* value);
   void setArrayValue(char* key, size_t length, char const* value);
+  void setArrayValue(std::string const&& key, std::string const&& value);
 
  private:
   void parseHeader(size_t length);
@@ -148,13 +155,6 @@ class HttpRequest : public GeneralRequest {
       _headers;  // gets set by httpRequest: parseHeaders -> setHeaders
   std::unordered_map<std::string, std::string> _values;
   std::unordered_map<std::string, std::vector<std::string>> _arrayValues;
-
- private:
-  static HttpRequest createFakeRequest(
-      ContentType contentType, char const* body, int64_t contentLength,
-      std::unordered_map<std::string, std::string>&& headers) {
-    return HttpRequest(contentType, body, contentLength, std::move(headers));
-  }
 };
 }
 

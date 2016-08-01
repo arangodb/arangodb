@@ -30,7 +30,7 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Dispatcher/DispatcherThread.h"
-#include "Rest/FakeRequest.h"
+//#include "Rest/FakeRequest.h"
 #include "SimpleHttpClient/ConnectionManager.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "Utils/Transaction.h"
@@ -1276,11 +1276,11 @@ size_t ClusterComm::performSingleRequest(
   // Add correct recognition of content type later.
   basics::StringBuffer& buffer = req.result.result->getBody();
 
-  auto answer = new FakeRequest(type, buffer.c_str(),
-                                static_cast<int64_t>(buffer.length()));
-  answer->setHeaders(req.result.result->getHeaderFields());
+  // auto answer = new FakeRequest(type, buffer.c_str(),
+  //                              static_cast<int64_t>(buffer.length()));
+  // answer->setHeaders(req.result.result->getHeaderFields());
 
-  auto answer = new HttpRequest::createFakeRequest(
+  auto answer = HttpRequest::createFakeRequest(
       type, buffer.c_str(), static_cast<int64_t>(buffer.length()),
       req.result.result->getHeaderFields());
 

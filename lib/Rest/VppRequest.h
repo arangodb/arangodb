@@ -57,6 +57,10 @@ class VppRequest : public GeneralRequest {
   VppRequest(ConnectionInfo const& connectionInfo,
              VPackBuffer<uint8_t>&& header, size_t length);
 
+ private:
+  static std::string const _bla;
+  static std::unordered_map<std::string, std::string> _blam;
+
  public:
   ~VppRequest() {}
 
@@ -66,8 +70,46 @@ class VppRequest : public GeneralRequest {
   void setPayload(VPackBuffer<uint8_t>&& payload) { _payload = payload; }
 
   std::unordered_map<std::string, std::string> const& headers() const override {
-    throw std::logic_error("this needs to be implmented");
+    throw std::logic_error("not implemented");
+    return _blam;
+  }
+
+  void setHeaders(std::unordered_map<std::string, std::string> const& headers) {
+    throw std::logic_error("the base class has no headers anymore.");
+    // add a new ctor to HttpRequest that is cheaper in order to wrap simple
+    // http request
+    // and remove The Fake request
+    //_headers = headers;  // this is from the base class
+  }
+
+  // get value from headers map. The key must be lowercase.
+  std::string const& header(std::string const& key) const override {
+    throw std::logic_error("not implemented");
+    return _bla;
+  }
+  std::string const& header(std::string const& key,
+                            bool& found) const override {
+    throw std::logic_error("not implemented");
+    return _bla;
+  }
+
+  virtual std::string const& value(std::string const& key) const override {
+    throw std::logic_error("not implemented");
+    return _bla;
+  }
+  virtual std::string const& value(std::string const& key,
+                                   bool& found) const override {
+    throw std::logic_error("not implemented");
+    return _bla;
+  }
+  virtual std::unordered_map<std::string, std::string> values() const override {
+    throw std::logic_error("not implemented");
     return std::unordered_map<std::string, std::string>();
+  }
+  virtual std::unordered_map<std::string, std::vector<std::string>>
+  arrayValues() const override {
+    throw std::logic_error("not implemented");
+    return std::unordered_map<std::string, std::vector<std::string>>();
   }
 
  private:
