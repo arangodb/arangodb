@@ -6,7 +6,7 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 cd ${DIR}/..
 
-export PARALLEL_BUILDS=12
+export PARALLEL_BUILDS=25
 ./Installation/Jenkins/build.sh \
     standard \
     --rpath \

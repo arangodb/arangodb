@@ -1,5 +1,11 @@
 include(GNUInstallDirs)
 
+if (MSVC OR DARWIN)
+  set(ENABLE_UID_CFG false)
+else ()
+  set(ENABLE_UID_CFG true)
+endif ()
+
 set(CMAKE_INSTALL_SYSCONFDIR_ARANGO "${CMAKE_INSTALL_SYSCONFDIR}/arangodb3" CACHE PATH "read-only single-machine data (etc)")
 set(CMAKE_INSTALL_FULL_SYSCONFDIR_ARANGO "${CMAKE_INSTALL_FULL_SYSCONFDIR}/arangodb3" CACHE PATH "read-only single-machine data (etc)")
 
@@ -145,5 +151,4 @@ install(
 #get_cmake_property(_variableNames VARIABLES)
 #foreach (_variableName ${_variableNames})
 #    message(STATUS "${_variableName}=${${_variableName}}")
-#endforeach ()
-#--------------------------------------------------------------------------------
+##--------------------------------------------------------------------------------

@@ -19,6 +19,13 @@ macro (generate_root_config name)
     FileContent "${FileContent}")
   STRING(REPLACE "@SYSCONFDIR@" "@ROOTDIR@/${CMAKE_INSTALL_SYSCONFDIR_ARANGO}" 
     FileContent "${FileContent}")
+  if (ENABLE_UID_CFG)
+    STRING(REPLACE "@DEFINEUID@" ""
+      FileContent "${FileContent}")
+  else ()
+    STRING(REPLACE "@DEFINEUID@" "# "
+      FileContent "${FileContent}")
+  endif ()
   if (MSVC)
     STRING(REPLACE "@PROGRAM_SUFFIX@" ".exe"
       FileContent "${FileContent}")
@@ -35,6 +42,13 @@ macro (generate_path_config name)
     FileContent "${FileContent}")
   STRING(REPLACE "@LOCALSTATEDIR@" "${CMAKE_INSTALL_FULL_LOCALSTATEDIR}" 
     FileContent "${FileContent}")
+  if (ENABLE_UID_CFG)
+    STRING(REPLACE "@DEFINEUID@" ""
+      FileContent "${FileContent}")
+  else ()
+    STRING(REPLACE "@DEFINEUID@" "# "
+      FileContent "${FileContent}")
+  endif ()
   FILE(WRITE ${PROJECT_BINARY_DIR}/${CMAKE_INSTALL_SYSCONFDIR_ARANGO}/${name}.conf "${FileContent}")
 endmacro ()
 
