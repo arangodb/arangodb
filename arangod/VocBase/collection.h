@@ -188,14 +188,8 @@ class VocbaseCollectionInfo {
   std::shared_ptr<VPackBuilder> toVelocyPack() const;
   void toVelocyPack(VPackBuilder& builder) const;
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief Creates a new VocbaseCollectionInfo from the json content of a file
   /// This function throws if the file cannot be parsed.
-  ///
-  /// You must hold the @ref TRI_READ_LOCK_STATUS_VOCBASE_COL when calling this
-  /// function.
-  //////////////////////////////////////////////////////////////////////////////
-
   static VocbaseCollectionInfo fromFile(std::string const& path, TRI_vocbase_t* vocbase,
                                         std::string const& collectionName, bool versionWarning);
 
@@ -305,12 +299,17 @@ struct TRI_collection_t {
   TRI_collection_t& operator=(TRI_collection_t const&) = delete;
   TRI_collection_t() = delete;
   
-  explicit TRI_collection_t(TRI_vocbase_t* vocbase);
-  TRI_collection_t(TRI_vocbase_t* vocbase, arangodb::VocbaseCollectionInfo const& info);
+  TRI_collection_t(TRI_vocbase_t* vocbase, arangodb::VocbaseCollectionInfo const& parameters);
 
   ~TRI_collection_t();
 
  public:
+  /// @brief create a new collection
+  static TRI_collection_t* create(TRI_vocbase_t*, arangodb::VocbaseCollectionInfo&, TRI_voc_cid_t);
+
+  /// @brief opens an existing collection
+  static TRI_collection_t* open(TRI_vocbase_t*, TRI_vocbase_col_t*, bool);
+
   /// @brief determine whether a collection name is a system collection name
   static inline bool IsSystemName(std::string const& name) {
     if (name.empty()) {
@@ -400,7 +399,7 @@ struct TRI_collection_t {
   bool iterateDatafiles(std::function<bool(TRI_df_marker_t const*, TRI_datafile_t*)> const&);
 
   /// @brief opens an existing collection
-  int open(std::string const& path, bool ignoreErrors);
+  int open(bool ignoreErrors);
 
   /// @brief closes an open collection
   int close();
@@ -495,6 +494,9 @@ struct TRI_collection_t {
   int indexFromVelocyPack(arangodb::Transaction* trx, 
       VPackSlice const& slice, arangodb::Index** idx);
 
+  /// @brief closes an open collection
+  int unload(bool updateStatus);
+
  private:
   int lookupDocument(arangodb::Transaction*, arangodb::velocypack::Slice const,
                      TRI_doc_mptr_t*&);
@@ -515,6 +517,12 @@ struct TRI_collection_t {
   TRI_datafile_t* createDatafile(TRI_voc_fid_t fid,
                                  TRI_voc_size_t journalSize, 
                                  bool isCompactor);
+
+  // worker function for creating a collection
+  int createWorker(); 
+
+  /// @brief creates the initial indexes for the collection
+  int createInitialIndexes();
 
   /// @brief closes the datafiles passed in the vector
   bool closeDataFiles(std::vector<TRI_datafile_t*> const& files);
@@ -631,21 +639,5 @@ struct TRI_collection_t {
  private:
   std::vector<std::string> _indexFiles;   // all index filenames
 };
-
-/// @brief creates a new collection
-TRI_collection_t* TRI_CreateCollection(TRI_vocbase_t*, TRI_collection_t*,
-                                       arangodb::VocbaseCollectionInfo const&);
-
-/// @brief creates a new collection
-TRI_collection_t* TRI_CreateDocumentCollection(
-    TRI_vocbase_t*, arangodb::VocbaseCollectionInfo&,
-    TRI_voc_cid_t);
-
-/// @brief opens an existing collection
-TRI_collection_t* TRI_OpenDocumentCollection(TRI_vocbase_t*,
-                                             TRI_vocbase_col_t*, bool);
-
-/// @brief closes an open collection
-int TRI_CloseDocumentCollection(TRI_collection_t*, bool);
 
 #endif

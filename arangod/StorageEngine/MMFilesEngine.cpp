@@ -468,8 +468,6 @@ TRI_vocbase_t* MMFilesEngine::createDatabase(TRI_voc_tick_t id, arangodb::velocy
 // the WAL entry for database deletion will be written *after* the call
 // to "prepareDropDatabase" returns
 int MMFilesEngine::prepareDropDatabase(TRI_vocbase_t* vocbase) {
-  std::string const path = databaseDirectory(vocbase->_id);
-  
   return saveDatabaseParameters(vocbase->_id, vocbase->name(), true);
 }
 
