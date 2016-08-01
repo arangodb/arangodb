@@ -3,6 +3,7 @@ set -e
 
 # source debconf stuff
 . /usr/share/debconf/confmodule
+
 db_version 2.0
 
 db_capb backup 
@@ -30,35 +31,37 @@ if test "$DO_CONFIGURE" = "yes"; then
 
 	case "$STATE" in
 	    1)
-		db_input high arangodb/password || true
+		db_input high arangodb3/password || true
                 db_go
-                db_get arangodb/password
+                db_get arangodb3/password
                 #if [ -z "$RET" ]; then
                 #fi
                 ROOT_PW="${RET}"
-		db_input high arangodb/password_again || true
+                ;;
+            2)
+		db_input high arangodb3/password_again || true
                 db_go
-                db_get arangodb/password_again
+                db_get arangodb3/password_again
                 if [ "${ROOT_PW}" = "${RET}" ]; then
                     ROOT_PW=""
                     break
                 else
-                    db_input critical arangodb/password_mismatch
+                    db_input critical arangodb3/password_mismatch
 	            STATE=$(($STATE - 1))
                 fi
-                db_set arangodb/password_again ""
-		;;
-	    2)
-                db_input high arangodb/upgrade || true
+                db_set arangodb3/password_again ""
 		;;
 	    3)
-                db_get arangodb/upgrade
+                db_input high arangodb3/upgrade || true
+		;;
+	    4)
+                db_get arangodb3/upgrade
 
                 if [ "$RET" = "true" ]; then
-                    db_input high arangodb/backup || true
+                    db_input high arangodb3/backup || true
                     db_go
                 else
-                    db_set arangodb/backup "false"
+                    db_set arangodb3/backup "false"
                 fi
 		;;
 

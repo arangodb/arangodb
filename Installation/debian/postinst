@@ -7,7 +7,7 @@ ARANGODB="/usr/sbin/arangod"
 . /usr/share/debconf/confmodule
 
 if [ "$1" = "configure" -a -z "$2" ]; then
-    db_get arangodb/password
+    db_get arangodb3/password
 
     # Escape backslashes and quotes 
     if [ -n "$RET" ]; then
@@ -16,7 +16,7 @@ if [ "$1" = "configure" -a -z "$2" ]; then
          --uid arangodb --gid arangodb || true
     fi
 
-    db_set arangodb/password ""
+    db_set arangodb3/password ""
 fi
 
 # check if we should upgrade the database directory
@@ -25,10 +25,10 @@ UPGRADE=false
 $ARANGODB --uid arangodb --gid arangodb --server.rest-server false --log.foreground-tty false --database.check-version \
   || UPGRADE=true
 
-db_get arangodb/upgrade
+db_get arangodb3/upgrade
 if [ "$RET" = "true" ];  then
   if [ "$UPGRADE" = "true" ];  then
-    db_get arangodb/backup
+    db_get arangodb3/backup
 
     if [ "$RET" = "true" ];  then
       BACKUP="/var/lib/arangodb3-`date +%F-%H-%M-%S`"
