@@ -6,11 +6,6 @@ else ()
   set(ENABLE_UID_CFG true)
 endif ()
 
-get_cmake_property(_variableNames VARIABLES)
-foreach (_variableName ${_variableNames})
-    message(STATUS "${_variableName}=${${_variableName}}")
-endforeach ()
-
 # install the visual studio runtime:
 if (MSVC)
   set(CMAKE_INSTALL_UCRT_LIBRARIES 1)
