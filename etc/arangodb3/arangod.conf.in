@@ -43,6 +43,9 @@ statistics = true
 # uid = arangodb
 # gid = arangodb
 
+@DEFINEUID@uid = arangodb
+
+
 [scheduler]
 # number of threads used for I/O, use 0 to make arangod determine
 # the number of threads automatically
