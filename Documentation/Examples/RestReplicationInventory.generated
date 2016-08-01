@@ -147,10 +147,10 @@ content-type: application/json; charset=utf<span class="hljs-number">-8</span>
   ], 
   <span class="hljs-string">"state"</span> : { 
     <span class="hljs-string">"running"</span> : <span class="hljs-literal">true</span>, 
-    <span class="hljs-string">"lastLogTick"</span> : <span class="hljs-string">"11025"</span>, 
-    <span class="hljs-string">"lastUncommittedLogTick"</span> : <span class="hljs-string">"11029"</span>, 
-    <span class="hljs-string">"totalEvents"</span> : <span class="hljs-number">3777</span>, 
-    <span class="hljs-string">"time"</span> : <span class="hljs-string">"2016-07-17T08:17:44Z"</span> 
+    <span class="hljs-string">"lastLogTick"</span> : <span class="hljs-string">"11042"</span>, 
+    <span class="hljs-string">"lastUncommittedLogTick"</span> : <span class="hljs-string">"11046"</span>, 
+    <span class="hljs-string">"totalEvents"</span> : <span class="hljs-number">3780</span>, 
+    <span class="hljs-string">"time"</span> : <span class="hljs-string">"2016-08-01T11:44:50Z"</span> 
   }, 
-  <span class="hljs-string">"tick"</span> : <span class="hljs-string">"11029"</span> 
+  <span class="hljs-string">"tick"</span> : <span class="hljs-string">"11046"</span> 
 }

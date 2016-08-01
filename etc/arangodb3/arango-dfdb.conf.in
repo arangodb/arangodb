@@ -10,6 +10,7 @@ rest-server = false
 authentication = true
 # username = root
 # password = 
+@DEFINEUID@uid = arangodb
 
 statistics = false
 # set number of threads to 1 so we don't have concurrency

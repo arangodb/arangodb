@@ -3,7 +3,7 @@ shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/transac
   <span class="hljs-string">"collections"</span> : { 
     <span class="hljs-string">"write"</span> : <span class="hljs-string">"products"</span> 
   }, 
-  <span class="hljs-string">"action"</span> : <span class="hljs-string">"function () { var db = require('internal').db; db.products.save({});  return db.products.count(); }"</span> 
+  <span class="hljs-string">"action"</span> : <span class="hljs-string">"function () { var db = require('@arangodb').db; db.products.save({});  return db.products.count(); }"</span> 
 }
 EOF
 
