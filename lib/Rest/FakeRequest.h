@@ -50,7 +50,11 @@ class FakeRequest : public GeneralRequest {
       arangodb::velocypack::Options const*) override final;
 
   void setHeaders(std::unordered_map<std::string, std::string> const& headers) {
-    _headers = headers;  // this is from the base class
+    throw std::logic_error("the base class has no headers anymore.");
+    // add a new ctor to HttpRequest that is cheaper in order to wrap simple
+    // http request
+    // and remove The Fake request
+    //_headers = headers;  // this is from the base class
   }
 
  private:

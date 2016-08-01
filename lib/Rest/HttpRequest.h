@@ -51,6 +51,20 @@ class HttpRequest : public GeneralRequest {
  private:
   HttpRequest(ConnectionInfo const&, char const*, size_t, bool);
 
+  // should only be called by createFakeRequest
+  // as the Request is not fully constructed
+  // HACK HACK HACK
+  // this is just to avoid the FakeRequest class
+  HttpRequest(ContentType contentType, char const* body, int64_t contentLength,
+              std::unordered_map<std::string, std::string> headers)
+      : GeneralRequest(connectionInfo()),
+        _contentLength(0),
+        _header(nullptr),
+        _allowMethodOverride(false),
+        _vpackBuilder(nullptr),
+        _body(body),
+        _headers(headers) {}
+
  public:
   ~HttpRequest();
 
@@ -64,6 +78,25 @@ class HttpRequest : public GeneralRequest {
  public:
   // the content length
   int64_t contentLength() const override { return _contentLength; }
+
+  // get value from headers map. The key must be lowercase.
+  std::string const& header(std::string const& key) const override;
+  std::string const& header(std::string const& key, bool& found) const override;
+  std::unordered_map<std::string, std::string> const& headers() const override {
+    return _headers;
+  }
+
+  std::string const& value(std::string const& key) const override;
+  std::string const& value(std::string const& key, bool& found) const override;
+  std::unordered_map<std::string, std::string> values() const override {
+    return _values;
+  }
+
+  std::unordered_map<std::string, std::vector<std::string>> arrayValues()
+      const override {
+    return _arrayValues;
+  }
+  void setArrayValue(std::string const& key, std::string const& value) override;
 
   std::string const& cookieValue(std::string const& key) const;
   std::string const& cookieValue(std::string const& key, bool& found) const;
@@ -87,6 +120,10 @@ class HttpRequest : public GeneralRequest {
   /// @brief sets a key-only header
   void setHeader(char const* key, size_t keyLength);
 
+ protected:
+  void setValue(char const* key, char const* value);
+  void setArrayValue(char* key, size_t length, char const* value);
+
  private:
   void parseHeader(size_t length);
   void setValues(char* buffer, char* end);
@@ -103,6 +140,19 @@ class HttpRequest : public GeneralRequest {
   // (x-http-method, x-method-override or x-http-method-override) is allowed
   bool _allowMethodOverride;
   std::shared_ptr<velocypack::Builder> _vpackBuilder;
+
+  // previously in base class
+  std::unordered_map<std::string, std::string>
+      _headers;  // gets set by httpRequest: parseHeaders -> setHeaders
+  std::unordered_map<std::string, std::string> _values;
+  std::unordered_map<std::string, std::vector<std::string>> _arrayValues;
+
+ private:
+  static HttpRequest createFakeRequest(
+      ContentType contentType, char const* body, int64_t contentLength,
+      std::unordered_map<std::string, std::string>&& headers) {
+    return HttpRequest(contentType, body, contentLength, std::move(headers));
+  }
 };
 }
 

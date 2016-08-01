@@ -36,13 +36,10 @@ std::string GeneralRequest::translateVersion(ProtocolVersion version) {
   switch (version) {
     case ProtocolVersion::VPP_1_0:
       return "VPP/1.0";
-
     case ProtocolVersion::HTTP_1_1:
       return "HTTP/1.1";
-
     case ProtocolVersion::HTTP_1_0:
       return "HTTP/1.0";
-
     case ProtocolVersion::UNKNOWN:
     default: { return "HTTP/1.0"; }
   }
@@ -208,61 +205,6 @@ void GeneralRequest::setFullUrl(std::string url) {
 
 void GeneralRequest::addSuffix(std::string&& part) {
   _suffix.emplace_back(StringUtils::urlDecode(part));
-}
-
-std::string const& GeneralRequest::header(std::string const& key) const {
-  auto it = _headers.find(key);
-
-  if (it == _headers.end()) {
-    return StaticStrings::Empty;
-  }
-
-  return it->second;
-}
-
-std::string const& GeneralRequest::header(std::string const& key,
-                                          bool& found) const {
-  auto it = _headers.find(key);
-
-  if (it == _headers.end()) {
-    found = false;
-    return StaticStrings::Empty;
-  }
-
-  found = true;
-  return it->second;
-}
-
-std::string const& GeneralRequest::value(std::string const& key) const {
-  if (!_values.empty()) {
-    auto it = _values.find(key);
-
-    if (it != _values.end()) {
-      return it->second;
-    }
-  }
-
-  return StaticStrings::Empty;
-}
-
-std::string const& GeneralRequest::value(std::string const& key,
-                                         bool& found) const {
-  if (!_values.empty()) {
-    auto it = _values.find(key);
-
-    if (it != _values.end()) {
-      found = true;
-      return it->second;
-    }
-  }
-
-  found = false;
-  return StaticStrings::Empty;
-}
-
-void GeneralRequest::setArrayValue(char* key, size_t length,
-                                   char const* value) {
-  _arrayValues[std::string(key, length)].emplace_back(value);
 }
 
 bool GeneralRequest::velocyPackResponse() const {

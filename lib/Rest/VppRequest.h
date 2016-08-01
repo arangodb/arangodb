@@ -65,6 +65,11 @@ class VppRequest : public GeneralRequest {
   int64_t contentLength() const override { return _contentLength; }
   void setPayload(VPackBuffer<uint8_t>&& payload) { _payload = payload; }
 
+  std::unordered_map<std::string, std::string> const& headers() const override {
+    throw std::logic_error("this needs to be implmented");
+    return std::unordered_map<std::string, std::string>();
+  }
+
  private:
   void parseHeader();  // converts _header(vpack) to
                        // _headers(map<string,string>)

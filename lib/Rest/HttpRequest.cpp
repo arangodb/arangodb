@@ -46,7 +46,7 @@ HttpRequest::HttpRequest(ConnectionInfo const& connectionInfo,
       _contentLength(0),
       _header(nullptr),
       _allowMethodOverride(allowMethodOverride),
-      _vpackBuilder(nullptr){
+      _vpackBuilder(nullptr) {
   if (0 < length) {
     _contentType = ContentType::JSON;
     _contentTypeResponse = ContentType::JSON;
@@ -56,6 +56,24 @@ HttpRequest::HttpRequest(ConnectionInfo const& connectionInfo,
     parseHeader(length);
   }
 }
+
+HttpRequest::HttpRequest(ContentType contentType, char const* body,
+                         int64_t contentLength
+                             std::map<std::string, std::string> headers)
+    : GeneralRequest(connectionInfo()),
+      _contentLength(0),
+      _header(nullptr),
+      _allowMethodOverride(false),
+      _vpackBuilder(nullptr),
+      _body(body),
+      _headers(headres) {}
+}
+FakeRequest::FakeRequest(ContentType contentType, char const* body,
+                         int64_t contentLength)
+    : GeneralRequest(ConnectionInfo()),
+      _contentType(contentType),
+      _body(body),
+      _contentLength(contentLength) {}
 
 HttpRequest::~HttpRequest() { delete[] _header; }
 
@@ -409,6 +427,10 @@ void HttpRequest::parseHeader(size_t length) {
   }
 }
 
+void HttpRequest::setArrayValue(char* key, size_t length, char const* value) {
+  _arrayValues[std::string(key, length)].emplace_back(value);
+}
+
 void HttpRequest::setValues(char* buffer, char* end) {
   char* keyBegin = nullptr;
   char* key = nullptr;
@@ -714,14 +736,64 @@ VPackSlice HttpRequest::payload(VPackOptions const* options) {
   TRI_ASSERT(_vpackBuilder == nullptr);
   // check options for nullptr?
 
-  if( _contentType == ContentType::JSON) {
+  if (_contentType == ContentType::JSON) {
     VPackParser parser(options);
     parser.parse(body());
     _vpackBuilder = parser.steal();
     return VPackSlice(_vpackBuilder->slice());
-  } else /*VPACK*/{
+  } else /*VPACK*/ {
     VPackValidator validator;
     validator.validate(body().c_str(), body().length());
     return VPackSlice(body().c_str());
   }
+}
+
+std::string const& HttpRequest::header(std::string const& key) const {
+  auto it = _headers.find(key);
+
+  if (it == _headers.end()) {
+    return StaticStrings::Empty;
+  }
+
+  return it->second;
+}
+
+std::string const& HttpRequest::header(std::string const& key,
+                                       bool& found) const {
+  auto it = _headers.find(key);
+
+  if (it == _headers.end()) {
+    found = false;
+    return StaticStrings::Empty;
+  }
+
+  found = true;
+  return it->second;
+}
+
+std::string const& HttpRequest::value(std::string const& key) const {
+  if (!_values.empty()) {
+    auto it = _values.find(key);
+
+    if (it != _values.end()) {
+      return it->second;
+    }
+  }
+
+  return StaticStrings::Empty;
+}
+
+std::string const& HttpRequest::value(std::string const& key,
+                                      bool& found) const {
+  if (!_values.empty()) {
+    auto it = _values.find(key);
+
+    if (it != _values.end()) {
+      found = true;
+      return it->second;
+    }
+  }
+
+  found = false;
+  return StaticStrings::Empty;
 }

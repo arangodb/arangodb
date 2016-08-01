@@ -1275,9 +1275,15 @@ size_t ClusterComm::performSingleRequest(
   GeneralRequest::ContentType type = GeneralRequest::ContentType::JSON;
   // Add correct recognition of content type later.
   basics::StringBuffer& buffer = req.result.result->getBody();
+
   auto answer = new FakeRequest(type, buffer.c_str(),
                                 static_cast<int64_t>(buffer.length()));
   answer->setHeaders(req.result.result->getHeaderFields());
+
+  auto answer = new HttpRequest::createFakeRequest(
+      type, buffer.c_str(), static_cast<int64_t>(buffer.length()),
+      req.result.result->getHeaderFields());
+
   req.result.answer.reset(static_cast<GeneralRequest*>(answer));
   req.result.answer_code = static_cast<GeneralResponse::ResponseCode>(
       req.result.result->getHttpReturnCode());

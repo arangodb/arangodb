@@ -48,6 +48,7 @@ class RequestContext;
 class GeneralRequest {
   GeneralRequest(GeneralRequest const&) = delete;
   GeneralRequest& operator=(GeneralRequest const&) = delete;
+  GeneralRequest(GenerakRequest&&) = default;
 
  public:
   // VSTREAM_CRED: This method is used for sending Authentication
@@ -156,24 +157,21 @@ class GeneralRequest {
   void addSuffix(std::string&& part);
 
   // get value from headers map. The key must be lowercase.
-  std::string const& header(std::string const& key) const;
-  std::string const& header(std::string const& key, bool& found) const;
+  virtual std::string const& header(std::string const& key) const = 0;
+  virtual std::string const& header(std::string const& key,
+                                    bool& found) const = 0;
   // return headers map
-  std::unordered_map<std::string, std::string> const& headers() const {
-    return _headers;
-  }
+  virtual std::unordered_map<std::string, std::string> const& headers()
+      const = 0;
 
-  std::string const& value(std::string const& key) const;
-  std::string const& value(std::string const& key, bool& found) const;
-  std::unordered_map<std::string, std::string> values() const {
-    return _values;
-  }
-
-  std::unordered_map<std::string, std::vector<std::string>> arrayValues()
-      const {
-    return _arrayValues;
-  }
-  void setArrayValue(std::string const& key, std::string const& value);
+  virtual std::string const& value(std::string const& key) const = 0;
+  virtual std::string const& value(std::string const& key,
+                                   bool& found) const = 0;
+  virtual std::unordered_map<std::string, std::string> values() const = 0;
+  virtual std::unordered_map<std::string, std::vector<std::string>>
+  arrayValues() const = 0;
+  virtual void setArrayValue(std::string const& key,
+                             std::string const& value) = 0;
 
   bool velocyPackResponse() const;
 
@@ -192,10 +190,6 @@ class GeneralRequest {
   virtual int64_t contentLength() const = 0;
 
   ContentType contentType() const { return _contentType; }
-
- protected:
-  void setValue(char const* key, char const* value);
-  void setArrayValue(char* key, size_t length, char const* value);
 
  protected:
   ProtocolVersion _version;
@@ -217,10 +211,6 @@ class GeneralRequest {
   std::string _requestPath;
   std::string _prefix;  // part of path matched by rest route
   std::vector<std::string> _suffix;
-  std::unordered_map<std::string, std::string>
-      _headers;  // gets set by httpRequest: parseHeaders -> setHeaders
-  std::unordered_map<std::string, std::string> _values;
-  std::unordered_map<std::string, std::vector<std::string>> _arrayValues;
   ContentType _contentType;  // UNSET, VPACK, JSON
   ContentType _contentTypeResponse;
 };
