@@ -107,7 +107,9 @@ void arangodb::traverser::TraverserOptions::LookupInfo::buildEngineInfo(
   result.add(VPackValue("handle"));
   // We only run toVelocyPack on Coordinator.
   TRI_ASSERT(idxHandles.size() == 1);
+  result.openObject();
   idxHandles[0].toVelocyPack(result, false);
+  result.close();
   result.add(VPackValue("expression"));
   expression->toVelocyPack(result, false);
   result.add(VPackValue("condition"));

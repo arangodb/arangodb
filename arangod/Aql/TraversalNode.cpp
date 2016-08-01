@@ -270,6 +270,16 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id,
             _directions.emplace_back(baseDirection);
           }
         }
+        auto vColls = _graphObj->vertexCollections();
+        length = vColls.size();
+        if (length == 0) {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_EMPTY);
+        }
+        _vertexColls.reserve(length);
+        for (auto const& v : vColls) {
+          _vertexColls.emplace_back(std::make_unique<aql::Collection>(
+              v, _vocbase, TRI_TRANSACTION_READ));
+        }
       }
     }
   }
