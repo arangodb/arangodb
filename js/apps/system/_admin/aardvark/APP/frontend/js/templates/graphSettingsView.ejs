@@ -44,7 +44,7 @@
 
               <% if (val.type === 'range') { %>
                 <label id="g_<%=key%>_label" class="rangeLabel">1</label>
-                <input id="g_<%=key%>" type='range' min="0" max="30" val="1"/>
+                <input id="g_<%=key%>" type='range' min="0" max="9" val="1"/>
               <% } %>
 
               <% if (val.type === 'color') { %>
@@ -95,7 +95,7 @@
 
                 <% if (val.type === 'range') { %>
                   <label id="g_<%=key%>_label" class="rangeLabel">1</label>
-                  <input id="g_<%=key%>" type='range' min="0" max="30" val="1"/>
+                  <input id="g_<%=key%>" type='range' min="0" max="9" val="1"/>
                 <% } %>
 
                 <% if (val.type === 'select') { %>
@@ -113,11 +113,11 @@
           <% }); %>
         </div>
 
+        <div class="pure-u-1-1">
+          <button id="saveGraphSettings" style="margin-top: 20px; margin-right: 10px;" class="button-success pull-right">Save</button>
+          <button id="restoreGraphSettings" style="margin-top: 20px;" class="button-success pull-right">Restore defaults</button>
+        </div>
       </div>
-
-
-    <button id="saveGraphSettings" style="margin-top: 20px; margin-right: 10px;" class="button-success pull-right">Save</button>
-    <button id="restoreGraphSettings" style="margin-top: 20px;" class="button-success pull-right">Restore defaults</button>
   </div>
 
 </script>

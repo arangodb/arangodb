@@ -2080,8 +2080,11 @@ AqlValue Functions::Intersection(arangodb::aql::Query* query,
         auto found = values.find(it);
         if (found != values.end()) {
           // already seen
-          TRI_ASSERT((*found).second > 0);
-          ++(found->second);
+          if ((*found).second < i) {
+            (*found).second = 0;
+          } else {
+            (*found).second = i + 1;
+          }
         }
       }
     }

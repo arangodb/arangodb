@@ -25,30 +25,60 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 
-#include <v8.h>
 #include <libplatform/libplatform.h>
+#include <v8.h>
 
 namespace arangodb {
 class V8PlatformFeature final
     : public application_features::ApplicationFeature {
+ private:
+  struct IsolateData {
+    bool _outOfMemory = false;
+    size_t _heapSizeAtStart = 0;
+  };
+
+ public:
+  static IsolateData* getIsolateData(v8::Isolate* isolate) {
+    return reinterpret_cast<IsolateData*>(isolate->GetData(V8_INFO));
+  }
+
+  static bool isOutOfMemory(v8::Isolate* isolate) {
+    return getIsolateData(isolate)->_outOfMemory;
+  }
+
+  static void setOutOfMemory(v8::Isolate* isolate) {
+    getIsolateData(isolate)->_outOfMemory = true;
+  }
+
+  static void resetOutOfMemory(v8::Isolate* isolate) {
+    getIsolateData(isolate)->_outOfMemory = false;
+  }
+
+ public:
+  static const uint32_t V8_INFO = 0;
+  static const uint32_t V8_DATA_SLOT = 1;
+
  public:
   explicit V8PlatformFeature(application_features::ApplicationServer* server);
 
  public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
+  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void start() override final;
   void unprepare() override final;
 
-  v8::ArrayBuffer::Allocator* arrayBufferAllocator() const {
-    return _allocator.get();
-  }
-
  private:
-  std::string _v8options;
+  std::vector<std::string> _v8Options;
+  uint64_t _v8MaxHeap = 3 * 1024;
+
+ public:
+  v8::Isolate* createIsolate();
 
  private:
   std::unique_ptr<v8::Platform> _platform;
   std::unique_ptr<v8::ArrayBuffer::Allocator> _allocator;
+  std::string _v8CombinedOptions;
+  std::vector<std::unique_ptr<IsolateData>> _isolateData;
 };
 }
 

@@ -34,9 +34,7 @@ ArangoDB provides the following commands for working with tasks.
 All commands can be accessed via the *tasks* module, which can be
 loaded like this:
 
-```js
-require("@arangodb/tasks");
-```
+`require("@arangodb/tasks")`
 
 Please note that the *tasks* module is available inside the ArangoDB
 server only. It cannot be used from the ArangoShell or ArangoDB's web
@@ -57,7 +55,8 @@ server's logfile:
 
 
 ```js
-var tasks = require("@arangodb/tasks");
+const tasks = require("@arangodb/tasks");
+
 tasks.register({
   id: "mytask-1",
   name: "this is a snippet task",
@@ -74,7 +73,8 @@ it is invoked.
 Tasks can also be set up using a JavaScript callback function like this:
 
 ```js
-var tasks = require("@arangodb/tasks");
+const tasks = require("@arangodb/tasks");
+
 tasks.register({
   id: "mytask-2",
   name: "this is a function task",
@@ -97,7 +97,8 @@ usable in JSON (meaning no callback functions can be passed as parameters
 into a task):
 
 ```js
-var tasks = require("@arangodb/tasks");
+const tasks = require("@arangodb/tasks");
+
 tasks.register({
   id: "mytask-3",
   name: "this is a parameter task",
@@ -117,7 +118,8 @@ task will be executed just once. The task invocation delay can optionally
 be specified with the *offset* attribute:
 
 ```js
-var tasks = require("@arangodb/tasks");
+const tasks = require("@arangodb/tasks");
+
 tasks.register({
   id: "mytask-once",
   name: "this is a one-shot task",
@@ -141,7 +143,7 @@ install a periodic timer with an offset of 0.
 After a task has been registered, it can be unregistered using its id:
 
 ```js
-var tasks = require("@arangodb/tasks");
+const tasks = require("@arangodb/tasks");
 tasks.unregister("mytask-1");
 ```
 
@@ -155,7 +157,7 @@ method. If the *get* method is called without any arguments, it will
 return an array of all tasks:
 
 ```js
-var tasks = require("@arangodb/tasks");
+const tasks = require("@arangodb/tasks");
 tasks.get();
 ```
 
@@ -163,7 +165,7 @@ If *get* is called with a task id argument, it will return information
 about this particular task:
 
 ```js
-var tasks = require("@arangodb/tasks");
+const tasks = require("@arangodb/tasks");
 tasks.get("mytask-3");
 ```
 

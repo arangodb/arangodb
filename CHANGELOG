@@ -8,6 +8,12 @@ devel
   FOR v, e, p IN 2 OUTBOUND @start @@edge FILTER p.edges[0].foo == "bar"
   Will prefer an Hash Index on [_from, foo] above the EdgeIndex.
 
+* added a memory expection of V8 memory gets to low
+
+* fixed epoch computation in hybrid logical clock
+
+* fixed thread affinity
+
 * replaced require("internal").db by require("@arangodb").db
 
 * added option `--skip-lines` for arangoimp
@@ -41,11 +47,22 @@ devel
 v3.0.4 (XXXX-XX-XX)
 -------------------
 
+* fixed issue in `INTERSECTION` AQL function with duplicate elements
+  in the source arrays
+
+* fixed issue #1970
+
+* fixed issue #1968
+
+* fixed issue #1967
+
 * fixed issue #1962
 
 * fixed issue #1959
 
 * replaced require("internal").db by require("@arangodb").db
+
+* fixed issue #1954
 
 * fixed issue #1953
 

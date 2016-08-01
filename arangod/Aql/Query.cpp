@@ -324,6 +324,8 @@ void Query::setExecutionTime() {
 
 /// @brief extract a region from the query
 std::string Query::extractRegion(int line, int column) const {
+  TRI_ASSERT(_queryString != nullptr);
+
   // note: line numbers reported by bison/flex start at 1, columns start at 0
   int currentLine = 1;
   int currentColumn = 0;
@@ -331,7 +333,7 @@ std::string Query::extractRegion(int line, int column) const {
   char c;
   char const* p = _queryString;
 
-  while ((c = *p)) {
+  while ((static_cast<size_t>(p - _queryString) < _queryLength) && (c = *p)) {
     if (currentLine > line ||
         (currentLine >= line && currentColumn >= column)) {
       break;
@@ -721,8 +723,7 @@ QueryResult Query::execute(QueryRegistry* registry) {
   }
 }
 
-/// @brief execute an AQL query
-/// may only be called with an active V8 handle scope
+// execute an AQL query: may only be called with an active V8 handle scope
 QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
   LOG_TOPIC(DEBUG, Logger::QUERIES) << TRI_microtime() - _startTime << " "
       << "Query::executeV8" << " this: " << (uintptr_t) this;
@@ -828,6 +829,10 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
 
               if (!val.isEmpty()) {
                 result.result->Set(j++, val.toV8(isolate, _trx));
+              }
+
+              if (V8PlatformFeature::isOutOfMemory(isolate)) {
+                THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
               }
             }
           }

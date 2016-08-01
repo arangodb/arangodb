@@ -61,7 +61,8 @@ Scheduler::Scheduler(size_t nrThreads)
 
   // report status
   if (multiThreading) {
-    LOG(TRACE) << "scheduler is multi-threaded, number of threads: " << nrThreads;
+    LOG(TRACE) << "scheduler is multi-threaded, number of threads: "
+               << nrThreads;
   } else {
     LOG(TRACE) << "scheduler is single-threaded";
   }
@@ -84,7 +85,22 @@ bool Scheduler::start(ConditionVariable* cv) {
     bool ok = threads[i]->start(cv);
 
     if (!ok) {
-      LOG(FATAL) << "cannot start threads"; FATAL_ERROR_EXIT();
+      LOG(FATAL) << "cannot start threads";
+      FATAL_ERROR_EXIT();
+    }
+
+    if (!_affinityCores.empty()) {
+      size_t c = _affinityCores[_affinityPos];
+
+      LOG_TOPIC(DEBUG, Logger::THREADS) << "using core " << c
+                                        << " for scheduler thread " << i;
+      threads[i]->setProcessorAffinity(c);
+
+      ++_affinityPos;
+
+      if (_affinityPos >= _affinityCores.size()) {
+        _affinityPos = 0;
+      }
     }
   }
 
@@ -112,9 +128,7 @@ bool Scheduler::start(ConditionVariable* cv) {
 /// @brief checks if the scheduler threads are up and running
 ////////////////////////////////////////////////////////////////////////////////
 
-bool Scheduler::isStarted() {
-  return true;
-}
+bool Scheduler::isStarted() { return true; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks if scheduler is still running
@@ -313,8 +327,8 @@ int Scheduler::unregisterTask(Task* task) {
   if (stopping) {
     return TRI_ERROR_SHUTTING_DOWN;
   }
-  SchedulerThread* thread = nullptr;
 
+  SchedulerThread* thread = nullptr;
   std::string const taskName(task->name());
 
   {
@@ -324,12 +338,14 @@ int Scheduler::unregisterTask(Task* task) {
         task);  // TODO(fc) XXX remove this! This should be in the Task
 
     if (it == task2thread.end()) {
-      LOG(WARN) << "unregisterTask called for an unknown task " << (void*)task << " (" << taskName << ")";
+      LOG(WARN) << "unregisterTask called for an unknown task " << (void*)task
+                << " (" << taskName << ")";
 
       return TRI_ERROR_TASK_NOT_FOUND;
     }
 
-    LOG(TRACE) << "unregisterTask for task " << (void*)task << " (" << taskName << ")";
+    LOG(TRACE) << "unregisterTask for task " << (void*)task << " (" << taskName
+               << ")";
 
     thread = (*it).second;
 
@@ -350,6 +366,7 @@ int Scheduler::destroyTask(Task* task) {
   if (stopping) {
     return TRI_ERROR_SHUTTING_DOWN;
   }
+
   SchedulerThread* thread = nullptr;
   std::string const taskName(task->name());
 
@@ -359,12 +376,14 @@ int Scheduler::destroyTask(Task* task) {
     auto it = task2thread.find(task);
 
     if (it == task2thread.end()) {
-      LOG(WARN) << "destroyTask called for an unknown task " << (void*)task << " (" << taskName << ")";
+      LOG(WARN) << "destroyTask called for an unknown task " << (void*)task
+                << " (" << taskName << ")";
 
       return TRI_ERROR_TASK_NOT_FOUND;
     }
 
-    LOG(TRACE) << "destroyTask for task " << (void*)task << " (" << taskName << ")";
+    LOG(TRACE) << "destroyTask for task " << (void*)task << " (" << taskName
+               << ")";
 
     thread = (*it).second;
 
@@ -387,10 +406,9 @@ void Scheduler::reportStatus() {}
 /// @brief sets the process affinity
 ////////////////////////////////////////////////////////////////////////////////
 
-void Scheduler::setProcessorAffinity(size_t i, size_t c) {
-  MUTEX_LOCKER(mutexLocker, schedulerLock);
-
-  threads[i]->setProcessorAffinity(c);
+void Scheduler::setProcessorAffinity(std::vector<size_t> const& cores) {
+  LOG_TOPIC(DEBUG, Logger::THREADS) << "scheduler cores: " << cores;
+  _affinityCores = cores;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

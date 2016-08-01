@@ -5,20 +5,16 @@ The action module provides the infrastructure for defining low-level HTTP action
 If you want to define HTTP endpoints in ArangoDB you should probably use the [Foxx microservice framework](../../Foxx/README.md) instead.
 
 !SECTION Basics
+
 !SUBSECTION Error message 
+
 <!-- js/server/modules/@arangodb/actions.js -->
-
-
 
 `actions.getErrorMessage(code)`
 
 Returns the error message for an error code.
 
-
 !SECTION Standard HTTP Result Generators
-
-
-
 
 `actions.defineHttp(options)`
 
@@ -54,11 +50,9 @@ The callback must define fill the *response*.
 You can use the functions *ResultOk* and *ResultError* to easily
 generate a response.
 
-
 !SUBSECTION Result ok
+
 <!-- js/server/modules/@arangodb/actions.js -->
-
-
 
 `actions.resultOk(req, res, code, result, headers)`
 
@@ -68,41 +62,33 @@ object in the body. *headers* is an array of headers to returned.
 The function adds the attribute *error* with value *false*
 and *code* with value *code* to the *result*.
 
-
 !SUBSECTION Result bad
+
 <!-- js/server/modules/@arangodb/actions.js -->
-
-
 
 `actions.resultBad(req, res, error-code, msg, headers)`
 
 The function generates an error response.
 
-
 !SUBSECTION Result not found
+
 <!-- js/server/modules/@arangodb/actions.js -->
-
-
 
 `actions.resultNotFound(req, res, code, msg, headers)`
 
 The function generates an error response.
 
-
 !SUBSECTION Result unsupported
+
 <!-- js/server/modules/@arangodb/actions.js -->
-
-
 
 `actions.resultUnsupported(req, res, headers)`
 
 The function generates an error response.
 
-
 !SUBSECTION Result error
+
 <!-- js/server/modules/@arangodb/actions.js -->
-
-
 
 *actions.resultError(*req*, *res*, *code*, *errorNum*,
                          *errorMessage*, *headers*, *keyvals)*
@@ -114,63 +100,51 @@ with an attribute *errorMessage* containing the error message
 containing the error message *errorMessage*. *keyvals* are mixed
 into the result.
 
-
 !SUBSECTION Result not Implemented
+
 <!-- js/server/modules/@arangodb/actions.js -->
-
-
 
 `actions.resultNotImplemented(req, res, msg, headers)`
 
 The function generates an error response.
 
-
 !SUBSECTION Result permanent redirect
+
 <!-- js/server/modules/@arangodb/actions.js -->
-
-
 
 `actions.resultPermanentRedirect(req, res, options, headers)`
 
 The function generates a redirect response.
 
-
 !SUBSECTION Result temporary redirect
+
 <!-- js/server/modules/@arangodb/actions.js -->
-
-
 
 `actions.resultTemporaryRedirect(req, res, options, headers)`
 
 The function generates a redirect response.
 
-
 !SECTION ArangoDB Result Generators
 
 !SUBSECTION Collection not found
+
 <!-- js/server/modules/@arangodb/actions.js -->
-
-
 
 `actions.collectionNotFound(req, res, collection, headers)`
 
 The function generates an error response.
 
-
 !SUBSECTION Index not found
+
 <!-- js/server/modules/@arangodb/actions.js -->
-
-
 
 `actions.indexNotFound(req, res, collection, index, headers)`
 
 The function generates an error response.
 
-
 !SUBSECTION Result exception
+
 <!-- js/server/modules/@arangodb/actions.js -->
-
-
 
 `actions.resultException(req, res, err, headers, verbose)`
 
@@ -179,4 +153,3 @@ The function generates an error response. If @FA{verbose} is set to
 be included in the error message if available. If @FA{verbose} is a string
 it will be prepended before the error message and the stacktrace will also
 be included.
-

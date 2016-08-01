@@ -67,6 +67,7 @@ class DispatcherFeature final
   void buildStandardQueue();
 
  private:
+  std::vector<size_t> _affinityCores;
   rest::Dispatcher* _dispatcher;
 };
 }

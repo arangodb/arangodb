@@ -28,7 +28,7 @@ uses resources, you may want to increase `period` (and not forget to remove it..
     |tasks.register({
     |  id: "mytask-1",
     |  name: "this is a sample task to spawn a slow aql query",
-    |  command: "require('internal').db._query('" + theQuery + "');"
+    |  command: "require('@arangodb').db._query('" + theQuery + "');"
     });
     |~ while (true) {
     |~   require("internal").wait(1);

@@ -35,7 +35,7 @@ If the post body is not accurate, a *HTTP 400* is returned.
     // Note: prints stuff if server is running in non-daemon mode.
     var sampleTask = {
       name: "SampleTask",
-      command: "(function(params) { require('internal').print(params); })(params)",
+      command: "(function(params) { require('@arangodb').print(params); })(params)",
       params: { "foo": "bar", "bar": "foo"},
       period: 2
     }

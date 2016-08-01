@@ -104,7 +104,7 @@ Executing a transaction on a single collection
       collections: {
         write : "products"
       },
-      action: "function () { var db = require('internal').db; db.products.save({});  return db.products.count(); }"
+      action: "function () { var db = require('@arangodb').db; db.products.save({});  return db.products.count(); }"
     };
 
     var response = logCurlRequest('POST', url, body);
@@ -132,7 +132,7 @@ Executing a transaction using multiple collections
       },
       action: (
         "function () {" +
-        "var db = require('internal').db;" +
+        "var db = require('@arangodb').db;" +
         "db.products.save({});" +
         "db.materials.save({});" +
         "return 'worked!';" +
@@ -161,7 +161,7 @@ Aborting a transaction due to an internal error
       },
       action : (
         "function () {" +
-        "var db = require('internal').db;" +
+        "var db = require('@arangodb').db;" +
         "db.products.save({ _key: 'abc'});" +
         "db.products.save({ _key: 'abc'});" +
         "}"
