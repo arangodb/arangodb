@@ -50,35 +50,19 @@ HttpRequest::HttpRequest(ConnectionInfo const& connectionInfo,
   if (0 < length) {
     _contentType = ContentType::JSON;
     _contentTypeResponse = ContentType::JSON;
-    _header = new char[length + 1];
-    memcpy(_header, header, length);
-    _header[length] = 0;
+    _header = std::unique_ptr<char[]>(new char[length + 1]);
+    memcpy(_header.get(), header, length);
+
+    (_header.get())[length] = 0;
     parseHeader(length);
   }
 }
 
-HttpRequest::HttpRequest(ContentType contentType, char const* body,
-                         int64_t contentLength
-                             std::map<std::string, std::string> headers)
-    : GeneralRequest(connectionInfo()),
-      _contentLength(0),
-      _header(nullptr),
-      _allowMethodOverride(false),
-      _vpackBuilder(nullptr),
-      _body(body),
-      _headers(headres) {}
-}
-FakeRequest::FakeRequest(ContentType contentType, char const* body,
-                         int64_t contentLength)
-    : GeneralRequest(ConnectionInfo()),
-      _contentType(contentType),
-      _body(body),
-      _contentLength(contentLength) {}
-
-HttpRequest::~HttpRequest() { delete[] _header; }
+// HttpRequest::~HttpRequest() { delete[] _header; }
+HttpRequest::~HttpRequest() = default;
 
 void HttpRequest::parseHeader(size_t length) {
-  char* start = _header;
+  char* start = _header.get();
   char* end = start + length;
   size_t const versionLength = strlen("http/1.x");
 

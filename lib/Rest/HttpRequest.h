@@ -60,12 +60,13 @@ class HttpRequest : public GeneralRequest {
       : GeneralRequest(connectionInfo()),
         _contentLength(0),
         _header(nullptr),
+        _body(body),
         _allowMethodOverride(false),
         _vpackBuilder(nullptr),
-        _body(body),
         _headers(headers) {}
 
  public:
+  HttpRequest(HttpRequest&&) = default;
   ~HttpRequest();
 
  public:
@@ -133,7 +134,8 @@ class HttpRequest : public GeneralRequest {
  private:
   std::unordered_map<std::string, std::string> _cookies;
   int64_t _contentLength;
-  char* _header;
+  // char* _header;
+  std::unique_ptr<char[]> _header;
   std::string _body;
 
   //  whether or not overriding the HTTP method via custom headers

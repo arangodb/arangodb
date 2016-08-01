@@ -48,9 +48,9 @@ class RequestContext;
 class GeneralRequest {
   GeneralRequest(GeneralRequest const&) = delete;
   GeneralRequest& operator=(GeneralRequest const&) = delete;
-  GeneralRequest(GenerakRequest&&) = default;
 
  public:
+  GeneralRequest(GeneralRequest&&) = default;
   // VSTREAM_CRED: This method is used for sending Authentication
   // request,i.e; username and password.
   //
