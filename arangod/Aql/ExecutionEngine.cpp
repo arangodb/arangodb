@@ -953,7 +953,6 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
 
     if (nodeType == ExecutionNode::TRAVERSAL) {
       buildTraverserEnginesForNode(static_cast<TraversalNode*>(en));
-      TRI_ASSERT(false);
     }
 
     return false;

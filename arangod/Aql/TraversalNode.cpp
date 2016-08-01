@@ -363,7 +363,7 @@ TraversalNode::TraversalNode(ExecutionPlan* plan,
     TRI_edge_direction_e d;
     switch (dir) {
       case 0:
-        d = TRI_EDGE_ANY;
+        TRI_ASSERT(false);
         break;
       case 1:
         d = TRI_EDGE_IN;
@@ -416,6 +416,7 @@ TraversalNode::TraversalNode(ExecutionPlan* plan,
     }
   }
 
+  // TODO: Can we remove this?
   std::string graphName;
   if (base.has("graph") && (base.get("graph").isString())) {
     graphName = JsonHelper::checkAndGetStringValue(base.json(), "graph");
@@ -424,12 +425,6 @@ TraversalNode::TraversalNode(ExecutionPlan* plan,
 
       if (_graphObj == nullptr) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_NOT_FOUND);
-      }
-
-      auto eColls = _graphObj->edgeCollections();
-      for (auto const& n : eColls) {
-        _edgeColls.emplace_back(std::make_unique<aql::Collection>(
-            n, _vocbase, TRI_TRANSACTION_READ));
       }
     } else {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_BAD_JSON_PLAN,
@@ -441,22 +436,23 @@ TraversalNode::TraversalNode(ExecutionPlan* plan,
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_BAD_JSON_PLAN,
                                      "graph has to be an array.");
     }
-    size_t edgeCollectionCount = _graphJson.size();
-    // List of edge collection names
-    for (size_t i = 0; i < edgeCollectionCount; ++i) {
-      auto at = _graphJson.at(i);
-      if (!at.isString()) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_BAD_JSON_PLAN,
-                                       "graph has to be an array of strings.");
-      }
+  }
 
-      _edgeColls.emplace_back(std::make_unique<aql::Collection>(
-          at.json()->_value._string.data, _vocbase, TRI_TRANSACTION_READ));
-    }
-    if (_edgeColls.empty()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_QUERY_BAD_JSON_PLAN,
-          "graph has to be a non empty array of strings.");
+  if (!base.has("edgeCollections")) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_BAD_JSON_PLAN,
+                                   "traverser needs an array if edge collections.");
+  }
+  {
+    TRI_json_t const* list =
+        JsonHelper::checkAndGetArrayValue(base.json(), "edgeCollections");
+    size_t count = TRI_LengthVector(&list->_value._objects);
+    // List of edge collection names
+    for (size_t i = 0; i < count; ++i) {
+      auto eName = static_cast<TRI_json_t const*>(
+          TRI_AtVector(&list->_value._objects, i));
+      std::string e = JsonHelper::getStringValue(eName, "");
+      _edgeColls.emplace_back(
+          std::make_unique<aql::Collection>(e, _vocbase, TRI_TRANSACTION_READ));
     }
   }
 
@@ -595,6 +591,14 @@ void TraversalNode::toVelocyPackHelper(arangodb::velocypack::Builder& nodes,
     VPackArrayBuilder guard(&nodes);
     for (auto const& d : _directions) {
       nodes.add(VPackValue(d));
+    }
+  }
+
+  nodes.add(VPackValue("edgeCollections"));
+  {
+    VPackArrayBuilder guard(&nodes);
+    for (auto const& e : _edgeColls) {
+      nodes.add(VPackValue(e->getName()));
     }
   }
 
