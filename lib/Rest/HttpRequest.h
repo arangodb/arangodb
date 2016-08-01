@@ -56,18 +56,11 @@ class HttpRequest : public GeneralRequest {
   // HACK HACK HACK
   // this is just to avoid the FakeRequest class
   HttpRequest(ContentType contentType, char const* body, int64_t contentLength,
-              std::unordered_map<std::string, std::string> headers)
-      : GeneralRequest(connectionInfo()),
-        _contentLength(0),
-        _header(nullptr),
-        _body(body),
-        _allowMethodOverride(false),
-        _vpackBuilder(nullptr),
-        _headers(headers) {}
+              std::unordered_map<std::string, std::string> const& headers);
 
  public:
   HttpRequest(HttpRequest&&) = default;
-  ~HttpRequest();
+  ~HttpRequest() = default;
 
  public:
   // HTTP protocol version is 1.0
@@ -122,10 +115,7 @@ class HttpRequest : public GeneralRequest {
 
   static HttpRequest* createFakeRequest(
       ContentType contentType, char const* body, int64_t contentLength,
-      std::unordered_map<std::string, std::string> headers) {
-    return new HttpRequest(contentType, body, contentLength,
-                           std::move(headers));
-  }
+      std::unordered_map<std::string, std::string> const& headers);
 
  protected:
   void setValue(char const* key, char const* value);

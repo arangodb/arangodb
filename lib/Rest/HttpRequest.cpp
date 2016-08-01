@@ -57,9 +57,20 @@ HttpRequest::HttpRequest(ConnectionInfo const& connectionInfo,
     parseHeader(length);
   }
 }
-
-// HttpRequest::~HttpRequest() { delete[] _header; }
-HttpRequest::~HttpRequest() = default;
+  
+HttpRequest::HttpRequest(ContentType contentType, char const* body, int64_t contentLength,
+              std::unordered_map<std::string, std::string> const& headers)
+      : GeneralRequest(ConnectionInfo()),
+        _contentLength(contentLength),
+        _header(nullptr),
+        _body(body, contentLength),
+        _allowMethodOverride(false),
+        _vpackBuilder(nullptr),
+        _headers(headers) {
+    
+    _contentType = contentType;
+    _contentTypeResponse = ContentType::JSON;
+  }
 
 void HttpRequest::parseHeader(size_t length) {
   char* start = _header.get();
@@ -417,6 +428,8 @@ void HttpRequest::setArrayValue(std::string const&& key,
 }
 
 void HttpRequest::setArrayValue(char* key, size_t length, char const* value) {
+  TRI_ASSERT(key != nullptr);
+  TRI_ASSERT(value != nullptr);
   _arrayValues[std::string(key, length)].emplace_back(value);
 }
 
@@ -530,6 +543,9 @@ void HttpRequest::setValues(char* buffer, char* end) {
 /// @brief sets a key/value header
 void HttpRequest::setHeader(char const* key, size_t keyLength,
                             char const* value, size_t valueLength) {
+  TRI_ASSERT(key != nullptr);
+  TRI_ASSERT(value != nullptr);
+
   if (keyLength == 14 &&
       memcmp(key, "content-length", keyLength) ==
           0) {  // 14 = strlen("content-length")
@@ -715,6 +731,7 @@ std::string const& HttpRequest::cookieValue(std::string const& key,
 std::string const& HttpRequest::body() const { return _body; }
 
 void HttpRequest::setBody(char const* body, size_t length) {
+  TRI_ASSERT(body != nullptr);
   _body.reserve(length + 1);
   _body.append(body, length);
   // make sure the string is null-terminated
@@ -785,4 +802,10 @@ std::string const& HttpRequest::value(std::string const& key,
 
   found = false;
   return StaticStrings::Empty;
+}
+  
+HttpRequest* HttpRequest::createFakeRequest(
+      ContentType contentType, char const* body, int64_t contentLength,
+      std::unordered_map<std::string, std::string> const& headers) {
+  return new HttpRequest(contentType, body, contentLength, headers);
 }
