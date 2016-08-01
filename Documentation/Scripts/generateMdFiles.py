@@ -240,7 +240,7 @@ RX = [
 RX2 = [
     # parameters - extract their type and whether mandatory or not.
     (re.compile(r"@RESTPARAM{(\s*[\w\-]*)\s*,\s*([\w\_\|-]*)\s*,\s*(required|optional)}"), r"* *\g<1>* (\g<3>):"),
-    (re.compile(r"@RESTALLBODYPARAM{(\s*[\w\-]*)\s*,\s*([\w\_\|-]*)\s*,\s*(required|optional)}"), r"**Post Body**\n *\g<1>* (\g<3>):"),
+    (re.compile(r"@RESTALLBODYPARAM{(\s*[\w\-]*)\s*,\s*([\w\_\|-]*)\s*,\s*(required|optional)}"), r"\n**Post Body**\n\n *\g<1>* (\g<3>):"),
 
     (re.compile(r"@RESTRETURNCODE{(.*)}"), r"* *\g<1>*:")
 ]
