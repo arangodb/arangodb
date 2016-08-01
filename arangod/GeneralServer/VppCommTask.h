@@ -56,7 +56,7 @@ class VppCommTask : public GeneralCommTask {
           _buffer(_length),
           _numberOfChunks(numberOfChunks),
           _currentChunk(1UL) {}
-    uint32_t _length;  // lenght of total message in bytes
+    uint32_t _length;  // length of total message in bytes
     VPackBuffer<uint8_t> _buffer;
     std::size_t _numberOfChunks;
     std::size_t _currentChunk;

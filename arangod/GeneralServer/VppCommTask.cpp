@@ -219,7 +219,7 @@ bool VppCommTask::processRead() {
     return true;  // no data or incomplete
   }
 
-  auto chunkHeader = readChunkHeader();
+  ChunkHeader chunkHeader = readChunkHeader();
   auto chunkEnd = chunkBegin + chunkHeader._chunkLength;
   auto vpackBegin = chunkBegin + chunkHeader._headerLength;
   bool do_execute = false;
@@ -250,7 +250,7 @@ bool VppCommTask::processRead() {
     IncompleteVPackMessage message(chunkHeader._messageLength,
                                    chunkHeader._chunk /*number of chunks*/);
     message._buffer.append(vpackBegin, std::distance(vpackBegin, chunkEnd));
-    auto insertPair = _incompleteMessages.insert(
+    auto insertPair = _incompleteMessages.emplace(
         std::make_pair(chunkHeader._messageId, std::move(message)));
     if (!insertPair.second) {
       throw std::logic_error("insert failed");
@@ -265,12 +265,13 @@ bool VppCommTask::processRead() {
     im._currentChunk++;
     assert(im._currentChunk == chunkHeader._chunk);
     im._buffer.append(vpackBegin, std::distance(vpackBegin, chunkEnd));
+    // check buffer longer than length
 
     // MESSAGE COMPLETE
     if (im._currentChunk == im._numberOfChunks) {
       std::size_t payloadOffset = findAndValidateVPacks(
           reinterpret_cast<char const*>(im._buffer.data()),
-          reinterpret_cast<const char*>(im._buffer.data() +
+          reinterpret_cast<char const*>(im._buffer.data() +
                                         im._buffer.byteSize()));
       VPackMessage message;
       message._buffer = std::move(im._buffer);
@@ -278,6 +279,9 @@ bool VppCommTask::processRead() {
       if (payloadOffset) {
         message._payload = VPackSlice(message._buffer.data() + payloadOffset);
       }
+      _incompleteMessages.erase(incompleteMessageItr);
+      // check length
+
       do_execute = true;
     }
   }
