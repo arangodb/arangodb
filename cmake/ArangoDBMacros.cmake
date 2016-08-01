@@ -1,5 +1,16 @@
 include(GNUInstallDirs)
 
+if (MSVC OR DARWIN)
+  set(ENABLE_UID_CFG false)
+else ()
+  set(ENABLE_UID_CFG true)
+endif ()
+
+get_cmake_property(_variableNames VARIABLES)
+foreach (_variableName ${_variableNames})
+    message(STATUS "${_variableName}=${${_variableName}}")
+endforeach ()
+
 # install the visual studio runtime:
 if (MSVC)
   set(CMAKE_INSTALL_UCRT_LIBRARIES 1)
@@ -116,6 +127,13 @@ macro (generate_root_config name)
     FileContent "${FileContent}")
   STRING(REPLACE "@SYSCONFDIR@" "@ROOTDIR@/etc/arangodb3"
     FileContent "${FileContent}")
+  if (ENABLE_UID_CFG)
+    STRING(REPLACE "@DEFINEUID@" ""
+      FileContent "${FileContent}")
+  else ()
+    STRING(REPLACE "@DEFINEUID@" "# "
+      FileContent "${FileContent}")
+  endif ()
   if (MSVC)
     STRING(REPLACE "@PROGRAM_SUFFIX@" ".exe"
       FileContent "${FileContent}")
@@ -132,6 +150,13 @@ macro (generate_path_config name)
     FileContent "${FileContent}")
   STRING(REPLACE "@LOCALSTATEDIR@" "${VARDIR_NATIVE}" 
     FileContent "${FileContent}")
+  if (ENABLE_UID_CFG)
+    STRING(REPLACE "@DEFINEUID@" ""
+      FileContent "${FileContent}")
+  else ()
+    STRING(REPLACE "@DEFINEUID@" "# "
+      FileContent "${FileContent}")
+  endif ()
   FILE(WRITE ${PROJECT_BINARY_DIR}/etc/arangodb3/${name}.conf "${FileContent}")
 endmacro ()
 
