@@ -40,10 +40,9 @@ class ClusterTraverser final : public Traverser {
 
  public:
   ClusterTraverser(
-      std::vector<std::string> edgeCollections, TraverserOptions* opts,
+      TraverserOptions* opts,
       std::string const& dbname, Transaction* trx)
       : Traverser(opts),
-        _edgeCols(edgeCollections),
         _dbname(dbname),
         _trx(trx) {
           if (opts->uniqueVertices == TraverserOptions::UniquenessLevel::GLOBAL) {
@@ -203,8 +202,6 @@ class ClusterTraverser final : public Traverser {
       _vertices;
 
   std::stack<std::stack<std::string>> _iteratorCache;
-
-  std::vector<std::string> _edgeCols;
 
   std::string _dbname;
 

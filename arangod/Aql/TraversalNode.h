@@ -25,6 +25,7 @@
 #define ARANGOD_AQL_TRAVERSAL_NODE_H 1
 
 #include "Aql/ExecutionNode.h"
+#include "Aql/Collection.h"
 #include "Aql/Condition.h"
 #include "Aql/Graphs.h"
 #include "VocBase/TraverserOptions.h"
@@ -84,7 +85,7 @@ class TraversalNode : public ExecutionNode {
   /// @brief Internal constructor to clone the node.
  private:
   TraversalNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
-                std::vector<std::string> const& edgeColls,
+                std::vector<std::unique_ptr<aql::Collection>> const& edgeColls,
                 Variable const* inVariable, std::string const& vertexId,
                 std::vector<TRI_edge_direction_e> directions,
                 std::unique_ptr<traverser::TraverserOptions>& options);
@@ -192,7 +193,13 @@ class TraversalNode : public ExecutionNode {
 
   std::string const getStartVertex() const { return _vertexId; }
 
-  std::vector<std::string> const edgeColls() const { return _edgeColls; }
+  std::vector<std::unique_ptr<aql::Collection>> const& edgeColls() const {
+    return _edgeColls;
+  }
+
+  std::vector<std::unique_ptr<aql::Collection>> const& vertexColls() const {
+    return _vertexColls;
+  }
 
   /// @brief remember the condition to execute for early traversal abortion.
   void setCondition(Condition* condition);
@@ -265,7 +272,10 @@ class TraversalNode : public ExecutionNode {
   std::vector<TRI_edge_direction_e> _directions;
 
   /// @brief the edge collection names
-  std::vector<std::string> _edgeColls;
+  std::vector<std::unique_ptr<aql::Collection>> _edgeColls;
+
+  /// @brief the vertex collection names
+  std::vector<std::unique_ptr<aql::Collection>> _vertexColls;
 
   /// @brief our graph
   Graph const* _graphObj;

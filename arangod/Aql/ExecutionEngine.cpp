@@ -30,12 +30,9 @@
 #include "Aql/CollectOptions.h"
 #include "Aql/EnumerateCollectionBlock.h"
 #include "Aql/EnumerateListBlock.h"
-#include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionNode.h"
-#include "Aql/ExecutionPlan.h"
 #include "Aql/IndexBlock.h"
 #include "Aql/ModificationBlocks.h"
-#include "Aql/QueryRegistry.h"
 #include "Aql/SortBlock.h"
 #include "Aql/SubqueryBlock.h"
 #include "Aql/TraversalBlock.h"
@@ -45,9 +42,12 @@
 #include "Basics/Exceptions.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterComm.h"
+#include "Cluster/ClusterInfo.h"
+#include "Cluster/TraverserEngineRegistry.h"
 #include "Logger/Logger.h"
 #include "VocBase/server.h"
 
+using namespace arangodb;
 using namespace arangodb::aql;
 
 using Json = arangodb::basics::Json;
@@ -409,7 +409,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
   // coordinator. Note that the main query and engine is not put into
   // this map at all.
 
-  std::unordered_map<std::string, std::vector<std::string>> traverserEngines;
+  std::unordered_map<traverser::TraverserEngineID, std::unordered_set<std::string>> traverserEngines;
   // This map allows to find all traverser engine parts of the query.
   // The first value is the engine id. The second value is a list of
   // shards this engine is responsible for.
@@ -731,10 +731,143 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     }
   }
 
-  void buildTraverserEngineForDBServer() {
-  }
-
+  /// @brief Build traverser engines on DBServers. Coordinator still uses
+  ///        traversal block.
   void buildTraverserEnginesForNode(TraversalNode* en) {
+    // We have to initialize all options. After this point the node
+    // is not cloneable any more.
+    en->prepareOptions();
+    VPackBuilder optsBuilder;
+    auto opts = en->options();
+    opts->buildEngineInfo(optsBuilder);
+    // All info in opts is identical for each traverser engine.
+    // Only the shards are different.
+    std::vector<std::unique_ptr<arangodb::aql::Collection>> const& edges = en->edgeColls();
+    std::vector<std::unique_ptr<arangodb::aql::Collection>> const& vertices = en->vertexColls();
+    if (vertices.empty()) {
+      // This case indicates we do not have a named graph. We simply use
+      // ALL collections known to this traversal.
+      // TODO implement
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+    }
+
+    // Here we create a mapping
+    // ServerID => ResponsibleShards
+    // Where Responsible shards is divided in edgeCollections and vertexCollections
+    // For edgeCollections the Ordering is important for the index access.
+    // Also the same edgeCollection can be included twice (iff direction is ANY)
+    auto clusterInfo = arangodb::ClusterInfo::instance();
+    std::unordered_map<ServerID,
+                       std::pair<std::vector<std::vector<ShardID>>, std::vector<ShardID>>>
+        mappingServerToCollections;
+    size_t length = edges.size();
+    for (size_t i = 0; i < length; ++i) {
+      auto shardIds = edges[i]->shardIds();
+      for (auto const& shard : *shardIds) {
+        auto serverList = clusterInfo->getResponsibleServer(shard);
+        TRI_ASSERT(!serverList->empty());
+        auto& pair = mappingServerToCollections[(*serverList)[0]];
+        if (pair.first.size() == i) {
+          pair.first.emplace_back();
+        }
+        pair.first[i].emplace_back(shard);
+      }
+    }
+    for (auto const& it : vertices) {
+      auto shardIds = it->shardIds();
+      for (auto const& shard : *shardIds) {
+        auto serverList = clusterInfo->getResponsibleServer(shard);
+        TRI_ASSERT(!serverList->empty());
+        auto& pair = mappingServerToCollections[(*serverList)[0]];
+        pair.second.emplace_back(shard);
+      }
+    }
+    // Now we create a VPack Object containing the relevant information
+    // for the Traverser Engines.
+    // First the options (which are identical for all engines.
+    // Second the list of shards this engine is responsible for.
+    // Shards are not overlapping between Engines as there is exactly
+    // one engine per server.
+    //
+    // The resulting JSON is a s follows:
+    //
+    // {
+    //   "options": <options.toVelocyPack>,
+    //   "shards": {
+    //     "edges" : [
+    //       [ <shards of edge collection 1> ],
+    //       [ <shards of edge collection 2> ]
+    //     ],
+    //     "vertices" : [
+    //       <shards of vertex collections>
+    //     ]
+    //   }
+    // }
+
+    std::string const url("/_db/" + arangodb::basics::StringUtils::urlEncode(
+                                        query->vocbase()->_name) +
+                          "/_internal/traverser");
+    auto cc = arangodb::ClusterComm::instance();
+    VPackBuilder engineInfo;
+    for (auto const& list : mappingServerToCollections) {
+      std::unordered_set<std::string> shardSet;
+      engineInfo.clear();
+      engineInfo.openObject();
+      engineInfo.add(VPackValue("options"));
+      engineInfo.add(optsBuilder.slice());
+
+      engineInfo.add(VPackValue("shards"));
+      engineInfo.openObject();
+      engineInfo.add(VPackValue("vertices"));
+      engineInfo.openArray();
+      for (auto const& v : list.second.second) {
+        shardSet.emplace(v);
+        engineInfo.add(VPackValue(v));
+      }
+      engineInfo.close(); // vertices
+
+      engineInfo.add(VPackValue("edges"));
+      engineInfo.openArray();
+      for (auto const& edgeShards : list.second.first) {
+        engineInfo.openArray();
+        for (auto const& e : edgeShards) {
+          shardSet.emplace(e);
+          engineInfo.add(VPackValue(e));
+        }
+        engineInfo.close();
+      }
+      engineInfo.close(); // edges
+
+      engineInfo.close(); // shards
+      engineInfo.close(); // base
+
+      arangodb::CoordTransactionID coordTransactionID = TRI_NewTickServer();
+      std::unordered_map<std::string, std::string> headers;
+
+      auto res =
+          cc->syncRequest("", coordTransactionID, "server:" + list.first,
+                          arangodb::GeneralRequest::RequestType::POST,
+                          url, engineInfo.toJson(), headers, 30.0);
+      if (res->status != CL_COMM_SENT) {
+        // Note If there was an error on server side we do not have CL_COMM_SENT
+        std::string message("could not start all traversal engines");
+        if (res->errorMessage.length() > 0) {
+          message += std::string(" : ") + res->errorMessage;
+        }
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_QUERY_COLLECTION_LOCK_FAILED, message);
+      } else {
+        // Only if the aresult was successful we will get here
+        arangodb::basics::StringBuffer& body = res->result->getBody();
+
+        std::shared_ptr<VPackBuilder> builder =
+            VPackParser::fromJson(body.c_str(), body.length());
+        VPackSlice resultSlice = builder->slice();
+        TRI_ASSERT(resultSlice.isNumber());
+        auto engineId = resultSlice.getNumericValue<traverser::TraverserEngineID>();
+        traverserEngines.emplace(engineId, shardSet);
+      }
+    }
   }
 
   /// @brief buildEngines, build engines on DBservers and coordinator
@@ -819,7 +952,6 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     }
 
     if (nodeType == ExecutionNode::TRAVERSAL) {
-#warning I have no fucking idea if this is the right place
       buildTraverserEnginesForNode(static_cast<TraversalNode*>(en));
       TRI_ASSERT(false);
     }
@@ -894,7 +1026,7 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
           engine->_lockedShards = new std::unordered_set<std::string>();
           engine->_previouslyLockedShards = nullptr;
         }
-        std::map<std::string, std::string> forLocking;
+        std::map<std::string, std::pair<std::string, bool>> forLocking;
         for (auto& q : inst.get()->queryIds) {
           std::string theId = q.first;
           std::string queryId = q.second;
@@ -907,11 +1039,22 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
               queryId.pop_back();
               std::string shardId = theId.substr(pos + 1);
               engine->_lockedShards->insert(shardId);
-              forLocking.emplace(shardId, queryId);
+              forLocking.emplace(shardId, std::make_pair(queryId, false));
             }
           }
         }
 
+        // TODO is this enough? Do we have to somehow inform the other engines?
+        for (auto& te : inst.get()->traverserEngines) {
+          std::string traverserId = arangodb::basics::StringUtils::itoa(te.first);
+          for (auto const& shardId : te.second) {
+            if (forLocking.find(shardId) == forLocking.end()) {
+              // No other node stated that it is responsible for locking this shard.
+              // So the traverser engine has to step in.
+              forLocking.emplace(shardId, std::make_pair(traverserId, true));
+            }
+          }
+        }
 
         // Second round, this time we deal with the coordinator pieces
         // and tell them the lockedShards as well, we need to copy, since
@@ -937,20 +1080,31 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
         // Now lock them all in the right order:
         for (auto& p : forLocking) {
           std::string const& shardId = p.first;
-          std::string const& queryId = p.second;
+          std::string const& queryId = p.second.first;
+          bool isTraverserEngine = p.second.second;
           // Lock shard on DBserver:
           arangodb::CoordTransactionID coordTransactionID = TRI_NewTickServer();
           auto cc = arangodb::ClusterComm::instance();
           TRI_vocbase_t* vocbase = query->vocbase();
-          std::string const url(
-              "/_db/" +
-              arangodb::basics::StringUtils::urlEncode(vocbase->_name) +
-              "/_api/aql/lock/" + queryId);
+          std::unique_ptr<ClusterCommResult> res;
           std::unordered_map<std::string, std::string> headers;
-          auto res =
-              cc->syncRequest("", coordTransactionID, "shard:" + shardId,
-                              arangodb::GeneralRequest::RequestType::PUT,
-                              url, "{}", headers, 30.0);
+          if (isTraverserEngine) {
+            std::string const url(
+                "/_db/" +
+                arangodb::basics::StringUtils::urlEncode(vocbase->_name) +
+                "/_internal/traverser/lock/" + queryId + "/" + shardId);
+            res = cc->syncRequest("", coordTransactionID, "shard:" + shardId,
+                                  arangodb::GeneralRequest::RequestType::PUT,
+                                  url, "", headers, 30.0);
+          } else {
+            std::string const url(
+                "/_db/" +
+                arangodb::basics::StringUtils::urlEncode(vocbase->_name) +
+                "/_api/aql/lock/" + queryId);
+            res = cc->syncRequest("", coordTransactionID, "shard:" + shardId,
+                                  arangodb::GeneralRequest::RequestType::PUT,
+                                  url, "{}", headers, 30.0);
+          }
           if (res->status != CL_COMM_SENT) {
             std::string message("could not lock all shards");
             if (res->errorMessage.length() > 0) {

@@ -215,9 +215,21 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id,
                                        msg);
       }
       
-      _directions.emplace_back(dir);
       _graphJson.add(arangodb::basics::Json(eColName));
-      _edgeColls.emplace_back(eColName);
+      if (dir == TRI_EDGE_ANY) {
+        // If we have any direction we simply add it twice, once IN once OUT.
+        _directions.emplace_back(TRI_EDGE_OUT);
+        _edgeColls.emplace_back(std::make_unique<aql::Collection>(
+            eColName, _vocbase, TRI_TRANSACTION_READ));
+
+        _directions.emplace_back(TRI_EDGE_IN);
+        _edgeColls.emplace_back(std::make_unique<aql::Collection>(
+            eColName, _vocbase, TRI_TRANSACTION_READ));
+      } else {
+        _directions.emplace_back(dir);
+        _edgeColls.emplace_back(std::make_unique<aql::Collection>(
+            eColName, _vocbase, TRI_TRANSACTION_READ));
+      }
     }
   } else {
     if (_edgeColls.empty()) {
@@ -235,12 +247,28 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id,
         if (length == 0) {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_EMPTY);
         }
-        _edgeColls.reserve(length);
-        _directions.reserve(length);
+        if (baseDirection == TRI_EDGE_ANY) {
+          _edgeColls.reserve(2 * length);
+          _directions.reserve(2 * length);
 
-        for (const auto& n : eColls) {
-          _edgeColls.push_back(n);
-          _directions.emplace_back(baseDirection);
+          for (const auto& n : eColls) {
+            _directions.emplace_back(TRI_EDGE_OUT);
+            _edgeColls.emplace_back(std::make_unique<aql::Collection>(
+                n, _vocbase, TRI_TRANSACTION_READ));
+
+            _directions.emplace_back(TRI_EDGE_IN);
+            _edgeColls.emplace_back(std::make_unique<aql::Collection>(
+                n, _vocbase, TRI_TRANSACTION_READ));
+          }
+        } else {
+          _edgeColls.reserve(length);
+          _directions.reserve(length);
+
+          for (const auto& n : eColls) {
+            _edgeColls.emplace_back(std::make_unique<aql::Collection>(
+                n, _vocbase, TRI_TRANSACTION_READ));
+            _directions.emplace_back(baseDirection);
+          }
         }
       }
     }
@@ -275,13 +303,12 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id,
 }
 
 /// @brief Internal constructor to clone the node.
-TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id,
-                             TRI_vocbase_t* vocbase,
-                             std::vector<std::string> const& edgeColls,
-                             Variable const* inVariable,
-                             std::string const& vertexId,
-                             std::vector<TRI_edge_direction_e> directions,
-                             std::unique_ptr<traverser::TraverserOptions>& options)
+TraversalNode::TraversalNode(
+    ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
+    std::vector<std::unique_ptr<aql::Collection>> const& edgeColls,
+    Variable const* inVariable, std::string const& vertexId,
+    std::vector<TRI_edge_direction_e> directions,
+    std::unique_ptr<traverser::TraverserOptions>& options)
     : ExecutionNode(plan, id),
       _vocbase(vocbase),
       _vertexOutVariable(nullptr),
@@ -296,13 +323,14 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id,
       _fromCondition(nullptr),
       _toCondition(nullptr),
       _optionsBuild(false) {
-
   _options.reset(options.release());
   _graphJson = arangodb::basics::Json(arangodb::basics::Json::Array, edgeColls.size());
 
   for (auto& it : edgeColls) {
-    _edgeColls.emplace_back(it);
-    _graphJson.add(arangodb::basics::Json(it));
+    // Collections cannot be copied. So we need to create new ones to prevent leaks
+    _edgeColls.emplace_back(std::make_unique<aql::Collection>(
+        it->getName(), _vocbase, TRI_TRANSACTION_READ));
+    _graphJson.add(arangodb::basics::Json(it->getName()));
   }
 }
 
@@ -400,7 +428,8 @@ TraversalNode::TraversalNode(ExecutionPlan* plan,
 
       auto eColls = _graphObj->edgeCollections();
       for (auto const& n : eColls) {
-        _edgeColls.push_back(n);
+        _edgeColls.emplace_back(std::make_unique<aql::Collection>(
+            n, _vocbase, TRI_TRANSACTION_READ));
       }
     } else {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_BAD_JSON_PLAN,
@@ -420,7 +449,9 @@ TraversalNode::TraversalNode(ExecutionPlan* plan,
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_BAD_JSON_PLAN,
                                        "graph has to be an array of strings.");
       }
-      _edgeColls.push_back(at.json()->_value._string.data);
+
+      _edgeColls.emplace_back(std::make_unique<aql::Collection>(
+          at.json()->_value._string.data, _vocbase, TRI_TRANSACTION_READ));
     }
     if (_edgeColls.empty()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -766,7 +797,7 @@ double TraversalNode::estimateCost(size_t& nrItems) const {
   TRI_ASSERT(collections != nullptr);
 
   for (auto const& it : _edgeColls) {
-    auto collection = collections->get(it);
+    auto collection = collections->get(it->getName());
 
     if (collection == nullptr) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -825,27 +856,13 @@ void TraversalNode::prepareOptions() {
             globalEdgeConditionBuilder.getOutboundCondition()->clone(ast);
         break;
       case TRI_EDGE_ANY:
-        info.indexCondition =
-            globalEdgeConditionBuilder.getOutboundCondition()->clone(ast);
-
-        traverser::TraverserOptions::LookupInfo infoIn;
-        infoIn.indexCondition =
-            globalEdgeConditionBuilder.getInboundCondition()->clone(ast);
-        infoIn.expression = new Expression(ast, infoIn.indexCondition->clone(ast));
-#warning hard-coded nrItems.
-        res = trx->getBestIndexHandleForFilterCondition(
-            _edgeColls[i], infoIn.indexCondition, _tmpObjVariable, 1000,
-            infoIn.idxHandles[0]);
-        TRI_ASSERT(res);  // Right now we have an enforced edge index which will
-                          // always fit.
-        _options->_baseLookupInfos.emplace_back(std::move(infoIn));
-
+        TRI_ASSERT(false);
         break;
     }
     info.expression = new Expression(ast, info.indexCondition->clone(ast));
 #warning hard-coded nrItems.
     res = trx->getBestIndexHandleForFilterCondition(
-        _edgeColls[i], info.indexCondition, _tmpObjVariable, 1000,
+        _edgeColls[i]->getName(), info.indexCondition, _tmpObjVariable, 1000,
         info.idxHandles[0]);
     TRI_ASSERT(res);  // Right now we have an enforced edge index which will
                       // always fit.
@@ -872,30 +889,15 @@ void TraversalNode::prepareOptions() {
         case TRI_EDGE_OUT:
           info.indexCondition = builder.getOutboundCondition()->clone(ast);
           break;
-        case TRI_EDGE_ANY: {
-          info.indexCondition = builder.getOutboundCondition()->clone(ast);
-
-          traverser::TraverserOptions::LookupInfo infoIn;
-          infoIn.indexCondition = builder.getInboundCondition()->clone(ast);
-          infoIn.expression =
-              new Expression(ast, infoIn.indexCondition->clone(ast));
-#warning hard-coded nrItems.
-          res = trx->getBestIndexHandleForFilterCondition(
-              _edgeColls[i], infoIn.indexCondition, _tmpObjVariable, 1000,
-              infoIn.idxHandles[0]);
-          TRI_ASSERT(
-              res);  // Right now we have an enforced edge index which will
-                     // always fit.
-          infos.emplace_back(std::move(infoIn));
-
+        case TRI_EDGE_ANY:
+          TRI_ASSERT(false);
           break;
-        }
       }
 
       info.expression = new Expression(ast, info.indexCondition->clone(ast));
 #warning hard-coded nrItems.
       res = trx->getBestIndexHandleForFilterCondition(
-          _edgeColls[i], info.indexCondition, _tmpObjVariable, 1000,
+          _edgeColls[i]->getName(), info.indexCondition, _tmpObjVariable, 1000,
           info.idxHandles[0]);
       TRI_ASSERT(res);  // Right now we have an enforced edge index which will
                         // always fit.
