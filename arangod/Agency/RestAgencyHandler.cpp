@@ -256,7 +256,6 @@ HttpHandler::status_t RestAgencyHandler::handleState() {
     body.add(VPackValue(VPackValueType::Object));
     body.add("index", VPackValue(i.index));
     body.add("term", VPackValue(i.term));
-    body.add("leader", VPackValue(i.leaderId));
     body.add("query", VPackSlice(i.entry->data()));
     body.close();
   }

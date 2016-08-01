@@ -25,8 +25,8 @@ SFRE=2.5
 COMP=1000
 BASE=4001
 
-rm -rf agency
-mkdir agency
+#rm -rf agency
+mkdir -p agency
 echo -n "Starting agency ... "
 if [ $NRAGENTS -gt 1 ]; then
    for aid in `seq 0 $(( $NRAGENTS - 2 ))`; do
@@ -49,6 +49,7 @@ if [ $NRAGENTS -gt 1 ]; then
            --server.endpoint tcp://127.0.0.1:$port \
            --server.statistics false \
            --agency.compaction-step-size $COMP \
+           --log.level agency=info \
            --log.force-direct true \
            > agency/$port.stdout 2>&1 &
        sleep 0
@@ -78,6 +79,7 @@ build/bin/arangod \
     --server.statistics false \
     --agency.compaction-step-size $COMP \
     --log.force-direct true \
+    --log.level agency=info \
     > agency/$(( $BASE + $aid )).stdout 2>&1 &
 
 echo " done."

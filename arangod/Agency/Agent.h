@@ -70,7 +70,7 @@ class Agent : public arangodb::Thread {
   /// @brief Are we fit to run?
   bool fitness() const;
 
-  /// @brief Leader ID
+  /// @brief Last commited index
   arangodb::consensus::index_t lastCommited() const;
 
   /// @brief Leader ID

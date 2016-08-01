@@ -248,12 +248,14 @@ bool Agent::recvAppendEntriesRPC(term_t term,
     return false;
   }
 
+  _state.removeConflicts(queries);
+    
   if (queries->slice().length()) {
     LOG_TOPIC(DEBUG, Logger::AGENCY) << "Appending "
                                      << queries->slice().length()
                                      << " entries to state machine.";
     /* bool success = */
-    _state.log(queries, term, leaderId, prevIndex, prevTerm);
+    _state.log(queries, term, prevIndex, prevTerm);
     _spearhead.apply(_state.slices(_lastCommitIndex + 1, leaderCommitIndex));
     _readDB.apply(_state.slices(_lastCommitIndex + 1, leaderCommitIndex));
     _lastCommitIndex = leaderCommitIndex;
@@ -308,6 +310,7 @@ priv_rpc_ret_t Agent::sendAppendEntriesRPC(
     auto const& entry = unconfirmed.at(i);
     builder.add(VPackValue(VPackValueType::Object));
     builder.add("index", VPackValue(entry.index));
+    builder.add("term", VPackValue(entry.term));
     builder.add("query", VPackSlice(entry.entry->data()));
     builder.close();
     last = entry.index;
@@ -389,7 +392,7 @@ write_ret_t Agent::write(query_t const& query) {
   {
     MUTEX_LOCKER(mutexLocker, _ioLock);
     applied = _spearhead.apply(query);
-    indices = _state.log(query, applied, term(), id());
+    indices = _state.log(query, applied, term());
   }
 
   // Maximum log index
@@ -435,7 +438,7 @@ void Agent::run() {
     } else {
       _appendCV.wait();         // Else wait for our moment in the sun
     }
-    
+
     // Append entries to followers
     for (arangodb::consensus::id_t i = 0; i < size(); ++i) {
       if (i != id()) {
@@ -482,11 +485,11 @@ void Agent::beginShutdown() {
 bool Agent::lead() {
 
   // Key value stores
-  rebuildDBs();
+  //rebuildDBs();
   
   // Wake up run
   CONDITION_LOCKER(guard, _appendCV);
-  guard.signal();
+  guard.broadcast();
 
   return true;
   
