@@ -1,5 +1,5 @@
 arangosh&gt; <span class="hljs-keyword">for</span> (<span class="hljs-keyword">var</span> i = <span class="hljs-number">0</span>; i &lt; <span class="hljs-number">10</span>; i ++) {
-........&gt;         <span class="hljs-built_in">require</span>(<span class="hljs-string">"internal"</span>).print(<span class="hljs-string">"Hello world "</span> + i + <span class="hljs-string">"!\n"</span>);
+........&gt;         <span class="hljs-built_in">require</span>(<span class="hljs-string">"@arangodb"</span>).print(<span class="hljs-string">"Hello world "</span> + i + <span class="hljs-string">"!\n"</span>);
 ........&gt; }
 Hello world <span class="hljs-number">0</span>!
 

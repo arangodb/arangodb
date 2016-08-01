@@ -1,22 +1,22 @@
 arangosh&gt; db.example.insert({<span class="hljs-string">"a"</span> : <span class="hljs-number">1</span>});
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/15879"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"15879"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"15879"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/15918"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"15918"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"15918"</span> 
 }
 arangosh&gt; db.example.update(<span class="hljs-string">"example/19988371"</span>,
 ........&gt; { <span class="hljs-string">"b"</span> : <span class="hljs-literal">null</span>, <span class="hljs-string">"c"</span> : <span class="hljs-literal">null</span>, <span class="hljs-string">"d"</span> : <span class="hljs-number">3</span> });
 { 
   <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/19988371"</span>, 
   <span class="hljs-string">"_key"</span> : <span class="hljs-string">"19988371"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"15883"</span>, 
-  <span class="hljs-string">"_oldRev"</span> : <span class="hljs-string">"15871"</span> 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"15921"</span>, 
+  <span class="hljs-string">"_oldRev"</span> : <span class="hljs-string">"15914"</span> 
 }
 arangosh&gt; db.example.document(<span class="hljs-string">"example/19988371"</span>);
 { 
   <span class="hljs-string">"_key"</span> : <span class="hljs-string">"19988371"</span>, 
   <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/19988371"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"15883"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"15921"</span>, 
   <span class="hljs-string">"d"</span> : <span class="hljs-number">3</span>, 
   <span class="hljs-string">"c"</span> : <span class="hljs-literal">null</span>, 
   <span class="hljs-string">"b"</span> : <span class="hljs-literal">null</span> 
@@ -25,14 +25,14 @@ arangosh&gt; db.example.update(<span class="hljs-string">"example/19988371"</spa
 { 
   <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/19988371"</span>, 
   <span class="hljs-string">"_key"</span> : <span class="hljs-string">"19988371"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"15891"</span>, 
-  <span class="hljs-string">"_oldRev"</span> : <span class="hljs-string">"15883"</span> 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"15925"</span>, 
+  <span class="hljs-string">"_oldRev"</span> : <span class="hljs-string">"15921"</span> 
 }
 arangosh&gt; db.example.document(<span class="hljs-string">"example/19988371"</span>);
 { 
   <span class="hljs-string">"_key"</span> : <span class="hljs-string">"19988371"</span>, 
   <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/19988371"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"15891"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"15925"</span>, 
   <span class="hljs-string">"b"</span> : <span class="hljs-literal">null</span>, 
   <span class="hljs-string">"c"</span> : <span class="hljs-literal">null</span>, 
   <span class="hljs-string">"d"</span> : <span class="hljs-number">3</span> 
@@ -42,12 +42,12 @@ arangosh&gt; db.example.update(<span class="hljs-string">"example/19988371"</spa
 { 
   <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/19988371"</span>, 
   <span class="hljs-string">"_key"</span> : <span class="hljs-string">"19988371"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"15896"</span>, 
-  <span class="hljs-string">"_oldRev"</span> : <span class="hljs-string">"15891"</span> 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"15929"</span>, 
+  <span class="hljs-string">"_oldRev"</span> : <span class="hljs-string">"15925"</span> 
 }
 arangosh&gt; db.example.document(<span class="hljs-string">"example/19988371"</span>);
 { 
   <span class="hljs-string">"_key"</span> : <span class="hljs-string">"19988371"</span>, 
   <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/19988371"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"15896"</span> 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"15929"</span> 
 }
