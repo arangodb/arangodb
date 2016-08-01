@@ -173,9 +173,10 @@ void State::removeConflicts (query_t const& transactions) {
     try {
       auto idx = slice[0].get("index").getUInt();
       if (idx-_cur < _log.size()) {
-	LOG_TOPIC(INFO, Logger::AGENCY) <<
-	  "Removing " << _log.size()-idx+_cur << " entries from log starting with " << idx;
-	_log.erase(_log.begin()+idx);
+        LOG_TOPIC(INFO, Logger::AGENCY)
+          << "Removing " << _log.size()-idx+_cur
+          << " entries from log starting with " << idx;
+        _log.erase(_log.begin()+idx);
       }
     } catch (std::exception const& e) {
       LOG_TOPIC(ERR, Logger::AGENCY) << e.what() << " " << __FILE__ << __LINE__;
