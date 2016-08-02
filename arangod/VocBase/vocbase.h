@@ -130,15 +130,6 @@ enum TRI_col_type_e {
   TRI_COL_TYPE_EDGE = 3
 };
 
-/// @brief database state
-enum TRI_vocbase_state_e {
-  TRI_VOCBASE_STATE_INACTIVE = 0,
-  TRI_VOCBASE_STATE_NORMAL = 1,
-  TRI_VOCBASE_STATE_SHUTDOWN_COMPACTOR = 2,
-  TRI_VOCBASE_STATE_SHUTDOWN_CLEANUP = 3,
-  TRI_VOCBASE_STATE_FAILED_VERSION = 4
-};
-
 /// @brief database type
 enum TRI_vocbase_type_e {
   TRI_VOCBASE_TYPE_NORMAL = 0,
@@ -162,7 +153,21 @@ enum TRI_vocbase_col_status_e {
 struct TRI_vocbase_t {
   friend class arangodb::CollectionNameResolver;
   friend class arangodb::StorageEngine;
+  
+  /// @brief database state
+  enum class State {
+    INACTIVE = 0,
+    NORMAL = 1,
+    SHUTDOWN_COMPACTOR = 2,
+    SHUTDOWN_CLEANUP = 3,
+    FAILED_VERSION = 4
+  };
 
+  TRI_vocbase_t(TRI_vocbase_type_e type, TRI_voc_tick_t id, std::string const& name);
+  ~TRI_vocbase_t();
+
+ private:
+  
   /// @brief states for dropping
   enum DropState {
    DROP_EXIT,    // drop done, nothing else to do
@@ -170,14 +175,11 @@ struct TRI_vocbase_t {
    DROP_PERFORM  // drop done, must perform actual cleanup routine
   };
 
-  TRI_vocbase_t(TRI_vocbase_type_e type, TRI_voc_tick_t id, std::string const& name);
-  ~TRI_vocbase_t();
-
- private:
   TRI_voc_tick_t const _id;        // internal database id
   std::string _name;         // database name
   TRI_vocbase_type_e _type;  // type (normal or coordinator)
   std::atomic<uint64_t> _refCount;
+  State _state;
   bool _isOwnAppsDirectory;
   
   arangodb::basics::ReadWriteLock _collectionsLock;  // collection iterator lock
@@ -208,17 +210,6 @@ struct TRI_vocbase_t {
 
   // structures for user-defined volatile data
   void* _userStructures;
- public:
-
-  // state of the database
-  // 0 = inactive
-  // 1 = normal operation/running
-  // 2 = shutdown in progress/waiting for compactor/synchronizer thread to
-  // finish
-  // 3 = shutdown in progress/waiting for cleanup thread to finish
-  // 4 = version check failed
-
-  sig_atomic_t _state;
 
   std::unique_ptr<arangodb::CompactorThread> _compactorThread;
   std::unique_ptr<arangodb::CleanupThread> _cleanupThread;
@@ -234,9 +225,10 @@ struct TRI_vocbase_t {
   std::string const& name() const { return _name; }
   std::string path() const;
   TRI_vocbase_type_e type() const { return _type; }
+  State state() const { return _state; }
+  void setState(State state) { _state = state; }
   void updateReplicationClient(TRI_server_id_t, TRI_voc_tick_t);
-  std::vector<std::tuple<TRI_server_id_t, double, TRI_voc_tick_t>>
-  getReplicationClients();
+  std::vector<std::tuple<TRI_server_id_t, double, TRI_voc_tick_t>> getReplicationClients();
   TRI_replication_applier_t* replicationApplier() const { return _replicationApplier.get(); }
   void addReplicationApplier(TRI_replication_applier_t* applier);
 
@@ -245,7 +237,7 @@ struct TRI_vocbase_t {
   arangodb::CollectionKeysRepository* collectionKeys() const { return _collectionKeys.get(); }
 
   bool isOwnAppsDirectory() const { return _isOwnAppsDirectory; }
-  void isOwnAppsDirectory(bool value) { _isOwnAppsDirectory = value; }
+  void setIsOwnAppsDirectory(bool value) { _isOwnAppsDirectory = value; }
 
   /// @brief whether or not the vocbase has been marked as deleted
   inline bool isDropped() const {

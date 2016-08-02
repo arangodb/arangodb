@@ -248,7 +248,7 @@ static bool SetRequestContext(GeneralRequest* request, void* data) {
   }
 
   // database needs upgrade
-  if (vocbase->_state == (sig_atomic_t)TRI_VOCBASE_STATE_FAILED_VERSION) {
+  if (vocbase->state() == TRI_vocbase_t::State::FAILED_VERSION) {
     request->setRequestPath("/_msg/please-upgrade");
     return false;
   }

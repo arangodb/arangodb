@@ -2678,7 +2678,7 @@ bool TRI_UpgradeDatabase(TRI_vocbase_t* vocbase,
   bool ok = TRI_ObjectToBoolean(result);
 
   if (!ok) {
-    vocbase->_state = (sig_atomic_t)TRI_VOCBASE_STATE_FAILED_VERSION;
+    vocbase->setState(TRI_vocbase_t::State::FAILED_VERSION);
   }
 
   v8g->_vocbase = orig;

@@ -444,7 +444,7 @@ int DatabaseFeature::createDatabaseCoordinator(TRI_voc_tick_t id, std::string co
   // name not yet in use, release the read lock
   auto vocbase = std::make_unique<TRI_vocbase_t>(TRI_VOCBASE_TYPE_COORDINATOR, id, name);
   // vocbase is now active
-  vocbase->_state = (sig_atomic_t)TRI_VOCBASE_STATE_NORMAL;
+  vocbase->setState(TRI_vocbase_t::State::NORMAL);
 
   try {
     vocbase->addReplicationApplier(TRI_CreateReplicationApplier(vocbase.get()));
@@ -454,7 +454,6 @@ int DatabaseFeature::createDatabaseCoordinator(TRI_voc_tick_t id, std::string co
 
   // increase reference counter
   vocbase->use();
-  vocbase->_state = (sig_atomic_t)TRI_VOCBASE_STATE_NORMAL;
 
   {
     MUTEX_LOCKER(mutexLocker, _databasesMutex);
@@ -522,8 +521,6 @@ int DatabaseFeature::createDatabase(TRI_voc_tick_t id, std::string const& name,
     // createDatabase must return a valid database or throw
     vocbase.reset(engine->createDatabase(id, builder.slice())); 
     TRI_ASSERT(vocbase != nullptr);
-    // vocbase is now active
-    vocbase->_state = (sig_atomic_t)TRI_VOCBASE_STATE_NORMAL;
 
     try {
       vocbase->addReplicationApplier(TRI_CreateReplicationApplier(vocbase.get()));
@@ -686,7 +683,7 @@ int DatabaseFeature::dropDatabase(std::string const& name, bool writeMarker, boo
     _databasesProtector.scan();
     delete oldLists;
 
-    vocbase->isOwnAppsDirectory(removeAppsDirectory);
+    vocbase->setIsOwnAppsDirectory(removeAppsDirectory);
 
     // invalidate all entries for the database
     arangodb::aql::QueryCache::instance()->invalidate(vocbase);
@@ -1095,8 +1092,6 @@ int DatabaseFeature::iterateDatabases(VPackSlice const& databases) {
     TRI_vocbase_t* vocbase = engine->openDatabase(it, _upgrade);
     // we found a valid database
     TRI_ASSERT(vocbase != nullptr);
-    // vocbase is now active
-    vocbase->_state = (sig_atomic_t)TRI_VOCBASE_STATE_NORMAL;
     
     try {
       vocbase->addReplicationApplier(TRI_CreateReplicationApplier(vocbase));

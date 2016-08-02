@@ -47,19 +47,19 @@ void CleanupThread::run() {
   uint64_t iterations = 0;
 
   TRI_ASSERT(_vocbase != nullptr);
-  TRI_ASSERT(_vocbase->_state == 1);
+  TRI_ASSERT(_vocbase->state() == TRI_vocbase_t::State::NORMAL);
 
   std::vector<TRI_vocbase_col_t*> collections;
 
   while (true) {
     // keep initial _state value as vocbase->_state might change during cleanup
     // loop
-    int state = _vocbase->_state;
+    TRI_vocbase_t::State state = _vocbase->state();
 
     ++iterations;
 
-    if (state == (sig_atomic_t)TRI_VOCBASE_STATE_SHUTDOWN_COMPACTOR ||
-        state == (sig_atomic_t)TRI_VOCBASE_STATE_SHUTDOWN_CLEANUP) {
+    if (state == TRI_vocbase_t::State::SHUTDOWN_COMPACTOR ||
+        state == TRI_vocbase_t::State::SHUTDOWN_CLEANUP) {
       // shadows must be cleaned before collections are handled
       // otherwise the shadows might still hold barriers on collections
       // and collections cannot be closed properly
@@ -109,25 +109,23 @@ void CleanupThread::run() {
       }
     }
 
-    if (_vocbase->_state >= 1) {
-      // server is still running, clean up unused cursors
-      if (iterations % cleanupCursorIterations() == 0) {
-        cleanupCursors(false);
+    // server is still running, clean up unused cursors
+    if (iterations % cleanupCursorIterations() == 0) {
+      cleanupCursors(false);
 
-        // clean up expired compactor locks
-        TRI_CleanupCompactorVocBase(_vocbase);
-      }
-
-      if (state == 1) {
-        CONDITION_LOCKER(locker, _vocbase->_cleanupCondition);
-        locker.wait(cleanupInterval());
-      } else if (state > 1) {
-        // prevent busy waiting
-        usleep(10000);
-      }
+      // clean up expired compactor locks
+      TRI_CleanupCompactorVocBase(_vocbase);
     }
 
-    if (state == 3) {
+    if (state == TRI_vocbase_t::State::NORMAL) {
+      CONDITION_LOCKER(locker, _vocbase->_cleanupCondition);
+      locker.wait(cleanupInterval());
+    } else {
+      // prevent busy waiting
+      usleep(10000);
+    }
+
+    if (state == TRI_vocbase_t::State::SHUTDOWN_CLEANUP) {
       // server shutdown
       break;
     }

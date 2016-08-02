@@ -119,7 +119,7 @@ retry:
     _applier->_state._failedConnects = 0;
   }
 
-  while (_vocbase->_state < 2) {
+  while (_vocbase->state() == TRI_vocbase_t::State::NORMAL) {
     setProgress("fetching master state information");
     res = getMasterState(errorMsg);
 

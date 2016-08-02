@@ -998,7 +998,7 @@ void TRI_vocbase_t::shutdown() {
   }
 
   // this will signal the compactor thread to do one last iteration
-  _state = (sig_atomic_t)TRI_VOCBASE_STATE_SHUTDOWN_COMPACTOR;
+  _state = TRI_vocbase_t::State::SHUTDOWN_COMPACTOR;
 
   if (_compactorThread != nullptr) {
     _compactorThread->beginShutdown();
@@ -1012,7 +1012,7 @@ void TRI_vocbase_t::shutdown() {
   }
 
   // this will signal the cleanup thread to do one last iteration
-  _state = (sig_atomic_t)TRI_VOCBASE_STATE_SHUTDOWN_CLEANUP;
+  _state = TRI_vocbase_t::State::SHUTDOWN_CLEANUP;
 
   {
     CONDITION_LOCKER(locker, _cleanupCondition);
