@@ -1,5 +1,7 @@
 include(GNUInstallDirs)
 
+set(ARANGODB_SOURCE_DIR ${CMAKE_SOURCE_DIR})
+  
 if (MSVC OR DARWIN)
   set(ENABLE_UID_CFG false)
 else ()
@@ -40,17 +42,7 @@ add_custom_target (love
   COMMAND ""
   )
 
-################################################################################
-### @brief install client-side JavaScript files
-################################################################################
-
-install(
-  DIRECTORY ${PROJECT_SOURCE_DIR}/js/common ${PROJECT_SOURCE_DIR}/js/client 
-  DESTINATION share/arangodb3/js
-  FILES_MATCHING PATTERN "*.js"
-  REGEX "^.*/common/test-data$" EXCLUDE
-  REGEX "^.*/common/tests$" EXCLUDE
-  REGEX "^.*/client/tests$" EXCLUDE)
+include(InstallArangoDBJSClient)
 
 ################################################################################
 ### @brief install server-side JavaScript files

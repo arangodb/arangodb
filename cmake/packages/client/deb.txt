@@ -1,16 +1,34 @@
+################################################################################
 # the client package is a complete cmake sub package.
+################################################################################
 project(PACKAGE-CLIENT)
 cmake_minimum_required(VERSION 2.8)
 
+################################################################################
 # variables from the main build have to be explicitely forwarded:
+################################################################################
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "@PROJECT_BINARY_DIR@/bin/")
+
+################################################################################
+#   Substitute the install binaries:
+################################################################################
 set(BIN_ARANGOBENCH @BIN_ARANGOBENCH@)
 set(BIN_ARANGODUMP @BIN_ARANGODUMP@)
 set(BIN_ARANGOIMP @BIN_ARANGOIMP@)
 set(BIN_ARANGORESTORE @BIN_ARANGORESTORE@)
 set(BIN_ARANGOSH @BIN_ARANGOSH@)
 set(BIN_ARANGOVPACK @BIN_ARANGOVPACK@)
+
+################################################################################
+#   build specific variables:
+################################################################################
+set(ARANGODB_URL_INFO_ABOUT @ARANGODB_URL_INFO_ABOUT@)
+set(ARANGODB_SOURCE_DIR @ARANGODB_SOURCE_DIR@)
+set(ARANGODB_VERSION @ARANGODB_VERSION@)
+set(ARANGODB_PACKAGE_CONTACT @ARANGODB_PACKAGE_CONTACT@)
+
 set(CMAKE_INSTALL_FULL_BINDIR @CMAKE_INSTALL_FULL_BINDIR@)
+set(CMAKE_TARGET_ARCHITECTURES @CMAKE_TARGET_ARCHITECTURES@)
 
 set(CMAKE_INSTALL_SYSCONFDIR_ARANGO @CMAKE_INSTALL_SYSCONFDIR_ARANGO@)
 set(CMAKE_INSTALL_FULL_SYSCONFDIR_ARANGO @CMAKE_INSTALL_FULL_SYSCONFDIR_ARANGO@)
@@ -18,56 +36,39 @@ set(CMAKE_INSTALL_FULL_SYSCONFDIR_ARANGO @CMAKE_INSTALL_FULL_SYSCONFDIR_ARANGO@)
 set(ORIGINAL_SOURCE_DIR @PROJECT_SOURCE_DIR@)
 set(PROJECT_SOURCE_DIR @PROJECT_SOURCE_DIR@)
 
+################################################################################
+# specify which target archcitecture the package is going to be:
+################################################################################
+if(CMAKE_TARGET_ARCHITECTURES MATCHES ".*x86_64.*")
+  set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE "amd64")
+elseif(CMAKE_TARGET_ARCHITECTURES MATCHES "aarch64")
+  set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE "arm64")
+elseif(CMAKE_TARGET_ARCHITECTURES MATCHES "armv7")
+  set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE "arm7")
+else()
+  set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE "i386")
+endif()
+
+################################################################################
+# Install the external files into the package directory:
+################################################################################
 include(${ORIGINAL_SOURCE_DIR}/cmake/InstallMacros.cmake)
+include(${ORIGINAL_SOURCE_DIR}/cmake/InstallArangoDBJSClient.cmake)
+include(${ORIGINAL_SOURCE_DIR}/arangosh/install.cmake)
 
-# Start installing the client components:
-install(
-  DIRECTORY ${ORIGINAL_SOURCE_DIR}/js/common ${ORIGINAL_SOURCE_DIR}/js/client
-  DESTINATION share/arangodb3/js
-  FILES_MATCHING PATTERN "*.js"
-  REGEX "^.*/common/test-data$" EXCLUDE
-  REGEX "^.*/common/tests$" EXCLUDE
-  REGEX "^.*/client/tests$" EXCLUDE)
-
-install(
-  FILES ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${BIN_ARANGOBENCH}
-  DESTINATION ${CMAKE_INSTALL_FULL_BINDIR})
-install_config(arangobench)
-
-install(
-  FILES ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${BIN_ARANGODUMP}
-  DESTINATION ${CMAKE_INSTALL_FULL_BINDIR})
-install_config(arangodump)
-
-install(
-  FILES ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${BIN_ARANGOIMP}
-  DESTINATION ${CMAKE_INSTALL_FULL_BINDIR})
-install_config(arangoimp)
-
-install(
-  FILES ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${BIN_ARANGORESTORE}
-  DESTINATION ${CMAKE_INSTALL_FULL_BINDIR})
-install_config(arangorestore)
-
-install(
-  FILES ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${BIN_ARANGOSH}
-  DESTINATION ${CMAKE_INSTALL_FULL_BINDIR})
-install_config(arangosh)
-
-install(
-  FILES ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${BIN_ARANGOVPACK}
-  DESTINATION ${CMAKE_INSTALL_FULL_BINDIR})
-
-install_command_alias(${BIN_ARANGOSH}
-  ${CMAKE_INSTALL_FULL_BINDIR}
-  foxx-manager)
-install_config(foxx-manager)
-
-
-# client packaging starts here:
-
+################################################################################
+# Get the final values for cpack:
+################################################################################
+set(CPACK_PACKAGE_VERSION "${ARANGODB_VERSION}")
 set(CPACK_PACKAGE_NAME "arangodb3-client")
-set(CPACK_PACKAGE_CONTACT "info@arangodb.com")
-set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "ArangoDB Client Package")
+set(CPACK_PACKAGE_CONTACT ${ARANGODB_PACKAGE_CONTACT})
+set(CPACK_RESOURCE_FILE_LICENSE "${PROJECT_SOURCE_DIR}/LICENSE")
+set(CPACK_DEBIAN_PACKAGE_HOMEPAGE ${ARANGODB_URL_INFO_ABOUT})
+set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
+set(CPACK_DEBIAN_PACKAGE_CONFLICTS "arangodb, arangodb3")
+set(CPACK_DEBIAN_COMPRESSION_TYPE "xz")
+
+file(READ "${PROJECT_SOURCE_DIR}/Installation/debian/client_packagedesc.txt"
+  CPACK_DEBIAN_PACKAGE_DESCRIPTION)
 
 include(CPack)

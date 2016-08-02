@@ -60,7 +60,9 @@ set(ARANGODB_VERSION_REVISION   "devel")
 set(ARANGODB_VERSION
     "${ARANGODB_VERSION_MAJOR}.${ARANGODB_VERSION_MINOR}.${ARANGODB_VERSION_REVISION}")
 
-# for NSIS
+# for the packages
+set(ARANGODB_PACKAGE_VENDOR  "ArangoDB GmbH")
+set(ARANGODB_PACKAGE_CONTACT "info@arangodb.com")
 set(ARANGODB_DISPLAY_NAME       "ArangoDB")
 set(ARANGODB_URL_INFO_ABOUT     "https://www.arangodb.com")
 set(ARANGODB_HELP_LINK          "https://docs.arangodb.com/${ARANGODB_VERSION_MAJOR}.${ARANGODB_VERSION_MINOR}/")

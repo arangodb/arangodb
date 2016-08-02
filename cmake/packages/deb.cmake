@@ -1,9 +1,14 @@
-set(CPACK_DEBIAN_PACKAGE_SECTION "database")
+# -*- mode: CMAKE; -*-
+################################################################################
+# This produces the debian packages, using client/deb.txt for the second package.
+################################################################################
 FILE(READ "${PROJECT_SOURCE_DIR}/Installation/debian/packagedesc.txt" CPACK_DEBIAN_PACKAGE_DESCRIPTION)
-SET(CPACK_DEBIAN_PACKAGE_CONFLICTS "arangodb")
+set(CPACK_DEBIAN_PACKAGE_SECTION "database")
+set(CPACK_DEBIAN_PACKAGE_CONFLICTS "arangodb")
 set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
 set(CPACK_DEBIAN_COMPRESSION_TYPE "xz")
 set(CPACK_DEBIAN_PACKAGE_HOMEPAGE ${ARANGODB_URL_INFO_ABOUT})
+
 list(APPEND CPACK_DEBIAN_PACKAGE_CONTROL_EXTRA
   "${PROJECT_SOURCE_DIR}/Installation/debian/templates"
   "${PROJECT_SOURCE_DIR}/Installation/debian/config"
@@ -22,7 +27,8 @@ else()
   set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE "i386")
 endif()
 
-# components
+
+# deploy the Init script:
 install(
   FILES ${PROJECT_SOURCE_DIR}/Installation/debian/arangodb.init
   PERMISSIONS OWNER_READ OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
@@ -31,20 +37,26 @@ install(
   COMPONENT debian-extras
   )
 
+################################################################################
+# hook to build the server package
+################################################################################
 add_custom_target(package-arongodb-server
   COMMAND ${CMAKE_COMMAND} .
   COMMAND ${CMAKE_CPACK_COMMAND} -G DEB
   WORKING_DIRECTORY ${PROJECT_BINARY_DIR})
 
 list(APPEND PACKAGES_LIST package-arongodb-server)
-  
-set(BUILD_DIR ${CMAKE_CURRENT_BINARY_DIR}/packages/arangodb-client)
-configure_file(cmake/packages/client/deb.txt ${BUILD_DIR}/CMakeLists.txt @ONLY)
+
+################################################################################
+# hook to build the client package
+################################################################################
+set(CLIENT_BUILD_DIR ${CMAKE_CURRENT_BINARY_DIR}/packages/arangodb-client)
+configure_file(cmake/packages/client/deb.txt ${CLIENT_BUILD_DIR}/CMakeLists.txt @ONLY)
 add_custom_target(package-arongodb-client
   COMMAND ${CMAKE_COMMAND} .
   COMMAND ${CMAKE_CPACK_COMMAND} -G DEB
   COMMAND cp *.deb ${PROJECT_BINARY_DIR} 
-  WORKING_DIRECTORY ${BUILD_DIR})
+  WORKING_DIRECTORY ${CLIENT_BUILD_DIR})
 
 
 list(APPEND PACKAGES_LIST package-arongodb-client)
