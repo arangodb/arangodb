@@ -60,7 +60,7 @@ void V8PlatformFeature::collectOptions(
   options->addHiddenOption("--javascript.v8-options", "options to pass to v8",
                            new VectorParameter<StringParameter>(&_v8Options));
 
-  options->addOption("--javascript.v8-max-heap", "maximal heap size",
+  options->addOption("--javascript.v8-max-heap", "maximal heap size (in MB)",
                      new UInt64Parameter(&_v8MaxHeap));
 }
 
@@ -73,6 +73,13 @@ void V8PlatformFeature::validateOptions(
       std::string help = "--help";
       v8::V8::SetFlagsFromString(help.c_str(), (int)help.size());
       exit(EXIT_SUCCESS);
+    }
+  }
+  
+  if (0 < _v8MaxHeap) {
+    if (_v8MaxHeap > (std::numeric_limits<int>::max)()) {
+      LOG(FATAL) << "value for '--javascript.v8-max-heap' exceeds maximum value " << (std::numeric_limits<int>::max)();
+      FATAL_ERROR_EXIT();
     }
   }
 }
@@ -160,7 +167,7 @@ v8::Isolate* V8PlatformFeature::createIsolate() {
   createParams.array_buffer_allocator = _allocator.get();
 
   if (0 < _v8MaxHeap) {
-    createParams.constraints.set_max_old_space_size(_v8MaxHeap);
+    createParams.constraints.set_max_old_space_size(static_cast<int>(_v8MaxHeap));
   }
 
   auto isolate = v8::Isolate::New(createParams);
