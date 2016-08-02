@@ -51,10 +51,10 @@ class HttpRequest : public GeneralRequest {
  private:
   HttpRequest(ConnectionInfo const&, char const*, size_t, bool);
 
-  // should only be called by createFakeRequest
-  // as the Request is not fully constructed
   // HACK HACK HACK
-  // this is just to avoid the FakeRequest class
+  // This should only be called by createFakeRequest in ClusterComm
+  // as the Request is not fully constructed. This 2nd constructor
+  // avoids the need of a additional FakeRequest class.
   HttpRequest(ContentType contentType, char const* body, int64_t contentLength,
               std::unordered_map<std::string, std::string> const& headers);
 
@@ -131,7 +131,6 @@ class HttpRequest : public GeneralRequest {
  private:
   std::unordered_map<std::string, std::string> _cookies;
   int64_t _contentLength;
-  // char* _header;
   std::unique_ptr<char[]> _header;
   std::string _body;
 
@@ -142,7 +141,7 @@ class HttpRequest : public GeneralRequest {
 
   // previously in base class
   std::unordered_map<std::string, std::string>
-      _headers;  // gets set by httpRequest: parseHeaders -> setHeaders
+      _headers;  // is set by httpRequest: parseHeaders -> setHeaders
   std::unordered_map<std::string, std::string> _values;
   std::unordered_map<std::string, std::vector<std::string>> _arrayValues;
 };

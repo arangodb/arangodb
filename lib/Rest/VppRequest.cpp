@@ -24,6 +24,7 @@
 #include "VppRequest.h"
 
 #include <velocypack/Builder.h>
+#include <velocypack/Iterator.h>
 #include <velocypack/Options.h>
 #include <velocypack/Parser.h>
 #include <velocypack/Validator.h>
@@ -43,21 +44,49 @@ std::unordered_map<std::string, std::string> VppRequest::_blam =
     std::unordered_map<std::string, std::string>();
 
 VppRequest::VppRequest(ConnectionInfo const& connectionInfo,
-                       VPackBuffer<uint8_t>&& header, size_t length)
+                       VPackMessage&& message)
     : GeneralRequest(connectionInfo),
-      _contentLength(0),
-      _header(std::move(header)) {
-  if (0 < length) {
+      _message(std::move(message)),
+      _headers(nullptr) {
+  if (message._payload != VPackSlice::noneSlice()) {
     _contentType = ContentType::VPACK;
     _contentTypeResponse = ContentType::VPACK;
-    parseHeader();
+    _protocol = "vpp";
   }
 }
 
 VPackSlice VppRequest::payload(VPackOptions const* options) {
-  VPackValidator validator;
-  validator.validate(_payload.data(), _payload.size());
-  return VPackSlice(_payload.data());
+  // TODO - handle options??
+  return _message._payload;
 }
 
-void VppRequest::parseHeader() {}
+std::unordered_map<std::string, std::string> const& VppRequest::headers()
+    const {
+  if (!_headers) {
+    using namespace std;
+    _headers = make_unique<unordered_map<string, string>>();
+    TRI_ASSERT(_message._header.isObject());
+    for (auto const& it : VPackObjectIterator(_message._header)) {
+      _headers->emplace(it.key.copyString(), it.value.copyString());
+    }
+  }
+  return *_headers;
+}
+
+std::string const& VppRequest::header(std::string const& key,
+                                      bool& found) const {
+  // we need to use headers as we MUST return a ref to string
+  headers();
+  auto it = _headers->find(key);
+  if (it != _headers->end()) {
+    found = true;
+    return it->second;
+  }
+  found = false;
+  return StaticStrings::Empty;
+}
+
+std::string const& VppRequest::header(std::string const& key) const {
+  bool unused = true;
+  return header(key, unused);
+}

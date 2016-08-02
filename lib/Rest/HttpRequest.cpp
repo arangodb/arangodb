@@ -57,20 +57,20 @@ HttpRequest::HttpRequest(ConnectionInfo const& connectionInfo,
     parseHeader(length);
   }
 }
-  
-HttpRequest::HttpRequest(ContentType contentType, char const* body, int64_t contentLength,
-              std::unordered_map<std::string, std::string> const& headers)
-      : GeneralRequest(ConnectionInfo()),
-        _contentLength(contentLength),
-        _header(nullptr),
-        _body(body, contentLength),
-        _allowMethodOverride(false),
-        _vpackBuilder(nullptr),
-        _headers(headers) {
-    
-    _contentType = contentType;
-    _contentTypeResponse = ContentType::JSON;
-  }
+
+HttpRequest::HttpRequest(
+    ContentType contentType, char const* body, int64_t contentLength,
+    std::unordered_map<std::string, std::string> const& headers)
+    : GeneralRequest(ConnectionInfo()),
+      _contentLength(contentLength),
+      _header(nullptr),
+      _body(body, contentLength),
+      _allowMethodOverride(false),
+      _vpackBuilder(nullptr),
+      _headers(headers) {
+  _contentType = contentType;
+  _contentTypeResponse = ContentType::JSON;
+}
 
 void HttpRequest::parseHeader(size_t length) {
   char* start = _header.get();
@@ -803,9 +803,9 @@ std::string const& HttpRequest::value(std::string const& key,
   found = false;
   return StaticStrings::Empty;
 }
-  
+
 HttpRequest* HttpRequest::createFakeRequest(
-      ContentType contentType, char const* body, int64_t contentLength,
-      std::unordered_map<std::string, std::string> const& headers) {
+    ContentType contentType, char const* body, int64_t contentLength,
+    std::unordered_map<std::string, std::string> const& headers) {
   return new HttpRequest(contentType, body, contentLength, headers);
 }

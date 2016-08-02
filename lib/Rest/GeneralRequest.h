@@ -51,6 +51,7 @@ class GeneralRequest {
 
  public:
   GeneralRequest(GeneralRequest&&) = default;
+
   // VSTREAM_CRED: This method is used for sending Authentication
   // request,i.e; username and password.
   //
@@ -156,6 +157,7 @@ class GeneralRequest {
   std::vector<std::string> const& suffix() const { return _suffix; }
   void addSuffix(std::string&& part);
 
+  virtual int64_t contentLength() const = 0;
   // get value from headers map. The key must be lowercase.
   virtual std::string const& header(std::string const& key) const = 0;
   virtual std::string const& header(std::string const& key,
@@ -183,9 +185,6 @@ class GeneralRequest {
     rv->add(payload(options));
     return rv;
   };
-
-  //  virtual std::string const& body() const = 0;
-  virtual int64_t contentLength() const = 0;
 
   ContentType contentType() const { return _contentType; }
 

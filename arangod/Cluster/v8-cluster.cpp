@@ -36,7 +36,6 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
-
 using namespace arangodb;
 using namespace arangodb::basics;
 
@@ -48,11 +47,11 @@ using namespace arangodb::basics;
   CreateAgencyException(args, data); \
   return;
 
-#define ONLY_IN_CLUSTER \
+#define ONLY_IN_CLUSTER                                 \
   if (!ServerState::instance()->isRunningInCluster()) { \
-    TRI_V8_THROW_EXCEPTION_INTERNAL("ArangoDB is not running in cluster mode"); \
+    TRI_V8_THROW_EXCEPTION_INTERNAL(                    \
+        "ArangoDB is not running in cluster mode");     \
   }
-
 
 static void CreateAgencyException(
     v8::FunctionCallbackInfo<v8::Value> const& args,
@@ -248,7 +247,6 @@ static void JS_GetAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   for (auto const& a : VPackArrayIterator(result.slice())) {
     for (auto const& o : VPackObjectIterator(a)) {
-
       std::string const key = o.key.copyString();
       VPackSlice const slice = o.value;
 
@@ -782,7 +780,8 @@ static void JS_GetCollectionInfoCurrentClusterInfo(
                 TRI_V8_STD_STRING(errorMessage));
   }
   auto servers = cic->servers(shardID);
-  v8::Handle<v8::Array> list = v8::Array::New(isolate, static_cast<int>(servers.size()));
+  v8::Handle<v8::Array> list =
+      v8::Array::New(isolate, static_cast<int>(servers.size()));
   uint32_t pos = 0;
   for (auto const& s : servers) {
     list->Set(pos++, TRI_V8_STD_STRING(s));
@@ -1630,27 +1629,28 @@ static void Return_PrepareClusterCommResultForJS(
       r->Set(ErrorMessageKey,
              TRI_V8_ASCII_STRING("required backend was not available"));
     } else if (res.status == CL_COMM_RECEIVED) {  // Everything is OK
+      // FIXME HANDLE VPP
+      auto httpRequest = std::dynamic_pointer_cast<HttpRequest>(res.answer);
+      if (httpRequest == nullptr) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+      }
+
       // The headers:
       v8::Handle<v8::Object> h = v8::Object::New(isolate);
       TRI_GET_GLOBAL_STRING(StatusKey);
       r->Set(StatusKey, TRI_V8_ASCII_STRING("RECEIVED"));
       TRI_ASSERT(res.answer != nullptr);
-      std::unordered_map<std::string, std::string> headers = res.answer->headers();
+      std::unordered_map<std::string, std::string> headers =
+          res.answer->headers();
       headers["content-length"] =
-          StringUtils::itoa(res.answer->contentLength());
+          StringUtils::itoa(httpRequest->contentLength());
       for (auto& it : headers) {
         h->Set(TRI_V8_STD_STRING(it.first), TRI_V8_STD_STRING(it.second));
       }
       r->Set(TRI_V8_ASCII_STRING("headers"), h);
 
       // The body:
-      auto httpRequest = std::dynamic_pointer_cast<HttpRequest>(res.answer);
-
-      if(httpRequest == nullptr){
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
-      }
       std::string const& body = httpRequest->body();
-
       if (!body.empty()) {
         r->Set(TRI_V8_ASCII_STRING("body"), TRI_V8_STD_STRING(body));
       }
@@ -1696,7 +1696,8 @@ static void JS_AsyncRequest(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::string destination;
   std::string path;
   auto body = std::make_shared<std::string>();
-  auto headerFields = std::make_unique<std::unordered_map<std::string, std::string>>();
+  auto headerFields =
+      std::make_unique<std::unordered_map<std::string, std::string>>();
   ClientTransactionID clientTransactionID;
   CoordTransactionID coordTransactionID;
   double timeout;
@@ -1761,7 +1762,8 @@ static void JS_SyncRequest(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::string destination;
   std::string path;
   std::string body;
-  auto headerFields = std::make_unique<std::unordered_map<std::string, std::string>>();
+  auto headerFields =
+      std::make_unique<std::unordered_map<std::string, std::string>>();
   ClientTransactionID clientTransactionID;
   CoordTransactionID coordTransactionID;
   double timeout;

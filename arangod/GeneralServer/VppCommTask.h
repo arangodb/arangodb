@@ -10,19 +10,12 @@
 namespace arangodb {
 namespace rest {
 
-struct VPackMessage {
-  VPackMessage() : _buffer(), _header(), _payload() {}
-  VPackBuffer<uint8_t> _buffer;
-  VPackSlice _header;
-  VPackSlice _payload;
-};
-
 class VppCommTask : public GeneralCommTask {
  public:
   VppCommTask(GeneralServer*, TRI_socket_t, ConnectionInfo&&, double timeout);
 
   // read data check if chunk and message are complete
-  // if message is complete exectue a request
+  // if message is complete execute a request
   bool processRead() override;
 
   // convert from GeneralResponse to vppResponse ad dispatch request to class

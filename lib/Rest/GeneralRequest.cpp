@@ -141,6 +141,9 @@ GeneralRequest::RequestType GeneralRequest::findRequestType(
       if (ptr[0] == 'h' && ptr[1] == 'e' && ptr[2] == 'a' && ptr[3] == 'd') {
         return RequestType::HEAD;
       }
+      if (ptr[0] == 'c' && ptr[1] == 'r' && ptr[2] == 'e' && ptr[3] == 'd') {
+        return RequestType::VSTREAM_CRED;
+      }
       break;
 
     case 5:
@@ -155,12 +158,23 @@ GeneralRequest::RequestType GeneralRequest::findRequestType(
           ptr[4] == 't' && ptr[5] == 'e') {
         return RequestType::DELETE_REQ;
       }
+      if (ptr[0] == 's' && ptr[1] == 't' && ptr[2] == 'a' && ptr[3] == 't' &&
+          ptr[4] == 'u' && ptr[5] == 's') {
+        return RequestType::VSTREAM_STATUS;
+      }
       break;
 
     case 7:
       if (ptr[0] == 'o' && ptr[1] == 'p' && ptr[2] == 't' && ptr[3] == 'i' &&
           ptr[4] == 'o' && ptr[5] == 'n' && ptr[6] == 's') {
         return RequestType::OPTIONS;
+      }
+      break;
+
+    case 8:
+      if (ptr[0] == 'r' && ptr[1] == 'e' && ptr[2] == 'g' && ptr[3] == 'i' &&
+          ptr[4] == 's' && ptr[5] == 't' && ptr[6] == 'e' && ptr[7] == 'r') {
+        return RequestType::VSTREAM_REGISTER;
       }
       break;
   }
