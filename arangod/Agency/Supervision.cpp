@@ -55,7 +55,9 @@ Supervision::~Supervision() { shutdown(); };
 void Supervision::wakeUp() {
   TRI_ASSERT(_agent != nullptr);
   if (!this->isStopping()) {
-    _snapshot = _agent->readDB().get(_agencyPrefix);
+    try {
+      _snapshot = _agent->readDB().get(_agencyPrefix);
+    } catch (...) {}
   }
   _cv.signal();
 }
