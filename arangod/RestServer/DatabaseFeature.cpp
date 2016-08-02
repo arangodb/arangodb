@@ -150,7 +150,7 @@ void DatabaseManagerThread::run() {
         // remove apps directory for database
         auto appPath = dealer->appPath();
 
-        if (database->_isOwnAppsDirectory && !appPath.empty()) {
+        if (database->isOwnAppsDirectory() && !appPath.empty()) {
           path = arangodb::basics::FileUtils::buildFilename(
               arangodb::basics::FileUtils::buildFilename(appPath, "_db"),
               database->name());
@@ -687,7 +687,7 @@ int DatabaseFeature::dropDatabase(std::string const& name, bool writeMarker, boo
     _databasesProtector.scan();
     delete oldLists;
 
-    vocbase->_isOwnAppsDirectory = removeAppsDirectory;
+    vocbase->isOwnAppsDirectory(removeAppsDirectory);
 
     // invalidate all entries for the database
     arangodb::aql::QueryCache::instance()->invalidate(vocbase);

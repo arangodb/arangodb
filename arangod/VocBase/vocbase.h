@@ -177,10 +177,8 @@ struct TRI_vocbase_t {
   std::string _name;         // database name
   TRI_vocbase_type_e _type;  // type (normal or coordinator)
   std::atomic<uint64_t> _refCount;
- public:
-  arangodb::basics::DeadlockDetector<TRI_collection_t>
-      _deadlockDetector;
- private:
+  bool _isOwnAppsDirectory;
+  
   arangodb::basics::ReadWriteLock _collectionsLock;  // collection iterator lock
   std::vector<TRI_vocbase_col_t*> _collections;  // pointers to ALL collections
   std::vector<TRI_vocbase_col_t*> _deadCollections;  // pointers to collections
@@ -189,20 +187,22 @@ struct TRI_vocbase_t {
  
   std::unordered_map<std::string, TRI_vocbase_col_t*> _collectionsByName;  // collections by name
   std::unordered_map<TRI_voc_cid_t, TRI_vocbase_col_t*> _collectionsById;    // collections by id
+  
+  std::unique_ptr<arangodb::aql::QueryList> _queries;
+  std::unique_ptr<arangodb::CursorRepository> _cursorRepository;
+  std::unique_ptr<arangodb::CollectionKeysRepository> _collectionKeys;
+
  public:
+  arangodb::basics::DeadlockDetector<TRI_collection_t>
+      _deadlockDetector;
   arangodb::basics::ReadWriteLock _inventoryLock;  // object lock needed when
                                                    // replication is assessing
                                                    // the state of the vocbase
 
   // structures for user-defined volatile data
   void* _userStructures;
- private:
-  std::unique_ptr<arangodb::aql::QueryList> _queries;
-  std::unique_ptr<arangodb::CursorRepository> _cursorRepository;
-  std::unique_ptr<arangodb::CollectionKeysRepository> _collectionKeys;
  public:
   bool _hasCompactor;
-  bool _isOwnAppsDirectory;
 
   std::unique_ptr<TRI_replication_applier_t> _replicationApplier;
 
@@ -244,6 +244,9 @@ struct TRI_vocbase_t {
   arangodb::aql::QueryList* queryList() const { return _queries.get(); }
   arangodb::CursorRepository* cursorRepository() const { return _cursorRepository.get(); }
   arangodb::CollectionKeysRepository* collectionKeys() const { return _collectionKeys.get(); }
+
+  bool isOwnAppsDirectory() const { return _isOwnAppsDirectory; }
+  void isOwnAppsDirectory(bool value) { _isOwnAppsDirectory = value; }
 
   /// @brief whether or not the vocbase has been marked as deleted
   inline bool isDropped() const {

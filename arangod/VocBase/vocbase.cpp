@@ -1530,10 +1530,11 @@ TRI_vocbase_t::TRI_vocbase_t(TRI_vocbase_type_e type, TRI_voc_tick_t id,
       _name(name),
       _type(type),
       _refCount(0),
+      _isOwnAppsDirectory(true),
       _deadlockDetector(false),
       _userStructures(nullptr),
-      _hasCompactor(false),
-      _isOwnAppsDirectory(true) {
+      _hasCompactor(false) {
+
   _queries.reset(new arangodb::aql::QueryList(this));
   _cursorRepository.reset(new arangodb::CursorRepository(this));
   _collectionKeys.reset(new arangodb::CollectionKeysRepository());
