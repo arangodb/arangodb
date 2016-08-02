@@ -170,7 +170,7 @@ class HybridLogicalClock {
 
   static signed char decodeTable[256];
 };
-};
-};
+}
+}
 
 #endif
