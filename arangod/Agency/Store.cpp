@@ -285,7 +285,7 @@ std::vector<bool> Store::apply(
     Builder body;  // host
     body.openObject();
     body.add("term", VPackValue(_agent->term()));
-    body.add("index", VPackValue(_agent->lastCommited()));
+    body.add("index", VPackValue(_agent->lastCommitted()));
     auto ret = in.equal_range(url);
 
     for (auto it = ret.first; it != ret.second; ++it) {
