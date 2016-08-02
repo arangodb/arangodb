@@ -1978,7 +1978,7 @@ static void JS_IdDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
-  TRI_V8_RETURN(V8TickId(isolate, vocbase->_id));
+  TRI_V8_RETURN(V8TickId(isolate, vocbase->id()));
   TRI_V8_TRY_CATCH_END
 }
 
@@ -2420,7 +2420,7 @@ static void DropDatabaseCoordinator(
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
-  TRI_voc_tick_t const id = vocbase->_id;
+  TRI_voc_tick_t const id = vocbase->id();
   vocbase->release();
 
   ClusterInfo* ci = ClusterInfo::instance();

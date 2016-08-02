@@ -29,9 +29,9 @@ endif ()
 set(CMAKE_OSX_DEPLOYMENT_TARGET "10.9" CACHE STRING "deployment target for MacOSX")
 
 if (WIN32)
-  project(ArangoDB CXX C)
+  project(arangodb3 CXX C)
 else ()
-  project(ArangoDB CXX C ASM)
+  project(arangodb3 CXX C ASM)
 endif ()
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -55,7 +55,7 @@ endif ()
 
 set(ARANGODB_VERSION_MAJOR      "3")
 set(ARANGODB_VERSION_MINOR      "0")
-set(ARANGODB_VERSION_REVISION   "x-devel")
+set(ARANGODB_VERSION_REVISION   "devel")
 
 set(ARANGODB_VERSION
     "${ARANGODB_VERSION_MAJOR}.${ARANGODB_VERSION_MINOR}.${ARANGODB_VERSION_REVISION}")
@@ -223,9 +223,9 @@ elseif (CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
 endif ()
 
 if (WINDOWS)
-  set(BASE_FLAGS     "/D WIN32 /D _WINDOWS /W3 /MP" CACHE STRING "base flags")
-  set(BASE_C_FLAGS   ""                         	CACHE STRING "base C flags")
-  set(BASE_CXX_FLAGS "/GR /EHsc"                	CACHE STRING "base C++flags")
+  set(BASE_FLAGS     "/D WIN32 /D _WINDOWS /W3 /MP"      CACHE STRING "base flags")
+  set(BASE_C_FLAGS   ""                         	 CACHE STRING "base C flags")
+  set(BASE_CXX_FLAGS "/GR /EHsc"                	 CACHE STRING "base C++flags")
 else ()
   set(BASE_FLAGS     ""                                  CACHE STRING "base flags")
   set(BASE_C_FLAGS   "${CMAKE_C_FLAGS}   $ENV{CFLAGS}"   CACHE STRING "base C flags")
@@ -691,6 +691,7 @@ add_definitions("-DARANGODB_LIBEV_VERSION=\"${LIBEV_VERSION}\"")
 ################################################################################
 
 find_package(OpenSSL REQUIRED)
+
 include_directories(${OPENSSL_INCLUDE_DIR})
 add_definitions(-DARANGODB_OPENSSL_VERSION=\"${OPENSSL_VERSION}\")
 
@@ -715,10 +716,6 @@ if (USE_OPENSSL_NO_SSL2)
   add_definitions(-DOPENSSL_NO_SSL2)
 endif ()
 
-if(WIN32)
-  option(BUNDLE_OPENSSL "Bundle OpenSSL library" ON)
-endif()
-
 ################################################################################
 ## V8
 ################################################################################
@@ -734,7 +731,7 @@ include_directories(${ZLIB_INCLUDE_DIR})
 add_definitions("-DARANGODB_ZLIB_VERSION=\"${ZLIB_VERSION}\"")
 
 ################################################################################
-## PATHS
+## PATHS, installation, packages
 ################################################################################
 
 include(ArangoDBMacros)
@@ -848,6 +845,7 @@ if (NOT USE_PRECOMPILED_V8)
   add_dependencies(arangosh      v8_build)
 endif ()
 
+
 #copy compile commands to source dir
 if( EXISTS "${CMAKE_CURRENT_BINARY_DIR}/compile_commands.json" )
     message(STATUS "copy compile_commands.json")
@@ -856,3 +854,11 @@ if( EXISTS "${CMAKE_CURRENT_BINARY_DIR}/compile_commands.json" )
         ${CMAKE_CURRENT_SOURCE_DIR}/compile_commands.json
     )
 endif()
+
+set(BUILD_DIR ${CMAKE_CURRENT_BINARY_DIR}/packages/arangodb-client)
+configure_file(cmake/packages/package-client.txt ${BUILD_DIR}/CMakeLists.txt @ONLY)
+add_custom_target(package-arongodb-client COMMAND ${CMAKE_COMMAND} . 
+  COMMAND ${CMAKE_CPACK_COMMAND} -G DEB
+  COMMAND cp *.deb ${PROJECT_BINARY_DIR} 
+  WORKING_DIRECTORY ${BUILD_DIR})
+

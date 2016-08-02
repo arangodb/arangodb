@@ -70,7 +70,7 @@ class Agent : public arangodb::Thread {
   bool fitness() const;
 
   /// @brief Leader ID
-  arangodb::consensus::index_t lastCommited() const;
+  arangodb::consensus::index_t lastCommitted() const;
 
   /// @brief Leader ID
   arangodb::consensus::id_t leaderID() const;
@@ -136,6 +136,9 @@ class Agent : public arangodb::Thread {
  private:
   Agent& operator=(VPackSlice const&);
 
+  /// @brief Leader ID
+  void lastCommitted(arangodb::consensus::index_t);
+
   /// @brief Vocbase for agency persistence
   TRI_vocbase_t* _vocbase;
 
@@ -160,7 +163,7 @@ class Agent : public arangodb::Thread {
   /// @brief Spearhead (write) kv-store
   Store _spearhead;
 
-  /// @brief Commited (read) kv-store
+  /// @brief Committed (read) kv-store
   Store _readDB;
 
   /// @brief Condition variable for appendEntries

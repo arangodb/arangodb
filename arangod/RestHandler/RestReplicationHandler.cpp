@@ -46,7 +46,7 @@
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/StandaloneTransactionContext.h"
 #include "Utils/TransactionContext.h"
-#include "VocBase/compactor.h"
+#include "VocBase/CompactorThread.h"
 #include "VocBase/replication-applier.h"
 #include "VocBase/replication-dump.h"
 #include "VocBase/ticks.h"
@@ -373,7 +373,7 @@ bool RestReplicationHandler::filterCollection(TRI_vocbase_col_t* collection,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestReplicationHandler::isCoordinatorError() {
-  if (_vocbase->_type == TRI_VOCBASE_TYPE_COORDINATOR) {
+  if (_vocbase->type() == TRI_VOCBASE_TYPE_COORDINATOR) {
     generateError(GeneralResponse::ResponseCode::NOT_IMPLEMENTED,
                   TRI_ERROR_CLUSTER_UNSUPPORTED,
                   "replication API is not supported on a coordinator");
@@ -3366,7 +3366,7 @@ void RestReplicationHandler::handleCommandMakeSlave() {
   }
 
   // forget about any existing replication applier configuration
-  int res = _vocbase->_replicationApplier->forget();
+  int res = _vocbase->replicationApplier()->forget();
 
   if (res != TRI_ERROR_NO_ERROR) {
     generateError(GeneralResponse::responseCode(res), res);
@@ -3401,14 +3401,14 @@ void RestReplicationHandler::handleCommandMakeSlave() {
     return;
   }
 
-  res = TRI_ConfigureReplicationApplier(_vocbase->_replicationApplier.get(), &config);
+  res = TRI_ConfigureReplicationApplier(_vocbase->replicationApplier(), &config);
 
   if (res != TRI_ERROR_NO_ERROR) {
     generateError(GeneralResponse::responseCode(res), res);
     return;
   }
 
-  res = _vocbase->_replicationApplier->start(lastLogTick, true, barrierId);
+  res = _vocbase->replicationApplier()->start(lastLogTick, true, barrierId);
 
   if (res != TRI_ERROR_NO_ERROR) {
     generateError(GeneralResponse::responseCode(res), res);
@@ -3417,7 +3417,7 @@ void RestReplicationHandler::handleCommandMakeSlave() {
 
   try {
     std::shared_ptr<VPackBuilder> result =
-        _vocbase->_replicationApplier->toVelocyPack();
+        _vocbase->replicationApplier()->toVelocyPack();
     generateResult(GeneralResponse::ResponseCode::OK, result->slice());
   } catch (...) {
     generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
@@ -3590,13 +3590,13 @@ void RestReplicationHandler::handleCommandServerId() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandApplierGetConfig() {
-  TRI_ASSERT(_vocbase->_replicationApplier != nullptr);
+  TRI_ASSERT(_vocbase->replicationApplier() != nullptr);
 
   TRI_replication_applier_configuration_t config;
 
   {
-    READ_LOCKER(readLocker, _vocbase->_replicationApplier->_statusLock);
-    config.update(&_vocbase->_replicationApplier->_configuration);
+    READ_LOCKER(readLocker, _vocbase->replicationApplier()->_statusLock);
+    config.update(&_vocbase->replicationApplier()->_configuration);
   }
   try {
     std::shared_ptr<VPackBuilder> configBuilder = config.toVelocyPack(false);
@@ -3612,7 +3612,7 @@ void RestReplicationHandler::handleCommandApplierGetConfig() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandApplierSetConfig() {
-  TRI_ASSERT(_vocbase->_replicationApplier != nullptr);
+  TRI_ASSERT(_vocbase->replicationApplier() != nullptr);
 
   TRI_replication_applier_configuration_t config;
 
@@ -3627,8 +3627,8 @@ void RestReplicationHandler::handleCommandApplierSetConfig() {
   VPackSlice const body = parsedBody->slice();
 
   {
-    READ_LOCKER(readLocker, _vocbase->_replicationApplier->_statusLock);
-    config.update(&_vocbase->_replicationApplier->_configuration);
+    READ_LOCKER(readLocker, _vocbase->replicationApplier()->_statusLock);
+    config.update(&_vocbase->replicationApplier()->_configuration);
   }
 
   std::string const endpoint =
@@ -3716,7 +3716,7 @@ void RestReplicationHandler::handleCommandApplierSetConfig() {
   }
 
   int res =
-      TRI_ConfigureReplicationApplier(_vocbase->_replicationApplier.get(), &config);
+      TRI_ConfigureReplicationApplier(_vocbase->replicationApplier(), &config);
 
   if (res != TRI_ERROR_NO_ERROR) {
     generateError(GeneralResponse::responseCode(res), res);
@@ -3731,7 +3731,7 @@ void RestReplicationHandler::handleCommandApplierSetConfig() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandApplierStart() {
-  TRI_ASSERT(_vocbase->_replicationApplier != nullptr);
+  TRI_ASSERT(_vocbase->replicationApplier() != nullptr);
 
   bool found;
   std::string const& value1 = _request->value("from", found);
@@ -3754,7 +3754,7 @@ void RestReplicationHandler::handleCommandApplierStart() {
   }
 
   int res =
-      _vocbase->_replicationApplier->start(initialTick, useTick, barrierId);
+      _vocbase->replicationApplier()->start(initialTick, useTick, barrierId);
 
   if (res != TRI_ERROR_NO_ERROR) {
     if (res == TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION ||
@@ -3774,9 +3774,9 @@ void RestReplicationHandler::handleCommandApplierStart() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandApplierStop() {
-  TRI_ASSERT(_vocbase->_replicationApplier != nullptr);
+  TRI_ASSERT(_vocbase->replicationApplier() != nullptr);
 
-  int res = _vocbase->_replicationApplier->stop(true);
+  int res = _vocbase->replicationApplier()->stop(true);
 
   if (res != TRI_ERROR_NO_ERROR) {
     generateError(GeneralResponse::ResponseCode::SERVER_ERROR, res);
@@ -3791,11 +3791,11 @@ void RestReplicationHandler::handleCommandApplierStop() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandApplierGetState() {
-  TRI_ASSERT(_vocbase->_replicationApplier != nullptr);
+  TRI_ASSERT(_vocbase->replicationApplier() != nullptr);
 
   try {
     std::shared_ptr<VPackBuilder> result =
-        _vocbase->_replicationApplier->toVelocyPack();
+        _vocbase->replicationApplier()->toVelocyPack();
     generateResult(GeneralResponse::ResponseCode::OK, result->slice());
   } catch (...) {
     generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
@@ -3809,9 +3809,9 @@ void RestReplicationHandler::handleCommandApplierGetState() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandApplierDeleteState() {
-  TRI_ASSERT(_vocbase->_replicationApplier != nullptr);
+  TRI_ASSERT(_vocbase->replicationApplier() != nullptr);
 
-  int res = _vocbase->_replicationApplier->forget();
+  int res = _vocbase->replicationApplier()->forget();
 
   if (res != TRI_ERROR_NO_ERROR) {
     generateError(GeneralResponse::ResponseCode::SERVER_ERROR, res);

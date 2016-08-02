@@ -52,9 +52,10 @@
 #include "Utils/CollectionKeysRepository.h"
 #include "Utils/CursorRepository.h"
 #include "V8Server/v8-user-structures.h"
+#include "VocBase/CleanupThread.h"
+#include "VocBase/CompactorThread.h"
 #include "VocBase/Ditch.h"
 #include "VocBase/collection.h"
-#include "VocBase/compactor.h"
 #include "VocBase/replication-applier.h"
 #include "VocBase/ticks.h"
 #include "VocBase/transaction.h"
@@ -346,7 +347,7 @@ bool TRI_vocbase_t::DropCollectionCallback(TRI_collection_t* col, void* data) {
   
   // delete persistent indexes    
 #ifdef ARANGODB_ENABLE_ROCKSDB
-  RocksDBFeature::dropCollection(vocbase->_id, collection->cid());
+  RocksDBFeature::dropCollection(vocbase->id(), collection->cid());
 #endif
 
   // .............................................................................
@@ -999,16 +1000,15 @@ void TRI_vocbase_t::shutdown() {
   // this will signal the compactor thread to do one last iteration
   _state = (sig_atomic_t)TRI_VOCBASE_STATE_SHUTDOWN_COMPACTOR;
 
-  TRI_LockCondition(&_compactorCondition);
-  TRI_SignalCondition(&_compactorCondition);
-  TRI_UnlockCondition(&_compactorCondition);
+  if (_compactorThread != nullptr) {
+    _compactorThread->beginShutdown();
+    _compactorThread->signal();
 
-  if (_hasCompactor) {
-    int res = TRI_JoinThread(&_compactor);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      LOG(ERR) << "unable to join compactor thread: " << TRI_errno_string(res);
+    while (_compactorThread->isRunning()) {
+      usleep(5000);
     }
+    
+    _compactorThread.reset();
   }
 
   // this will signal the cleanup thread to do one last iteration
@@ -1038,19 +1038,6 @@ void TRI_vocbase_t::shutdown() {
   for (auto& collection : _collections) {
     delete collection;
   }
-}
-
-/// @brief returns all known (document) collections
-std::vector<TRI_vocbase_col_t*> TRI_vocbase_t::collections() {
-  std::vector<TRI_vocbase_col_t*> result;
- 
-  READ_LOCKER(readLocker, _collectionsLock);
-
-  for (auto const& it : _collectionsById) {
-    result.emplace_back(it.second);
-  }
-
-  return result;
 }
 
 /// @brief returns names of all known (document) collections
@@ -1543,10 +1530,10 @@ TRI_vocbase_t::TRI_vocbase_t(TRI_vocbase_type_e type, TRI_voc_tick_t id,
       _name(name),
       _type(type),
       _refCount(0),
+      _isOwnAppsDirectory(true),
       _deadlockDetector(false),
-      _userStructures(nullptr),
-      _hasCompactor(false),
-      _isOwnAppsDirectory(true) {
+      _userStructures(nullptr) {
+
   _queries.reset(new arangodb::aql::QueryList(this));
   _cursorRepository.reset(new arangodb::CursorRepository(this));
   _collectionKeys.reset(new arangodb::CollectionKeysRepository());
@@ -1556,8 +1543,6 @@ TRI_vocbase_t::TRI_vocbase_t(TRI_vocbase_type_e type, TRI_voc_tick_t id,
   _deadCollections.reserve(32);
 
   TRI_CreateUserStructuresVocBase(this);
-
-  TRI_InitCondition(&_compactorCondition);
 }
 
 /// @brief destroy a vocbase object
@@ -1566,12 +1551,9 @@ TRI_vocbase_t::~TRI_vocbase_t() {
     TRI_FreeUserStructuresVocBase(this);
   }
 
-  // free replication
   _replicationApplier.reset();
-
+  _compactorThread.reset();
   _cleanupThread.reset();
-
-  TRI_DestroyCondition(&_compactorCondition);
 }
   
 std::string TRI_vocbase_t::path() const {
@@ -1614,6 +1596,10 @@ bool TRI_vocbase_t::IsAllowedName(bool allowSystem, std::string const& name) {
 
   return true;
 }
+  
+void TRI_vocbase_t::addReplicationApplier(TRI_replication_applier_t* applier) {
+  _replicationApplier.reset(applier);
+}
 
 /// @brief note the progress of a connected replication client
 void TRI_vocbase_t::updateReplicationClient(TRI_server_id_t serverId,
@@ -1650,6 +1636,16 @@ TRI_vocbase_t::getReplicationClients() {
         std::make_tuple(it.first, it.second.first, it.second.second));
   }
   return result;
+}
+      
+std::vector<TRI_vocbase_col_t*> TRI_vocbase_t::collections() {
+  std::vector<TRI_vocbase_col_t*> collections;
+
+  {
+    READ_LOCKER(readLocker, _collectionsLock);
+    collections = _collections;
+  }
+  return collections;
 }
 
 /// @brief velocypack sub-object (for indexes, as part of TRI_index_element_t, 

@@ -606,7 +606,7 @@ static int WriteBeginMarker(TRI_transaction_t* trx) {
   int res;
 
   try {
-    arangodb::wal::TransactionMarker marker(TRI_DF_MARKER_VPACK_BEGIN_TRANSACTION, trx->_vocbase->_id, trx->_id);
+    arangodb::wal::TransactionMarker marker(TRI_DF_MARKER_VPACK_BEGIN_TRANSACTION, trx->_vocbase->id(), trx->_id);
     res = GetLogfileManager()->allocateAndWrite(marker, false).errorCode;
 
     if (res == TRI_ERROR_NO_ERROR) {
@@ -645,7 +645,7 @@ static int WriteAbortMarker(TRI_transaction_t* trx) {
   int res;
 
   try {
-    arangodb::wal::TransactionMarker marker(TRI_DF_MARKER_VPACK_ABORT_TRANSACTION, trx->_vocbase->_id, trx->_id);
+    arangodb::wal::TransactionMarker marker(TRI_DF_MARKER_VPACK_ABORT_TRANSACTION, trx->_vocbase->id(), trx->_id);
     res = GetLogfileManager()->allocateAndWrite(marker, false).errorCode;
   } catch (arangodb::basics::Exception const& ex) {
     res = ex.code();
@@ -676,7 +676,7 @@ static int WriteCommitMarker(TRI_transaction_t* trx) {
   int res;
 
   try {
-    arangodb::wal::TransactionMarker marker(TRI_DF_MARKER_VPACK_COMMIT_TRANSACTION, trx->_vocbase->_id, trx->_id);
+    arangodb::wal::TransactionMarker marker(TRI_DF_MARKER_VPACK_COMMIT_TRANSACTION, trx->_vocbase->id(), trx->_id);
     res = GetLogfileManager()->allocateAndWrite(marker, trx->_waitForSync).errorCode;
     
     TRI_IF_FAILURE("TransactionWriteCommitMarkerSegfault") { 
@@ -1027,7 +1027,7 @@ int TRI_AddOperationTransaction(TRI_transaction_t* trx,
 
     arangodb::wal::SlotInfoCopy slotInfo =
         arangodb::wal::LogfileManager::instance()->allocateAndWrite(
-            trx->_vocbase->_id, document->_info.id(), 
+            trx->_vocbase->id(), document->_info.id(), 
             operation.marker, wakeUpSynchronizer,
             localWaitForSync, waitForTick);
     if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {

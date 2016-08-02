@@ -21,11 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef _WIN32
-#include "Basics/win-utils.h"
-#endif
-
-#include "compactor.h"
+#include "CompactorThread.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
@@ -1085,36 +1081,33 @@ static bool HasActiveBlockers(TRI_vocbase_t* vocbase) {
   return false;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief compactor event loop
-////////////////////////////////////////////////////////////////////////////////
+CompactorThread::CompactorThread(TRI_vocbase_t* vocbase) 
+    : Thread("Compactor"), _vocbase(vocbase) {}
 
-void TRI_CompactorVocBase(void* data) {
-  TRI_vocbase_t* vocbase = static_cast<TRI_vocbase_t*>(data);
+CompactorThread::~CompactorThread() { shutdown(); }
 
-  int numCompacted = 0;
-  TRI_ASSERT(vocbase->_state == 1);
+void CompactorThread::run() {
+  TRI_ASSERT(_vocbase->_state == 1);
 
   std::vector<TRI_vocbase_col_t*> collections;
 
   while (true) {
+    int numCompacted = 0;
     // keep initial _state value as vocbase->_state might change during
     // compaction loop
-    int state = vocbase->_state;
+    int state = _vocbase->_state;
 
     {
       // check if compaction is currently disallowed
-      TRY_WRITE_LOCKER(compactionLocker, vocbase->_compactionBlockers._lock);
+      TRY_WRITE_LOCKER(compactionLocker, _vocbase->_compactionBlockers._lock);
 
-      if (compactionLocker.isLocked() && !HasActiveBlockers(vocbase)) {
+      if (compactionLocker.isLocked() && !HasActiveBlockers(_vocbase)) {
         // compaction is currently allowed
         double now = TRI_microtime();
-        numCompacted = 0;
 
         try {
-          READ_LOCKER(readLocker, vocbase->_collectionsLock);
           // copy all collections
-          collections = vocbase->_collections;
+          collections = _vocbase->collections();
         } catch (...) {
           collections.clear();
         }
@@ -1193,7 +1186,7 @@ void TRI_CompactorVocBase(void* data) {
 
             // signal the cleanup thread that we worked and that it can now wake
             // up
-            CONDITION_LOCKER(locker, vocbase->_cleanupCondition);
+            CONDITION_LOCKER(locker, _vocbase->_cleanupCondition);
             locker.signal();
           }
         }
@@ -1204,14 +1197,12 @@ void TRI_CompactorVocBase(void* data) {
       // no need to sleep long or go into wait state if we worked.
       // maybe there's still work left
       usleep(1000);
-    } else if (state != 2 && vocbase->_state == 1) {
+    } else if (state != 2 && _vocbase->_state == 1) {
       // only sleep while server is still running
-      TRI_LockCondition(&vocbase->_compactorCondition);
-      TRI_TimedWaitCondition(&vocbase->_compactorCondition,
-                             (uint64_t)COMPACTOR_INTERVAL);
-      TRI_UnlockCondition(&vocbase->_compactorCondition);
+      CONDITION_LOCKER(locker, _condition);
+      _condition.wait(COMPACTOR_INTERVAL);
     }
-
+  
     if (state == 2) {
       // server shutdown
       break;
@@ -1220,3 +1211,4 @@ void TRI_CompactorVocBase(void* data) {
 
   LOG_TOPIC(DEBUG, Logger::COMPACTOR) << "shutting down compactor thread";
 }
+

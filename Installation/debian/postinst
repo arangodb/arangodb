@@ -1,23 +1,64 @@
 #!/bin/sh
 set -e
 
-#DEBHELPER#
+ARANGODB="/usr/sbin/arangod"
 
-echo "
-ArangoDB 3 (http://www.arangodb.org)
-  A multi-purpose open-source database with a flexible data model for documents,
-  graphs, and key-values.
+# source debconf library
+. /usr/share/debconf/confmodule
 
-First Steps with ArangoDB:
-  http:/www.arangodb.org/quickstart
+if [ "$1" = "configure" -a -z "$2" ]; then
+    db_get arangodb3/password
 
-Configuration file:
-  /etc/arangodb3/arangod.conf
+    # Escape backslashes and quotes 
+    if [ -n "$RET" ]; then
+      ARANGODB_DEFAULT_ROOT_PASSWORD=`echo $RET|sed -e 's;\\\\;\\\\\\\\;g' -e 's;";\\\\";g'` \
+         /usr/sbin/arango-init-database \
+         --uid arangodb --gid arangodb || true
+    fi
 
-Start ArangoDB shell client:
-  > /usr/bin/arangosh
+    db_set arangodb3/password ""
+fi
 
-Start ArangoDB service:
-  > /etc/init.d/arangodb3 start
-"
+# check if we should upgrade the database directory
 
+UPGRADE=false
+$ARANGODB --uid arangodb --gid arangodb --server.rest-server false --log.foreground-tty false --database.check-version \
+  || UPGRADE=true
+
+db_get arangodb3/upgrade
+if [ "$RET" = "true" ];  then
+  if [ "$UPGRADE" = "true" ];  then
+    db_get arangodb3/backup
+
+    if [ "$RET" = "true" ];  then
+      BACKUP="/var/lib/arangodb3-`date +%F-%H-%M-%S`"
+      cp -a /var/lib/arangodb3 $BACKUP
+      echo "A backup of your database files has been stored in $BACKUP."
+    fi
+
+    echo "Upgrading database files."
+    $ARANGODB --uid arangodb --gid arangodb --server.rest-server false --log.level error --database.auto-upgrade true
+  else
+    echo "Database files are up-to-date."
+  fi
+elif [ "$UPGRADE" = "true" ];  then
+  echo "Warning: database files need upgrade, automatic upgrade is disable, please do it manually."
+  echo "After you've prepared your system for upgrade run "
+  echo "  /etc/init.d/arangodb3 upgrade"
+  echo "  dpkg --pending --configure"
+  echo "after the packaging system is in stable state again."
+else
+  echo "Database files are up-to-date."
+fi
+
+db_stop
+
+# Automatically added by dh_installinit
+if [ -x "/etc/init.d/arangodb3" ]; then
+	update-rc.d arangodb3 defaults >/dev/null
+	invoke-rc.d arangodb3 start || exit $?
+fi
+# End automatically added section
+
+
+exit 0

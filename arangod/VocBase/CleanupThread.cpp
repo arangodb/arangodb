@@ -30,9 +30,9 @@
 #include "Basics/files.h"
 #include "Logger/Logger.h"
 #include "Utils/CursorRepository.h"
+#include "VocBase/CompactorThread.h"
 #include "VocBase/Ditch.h"
 #include "VocBase/collection.h"
-#include "VocBase/compactor.h"
 #include "Wal/LogfileManager.h"
 
 using namespace arangodb;
@@ -73,9 +73,8 @@ void CleanupThread::run() {
 
       if (locker.isLocked()) {
         try {
-          READ_LOCKER(readLocker, _vocbase->_collectionsLock);
           // copy all collections
-          collections = _vocbase->_collections;
+          collections = _vocbase->collections();
         } catch (...) {
           collections.clear();
         }

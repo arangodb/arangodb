@@ -3845,7 +3845,7 @@ int TRI_collection_t::saveIndex(arangodb::Index* idx, bool writeMarker) {
   int res = TRI_ERROR_NO_ERROR;
 
   try {
-    arangodb::wal::CollectionMarker marker(TRI_DF_MARKER_VPACK_CREATE_INDEX, _vocbase->_id, _info.id(), idxSlice);
+    arangodb::wal::CollectionMarker marker(TRI_DF_MARKER_VPACK_CREATE_INDEX, _vocbase->id(), _info.id(), idxSlice);
 
     arangodb::wal::SlotInfoCopy slotInfo =
         arangodb::wal::LogfileManager::instance()->allocateAndWrite(marker, false);
@@ -3928,7 +3928,7 @@ bool TRI_collection_t::dropIndex(TRI_idx_iid_t iid, bool writeMarker) {
         markerBuilder.add("id", VPackValue(iid));
         markerBuilder.close();
 
-        arangodb::wal::CollectionMarker marker(TRI_DF_MARKER_VPACK_DROP_INDEX, _vocbase->_id, _info.id(), markerBuilder.slice());
+        arangodb::wal::CollectionMarker marker(TRI_DF_MARKER_VPACK_DROP_INDEX, _vocbase->id(), _info.id(), markerBuilder.slice());
         
         arangodb::wal::SlotInfoCopy slotInfo =
             arangodb::wal::LogfileManager::instance()->allocateAndWrite(marker, false);

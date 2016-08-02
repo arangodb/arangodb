@@ -93,7 +93,7 @@ RocksDBIterator::RocksDBIterator(arangodb::Transaction* trx,
       _probe(false) {
   
   TRI_idx_iid_t const id = index->id();
-  std::string const prefix = RocksDBIndex::buildPrefix(trx->vocbase()->_id, _primaryIndex->collection()->_info.id(), id);
+  std::string const prefix = RocksDBIndex::buildPrefix(trx->vocbase()->id(), _primaryIndex->collection()->_info.id(), id);
   TRI_ASSERT(prefix.size() == RocksDBIndex::keyPrefixSize());
 
   _leftEndpoint.reset(new arangodb::velocypack::Buffer<char>());
@@ -282,7 +282,7 @@ int RocksDBIndex::insert(arangodb::Transaction* trx, TRI_doc_mptr_t const* doc,
   }
   
   VPackSlice const key = Transaction::extractKeyFromDocument(VPackSlice(doc->vpack()));
-  std::string const prefix = buildPrefix(trx->vocbase()->_id, _collection->_info.id(), _iid);
+  std::string const prefix = buildPrefix(trx->vocbase()->id(), _collection->_info.id(), _iid);
 
   VPackBuilder builder;
   std::vector<std::string> values;
@@ -453,7 +453,7 @@ int RocksDBIndex::remove(arangodb::Transaction* trx, TRI_doc_mptr_t const* doc,
     VPackSlice const s = builder.slice();
     std::string value;
     value.reserve(keyPrefixSize() + s.byteSize());
-    value.append(buildPrefix(trx->vocbase()->_id, _collection->_info.id(), _iid));
+    value.append(buildPrefix(trx->vocbase()->id(), _collection->_info.id(), _iid));
     value.append(s.startAs<char const>(), s.byteSize());
     values.emplace_back(std::move(value));
   }
@@ -482,7 +482,7 @@ int RocksDBIndex::remove(arangodb::Transaction* trx, TRI_doc_mptr_t const* doc,
 ////////////////////////////////////////////////////////////////////////////////
 
 int RocksDBIndex::drop() {
-  return RocksDBFeature::instance()->dropIndex(_collection->_vocbase->_id, _collection->_info.id(), _iid);
+  return RocksDBFeature::instance()->dropIndex(_collection->_vocbase->id(), _collection->_info.id(), _iid);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -31,7 +31,6 @@ struct TRI_collection_t;
 struct TRI_vocbase_col_t;
 struct TRI_vocbase_t;
 
-/// @brief cleanup event loop
 namespace arangodb {
 
 class CleanupThread : public Thread {

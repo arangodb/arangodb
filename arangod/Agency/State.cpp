@@ -34,6 +34,7 @@
 #include <thread>
 
 #include "Aql/Query.h"
+#include "Aql/QueryRegistry.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "RestServer/QueryRegistryFeature.h"
@@ -46,6 +47,7 @@
 
 using namespace arangodb;
 using namespace arangodb::application_features;
+using namespace arangodb::aql;
 using namespace arangodb::consensus;
 using namespace arangodb::velocypack;
 using namespace arangodb::rest;
@@ -58,6 +60,7 @@ State::State(std::string const& endpoint)
       _endpoint(endpoint),
       _collectionsChecked(false),
       _collectionsLoaded(false),
+      _queryRegistry(nullptr),
       _cur(0) {}
 
 
@@ -167,21 +170,52 @@ arangodb::consensus::index_t State::log(
 
 
 void State::removeConflicts (query_t const& transactions) {
+
   VPackSlice slice = transactions->slice();
   TRI_ASSERT(slice.isArray());
+
   if (slice.length() > 0) {
+
+    auto bindVars = std::make_shared<VPackBuilder>();
+    bindVars->openObject();
+    bindVars->close();
+    
     try {
       auto idx = slice[0].get("index").getUInt();
       if (idx-_cur < _log.size()) {
-        LOG_TOPIC(INFO, Logger::AGENCY)
+        LOG_TOPIC(DEBUG, Logger::AGENCY)
           << "Removing " << _log.size()-idx+_cur
           << " entries from log starting with " << idx;
-        _log.erase(_log.begin()+idx);
+
+        // persisted logs
+        std::stringstream aql;
+        aql << "FOR l IN log FILTER l._key >= '" << stringify(idx)
+            << "' REMOVE l IN log";
+
+        arangodb::aql::Query
+          query(false, _vocbase, aql.str().c_str(), aql.str().size(), bindVars,
+                nullptr, arangodb::aql::PART_MAIN);
+
+        auto queryResult = query.execute(_queryRegistry);
+        if (queryResult.code != TRI_ERROR_NO_ERROR) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
+        }
+
+        queryResult.result->slice();
+        
+        // volatile logs
+        {
+          MUTEX_LOCKER(mutexLocker, _logLock);
+          _log.erase(_log.begin()+idx-1);
+        }
+        
       }
     } catch (std::exception const& e) {
       LOG_TOPIC(ERR, Logger::AGENCY) << e.what() << " " << __FILE__ << __LINE__;
     }
+
   }
+  
 }
 
 
@@ -326,12 +360,17 @@ template<class T> std::ostream& operator<< (std::ostream& o, std::deque<T> const
 }
 
 /// Load collections
-bool State::loadCollections(TRI_vocbase_t* vocbase, bool waitForSync) {
-
+bool State::loadCollections(TRI_vocbase_t* vocbase, QueryRegistry* queryRegistry,
+                            bool waitForSync) {
+  
   _vocbase = vocbase;
+  _queryRegistry = queryRegistry;
+  
+  TRI_ASSERT(_vocbase != nullptr);
+  
   _options.waitForSync = false;
   _options.silent = true;
-
+  
   if (loadPersisted()) {
     if (_log.empty()) {
       std::shared_ptr<Buffer<uint8_t>> buf = std::make_shared<Buffer<uint8_t>>();
@@ -342,7 +381,7 @@ bool State::loadCollections(TRI_vocbase_t* vocbase, bool waitForSync) {
     }
     return true;
   }
-
+  
   LOG(WARN) << "... done";
   return false;
   
@@ -439,6 +478,9 @@ bool State::loadRemaining() {
       }
     }
   }
+
+  _agent->rebuildDBs();
+  _agent->lastCommitted(_log.back().index);
 
   return true;
   

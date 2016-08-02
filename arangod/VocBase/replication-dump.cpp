@@ -393,7 +393,7 @@ static bool IsTransactionWalMarker(TRI_replication_dump_t* dump,
   }
 
   // then check if the marker belongs to the "correct" database
-  if (dump->_vocbase->_id != DatafileHelper::DatabaseId(marker)) {
+  if (dump->_vocbase->id() != DatafileHelper::DatabaseId(marker)) {
     return false;
   }
 
@@ -415,7 +415,7 @@ static bool MustReplicateWalMarker(
   }
 
   // then check if the marker belongs to the "correct" database
-  if (dump->_vocbase->_id != databaseId) {
+  if (dump->_vocbase->id() != databaseId) {
     return false;
   }
   
@@ -632,7 +632,7 @@ int TRI_DumpCollectionReplication(TRI_replication_dump_t* dump,
     READ_LOCKER(locker, document->_compactionLock);
 
     try {
-      res = DumpCollection(dump, document, document->_vocbase->_id, document->_info.id(), dataMin, dataMax, withTicks);
+      res = DumpCollection(dump, document, document->_vocbase->id(), document->_info.id(), dataMin, dataMax, withTicks);
     } catch (...) {
       res = TRI_ERROR_INTERNAL;
     }
@@ -720,7 +720,7 @@ int TRI_DumpLogReplication(
           TRI_voc_cid_t collectionId = DatafileHelper::CollectionId(marker);
           TRI_ASSERT(collectionId != 0);
   
-          if (dump->_vocbase->_id == databaseId) {
+          if (dump->_vocbase->id() == databaseId) {
             VPackSlice slice(reinterpret_cast<char const*>(marker) + DatafileHelper::VPackOffset(type));
             VPackSlice name = slice.get("name");
             if (name.isString()) {
