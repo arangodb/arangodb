@@ -1,4 +1,9 @@
 #!/bin/sh
 set -e
 
-#DEBHELPER#
+# Automatically added by dh_installinit
+if [ -x "/etc/init.d/arangodb3" ]; then
+	invoke-rc.d arangodb3 stop || exit $?
+fi
+# End automatically added section
+

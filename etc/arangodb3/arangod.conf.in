@@ -6,7 +6,6 @@
 
 [database]
 directory = @LOCALSTATEDIR@/lib/arangodb3
-# directory = @HOMEDRIVE@/@HOMEPATH@/arangodb3/databases
 
 # maximal-journal-size = 33554432
 
@@ -73,8 +72,3 @@ level = info
 file = @LOCALSTATEDIR@/log/arangodb3/arangod.log
 
 [cluster]
-data-path = @LOCALSTATEDIR@/lib/arangodb3/cluster
-log-path = @LOCALSTATEDIR@/log/arangodb3/cluster
-arangod-path = @SBINDIR@/arangod@PROGRAM_SUFFIX@
-dbserver-config = @SYSCONFDIR@/arangod.conf
-coordinator-config = @SYSCONFDIR@/arangod.conf

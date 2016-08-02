@@ -1,0 +1,13 @@
+#!groovy
+
+
+node {
+  if (isUnix()) {
+    echo 'Hello Unix'
+    sh 'cmake . '
+    sh 'make'
+  }
+  else {
+    echo 'hello else'
+  }
+}
