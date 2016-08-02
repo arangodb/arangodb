@@ -399,7 +399,7 @@ static void JS_ConfigureApplierReplication(
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
-  if (vocbase->_replicationApplier == nullptr) {
+  if (vocbase->replicationApplier() == nullptr) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
   }
 
@@ -409,8 +409,8 @@ static void JS_ConfigureApplierReplication(
     TRI_replication_applier_configuration_t config;
 
     {
-      READ_LOCKER(readLocker, vocbase->_replicationApplier->_statusLock);
-      config.update(&vocbase->_replicationApplier->_configuration);
+      READ_LOCKER(readLocker, vocbase->replicationApplier()->_statusLock);
+      config.update(&vocbase->replicationApplier()->_configuration);
     }
 
     std::shared_ptr<VPackBuilder> builder = config.toVelocyPack(true);
@@ -432,8 +432,8 @@ static void JS_ConfigureApplierReplication(
 
     // fill with previous configuration
     {
-      READ_LOCKER(readLocker, vocbase->_replicationApplier->_statusLock);
-      config.update(&vocbase->_replicationApplier->_configuration);
+      READ_LOCKER(readLocker, vocbase->replicationApplier()->_statusLock);
+      config.update(&vocbase->replicationApplier()->_configuration);
     }
 
     // treat the argument as an object from now on
@@ -651,7 +651,7 @@ static void JS_ConfigureApplierReplication(
     }
 
     int res =
-        TRI_ConfigureReplicationApplier(vocbase->_replicationApplier.get(), &config);
+        TRI_ConfigureReplicationApplier(vocbase->replicationApplier(), &config);
 
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_V8_THROW_EXCEPTION(res);
@@ -681,7 +681,7 @@ static void JS_StartApplierReplication(
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
-  if (vocbase->_replicationApplier == nullptr) {
+  if (vocbase->replicationApplier() == nullptr) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
   }
 
@@ -703,7 +703,7 @@ static void JS_StartApplierReplication(
   }
 
   int res =
-      vocbase->_replicationApplier->start(initialTick, useTick, barrierId);
+      vocbase->replicationApplier()->start(initialTick, useTick, barrierId);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(res, "cannot start replication applier");
@@ -732,11 +732,11 @@ static void JS_ShutdownApplierReplication(
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
-  if (vocbase->_replicationApplier == nullptr) {
+  if (vocbase->replicationApplier() == nullptr) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
   }
 
-  int res = vocbase->_replicationApplier->shutdown();
+  int res = vocbase->replicationApplier()->shutdown();
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(res, "cannot shut down replication applier");
@@ -765,11 +765,11 @@ static void JS_StateApplierReplication(
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
-  if (vocbase->_replicationApplier == nullptr) {
+  if (vocbase->replicationApplier() == nullptr) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
   }
 
-  std::shared_ptr<VPackBuilder> builder = vocbase->_replicationApplier->toVelocyPack();
+  std::shared_ptr<VPackBuilder> builder = vocbase->replicationApplier()->toVelocyPack();
 
   v8::Handle<v8::Value> result = TRI_VPackToV8(isolate, builder->slice());
 
@@ -796,11 +796,11 @@ static void JS_ForgetApplierReplication(
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
-  if (vocbase->_replicationApplier == nullptr) {
+  if (vocbase->replicationApplier() == nullptr) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
   }
 
-  int res = vocbase->_replicationApplier->forget();
+  int res = vocbase->replicationApplier()->forget();
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION(res);

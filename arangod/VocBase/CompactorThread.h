@@ -21,13 +21,35 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_VOC_BASE_COMPACTOR_H
-#define ARANGOD_VOC_BASE_COMPACTOR_H 1
+#ifndef ARANGOD_VOC_BASE_COMPACTOR_THREAD_H
+#define ARANGOD_VOC_BASE_COMPACTOR_THREAD_H 1
 
 #include "Basics/Common.h"
+#include "Basics/ConditionVariable.h"
+#include "Basics/Thread.h"
 #include "VocBase/voc-types.h"
 
 struct TRI_vocbase_t;
+
+namespace arangodb {
+
+class CompactorThread : public Thread {
+ public:
+  explicit CompactorThread(TRI_vocbase_t* vocbase);
+  ~CompactorThread();
+
+  void signal() { _condition.signal(); }
+
+ protected:
+  void run() override;
+
+ private:
+  TRI_vocbase_t* _vocbase;
+
+  arangodb::basics::ConditionVariable _condition;
+};
+
+}
 
 /// @brief remove data of expired compaction blockers
 bool TRI_CleanupCompactorVocBase(TRI_vocbase_t*);

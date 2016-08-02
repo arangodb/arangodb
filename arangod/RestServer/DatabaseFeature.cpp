@@ -400,14 +400,14 @@ int DatabaseFeature::recoveryDone() {
     engine->recoveryDone(vocbase);
 
     // start the replication applier
-    TRI_ASSERT(vocbase->_replicationApplier != nullptr);
+    TRI_ASSERT(vocbase->replicationApplier() != nullptr);
 
-    if (vocbase->_replicationApplier->_configuration._autoStart) {
+    if (vocbase->replicationApplier()->_configuration._autoStart) {
       if (!_replicationApplier) {
         LOG(INFO) << "replication applier explicitly deactivated for database '"
                   << vocbase->name() << "'";
       } else {
-        int res = vocbase->_replicationApplier->start(0, false, 0);
+        int res = vocbase->replicationApplier()->start(0, false, 0);
 
         if (res != TRI_ERROR_NO_ERROR) {
           LOG(WARN) << "unable to start replication applier for database '"
@@ -447,7 +447,7 @@ int DatabaseFeature::createDatabaseCoordinator(TRI_voc_tick_t id, std::string co
   vocbase->_state = (sig_atomic_t)TRI_VOCBASE_STATE_NORMAL;
 
   try {
-    vocbase->_replicationApplier.reset(TRI_CreateReplicationApplier(vocbase.get()));
+    vocbase->addReplicationApplier(TRI_CreateReplicationApplier(vocbase.get()));
   } catch (...) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
@@ -526,7 +526,7 @@ int DatabaseFeature::createDatabase(TRI_voc_tick_t id, std::string const& name,
     vocbase->_state = (sig_atomic_t)TRI_VOCBASE_STATE_NORMAL;
 
     try {
-      vocbase->_replicationApplier.reset(TRI_CreateReplicationApplier(vocbase.get()));
+      vocbase->addReplicationApplier(TRI_CreateReplicationApplier(vocbase.get()));
     } catch (std::exception const& ex) {
       LOG(FATAL) << "initializing replication applier for database '"
                  << vocbase->name() << "' failed: " << ex.what();
@@ -549,14 +549,13 @@ int DatabaseFeature::createDatabase(TRI_voc_tick_t id, std::string const& name,
       engine->recoveryDone(vocbase.get());
 
       // start the replication applier
-      if (vocbase->_replicationApplier->_configuration._autoStart) {
-        if (_replicationApplier) {
-          res = vocbase->_replicationApplier->start(0, false, 0);
+      if (_replicationApplier &&
+          vocbase->replicationApplier()->_configuration._autoStart) {
+        res = vocbase->replicationApplier()->start(0, false, 0);
 
-          if (res != TRI_ERROR_NO_ERROR) {
-            LOG(WARN) << "unable to start replication applier for database '"
-                      << name << "': " << TRI_errno_string(res);
-          }
+        if (res != TRI_ERROR_NO_ERROR) {
+          LOG(WARN) << "unable to start replication applier for database '"
+                    << name << "': " << TRI_errno_string(res);
         }
       }
 
@@ -942,8 +941,8 @@ void DatabaseFeature::closeDatabases() {
       TRI_vocbase_t* vocbase = p.second;
       TRI_ASSERT(vocbase != nullptr);
       TRI_ASSERT(vocbase->type() == TRI_VOCBASE_TYPE_NORMAL);
-      if (vocbase->_replicationApplier != nullptr) {
-        vocbase->_replicationApplier->stop(false);
+      if (vocbase->replicationApplier() != nullptr) {
+        vocbase->replicationApplier()->stop(false);
       }
     }
   }
@@ -1100,7 +1099,7 @@ int DatabaseFeature::iterateDatabases(VPackSlice const& databases) {
     vocbase->_state = (sig_atomic_t)TRI_VOCBASE_STATE_NORMAL;
     
     try {
-      vocbase->_replicationApplier.reset(TRI_CreateReplicationApplier(vocbase));
+      vocbase->addReplicationApplier(TRI_CreateReplicationApplier(vocbase));
     } catch (std::exception const& ex) {
       LOG(FATAL) << "initializing replication applier for database '"
                  << vocbase->name() << "' failed: " << ex.what();

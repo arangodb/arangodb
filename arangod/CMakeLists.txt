@@ -309,6 +309,7 @@ add_executable(${BIN_ARANGOD}
   V8Server/v8-vocindex.cpp
   VocBase/AuthInfo.cpp
   VocBase/CleanupThread.cpp
+  VocBase/CompactorThread.cpp
   VocBase/DatafileStatistics.cpp
   VocBase/Ditch.cpp
   VocBase/EdgeCollectionInfo.cpp
@@ -320,7 +321,6 @@ add_executable(${BIN_ARANGOD}
   VocBase/SingleServerTraverser.cpp
   VocBase/Traverser.cpp
   VocBase/collection.cpp
-  VocBase/compactor.cpp
   VocBase/datafile.cpp
   VocBase/modes.cpp
   VocBase/replication-applier.cpp

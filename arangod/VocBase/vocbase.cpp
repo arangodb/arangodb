@@ -52,9 +52,10 @@
 #include "Utils/CollectionKeysRepository.h"
 #include "Utils/CursorRepository.h"
 #include "V8Server/v8-user-structures.h"
+#include "VocBase/CleanupThread.h"
+#include "VocBase/CompactorThread.h"
 #include "VocBase/Ditch.h"
 #include "VocBase/collection.h"
-#include "VocBase/compactor.h"
 #include "VocBase/replication-applier.h"
 #include "VocBase/ticks.h"
 #include "VocBase/transaction.h"
@@ -999,16 +1000,15 @@ void TRI_vocbase_t::shutdown() {
   // this will signal the compactor thread to do one last iteration
   _state = (sig_atomic_t)TRI_VOCBASE_STATE_SHUTDOWN_COMPACTOR;
 
-  TRI_LockCondition(&_compactorCondition);
-  TRI_SignalCondition(&_compactorCondition);
-  TRI_UnlockCondition(&_compactorCondition);
+  if (_compactorThread != nullptr) {
+    _compactorThread->beginShutdown();
+    _compactorThread->signal();
 
-  if (_hasCompactor) {
-    int res = TRI_JoinThread(&_compactor);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      LOG(ERR) << "unable to join compactor thread: " << TRI_errno_string(res);
+    while (_compactorThread->isRunning()) {
+      usleep(5000);
     }
+    
+    _compactorThread.reset();
   }
 
   // this will signal the cleanup thread to do one last iteration
@@ -1532,8 +1532,7 @@ TRI_vocbase_t::TRI_vocbase_t(TRI_vocbase_type_e type, TRI_voc_tick_t id,
       _refCount(0),
       _isOwnAppsDirectory(true),
       _deadlockDetector(false),
-      _userStructures(nullptr),
-      _hasCompactor(false) {
+      _userStructures(nullptr) {
 
   _queries.reset(new arangodb::aql::QueryList(this));
   _cursorRepository.reset(new arangodb::CursorRepository(this));
@@ -1544,8 +1543,6 @@ TRI_vocbase_t::TRI_vocbase_t(TRI_vocbase_type_e type, TRI_voc_tick_t id,
   _deadCollections.reserve(32);
 
   TRI_CreateUserStructuresVocBase(this);
-
-  TRI_InitCondition(&_compactorCondition);
 }
 
 /// @brief destroy a vocbase object
@@ -1554,12 +1551,9 @@ TRI_vocbase_t::~TRI_vocbase_t() {
     TRI_FreeUserStructuresVocBase(this);
   }
 
-  // free replication
   _replicationApplier.reset();
-
+  _compactorThread.reset();
   _cleanupThread.reset();
-
-  TRI_DestroyCondition(&_compactorCondition);
 }
   
 std::string TRI_vocbase_t::path() const {
@@ -1601,6 +1595,10 @@ bool TRI_vocbase_t::IsAllowedName(bool allowSystem, std::string const& name) {
   }
 
   return true;
+}
+  
+void TRI_vocbase_t::addReplicationApplier(TRI_replication_applier_t* applier) {
+  _replicationApplier.reset(applier);
 }
 
 /// @brief note the progress of a connected replication client

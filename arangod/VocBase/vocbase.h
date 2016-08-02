@@ -30,7 +30,6 @@
 #include "Basics/Exceptions.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/StringUtils.h"
-#include "Basics/threads.h"
 #include "Basics/voc-errors.h"
 #include "VocBase/voc-types.h"
 
@@ -49,7 +48,9 @@ class Builder;
 namespace aql {
 class QueryList;
 }
+class CleanupThread;
 class CollectionNameResolver;
+class CompactorThread;
 class VocbaseCollectionInfo;
 class CollectionKeysRepository;
 class CursorRepository;
@@ -191,6 +192,12 @@ struct TRI_vocbase_t {
   std::unique_ptr<arangodb::aql::QueryList> _queries;
   std::unique_ptr<arangodb::CursorRepository> _cursorRepository;
   std::unique_ptr<arangodb::CollectionKeysRepository> _collectionKeys;
+  
+  std::unique_ptr<TRI_replication_applier_t> _replicationApplier;
+  
+  arangodb::basics::ReadWriteLock _replicationClientsLock;
+  std::unordered_map<TRI_server_id_t, std::pair<double, TRI_voc_tick_t>>
+      _replicationClients;
 
  public:
   arangodb::basics::DeadlockDetector<TRI_collection_t>
@@ -202,13 +209,6 @@ struct TRI_vocbase_t {
   // structures for user-defined volatile data
   void* _userStructures;
  public:
-  bool _hasCompactor;
-
-  std::unique_ptr<TRI_replication_applier_t> _replicationApplier;
-
-  arangodb::basics::ReadWriteLock _replicationClientsLock;
-  std::unordered_map<TRI_server_id_t, std::pair<double, TRI_voc_tick_t>>
-      _replicationClients;
 
   // state of the database
   // 0 = inactive
@@ -220,12 +220,9 @@ struct TRI_vocbase_t {
 
   sig_atomic_t _state;
 
-  TRI_thread_t _compactor;
-
-  std::unique_ptr<arangodb::Thread> _cleanupThread;
+  std::unique_ptr<arangodb::CompactorThread> _compactorThread;
+  std::unique_ptr<arangodb::CleanupThread> _cleanupThread;
   arangodb::basics::ConditionVariable _cleanupCondition;
-
-  TRI_condition_t _compactorCondition;
 
   compaction_blockers_t _compactionBlockers;
 
@@ -240,6 +237,8 @@ struct TRI_vocbase_t {
   void updateReplicationClient(TRI_server_id_t, TRI_voc_tick_t);
   std::vector<std::tuple<TRI_server_id_t, double, TRI_voc_tick_t>>
   getReplicationClients();
+  TRI_replication_applier_t* replicationApplier() const { return _replicationApplier.get(); }
+  void addReplicationApplier(TRI_replication_applier_t* applier);
 
   arangodb::aql::QueryList* queryList() const { return _queries.get(); }
   arangodb::CursorRepository* cursorRepository() const { return _cursorRepository.get(); }

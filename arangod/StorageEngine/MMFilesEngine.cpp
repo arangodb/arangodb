@@ -31,8 +31,8 @@
 #include "RestServer/DatabasePathFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "VocBase/CleanupThread.h"
+#include "VocBase/CompactorThread.h"
 #include "VocBase/collection.h"
-#include "VocBase/compactor.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 #include "Wal/LogfileManager.h"
@@ -173,13 +173,14 @@ void MMFilesEngine::recoveryDone(TRI_vocbase_t* vocbase) {
 
   if (!databaseFeature->checkVersion() && !databaseFeature->upgrade()) {
     // start compactor thread
-    TRI_ASSERT(!vocbase->_hasCompactor);
     LOG(TRACE) << "starting compactor for database '" << vocbase->name() << "'";
-
-    TRI_InitThread(&vocbase->_compactor);
-    TRI_StartThread(&vocbase->_compactor, nullptr, "Compactor",
-                    TRI_CompactorVocBase, vocbase);
-    vocbase->_hasCompactor = true;
+    TRI_ASSERT(vocbase->_compactorThread == nullptr);
+    vocbase->_compactorThread.reset(new CompactorThread(vocbase));
+  
+    if (!vocbase->_compactorThread->start()) {
+      LOG(ERR) << "could not start compactor thread";
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+    }
   }
 
   // delete all collection files from collections marked as deleted

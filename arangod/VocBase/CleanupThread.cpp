@@ -30,9 +30,9 @@
 #include "Basics/files.h"
 #include "Logger/Logger.h"
 #include "Utils/CursorRepository.h"
+#include "VocBase/CompactorThread.h"
 #include "VocBase/Ditch.h"
 #include "VocBase/collection.h"
-#include "VocBase/compactor.h"
 #include "Wal/LogfileManager.h"
 
 using namespace arangodb;
