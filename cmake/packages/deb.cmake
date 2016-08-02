@@ -22,7 +22,6 @@ else()
   set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE "i386")
 endif()
 
-
 # components
 install(
   FILES ${PROJECT_SOURCE_DIR}/Installation/debian/arangodb.init
@@ -32,5 +31,20 @@ install(
   COMPONENT debian-extras
   )
 
+add_custom_target(package-arongodb-server
+  COMMAND ${CMAKE_COMMAND} .
+  COMMAND ${CMAKE_CPACK_COMMAND} -G DEB
+  WORKING_DIRECTORY ${PROJECT_BINARY_DIR})
 
+list(APPEND PACKAGES_LIST package-arongodb-server)
   
+set(BUILD_DIR ${CMAKE_CURRENT_BINARY_DIR}/packages/arangodb-client)
+configure_file(cmake/packages/client/deb.txt ${BUILD_DIR}/CMakeLists.txt @ONLY)
+add_custom_target(package-arongodb-client
+  COMMAND ${CMAKE_COMMAND} .
+  COMMAND ${CMAKE_CPACK_COMMAND} -G DEB
+  COMMAND cp *.deb ${PROJECT_BINARY_DIR} 
+  WORKING_DIRECTORY ${BUILD_DIR})
+
+
+list(APPEND PACKAGES_LIST package-arongodb-client)
