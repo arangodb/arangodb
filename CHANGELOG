@@ -1,5 +1,13 @@
+v3.0.5 (XXXX-XX-XX)
+-------------------
+
+* fixed extraction of _id attribute in AQL traversal conditions
+
+
 v3.0.4 (2016-08-01)
 -------------------
+
+* added missing lock for periodic jobs access
 
 * fix multiple foxx related cluster issues
 
