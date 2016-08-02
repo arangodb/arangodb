@@ -121,6 +121,7 @@ class Query {
   /// @brief Inject a transaction from outside. Use with care!
   void injectTransaction (arangodb::Transaction* trx) {
     _trx = trx;
+    init();
   }
 
   /// @brief return the start timestamp of the query
