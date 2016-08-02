@@ -356,7 +356,7 @@ void Supervision::run() {
     
     // Do nothing unless leader 
     if (_agent->leading()) {
-      _cv.wait(_frequency * 1000000);  // quarter second
+      _cv.wait(_frequency * 1000000); 
     } else {
       _cv.wait();
     }
