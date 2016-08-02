@@ -493,10 +493,15 @@ bool Agent::lead() {
 
   // Key value stores
   rebuildDBs();
-  
+
   // Wake up run
-  CONDITION_LOCKER(guard, _appendCV);
-  guard.broadcast();
+  {
+    CONDITION_LOCKER(guard, _appendCV);
+    guard.broadcast();
+  }
+  
+  // Wake up supervision
+  _supervision.wakeUp();
 
   return true;
   
