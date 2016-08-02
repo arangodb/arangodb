@@ -1087,15 +1087,12 @@ CompactorThread::CompactorThread(TRI_vocbase_t* vocbase)
 CompactorThread::~CompactorThread() { shutdown(); }
 
 void CompactorThread::run() {
-  TRI_ASSERT(_vocbase->state() == TRI_vocbase_t::State::NORMAL);
-
   std::vector<TRI_vocbase_col_t*> collections;
 
   while (true) {
     int numCompacted = 0;
     // keep initial _state value as vocbase->_state might change during
     // compaction loop
-    TRI_vocbase_t::State state = _vocbase->state();
 
     {
       // check if compaction is currently disallowed
@@ -1186,26 +1183,26 @@ void CompactorThread::run() {
 
             // signal the cleanup thread that we worked and that it can now wake
             // up
-            CONDITION_LOCKER(locker, _vocbase->_cleanupCondition);
+            CONDITION_LOCKER(locker, _condition);
             locker.signal();
           }
         }
       }
     }
 
+    if (isStopping()) {
+      // server shutdown
+      break;
+    }
+
     if (numCompacted > 0) {
       // no need to sleep long or go into wait state if we worked.
       // maybe there's still work left
       usleep(1000);
-    } else if (state != TRI_vocbase_t::State::SHUTDOWN_COMPACTOR && _vocbase->state() == TRI_vocbase_t::State::NORMAL) {
+    } else {
       // only sleep while server is still running
       CONDITION_LOCKER(locker, _condition);
       _condition.wait(COMPACTOR_INTERVAL);
-    }
-  
-    if (state == TRI_vocbase_t::State::SHUTDOWN_COMPACTOR) {
-      // server shutdown
-      break;
     }
   }
 

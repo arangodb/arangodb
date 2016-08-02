@@ -997,9 +997,9 @@ void TRI_vocbase_t::shutdown() {
     unloadCollection(collection, true);
   }
 
-  // this will signal the compactor thread to do one last iteration
-  _state = TRI_vocbase_t::State::SHUTDOWN_COMPACTOR;
+  setState(TRI_vocbase_t::State::SHUTDOWN);
 
+  // signal the compactor thread to do one last iteration
   if (_compactorThread != nullptr) {
     _compactorThread->beginShutdown();
     _compactorThread->signal();
@@ -1011,16 +1011,10 @@ void TRI_vocbase_t::shutdown() {
     _compactorThread.reset();
   }
 
-  // this will signal the cleanup thread to do one last iteration
-  _state = TRI_vocbase_t::State::SHUTDOWN_CLEANUP;
-
-  {
-    CONDITION_LOCKER(locker, _cleanupCondition);
-    locker.signal();
-  }
-
+  // signal the cleanup thread to do one last iteration
   if (_cleanupThread != nullptr) {
-    _cleanupThread->beginShutdown();  
+    _cleanupThread->beginShutdown(); 
+    _cleanupThread->signal(); 
 
     while (_cleanupThread->isRunning()) {
       usleep(5000);
@@ -1303,9 +1297,8 @@ int TRI_vocbase_t::unloadCollection(TRI_vocbase_col_t* collection, bool force) {
   } // release locks
 
   // wake up the cleanup thread
-  {
-    CONDITION_LOCKER(locker, _cleanupCondition);
-    locker.signal();
+  if (_cleanupThread) {
+    _cleanupThread->signal();
   }
 
   return TRI_ERROR_NO_ERROR;
@@ -1339,8 +1332,9 @@ int TRI_vocbase_t::dropCollection(TRI_vocbase_col_t* collection, bool writeMarke
             __FILE__, __LINE__);
 
         // wake up the cleanup thread
-        CONDITION_LOCKER(locker, _cleanupCondition);
-        locker.signal();
+        if (_cleanupThread) {
+          _cleanupThread->signal();
+        }
       }
     }
 

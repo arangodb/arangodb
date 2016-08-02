@@ -158,9 +158,8 @@ struct TRI_vocbase_t {
   enum class State {
     INACTIVE = 0,
     NORMAL = 1,
-    SHUTDOWN_COMPACTOR = 2,
-    SHUTDOWN_CLEANUP = 3,
-    FAILED_VERSION = 4
+    SHUTDOWN = 2,
+    FAILED_VERSION = 3
   };
 
   TRI_vocbase_t(TRI_vocbase_type_e type, TRI_voc_tick_t id, std::string const& name);
@@ -213,7 +212,6 @@ struct TRI_vocbase_t {
 
   std::unique_ptr<arangodb::CompactorThread> _compactorThread;
   std::unique_ptr<arangodb::CleanupThread> _cleanupThread;
-  arangodb::basics::ConditionVariable _cleanupCondition;
 
   compaction_blockers_t _compactionBlockers;
 

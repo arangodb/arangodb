@@ -25,6 +25,7 @@
 #define ARANGOD_VOC_BASE_CLEANUP_THREAD_H 1
 
 #include "Basics/Common.h"
+#include "Basics/ConditionVariable.h"
 #include "Basics/Thread.h"
 
 struct TRI_collection_t;
@@ -37,6 +38,8 @@ class CleanupThread : public Thread {
  public:
   explicit CleanupThread(TRI_vocbase_t* vocbase);
   ~CleanupThread();
+  
+  void signal() { _condition.signal(); }
 
  protected:
   void run() override;
@@ -59,6 +62,8 @@ class CleanupThread : public Thread {
 
  private:
   TRI_vocbase_t* _vocbase;
+  
+  arangodb::basics::ConditionVariable _condition;
 };
 
 }

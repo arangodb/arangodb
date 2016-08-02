@@ -46,25 +46,17 @@ CleanupThread::~CleanupThread() { shutdown(); }
 void CleanupThread::run() {
   uint64_t iterations = 0;
 
-  TRI_ASSERT(_vocbase != nullptr);
-  TRI_ASSERT(_vocbase->state() == TRI_vocbase_t::State::NORMAL);
-
   std::vector<TRI_vocbase_col_t*> collections;
 
   while (true) {
     // keep initial _state value as vocbase->_state might change during cleanup
     // loop
-    TRI_vocbase_t::State state = _vocbase->state();
-
     ++iterations;
 
-    if (state == TRI_vocbase_t::State::SHUTDOWN_COMPACTOR ||
-        state == TRI_vocbase_t::State::SHUTDOWN_CLEANUP) {
-      // shadows must be cleaned before collections are handled
-      // otherwise the shadows might still hold barriers on collections
-      // and collections cannot be closed properly
-      cleanupCursors(true);
-    }
+    // cursorss must be cleaned before collections are handled
+    // otherwise the cursors may still hold barriers on collections
+    // and collections cannot be closed properly
+    cleanupCursors(true);
       
     // check if we can get the compactor lock exclusively
     // check if compaction is currently disallowed
@@ -117,17 +109,14 @@ void CleanupThread::run() {
       TRI_CleanupCompactorVocBase(_vocbase);
     }
 
-    if (state == TRI_vocbase_t::State::NORMAL) {
-      CONDITION_LOCKER(locker, _vocbase->_cleanupCondition);
-      locker.wait(cleanupInterval());
-    } else {
-      // prevent busy waiting
-      usleep(10000);
-    }
-
-    if (state == TRI_vocbase_t::State::SHUTDOWN_CLEANUP) {
+    if (isStopping()) {
       // server shutdown
       break;
+    }
+
+    {
+      CONDITION_LOCKER(locker, _condition);
+      locker.wait(cleanupInterval());
     }
   }
 
