@@ -32,6 +32,7 @@
 
 #include "Basics/Exceptions.h"
 #include "Basics/Thread.h"
+#include "Basics/hashes.h"
 #include "Logger/Logger.h"
 
 using namespace arangodb;
@@ -42,16 +43,11 @@ using namespace arangodb::basics;
 // -----------------------------------------------------------------------------
 
 unsigned long RandomDevice::seed() {
-  unsigned long s = (unsigned long)time(0);
+  unsigned long s = std::chrono::system_clock::now().time_since_epoch().count();
+  TRI_pid_t pid = Thread::currentProcessId();
 
-  struct timeval tv;
-  int result = gettimeofday(&tv, 0);
-
-  s ^= static_cast<unsigned long>(tv.tv_sec);
-  s ^= static_cast<unsigned long>(tv.tv_usec);
-  s ^= static_cast<unsigned long>(result);
-  s ^= static_cast<unsigned long>(Thread::currentProcessId());
-
+  s ^= static_cast<unsigned long>(TRI_Crc32HashPointer(&pid, sizeof(TRI_pid_t)));
+  s = static_cast<unsigned long>(TRI_Crc32HashPointer(&s, sizeof(unsigned long))); 
   return s;
 }
 
@@ -353,8 +349,7 @@ class RandomDeviceCombined : public RandomDevice {
 class RandomDeviceMersenne : public RandomDevice {
  public:
   RandomDeviceMersenne()
-      : engine(static_cast<unsigned int>(
-            std::chrono::system_clock::now().time_since_epoch().count())) {}
+      : engine(RandomDevice::seed()) {}
 
   uint32_t random() { return engine(); }
 
