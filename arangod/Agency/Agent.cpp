@@ -343,19 +343,27 @@ bool Agent::load() {
       ApplicationServer::getFeature<DatabaseFeature>("Database");
 
   auto vocbase = database->vocbase();
+  auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY;
+
   if (vocbase == nullptr) {
     LOG_TOPIC(FATAL, Logger::AGENCY) << "could not determine _system database";
     FATAL_ERROR_EXIT();
   }
 
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "Loading persistent state.";
-  if (!_state.loadCollections(vocbase, _config.waitForSync)) {
+  if (!_state.loadCollections(vocbase, queryRegistry, _config.waitForSync)) {
     LOG_TOPIC(DEBUG, Logger::AGENCY)
         << "Failed to load persistent state on startup.";
   }
 
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "Reassembling spearhead and read stores.";
   _spearhead.apply(_state.slices(_lastCommitIndex + 1));
+
+  {
+    CONDITION_LOCKER(guard, _appendCV);
+    guard.broadcast();
+  }
+  
   reportIn(id(), _state.lastLog().index);
 
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "Starting spearhead worker.";
@@ -363,7 +371,6 @@ bool Agent::load() {
   _readDB.start();
 
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "Starting constituent personality.";
-  auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY;
   TRI_ASSERT(queryRegistry != nullptr);
   _constituent.start(vocbase, queryRegistry);
 
@@ -434,7 +441,7 @@ void Agent::run() {
   while (!this->isStopping() && size() > 1) {
 
     if (leading()) {             // Only if leading
-      _appendCV.wait(100000);
+      _appendCV.wait(50000);
     } else {
       _appendCV.wait();         // Else wait for our moment in the sun
     }
@@ -485,7 +492,7 @@ void Agent::beginShutdown() {
 bool Agent::lead() {
 
   // Key value stores
-  //rebuildDBs();
+  rebuildDBs();
   
   // Wake up run
   CONDITION_LOCKER(guard, _appendCV);
@@ -497,10 +504,11 @@ bool Agent::lead() {
 
 // Rebuild key value stores
 bool Agent::rebuildDBs() {
-  
+
   MUTEX_LOCKER(mutexLocker, _ioLock);
-  _spearhead.apply(_state.slices());
-  _readDB.apply(_state.slices());
+
+  _spearhead.apply(_state.slices(_lastCommitIndex+1));
+  _readDB.apply(_state.slices(_lastCommitIndex+1));
   
   return true;
   
@@ -508,10 +516,16 @@ bool Agent::rebuildDBs() {
 
 
 /// Last commit index
-arangodb::consensus::index_t Agent::lastCommited() const {
+arangodb::consensus::index_t Agent::lastCommitted() const {
   return _lastCommitIndex;
 }
 
+/// Last commit index
+void Agent::lastCommitted(
+  arangodb::consensus::index_t lastCommitIndex) {
+  MUTEX_LOCKER(mutexLocker, _ioLock);
+  _lastCommitIndex = lastCommitIndex;
+}
 
 /// Last log entry
 log_t const& Agent::lastLog() const { return _state.lastLog(); }

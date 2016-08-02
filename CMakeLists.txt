@@ -695,6 +695,7 @@ add_definitions("-DARANGODB_LIBEV_VERSION=\"${LIBEV_VERSION}\"")
 ################################################################################
 
 find_package(OpenSSL REQUIRED)
+
 include_directories(${OPENSSL_INCLUDE_DIR})
 add_definitions(-DARANGODB_OPENSSL_VERSION=\"${OPENSSL_VERSION}\")
 
