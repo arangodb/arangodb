@@ -29,9 +29,11 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Ast.h"
 #include "Aql/SortCondition.h"
+#include "Cluster/ClusterComm.h"
 #include "Indexes/Index.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/TraverserOptions.h"
+#include "VocBase/server.h"
 
 using namespace arangodb::basics;
 using namespace arangodb::aql;
@@ -538,6 +540,35 @@ TraversalNode::TraversalNode(ExecutionPlan* plan,
 #endif
 }
 
+TraversalNode::~TraversalNode() {
+  if (_condition != nullptr) {
+    delete _condition;
+  }
+  // We have to clean up the engines in Coordinator Case.
+  if (arangodb::ServerState::instance()->isCoordinator()) {
+    auto cc = arangodb::ClusterComm::instance();
+    std::string const url(
+        "/_db/" + arangodb::basics::StringUtils::urlEncode(_vocbase->_name) +
+        "/_internal/traverser/");
+    for (auto const& it : _engines) {
+      arangodb::CoordTransactionID coordTransactionID = TRI_NewTickServer();
+      std::unordered_map<std::string, std::string> headers;
+      auto res = cc->syncRequest("", coordTransactionID, "server:" + it.first,
+                                 arangodb::GeneralRequest::RequestType::DELETE_REQ,
+                                 url + arangodb::basics::StringUtils::itoa(it.second), "", headers, 30.0);
+      if (res->status != CL_COMM_SENT) {
+        // Note If there was an error on server side we do not have CL_COMM_SENT
+        std::string message("could not start all traversal engines");
+        if (res->errorMessage.length() > 0) {
+          message += std::string(" : ") + res->errorMessage;
+        }
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_COLLECTION_LOCK_FAILED,
+                                       message);
+      }
+    }
+  }
+}
+
 int TraversalNode::checkIsOutVariable(size_t variableId) const {
   if (_vertexOutVariable != nullptr && _vertexOutVariable->id == variableId) {
     return 0;
@@ -924,6 +955,12 @@ void TraversalNode::prepareOptions() {
     TRI_ASSERT(!_options->_vertexExpressions[it.first]->isV8());
   }
   _optionsBuild = true;
+}
+
+void TraversalNode::addEngine(traverser::TraverserEngineID const& engine,
+                              ServerID const& server) {
+  TRI_ASSERT(arangodb::ServerState::instance()->isCoordinator());
+  _engines.emplace(server, engine);
 }
 
 /// @brief remember the condition to execute for early traversal abortion.

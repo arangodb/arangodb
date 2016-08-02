@@ -866,6 +866,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
         TRI_ASSERT(resultSlice.isNumber());
         auto engineId = resultSlice.getNumericValue<traverser::TraverserEngineID>();
         traverserEngines.emplace(engineId, shardSet);
+        en->addEngine(engineId, list.first);
       }
     }
   }

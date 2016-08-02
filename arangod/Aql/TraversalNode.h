@@ -28,6 +28,7 @@
 #include "Aql/Collection.h"
 #include "Aql/Condition.h"
 #include "Aql/Graphs.h"
+#include "Cluster/TraverserEngineRegistry.h"
 #include "VocBase/TraverserOptions.h"
 
 namespace arangodb {
@@ -78,9 +79,7 @@ class TraversalNode : public ExecutionNode {
 
   TraversalNode(ExecutionPlan* plan, arangodb::basics::Json const& base);
 
-  ~TraversalNode() {
-    delete _condition;
-  }
+  ~TraversalNode();
 
   /// @brief Internal constructor to clone the node.
  private:
@@ -238,6 +237,18 @@ class TraversalNode : public ExecutionNode {
   ///        of blocks.
   void prepareOptions();
 
+  /// @brief Add a traverser engine Running on a DBServer to this node.
+  ///        The block will communicate with them (CLUSTER ONLY)
+  void addEngine(traverser::TraverserEngineID const&, ServerID const&);
+
+  
+  /// @brief Returns a reference to the engines. (CLUSTER ONLY)
+  std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines()
+      const {
+    TRI_ASSERT(arangodb::ServerState::instance()->isCoordinator());
+    return &_engines;
+  }
+
  private:
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
@@ -327,6 +338,9 @@ class TraversalNode : public ExecutionNode {
   ///        this flag was set the node cannot be cloned
   ///        any more.
   bool _optionsBuild;
+
+  /// @brief The list of traverser engines grouped by server.
+  std::unordered_map<ServerID, traverser::TraverserEngineID> _engines;
 
 };
 

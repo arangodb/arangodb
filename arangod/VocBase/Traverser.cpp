@@ -23,11 +23,6 @@
 
 #include "Traverser.h"
 #include "Basics/VelocyPackHelper.h"
-/*
-#include "Aql/Ast.h"
-#include "Aql/Expression.h"
-#include "Aql/Query.h"
-*/
 #include "Indexes/EdgeIndex.h"
 #include "Utils/Transaction.h"
 #include "Utils/TransactionContext.h"

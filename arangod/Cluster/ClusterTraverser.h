@@ -24,6 +24,7 @@
 #ifndef ARANGOD_CLUSTER_CLUSTER_TRAVERSER_H
 #define ARANGOD_CLUSTER_CLUSTER_TRAVERSER_H 1
 
+#include "Cluster/TraverserEngineRegistry.h"
 #include "VocBase/Traverser.h"
 #include "VocBase/TraverserOptions.h"
 #include "VocBase/PathEnumerator.h"
@@ -41,6 +42,7 @@ class ClusterTraverser final : public Traverser {
  public:
   ClusterTraverser(
       TraverserOptions* opts,
+      std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines,
       std::string const& dbname, Transaction* trx)
       : Traverser(opts),
         _dbname(dbname),

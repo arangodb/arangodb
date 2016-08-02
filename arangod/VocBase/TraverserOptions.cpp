@@ -193,6 +193,13 @@ arangodb::traverser::TraverserOptions::TraverserOptions(
   }
   useBreadthFirst = read.getBool();
 
+  read = info.get("tmpVar");
+  if (!read.isObject()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                   "The options require a tmpVar");
+  }
+  _tmpVar = query->ast()->variables()->createVariable(read);
+
   read = info.get("uniqueVertices");
   if (!read.isInteger()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
@@ -286,13 +293,6 @@ arangodb::traverser::TraverserOptions::TraverserOptions(
       TRI_ASSERT(it.second);
     }
   }
-
-  read = info.get("tmpVar");
-  if (!read.isObject()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                   "The options require a tmpVar");
-  }
-  _tmpVar = query->ast()->variables()->createVariable(read);
 }
 
 arangodb::traverser::TraverserOptions::TraverserOptions(
