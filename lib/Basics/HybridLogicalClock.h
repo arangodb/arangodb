@@ -143,11 +143,7 @@ class HybridLogicalClock {
     }
     return r;
   }
-
- private:
-  // helper to compute the offset between epoch and 1970
-  uint64_t computeOffset1970();
-
+  
   // helper to get the physical time in milliseconds since the epoch:
   uint64_t getPhysicalTime() {
     auto now = _clock.now();
@@ -157,6 +153,10 @@ class HybridLogicalClock {
                   _offset1970;
     return ms;
   }
+
+ private:
+  // helper to compute the offset between epoch and 1970
+  uint64_t computeOffset1970();
 
   static uint64_t extractTime(uint64_t t) { return t >> 20; }
 
@@ -170,7 +170,7 @@ class HybridLogicalClock {
 
   static signed char decodeTable[256];
 };
-};
-};
+}
+}
 
 #endif

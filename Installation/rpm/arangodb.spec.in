@@ -1,0 +1,495 @@
+#
+# spec file for package arangodb
+#
+#
+# Copyright (c) 2014 info@arangodb.org
+#
+# All modifications and additions to the file contributed by third parties
+# remain the property of their copyright owners, unless otherwise agreed
+# upon. The license for this file, and modifications and additions to the
+# file, is the same license as for the pristine package itself (unless the
+# license for the pristine package is not an Open Source License, in which
+# case the license is the MIT License). An "Open Source License" is a
+# license that conforms to the Open Source Definition (Version 1.9)
+# published by the Open Source Initiative.
+
+# Please submit bugfixes or comments via http://bugs.opensuse.org/
+#
+
+## -----------------------------------------------------------------------------
+## --SECTION--                                                  global variables
+## -----------------------------------------------------------------------------
+
+%define _cfgdir %{_sysconfdir}/arangodb3
+%define _databasedir %{_localstatedir}/lib/arangodb3
+%define _appdir %{_localstatedir}/lib/arangodb3-apps
+%define _logdir %{_localstatedir}/log/arangodb3
+
+%if 0%{?suse_version} >= 1230
+%define _piddir /run/arangodb
+%else
+%define _piddir %{_localstatedir}/run/arangodb
+%endif
+
+%define _skipFdupes 0
+
+## -----------------------------------------------------------------------------
+## --SECTION--                                                      package data
+## -----------------------------------------------------------------------------
+
+Name:           @CPACK_PACKAGE_NAME@
+Version:        @CPACK_PACKAGE_VERSION@
+Release:        1.1
+Summary:        The open-source, multi-model NoSQL database
+License:        Apache-2.0
+Group:          Productivity/Databases/Servers
+Conflicts:	arangodb3-client
+Url:            http://www.arangodb.com
+Source:         arangodb-%{version}.tar.bz2
+Source1:        init-files.tar.bz2
+Vendor:         @CPACK_PACKAGE_VENDOR@
+Prefix:         @CPACK_PACKAGING_INSTALL_PREFIX@
+BuildRoot:      @CMAKE_CURRENT_BINARY_DIR@/_CPack_Packages/Linux/RPM/@CPACK_PACKAGE_FILE_NAME@
+
+BuildRequires: cmake make, python
+%{?systemd_requires}
+
+%define debug_package %{nil}
+
+## -----------------------------------------------------------------------------
+## --SECTION--                                                build dependencies
+## -----------------------------------------------------------------------------
+
+################################################################################
+### @brief SUSE
+################################################################################
+
+%if 0%{?suse_version}
+
+%if 0%{?sles_version} == 11
+BuildRequires: python-argparse
+%endif
+
+BuildRequires: cmake
+BuildRequires: libopenssl-devel
+BuildRequires: pwdutils
+BuildRequires: fdupes
+BuildRequires: libicu-devel
+
+%if 0%{?suse_version} == 1310 || 0%{?suse_version} == 1320
+BuildRequires: libstdc++6
+%endif
+
+%if 0%{?suse_version} >= 1210
+BuildRequires: systemd
+%endif
+
+%if 0%{?suse_version} == 1315 || 0%{?suse_version} == 1330
+BuildRequires: gcc5-c++
+
+%define C_COMPILER   gcc-5
+%define CXX_COMPILER g++-5
+%else
+BuildRequires: arangodb-gcc54
+
+%define C_COMPILER   /opt/arangodb/bin/gcc
+%define CXX_COMPILER /opt/arangodb/bin/g++
+%endif
+
+%if 0%{?sles_version} == 11
+BuildRequires: libicu-devel
+%define JEMALLOC_OPT %{nil}
+%else
+%if 0%{?suse_version} == 1315
+BuildRequires: arangodb-jemalloc-devel-static
+%else
+BuildRequires: jemalloc-devel-static
+%endif
+%define JEMALLOC_OPT -DFORCE_JEMALLOC_LIB=:libjemalloc.a
+%endif
+
+%endif
+
+################################################################################
+### @brief red-hat or centos
+################################################################################
+
+%if 0%{?centos_version} || 0%{?rhel_version}
+
+%if 0%{?centos_version} == 600
+BuildRequires: python-argparse
+%endif
+
+%if 0%{?rhel_version} == 600
+BuildRequires: cmake = 3.5.2
+BuildRequires: python-argparse
+%else
+BuildRequires: cmake
+%endif
+
+%define _skipFdupes 1
+
+BuildRequires: glibc-devel
+BuildRequires: arangodb-gcc54
+BuildRequires: arangodb-jemalloc-devel-static
+BuildRequires: openssl-devel
+BuildRequires: redhat-rpm-config
+
+%define JEMALLOC_OPT -DFORCE_JEMALLOC_LIB=:libjemalloc.a
+%define C_COMPILER   /opt/arangodb/bin/gcc
+%define CXX_COMPILER /opt/arangodb/bin/g++
+
+%ifarch i686 i586 i486 i386
+%define optflags -O2 -g -march=i586
+%endif
+
+%endif
+
+################################################################################
+### @brief fedora
+################################################################################
+
+%if 0%{?fedora_version} 
+
+%define _skipFdupes 1
+
+BuildRequires: cmake
+BuildRequires: glibc-devel
+BuildRequires: openssl-devel
+BuildRequires: libicu-devel
+
+%if 0%{fedora_version} == 22 || 0%{fedora_version} == 23
+BuildRequires: libstdc++-static
+BuildRequires: gcc-c++
+BuildRequires: jemalloc-devel
+
+%define JEMALLOC_OPT %{nil}
+%define C_COMPILER   gcc
+%define CXX_COMPILER g++
+
+%else
+BuildRequires: arangodb-gcc54
+BuildRequires: arangodb-jemalloc-devel-static
+
+%define JEMALLOC_OPT -DFORCE_JEMALLOC_LIB=:libjemalloc.a
+%define C_COMPILER   /opt/arangodb/bin/gcc
+%define CXX_COMPILER /opt/arangodb/bin/g++
+%endif
+
+%endif
+
+################################################################################
+### @brief mdk
+################################################################################
+
+%if 0%{?mdkversion}
+BuildRequires: openssl-devel
+BuildRequires: libicu-devel
+
+%define _skipFdupes 1
+%endif
+
+## -----------------------------------------------------------------------------
+## --SECTION--                                               client only package
+## -----------------------------------------------------------------------------
+
+%package client
+Summary:        ArangoDB shell as stand-alone package
+Group:          Productivity/Databases/Servers
+Conflicts:	arangodb3
+
+## -----------------------------------------------------------------------------
+## --SECTION--                                                       description
+## -----------------------------------------------------------------------------
+
+%description
+ArangoDB is a durable, reliable, transactional multi-model database. Its key-features are: joins, transaction, and flexible data modelling.
+
+The ArangoDB consists of a server, a separate shell, which allows you to administrate the server, and a set of client APIs for various languages.
+
+It is written in C/C++.
+
+
+%description client
+The ArangoDB shell as stand-alone program. It also contains the utility programs: arangobench (benchmark), arangorestore & arangodump (backup), arangoimp (import).
+
+## -----------------------------------------------------------------------------
+## --SECTION--                                                             build
+## -----------------------------------------------------------------------------
+
+%prep
+%setup -q -n arangodb-%{version}
+%setup -q -n arangodb-%{version} -T -D -a 1
+
+%build
+export CC="%{C_COMPILER}"
+export CXX="%{CXX_COMPILER}"
+export CFLAGS="-g -static-libgcc -O3 -fno-omit-frame-pointer"
+export CXXFLAGS="-g -static-libgcc -static-libstdc++ -O3 -fno-omit-frame-pointer"
+export V8_CFLAGS="-static-libgcc"
+export V8_CXXFLAGS="-static-libgcc -static-libstdc++"
+export V8_LDFLAGS="-static-libgcc -static-libstdc++"
+export PATH="/opt/arangodb/bin:$PATH"
+
+mkdir build
+cd build
+
+cmake \
+  -DVERBOSE=On \
+  -DUSE_OPTIMIZE_FOR_ARCHITECTURE=Off \
+  -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+  -DCMAKE_C_FLAGS="${CFLAGS}" \
+  -DCMAKE_CXX_FLAGS="${CXXFLAGS}" \
+  -DCMAKE_C_COMPILER="%{C_COMPILER}" \
+  -DCMAKE_CXX_COMPILER="%{CXX_COMPILER}" \
+  %{JEMALLOC_OPT} \
+  -DETCDIR=/etc \
+  -DVARDIR=/var \
+  -DCMAKE_INSTALL_PREFIX:PATH=/usr \
+  -DCMAKE_INSTALL_DATADIR:PATH=/usr/share \
+  -DCMAKE_SKIP_RPATH:BOOL=ON \
+  -DCMAKE_USER_MAKE_RULES_OVERRIDE= \
+  ..
+
+make %{?_smp_mflags} VERBOSE=1 V=1 Verbose=1 all
+
+## -----------------------------------------------------------------------------
+## --SECTION--                                                           install
+## -----------------------------------------------------------------------------
+
+%install
+export CC="%{C_COMPILER}"
+export CXX="%{CXX_COMPILER}"
+export CFLAGS="-g -static-libgcc -O3 -fno-omit-frame-pointer"
+export CXXFLAGS="-g -static-libgcc -static-libstdc++ -O3 -fno-omit-frame-pointer"
+export V8_CFLAGS="-static-libgcc"
+export V8_CXXFLAGS="-static-libgcc -static-libstdc++"
+export V8_LDFLAGS="-static-libgcc -static-libstdc++"
+export PATH="/opt/arangodb/bin:$PATH"
+
+find js -xtype l -exec rm "{}" ";"
+
+cd build
+make DESTDIR=%{buildroot} install
+
+mkdir -p %{buildroot}%{_databasedir}
+mkdir -p %{buildroot}%{_appdir}
+mkdir -p %{buildroot}%{_logdir}
+mkdir -p %{buildroot}%{_piddir}
+
+# use %doc to install readme
+rm -f %{buildroot}/usr/share/doc/packages/arangodb3/*
+rm -f %{buildroot}/usr/share/doc/arangodb3/*
+
+%if 0%{?suse_version}
+
+%if 0%{?suse_version} >= 1230
+%{__install} -D -m 0755 ../rc.arangod.OpenSuSE_13 %{buildroot}%{_sysconfdir}/init.d/arangodb3
+%else
+%{__install} -D -m 0755 ../rc.arangod.OpenSuSE %{buildroot}%{_sysconfdir}/init.d/arangodb3
+%endif
+
+ln -s %{_sysconfdir}/init.d/arangodb3 %{buildroot}%{_sbindir}/rcarangodb
+
+%if 0%{?suse_version} >= 1210
+%{__install} -D -m 0644 ../arangodb.service %{buildroot}%{_unitdir}/arangodb3.service
+%endif
+
+%else
+%{__install} -D -m 0755 ../rc.arangod.Centos %{buildroot}%{_sysconfdir}/init.d/arangodb3
+%endif
+
+%if %{_skipFdupes} == 0
+%fdupes %{buildroot}%{_datadir}/arangodb3
+%endif
+
+## -----------------------------------------------------------------------------
+## --SECTION--                                                             check
+## -----------------------------------------------------------------------------
+
+%check
+
+## -----------------------------------------------------------------------------
+## --SECTION--                                                             files
+## -----------------------------------------------------------------------------
+
+%files
+%defattr(-,root,root,0755)
+%doc README
+%doc README.md
+%doc LICENSE
+%doc LICENSES-OTHER-COMPONENTS.md
+%attr(0755,arangodb,arangodb) %{_databasedir}
+%attr(0755,arangodb,arangodb) %{_appdir}
+%attr(0755,arangodb,arangodb) %{_logdir}
+
+%ghost %attr(0755,arangodb,arangodb) %{_piddir}
+
+%config(noreplace) %attr(-,arangodb,arangodb) %{_cfgdir}
+%{_bindir}/*
+%{_sbindir}/*
+%{_mandir}/*/*
+%{_datadir}/arangodb3
+%{_sysconfdir}/init.d/arangodb3
+
+%if 0%{?suse_version} >= 1210
+%{_unitdir}/arangodb3.service
+%endif
+
+
+%files client
+%defattr(-,root,root,0755)
+%doc README
+%doc README.md
+%doc LICENSE
+%doc LICENSES-OTHER-COMPONENTS.md
+
+%config(noreplace) %attr(-,arangodb,arangodb) %{_cfgdir}/arangosh.conf
+%config(noreplace) %attr(-,arangodb,arangodb) %{_cfgdir}/arangoimp.conf
+%config(noreplace) %attr(-,arangodb,arangodb) %{_cfgdir}/arangodump.conf
+%config(noreplace) %attr(-,arangodb,arangodb) %{_cfgdir}/arangorestore.conf
+%config(noreplace) %attr(-,arangodb,arangodb) %{_cfgdir}/arangobench.conf
+%config(noreplace) %attr(-,arangodb,arangodb) %{_cfgdir}/foxx-manager.conf
+%{_bindir}/arangosh
+%{_bindir}/arangoimp
+%{_bindir}/arangodump
+%{_bindir}/arangorestore
+%{_bindir}/arangobench
+%{_bindir}/foxx-manager
+%{_mandir}/*/arangosh*
+%{_mandir}/*/arangorestore*
+%{_mandir}/*/arangobench*
+%{_mandir}/*/arangodump*
+%{_mandir}/*/arangoimp*
+%{_datadir}/arangodb3/js/common
+%{_datadir}/arangodb3/js/client
+%{_datadir}/arangodb3/js/node
+
+
+## -----------------------------------------------------------------------------
+## --SECTION--                                                              post
+## -----------------------------------------------------------------------------
+
+%post
+%if 0%{?suse_version}
+
+%{fillup_and_insserv -f -y arangodb3}
+%restart_on_update arangodb3
+
+%if 0%{?suse_version} >= 1210
+%service_add_post arangodb3.service
+%endif
+
+%else
+chkconfig --level 2345 arangodb3 on
+%endif
+
+echo "
+ArangoDB 3 (https://www.arangodb.com)
+  The multi-model NoSQL database: distributed free and open-source database
+  with a flexible data model for documents, graphs, and key-values. Build
+  high performance applications using a convenient SQL-like query language
+  or JavaScript extensions.
+
+First Steps with ArangoDB:
+  https://www.arangodb.com/quickstart
+
+Upgrading ArangoDB:
+  https://docs.arangodb.com/Installing/Upgrading.html
+
+Upgrading ArangoDB database files:
+  > /etc/init.d/arangodb3 upgrade
+
+Configuration file:
+  /etc/arangodb3/arangod.conf
+
+Start ArangoDB shell client:
+  > %{_bindir}/arangosh
+"
+
+%if 0%{?suse_version} >= 1210
+echo "Start ArangoDB service:
+  > systemctl start arangodb3.service
+
+Enable ArangoDB service:
+  > systemctl enable arangodb3.service
+"
+%else
+echo "Start ArangoDB service:
+  > /etc/init.d/arangodb3 start
+"
+%endif
+
+export ARANGODB_DEFAULT_ROOT_PASSWORD=`(uname -a ; cat /etc/hostname) | md5sum | awk '{print $1}'`
+
+echo "SECURITY HINT:"
+echo "run 'arango-secure-installation' to set a root password"
+echo "the current password is $ARANGODB_DEFAULT_ROOT_PASSWORD"
+echo "(in case this a FRESH install, for UPGRADE the password"
+echo "will not be changed)"
+
+/usr/sbin/arango-init-database --uid arangodb --gid arangodb || true
+
+exit 0
+
+## -----------------------------------------------------------------------------
+## --SECTION--                                                            postun
+## -----------------------------------------------------------------------------
+
+%postun
+%if 0%{?suse_version}
+
+%restart_on_update arangodb3
+%insserv_cleanup
+
+%if 0%{?suse_version} >= 1210
+%service_del_postun arangodb3.service
+%endif
+
+%else
+exit 0
+%endif
+
+## -----------------------------------------------------------------------------
+## --SECTION--                                                               pre
+## -----------------------------------------------------------------------------
+
+%pre
+# create arangodb group only if it doesn't already exist
+if ! getent group arangodb >/dev/null 2>&1; then
+        /usr/sbin/groupadd -r arangodb
+fi
+
+# create arangodb user only if it doesn't already exist
+if ! getent passwd arangodb >/dev/null 2>&1; then
+        /usr/sbin/useradd -r -g arangodb --home %{_localstatedir}/arangodb arangodb
+        /usr/sbin/usermod -c "Arango Server" arangodb
+fi
+
+%if 0%{?suse_version} >= 1210
+%service_add_pre arangodb3.service
+%endif
+
+## -----------------------------------------------------------------------------
+## --SECTION--                                                             preun
+## -----------------------------------------------------------------------------
+
+%preun
+%if 0%{?suse_version}
+%stop_on_removal arangodb3
+
+%if 0%{?suse_version} >= 1210
+%service_del_preun arangodb3.service
+%endif
+
+%else
+%{_sysconfdir}/init.d/arangodb stop > /dev/null 2>&1 || true
+chkconfig --del arangodb3
+exit 0
+%endif
+
+## -----------------------------------------------------------------------------
+## --SECTION--                                                         changelog
+## -----------------------------------------------------------------------------
+
+%changelog
