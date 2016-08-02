@@ -65,6 +65,7 @@ static std::string const planDBServersPrefix = "/Plan/DBServers";
 static std::string const planCoordinatorsPrefix = "/Plan/Coordinators";
 static std::string const currentServersRegisteredPrefix 
     = "/Current/ServersRegistered";
+static std::string const foxxmaster = "/Current/Foxxmaster";
 
 std::vector<check_t> Supervision::checkDBServers() {
   std::vector<check_t> ret;
@@ -183,7 +184,14 @@ std::vector<check_t> Supervision::checkCoordinators() {
   Node::Children const serversRegistered =
       _snapshot(currentServersRegisteredPrefix).children();
 
-
+  std::string currentFoxxmaster;
+  try {
+    currentFoxxmaster = _snapshot(foxxmaster).getString();
+  } catch (...) {
+  }
+  
+  std::string goodServerId;
+  bool foxxmasterOk = false;
   std::vector<std::string> todelete;
   for (auto const& machine : _snapshot(healthPrefix).children()) {
     if (machine.first.substr(0,2) == "Co") {
@@ -238,6 +246,12 @@ std::vector<check_t> Supervision::checkCoordinators() {
     }
     
     if (good) {
+      if (goodServerId.empty()) {
+        goodServerId = serverID;
+      }
+      if (serverID == currentFoxxmaster) {
+        foxxmasterOk = true;
+      }
       report->add("LastHeartbeatAcked",
                   VPackValue(
                     timepointToString(std::chrono::system_clock::now())));
@@ -279,6 +293,19 @@ std::vector<check_t> Supervision::checkCoordinators() {
     del->close(); del->close(); del->close();
     _agent->write(del);
   }
+
+  if (!foxxmasterOk && !goodServerId.empty()) {
+    query_t create = std::make_shared<Builder>();
+    create->openArray();
+    create->openArray();
+    create->openObject();
+    create->add(_agencyPrefix + foxxmaster, VPackValue(goodServerId));
+    create->close();
+    create->close();
+    create->close();
+    
+    _agent->write(create);
+  }
   
   return ret;
 
@@ -293,7 +320,7 @@ bool Supervision::updateSnapshot() {
   return true;
 }
 
-bool Supervision::doChecks(bool timedout) {
+bool Supervision::doChecks() {
 
   checkDBServers();
   checkCoordinators();
@@ -305,7 +332,6 @@ void Supervision::run() {
 
   CONDITION_LOCKER(guard, _cv);
   TRI_ASSERT(_agent != nullptr);
-  bool timedout = false;
   
   while (!this->isStopping()) {
     
@@ -329,14 +355,14 @@ void Supervision::run() {
     
     // Do nothing unless leader 
     if (_agent->leading()) {
-      timedout = _cv.wait(_frequency * 1000000);  // quarter second
+      _cv.wait(_frequency * 1000000);  // quarter second
     } else {
       _cv.wait();
     }
     
     // Do supervision
     updateSnapshot();
-    doChecks(timedout);
+    doChecks();
     shrinkCluster();
     workJobs();
     

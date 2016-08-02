@@ -28,7 +28,7 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
-#include "VocBase/document-collection.h"
+#include "VocBase/collection.h"
 #include "VocBase/transaction.h"
 #include "VocBase/vocbase.h"
 
@@ -55,7 +55,7 @@ Collection::Collection(std::string const& name, TRI_vocbase_t* vocbase,
 Collection::~Collection() {}
   
 /// @brief get the pointer to the document collection
-TRI_document_collection_t* Collection::documentCollection() const {
+TRI_collection_t* Collection::documentCollection() const {
   TRI_ASSERT(collection != nullptr);
   TRI_ASSERT(collection->_collection != nullptr);
 

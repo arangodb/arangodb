@@ -145,7 +145,7 @@
 
       // render
       this.graphData.modified = this.parseData(this.graphData.original, this.graphData.graphInfo);
-      this.renderGraph(this.graphData.modified);
+      this.renderGraph(this.graphData.modified, null, true);
     },
 
     parseData: function (data, type) {
@@ -160,13 +160,15 @@
         _.each(data, function (obj) {
           if (obj.edges && obj.vertices) {
             _.each(obj.edges, function (edge) {
-              edges[edge._id] = {
-                id: edge._id,
-                source: edge._from,
-                label: edge._key,
-                color: '#cccccc',
-                target: edge._to
-              };
+              if (edge !== null) {
+                edges[edge._id] = {
+                  id: edge._id,
+                  source: edge._from,
+                  label: edge._key,
+                  color: '#cccccc',
+                  target: edge._to
+                };
+              }
             });
 
             _.each(obj.vertices, function (node) {
@@ -245,6 +247,16 @@
           delete ajaxData.renderer;
         }
 
+        if (self.tmpStartNode) {
+          if (self.graphConfig) {
+            if (self.graphConfig.nodeStart.length === 0) {
+              ajaxData.nodeStart = self.tmpStartNode;
+            }
+          } else {
+            ajaxData.nodeStart = self.tmpStartNode;
+          }
+        }
+
         this.setupSigma();
 
         self.fetchStarted = new Date();
@@ -257,6 +269,14 @@
             if (data.empty === true) {
               self.renderGraph(data, toFocus);
             } else {
+              if (data.settings) {
+                if (data.settings.startVertex && self.graphConfig.startNode === undefined) {
+                  if (self.tmpStartNode === undefined) {
+                    self.tmpStartNode = data.settings.startVertex._id;
+                  }
+                }
+              }
+
               self.fetchFinished = new Date();
               self.calcStart = self.fetchFinished;
               $('#calcText').html('Server response took ' + Math.abs(self.fetchFinished.getTime() - self.fetchStarted.getTime()) + ' ms. Initializing graph engine. Please wait ... ');
@@ -415,6 +435,11 @@
       _.each(this.selectedNodes, function (id) {
         nodeIds.push(id);
       });
+
+      if (nodeIds.length === 0) {
+        arangoHelper.arangoNotification('Graph', 'No nodes selected.');
+        return;
+      }
 
       var buttons = []; var tableContent = [];
 
@@ -614,7 +639,7 @@
       }
       var key = $('.modal-body #new-edge-key-attr').last().val();
 
-      var callback = function (error, data) {
+      var callback = function (error, data, msg) {
         if (!error) {
           // success
           if (self.graphConfig.edgeEditable === 'true') {
@@ -642,7 +667,7 @@
           }
           self.currentGraph.refresh();
         } else {
-          arangoHelper.arangoError('Graph', 'Could not create edge.');
+          arangoHelper.arangoError('Could not create edge', msg.errorMessage);
         }
 
         // then clear states
@@ -723,20 +748,24 @@
       }
     },
 
-    updateColors: function () {
+    updateColors: function (nodes, edges, ncolor, ecolor) {
       var combinedName = window.App.currentDB.toJSON().name + '_' + this.name;
       var self = this;
 
       this.userConfig.fetch({
         success: function (data) {
-          self.graphConfig = data.toJSON().graphs[combinedName];
-          self.currentGraph.graph.nodes().forEach(function (n) {
-            n.color = self.graphConfig.nodeColor;
-          });
+          if (nodes === true) {
+            self.graphConfig = data.toJSON().graphs[combinedName];
+            self.currentGraph.graph.nodes().forEach(function (n) {
+              n.color = ncolor;
+            });
+          }
 
-          self.currentGraph.graph.edges().forEach(function (e) {
-            e.color = self.graphConfig.edgeColor;
-          });
+          if (edges === true) {
+            self.currentGraph.graph.edges().forEach(function (e) {
+              e.color = ecolor;
+            });
+          }
 
           self.currentGraph.refresh();
         }
@@ -1167,9 +1196,13 @@
         // Do something with the selected nodes
         var nodes = event.data;
 
-        _.each(nodes, function (val, key) {
-          self.selectedNodes[key] = val.id;
-        });
+        if (nodes.length === 0) {
+          self.selectedNodes = [];
+        } else {
+          _.each(nodes, function (val, key) {
+            self.selectedNodes[key] = val.id;
+          });
+        }
 
         /*
         // For instance, reset all node size as their initial size
@@ -1190,7 +1223,7 @@
       return lasso;
     },
 
-    renderGraph: function (graph, toFocus) {
+    renderGraph: function (graph, toFocus, aqlMode) {
       var self = this;
 
       this.graphSettings = graph.settings;
@@ -1558,14 +1591,10 @@
         self.startLayout();
 
         // suggestion rendering time
-        var duration = 3000;
+        var duration = graph.nodes.length;
 
-        if (graph.nodes) {
-          if (graph.nodes.length > 2500) {
-            duration = 5000;
-          } else if (graph.nodes.length < 50) {
-            duration = 500;
-          }
+        if (duration < 250) {
+          duration = 250;
         }
 
         window.setTimeout(function () {
@@ -1640,9 +1669,11 @@
         factor = 0.7;
       }
 
-      maxNodeSize = maxNodeSize * factor;
-      s.settings('maxNodeSize', maxNodeSize);
-      s.refresh();
+      if (!aqlMode) {
+        maxNodeSize = maxNodeSize * factor;
+        s.settings('maxNodeSize', maxNodeSize);
+        s.refresh();
+      }
 
       self.calcFinished = new Date();
       // console.log('Client side calculation took ' + Math.abs(self.calcFinished.getTime() - self.calcStart.getTime()) + ' ms');

@@ -102,6 +102,9 @@ var runInDatabase = function () {
 };
 
 exports.manage = function () {
+  if (!global.ArangoServerState.isFoxxmaster()) {
+    return;
+  }
   var initialDatabase = db._name();
   var now = Date.now();
 

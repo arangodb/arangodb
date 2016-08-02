@@ -29,7 +29,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
 #include "Utils/TransactionContext.h"
-#include "VocBase/document-collection.h"
+#include "VocBase/collection.h"
 #include "VocBase/transaction.h"
 
 #include <velocypack/Iterator.h>
@@ -452,7 +452,7 @@ HashIndex::MultiArray::~MultiArray() {
 ////////////////////////////////////////////////////////////////////////////////
 
 HashIndex::HashIndex(
-    TRI_idx_iid_t iid, TRI_document_collection_t* collection,
+    TRI_idx_iid_t iid, TRI_collection_t* collection,
     std::vector<std::vector<arangodb::basics::AttributeName>> const& fields,
     bool unique, bool sparse)
     : PathBasedIndex(iid, collection, fields, unique, sparse, false),

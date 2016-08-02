@@ -30,7 +30,7 @@
 
 #include <velocypack/Options.h>
 
-struct TRI_document_collection_t;
+struct TRI_collection_t;
 struct TRI_transaction_t;
 struct TRI_vocbase_t;
 
@@ -88,7 +88,7 @@ class TransactionContext {
   /// function will return a nullptr!
   //////////////////////////////////////////////////////////////////////////////
 
-  DocumentDitch* orderDitch(TRI_document_collection_t*);
+  DocumentDitch* orderDitch(TRI_collection_t*);
   
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the ditch for a collection

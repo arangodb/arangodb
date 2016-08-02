@@ -40,11 +40,6 @@
     require('@arangodb/statistics').startup();
   }
 
-  // load all foxxes
-  if (internal.threadNumber === 0) {
-    internal.loadStartup('server/bootstrap/foxxes.js').foxxes();
-  }
-
   // autoload all modules and reload routing information in all threads
   internal.loadStartup('server/bootstrap/autoload.js').startup();
   internal.loadStartup('server/bootstrap/routing.js').startup();

@@ -25,7 +25,7 @@
 #include "Logger/Logger.h"
 #include "Basics/Utf8Helper.h"
 #include "FulltextIndex/fulltext-index.h"
-#include "VocBase/document-collection.h"
+#include "VocBase/collection.h"
 #include "VocBase/transaction.h"
 
 #include <velocypack/Iterator.h>
@@ -63,7 +63,7 @@ static void ExtractWords(std::vector<std::string>& words,
 }
 
 FulltextIndex::FulltextIndex(TRI_idx_iid_t iid,
-                             TRI_document_collection_t* collection,
+                             TRI_collection_t* collection,
                              std::string const& attribute, int minWordLength)
     : Index(iid, collection,
             std::vector<std::vector<arangodb::basics::AttributeName>>{

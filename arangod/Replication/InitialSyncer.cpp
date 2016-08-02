@@ -36,7 +36,7 @@
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "Utils/CollectionGuard.h"
 #include "VocBase/DatafileHelper.h"
-#include "VocBase/document-collection.h"
+#include "VocBase/collection.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
 
@@ -1031,7 +1031,7 @@ int InitialSyncer::handleSyncKeys(TRI_vocbase_col_t* col,
   // fetch all local keys from primary index
   std::vector<void const*> markers;
     
-  TRI_document_collection_t* document = nullptr;
+  TRI_collection_t* document = nullptr;
   DocumentDitch* ditch = nullptr;
 
   // acquire a replication ditch so no datafiles are thrown away from now on
@@ -1849,7 +1849,7 @@ int InitialSyncer::handleCollection(VPackSlice const& parameters,
 
             trx.orderDitch(col->_cid); // will throw when it fails
       
-            TRI_document_collection_t* document = trx.documentCollection();
+            TRI_collection_t* document = trx.documentCollection();
             TRI_ASSERT(document != nullptr);
 
             for (auto const& idxDef : VPackArrayIterator(indexes)) {
@@ -1865,8 +1865,7 @@ int InitialSyncer::handleCollection(VPackSlice const& parameters,
                 }
               }
 
-              res = TRI_FromVelocyPackIndexDocumentCollection(&trx, document,
-                                                              idxDef, &idx);
+              res = document->indexFromVelocyPack(&trx, idxDef, &idx);
 
               if (res != TRI_ERROR_NO_ERROR) {
                 errorMsg = "could not create index: " +
@@ -1875,7 +1874,7 @@ int InitialSyncer::handleCollection(VPackSlice const& parameters,
               } else {
                 TRI_ASSERT(idx != nullptr);
 
-                res = TRI_SaveIndex(document, idx, true);
+                res = document->saveIndex(idx, true);
 
                 if (res != TRI_ERROR_NO_ERROR) {
                   errorMsg = "could not save index: " +

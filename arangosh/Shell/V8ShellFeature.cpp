@@ -83,7 +83,6 @@ void V8ShellFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
 void V8ShellFeature::validateOptions(
     std::shared_ptr<options::ProgramOptions> options) {
-
   if (_startupDirectory.empty()) {
     LOG(FATAL) << "'--javascript.startup-directory' is empty, giving up";
     FATAL_ERROR_EXIT();
@@ -94,12 +93,14 @@ void V8ShellFeature::validateOptions(
 }
 
 void V8ShellFeature::start() {
-  _console = application_features::ApplicationServer::getFeature<ConsoleFeature>("Console");
-  auto platform = application_features::ApplicationServer::getFeature<V8PlatformFeature>("V8Platform");
+  _console =
+      application_features::ApplicationServer::getFeature<ConsoleFeature>(
+          "Console");
+  auto platform =
+      application_features::ApplicationServer::getFeature<V8PlatformFeature>(
+          "V8Platform");
 
-  v8::Isolate::CreateParams createParams;
-  createParams.array_buffer_allocator = platform->arrayBufferAllocator();
-  _isolate = v8::Isolate::New(createParams);
+  _isolate = platform->createIsolate();
 
   v8::Locker locker{_isolate};
 
@@ -141,8 +142,8 @@ void V8ShellFeature::unprepare() {
         v8::Local<v8::Context>::New(_isolate, _context);
 
     v8::Context::Scope context_scope{context};
-    
-    // remove any objects stored in _last global value  
+
+    // remove any objects stored in _last global value
     context->Global()->Delete(TRI_V8_ASCII_STRING2(_isolate, "_last"));
 
     TRI_RunGarbageCollectionV8(_isolate, 2500.0);
@@ -152,9 +153,9 @@ void V8ShellFeature::unprepare() {
     v8::Locker locker{_isolate};
     v8::Isolate::Scope isolate_scope{_isolate};
 
-    TRI_v8_global_t* v8g =
-        static_cast<TRI_v8_global_t*>(_isolate->GetData(V8DataSlot));
-    _isolate->SetData(V8DataSlot, nullptr);
+    TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(
+        _isolate->GetData(arangodb::V8PlatformFeature::V8_DATA_SLOT));
+    _isolate->SetData(arangodb::V8PlatformFeature::V8_DATA_SLOT, nullptr);
 
     delete v8g;
 
@@ -401,9 +402,13 @@ int V8ShellFeature::runShell(std::vector<std::string> const& positionals) {
     _console->flushLog();
 
     // gc
-    if (++nrCommands >= _gcInterval) {
+    if (++nrCommands >= _gcInterval ||
+        V8PlatformFeature::isOutOfMemory(_isolate)) {
       nrCommands = 0;
       TRI_RunGarbageCollectionV8(_isolate, 500.0);
+
+      // needs to be reset after the garbage collection
+      V8PlatformFeature::resetOutOfMemory(_isolate);
     }
   }
 

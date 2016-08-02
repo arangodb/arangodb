@@ -42,7 +42,7 @@ class Transaction;
 }
 #endif
 
-struct TRI_document_collection_t;
+struct TRI_collection_t;
 
 namespace arangodb {
 
@@ -602,7 +602,7 @@ class Transaction {
   /// @brief test if a collection is already locked
   //////////////////////////////////////////////////////////////////////////////
 
-  bool isLocked(TRI_document_collection_t*, TRI_transaction_type_e);
+  bool isLocked(TRI_collection_t*, TRI_transaction_type_e);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the setup state
@@ -610,7 +610,7 @@ class Transaction {
 
   int setupState() { return _setupState; }
   
-  TRI_document_collection_t* documentCollection(TRI_voc_cid_t) const;
+  TRI_collection_t* documentCollection(TRI_voc_cid_t) const;
   
 //////////////////////////////////////////////////////////////////////////////
 /// @brief get the index by it's identifier. Will either throw or
@@ -643,7 +643,7 @@ class Transaction {
   /// argument as a single object.
   //////////////////////////////////////////////////////////////////////////////
 
-  void buildDocumentIdentity(TRI_document_collection_t* document,
+  void buildDocumentIdentity(TRI_collection_t* document,
                              VPackBuilder& builder,
                              TRI_voc_cid_t cid,
                              StringRef const& key,
@@ -724,7 +724,7 @@ class Transaction {
   /// @brief return the collection
   //////////////////////////////////////////////////////////////////////////////
 
-  TRI_document_collection_t* documentCollection(
+  TRI_collection_t* documentCollection(
       TRI_transaction_collection_t const*) const;
   
   //////////////////////////////////////////////////////////////////////////////

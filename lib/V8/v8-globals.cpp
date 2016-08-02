@@ -217,7 +217,7 @@ TRI_v8_global_t* TRI_CreateV8Globals(v8::Isolate* isolate) {
 
   TRI_ASSERT(v8g == nullptr);
   v8g = new TRI_v8_global_t(isolate);
-  isolate->SetData(V8DataSlot, v8g);
+  isolate->SetData(arangodb::V8PlatformFeature::V8_DATA_SLOT, v8g);
 
   return v8g;
 }

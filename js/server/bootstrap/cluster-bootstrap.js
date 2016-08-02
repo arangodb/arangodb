@@ -48,5 +48,8 @@
   if (!result) {
     console.error('upgrade-database.js for cluster script failed!');
   }
+  internal.loadStartup('server/bootstrap/foxxes.js').foxxes();
+  global.ArangoAgency.set('Current/Foxxmaster', global.ArangoServerState.id());
+  
   return true;
 }());

@@ -56,14 +56,12 @@ class State {
 
   /// @brief Log entries (leader)
   std::vector<index_t> log(query_t const& query,
-                           std::vector<bool> const& indices, term_t term,
-                           arangodb::consensus::id_t lid);
-
+                           std::vector<bool> const& indices, term_t term);
+  
   /// @brief Log entries (followers)
-  index_t log(query_t const& queries, term_t term,
-           arangodb::consensus::id_t leaderId, index_t prevLogIndex,
-           term_t prevLogTerm);
-
+  index_t log(query_t const& queries, term_t term, index_t prevLogIndex,
+              term_t prevLogTerm);
+  
   /// @brief Find entry at index with term
   bool find(index_t index, term_t term);
 
@@ -93,19 +91,22 @@ class State {
   friend std::ostream& operator<<(std::ostream& os, State const& s) {
     for (auto const& i : s._log)
       LOG_TOPIC(INFO, Logger::AGENCY)
-          << "index(" << i.index << ") term(" << i.term << ") leader: ("
-          << i.leaderId << ") query(" << VPackSlice(i.entry->data()).toJson()
-          << ")";
+          << "index(" << i.index << ") term(" << i.term << ") query("
+          << VPackSlice(i.entry->data()).toJson()  << ")";
     return os;
   }
 
   bool compact(arangodb::consensus::index_t cind);
 
+  void removeConflicts(query_t const&);
+
+
  private:
+
   bool snapshot();
 
   /// @brief Save currentTerm, votedFor, log entries
-  bool persist(index_t index, term_t term, arangodb::consensus::id_t lid,
+  bool persist(index_t index, term_t term,
                arangodb::velocypack::Slice const& entry);
 
   /// @brief Load collection from persistent store

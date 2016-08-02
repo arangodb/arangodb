@@ -127,6 +127,11 @@
     input,
     select {
       color: $c-black;
+
+      &:disabled {
+        cursor: not-allowed;
+        opacity: .7;
+      }
     }
 
     input {
@@ -171,6 +176,37 @@
       position: relative;
     }
 
+    @-moz-document url-prefix() {
+
+      .pure-table-body {
+        overflow: hidden;
+      }
+
+      .pure-u-2-3 {
+        input {
+          width: 184px;
+        }
+
+        input[type="color"] {
+          height: 32px;
+          width: 200px;
+        }
+
+        input[type="range"] {
+          height: 26px;
+          margin-top: 0;
+          width: 196px;
+        }
+
+        input[type=range]::-moz-range-track {
+          width: 184px;
+        }
+
+        select {
+          width: 200px;
+        }
+      }
+    }
   }
 
   .pure-table {

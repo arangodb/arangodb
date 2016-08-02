@@ -31,7 +31,7 @@
 #include "Indexes/RocksDBFeature.h"
 #include "Indexes/RocksDBKeyComparator.h"
 #include "Utils/Transaction.h"
-#include "VocBase/document-collection.h"
+#include "VocBase/collection.h"
 
 #include <rocksdb/utilities/optimistic_transaction_db.h>
 #include <rocksdb/utilities/transaction.h>
@@ -206,7 +206,7 @@ TRI_doc_mptr_t* RocksDBIterator::next() {
 ////////////////////////////////////////////////////////////////////////////////
 
 RocksDBIndex::RocksDBIndex(
-    TRI_idx_iid_t iid, TRI_document_collection_t* collection,
+    TRI_idx_iid_t iid, TRI_collection_t* collection,
     std::vector<std::vector<arangodb::basics::AttributeName>> const& fields,
     bool unique, bool sparse)
     : PathBasedIndex(iid, collection, fields, unique, sparse, true),

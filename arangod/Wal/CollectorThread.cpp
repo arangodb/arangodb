@@ -37,7 +37,7 @@
 #include "Utils/StandaloneTransactionContext.h"
 #include "VocBase/DatafileHelper.h"
 #include "VocBase/DatafileStatistics.h"
-#include "VocBase/document-collection.h"
+#include "VocBase/collection.h"
 #include "Wal/Logfile.h"
 #include "Wal/LogfileManager.h"
 
@@ -564,7 +564,7 @@ size_t CollectorThread::numQueuedOperations() {
 /// @brief process a single marker in collector step 2
 void CollectorThread::processCollectionMarker(
     arangodb::SingleCollectionTransaction& trx,
-    TRI_document_collection_t* document, CollectorCache* cache,
+    TRI_collection_t* document, CollectorCache* cache,
     CollectorOperation const& operation) {
   auto const* walMarker = reinterpret_cast<TRI_df_marker_t const*>(operation.walPosition);
   TRI_ASSERT(walMarker != nullptr);
@@ -635,7 +635,7 @@ int CollectorThread::processCollectionOperations(CollectorCache* cache) {
 
   TRI_ASSERT(collection != nullptr);
 
-  TRI_document_collection_t* document = collection->_collection;
+  TRI_collection_t* document = collection->_collection;
 
   // first try to read-lock the compactor-lock, afterwards try to write-lock the
   // collection
@@ -860,7 +860,7 @@ int CollectorThread::transferMarkers(Logfile* logfile,
   TRI_vocbase_col_t* collection = collectionGuard.collection();
   TRI_ASSERT(collection != nullptr);
 
-  TRI_document_collection_t* document = collection->_collection;
+  TRI_collection_t* document = collection->_collection;
   TRI_ASSERT(document != nullptr);
 
   LOG_TOPIC(TRACE, Logger::COLLECTOR) << "collector transferring markers for '"
@@ -910,7 +910,7 @@ int CollectorThread::transferMarkers(Logfile* logfile,
 
 /// @brief transfer markers into a collection, actual work
 /// the collection must have been prepared to call this function
-int CollectorThread::executeTransferMarkers(TRI_document_collection_t* document,
+int CollectorThread::executeTransferMarkers(TRI_collection_t* document,
                                             CollectorCache* cache,
                                             OperationsType const& operations) {
   // used only for crash / recovery tests
@@ -1020,7 +1020,7 @@ int CollectorThread::queueOperations(arangodb::wal::Logfile* logfile,
 
 /// @brief update a collection's datafile information
 int CollectorThread::updateDatafileStatistics(
-    TRI_document_collection_t* document, CollectorCache* cache) {
+    TRI_collection_t* document, CollectorCache* cache) {
   // iterate over all datafile infos and update the collection's datafile stats
   for (auto it = cache->dfi.begin(); it != cache->dfi.end();
        /* no hoisting */) {
@@ -1037,7 +1037,7 @@ int CollectorThread::updateDatafileStatistics(
 
 /// @brief sync all journals of a collection
 int CollectorThread::syncJournalCollection(
-    TRI_document_collection_t* document) {
+    TRI_collection_t* document) {
   TRI_IF_FAILURE("CollectorThread::syncDatafileCollection") {
     return TRI_ERROR_DEBUG;
   }
@@ -1047,7 +1047,7 @@ int CollectorThread::syncJournalCollection(
 
 /// @brief get the next position for a marker of the specified size
 char* CollectorThread::nextFreeMarkerPosition(
-    TRI_document_collection_t* document, TRI_voc_tick_t tick,
+    TRI_collection_t* document, TRI_voc_tick_t tick,
     TRI_df_marker_type_t type, TRI_voc_size_t size, CollectorCache* cache) {
   
   // align the specified size
@@ -1105,7 +1105,7 @@ char* CollectorThread::nextFreeMarkerPosition(
 /// @brief set the tick of a marker and calculate its CRC value
 void CollectorThread::finishMarker(char const* walPosition,
                                    char* datafilePosition,
-                                   TRI_document_collection_t* document,
+                                   TRI_collection_t* document,
                                    TRI_voc_tick_t tick, CollectorCache* cache) {
   TRI_df_marker_t* marker =
       reinterpret_cast<TRI_df_marker_t*>(datafilePosition);

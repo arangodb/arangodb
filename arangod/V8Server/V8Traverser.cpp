@@ -23,7 +23,7 @@
 
 #include "V8Traverser.h"
 #include "VocBase/SingleServerTraverser.h"
-#include "VocBase/document-collection.h"
+#include "VocBase/collection.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>

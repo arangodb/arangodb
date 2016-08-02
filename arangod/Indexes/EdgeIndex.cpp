@@ -32,7 +32,7 @@
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/Transaction.h"
 #include "Utils/TransactionContext.h"
-#include "VocBase/document-collection.h"
+#include "VocBase/collection.h"
 #include "VocBase/transaction.h"
 
 #include <velocypack/Iterator.h>
@@ -308,7 +308,7 @@ void AnyDirectionEdgeIndexIterator::reset() {
 }
 
 
-EdgeIndex::EdgeIndex(TRI_idx_iid_t iid, TRI_document_collection_t* collection)
+EdgeIndex::EdgeIndex(TRI_idx_iid_t iid, TRI_collection_t* collection)
     : Index(iid, collection,
             std::vector<std::vector<arangodb::basics::AttributeName>>(
                 {{{StaticStrings::FromString, false}},

@@ -33,7 +33,7 @@
 
 #include <iosfwd>
 
-struct TRI_document_collection_t;
+struct TRI_collection_t;
 
 namespace arangodb {
 
@@ -137,7 +137,7 @@ class Index {
   Index(Index const&) = delete;
   Index& operator=(Index const&) = delete;
 
-  Index(TRI_idx_iid_t, TRI_document_collection_t*,
+  Index(TRI_idx_iid_t, TRI_collection_t*,
         std::vector<std::vector<arangodb::basics::AttributeName>> const&,
         bool unique, bool sparse);
 
@@ -254,7 +254,7 @@ class Index {
   /// @brief return the underlying collection
   //////////////////////////////////////////////////////////////////////////////
 
-  inline TRI_document_collection_t* collection() const {
+  inline TRI_collection_t* collection() const {
     return _collection;
   }
 
@@ -400,7 +400,7 @@ class Index {
  protected:
   TRI_idx_iid_t const _iid;
 
-  TRI_document_collection_t* _collection;
+  TRI_collection_t* _collection;
 
   std::vector<std::vector<arangodb::basics::AttributeName>> _fields;
 

@@ -237,6 +237,9 @@ DatabaseFeature::DatabaseFeature(ApplicationServer* server)
 }
 
 DatabaseFeature::~DatabaseFeature() {
+  // clean up
+  auto p = _databasesLists.load();
+  delete p;
 }
 
 void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -339,7 +342,7 @@ void DatabaseFeature::start() {
   
   // TODO: handle _upgrade and _checkVersion here
 
-  // activatee deadlock detection in case we're not running in cluster mode
+  // activate deadlock detection in case we're not running in cluster mode
   if (!arangodb::ServerState::instance()->isRunningInCluster()) {
     enableDeadlockDetection();
   }
@@ -352,7 +355,7 @@ void DatabaseFeature::unprepare() {
   // close all databases
   closeDatabases();
 
-  // delete the server
+  // delete the database manager thread
   if (_databaseManager != nullptr) {
     _databaseManager->beginShutdown();
 
@@ -375,10 +378,6 @@ void DatabaseFeature::unprepare() {
   } catch (...) {
   }
 
-  // clean up
-  auto p = _databasesLists.load();
-  delete p;
-  
   // clear singleton
   DATABASE = nullptr;
 }
@@ -690,7 +689,6 @@ int DatabaseFeature::dropDatabase(std::string const& name, bool writeMarker, boo
     delete oldLists;
 
     vocbase->_isOwnAppsDirectory = removeAppsDirectory;
-    path = vocbase->path();
 
     // invalidate all entries for the database
     arangodb::aql::QueryCache::instance()->invalidate(vocbase);

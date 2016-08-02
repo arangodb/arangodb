@@ -34,7 +34,6 @@
 #include "Utils/OperationResult.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/collection.h"
-#include "VocBase/document-collection.h"
 #include "VocBase/transaction.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
@@ -558,7 +557,7 @@ int Syncer::createIndex(VPackSlice const& slice) {
       return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
     }
 
-    TRI_document_collection_t* document = guard.collection()->_collection;
+    TRI_collection_t* document = guard.collection()->_collection;
 
     SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), guard.collection()->_cid, TRI_TRANSACTION_WRITE);
 
@@ -569,11 +568,10 @@ int Syncer::createIndex(VPackSlice const& slice) {
     }
 
     arangodb::Index* idx = nullptr;
-    res = TRI_FromVelocyPackIndexDocumentCollection(&trx, document, indexSlice,
-                                                    &idx);
+    res = document->indexFromVelocyPack(&trx, indexSlice, &idx);
 
     if (res == TRI_ERROR_NO_ERROR) {
-      res = TRI_SaveIndex(document, idx, true);
+      res = document->saveIndex(idx, true);
     }
 
     res = trx.finish(res);
@@ -617,9 +615,9 @@ int Syncer::dropIndex(arangodb::velocypack::Slice const& slice) {
       return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
     }
 
-    TRI_document_collection_t* document = guard.collection()->_collection;
+    TRI_collection_t* document = guard.collection()->_collection;
 
-    bool result = TRI_DropIndexDocumentCollection(document, iid, true);
+    bool result = document->dropIndex(iid, true);
 
     if (!result) {
       return TRI_ERROR_NO_ERROR;

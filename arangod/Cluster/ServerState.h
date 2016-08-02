@@ -38,7 +38,8 @@ class ServerState {
     ROLE_SINGLE,         // is set when cluster feature is off
     ROLE_PRIMARY,
     ROLE_SECONDARY,
-    ROLE_COORDINATOR
+    ROLE_COORDINATOR,
+    ROLE_AGENT
   };
 
   /// @brief an enum describing the possible states a server can have
@@ -120,6 +121,14 @@ class ServerState {
     return (role == ServerState::ROLE_PRIMARY ||
             role == ServerState::ROLE_SECONDARY ||
             role == ServerState::ROLE_COORDINATOR);
+  }
+  
+  /// @brief check whether the server is an agent 
+  bool isAgent() { return isAgent(loadRole()); }
+
+  /// @brief check whether the server is an agent
+  static bool isAgent(ServerState::RoleEnum role) {
+    return (role == ServerState::ROLE_AGENT);
   }
 
   /// @brief check whether the server is running in a cluster
@@ -216,6 +225,12 @@ class ServerState {
   /// agency or is not unique, then the system keeps the old role.
   /// Returns true if there is a change and false otherwise.
   bool redetermineRole();
+  
+  bool isFoxxmaster();
+
+  std::string const& getFoxxmaster();
+
+  void setFoxxmaster(std::string const&);
 
  private:
   /// @brief atomically fetches the server role
@@ -313,6 +328,8 @@ class ServerState {
 
   /// @brief whether or not we are a cluster member
   bool _clusterEnabled;
+
+  std::string _foxxmaster;
 };
 }
 

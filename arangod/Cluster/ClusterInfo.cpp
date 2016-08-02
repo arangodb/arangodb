@@ -41,7 +41,7 @@
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "Rest/HttpResponse.h"
-#include "VocBase/document-collection.h"
+#include "VocBase/collection.h"
 
 #ifdef _WIN32
 // turn off warnings about too long type name for debug symbols blabla in MSVC

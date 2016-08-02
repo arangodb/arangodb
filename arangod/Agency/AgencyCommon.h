@@ -96,17 +96,16 @@ struct log_t {
 
   index_t index;          ///< @brief Log index
   term_t term;            ///< @brief Log term
-  id_t leaderId;          ///< @brief Leader's ID
   buffer_t entry;         ///< @brief To log
   std::chrono::milliseconds timestamp; ///< @brief Timestamp
 
-  log_t(index_t idx, term_t t, id_t lid, buffer_t const& e)
-    : index(idx), term(t), leaderId(lid), entry(e),
+  log_t(index_t idx, term_t t, buffer_t const& e)
+    : index(idx), term(t), entry(e),
       timestamp(std::chrono::duration_cast<std::chrono::milliseconds>(
             std::chrono::system_clock::now().time_since_epoch())) {}
   
   friend std::ostream& operator<<(std::ostream& o, log_t const& l) {
-    o << l.index << " " << l.term << " " << l.leaderId << " "
+    o << l.index << " " << l.term << " " 
       << l.entry->toString() << " " << l.timestamp.count();
     return o;
   }

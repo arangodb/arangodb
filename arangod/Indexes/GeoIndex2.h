@@ -39,11 +39,11 @@ class GeoIndex2 final : public Index {
  public:
   GeoIndex2() = delete;
 
-  GeoIndex2(TRI_idx_iid_t, struct TRI_document_collection_t*,
+  GeoIndex2(TRI_idx_iid_t, TRI_collection_t*,
             std::vector<std::vector<arangodb::basics::AttributeName>> const&,
             std::vector<std::string> const&, bool);
 
-  GeoIndex2(TRI_idx_iid_t, struct TRI_document_collection_t*,
+  GeoIndex2(TRI_idx_iid_t, TRI_collection_t*,
             std::vector<std::vector<arangodb::basics::AttributeName>> const&,
             std::vector<std::vector<std::string>> const&);
 
