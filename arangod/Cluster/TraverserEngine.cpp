@@ -99,6 +99,8 @@ TraverserEngine::TraverserEngine(TRI_vocbase_t* vocbase,
   auto opts = std::make_shared<VPackBuilder>();
   _query = new aql::Query(true, vocbase, "", 0, params, opts, aql::PART_DEPENDENT);
   _query->injectTransaction(_trx);
+  _trx->begin(); // We begin the transaction before we lock.
+                 // We also setup indexes before we lock.
   _opts.reset(new TraverserOptions(_query, optsSlice, edgesSlice));
 }
 

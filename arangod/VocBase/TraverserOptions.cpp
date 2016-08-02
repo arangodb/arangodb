@@ -111,9 +111,12 @@ void arangodb::traverser::TraverserOptions::LookupInfo::buildEngineInfo(
   idxHandles[0].toVelocyPack(result, false);
   result.close();
   result.add(VPackValue("expression"));
-  expression->toVelocyPack(result, false);
+  result.openObject(); // We need to encapsulate the expression into an expression object
+  result.add(VPackValue("expression"));
+  expression->toVelocyPack(result, true);
+  result.close();
   result.add(VPackValue("condition"));
-  indexCondition->toVelocyPack(result, false);
+  indexCondition->toVelocyPack(result, true);
   result.close();
 }
 
