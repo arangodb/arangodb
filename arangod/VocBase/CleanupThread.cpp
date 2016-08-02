@@ -73,9 +73,8 @@ void CleanupThread::run() {
 
       if (locker.isLocked()) {
         try {
-          READ_LOCKER(readLocker, _vocbase->_collectionsLock);
           // copy all collections
-          collections = _vocbase->_collections;
+          collections = _vocbase->collections();
         } catch (...) {
           collections.clear();
         }

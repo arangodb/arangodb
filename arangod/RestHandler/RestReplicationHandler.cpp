@@ -373,7 +373,7 @@ bool RestReplicationHandler::filterCollection(TRI_vocbase_col_t* collection,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestReplicationHandler::isCoordinatorError() {
-  if (_vocbase->_type == TRI_VOCBASE_TYPE_COORDINATOR) {
+  if (_vocbase->type() == TRI_VOCBASE_TYPE_COORDINATOR) {
     generateError(GeneralResponse::ResponseCode::NOT_IMPLEMENTED,
                   TRI_ERROR_CLUSTER_UNSUPPORTED,
                   "replication API is not supported on a coordinator");

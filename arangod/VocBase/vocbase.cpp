@@ -346,7 +346,7 @@ bool TRI_vocbase_t::DropCollectionCallback(TRI_collection_t* col, void* data) {
   
   // delete persistent indexes    
 #ifdef ARANGODB_ENABLE_ROCKSDB
-  RocksDBFeature::dropCollection(vocbase->_id, collection->cid());
+  RocksDBFeature::dropCollection(vocbase->id(), collection->cid());
 #endif
 
   // .............................................................................
@@ -1040,19 +1040,6 @@ void TRI_vocbase_t::shutdown() {
   }
 }
 
-/// @brief returns all known (document) collections
-std::vector<TRI_vocbase_col_t*> TRI_vocbase_t::collections() {
-  std::vector<TRI_vocbase_col_t*> result;
- 
-  READ_LOCKER(readLocker, _collectionsLock);
-
-  for (auto const& it : _collectionsById) {
-    result.emplace_back(it.second);
-  }
-
-  return result;
-}
-
 /// @brief returns names of all known (document) collections
 std::vector<std::string> TRI_vocbase_t::collectionNames() {
   std::vector<std::string> result;
@@ -1650,6 +1637,16 @@ TRI_vocbase_t::getReplicationClients() {
         std::make_tuple(it.first, it.second.first, it.second.second));
   }
   return result;
+}
+      
+std::vector<TRI_vocbase_col_t*> TRI_vocbase_t::collections() {
+  std::vector<TRI_vocbase_col_t*> collections;
+
+  {
+    READ_LOCKER(readLocker, _collectionsLock);
+    collections = _collections;
+  }
+  return collections;
 }
 
 /// @brief velocypack sub-object (for indexes, as part of TRI_index_element_t, 

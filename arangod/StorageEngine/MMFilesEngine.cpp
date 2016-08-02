@@ -339,7 +339,7 @@ int MMFilesEngine::getCollectionsAndIndexes(TRI_vocbase_t* vocbase,
 
   result.openArray();
 
-  std::string const path = databaseDirectory(vocbase->_id);
+  std::string const path = databaseDirectory(vocbase->id());
   std::vector<std::string> files = TRI_FilesDirectory(path.c_str());
 
   for (auto const& name : files) {
@@ -468,12 +468,12 @@ TRI_vocbase_t* MMFilesEngine::createDatabase(TRI_voc_tick_t id, arangodb::velocy
 // the WAL entry for database deletion will be written *after* the call
 // to "prepareDropDatabase" returns
 int MMFilesEngine::prepareDropDatabase(TRI_vocbase_t* vocbase) {
-  return saveDatabaseParameters(vocbase->_id, vocbase->name(), true);
+  return saveDatabaseParameters(vocbase->id(), vocbase->name(), true);
 }
 
 // perform a physical deletion of the database      
 int MMFilesEngine::dropDatabase(TRI_vocbase_t* vocbase) {
-  return dropDatabaseDirectory(databaseDirectory(vocbase->_id));
+  return dropDatabaseDirectory(databaseDirectory(vocbase->id()));
 }
 
 /// @brief wait until a database directory disappears

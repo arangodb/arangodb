@@ -49,8 +49,7 @@ class Builder;
 namespace aql {
 class QueryList;
 }
-struct VocbaseAuthCache;
-class VocbaseAuthInfo;
+class CollectionNameResolver;
 class VocbaseCollectionInfo;
 class CollectionKeysRepository;
 class CursorRepository;
@@ -160,6 +159,7 @@ enum TRI_vocbase_col_status_e {
 
 /// @brief database
 struct TRI_vocbase_t {
+  friend class arangodb::CollectionNameResolver;
   friend class arangodb::StorageEngine;
 
   /// @brief states for dropping
@@ -172,26 +172,24 @@ struct TRI_vocbase_t {
   TRI_vocbase_t(TRI_vocbase_type_e type, TRI_voc_tick_t id, std::string const& name);
   ~TRI_vocbase_t();
 
-  TRI_voc_tick_t _id;        // internal database id
  private:
+  TRI_voc_tick_t const _id;        // internal database id
   std::string _name;         // database name
- public:
   TRI_vocbase_type_e _type;  // type (normal or coordinator)
-
   std::atomic<uint64_t> _refCount;
-
+ public:
   arangodb::basics::DeadlockDetector<TRI_collection_t>
       _deadlockDetector;
-
+ private:
   arangodb::basics::ReadWriteLock _collectionsLock;  // collection iterator lock
   std::vector<TRI_vocbase_col_t*> _collections;  // pointers to ALL collections
   std::vector<TRI_vocbase_col_t*> _deadCollections;  // pointers to collections
                                                      // dropped that can be
                                                      // removed later
-
+ 
   std::unordered_map<std::string, TRI_vocbase_col_t*> _collectionsByName;  // collections by name
   std::unordered_map<TRI_voc_cid_t, TRI_vocbase_col_t*> _collectionsById;    // collections by id
-
+ public:
   arangodb::basics::ReadWriteLock _inventoryLock;  // object lock needed when
                                                    // replication is assessing
                                                    // the state of the vocbase
@@ -235,8 +233,10 @@ struct TRI_vocbase_t {
   /// @brief checks if a database name is allowed
   /// returns true if the name is allowed and false otherwise
   static bool IsAllowedName(bool allowSystem, std::string const& name);
+  TRI_voc_tick_t id() const { return _id; }
   std::string const& name() const { return _name; }
   std::string path() const;
+  TRI_vocbase_type_e type() const { return _type; }
   void updateReplicationClient(TRI_server_id_t, TRI_voc_tick_t);
   std::vector<std::tuple<TRI_server_id_t, double, TRI_voc_tick_t>>
   getReplicationClients();

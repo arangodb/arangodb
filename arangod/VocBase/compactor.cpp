@@ -1112,9 +1112,8 @@ void TRI_CompactorVocBase(void* data) {
         numCompacted = 0;
 
         try {
-          READ_LOCKER(readLocker, vocbase->_collectionsLock);
           // copy all collections
-          collections = vocbase->_collections;
+          collections = vocbase->collections();
         } catch (...) {
           collections.clear();
         }
