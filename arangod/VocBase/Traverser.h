@@ -82,7 +82,8 @@ class TraverserExpression {
 
  private:
   bool recursiveCheck(arangodb::aql::AstNode const*,
-                      arangodb::velocypack::Slice&) const;
+                      arangodb::velocypack::Slice& value,
+                      arangodb::velocypack::Slice& base) const;
 
   // Required when creating this expression without AST
   std::vector<std::unique_ptr<arangodb::aql::AstNode const>> _nodeRegister;
