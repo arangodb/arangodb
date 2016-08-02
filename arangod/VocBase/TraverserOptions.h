@@ -148,7 +148,12 @@ struct TraverserOptions {
 
   void setVariableValue(aql::Variable const*, aql::AqlValue const);
 
+ private:
+  EdgeCursor* nextCursorLocal(arangodb::velocypack::Slice, size_t,
+                              std::vector<LookupInfo>&) const;
 
+  EdgeCursor* nextCursorCoordinator(arangodb::velocypack::Slice, size_t,
+                                    std::vector<LookupInfo>&) const;
 };
 
 }

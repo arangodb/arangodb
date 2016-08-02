@@ -501,8 +501,15 @@ arangodb::traverser::TraverserOptions::nextCursor(VPackSlice vertex,
   } else {
     list = _baseLookupInfos;
   }
+  if (arangodb::ServerState::instance()->isCoordinator()) {
+    return nextCursorCoordinator(vertex, depth, list);
+  }
+  return nextCursorLocal(vertex, depth, list);
+}
 
-#warning NOTE SINGLE SERVER CASE ONLY!
+arangodb::traverser::EdgeCursor*
+arangodb::traverser::TraverserOptions::nextCursorLocal(
+    VPackSlice vertex, size_t depth, std::vector<LookupInfo>& list) const {
   auto allCursor = std::make_unique<SingleServerEdgeCursor>(list.size());
   auto& opCursors = allCursor->getCursors();
   VPackValueLength vidLength;
@@ -524,6 +531,12 @@ arangodb::traverser::TraverserOptions::nextCursor(VPackSlice vertex,
     }
   }
   return allCursor.release();
+}
+
+arangodb::traverser::EdgeCursor*
+arangodb::traverser::TraverserOptions::nextCursorCoordinator(
+    VPackSlice vertex, size_t depth, std::vector<LookupInfo>& list) const {
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 void arangodb::traverser::TraverserOptions::clearVariableValues() {

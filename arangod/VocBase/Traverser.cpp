@@ -32,6 +32,7 @@
 #include <velocypack/Iterator.h> 
 #include <velocypack/velocypack-aliases.h>
 
+using Traverser = arangodb::traverser::Traverser;
 using TraverserExpression = arangodb::traverser::TraverserExpression;
 
 /// @brief Class Shortest Path
@@ -235,6 +236,107 @@ bool TraverserExpression::matchesCheck(arangodb::Transaction* trx,
       TRI_ASSERT(false);
   }
   return false;
+}
+
+
+bool Traverser::VertexGetter::getVertex(
+    VPackSlice edge, std::vector<VPackSlice>& result) {
+  VPackSlice cmp = result.back();
+  VPackSlice res = Transaction::extractFromFromDocument(edge);
+  if (arangodb::basics::VelocyPackHelper::compare(cmp, res, false) == 0) {
+    res = Transaction::extractToFromDocument(edge);
+  }
+
+  if (!_traverser->vertexMatchesConditions(res, result.size())) {
+    return false;
+  }
+  result.emplace_back(res);
+  return true;
+}
+
+bool Traverser::VertexGetter::getSingleVertex(VPackSlice edge,
+                                                          VPackSlice cmp,
+                                                          size_t depth,
+                                                          VPackSlice& result) {
+  VPackSlice from = Transaction::extractFromFromDocument(edge);
+  if (arangodb::basics::VelocyPackHelper::compare(cmp, from, false) != 0) {
+    result = from;
+  } else {
+    result = Transaction::extractToFromDocument(edge);
+  }
+  return _traverser->vertexMatchesConditions(result, depth);
+}
+
+
+
+void Traverser::VertexGetter::reset(arangodb::velocypack::Slice) {
+}
+
+bool Traverser::UniqueVertexGetter::getVertex(
+  VPackSlice edge, std::vector<VPackSlice>& result) {
+  VPackSlice toAdd = Transaction::extractFromFromDocument(edge);
+  VPackSlice cmp = result.back();
+
+  if (arangodb::basics::VelocyPackHelper::compare(toAdd, cmp, false) == 0) {
+    toAdd = Transaction::extractToFromDocument(edge);
+  }
+  
+
+  // First check if we visited it. If not, than mark
+  if (_returnedVertices.find(toAdd) != _returnedVertices.end()) {
+    // This vertex is not unique.
+    ++_traverser->_filteredPaths;
+    return false;
+  } else {
+    _returnedVertices.emplace(toAdd);
+  }
+
+  if (!_traverser->vertexMatchesConditions(toAdd, result.size())) {
+    return false;
+  }
+
+  result.emplace_back(toAdd);
+  return true;
+}
+
+bool Traverser::UniqueVertexGetter::getSingleVertex(
+  VPackSlice edge, VPackSlice cmp, size_t depth, VPackSlice& result) {
+  result = Transaction::extractFromFromDocument(edge);
+
+  if (arangodb::basics::VelocyPackHelper::compare(result, cmp, false) == 0) {
+    result = Transaction::extractToFromDocument(edge);
+  }
+  
+  // First check if we visited it. If not, than mark
+  if (_returnedVertices.find(result) != _returnedVertices.end()) {
+    // This vertex is not unique.
+    ++_traverser->_filteredPaths;
+    return false;
+  } else {
+    _returnedVertices.emplace(result);
+  }
+
+  return _traverser->vertexMatchesConditions(result, depth);
+}
+
+void Traverser::UniqueVertexGetter::reset(VPackSlice startVertex) {
+  _returnedVertices.clear();
+  // The startVertex always counts as visited!
+  _returnedVertices.emplace(startVertex);
+}
+
+Traverser::Traverser(TraverserOptions* opts, Transaction* trx)
+    : _trx(trx),
+      _startIdBuilder(trx),
+      _readDocuments(0),
+      _filteredPaths(0),
+      _done(true),
+      _opts(opts) {
+  if (opts->uniqueVertices == TraverserOptions::UniquenessLevel::GLOBAL) {
+    _vertexGetter = std::make_unique<UniqueVertexGetter>(this);
+  } else {
+    _vertexGetter = std::make_unique<VertexGetter>(this);
+  }
 }
 
 bool arangodb::traverser::Traverser::edgeMatchesConditions(VPackSlice e,

@@ -27,8 +27,8 @@
 #include "VocBase/Traverser.h"
 #include "Aql/AqlValue.h"
 #include "Utils/OperationCursor.h"
-#include "VocBase/PathEnumerator.h"
 #include "VocBase/TraverserOptions.h"
+#include "VocBase/voc-types.h"
 
 namespace arangodb {
 
@@ -61,68 +61,11 @@ class SingleServerEdgeCursor : public EdgeCursor {
 };
 
 class SingleServerTraverser final : public Traverser {
- private:
 
-  class VertexGetter {
-   public:
-    explicit VertexGetter(SingleServerTraverser* traverser)
-        : _traverser(traverser) {}
+ public:
+  SingleServerTraverser(TraverserOptions*, Transaction*);
 
-    virtual ~VertexGetter() = default;
-
-    virtual bool getVertex(arangodb::velocypack::Slice,
-                           std::vector<arangodb::velocypack::Slice>&);
-
-    virtual bool getSingleVertex(arangodb::velocypack::Slice,
-                                 arangodb::velocypack::Slice, size_t,
-                                 arangodb::velocypack::Slice&);
-
-    virtual void reset(arangodb::velocypack::Slice);
-
-   protected:
-    SingleServerTraverser* _traverser;
-  };
-
-  class UniqueVertexGetter : public VertexGetter {
-   public:
-    explicit UniqueVertexGetter(SingleServerTraverser* traverser)
-        : VertexGetter(traverser) {}
-
-    ~UniqueVertexGetter() = default;
-
-    bool getVertex(arangodb::velocypack::Slice,
-                   std::vector<arangodb::velocypack::Slice>&) override;
-
-    bool getSingleVertex(arangodb::velocypack::Slice,
-                         arangodb::velocypack::Slice, size_t,
-                         arangodb::velocypack::Slice&) override;
-
-    void reset(arangodb::velocypack::Slice) override;
-
-   private:
-    std::unordered_set<arangodb::velocypack::Slice> _returnedVertices;
-  };
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief internal cursor to enumerate the paths of a graph
-  //////////////////////////////////////////////////////////////////////////////
-
-  std::unique_ptr<arangodb::traverser::PathEnumerator> _enumerator;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief internal getter to extract an edge
-  //////////////////////////////////////////////////////////////////////////////
-
-  std::unique_ptr<VertexGetter> _vertexGetter;
-
-  /// @brief Builder for the start value slice. Leased from transaction
-
-  TransactionBuilderLeaser _startIdBuilder;
-
-public:
- SingleServerTraverser(TraverserOptions*, Transaction*);
-
- ~SingleServerTraverser();
+  ~SingleServerTraverser();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Reset the traverser to use another start vertex
@@ -202,13 +145,8 @@ public:
                            arangodb::velocypack::Builder&) override;
 
  private:
+
   std::vector<TRI_document_collection_t*> _edgeCols;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Outer top level transaction
-  //////////////////////////////////////////////////////////////////////////////
-
-  Transaction* _trx;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Cache for vertex documents, points from _id to start of 

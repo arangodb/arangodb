@@ -27,7 +27,6 @@
 #include "Cluster/TraverserEngineRegistry.h"
 #include "VocBase/Traverser.h"
 #include "VocBase/TraverserOptions.h"
-#include "VocBase/PathEnumerator.h"
 
 namespace arangodb {
 class CollectionNameResolver;
@@ -44,15 +43,9 @@ class ClusterTraverser final : public Traverser {
       TraverserOptions* opts,
       std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines,
       std::string const& dbname, Transaction* trx)
-      : Traverser(opts),
+      : Traverser(opts, trx),
         _dbname(dbname),
-        _trx(trx) {
-          if (opts->uniqueVertices == TraverserOptions::UniquenessLevel::GLOBAL) {
-            _vertexGetter = std::make_unique<UniqueVertexGetter>(this);
-          } else {
-            _vertexGetter = std::make_unique<VertexGetter>(this);
-          }
-        }
+        _engines(engines) {}
 
   ~ClusterTraverser() {
   }
@@ -132,69 +125,6 @@ class ClusterTraverser final : public Traverser {
   bool vertexMatchesCondition(arangodb::velocypack::Slice const&,
                               std::vector<TraverserExpression*> const&);
 
-  class VertexGetter {
-   public:
-    explicit VertexGetter(ClusterTraverser* traverser)
-        : _traverser(traverser) {}
-
-    virtual ~VertexGetter() = default;
-
-    virtual bool getVertex(arangodb::velocypack::Slice,
-                           std::vector<arangodb::velocypack::Slice>&);
-
-    virtual bool getSingleVertex(arangodb::velocypack::Slice,
-                                 arangodb::velocypack::Slice, size_t,
-                                 arangodb::velocypack::Slice&);
-    virtual void reset();
-
-    virtual void setStartVertex(arangodb::velocypack::Slice) {}
-
-   protected:
-    ClusterTraverser* _traverser;
-  };
-
-  class UniqueVertexGetter : public VertexGetter {
-   public:
-    explicit UniqueVertexGetter(ClusterTraverser* traverser)
-        : VertexGetter(traverser) {}
-
-    ~UniqueVertexGetter() = default;
-
-    bool getVertex(arangodb::velocypack::Slice,
-                   std::vector<arangodb::velocypack::Slice>&) override;
-
-    bool getSingleVertex(arangodb::velocypack::Slice,
-                         arangodb::velocypack::Slice, size_t,
-                         arangodb::velocypack::Slice&) override;
-
-    void reset() override;
-
-    void setStartVertex(arangodb::velocypack::Slice id) override {
-      _returnedVertices.emplace(id);
-    }
-
-   private:
-    std::unordered_set<arangodb::velocypack::Slice> _returnedVertices;
-  };
-
-  class ClusterEdgeGetter  {
-   public:
-    explicit ClusterEdgeGetter(ClusterTraverser* traverser)
-        : _traverser(traverser), _continueConst(1) {}
-
-    void getEdge(std::string const&, std::vector<std::string>&, size_t*&,
-                 size_t&);
-
-    void getAllEdges(arangodb::velocypack::Slice,
-                     std::unordered_set<arangodb::velocypack::Slice>&,
-                     size_t depth);
-
-   private:
-    ClusterTraverser* _traverser;
-
-    size_t _continueConst;
-  };
-
   std::unordered_map<std::string,
                      std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
       _edges;
@@ -207,17 +137,10 @@ class ClusterTraverser final : public Traverser {
 
   std::string _dbname;
 
-  std::unique_ptr<VertexGetter> _vertexGetter;
-
   arangodb::velocypack::Builder _builder;
 
-  arangodb::Transaction* _trx;
+  std::unordered_map<ServerID, traverser::TraverserEngineID> const* _engines;
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief internal cursor to enumerate the paths of a graph
-  //////////////////////////////////////////////////////////////////////////////
-
-  std::unique_ptr<arangodb::traverser::PathEnumerator> _enumerator;
 };
 
 }  // traverser
