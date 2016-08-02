@@ -29,8 +29,6 @@
 #include "GeneralServer/GeneralServerFeature.h"
 #include "GeneralServer/RestHandler.h"
 #include "GeneralServer/RestHandlerFactory.h"
-#include "Scheduler/Scheduler.h"
-#include "Scheduler/SchedulerFeature.h"
 #include "VocBase/ticks.h"  //clock
 
 using namespace arangodb;
@@ -364,20 +362,6 @@ bool HttpCommTask::processRead() {
           handleSimpleError(GeneralResponse::ResponseCode::METHOD_NOT_ALLOWED);
           return false;
         }
-      }
-
-      // .............................................................................
-      // check if server is active
-      // .............................................................................
-
-      Scheduler const* scheduler = SchedulerFeature::SCHEDULER;
-
-      if (scheduler != nullptr && !scheduler->isActive()) {
-        // server is inactive and will intentionally respond with HTTP 503
-        LOG(TRACE) << "cannot serve request - server is inactive";
-
-        handleSimpleError(GeneralResponse::ResponseCode::SERVICE_UNAVAILABLE);
-        return false;
       }
 
       // check for a 100-continue

@@ -32,7 +32,6 @@ class VppCommTask : public GeneralCommTask {
   void completedWriteBuffer() override final;
 
  private:
-  void processRequest();
   // resets the internal state this method can be called to clean up when the
   // request handling aborts prematurely
   void resetState(bool close);
@@ -58,7 +57,7 @@ class VppCommTask : public GeneralCommTask {
 
   struct ProcessReadVariables {
     uint32_t
-        _currentChunkLength;  // size of chunk processed or 0 when expectiong
+        _currentChunkLength;  // size of chunk processed or 0 when expecting
                               // new chunk
   };
   ProcessReadVariables _processReadVariables;
@@ -72,14 +71,14 @@ class VppCommTask : public GeneralCommTask {
     bool _isFirst;
   };
 
-  bool isChunkComplete();         // subfunction of processRead
-  ChunkHeader readChunkHeader();  // subfuncaion of processRead
+  bool isChunkComplete();         // sub-function of processRead
+  ChunkHeader readChunkHeader();  // sub-function of processRead
 
   // user
   // authenticated or not
   // database aus url
 };
-}  // rest
-}  // arangodb
+}
+}
 
 #endif

@@ -66,9 +66,9 @@ class GeneralServer;
 //     sub-class. It will be called with an response object and an indicator
 //     if an error has occurred.
 //
-//     It is the responsibility of the sub-class to govern what is support. For
-//     example, HTTP will only support one active request executing at a time
-//     until the final response has been send out.
+//     It is the responsibility of the sub-class to govern what is supported.
+//     For example, HTTP will only support one active request executing at a
+//     time until the final response has been send out.
 //
 //     VelocyPack on the other hand, allows multiple active requests. Partial
 //     responses are identified by a request id.
@@ -133,6 +133,7 @@ class GeneralCommTask : public SocketTask, public RequestStatisticsAgent {
   virtual ~GeneralCommTask();
 
  public:
+  // write data from request into _writeBuffers and call fillWriteBuffer
   virtual void addResponse(GeneralResponse*, bool error) = 0;
 
   // void handleResponse(GeneralResponse*);  // resets vars and calls
@@ -165,7 +166,6 @@ class GeneralCommTask : public SocketTask, public RequestStatisticsAgent {
     if (_request != nullptr) {
       delete _request;
     }
-
     _request = nullptr;
   }
 
