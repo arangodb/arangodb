@@ -31,7 +31,9 @@
 #endif
 
 #include "Basics/Exceptions.h"
+#include "Basics/HybridLogicalClock.h"
 #include "Basics/Thread.h"
+#include "Basics/hashes.h"
 #include "Logger/Logger.h"
 
 using namespace arangodb;
@@ -42,16 +44,12 @@ using namespace arangodb::basics;
 // -----------------------------------------------------------------------------
 
 unsigned long RandomDevice::seed() {
-  unsigned long s = (unsigned long)time(0);
+  HybridLogicalClock clock;
+  unsigned long s = static_cast<unsigned long>(clock.getPhysicalTime());
+  TRI_pid_t pid = Thread::currentProcessId();
 
-  struct timeval tv;
-  int result = gettimeofday(&tv, 0);
-
-  s ^= static_cast<unsigned long>(tv.tv_sec);
-  s ^= static_cast<unsigned long>(tv.tv_usec);
-  s ^= static_cast<unsigned long>(result);
-  s ^= static_cast<unsigned long>(Thread::currentProcessId());
-
+  s ^= static_cast<unsigned long>(TRI_Crc32HashPointer(&pid, sizeof(TRI_pid_t)));
+  s = static_cast<unsigned long>(TRI_Crc32HashPointer(&s, sizeof(unsigned long))); 
   return s;
 }
 
@@ -76,7 +74,7 @@ int32_t RandomDevice::random(int32_t left, int32_t right) {
   }
 
   uint32_t range = static_cast<uint32_t>(right - left + 1);
-
+  
   switch (range) {
     case 0x00000002:
       return power2(left, 0x00000002 - 1);
@@ -353,8 +351,7 @@ class RandomDeviceCombined : public RandomDevice {
 class RandomDeviceMersenne : public RandomDevice {
  public:
   RandomDeviceMersenne()
-      : engine(static_cast<unsigned int>(
-            std::chrono::system_clock::now().time_since_epoch().count())) {}
+      : engine(RandomDevice::seed()) {}
 
   uint32_t random() { return engine(); }
 
