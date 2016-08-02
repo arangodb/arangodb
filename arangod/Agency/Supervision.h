@@ -138,7 +138,7 @@ class Supervision : public arangodb::Thread {
   Store const& store() const;
 
   /// @brief Perform sanity checking
-  bool doChecks(bool);
+  bool doChecks();
 
   /// @brief update my local agency snapshot
   bool updateSnapshot();

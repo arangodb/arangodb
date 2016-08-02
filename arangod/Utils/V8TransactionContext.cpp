@@ -25,8 +25,8 @@
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/transaction.h"
 
-#include "V8/v8-globals.h"
 #include <v8.h>
+#include "V8/v8-globals.h"
 
 using namespace arangodb;
 
@@ -34,28 +34,31 @@ using namespace arangodb;
 /// @brief create the context
 ////////////////////////////////////////////////////////////////////////////////
 
-V8TransactionContext::V8TransactionContext(TRI_vocbase_t* vocbase, bool embeddable)
+V8TransactionContext::V8TransactionContext(TRI_vocbase_t* vocbase,
+                                           bool embeddable)
     : TransactionContext(vocbase),
       _sharedTransactionContext(static_cast<V8TransactionContext*>(
           static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData(
-                                            V8DataSlot))->_transactionContext)),
+                                            V8PlatformFeature::V8_DATA_SLOT))
+              ->_transactionContext)),
       _mainScope(nullptr),
       _currentTransaction(nullptr),
-      _embeddable(embeddable) {
-}
+      _embeddable(embeddable) {}
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief order a custom type handler for the collection
 //////////////////////////////////////////////////////////////////////////////
 
-std::shared_ptr<VPackCustomTypeHandler> V8TransactionContext::orderCustomTypeHandler() {
+std::shared_ptr<VPackCustomTypeHandler>
+V8TransactionContext::orderCustomTypeHandler() {
   if (_customTypeHandler == nullptr) {
     V8TransactionContext* main = _sharedTransactionContext->_mainScope;
-    
+
     if (main != nullptr && main != this && !main->isGlobal()) {
       _customTypeHandler = main->orderCustomTypeHandler();
     } else {
-      _customTypeHandler.reset(TransactionContext::createCustomTypeHandler(_vocbase, getResolver()));
+      _customTypeHandler.reset(
+          TransactionContext::createCustomTypeHandler(_vocbase, getResolver()));
     }
     _options.customTypeHandler = _customTypeHandler.get();
     _dumpOptions.customTypeHandler = _customTypeHandler.get();
@@ -82,7 +85,7 @@ CollectionNameResolver const* V8TransactionContext::getResolver() {
       _resolver = createResolver();
     }
   }
-  
+
   TRI_ASSERT(_resolver != nullptr);
   return _resolver;
 }
@@ -132,7 +135,7 @@ bool V8TransactionContext::isEmbeddable() const { return _embeddable; }
 ////////////////////////////////////////////////////////////////////////////////
 
 void V8TransactionContext::makeGlobal() { _sharedTransactionContext = this; }
-  
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not the transaction context is a global one
 ////////////////////////////////////////////////////////////////////////////////
@@ -147,19 +150,19 @@ bool V8TransactionContext::isGlobal() const {
 
 bool V8TransactionContext::IsEmbedded() {
   TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(
-      v8::Isolate::GetCurrent()->GetData(V8DataSlot));
+      v8::Isolate::GetCurrent()->GetData(V8PlatformFeature::V8_DATA_SLOT));
   if (v8g->_transactionContext == nullptr) {
     return false;
   }
   return static_cast<V8TransactionContext*>(v8g->_transactionContext)
              ->_currentTransaction != nullptr;
 }
-  
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a context, returned in a shared ptr
 ////////////////////////////////////////////////////////////////////////////////
 
-std::shared_ptr<V8TransactionContext> V8TransactionContext::Create(TRI_vocbase_t* vocbase, bool embeddable) {
+std::shared_ptr<V8TransactionContext> V8TransactionContext::Create(
+    TRI_vocbase_t* vocbase, bool embeddable) {
   return std::make_shared<V8TransactionContext>(vocbase, embeddable);
 }
-

@@ -61,9 +61,7 @@ class StorageEngine : public application_features::ApplicationFeature {
   // --------------------
 
   // return the name of the storage engine
-  char const* typeName() const {
-    return _typeName.c_str();
-  }
+  char const* typeName() const { return _typeName.c_str(); }
   
   // inventory functionality
   // -----------------------

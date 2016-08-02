@@ -1519,6 +1519,7 @@ int TRI_WriteCrcElementDatafile(TRI_datafile_t* datafile, void* position,
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief iterates over a datafile
 /// also may set datafile's min/max tick values
+/// deprecated
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_IterateDatafile(TRI_datafile_t* datafile,
@@ -1549,6 +1550,41 @@ bool TRI_IterateDatafile(TRI_datafile_t* datafile,
     TRI_UpdateTicksDatafile(datafile, marker);
 
     if (!iterator(marker, data, datafile)) {
+      return false;
+    }
+
+    ptr += DatafileHelper::AlignedMarkerSize<size_t>(marker);
+  }
+
+  return true;
+}
+
+/// @brief iterates over a datafile
+/// also may set datafile's min/max tick values
+bool TRI_IterateDatafile(TRI_datafile_t* datafile,
+                         std::function<bool(TRI_df_marker_t const*, TRI_datafile_t*)> const& cb) {
+  LOG(TRACE) << "iterating over datafile '" << datafile->getName(datafile) << "', fid: " << datafile->_fid;
+
+  char const* ptr = datafile->_data;
+  char const* end = datafile->_data + datafile->_currentSize;
+
+  if (datafile->_state != TRI_DF_STATE_READ &&
+      datafile->_state != TRI_DF_STATE_WRITE) {
+    TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_STATE);
+    return false;
+  }
+
+  while (ptr < end) {
+    auto const* marker = reinterpret_cast<TRI_df_marker_t const*>(ptr);
+
+    if (marker->getSize() == 0) {
+      return true;
+    }
+
+    // update the tick statistics
+    TRI_UpdateTicksDatafile(datafile, marker);
+
+    if (!cb(marker, datafile)) {
       return false;
     }
 

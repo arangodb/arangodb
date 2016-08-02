@@ -122,7 +122,7 @@ class PrimaryIndex final : public Index {
  public:
   PrimaryIndex() = delete;
 
-  explicit PrimaryIndex(struct TRI_document_collection_t*);
+  explicit PrimaryIndex(TRI_collection_t*);
 
   explicit PrimaryIndex(VPackSlice const&);
 

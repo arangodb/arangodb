@@ -452,6 +452,9 @@ bool TRI_IterateDatafile(TRI_datafile_t*,
                          bool (*iterator)(TRI_df_marker_t const*, void*,
                                           TRI_datafile_t*),
                          void* data);
+                             
+bool TRI_IterateDatafile(TRI_datafile_t*,
+                         std::function<bool(TRI_df_marker_t const*, TRI_datafile_t*)> const& cb);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief opens an existing datafile read-only

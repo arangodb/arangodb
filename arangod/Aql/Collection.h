@@ -28,7 +28,7 @@
 #include "VocBase/transaction.h"
 #include "VocBase/vocbase.h"
 
-struct TRI_document_collection_t;
+struct TRI_collection_t;
 
 namespace arangodb {
 namespace aql {
@@ -71,7 +71,7 @@ struct Collection {
   }
 
   /// @brief get the pointer to the document collection
-  TRI_document_collection_t* documentCollection() const;
+  TRI_collection_t* documentCollection() const;
 
   /// @brief count the LOCAL number of documents in the collection
   size_t count() const;

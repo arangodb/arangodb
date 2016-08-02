@@ -35,9 +35,9 @@
 #include "VocBase/voc-types.h"
 #include "Wal/Logfile.h"
 
+struct TRI_collection_t;
 struct TRI_datafile_t;
 struct TRI_df_marker_t;
-struct TRI_document_collection_t;
 
 namespace arangodb {
 namespace wal {
@@ -175,7 +175,7 @@ class CollectorThread : public Thread {
   /// @brief process a single marker in collector step 2
   void processCollectionMarker(
       arangodb::SingleCollectionTransaction&,
-      TRI_document_collection_t*, CollectorCache*, CollectorOperation const&);
+      TRI_collection_t*, CollectorCache*, CollectorOperation const&);
 
   /// @brief return the number of queued operations
   size_t numQueuedOperations();
@@ -197,25 +197,25 @@ class CollectorThread : public Thread {
                       int64_t, OperationsType const&);
 
   /// @brief transfer markers into a collection
-  int executeTransferMarkers(TRI_document_collection_t*, CollectorCache*,
+  int executeTransferMarkers(TRI_collection_t*, CollectorCache*,
                              OperationsType const&);
 
   /// @brief insert the collect operations into a per-collection queue
   int queueOperations(arangodb::wal::Logfile*, CollectorCache*&);
 
   /// @brief update a collection's datafile information
-  int updateDatafileStatistics(TRI_document_collection_t*, CollectorCache*);
+  int updateDatafileStatistics(TRI_collection_t*, CollectorCache*);
 
   /// @brief sync the journal of a collection
-  int syncJournalCollection(struct TRI_document_collection_t*);
+  int syncJournalCollection(TRI_collection_t*);
 
   /// @brief get the next free position for a new marker of the specified size
-  char* nextFreeMarkerPosition(struct TRI_document_collection_t*,
+  char* nextFreeMarkerPosition(TRI_collection_t*,
                                TRI_voc_tick_t, TRI_df_marker_type_t,
                                TRI_voc_size_t, CollectorCache*);
 
   /// @brief set the tick of a marker and calculate its CRC value
-  void finishMarker(char const*, char*, struct TRI_document_collection_t*,
+  void finishMarker(char const*, char*, TRI_collection_t*,
                     TRI_voc_tick_t, CollectorCache*);
 
  private:

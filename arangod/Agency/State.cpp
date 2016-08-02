@@ -58,32 +58,26 @@ State::State(std::string const& endpoint)
       _endpoint(endpoint),
       _collectionsChecked(false),
       _collectionsLoaded(false),
-      _cur(0) {
-  std::shared_ptr<Buffer<uint8_t>> buf = std::make_shared<Buffer<uint8_t>>();
-  VPackSlice value = arangodb::basics::VelocyPackHelper::EmptyObjectValue();
-  buf->append(value.startAs<char const>(), value.byteSize());
-  if (!_log.size()) {
-    _log.push_back(log_t(arangodb::consensus::index_t(0), term_t(0),
-                         arangodb::consensus::id_t(0), buf));
-  }
-}
+      _cur(0) {}
 
 
 /// Default dtor
 State::~State() {}
 
+inline std::string stringify (arangodb::consensus::index_t index) {
+  std::ostringstream i_str;
+  i_str << std::setw(20) << std::setfill('0') << index;
+  return i_str.str();
+}
+
 
 /// Persist one entry
 bool State::persist(arangodb::consensus::index_t index, term_t term,
-                    arangodb::consensus::id_t lid,
                     arangodb::velocypack::Slice const& entry) {
   Builder body;
   body.add(VPackValue(VPackValueType::Object));
-  std::ostringstream i_str;
-  i_str << std::setw(20) << std::setfill('0') << index;
-  body.add("_key", Value(i_str.str()));
+  body.add("_key", Value(stringify(index)));
   body.add("term", Value(term));
-  body.add("leader", Value((uint32_t)lid));
   body.add("request", entry);
   body.close();
 
@@ -111,8 +105,7 @@ bool State::persist(arangodb::consensus::index_t index, term_t term,
 
 /// Log transaction (leader)
 std::vector<arangodb::consensus::index_t> State::log(
-    query_t const& transaction, std::vector<bool> const& appl, term_t term,
-    arangodb::consensus::id_t lid) {
+    query_t const& transaction, std::vector<bool> const& appl, term_t term) {
   
   std::vector<arangodb::consensus::index_t> idx(appl.size());
   std::vector<bool> good = appl;
@@ -130,8 +123,8 @@ std::vector<arangodb::consensus::index_t> State::log(
           std::make_shared<Buffer<uint8_t>>();
       buf->append((char const*)i[0].begin(), i[0].byteSize());
       idx[j] = _log.back().index + 1;
-      _log.push_back(log_t(idx[j], term, lid, buf)); // log to RAM
-      persist(idx[j], term, lid, i[0]);              // log to disk
+      _log.push_back(log_t(idx[j], term, buf)); // log to RAM
+      persist(idx[j], term, i[0]);              // log to disk
       ++j;
     }
   }
@@ -142,7 +135,7 @@ std::vector<arangodb::consensus::index_t> State::log(
 
 /// Log transactions (follower)
 arangodb::consensus::index_t State::log(
-  query_t const& transactions, term_t term, arangodb::consensus::id_t lid,
+  query_t const& transactions, term_t term, 
   arangodb::consensus::index_t prevLogIndex, term_t prevLogTerm) {
 
   if (transactions->slice().type() != VPackValueType::Array) {
@@ -155,13 +148,14 @@ arangodb::consensus::index_t State::log(
   for (auto const& i : VPackArrayIterator(transactions->slice())) {
     try {
       auto idx = i.get("index").getUInt();
+      auto trm = i.get("term").getUInt();
       if (highest < idx) {
         highest = idx;
       }
       std::shared_ptr<Buffer<uint8_t>> buf = std::make_shared<Buffer<uint8_t>>();
       buf->append((char const*)i.get("query").begin(),i.get("query").byteSize());
-      _log.push_back(log_t(idx, term, lid, buf));
-      persist(idx, term, lid, i.get("query"));  // to disk
+      _log.push_back(log_t(idx, trm, buf));
+      persist(idx, trm, i.get("query"));  // to disk
     } catch (std::exception const& e) {
       LOG_TOPIC(ERR, Logger::AGENCY) << e.what() << " " << __FILE__ << __LINE__;
     }
@@ -169,6 +163,25 @@ arangodb::consensus::index_t State::log(
   
   return highest;
   
+}
+
+
+void State::removeConflicts (query_t const& transactions) {
+  VPackSlice slice = transactions->slice();
+  TRI_ASSERT(slice.isArray());
+  if (slice.length() > 0) {
+    try {
+      auto idx = slice[0].get("index").getUInt();
+      if (idx-_cur < _log.size()) {
+        LOG_TOPIC(INFO, Logger::AGENCY)
+          << "Removing " << _log.size()-idx+_cur
+          << " entries from log starting with " << idx;
+        _log.erase(_log.begin()+idx);
+      }
+    } catch (std::exception const& e) {
+      LOG_TOPIC(ERR, Logger::AGENCY) << e.what() << " " << __FILE__ << __LINE__;
+    }
+  }
 }
 
 
@@ -305,6 +318,12 @@ bool State::createCollection(std::string const& name) {
   return true;
 }
 
+template<class T> std::ostream& operator<< (std::ostream& o, std::deque<T> const& d) {
+  for (auto const& i : d ) {
+    o << i;
+  }
+  return o;
+}
 
 /// Load collections
 bool State::loadCollections(TRI_vocbase_t* vocbase, bool waitForSync) {
@@ -318,14 +337,13 @@ bool State::loadCollections(TRI_vocbase_t* vocbase, bool waitForSync) {
       std::shared_ptr<Buffer<uint8_t>> buf = std::make_shared<Buffer<uint8_t>>();
       VPackSlice value = arangodb::basics::VelocyPackHelper::EmptyObjectValue();
       buf->append(value.startAs<char const>(), value.byteSize());
-      _log.push_back(log_t(arangodb::consensus::index_t(0), term_t(0),
-                           arangodb::consensus::id_t(0), buf));
-      persist(
-        0, 0, (std::numeric_limits<arangodb::consensus::id_t>::max)(), value);
+      _log.push_back(log_t(arangodb::consensus::index_t(0), term_t(0), buf));
+      persist(0, 0, value);
     }
     return true;
   }
 
+  LOG(WARN) << "... done";
   return false;
   
 }
@@ -413,7 +431,6 @@ bool State::loadRemaining() {
           log_t(
             std::stoi(i.get(StaticStrings::KeyString).copyString()),
             static_cast<term_t>(i.get("term").getUInt()),
-            static_cast<arangodb::consensus::id_t>(i.get("leader").getUInt()),
             tmp));
       } catch (std::exception const& e) {
         LOG_TOPIC(ERR, Logger::AGENCY) <<

@@ -38,7 +38,7 @@
 #include "velocypack/Builder.h"
 #include "velocypack/velocypack-aliases.h"
 
-struct TRI_document_collection_t;
+struct TRI_collection_t;
 class TRI_replication_applier_t;
 class TRI_vocbase_col_t;
 
@@ -71,43 +71,6 @@ struct compaction_blockers_t {
   arangodb::basics::ReadWriteLock _lock;
   std::vector<compaction_blocker_t> _data;
 };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tries to read lock the vocbase collection status
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_TRY_READ_LOCK_STATUS_VOCBASE_COL(a) a->_lock.tryReadLock()
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief read locks the vocbase collection status
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_READ_LOCK_STATUS_VOCBASE_COL(a) a->_lock.readLock()
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief read unlocks the vocbase collection status
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_READ_UNLOCK_STATUS_VOCBASE_COL(a) a->_lock.unlock()
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tries to write lock the vocbase collection status
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_TRY_WRITE_LOCK_STATUS_VOCBASE_COL(a) a->_lock.tryWriteLock()
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief write unlocks the vocbase collection status
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(a) a->_lock.unlock()
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief write locks the vocbase collection status using spinning
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_EVENTUAL_WRITE_LOCK_STATUS_VOCBASE_COL(a) \
-  a->_lock.tryWriteLock(1000)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief name of the system database
@@ -182,6 +145,19 @@ enum TRI_vocbase_type_e {
   TRI_VOCBASE_TYPE_COORDINATOR = 1
 };
 
+/// @brief status of a collection
+/// note: the NEW_BORN status is not used in ArangoDB 1.3 anymore, but is left
+/// in this enum for compatibility with earlier versions
+enum TRI_vocbase_col_status_e {
+  TRI_VOC_COL_STATUS_CORRUPTED = 0,
+  TRI_VOC_COL_STATUS_NEW_BORN = 1,  // DEPRECATED, and shouldn't be used anymore
+  TRI_VOC_COL_STATUS_UNLOADED = 2,
+  TRI_VOC_COL_STATUS_LOADED = 3,
+  TRI_VOC_COL_STATUS_UNLOADING = 4,
+  TRI_VOC_COL_STATUS_DELETED = 5,
+  TRI_VOC_COL_STATUS_LOADING = 6
+};
+
 /// @brief database
 struct TRI_vocbase_t {
   friend class arangodb::StorageEngine;
@@ -204,7 +180,7 @@ struct TRI_vocbase_t {
 
   std::atomic<uint64_t> _refCount;
 
-  arangodb::basics::DeadlockDetector<TRI_document_collection_t>
+  arangodb::basics::DeadlockDetector<TRI_collection_t>
       _deadlockDetector;
 
   arangodb::basics::ReadWriteLock _collectionsLock;  // collection iterator lock
@@ -364,10 +340,39 @@ struct TRI_vocbase_t {
   /// @brief drops a collection
   int dropCollection(TRI_vocbase_col_t* collection, bool writeMarker);
 
+  /// @brief callback for collection dropping
+  static bool DropCollectionCallback(TRI_collection_t* col, void* data);
+
+  /// @brief unloads a collection
+  int unloadCollection(TRI_vocbase_col_t* collection, bool force);
+
+  /// @brief locks a collection for usage, loading or manifesting it
+  /// Note that this will READ lock the collection you have to release the
+  /// collection lock by yourself.
+  int useCollection(TRI_vocbase_col_t* collection, TRI_vocbase_col_status_e&);
+
+  /// @brief locks a collection for usage by id
+  /// Note that this will READ lock the collection you have to release the
+  /// collection lock by yourself and call @ref TRI_ReleaseCollectionVocBase
+  /// when you are done with the collection.
+  TRI_vocbase_col_t* useCollection(TRI_voc_cid_t cid, TRI_vocbase_col_status_e&);
+
+  /// @brief locks a collection for usage by name
+  /// Note that this will READ lock the collection you have to release the
+  /// collection lock by yourself and call @ref TRI_ReleaseCollectionVocBase
+  /// when you are done with the collection.
+  TRI_vocbase_col_t* useCollection(std::string const& name, TRI_vocbase_col_status_e&);
+
+  /// @brief releases a collection from usage
+  void releaseCollection(TRI_vocbase_col_t* collection);
+
+ private:
+  int loadCollection(TRI_vocbase_col_t* collection,
+                     TRI_vocbase_col_status_e& status,
+                     bool setStatus = true);
 
   /// @brief adds a new collection
   /// caller must hold _collectionsLock in write mode or set doLock
- private:
   TRI_vocbase_col_t* registerCollection(bool doLock,
                                         TRI_col_type_e type, TRI_voc_cid_t cid,
                                         std::string const& name,
@@ -418,27 +423,7 @@ class VocbaseGuard {
   TRI_vocbase_t* _vocbase;
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief status of a collection
-///
-/// note: the NEW_BORN status is not used in ArangoDB 1.3 anymore, but is left
-/// in this enum for compatibility with earlier versions
-////////////////////////////////////////////////////////////////////////////////
-
-enum TRI_vocbase_col_status_e {
-  TRI_VOC_COL_STATUS_CORRUPTED = 0,
-  TRI_VOC_COL_STATUS_NEW_BORN = 1,  // DEPRECATED, and shouldn't be used anymore
-  TRI_VOC_COL_STATUS_UNLOADED = 2,
-  TRI_VOC_COL_STATUS_LOADED = 3,
-  TRI_VOC_COL_STATUS_UNLOADING = 4,
-  TRI_VOC_COL_STATUS_DELETED = 5,
-  TRI_VOC_COL_STATUS_LOADING = 6
-};
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief collection container
-////////////////////////////////////////////////////////////////////////////////
-
 class TRI_vocbase_col_t {
  public:
   TRI_vocbase_col_t(TRI_vocbase_col_t const&) = delete;
@@ -514,7 +499,7 @@ class TRI_vocbase_col_t {
   arangodb::basics::ReadWriteLock _lock;  // lock protecting the status and name
 
   TRI_vocbase_col_status_e _status;  // status of the collection
-  TRI_document_collection_t* _collection;  // NULL or pointer to loaded collection
+  TRI_collection_t* _collection;  // NULL or pointer to loaded collection
   std::string const _dbName;  // name of the database
   std::string _name;          // name of the collection
   std::string const _path;    // storage path
@@ -525,50 +510,6 @@ class TRI_vocbase_col_t {
   bool _canUnload;  // true if the collection can be unloaded
   bool _canRename;  // true if the collection can be renamed
 };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief unloads a collection
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_UnloadCollectionVocBase(TRI_vocbase_t*, TRI_vocbase_col_t*, bool);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief locks a (document) collection for usage, loading or manifesting it
-///
-/// Note that this will READ lock the collection you have to release the
-/// collection lock by yourself.
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_UseCollectionVocBase(TRI_vocbase_t*, TRI_vocbase_col_t*,
-                             TRI_vocbase_col_status_e&);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief locks a (document) collection for usage by id
-///
-/// Note that this will READ lock the collection you have to release the
-/// collection lock by yourself and call @ref TRI_ReleaseCollectionVocBase
-/// when you are done with the collection.
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_vocbase_col_t* TRI_UseCollectionByIdVocBase(TRI_vocbase_t*, TRI_voc_cid_t,
-                                                TRI_vocbase_col_status_e&);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief locks a (document) collection for usage by name
-///
-/// Note that this will READ lock the collection you have to release the
-/// collection lock by yourself and call @ref TRI_ReleaseCollectionVocBase
-/// when you are done with the collection.
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_vocbase_col_t* TRI_UseCollectionByNameVocBase(TRI_vocbase_t*, char const*,
-                                                  TRI_vocbase_col_status_e&);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief releases a (document) collection from usage
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_ReleaseCollectionVocBase(TRI_vocbase_t*, TRI_vocbase_col_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gets the "throw collection not loaded error"

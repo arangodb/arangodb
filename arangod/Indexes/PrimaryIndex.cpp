@@ -30,7 +30,7 @@
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
 #include "Utils/Transaction.h"
 #include "Utils/TransactionContext.h"
-#include "VocBase/document-collection.h"
+#include "VocBase/collection.h"
 #include "VocBase/transaction.h"
 
 #include <velocypack/Builder.h>
@@ -150,7 +150,7 @@ void AnyIndexIterator::reset() {
 }
 
 
-PrimaryIndex::PrimaryIndex(TRI_document_collection_t* collection)
+PrimaryIndex::PrimaryIndex(TRI_collection_t* collection)
     : Index(0, collection,
             std::vector<std::vector<arangodb::basics::AttributeName>>(
                 {{{StaticStrings::KeyString, false}}}),

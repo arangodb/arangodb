@@ -26,7 +26,7 @@
 #include "Utils/Transaction.h"
 #include "Utils/TransactionContext.h"
 #include "VocBase/Ditch.h"
-#include "VocBase/document-collection.h"
+#include "VocBase/collection.h"
 #include "VocBase/transaction.h"
 
 using namespace arangodb;
@@ -97,7 +97,7 @@ TRI_transaction_collection_t* SingleCollectionTransaction::trxCollection() {
 /// in two different situations
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_document_collection_t* SingleCollectionTransaction::documentCollection() {
+TRI_collection_t* SingleCollectionTransaction::documentCollection() {
   if (_documentCollection != nullptr) {
     return _documentCollection;
   }

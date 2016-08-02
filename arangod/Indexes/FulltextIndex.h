@@ -39,7 +39,7 @@ class FulltextIndex final : public Index {
  public:
   FulltextIndex() = delete;
 
-  FulltextIndex(TRI_idx_iid_t, struct TRI_document_collection_t*,
+  FulltextIndex(TRI_idx_iid_t, TRI_collection_t*,
                 std::string const&, int);
 
   ~FulltextIndex();

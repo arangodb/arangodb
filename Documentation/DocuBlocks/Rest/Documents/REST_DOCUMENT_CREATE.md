@@ -1,7 +1,12 @@
 @startDocuBlock REST_DOCUMENT_CREATE
 @brief creates documents
 
-@RESTHEADER{POST /_api/document/{collection},Create document}
+@RESTHEADER{POST /_api/document/{collection}, Create document}
+
+@RESTURLPARAMETERS
+
+@RESTURLPARAM{collection,string,required}
+The *collection* in which the collection is to be created.
 
 @RESTALLBODYPARAM{data,json,required}
 A JSON representation of a single document or of an array of documents.

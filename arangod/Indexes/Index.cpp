@@ -28,7 +28,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/StringUtils.h"
-#include "VocBase/document-collection.h"
+#include "VocBase/collection.h"
 #include "VocBase/ticks.h"
 
 #include <ostream>
@@ -38,7 +38,7 @@
 using namespace arangodb;
 
 Index::Index(
-    TRI_idx_iid_t iid, TRI_document_collection_t* collection,
+    TRI_idx_iid_t iid, TRI_collection_t* collection,
     std::vector<std::vector<arangodb::basics::AttributeName>> const& fields,
     bool unique, bool sparse)
     : _iid(iid),

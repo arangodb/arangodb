@@ -590,7 +590,7 @@ static void EnsureIndexLocal(v8::FunctionCallbackInfo<v8::Value> const& args,
     TRI_V8_THROW_EXCEPTION(res);
   }
 
-  TRI_document_collection_t* document = trx.documentCollection();
+  TRI_collection_t* document = trx.documentCollection();
   std::string const& collectionName = std::string(collection->_name);
 
   // disallow index creation in read-only mode
@@ -620,13 +620,13 @@ static void EnsureIndexLocal(v8::FunctionCallbackInfo<v8::Value> const& args,
 
       if (create) {
         idx = static_cast<arangodb::GeoIndex2*>(
-            TRI_EnsureGeoIndex1DocumentCollection(
-                &trx, document, iid, attributes[0], geoJson, created));
+            document->ensureGeoIndex1(
+                &trx, iid, attributes[0], geoJson, created));
       } else {
         std::vector<std::string> location =
             arangodb::basics::StringUtils::split(attributes[0], ".");
         idx = static_cast<arangodb::GeoIndex2*>(
-            TRI_LookupGeoIndex1DocumentCollection(document, location, geoJson));
+            document->lookupGeoIndex1(location, geoJson));
       }
       break;
     }
@@ -638,15 +638,15 @@ static void EnsureIndexLocal(v8::FunctionCallbackInfo<v8::Value> const& args,
 
       if (create) {
         idx = static_cast<arangodb::GeoIndex2*>(
-            TRI_EnsureGeoIndex2DocumentCollection(
-                &trx, document, iid, attributes[0], attributes[1], created));
+            document->ensureGeoIndex2(
+                &trx, iid, attributes[0], attributes[1], created));
       } else {
         std::vector<std::string> lat =
             arangodb::basics::StringUtils::split(attributes[0], ".");
         std::vector<std::string> lon =
             arangodb::basics::StringUtils::split(attributes[0], ".");
         idx = static_cast<arangodb::GeoIndex2*>(
-            TRI_LookupGeoIndex2DocumentCollection(document, lon, lat));
+            document->lookupGeoIndex2(lon, lat));
       }
       break;
     }
@@ -658,12 +658,10 @@ static void EnsureIndexLocal(v8::FunctionCallbackInfo<v8::Value> const& args,
 
       if (create) {
         idx = static_cast<arangodb::HashIndex*>(
-            TRI_EnsureHashIndexDocumentCollection(
-                &trx, document, iid, attributes, sparse, unique, created));
+            document->ensureHashIndex(&trx, iid, attributes, sparse, unique, created));
       } else {
         idx = static_cast<arangodb::HashIndex*>(
-            TRI_LookupHashIndexDocumentCollection(document, attributes,
-                                                  sparsity, unique));
+            document->lookupHashIndex(attributes, sparsity, unique));
       }
 
       break;
@@ -676,12 +674,11 @@ static void EnsureIndexLocal(v8::FunctionCallbackInfo<v8::Value> const& args,
 
       if (create) {
         idx = static_cast<arangodb::SkiplistIndex*>(
-            TRI_EnsureSkiplistIndexDocumentCollection(
-                &trx, document, iid, attributes, sparse, unique, created));
+            document->ensureSkiplistIndex(
+                &trx, iid, attributes, sparse, unique, created));
       } else {
         idx = static_cast<arangodb::SkiplistIndex*>(
-            TRI_LookupSkiplistIndexDocumentCollection(document, attributes,
-                                                      sparsity, unique));
+            document->lookupSkiplistIndex(attributes, sparsity, unique));
       }
       break;
     }
@@ -694,12 +691,11 @@ static void EnsureIndexLocal(v8::FunctionCallbackInfo<v8::Value> const& args,
 #ifdef ARANGODB_ENABLE_ROCKSDB
       if (create) {
         idx = static_cast<arangodb::RocksDBIndex*>(
-            TRI_EnsureRocksDBIndexDocumentCollection(
-                &trx, document, iid, attributes, sparse, unique, created));
+            document->ensureRocksDBIndex(
+                &trx, iid, attributes, sparse, unique, created));
       } else {
         idx = static_cast<arangodb::RocksDBIndex*>(
-            TRI_LookupRocksDBIndexDocumentCollection(document, attributes,
-                                                     sparsity, unique));
+            document->lookupRocksDBIndex(attributes, sparsity, unique));
       }
       break;
 #else
@@ -723,12 +719,11 @@ static void EnsureIndexLocal(v8::FunctionCallbackInfo<v8::Value> const& args,
 
       if (create) {
         idx = static_cast<arangodb::FulltextIndex*>(
-            TRI_EnsureFulltextIndexDocumentCollection(
-                &trx, document, iid, attributes[0], minWordLength, created));
+            document->ensureFulltextIndex(
+                &trx, iid, attributes[0], minWordLength, created));
       } else {
         idx = static_cast<arangodb::FulltextIndex*>(
-            TRI_LookupFulltextIndexDocumentCollection(document, attributes[0],
-                                                      minWordLength));
+            document->lookupFulltextIndex(attributes[0], minWordLength));
       }
       break;
     }
@@ -1061,7 +1056,7 @@ static void CreateCollectionCoordinator(
       ArrayBuilder ab(&velocy, "indexes");
 
       // create a dummy primary index
-      TRI_document_collection_t* doc = nullptr;
+      TRI_collection_t* doc = nullptr;
       std::unique_ptr<arangodb::PrimaryIndex> primaryIndex(
           new arangodb::PrimaryIndex(doc));
 
@@ -1212,7 +1207,7 @@ static void JS_DropIndexVocbaseCol(
     TRI_V8_THROW_EXCEPTION(res);
   }
 
-  TRI_document_collection_t* document = trx.documentCollection();
+  TRI_collection_t* document = trx.documentCollection();
 
   auto idx = TRI_LookupIndexByHandle(isolate, trx.resolver(), collection,
                                      args[0], true);
@@ -1225,7 +1220,7 @@ static void JS_DropIndexVocbaseCol(
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
 
-  bool ok = TRI_DropIndexDocumentCollection(document, idx->id(), true);
+  bool ok = document->dropIndex(idx->id(), true);
 
   if (ok) {
     TRI_V8_RETURN_TRUE();
@@ -1309,11 +1304,11 @@ static void JS_GetIndexesVocbaseCol(
   // READ-LOCK start
   trx.lockRead();
 
-  TRI_document_collection_t* document = trx.documentCollection();
+  TRI_collection_t* document = trx.documentCollection();
   std::string const& collectionName = std::string(collection->_name);
 
   // get list of indexes
-  auto indexes(TRI_IndexesDocumentCollection(document, withFigures));
+  auto indexes(document->indexesToVelocyPack(withFigures));
 
   trx.finish(res);
   // READ-LOCK end

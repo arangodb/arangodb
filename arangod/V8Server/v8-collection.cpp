@@ -34,6 +34,9 @@
 #include "Cluster/ClusterMethods.h"
 #include "Indexes/PrimaryIndex.h"
 #include "RestServer/DatabaseFeature.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/MMFilesEngine.h"
+#include "StorageEngine/StorageEngine.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/OperationResult.h"
 #include "Utils/SingleCollectionTransaction.h"
@@ -248,7 +251,7 @@ static TRI_vocbase_col_t const* UseCollection(
     }
 
     TRI_vocbase_col_status_e status;
-    res = TRI_UseCollectionVocBase(col->_vocbase, col, status);
+    res = col->_vocbase->useCollection(col, status);
 
     if (res == TRI_ERROR_NO_ERROR && col->_collection != nullptr) {
       // no error
@@ -949,7 +952,7 @@ static TRI_doc_collection_info_t* GetFigures(TRI_vocbase_col_t* collection) {
   // READ-LOCK start
   trx.lockRead();
 
-  TRI_document_collection_t* document = collection->_collection;
+  TRI_collection_t* document = collection->_collection;
   TRI_doc_collection_info_t* info = document->figures();
 
   trx.finish(res);
@@ -1108,7 +1111,7 @@ static void JS_LeaderResign(v8::FunctionCallbackInfo<v8::Value> const& args) {
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_V8_THROW_EXCEPTION(res);
     }
-    TRI_document_collection_t* docColl = trx.documentCollection();
+    TRI_collection_t* docColl = trx.documentCollection();
     docColl->followers()->clear();
   }
 
@@ -1361,7 +1364,7 @@ static void JS_PropertiesVocbaseCol(
     return;
   }
 
-  TRI_document_collection_t* document = collection->_collection;
+  TRI_collection_t* document = collection->_collection;
 
   // check if we want to change some parameters
   if (0 < args.Length()) {
@@ -1421,7 +1424,7 @@ static void JS_PropertiesVocbaseCol(
       try {
         VPackBuilder infoBuilder;
         infoBuilder.openObject();
-        TRI_CreateVelocyPackCollectionInfo(document->_info, infoBuilder);
+        document->_info.toVelocyPack(infoBuilder);
         infoBuilder.close();
 
         // now log the property changes
@@ -1695,6 +1698,9 @@ static void ModifyVocbaseCol(TRI_voc_document_operation_e operation,
   if (args.Length() > 2) {
     parseReplaceAndUpdateOptions(isolate, args, options, operation);
   }
+  if (options.isRestore) {
+    options.ignoreRevs = true;
+  }
 
   // Find collection and vocbase
   TRI_vocbase_col_t const* col =
@@ -1715,7 +1721,10 @@ static void ModifyVocbaseCol(TRI_voc_document_operation_e operation,
   auto workOnOneSearchVal = [&](v8::Local<v8::Value> const searchVal, bool isBabies) {
     std::string collName;
     if (!ExtractDocumentHandle(isolate, searchVal, collName,
-                               updateBuilder, true)) {
+                               updateBuilder, !options.isRestore)) {
+      // If this is no restore, then we must extract the _rev from the
+      // search value. If options.isRestore is set, the _rev value must
+      // be taken from the new value, see below in workOnOneDocument!
       if (!isBabies) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
       } else {
@@ -1736,6 +1745,25 @@ static void ModifyVocbaseCol(TRI_voc_document_operation_e operation,
 
     if (res != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(res);
+    }
+
+    if (options.isRestore) {
+      // In this case we have to extract the _rev entry from newVal:
+      TRI_GET_GLOBALS();
+      v8::Handle<v8::Object> obj = newVal->ToObject();
+      TRI_GET_GLOBAL_STRING(_RevKey);
+      if (!obj->HasRealNamedProperty(_RevKey)) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_REV_BAD);
+      }
+      v8::Handle<v8::Value> revVal = obj->Get(_RevKey);
+      if (!revVal->IsString()) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_REV_BAD);
+      }
+      v8::String::Utf8Value str(revVal);
+      if (*str == nullptr) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_REV_BAD);
+      }
+      updateBuilder.add(StaticStrings::RevString, VPackValue(*str));
     }
   };
 
@@ -2053,7 +2081,7 @@ static void JS_RotateVocbaseCol(
 
   TRI_THROW_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(collection);
 
-  TRI_document_collection_t* document = collection->_collection;
+  TRI_collection_t* document = collection->_collection;
 
   int res = document->rotateActiveJournal();
 
@@ -2573,7 +2601,7 @@ static void JS_UnloadVocbaseCol(
         databaseName, StringUtils::itoa(collection->_cid),
         TRI_VOC_COL_STATUS_UNLOADED);
   } else {
-    res = TRI_UnloadCollectionVocBase(collection->_vocbase, collection, false);
+    res = collection->_vocbase->unloadCollection(collection, false);
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -2951,7 +2979,12 @@ static void JS_DatafilesVocbaseCol(
 
   TRI_THROW_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(collection);
 
-  TRI_col_file_structure_t structure;
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  if (std::string(engine->typeName()) != MMFilesEngine::EngineName) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "operation only supported in MMFiles engine");
+  }
+   
+  MMFilesEngineCollectionFiles structure;
   {
     READ_LOCKER(readLocker, collection->_lock);
 
@@ -2960,7 +2993,7 @@ static void JS_DatafilesVocbaseCol(
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_UNLOADED);
     }
 
-    structure = TRI_FileStructureCollectionDirectory(collection->path().c_str());
+    structure = dynamic_cast<MMFilesEngine*>(engine)->scanCollectionDirectory(collection->path());
   }
 
   // build result

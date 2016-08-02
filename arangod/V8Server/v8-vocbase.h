@@ -26,7 +26,6 @@
 
 #include "Basics/Common.h"
 #include "V8/v8-globals.h"
-#include "VocBase/document-collection.h"
 
 struct TRI_vocbase_t;
 

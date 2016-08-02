@@ -29,7 +29,7 @@
 #include "Utils/StandaloneTransactionContext.h"
 #include "VocBase/compactor.h"
 #include "VocBase/Ditch.h"
-#include "VocBase/document-collection.h"
+#include "VocBase/collection.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb;

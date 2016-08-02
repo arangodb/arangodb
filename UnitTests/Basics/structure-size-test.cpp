@@ -30,8 +30,8 @@
 #define BOOST_TEST_INCLUDED
 #include <boost/test/unit_test.hpp>
 
+#include "arangod/VocBase/collection.h"
 #include "arangod/VocBase/datafile.h"
-#include "arangod/VocBase/document-collection.h"
 #include "arangod/Wal/Marker.h"
 
 template<typename T, typename U> size_t offsetOf (U T::*member) {

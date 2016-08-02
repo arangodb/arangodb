@@ -28,7 +28,7 @@
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/voc-types.h"
 
-struct TRI_document_collection_t;
+struct TRI_collection_t;
 struct TRI_vocbase_t;
 
 namespace arangodb {
@@ -62,7 +62,7 @@ class CollectionExport {
 
  private:
   arangodb::CollectionGuard* _guard;
-  struct TRI_document_collection_t* _document;
+  struct TRI_collection_t* _document;
   arangodb::DocumentDitch* _ditch;
   std::string const _name;
   arangodb::CollectionNameResolver _resolver;
