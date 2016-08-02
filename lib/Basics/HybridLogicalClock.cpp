@@ -26,7 +26,7 @@
 namespace {
 template <typename DurationT, typename ReprT = typename DurationT::rep>
 constexpr DurationT maxDuration() noexcept {
-  return DurationT{std::numeric_limits<ReprT>::max()};
+  return DurationT{(std::numeric_limits<ReprT>::max)()};
 }
 
 template <typename DurationT>
