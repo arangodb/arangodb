@@ -191,7 +191,7 @@ void State::removeConflicts (query_t const& transactions) {
         std::stringstream aql;
         aql << "FOR l IN log FILTER l._key >= '" << stringify(idx)
             << "' REMOVE l IN log";
-        LOG(WARN) << aql.str();
+
         arangodb::aql::Query
           query(false, _vocbase, aql.str().c_str(), aql.str().size(), bindVars,
                 nullptr, arangodb::aql::PART_MAIN);
@@ -201,8 +201,7 @@ void State::removeConflicts (query_t const& transactions) {
           THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
         }
 
-        VPackSlice result = queryResult.result->slice();
-        LOG(WARN) << result.toJson();
+        queryResult.result->slice();
         
         // volatile logs
         {
