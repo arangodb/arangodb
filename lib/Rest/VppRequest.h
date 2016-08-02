@@ -69,13 +69,6 @@ class VppRequest : public GeneralRequest {
  private:
   VppRequest(ConnectionInfo const& connectionInfo, VPackMessage&& message);
 
- private:
-  VPackMessage _message;
-  mutable std::unique_ptr<std::unordered_map<std::string, std::string>>
-      _headers;
-  static std::string const _bla;
-  static std::unordered_map<std::string, std::string> _blam;
-
  public:
   ~VppRequest() {}
 
@@ -91,26 +84,27 @@ class VppRequest : public GeneralRequest {
   std::string const& header(std::string const& key) const override;
   std::string const& header(std::string const& key, bool& found) const override;
 
-  std::string const& value(std::string const& key) const override {
-    throw std::logic_error("not implemented");
-    return _bla;
-  }
-  std::string const& value(std::string const& key, bool& found) const override {
-    throw std::logic_error("not implemented");
-    return _bla;
-  }
+  // values are query paramteres
   std::unordered_map<std::string, std::string> values() const override {
-    throw std::logic_error("not implemented");
-    return std::unordered_map<std::string, std::string>();
+    return _values;
   }
   std::unordered_map<std::string, std::vector<std::string>> arrayValues()
       const override {
-    throw std::logic_error("not implemented");
-    return std::unordered_map<std::string, std::vector<std::string>>();
+    return _arrayValues;
   }
+  std::string const& value(std::string const& key) const override;
+  std::string const& value(std::string const& key, bool& found) const override;
 
  private:
+  VPackMessage _message;
+  mutable std::unique_ptr<std::unordered_map<std::string, std::string>>
+      _headers;
+  // values are query parameters
+  std::unordered_map<std::string, std::string> _values;
+  std::unordered_map<std::string, std::vector<std::string>> _arrayValues;
   const std::unordered_map<std::string, std::string> _cookies;  // TODO remove
+
+  void parseHeaderInformation();
 };
 }
 #endif

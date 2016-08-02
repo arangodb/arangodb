@@ -39,9 +39,20 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 
-std::string const VppRequest::_bla = "";
-std::unordered_map<std::string, std::string> VppRequest::_blam =
-    std::unordered_map<std::string, std::string>();
+namespace {
+std::string const& lookupStringInMap(
+    std::unordered_map<std::string, std::string> const& map,
+    std::string const& key, bool& found) {
+  auto it = map.find(key);
+  if (it != map.end()) {
+    found = true;
+    return it->second;
+  }
+
+  found = false;
+  return StaticStrings::Empty;
+}
+}
 
 VppRequest::VppRequest(ConnectionInfo const& connectionInfo,
                        VPackMessage&& message)
@@ -52,6 +63,7 @@ VppRequest::VppRequest(ConnectionInfo const& connectionInfo,
     _contentType = ContentType::VPACK;
     _contentTypeResponse = ContentType::VPACK;
     _protocol = "vpp";
+    parseHeaderInformation();
   }
 }
 
@@ -75,18 +87,39 @@ std::unordered_map<std::string, std::string> const& VppRequest::headers()
 
 std::string const& VppRequest::header(std::string const& key,
                                       bool& found) const {
-  // we need to use headers as we MUST return a ref to string
   headers();
-  auto it = _headers->find(key);
-  if (it != _headers->end()) {
-    found = true;
-    return it->second;
-  }
-  found = false;
-  return StaticStrings::Empty;
+  return lookupStringInMap(*_headers, key, found);
 }
 
 std::string const& VppRequest::header(std::string const& key) const {
   bool unused = true;
   return header(key, unused);
+}
+
+void VppRequest::parseHeaderInformation() {
+  using namespace std;
+  TRI_ASSERT(_message._header.isObject());
+  VPackSlice params = _message._header.get("parameter");
+  TRI_ASSERT(params.isObject());
+  for (auto const& it : VPackObjectIterator(params)) {
+    if (it.value.isArray()) {
+      vector<string> tmp;
+      for (auto const& itInner : VPackArrayIterator(it.value)) {
+        tmp.emplace_back(itInner.copyString());
+      }
+      _arrayValues.emplace(it.key.copyString(), move(tmp));
+    } else {
+      _values.emplace(it.key.copyString(), it.value.copyString());
+    }
+  }
+}
+
+std::string const& VppRequest::value(std::string const& key,
+                                     bool& found) const {
+  return lookupStringInMap(_values, key, found);
+}
+
+std::string const& VppRequest::value(std::string const& key) const {
+  bool unused = true;
+  return value(key, unused);
 }

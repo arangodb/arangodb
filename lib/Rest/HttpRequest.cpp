@@ -754,16 +754,6 @@ VPackSlice HttpRequest::payload(VPackOptions const* options) {
   }
 }
 
-std::string const& HttpRequest::header(std::string const& key) const {
-  auto it = _headers.find(key);
-
-  if (it == _headers.end()) {
-    return StaticStrings::Empty;
-  }
-
-  return it->second;
-}
-
 std::string const& HttpRequest::header(std::string const& key,
                                        bool& found) const {
   auto it = _headers.find(key);
@@ -777,16 +767,9 @@ std::string const& HttpRequest::header(std::string const& key,
   return it->second;
 }
 
-std::string const& HttpRequest::value(std::string const& key) const {
-  if (!_values.empty()) {
-    auto it = _values.find(key);
-
-    if (it != _values.end()) {
-      return it->second;
-    }
-  }
-
-  return StaticStrings::Empty;
+std::string const& HttpRequest::header(std::string const& key) const {
+  bool unused = true;
+  return header(key, unused);
 }
 
 std::string const& HttpRequest::value(std::string const& key,
@@ -802,6 +785,11 @@ std::string const& HttpRequest::value(std::string const& key,
 
   found = false;
   return StaticStrings::Empty;
+}
+
+std::string const& HttpRequest::value(std::string const& key) const {
+  bool unused = true;
+  return value(key, unused);
 }
 
 HttpRequest* HttpRequest::createFakeRequest(

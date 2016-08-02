@@ -166,6 +166,7 @@ class GeneralRequest {
   virtual std::unordered_map<std::string, std::string> const& headers()
       const = 0;
 
+  // the value functions give access to to query string parameters
   virtual std::string const& value(std::string const& key) const = 0;
   virtual std::string const& value(std::string const& key,
                                    bool& found) const = 0;
