@@ -211,6 +211,12 @@ struct ClusterCommResult {
   //////////////////////////////////////////////////////////////////////////////
 
   void setDestination(std::string const& dest, bool logConnectionErrors);
+  
+  /// @brief stringify the internal error state
+  std::string stringifyErrorMessage() const;
+
+  /// @brief stringify a cluster comm status
+  static char const* stringifyStatus(ClusterCommOpStatus status);
 };
 
 ////////////////////////////////////////////////////////////////////////////////

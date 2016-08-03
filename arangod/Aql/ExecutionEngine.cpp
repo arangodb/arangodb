@@ -560,10 +560,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
           error += "\n";
         }
       } else {
-        error += std::string("Communication with shard '") +
-                 std::string(res.shardID) + std::string("' on cluster node '") +
-                 std::string(res.serverID) + std::string("' failed : ") +
-                 res.errorMessage;
+        error += res.stringifyErrorMessage();
       }
     }
 
@@ -964,11 +961,10 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
                                 url, "{\"code\": 0}", headers, 120.0);
             // Ignore result, we need to try to remove all.
             // However, log the incident if we have an errorMessage.
-            if (res->errorMessage.length() > 0) {
+            if (!res->errorMessage.empty()) {
               std::string msg("while trying to unregister query ");
-              msg += queryId + std::string("from shard: ") + shardId +
-                     std::string("communication failed: ") + res->errorMessage;
-              LOG(WARN) << "" << msg;
+              msg += queryId + ": " + res->stringifyErrorMessage();
+              LOG(WARN) << msg;
             }
           } else {
             // Remove query from registry:
