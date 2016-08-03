@@ -51,6 +51,7 @@ Agent::Agent(config_t const& config)
   _state.configure(this);
   _constituent.configure(this);
   _confirmed.resize(size(), 0);  // agency's size and reset to 0
+  _lastSent.resize(size());
 }
 
 
@@ -288,6 +289,8 @@ priv_rpc_ret_t Agent::sendAppendEntriesRPC(
     return priv_rpc_ret_t(false, t);
   }
   
+  //LOG(WARN) << unconfirmed.front();
+
   // RPC path
   std::stringstream path;
   path << "/_api/agency_priv/appendEntries?term=" << t << "&leaderId=" << id()
@@ -492,10 +495,15 @@ bool Agent::lead() {
 
   // Key value stores
   rebuildDBs();
-  
+
   // Wake up run
-  CONDITION_LOCKER(guard, _appendCV);
-  guard.broadcast();
+  {
+    CONDITION_LOCKER(guard, _appendCV);
+    guard.broadcast();
+  }
+  
+  // Wake up supervision
+  _supervision.wakeUp();
 
   return true;
   

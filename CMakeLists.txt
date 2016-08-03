@@ -56,11 +56,14 @@ endif ()
 set(ARANGODB_VERSION_MAJOR      "3")
 set(ARANGODB_VERSION_MINOR      "0")
 set(ARANGODB_VERSION_REVISION   "devel")
+set(ARANGODB_PACKAGE_REVISION   "1")
 
 set(ARANGODB_VERSION
     "${ARANGODB_VERSION_MAJOR}.${ARANGODB_VERSION_MINOR}.${ARANGODB_VERSION_REVISION}")
 
-# for NSIS
+# for the packages
+set(ARANGODB_PACKAGE_VENDOR  "ArangoDB GmbH")
+set(ARANGODB_PACKAGE_CONTACT "info@arangodb.com")
 set(ARANGODB_DISPLAY_NAME       "ArangoDB")
 set(ARANGODB_URL_INFO_ABOUT     "https://www.arangodb.com")
 set(ARANGODB_HELP_LINK          "https://docs.arangodb.com/${ARANGODB_VERSION_MAJOR}.${ARANGODB_VERSION_MINOR}/")
@@ -91,7 +94,7 @@ set(BIN_ARANGOVPACK   arangovpack)
 # test binaries
 set(TEST_BASICS_SUITE basics_suite)
 set(TEST_GEO_SUITE    geo_suite)
-
+set(PACKAGES_LIST)
 ################################################################################
 ## VERSION FILES
 ################################################################################
@@ -618,6 +621,7 @@ if (VERBOSE)
   message(STATUS)
 endif ()
 
+
 ################################################################################
 ## 3RD PARTY
 ################################################################################
@@ -734,8 +738,9 @@ add_definitions("-DARANGODB_ZLIB_VERSION=\"${ZLIB_VERSION}\"")
 ## PATHS, installation, packages
 ################################################################################
 
-include(ArangoDBMacros)
+include(ArangoDBInstall)
 
+include(packages/packages)
 ################################################################################
 ## ERRORS FILE
 ################################################################################
@@ -855,10 +860,7 @@ if( EXISTS "${CMAKE_CURRENT_BINARY_DIR}/compile_commands.json" )
     )
 endif()
 
-set(BUILD_DIR ${CMAKE_CURRENT_BINARY_DIR}/packages/arangodb-client)
-configure_file(cmake/packages/package-client.txt ${BUILD_DIR}/CMakeLists.txt @ONLY)
-add_custom_target(package-arongodb-client COMMAND ${CMAKE_COMMAND} . 
-  COMMAND ${CMAKE_CPACK_COMMAND} -G DEB
-  COMMAND cp *.deb ${PROJECT_BINARY_DIR} 
-  WORKING_DIRECTORY ${BUILD_DIR})
 
+add_custom_target(packages
+  DEPENDS ${PACKAGES_LIST}
+  )
