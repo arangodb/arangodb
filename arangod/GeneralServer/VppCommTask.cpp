@@ -102,7 +102,7 @@ VppCommTask::ChunkHeader VppCommTask::readChunkHeader() {
   return header;
 }
 
-bool VppCommTask::isChunkComplete(const char* start) {
+bool VppCommTask::isChunkComplete(char* start) {
   std::size_t length = std::distance(start, _readBuffer->end());
   auto& prv = _processReadVariables;
 
@@ -129,11 +129,11 @@ bool VppCommTask::processRead() {
 
   auto& prv = _processReadVariables;
   if (!prv._readBufferCursor) {
-    _readBufferCursor = _readBuffer->begin();
+    prv._readBufferCursor = _readBuffer->begin();
   }
 
-  auto chunkBegin =
-      prv._readBufferCursor if (chunkBegin == nullptr || !isChunkComplete()) {
+  auto chunkBegin = prv._readBufferCursor;
+  if (chunkBegin == nullptr || !isChunkComplete(chunkBegin)) {
     return true;  // no data or incomplete
   }
 
@@ -208,7 +208,7 @@ bool VppCommTask::processRead() {
   std::size_t processedDataLen =
       std::distance(_readBuffer->begin(), prv._readBufferCursor);
   if (processedDataLen > prv._cleanupLength) {
-    _readBuffer.move_front(prv._cleanupLength);
+    _readBuffer->move_front(prv._cleanupLength);
     prv._readBufferCursor = nullptr;  // the positon will be set at the
                                       // begin of this function
   }

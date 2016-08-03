@@ -61,10 +61,9 @@ class VppCommTask : public GeneralCommTask {
           _readBufferCursor(nullptr),
           _cleanupLength(4096UL) {}
     uint32_t
-        _currentChunkLength;  // size of chunk processed or 0 when expecting
-                              // new chunk
-    char const*
-        _readBufferCursor;       // data up to this position has been processed
+        _currentChunkLength;     // size of chunk processed or 0 when expecting
+                                 // new chunk
+    char* _readBufferCursor;     // data up to this position has been processed
     std::size_t _cleanupLength;  // length of data after that the read buffer
                                  // will be cleaned
   };
@@ -79,7 +78,7 @@ class VppCommTask : public GeneralCommTask {
     bool _isFirst;
   };
 
-  bool isChunkComplete();         // sub-function of processRead
+  bool isChunkComplete(char*);    // sub-function of processRead
   ChunkHeader readChunkHeader();  // sub-function of processRead
 
   // user
