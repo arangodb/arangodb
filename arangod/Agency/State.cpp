@@ -185,7 +185,7 @@ void State::removeConflicts (query_t const& transactions) {
       if (idx-_cur < _log.size()) {
         LOG_TOPIC(DEBUG, Logger::AGENCY)
           << "Removing " << _log.size()-idx+_cur
-          << " entries from log starting with " << idx;
+          << " entries from log starting with " << idx << "=" << _log.at(idx-_cur).index;
 
         // persisted logs
         std::stringstream aql;
@@ -203,7 +203,7 @@ void State::removeConflicts (query_t const& transactions) {
         // volatile logs
         {
           MUTEX_LOCKER(mutexLocker, _logLock);
-          _log.erase(_log.begin()+idx-1);
+          _log.erase(_log.begin()+idx-_cur-1);
         }
         
       }

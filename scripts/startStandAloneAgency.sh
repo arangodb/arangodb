@@ -19,13 +19,13 @@ if [[ $(( $NRAGENTS % 2 )) == 0 ]]; then
     exit 1
 fi
 
-MINP=1.0
-MAXP=5.0
+MINP=0.5
+MAXP=2.0
 SFRE=2.5
-COMP=1000
+COMP=10
 BASE=4001
 
-rm -rf agency
+#rm -rf agency
 mkdir -p agency
 echo -n "Starting agency ... "
 if [ $NRAGENTS -gt 1 ]; then
