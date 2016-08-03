@@ -72,4 +72,4 @@ void VppResponse::setPayload(GeneralRequest const* request,
   }
 };
 
-void VppResponse::writeHeader(basics::StringBuffer*) {}
+// void VppResponse::writeHeader(basics::StringBuffer*) {}

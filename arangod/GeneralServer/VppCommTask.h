@@ -56,9 +56,17 @@ class VppCommTask : public GeneralCommTask {
   std::unordered_map<MessageID, IncompleteVPackMessage> _incompleteMessages;
 
   struct ProcessReadVariables {
+    ProcessReadVariables()
+        : _currentChunkLength(0),
+          _readBufferCursor(nullptr),
+          _cleanupLength(4096UL) {}
     uint32_t
         _currentChunkLength;  // size of chunk processed or 0 when expecting
                               // new chunk
+    char const*
+        _readBufferCursor;       // data up to this position has been processed
+    std::size_t _cleanupLength;  // length of data after that the read buffer
+                                 // will be cleaned
   };
   ProcessReadVariables _processReadVariables;
 

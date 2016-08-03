@@ -53,7 +53,12 @@ class VppResponse : public GeneralResponse {
                   bool generateBody,
                   arangodb::velocypack::Options const&) override final;
 
-  void writeHeader(basics::StringBuffer*) override;
+  // TODO
+  void prepareForNetwork(VPackSlice const& payload) {
+    // translate _headers to Slice
+    // write header and payload into Message that will be
+    // feed to the socket.
+  }
 
   void setConnectionType(ConnectionType type) override {
     _connectionType = type;

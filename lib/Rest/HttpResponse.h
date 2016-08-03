@@ -90,7 +90,7 @@ class HttpResponse : public GeneralResponse {
   }
 
   // you should call writeHeader only after the body has been created
-  void writeHeader(basics::StringBuffer*) override;
+  void writeHeader(basics::StringBuffer*);  // override;
 
  public:
   void reset(ResponseCode code) override final;

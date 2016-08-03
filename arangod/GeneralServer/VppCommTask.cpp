@@ -102,8 +102,7 @@ VppCommTask::ChunkHeader VppCommTask::readChunkHeader() {
   return header;
 }
 
-bool VppCommTask::isChunkComplete() {
-  auto start = _readBuffer->begin();
+bool VppCommTask::isChunkComplete(const char* start) {
   std::size_t length = std::distance(start, _readBuffer->end());
   auto& prv = _processReadVariables;
 
@@ -125,13 +124,16 @@ bool VppCommTask::isChunkComplete() {
 // reads data from the socket
 bool VppCommTask::processRead() {
   // TODO FIXME
-  // - clean up buffer!!! (REQUIRED)
   // - how to handle chunk parts of messages that are
   //   already invalid/have failed
-  //
 
-  auto chunkBegin = _readBuffer->begin();
-  if (chunkBegin == nullptr || !isChunkComplete()) {
+  auto& prv = _processReadVariables;
+  if (!prv._readBufferCursor) {
+    _readBufferCursor = _readBuffer->begin();
+  }
+
+  auto chunkBegin =
+      prv._readBufferCursor if (chunkBegin == nullptr || !isChunkComplete()) {
     return true;  // no data or incomplete
   }
 
@@ -202,6 +204,14 @@ bool VppCommTask::processRead() {
   }
 
   // clean buffer up to length of chunk
+  prv._readBufferCursor = chunkEnd;
+  std::size_t processedDataLen =
+      std::distance(_readBuffer->begin(), prv._readBufferCursor);
+  if (processedDataLen > prv._cleanupLength) {
+    _readBuffer.move_front(prv._cleanupLength);
+    prv._readBufferCursor = nullptr;  // the positon will be set at the
+                                      // begin of this function
+  }
 
   if (!do_execute) {
     return true;  // we have no complete request, so we return early

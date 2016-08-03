@@ -131,7 +131,7 @@ class GeneralResponse {
   virtual void setContentType(std::string const& contentType) = 0;
   virtual void setContentType(std::string&& contentType) = 0;
   virtual void setConnectionType(ConnectionType type) = 0;
-  virtual void writeHeader(basics::StringBuffer*) = 0;
+  // virtual void writeHeader(basics::StringBuffer*) = 0;
 
  protected:
   explicit GeneralResponse(ResponseCode);
