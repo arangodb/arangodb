@@ -168,11 +168,6 @@
 * GITHUB: https://github.com/jshttp/http-errors
 * License: [MIT License](https://github.com/jshttp/http-errors/blob/master/LICENSE)
 
-#### iconv-lite
-
-* GITHUB: https://github.com/ashtuchkin/iconv-lite
-* License: [MIT-style License](https://github.com/ashtuchkin/iconv-lite/blob/master/LICENSE)
-
 #### i (inflect)
 
 * GITHUB: https://github.com/pksunkara/inflect

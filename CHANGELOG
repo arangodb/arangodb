@@ -36,7 +36,7 @@ devel
 
 * Foxx OAuth2 module now correctly passes the `access_token` to the OAuth2 server
 
-* added iconv-lite and timezone modules
+* added timezone module
 
 
 v3.0.5 (XXXX-XX-XX)
