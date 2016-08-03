@@ -52,6 +52,8 @@ Agent::Agent(config_t const& config)
   _state.configure(this);
   _constituent.configure(this);
   _confirmed.resize(size(), 0);  // agency's size and reset to 0
+  _lastHighest.resize(size(), 0);
+  _lastSent.resize(size());
 }
 
 
@@ -237,8 +239,6 @@ bool Agent::recvAppendEntriesRPC(term_t term,
 
   MUTEX_LOCKER(mutexLocker, _ioLock);
 
-//  index_t lastPersistedIndex = _lastCommitIndex;
-
   if (this->term() > term) {
     LOG_TOPIC(WARN, Logger::AGENCY) << "I have a higher term than RPC caller.";
     return false;
@@ -256,10 +256,11 @@ bool Agent::recvAppendEntriesRPC(term_t term,
                                      << " entries to state machine.";
     /* bool success = */
     _state.log(queries, term, prevIndex, prevTerm);
-    _spearhead.apply(_state.slices(_lastCommitIndex + 1, leaderCommitIndex));
-    _readDB.apply(_state.slices(_lastCommitIndex + 1, leaderCommitIndex));
-    _lastCommitIndex = leaderCommitIndex;
   }
+
+  _spearhead.apply(_state.slices(_lastCommitIndex + 1, leaderCommitIndex));
+  _readDB.apply(_state.slices(_lastCommitIndex + 1, leaderCommitIndex));
+  _lastCommitIndex = leaderCommitIndex;
 
   if (_lastCommitIndex >= _nextCompationAfter) {
 
@@ -276,17 +277,19 @@ bool Agent::recvAppendEntriesRPC(term_t term,
 priv_rpc_ret_t Agent::sendAppendEntriesRPC(
     arangodb::consensus::id_t follower_id) {
   
-  index_t last_confirmed = _confirmed[follower_id];
-  std::vector<log_t> unconfirmed = _state.get(last_confirmed);
-
   term_t t(0);
   {
     MUTEX_LOCKER(mutexLocker, _ioLock);
     t = this->term();
   }
 
-  if (unconfirmed.empty()) {
-    return priv_rpc_ret_t(false, t);
+  index_t last_confirmed = _confirmed[follower_id];
+  std::vector<log_t> unconfirmed = _state.get(last_confirmed);
+  index_t highest = unconfirmed.back().index;
+
+  if (highest == _lastHighest.at(follower_id) && (long)(500.0e6*_config.minPing) >
+      (std::chrono::system_clock::now() - _lastSent.at(follower_id)).count()) {
+    return priv_rpc_ret_t(true, t);
   }
   
   // RPC path
@@ -300,9 +303,6 @@ priv_rpc_ret_t Agent::sendAppendEntriesRPC(
   auto headerFields =
       std::make_unique<std::unordered_map<std::string, std::string>>();
 
-  // Highest unconfirmed
-  index_t last = unconfirmed[0].index;
-
   // Body
   Builder builder;
   builder.add(VPackValue(VPackValueType::Array));
@@ -313,14 +313,14 @@ priv_rpc_ret_t Agent::sendAppendEntriesRPC(
     builder.add("term", VPackValue(entry.term));
     builder.add("query", VPackSlice(entry.entry->data()));
     builder.close();
-    last = entry.index;
+    highest = entry.index;
   }
   builder.close();
 
   // Verbose output
   if (unconfirmed.size() > 1) {
     LOG_TOPIC(DEBUG, Logger::AGENCY) << "Appending " << unconfirmed.size() - 1
-                                     << " entries up to index " << last
+                                     << " entries up to index " << highest
                                      << " to follower " << follower_id;
   }
 
@@ -329,7 +329,10 @@ priv_rpc_ret_t Agent::sendAppendEntriesRPC(
       "1", 1, _config.endpoints[follower_id],
       arangodb::GeneralRequest::RequestType::POST, path.str(),
       std::make_shared<std::string>(builder.toJson()), headerFields,
-      std::make_shared<AgentCallback>(this, follower_id, last), 1, true);
+      std::make_shared<AgentCallback>(this, follower_id, highest), 1, true);
+
+  _lastSent.at(follower_id) = std::chrono::system_clock::now();
+  _lastHighest.at(follower_id) = highest;
 
   return priv_rpc_ret_t(true, t);
   
@@ -441,7 +444,7 @@ void Agent::run() {
   while (!this->isStopping() && size() > 1) {
 
     if (leading()) {             // Only if leading
-      _appendCV.wait(50000);
+      _appendCV.wait(10000);
     } else {
       _appendCV.wait();         // Else wait for our moment in the sun
     }

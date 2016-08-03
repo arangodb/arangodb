@@ -178,6 +178,8 @@ class Agent : public arangodb::Thread {
 
   /// @brief Confirmed indices of all members of agency
   std::vector<index_t> _confirmed;
+  std::vector<index_t> _lastHighest;
+  std::vector<TimePoint> _lastSent;
   arangodb::Mutex _ioLock; /**< @brief Read/Write lock */
 
   /// @brief Next compaction after
