@@ -203,7 +203,7 @@ void State::removeConflicts (query_t const& transactions) {
         // volatile logs
         {
           MUTEX_LOCKER(mutexLocker, _logLock);
-          _log.erase(_log.begin()+idx-_cur-1);
+          _log.erase(_log.begin()+idx-_cur-1, _log.end());
         }
         
       }
