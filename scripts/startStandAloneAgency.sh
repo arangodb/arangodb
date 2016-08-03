@@ -49,6 +49,7 @@ if [ $NRAGENTS -gt 1 ]; then
            --server.endpoint tcp://127.0.0.1:$port \
            --server.statistics false \
            --agency.compaction-step-size $COMP \
+           --log.level agency=debug \
            --log.force-direct true \
            > agency/$port.stdout 2>&1 &
    done
@@ -76,6 +77,7 @@ build/bin/arangod \
     --server.endpoint tcp://127.0.0.1:$(( $BASE + $aid )) \
     --server.statistics false \
     --agency.compaction-step-size $COMP \
+    --log.level agency=debug \
     --log.force-direct true \
     > agency/$(( $BASE + $aid )).stdout 2>&1 &
 

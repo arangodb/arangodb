@@ -1076,10 +1076,7 @@ static bool throwExceptionAfterBadSyncRequest(ClusterCommResult* res,
                                               bool isShutdown) {
   ENTER_BLOCK
   if (res->status == CL_COMM_TIMEOUT) {
-    std::string errorMessage =
-        std::string("Timeout in communication with shard '") +
-        std::string(res->shardID) + std::string("' on cluster node '") +
-        std::string(res->serverID) + std::string("' failed.");
+    std::string errorMessage = res->stringifyErrorMessage();
 
     // No reply, we give up:
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_TIMEOUT, errorMessage);
@@ -1087,10 +1084,7 @@ static bool throwExceptionAfterBadSyncRequest(ClusterCommResult* res,
 
   if (res->status == CL_COMM_BACKEND_UNAVAILABLE) {
     // there is no result
-    std::string errorMessage = 
-        std::string("Empty result in communication with shard '") +
-        std::string(res->shardID) + std::string("' on cluster node '") +
-        std::string(res->serverID) + std::string("'");
+    std::string errorMessage = res->stringifyErrorMessage(); 
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_CONNECTION_LOST,
                                    errorMessage);
   }

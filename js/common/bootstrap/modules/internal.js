@@ -1473,7 +1473,7 @@ global.DEFINE_MODULE('internal', (function () {
         if (typeof src !== 'function' || (
           key !== 'arguments' && key !== 'caller' && key !== 'callee'
           )) {
-          if (key.charAt(0) !== '_' && !hasOwnProperty(result, key)) {
+          if (key.charAt(0) !== '_' && !hasOwnProperty.call(result, key)) {
             val = obj[key];
             if (seen.indexOf(val) !== -1 && (
               typeof val === 'object' || typeof val === 'function'
@@ -1491,7 +1491,7 @@ global.DEFINE_MODULE('internal', (function () {
     if (obj.constructor && obj.constructor.name) {
       if (obj instanceof Error && obj.name === Error.name) {
         result.name = obj.constructor.name;
-      } else if (!hasOwnProperty(result, 'constructor')) {
+      } else if (!hasOwnProperty.call(result, 'constructor')) {
         result.constructor = {
           name: obj.constructor.name
         };
