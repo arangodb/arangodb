@@ -52,6 +52,7 @@ Agent::Agent(config_t const& config)
   _state.configure(this);
   _constituent.configure(this);
   _confirmed.resize(size(), 0);  // agency's size and reset to 0
+  _lastSent.resize(size());
 }
 
 
@@ -289,6 +290,8 @@ priv_rpc_ret_t Agent::sendAppendEntriesRPC(
     return priv_rpc_ret_t(false, t);
   }
   
+  //LOG(WARN) << unconfirmed.front();
+
   // RPC path
   std::stringstream path;
   path << "/_api/agency_priv/appendEntries?term=" << t << "&leaderId=" << id()
