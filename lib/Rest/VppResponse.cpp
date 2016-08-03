@@ -42,11 +42,13 @@ using namespace arangodb::basics;
 
 bool VppResponse::HIDE_PRODUCT_HEADER = false;
 
-VppResponse::VppResponse(ResponseCode code)
+VppResponse::VppResponse(ResponseCode code, uint64_t id)
     : GeneralResponse(code),
       _connectionType(CONNECTION_KEEP_ALIVE),
-      _body(TRI_UNKNOWN_MEM_ZONE, false),
-      _contentType(ContentType::VPACK) {}
+      _contentType(ContentType::VPACK),
+      _header(nullptr),
+      _payload(),
+      _messageID(id) {}
 
 void VppResponse::reset(ResponseCode code) {
   _responseCode = code;
@@ -72,4 +74,15 @@ void VppResponse::setPayload(GeneralRequest const* request,
   }
 };
 
+VPackMessageNoOwnBuffer VppResponse::prepareForNetwork() {
+  VPackBuilder builder;
+  builder.openObject();
+  for (auto const& item : _headers) {
+    builder.add(item.first, VPackValue(item.second));
+  }
+  builder.close();
+  _header = builder.steal();
+  return VPackMessageNoOwnBuffer(VPackSlice(_header->data()),
+                                 VPackSlice(_payload.data()), _messageID);
+}
 // void VppResponse::writeHeader(basics::StringBuffer*) {}

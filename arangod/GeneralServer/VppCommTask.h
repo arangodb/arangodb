@@ -2,6 +2,7 @@
 #define ARANGOD_GENERAL_SERVER_VPP_COMM_TASK_H 1
 
 #include "GeneralServer/GeneralCommTask.h"
+#include "lib/Rest/VppMessage.h"
 #include "lib/Rest/VppResponse.h"
 #include "lib/Rest/VppRequest.h"
 
@@ -35,6 +36,7 @@ class VppCommTask : public GeneralCommTask {
   // resets the internal state this method can be called to clean up when the
   // request handling aborts prematurely
   void resetState(bool close);
+  void replyToIncompleteMessages() {}
 
   void addResponse(VppResponse*, bool isError);
   VppRequest* requestAsVpp();
@@ -73,11 +75,10 @@ class VppCommTask : public GeneralCommTask {
     std::size_t _headerLength;
     uint32_t _chunkLength;
     uint32_t _chunk;
-    uint64_t _messageId;
+    uint64_t _messageID;
     uint64_t _messageLength;
     bool _isFirst;
   };
-
   bool isChunkComplete(char*);    // sub-function of processRead
   ChunkHeader readChunkHeader();  // sub-function of processRead
 

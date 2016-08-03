@@ -18,15 +18,14 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
-/// @author Achim Brandt
+/// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef ARANGODB_REST_VPP_RESPONSE_H
 #define ARANGODB_REST_VPP_RESPONSE_H 1
 
+#include "Rest/VppMessage.h"
 #include "Rest/GeneralResponse.h"
-
 #include "Basics/StringBuffer.h"
 
 namespace arangodb {
@@ -37,12 +36,14 @@ class VppCommTask;
 class GeneralCommTask;
 }
 
+using rest::VPackMessageNoOwnBuffer;
+
 class VppResponse : public GeneralResponse {
   friend class rest::GeneralCommTask;
   friend class rest::VppCommTask;
   friend class RestBatchHandler;  // TODO must be removed
 
-  explicit VppResponse(ResponseCode code);
+  VppResponse(ResponseCode code, uint64_t id);
 
  public:
   static bool HIDE_PRODUCT_HEADER;
@@ -53,12 +54,9 @@ class VppResponse : public GeneralResponse {
                   bool generateBody,
                   arangodb::velocypack::Options const&) override final;
 
-  // TODO
-  void prepareForNetwork(VPackSlice const& payload) {
-    // translate _headers to Slice
-    // write header and payload into Message that will be
-    // feed to the socket.
-  }
+  // TODO - returns a pair for Slices representing Header and Payload if the
+  // Response
+  VPackMessageNoOwnBuffer prepareForNetwork();
 
   void setConnectionType(ConnectionType type) override {
     _connectionType = type;
@@ -81,8 +79,11 @@ class VppResponse : public GeneralResponse {
   //_responseCode   - from Base
   //_headers        - from Base
   ConnectionType _connectionType;
-  basics::StringBuffer _body;
   ContentType _contentType;
+  std::shared_ptr<VPackBuffer<uint8_t>>
+      _header;  // generated form _headers when prepared for network
+  VPackBuffer<uint8_t> _payload;
+  uint64_t _messageID;
 };
 }
 

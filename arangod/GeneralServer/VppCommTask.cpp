@@ -64,11 +64,89 @@ std::size_t findAndValidateVPacks(char const* vpHeaderStart,
                      /*isSubPart =*/false);
   return std::distance(vpHeaderStart, vpPayloadStart);
 }
+
+std::unique_ptr<basics::StringBuffer> createChunkForNetworkDetail(
+    char* start, char* end, bool isFirstChunk, uint32_t chunk, uint64_t id,
+    uint32_t totalMessageLength = 0) {
+  using basics::StringBuffer;
+  bool firstOfMany = false;
+  if (isFirstChunk && chunk == 1) {
+    firstOfMany = true;
+  }
+
+  chunk <<= 1;
+  chunk |= isFirstChunk ? 0x0 : 0x1;
+
+  uint32_t dataLength = std::distance(start, end);
+  uint32_t chunkLength = dataLength;
+  chunkLength += (sizeof(chunkLength) + sizeof(chunk) + sizeof(id));
+  if (firstOfMany) {
+    chunkLength += sizeof(totalMessageLength);
+  }
+
+  auto buffer =
+      std::make_unique<StringBuffer>(TRI_UNKNOWN_MEM_ZONE, chunkLength, false);
+  buffer->appendInteger(chunkLength);
+  buffer->appendInteger(chunk);  // chunkX //contains is first
+  buffer->appendInteger(id);
+
+  if (firstOfMany) {
+    TRI_ASSERT(totalMessageLength != 0);
+    buffer->appendInteger(totalMessageLength);
+  }
+  buffer->appendText(std::string(start, dataLength));
+
+  return buffer;
+}
+
+std::unique_ptr<basics::StringBuffer> createChunkForNetworkSingle(char* start,
+                                                                  char* end,
+                                                                  uint64_t id) {
+  return createChunkForNetworkDetail(start, end, true, 1, id, 0 /*unused*/);
+}
+
+std::unique_ptr<basics::StringBuffer> createChunkForNetworkMultiFirst(
+    char* start, char* end, uint64_t id, uint32_t numberOfChunks,
+    uint32_t totalMessageLength) {
+  return createChunkForNetworkDetail(start, end, true, numberOfChunks, id,
+                                     totalMessageLength);
+}
+
+std::unique_ptr<basics::StringBuffer> createChunkForNetworkMultiFollow(
+    char* start, char* end, uint64_t id, uint32_t chunkNumber,
+    uint32_t totalMessageLength) {
+  return createChunkForNetworkDetail(start, end, false, chunkNumber, id, 0);
+}
 }
 
 void VppCommTask::addResponse(VppResponse* response, bool isError) {
-  // add data from resonse to _writebuffes
+  if (isError) {
+    // what do we need to do?
+    // clean read buffer? reset process read cursor
+  }
+
+  VPackMessageNoOwnBuffer response_message = response->prepareForNetwork();
+  VPackSlice& header = response_message._header;
+  VPackSlice& payload = response_message._payload;
+  uint64_t& id = response_message._id;
+
+  uint32_t message_length = header.byteSize() + payload.byteSize();
+
+  // FIXME
+  // If the message is big we will create many small chunks in a loop.
+  // For the first tests we just send single Messages
+  StringBuffer tmp(TRI_UNKNOWN_MEM_ZONE, message_length, false);
+  tmp.appendText(header.startAs<char>(), header.byteSize());
+  tmp.appendText(payload.startAs<char>(), payload.byteSize());
+
+  // adds chunk header infromation and creates SingBuffer* that can be
+  // used with _writeBuffers
+  auto buffer = createChunkForNetworkSingle(tmp.begin(), tmp.end(), id);
+  _writeBuffers.push_back(buffer.get());
+  buffer.release();
+
   fillWriteBuffer();  // move data from _writebuffers to _writebuffer
+                      // implemented in base
 }
 
 VppCommTask::ChunkHeader VppCommTask::readChunkHeader() {
@@ -86,8 +164,8 @@ VppCommTask::ChunkHeader VppCommTask::readChunkHeader() {
   header._isFirst = chunkX & 0x1;
   header._chunk = chunkX >> 1;
 
-  std::memcpy(&header._messageId, cursor, sizeof(header._messageId));
-  cursor += sizeof(header._messageId);
+  std::memcpy(&header._messageID, cursor, sizeof(header._messageID));
+  cursor += sizeof(header._messageID);
 
   // extract total len of message
   if (header._isFirst && header._chunk == 1) {
@@ -124,8 +202,8 @@ bool VppCommTask::isChunkComplete(char* start) {
 // reads data from the socket
 bool VppCommTask::processRead() {
   // TODO FIXME
-  // - how to handle chunk parts of messages that are
-  //   already invalid/have failed
+  // - in case of error send an operation failed to all incomplete messages /
+  //   operation and close connection (implement resetState/resetCommtask)
 
   auto& prv = _processReadVariables;
   if (!prv._readBufferCursor) {
@@ -147,6 +225,7 @@ bool VppCommTask::processRead() {
   if (chunkHeader._isFirst && chunkHeader._chunk == 1) {
     std::size_t payloadOffset = findAndValidateVPacks(vpackBegin, chunkEnd);
     VPackMessage message;
+    message._id = chunkHeader._messageID;
     message._buffer.append(vpackBegin, std::distance(vpackBegin, chunkEnd));
     message._header = VPackSlice(message._buffer.data());
     if (payloadOffset) {
@@ -155,7 +234,7 @@ bool VppCommTask::processRead() {
     do_execute = true;
   }
   // CASE 2:  message is in multiple chunks
-  auto incompleteMessageItr = _incompleteMessages.find(chunkHeader._messageId);
+  auto incompleteMessageItr = _incompleteMessages.find(chunkHeader._messageID);
 
   // CASE 2a: chunk starts new message
   if (chunkHeader._isFirst) {  // first chunk of multi chunk message
@@ -169,7 +248,7 @@ bool VppCommTask::processRead() {
                                    chunkHeader._chunk /*number of chunks*/);
     message._buffer.append(vpackBegin, std::distance(vpackBegin, chunkEnd));
     auto insertPair = _incompleteMessages.emplace(
-        std::make_pair(chunkHeader._messageId, std::move(message)));
+        std::make_pair(chunkHeader._messageID, std::move(message)));
     if (!insertPair.second) {
       throw std::logic_error("insert failed");
     }
@@ -191,6 +270,7 @@ bool VppCommTask::processRead() {
           reinterpret_cast<char const*>(im._buffer.data()),
           reinterpret_cast<char const*>(im._buffer.data() +
                                         im._buffer.byteSize()));
+      message._id = chunkHeader._messageID;
       message._buffer = std::move(im._buffer);
       message._header = VPackSlice(message._buffer.data());
       if (payloadOffset) {
@@ -218,13 +298,14 @@ bool VppCommTask::processRead() {
   }
 
   // for now we can handle only one request at a time
-  // lock _request???? REVIEW
+  // lock _request???? REVIEW (fc)
   _request = new VppRequest(_connectionInfo, std::move(message));
   GeneralServerFeature::HANDLER_FACTORY->setRequestContext(_request);
   _request->setClientTaskId(_taskId);
   _protocolVersion = _request->protocolVersion();
   executeRequest(_request,
-                 new VppResponse(GeneralResponse::ResponseCode::SERVER_ERROR));
+                 new VppResponse(GeneralResponse::ResponseCode::SERVER_ERROR,
+                                 chunkHeader._messageID));
   return true;
 }
 
@@ -247,6 +328,10 @@ void VppCommTask::completedWriteBuffer() {
 }
 
 void VppCommTask::resetState(bool close) {
+  // REVIEW (fc)
+  // is there a case where we do not want to close the connection
+  replyToIncompleteMessages();
+
   /*
   if (close) {
     clearRequest();
