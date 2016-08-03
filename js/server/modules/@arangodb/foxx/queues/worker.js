@@ -26,12 +26,24 @@
 
 var db = require('@arangodb').db;
 var flatten = require('internal').flatten;
-var exponentialBackOff = require('internal').exponentialBackOff;
 var console = require('console');
 var queues = require('@arangodb/foxx/queues');
 var fm = require('@arangodb/foxx/manager');
 var util = require('util');
 var internal = require('internal');
+
+function exponentialBackOff(n, i) {
+  if (i === 0) {
+    return 0;
+  }
+  if (n === 0) {
+    return 0;
+  }
+  if (n === 1) {
+    return Math.random() < 0.5 ? 0 : i;
+  }
+  return Math.floor(Math.random() * (n + 1)) * i;
+}
 
 function getBackOffDelay(job) {
   var n = job.runFailures - 1;
