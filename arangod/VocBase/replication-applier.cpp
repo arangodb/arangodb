@@ -414,7 +414,7 @@ TRI_replication_applier_t* TRI_CreateReplicationApplier(TRI_vocbase_t* vocbase) 
 
   TRI_InitStateReplicationApplier(&applier->_state);
 
-  if (vocbase->_type == TRI_VOCBASE_TYPE_NORMAL) {
+  if (vocbase->type() == TRI_VOCBASE_TYPE_NORMAL) {
     int res = LoadConfiguration(vocbase, &applier->_configuration);
 
     if (res != TRI_ERROR_NO_ERROR && res != TRI_ERROR_FILE_NOT_FOUND) {
@@ -559,7 +559,7 @@ TRI_replication_applier_configuration_t::toVelocyPack(
 int TRI_ConfigureReplicationApplier(
     TRI_replication_applier_t* applier,
     TRI_replication_applier_configuration_t const* config) {
-  if (applier->_vocbase->_type == TRI_VOCBASE_TYPE_COORDINATOR) {
+  if (applier->_vocbase->type() == TRI_VOCBASE_TYPE_COORDINATOR) {
     return TRI_ERROR_CLUSTER_UNSUPPORTED;
   }
 
@@ -674,7 +674,7 @@ void TRI_DestroyStateReplicationApplier(
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_RemoveStateReplicationApplier(TRI_vocbase_t* vocbase) {
-  if (vocbase->_type == TRI_VOCBASE_TYPE_COORDINATOR) {
+  if (vocbase->type() == TRI_VOCBASE_TYPE_COORDINATOR) {
     return TRI_ERROR_CLUSTER_UNSUPPORTED;
   }
 
@@ -696,7 +696,7 @@ int TRI_RemoveStateReplicationApplier(TRI_vocbase_t* vocbase) {
 int TRI_SaveStateReplicationApplier(
     TRI_vocbase_t* vocbase, TRI_replication_applier_state_t const* state,
     bool doSync) {
-  if (vocbase->_type == TRI_VOCBASE_TYPE_COORDINATOR) {
+  if (vocbase->type() == TRI_VOCBASE_TYPE_COORDINATOR) {
     return TRI_ERROR_CLUSTER_UNSUPPORTED;
   }
 
@@ -719,7 +719,7 @@ int TRI_SaveStateReplicationApplier(
 
 int TRI_LoadStateReplicationApplier(TRI_vocbase_t* vocbase,
                                     TRI_replication_applier_state_t* state) {
-  if (vocbase->_type == TRI_VOCBASE_TYPE_COORDINATOR) {
+  if (vocbase->type() == TRI_VOCBASE_TYPE_COORDINATOR) {
     return TRI_ERROR_CLUSTER_UNSUPPORTED;
   }
 
@@ -820,7 +820,7 @@ void TRI_replication_applier_configuration_t::update(
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_RemoveConfigurationReplicationApplier(TRI_vocbase_t* vocbase) {
-  if (vocbase->_type == TRI_VOCBASE_TYPE_COORDINATOR) {
+  if (vocbase->type() == TRI_VOCBASE_TYPE_COORDINATOR) {
     return TRI_ERROR_CLUSTER_UNSUPPORTED;
   }
 
@@ -840,7 +840,7 @@ int TRI_RemoveConfigurationReplicationApplier(TRI_vocbase_t* vocbase) {
 int TRI_SaveConfigurationReplicationApplier(
     TRI_vocbase_t* vocbase,
     TRI_replication_applier_configuration_t const* config, bool doSync) {
-  if (vocbase->_type == TRI_VOCBASE_TYPE_COORDINATOR) {
+  if (vocbase->type() == TRI_VOCBASE_TYPE_COORDINATOR) {
     return TRI_ERROR_CLUSTER_UNSUPPORTED;
   }
 
@@ -886,7 +886,7 @@ TRI_replication_applier_t::~TRI_replication_applier_t() {
 
 int TRI_replication_applier_t::start(TRI_voc_tick_t initialTick, bool useTick,
                                      TRI_voc_tick_t barrierId) {
-  if (_vocbase->_type == TRI_VOCBASE_TYPE_COORDINATOR) {
+  if (_vocbase->type() == TRI_VOCBASE_TYPE_COORDINATOR) {
     return TRI_ERROR_CLUSTER_UNSUPPORTED;
   }
 
@@ -1040,7 +1040,7 @@ void TRI_replication_applier_t::stopInitialSynchronization(bool value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_replication_applier_t::stop(bool resetError) {
-  if (_vocbase->_type == TRI_VOCBASE_TYPE_COORDINATOR) {
+  if (_vocbase->type() == TRI_VOCBASE_TYPE_COORDINATOR) {
     return TRI_ERROR_CLUSTER_UNSUPPORTED;
   }
 
@@ -1111,7 +1111,7 @@ int TRI_replication_applier_t::forget() {
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_replication_applier_t::shutdown() {
-  if (_vocbase->_type == TRI_VOCBASE_TYPE_COORDINATOR) {
+  if (_vocbase->type() == TRI_VOCBASE_TYPE_COORDINATOR) {
     return TRI_ERROR_CLUSTER_UNSUPPORTED;
   }
 

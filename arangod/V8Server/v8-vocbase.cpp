@@ -1851,7 +1851,7 @@ static void MapGetVocBase(v8::Local<v8::String> const name,
 
       {
         CONDITIONAL_READ_LOCKER(readLocker, collection->_lock, lock);
-        status = collection->_status;
+        status = collection->status();
         cid = collection->_cid;
         internalVersion = collection->internalVersion();
       }
@@ -1978,7 +1978,7 @@ static void JS_IdDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
-  TRI_V8_RETURN(V8TickId(isolate, vocbase->_id));
+  TRI_V8_RETURN(V8TickId(isolate, vocbase->id()));
   TRI_V8_TRY_CATCH_END
 }
 
@@ -2420,7 +2420,7 @@ static void DropDatabaseCoordinator(
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
-  TRI_voc_tick_t const id = vocbase->_id;
+  TRI_voc_tick_t const id = vocbase->id();
   vocbase->release();
 
   ClusterInfo* ci = ClusterInfo::instance();
@@ -2678,7 +2678,7 @@ bool TRI_UpgradeDatabase(TRI_vocbase_t* vocbase,
   bool ok = TRI_ObjectToBoolean(result);
 
   if (!ok) {
-    vocbase->_state = (sig_atomic_t)TRI_VOCBASE_STATE_FAILED_VERSION;
+    vocbase->setState(TRI_vocbase_t::State::FAILED_VERSION);
   }
 
   v8g->_vocbase = orig;

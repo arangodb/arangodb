@@ -31,8 +31,8 @@
 #include "RestServer/DatabasePathFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "VocBase/CleanupThread.h"
+#include "VocBase/CompactorThread.h"
 #include "VocBase/collection.h"
-#include "VocBase/compactor.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 #include "Wal/LogfileManager.h"
@@ -173,13 +173,14 @@ void MMFilesEngine::recoveryDone(TRI_vocbase_t* vocbase) {
 
   if (!databaseFeature->checkVersion() && !databaseFeature->upgrade()) {
     // start compactor thread
-    TRI_ASSERT(!vocbase->_hasCompactor);
     LOG(TRACE) << "starting compactor for database '" << vocbase->name() << "'";
-
-    TRI_InitThread(&vocbase->_compactor);
-    TRI_StartThread(&vocbase->_compactor, nullptr, "Compactor",
-                    TRI_CompactorVocBase, vocbase);
-    vocbase->_hasCompactor = true;
+    TRI_ASSERT(vocbase->_compactorThread == nullptr);
+    vocbase->_compactorThread.reset(new CompactorThread(vocbase));
+  
+    if (!vocbase->_compactorThread->start()) {
+      LOG(ERR) << "could not start compactor thread";
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+    }
   }
 
   // delete all collection files from collections marked as deleted
@@ -339,7 +340,7 @@ int MMFilesEngine::getCollectionsAndIndexes(TRI_vocbase_t* vocbase,
 
   result.openArray();
 
-  std::string const path = databaseDirectory(vocbase->_id);
+  std::string const path = databaseDirectory(vocbase->id());
   std::vector<std::string> files = TRI_FilesDirectory(path.c_str());
 
   for (auto const& name : files) {
@@ -468,12 +469,12 @@ TRI_vocbase_t* MMFilesEngine::createDatabase(TRI_voc_tick_t id, arangodb::velocy
 // the WAL entry for database deletion will be written *after* the call
 // to "prepareDropDatabase" returns
 int MMFilesEngine::prepareDropDatabase(TRI_vocbase_t* vocbase) {
-  return saveDatabaseParameters(vocbase->_id, vocbase->name(), true);
+  return saveDatabaseParameters(vocbase->id(), vocbase->name(), true);
 }
 
 // perform a physical deletion of the database      
 int MMFilesEngine::dropDatabase(TRI_vocbase_t* vocbase) {
-  return dropDatabaseDirectory(databaseDirectory(vocbase->_id));
+  return dropDatabaseDirectory(databaseDirectory(vocbase->id()));
 }
 
 /// @brief wait until a database directory disappears
@@ -947,7 +948,7 @@ TRI_vocbase_t* MMFilesEngine::openExistingDatabase(TRI_voc_tick_t id, std::strin
     LOG(ERR) << "could not start cleanup thread";
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
-
+    
   return vocbase.release();
 }
       

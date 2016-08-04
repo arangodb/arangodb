@@ -30,7 +30,6 @@
 #include "Basics/Exceptions.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/StringUtils.h"
-#include "Basics/threads.h"
 #include "Basics/voc-errors.h"
 #include "VocBase/voc-types.h"
 
@@ -49,8 +48,9 @@ class Builder;
 namespace aql {
 class QueryList;
 }
-struct VocbaseAuthCache;
-class VocbaseAuthInfo;
+class CleanupThread;
+class CollectionNameResolver;
+class CompactorThread;
 class VocbaseCollectionInfo;
 class CollectionKeysRepository;
 class CursorRepository;
@@ -125,18 +125,9 @@ constexpr auto TRI_INDEX_HANDLE_SEPARATOR_STR = "/";
 
 /// @brief collection enum
 enum TRI_col_type_e {
-  TRI_COL_TYPE_UNKNOWN = 0,           // only used when initializing
+  TRI_COL_TYPE_UNKNOWN = 0, // only used to signal an invalid collection type
   TRI_COL_TYPE_DOCUMENT = 2,
   TRI_COL_TYPE_EDGE = 3
-};
-
-/// @brief database state
-enum TRI_vocbase_state_e {
-  TRI_VOCBASE_STATE_INACTIVE = 0,
-  TRI_VOCBASE_STATE_NORMAL = 1,
-  TRI_VOCBASE_STATE_SHUTDOWN_COMPACTOR = 2,
-  TRI_VOCBASE_STATE_SHUTDOWN_CLEANUP = 3,
-  TRI_VOCBASE_STATE_FAILED_VERSION = 4
 };
 
 /// @brief database type
@@ -160,8 +151,22 @@ enum TRI_vocbase_col_status_e {
 
 /// @brief database
 struct TRI_vocbase_t {
+  friend class arangodb::CollectionNameResolver;
   friend class arangodb::StorageEngine;
+  
+  /// @brief database state
+  enum class State {
+    NORMAL = 0,
+    SHUTDOWN_COMPACTOR = 1,
+    SHUTDOWN_CLEANUP = 2,
+    FAILED_VERSION = 3
+  };
 
+  TRI_vocbase_t(TRI_vocbase_type_e type, TRI_voc_tick_t id, std::string const& name);
+  ~TRI_vocbase_t();
+
+ private:
+  
   /// @brief states for dropping
   enum DropState {
    DROP_EXIT,    // drop done, nothing else to do
@@ -169,65 +174,44 @@ struct TRI_vocbase_t {
    DROP_PERFORM  // drop done, must perform actual cleanup routine
   };
 
-  TRI_vocbase_t(TRI_vocbase_type_e type, TRI_voc_tick_t id, std::string const& name);
-  ~TRI_vocbase_t();
-
-  TRI_voc_tick_t _id;        // internal database id
- private:
+  TRI_voc_tick_t const _id;        // internal database id
   std::string _name;         // database name
- public:
   TRI_vocbase_type_e _type;  // type (normal or coordinator)
-
   std::atomic<uint64_t> _refCount;
-
-  arangodb::basics::DeadlockDetector<TRI_collection_t>
-      _deadlockDetector;
-
+  State _state;
+  bool _isOwnAppsDirectory;
+  
   arangodb::basics::ReadWriteLock _collectionsLock;  // collection iterator lock
   std::vector<TRI_vocbase_col_t*> _collections;  // pointers to ALL collections
   std::vector<TRI_vocbase_col_t*> _deadCollections;  // pointers to collections
                                                      // dropped that can be
                                                      // removed later
-
+ 
   std::unordered_map<std::string, TRI_vocbase_col_t*> _collectionsByName;  // collections by name
   std::unordered_map<TRI_voc_cid_t, TRI_vocbase_col_t*> _collectionsById;    // collections by id
+  
+  std::unique_ptr<arangodb::aql::QueryList> _queries;
+  std::unique_ptr<arangodb::CursorRepository> _cursorRepository;
+  std::unique_ptr<arangodb::CollectionKeysRepository> _collectionKeys;
+  
+  std::unique_ptr<TRI_replication_applier_t> _replicationApplier;
+  
+  arangodb::basics::ReadWriteLock _replicationClientsLock;
+  std::unordered_map<TRI_server_id_t, std::pair<double, TRI_voc_tick_t>>
+      _replicationClients;
 
+ public:
+  arangodb::basics::DeadlockDetector<TRI_collection_t>
+      _deadlockDetector;
   arangodb::basics::ReadWriteLock _inventoryLock;  // object lock needed when
                                                    // replication is assessing
                                                    // the state of the vocbase
 
   // structures for user-defined volatile data
   void* _userStructures;
- private:
-  std::unique_ptr<arangodb::aql::QueryList> _queries;
-  std::unique_ptr<arangodb::CursorRepository> _cursorRepository;
-  std::unique_ptr<arangodb::CollectionKeysRepository> _collectionKeys;
- public:
-  bool _hasCompactor;
-  bool _isOwnAppsDirectory;
 
-  std::unique_ptr<TRI_replication_applier_t> _replicationApplier;
-
-  arangodb::basics::ReadWriteLock _replicationClientsLock;
-  std::unordered_map<TRI_server_id_t, std::pair<double, TRI_voc_tick_t>>
-      _replicationClients;
-
-  // state of the database
-  // 0 = inactive
-  // 1 = normal operation/running
-  // 2 = shutdown in progress/waiting for compactor/synchronizer thread to
-  // finish
-  // 3 = shutdown in progress/waiting for cleanup thread to finish
-  // 4 = version check failed
-
-  sig_atomic_t _state;
-
-  TRI_thread_t _compactor;
-
-  std::unique_ptr<arangodb::Thread> _cleanupThread;
-  arangodb::basics::ConditionVariable _cleanupCondition;
-
-  TRI_condition_t _compactorCondition;
+  std::unique_ptr<arangodb::CompactorThread> _compactorThread;
+  std::unique_ptr<arangodb::CleanupThread> _cleanupThread;
 
   compaction_blockers_t _compactionBlockers;
 
@@ -235,15 +219,26 @@ struct TRI_vocbase_t {
   /// @brief checks if a database name is allowed
   /// returns true if the name is allowed and false otherwise
   static bool IsAllowedName(bool allowSystem, std::string const& name);
+  TRI_voc_tick_t id() const { return _id; }
   std::string const& name() const { return _name; }
   std::string path() const;
+  TRI_vocbase_type_e type() const { return _type; }
+  State state() const { return _state; }
+  void setState(State state) { _state = state; }
   void updateReplicationClient(TRI_server_id_t, TRI_voc_tick_t);
-  std::vector<std::tuple<TRI_server_id_t, double, TRI_voc_tick_t>>
-  getReplicationClients();
+  std::vector<std::tuple<TRI_server_id_t, double, TRI_voc_tick_t>> getReplicationClients();
+  TRI_replication_applier_t* replicationApplier() const { return _replicationApplier.get(); }
+  void addReplicationApplier(TRI_replication_applier_t* applier);
 
   arangodb::aql::QueryList* queryList() const { return _queries.get(); }
   arangodb::CursorRepository* cursorRepository() const { return _cursorRepository.get(); }
   arangodb::CollectionKeysRepository* collectionKeys() const { return _collectionKeys.get(); }
+
+  bool isOwnAppsDirectory() const { return _isOwnAppsDirectory; }
+  void setIsOwnAppsDirectory(bool value) { _isOwnAppsDirectory = value; }
+
+  /// @brief signal the cleanup thread to wake up
+  void signalCleanup();
 
   /// @brief whether or not the vocbase has been marked as deleted
   inline bool isDropped() const {
@@ -345,6 +340,9 @@ struct TRI_vocbase_t {
 
   /// @brief unloads a collection
   int unloadCollection(TRI_vocbase_col_t* collection, bool force);
+  
+  /// @brief callback for unloading a collection
+  static bool UnloadCollectionCallback(TRI_collection_t* col, void* data);
 
   /// @brief locks a collection for usage, loading or manifesting it
   /// Note that this will READ lock the collection you have to release the
@@ -441,6 +439,7 @@ class TRI_vocbase_col_t {
   TRI_voc_cid_t cid() const { return _cid; }
   TRI_voc_cid_t planId() const { return _planId; }
   TRI_col_type_t type() const { return _type; }
+  TRI_vocbase_col_status_e status() const { return _status; }
   uint32_t internalVersion() const { return _internalVersion; }
   std::string const& dbName() const { return _dbName; }
   std::string name() const { return _name; }
@@ -451,15 +450,25 @@ class TRI_vocbase_col_t {
   bool canRename() const { return _canRename; }
 
  public:
+  
+  void increaseVersion() { ++_internalVersion; }
 
   /// @brief returns a translation of a collection status
   char const* statusString() const { return statusString(_status); }
   static char const* statusString(TRI_vocbase_col_status_e status);
   
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Transform the information for this collection to velocypack
-  //////////////////////////////////////////////////////////////////////////////
+  /// @brief set the collection status from the outside
+  void setStatus(TRI_vocbase_col_status_e status);
 
+  /// @brief set the collection name from the outside
+  void setName(std::string const& name) { _name = name; }
+
+  /// @brief try to fetch the collection status under a lock
+  /// the boolean value will be set to true if the lock could be acquired
+  /// if the boolean is false, the return value is always TRI_VOC_COL_STATUS_CORRUPTED 
+  TRI_vocbase_col_status_e tryFetchStatus(bool& found);
+
+  /// @brief transform the information for this collection to velocypack
   std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack(bool,
                                                               TRI_voc_tick_t);
 
@@ -486,11 +495,10 @@ class TRI_vocbase_col_t {
   void toVelocyPackIndexes(arangodb::velocypack::Builder&, TRI_voc_tick_t);
 
  public:
-  TRI_vocbase_t* _vocbase;
+  TRI_vocbase_t* const _vocbase;
   TRI_voc_cid_t const _cid;     // local collection identifier
  private:
   TRI_voc_cid_t _planId;  // cluster-wide collection identifier
- public:
   TRI_col_type_t _type;   // collection type
   uint32_t _internalVersion;  // is incremented when a collection is renamed
   // this is used to prevent caching of collection objects
@@ -498,12 +506,16 @@ class TRI_vocbase_col_t {
  public:
   arangodb::basics::ReadWriteLock _lock;  // lock protecting the status and name
 
+ private:
   TRI_vocbase_col_status_e _status;  // status of the collection
+ public:
   TRI_collection_t* _collection;  // NULL or pointer to loaded collection
+ private:
   std::string const _dbName;  // name of the database
   std::string _name;          // name of the collection
   std::string const _path;    // storage path
 
+ public:
   bool _isLocal;    // if true, the collection is local. if false,
                     // the collection is a remote (cluster) collection
   bool _canDrop;    // true if the collection can be dropped

@@ -537,7 +537,7 @@ std::vector<std::string> Transaction::collectionNames() const {
 
   for (auto& trxCollection : _trx->_collections) {
     if (trxCollection->_collection != nullptr) {
-      result.emplace_back(trxCollection->_collection->_name);
+      result.emplace_back(trxCollection->_collection->name());
     }
   }
 
@@ -711,10 +711,15 @@ std::string Transaction::extractIdString(CollectionNameResolver const* resolver,
       
       if (*p == basics::VelocyPackHelper::IdAttribute) {
         id = VPackSlice(p + 1);
-        // we should be pointing to a custom value now
-        TRI_ASSERT(id.isCustom() && id.head() == 0xf3);
+        if (id.isCustom()) {
+          // we should be pointing to a custom value now
+          TRI_ASSERT(id.head() == 0xf3);
  
-        return makeIdFromCustom(resolver, id, key);
+          return makeIdFromCustom(resolver, id, key);
+        }
+        if (id.isString()) {
+          return id.copyString();
+        }
       }
     }
 

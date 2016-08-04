@@ -157,13 +157,13 @@ int InitialSyncer::run(std::string& errorMsg, bool incremental) {
     return TRI_ERROR_INTERNAL;
   }
 
-  int res = _vocbase->_replicationApplier->preventStart();
+  int res = _vocbase->replicationApplier()->preventStart();
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
 
-  TRI_DEFER(_vocbase->_replicationApplier->allowStart());
+  TRI_DEFER(_vocbase->replicationApplier()->allowStart());
 
   try {
     setProgress("fetching master state");
@@ -457,8 +457,8 @@ int InitialSyncer::sendFinishBatch() {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool InitialSyncer::checkAborted() {
-  if (_vocbase->_replicationApplier != nullptr &&
-      _vocbase->_replicationApplier->stopInitialSynchronization()) {
+  if (_vocbase->replicationApplier() != nullptr &&
+      _vocbase->replicationApplier()->stopInitialSynchronization()) {
     return true;
   }
   return false;
@@ -628,7 +628,7 @@ int InitialSyncer::handleCollectionDump(
     url += "&includeSystem=" + std::string(_includeSystem ? "true" : "false");
 
     std::string const typeString =
-        (col->_type == TRI_COL_TYPE_EDGE
+        (col->type() == TRI_COL_TYPE_EDGE
              ? "edge"
              : "document");
 

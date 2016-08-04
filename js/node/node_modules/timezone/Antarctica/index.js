@@ -1,0 +1,1 @@
+module.exports = [require("./Casey.js"),require("./Davis.js"),require("./DumontDUrville.js"),require("./Macquarie.js"),require("./Mawson.js"),require("./McMurdo.js"),require("./Palmer.js"),require("./Rothera.js"),require("./South_Pole.js"),require("./Syowa.js"),require("./Troll.js"),require("./Vostok.js")]

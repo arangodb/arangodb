@@ -58,7 +58,7 @@ ContinuousSyncer::ContinuousSyncer(
     TRI_voc_tick_t initialTick, bool useTick,
     TRI_voc_tick_t barrierId)
     : Syncer(vocbase, configuration),
-      _applier(vocbase->_replicationApplier.get()),
+      _applier(vocbase->replicationApplier()),
       _chunkSize(),
       _restrictType(RESTRICT_NONE),
       _initialTick(initialTick),
@@ -119,7 +119,7 @@ retry:
     _applier->_state._failedConnects = 0;
   }
 
-  while (_vocbase->_state < 2) {
+  while (_vocbase->state() == TRI_vocbase_t::State::NORMAL) {
     setProgress("fetching master state information");
     res = getMasterState(errorMsg);
 

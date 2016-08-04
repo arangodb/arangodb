@@ -526,6 +526,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     std::string error;
     int count = 0;
     int nrok = 0;
+    int errorCode = TRI_ERROR_NO_ERROR;
     for (count = (int)shardIds->size(); count > 0; count--) {
       auto res = cc->wait("", coordTransactionID, 0, "", 30.0);
 
@@ -538,7 +539,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
 
           VPackSlice tmp = res.answer->payload().get("queryId");
           std::string queryId;
-          if(tmp.isString()){
+          if (tmp.isString()) {
             queryId = tmp.copyString();
           }
 
@@ -559,17 +560,20 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
           error += "\n";
         }
       } else {
-        error += std::string("Communication with shard '") +
-                 std::string(res.shardID) + std::string("' on cluster node '") +
-                 std::string(res.serverID) + std::string("' failed : ") +
-                 res.errorMessage;
+        error += res.stringifyErrorMessage();
+        if (errorCode == TRI_ERROR_NO_ERROR) {
+          errorCode = res.getErrorCode();
+        }
       }
     }
 
     // std::cout << "GOT ALL RESPONSES FROM DB SERVERS: " << nrok << "\n";
 
     if (nrok != (int)shardIds->size()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, error);
+      if (errorCode == TRI_ERROR_NO_ERROR) {
+        errorCode = TRI_ERROR_INTERNAL; // must have an error
+      }
+      THROW_ARANGO_EXCEPTION_MESSAGE(errorCode, error);
     }
   }
 
@@ -963,11 +967,10 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
                                 url, "{\"code\": 0}", headers, 120.0);
             // Ignore result, we need to try to remove all.
             // However, log the incident if we have an errorMessage.
-            if (res->errorMessage.length() > 0) {
+            if (!res->errorMessage.empty()) {
               std::string msg("while trying to unregister query ");
-              msg += queryId + std::string("from shard: ") + shardId +
-                     std::string("communication failed: ") + res->errorMessage;
-              LOG(WARN) << "" << msg;
+              msg += queryId + ": " + res->stringifyErrorMessage();
+              LOG(WARN) << msg;
             }
           } else {
             // Remove query from registry:

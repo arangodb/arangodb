@@ -87,7 +87,7 @@ class MMFilesEngine final : public StorageEngine {
   uint64_t getMaxRevision() override;
   
   // return the path for a database
-  std::string databasePath(TRI_vocbase_t const* vocbase) const override { return databaseDirectory(vocbase->_id); }
+  std::string databasePath(TRI_vocbase_t const* vocbase) const override { return databaseDirectory(vocbase->id()); }
   
   TRI_vocbase_t* openDatabase(arangodb::velocypack::Slice const& parameters, bool isUpgrade) override;
 

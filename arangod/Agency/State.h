@@ -36,6 +36,11 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
+
+namespace aql {
+class QueryRegistry;
+}
+
 namespace consensus {
 
 class Agent;
@@ -59,8 +64,7 @@ class State {
                            std::vector<bool> const& indices, term_t term);
   
   /// @brief Log entries (followers)
-  index_t log(query_t const& queries, term_t term, index_t prevLogIndex,
-              term_t prevLogTerm);
+  arangodb::consensus::index_t log(query_t const& queries, size_t ndups = 0);
   
   /// @brief Find entry at index with term
   bool find(index_t index, term_t term);
@@ -85,7 +89,7 @@ class State {
   bool configure(Agent* agent);
 
   /// @brief Load persisted data from above or start with empty log
-  bool loadCollections(TRI_vocbase_t*, bool);
+  bool loadCollections(TRI_vocbase_t*, aql::QueryRegistry*, bool);
 
   /// @brief Pipe to ostream
   friend std::ostream& operator<<(std::ostream& os, State const& s) {
@@ -98,7 +102,7 @@ class State {
 
   bool compact(arangodb::consensus::index_t cind);
 
-  void removeConflicts(query_t const&);
+  size_t removeConflicts(query_t const&);
 
 
  private:
@@ -140,6 +144,9 @@ class State {
   std::string _endpoint;            /**< @brief persistence end point */
   bool _collectionsChecked;         /**< @brief Collections checked */
   bool _collectionsLoaded;
+
+  aql::QueryRegistry* _queryRegistry;
+
 
   size_t _compaction_step;
   size_t _cur;

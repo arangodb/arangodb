@@ -30,9 +30,9 @@
 #include "Basics/files.h"
 #include "Logger/Logger.h"
 #include "Utils/CursorRepository.h"
+#include "VocBase/CompactorThread.h"
 #include "VocBase/Ditch.h"
 #include "VocBase/collection.h"
-#include "VocBase/compactor.h"
 #include "Wal/LogfileManager.h"
 
 using namespace arangodb;
@@ -42,26 +42,28 @@ CleanupThread::CleanupThread(TRI_vocbase_t* vocbase)
 
 CleanupThread::~CleanupThread() { shutdown(); }
 
+void CleanupThread::signal() {
+  CONDITION_LOCKER(locker, _condition);
+  locker.signal();
+}
+
 /// @brief cleanup event loop
 void CleanupThread::run() {
   uint64_t iterations = 0;
-
-  TRI_ASSERT(_vocbase != nullptr);
-  TRI_ASSERT(_vocbase->_state == 1);
 
   std::vector<TRI_vocbase_col_t*> collections;
 
   while (true) {
     // keep initial _state value as vocbase->_state might change during cleanup
     // loop
-    int state = _vocbase->_state;
+    TRI_vocbase_t::State state = _vocbase->state();
 
     ++iterations;
 
-    if (state == (sig_atomic_t)TRI_VOCBASE_STATE_SHUTDOWN_COMPACTOR ||
-        state == (sig_atomic_t)TRI_VOCBASE_STATE_SHUTDOWN_CLEANUP) {
-      // shadows must be cleaned before collections are handled
-      // otherwise the shadows might still hold barriers on collections
+    if (state == TRI_vocbase_t::State::SHUTDOWN_COMPACTOR ||
+        state == TRI_vocbase_t::State::SHUTDOWN_CLEANUP) {
+      // cursors must be cleaned before collections are handled
+      // otherwise the cursors may still hold barriers on collections
       // and collections cannot be closed properly
       cleanupCursors(true);
     }
@@ -73,9 +75,8 @@ void CleanupThread::run() {
 
       if (locker.isLocked()) {
         try {
-          READ_LOCKER(readLocker, _vocbase->_collectionsLock);
           // copy all collections
-          collections = _vocbase->_collections;
+          collections = _vocbase->collections();
         } catch (...) {
           collections.clear();
         }
@@ -110,25 +111,23 @@ void CleanupThread::run() {
       }
     }
 
-    if (_vocbase->_state >= 1) {
-      // server is still running, clean up unused cursors
-      if (iterations % cleanupCursorIterations() == 0) {
-        cleanupCursors(false);
+    // server is still running, clean up unused cursors
+    if (iterations % cleanupCursorIterations() == 0) {
+      cleanupCursors(false);
 
-        // clean up expired compactor locks
-        TRI_CleanupCompactorVocBase(_vocbase);
-      }
-
-      if (state == 1) {
-        CONDITION_LOCKER(locker, _vocbase->_cleanupCondition);
-        locker.wait(cleanupInterval());
-      } else if (state > 1) {
-        // prevent busy waiting
-        usleep(10000);
-      }
+      // clean up expired compactor locks
+      TRI_CleanupCompactorVocBase(_vocbase);
     }
 
-    if (state == 3) {
+    if (state == TRI_vocbase_t::State::NORMAL) {
+      CONDITION_LOCKER(locker, _condition);
+      locker.wait(cleanupInterval());
+    } else {
+      // prevent busy waiting
+      usleep(10000);
+    }
+
+    if (state == TRI_vocbase_t::State::SHUTDOWN_CLEANUP || isStopping()) {
       // server shutdown
       break;
     }
@@ -204,13 +203,9 @@ void CleanupThread::cleanupCollection(TRI_vocbase_col_t* collection,
       // collection
       bool isUnloading = false;
       bool gotStatus = false;
-      {
-        TRY_READ_LOCKER(readLocker, document->_lock);
-
-        if (readLocker.isLocked()) {
-          isUnloading = (collection->_status == TRI_VOC_COL_STATUS_UNLOADING);
-          gotStatus = true;
-        }
+      TRI_vocbase_col_status_e s = collection->tryFetchStatus(gotStatus);
+      if (gotStatus) {
+        isUnloading = (s == TRI_VOC_COL_STATUS_UNLOADING);
       }
 
       if (gotStatus && !isUnloading) {
@@ -233,12 +228,10 @@ void CleanupThread::cleanupCollection(TRI_vocbase_col_t* collection,
 
         // if there is still some garbage collection to perform,
         // check if the collection was deleted already
-        {
-          TRY_READ_LOCKER(readLocker, document->_lock);
-
-          if (readLocker.isLocked()) {
-            isDeleted = (collection->_status == TRI_VOC_COL_STATUS_DELETED);
-          }
+        bool found;
+        TRI_vocbase_col_status_e s = collection->tryFetchStatus(found);
+        if (found) {
+          isDeleted = (s == TRI_VOC_COL_STATUS_DELETED);
         }
 
         if (!isDeleted && document->_vocbase->isDropped()) {

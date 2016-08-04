@@ -105,8 +105,8 @@ struct log_t {
             std::chrono::system_clock::now().time_since_epoch())) {}
   
   friend std::ostream& operator<<(std::ostream& o, log_t const& l) {
-    o << l.index << " " << l.term << " " 
-      << l.entry->toString() << " " << l.timestamp.count();
+    o << l.index << " " << l.term << " " << VPackSlice(l.entry->data()).toJson()
+      << " " << l.timestamp.count();
     return o;
   }
   

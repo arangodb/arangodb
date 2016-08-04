@@ -113,6 +113,86 @@ void ClusterCommResult::setDestination(std::string const& dest,
     }
   }
 }
+  
+/// @brief stringify the internal error state
+std::string ClusterCommResult::stringifyErrorMessage() const {
+  // append status string
+  std::string result(stringifyStatus(status));
+  
+  if (!serverID.empty()) {
+    result.append(", cluster node: '");
+    result.append(serverID);
+    result.push_back('\'');
+  }
+
+  if (!shardID.empty()) {
+    result.append(", shard: '");
+    result.append(shardID);
+    result.push_back('\'');
+  }
+  
+  if (!endpoint.empty()) {
+    result.append(", endpoint: '");
+    result.append(endpoint);
+    result.push_back('\'');
+  }
+
+  if (!errorMessage.empty()) {
+    result.append(", error: '");
+    result.append(errorMessage);
+    result.push_back('\'');
+  }
+
+  return result;
+}
+  
+/// @brief return an error code for a result
+int ClusterCommResult::getErrorCode() const {
+  switch (status) {
+    case CL_COMM_SUBMITTED:
+    case CL_COMM_SENDING:
+    case CL_COMM_SENT:
+    case CL_COMM_RECEIVED:
+      return TRI_ERROR_NO_ERROR;
+
+    case CL_COMM_TIMEOUT:
+      return TRI_ERROR_CLUSTER_TIMEOUT;
+
+    case CL_COMM_ERROR:
+      return TRI_ERROR_INTERNAL;
+    
+    case CL_COMM_DROPPED:
+      return TRI_ERROR_INTERNAL;
+    
+    case CL_COMM_BACKEND_UNAVAILABLE:
+      return TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE;
+  }
+
+  return TRI_ERROR_INTERNAL;
+}
+  
+/// @brief stringify a cluster comm status
+char const* ClusterCommResult::stringifyStatus(ClusterCommOpStatus status) {
+  switch (status) {
+    case CL_COMM_SUBMITTED:
+      return "submitted";
+    case CL_COMM_SENDING:
+      return "sending";
+    case CL_COMM_SENT:
+      return "sent";
+    case CL_COMM_TIMEOUT:
+      return "timeout";
+    case CL_COMM_RECEIVED:
+      return "received";
+    case CL_COMM_ERROR:
+      return "error";
+    case CL_COMM_DROPPED:
+      return "dropped";
+    case CL_COMM_BACKEND_UNAVAILABLE:
+      return "backend unavailable";
+  }
+  return "unknown";
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ClusterComm constructor

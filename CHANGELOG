@@ -36,9 +36,25 @@ devel
 
 * Foxx OAuth2 module now correctly passes the `access_token` to the OAuth2 server
 
+* added timezone module
 
-v3.0.4 (XXXX-XX-XX)
+
+v3.0.5 (XXXX-XX-XX)
 -------------------
+
+* fixed issue #1977
+
+* fixed extraction of _id attribute in AQL traversal conditions
+
+
+v3.0.4 (2016-08-01)
+-------------------
+
+* added missing lock for periodic jobs access
+
+* fix multiple foxx related cluster issues
+
+* fix handling of empty AQL query strings
 
 * fixed issue in `INTERSECTION` AQL function with duplicate elements
   in the source arrays

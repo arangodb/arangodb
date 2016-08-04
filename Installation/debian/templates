@@ -1,0 +1,31 @@
+Template: arangodb3/upgrade
+Type: boolean
+Default: true
+Description: Automatically upgrade database files?
+ Your database files must be upgraded before they can be used with a
+ newer version of ArangoDB. If you say "yes" here, the files will be
+ automatically upgraded, when a newer version of ArangoDB is installed.
+ if you say "no" here, you need to manually invoke the upgrade once.
+ This will render the package 'unstable' on upgrade.
+
+Template: arangodb3/backup
+Type: boolean
+Default: false
+Description: Backup database files before upgrading?
+ If you say "yes" here, a backup of your database files is created before
+ upgrading the files. The backup will be stored in /var/lib/arangodb-DATE.
+
+Template: arangodb3/password
+Type: password
+Description: password for the ArangoDB "root" user:
+ Please enter the password for the database root user account that should be granted
+ administrative privileges
+
+Template: arangodb3/password_again
+Type: password
+Description: Repeat password for the ArangoDB "root" user:
+
+Template: arangodb3/password_mismatch
+Type: error
+Description: Password input error
+ The two passwords you entered were not the same. Please try again.

@@ -51,6 +51,8 @@ Agent::Agent(config_t const& config)
   _state.configure(this);
   _constituent.configure(this);
   _confirmed.resize(size(), 0);  // agency's size and reset to 0
+  _lastHighest.resize(size(), 0);
+  _lastSent.resize(size());
 }
 
 
@@ -236,8 +238,6 @@ bool Agent::recvAppendEntriesRPC(term_t term,
 
   MUTEX_LOCKER(mutexLocker, _ioLock);
 
-//  index_t lastPersistedIndex = _lastCommitIndex;
-
   if (this->term() > term) {
     LOG_TOPIC(WARN, Logger::AGENCY) << "I have a higher term than RPC caller.";
     return false;
@@ -247,21 +247,29 @@ bool Agent::recvAppendEntriesRPC(term_t term,
     return false;
   }
 
-  _state.removeConflicts(queries);
+  size_t nqs   = queries->slice().length();
+
+  if (nqs > 0) {
+
+    size_t ndups = _state.removeConflicts(queries);
     
-  if (queries->slice().length()) {
-    LOG_TOPIC(DEBUG, Logger::AGENCY) << "Appending "
-                                     << queries->slice().length()
-                                     << " entries to state machine.";
-    /* bool success = */
-    _state.log(queries, term, prevIndex, prevTerm);
-    _spearhead.apply(_state.slices(_lastCommitIndex + 1, leaderCommitIndex));
-    _readDB.apply(_state.slices(_lastCommitIndex + 1, leaderCommitIndex));
-    _lastCommitIndex = leaderCommitIndex;
+    if (nqs > ndups) {
+      
+      LOG_TOPIC(DEBUG, Logger::AGENCY)
+        << "Appending " << nqs - ndups << " entries to state machine." <<
+        nqs << " " << ndups;
+
+      _state.log(queries, ndups);
+  
+    }
+    
   }
-
+  
+  _spearhead.apply(_state.slices(_lastCommitIndex + 1, leaderCommitIndex));
+  _readDB.apply(_state.slices(_lastCommitIndex + 1, leaderCommitIndex));
+  _lastCommitIndex = leaderCommitIndex;
+  
   if (_lastCommitIndex >= _nextCompationAfter) {
-
     _state.compact(_lastCommitIndex);
     _nextCompationAfter += _config.compactionStepSize;
   }
@@ -275,17 +283,19 @@ bool Agent::recvAppendEntriesRPC(term_t term,
 priv_rpc_ret_t Agent::sendAppendEntriesRPC(
     arangodb::consensus::id_t follower_id) {
   
-  index_t last_confirmed = _confirmed[follower_id];
-  std::vector<log_t> unconfirmed = _state.get(last_confirmed);
-
   term_t t(0);
   {
     MUTEX_LOCKER(mutexLocker, _ioLock);
     t = this->term();
   }
 
-  if (unconfirmed.empty()) {
-    return priv_rpc_ret_t(false, t);
+  index_t last_confirmed = _confirmed[follower_id];
+  std::vector<log_t> unconfirmed = _state.get(last_confirmed);
+  index_t highest = unconfirmed.back().index;
+
+  if (highest == _lastHighest.at(follower_id) && (long)(500.0e6*_config.minPing) >
+      (std::chrono::system_clock::now() - _lastSent.at(follower_id)).count()) {
+    return priv_rpc_ret_t(true, t);
   }
   
   // RPC path
@@ -299,9 +309,6 @@ priv_rpc_ret_t Agent::sendAppendEntriesRPC(
   auto headerFields =
       std::make_unique<std::unordered_map<std::string, std::string>>();
 
-  // Highest unconfirmed
-  index_t last = unconfirmed[0].index;
-
   // Body
   Builder builder;
   builder.add(VPackValue(VPackValueType::Array));
@@ -312,14 +319,14 @@ priv_rpc_ret_t Agent::sendAppendEntriesRPC(
     builder.add("term", VPackValue(entry.term));
     builder.add("query", VPackSlice(entry.entry->data()));
     builder.close();
-    last = entry.index;
+    highest = entry.index;
   }
   builder.close();
 
   // Verbose output
   if (unconfirmed.size() > 1) {
     LOG_TOPIC(DEBUG, Logger::AGENCY) << "Appending " << unconfirmed.size() - 1
-                                     << " entries up to index " << last
+                                     << " entries up to index " << highest
                                      << " to follower " << follower_id;
   }
 
@@ -328,7 +335,10 @@ priv_rpc_ret_t Agent::sendAppendEntriesRPC(
       "1", 1, _config.endpoints[follower_id],
       arangodb::GeneralRequest::RequestType::POST, path.str(),
       std::make_shared<std::string>(builder.toJson()), headerFields,
-      std::make_shared<AgentCallback>(this, follower_id, last), 1, true);
+      std::make_shared<AgentCallback>(this, follower_id, highest), 1, true);
+
+  _lastSent.at(follower_id) = std::chrono::system_clock::now();
+  _lastHighest.at(follower_id) = highest;
 
   return priv_rpc_ret_t(true, t);
   
@@ -342,19 +352,27 @@ bool Agent::load() {
       ApplicationServer::getFeature<DatabaseFeature>("Database");
 
   auto vocbase = database->systemDatabase();
+  auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY;
+
   if (vocbase == nullptr) {
     LOG_TOPIC(FATAL, Logger::AGENCY) << "could not determine _system database";
     FATAL_ERROR_EXIT();
   }
 
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "Loading persistent state.";
-  if (!_state.loadCollections(vocbase, _config.waitForSync)) {
+  if (!_state.loadCollections(vocbase, queryRegistry, _config.waitForSync)) {
     LOG_TOPIC(DEBUG, Logger::AGENCY)
         << "Failed to load persistent state on startup.";
   }
 
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "Reassembling spearhead and read stores.";
   _spearhead.apply(_state.slices(_lastCommitIndex + 1));
+
+  {
+    CONDITION_LOCKER(guard, _appendCV);
+    guard.broadcast();
+  }
+  
   reportIn(id(), _state.lastLog().index);
 
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "Starting spearhead worker.";
@@ -362,7 +380,6 @@ bool Agent::load() {
   _readDB.start();
 
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "Starting constituent personality.";
-  auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY;
   TRI_ASSERT(queryRegistry != nullptr);
   _constituent.start(vocbase, queryRegistry);
 
@@ -433,7 +450,7 @@ void Agent::run() {
   while (!this->isStopping() && size() > 1) {
 
     if (leading()) {             // Only if leading
-      _appendCV.wait(100000);
+      _appendCV.wait(10000);
     } else {
       _appendCV.wait();         // Else wait for our moment in the sun
     }
@@ -484,11 +501,16 @@ void Agent::beginShutdown() {
 bool Agent::lead() {
 
   // Key value stores
-  //rebuildDBs();
-  
+  rebuildDBs();
+
   // Wake up run
-  CONDITION_LOCKER(guard, _appendCV);
-  guard.broadcast();
+  {
+    CONDITION_LOCKER(guard, _appendCV);
+    guard.broadcast();
+  }
+  
+  // Wake up supervision
+  _supervision.wakeUp();
 
   return true;
   
@@ -496,10 +518,11 @@ bool Agent::lead() {
 
 // Rebuild key value stores
 bool Agent::rebuildDBs() {
-  
+
   MUTEX_LOCKER(mutexLocker, _ioLock);
-  _spearhead.apply(_state.slices());
-  _readDB.apply(_state.slices());
+
+  _spearhead.apply(_state.slices(_lastCommitIndex+1));
+  _readDB.apply(_state.slices(_lastCommitIndex+1));
   
   return true;
   
@@ -507,10 +530,16 @@ bool Agent::rebuildDBs() {
 
 
 /// Last commit index
-arangodb::consensus::index_t Agent::lastCommited() const {
+arangodb::consensus::index_t Agent::lastCommitted() const {
   return _lastCommitIndex;
 }
 
+/// Last commit index
+void Agent::lastCommitted(
+  arangodb::consensus::index_t lastCommitIndex) {
+  MUTEX_LOCKER(mutexLocker, _ioLock);
+  _lastCommitIndex = lastCommitIndex;
+}
 
 /// Last log entry
 log_t const& Agent::lastLog() const { return _state.lastLog(); }

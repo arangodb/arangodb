@@ -1,0 +1,1 @@
+module.exports={"zones":{"Etc/GMT-6":["z",{"wallclock":-1.7976931348623157e+308,"format":"GMT-6","abbrev":"GMT-6","offset":21600000,"posix":-1.7976931348623157e+308,"save":0}]},"rules":{}}

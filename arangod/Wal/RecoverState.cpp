@@ -146,7 +146,7 @@ TRI_vocbase_t* RecoverState::releaseDatabase(TRI_voc_tick_t databaseId) {
 
     TRI_ASSERT(collection != nullptr);
 
-    if (collection->_vocbase->_id == databaseId) {
+    if (collection->_vocbase->id() == databaseId) {
       // correct database, now release the collection
       TRI_ASSERT(vocbase == collection->_vocbase);
       vocbase->releaseCollection(collection);
@@ -869,7 +869,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
         vocbase = state->databaseFeature->lookupDatabase(nameString);
 
         if (vocbase != nullptr) {
-          TRI_voc_tick_t otherId = vocbase->_id;
+          TRI_voc_tick_t otherId = vocbase->id();
 
           state->releaseDatabase(otherId);
           // TODO: how to signal a dropDatabase failure here?

@@ -52,10 +52,6 @@ Supervision::Supervision()
 Supervision::~Supervision() { shutdown(); };
 
 void Supervision::wakeUp() {
-  TRI_ASSERT(_agent != nullptr);
-  if (!this->isStopping()) {
-    _snapshot = _agent->readDB().get(_agencyPrefix);
-  }
   _cv.signal();
 }
 
@@ -355,7 +351,7 @@ void Supervision::run() {
     
     // Do nothing unless leader 
     if (_agent->leading()) {
-      _cv.wait(_frequency * 1000000);  // quarter second
+      _cv.wait(_frequency * 1000000); 
     } else {
       _cv.wait();
     }

@@ -118,7 +118,7 @@ static void EdgesQuery(TRI_edge_direction_e direction,
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
   
-  if (collection->_type != TRI_COL_TYPE_EDGE) {
+  if (collection->type() != TRI_COL_TYPE_EDGE) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
   }
 
@@ -204,7 +204,7 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
     limit = TRI_ObjectToUInt64(args[1], false);
   }
   
-  std::string collectionName(collection->_name);
+  std::string const collectionName(collection->name());
 
   std::shared_ptr<V8TransactionContext> transactionContext = V8TransactionContext::Create(collection->_vocbase, true); 
   SingleCollectionTransaction trx(transactionContext, collection->_cid, TRI_TRANSACTION_READ);
@@ -287,7 +287,7 @@ static void JS_AnyQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
-  std::string collectionName(col->_name);
+  std::string const collectionName(col->name());
   
   std::shared_ptr<V8TransactionContext> transactionContext = V8TransactionContext::Create(col->_vocbase, true); 
   SingleCollectionTransaction trx(transactionContext, col->_cid, TRI_TRANSACTION_READ);
@@ -369,7 +369,7 @@ static void JS_ChecksumCollection(
   std::string const revisionId = std::to_string(document->_info.revision());
   uint64_t hash = 0;
         
-  trx.invokeOnAllElements(col->_name, [&hash, &withData, &withRevisions](TRI_doc_mptr_t const* mptr) {
+  trx.invokeOnAllElements(col->name(), [&hash, &withData, &withRevisions](TRI_doc_mptr_t const* mptr) {
     VPackSlice const slice(mptr->vpack());
 
     uint64_t localHash = slice.get(StaticStrings::KeyString).hash();
@@ -693,7 +693,7 @@ static void JS_LookupByKeys(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   auto bindVars = std::make_shared<VPackBuilder>();
   bindVars->openObject();
-  bindVars->add("@collection", VPackValue(std::string(collection->_name)));
+  bindVars->add("@collection", VPackValue(collection->name()));
 
   VPackBuilder keys;
   int res = TRI_V8ToVPack(isolate, keys, args[0], false);
@@ -703,7 +703,7 @@ static void JS_LookupByKeys(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   VPackBuilder strippedBuilder =
-      arangodb::aql::BindParameters::StripCollectionNames(keys.slice(), collection->_name.c_str());
+      arangodb::aql::BindParameters::StripCollectionNames(keys.slice(), collection->name().c_str());
 
   bindVars->add("keys", strippedBuilder.slice());
   bindVars->close();
@@ -741,7 +741,7 @@ static void JS_RemoveByKeys(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   auto bindVars = std::make_shared<VPackBuilder>();
   bindVars->openObject();
-  bindVars->add("@collection", VPackValue(collection->_name));
+  bindVars->add("@collection", VPackValue(collection->name()));
   bindVars->add(VPackValue("keys"));
 
   int res = TRI_V8ToVPack(isolate, *(bindVars.get()), args[0], false);

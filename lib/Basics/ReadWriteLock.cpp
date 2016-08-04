@@ -122,8 +122,16 @@ bool ReadWriteLock::tryWriteLock(uint64_t sleepTime) {
 void ReadWriteLock::unlock() {
   if (_writeLocked) {
     _writeLocked = false;
-    TRI_WriteUnlockReadWriteLock(&_rwlock);
+    unlockWrite();
   } else {
-    TRI_ReadUnlockReadWriteLock(&_rwlock);
+    unlockRead();
   }
+}
+
+void ReadWriteLock::unlockRead() {
+  TRI_ReadUnlockReadWriteLock(&_rwlock);
+}
+
+void ReadWriteLock::unlockWrite() {
+  TRI_WriteUnlockReadWriteLock(&_rwlock);
 }

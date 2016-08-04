@@ -483,7 +483,7 @@ int Syncer::createCollection(VPackSlice const& slice, TRI_vocbase_col_t** dst) {
 
   TRI_vocbase_col_t* col = getCollectionByIdOrName(cid, name);
 
-  if (col != nullptr && static_cast<TRI_col_type_t>(col->_type) == static_cast<TRI_col_type_t>(type)) {
+  if (col != nullptr && static_cast<TRI_col_type_t>(col->type()) == static_cast<TRI_col_type_t>(type)) {
     // collection already exists. TODO: compare attributes
     return TRI_ERROR_NO_ERROR;
   }

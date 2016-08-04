@@ -118,8 +118,8 @@ class InitialSyncer : public Syncer {
       LOG_TOPIC(DEBUG, Logger::REPLICATION) << msg;
     }
 
-    if (_vocbase->_replicationApplier != nullptr) {
-      _vocbase->_replicationApplier->setProgress(msg.c_str(), true);
+    if (_vocbase->replicationApplier() != nullptr) {
+      _vocbase->replicationApplier()->setProgress(msg.c_str(), true);
     }
   }
 

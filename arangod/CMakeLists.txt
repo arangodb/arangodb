@@ -309,6 +309,7 @@ add_executable(${BIN_ARANGOD}
   V8Server/v8-vocindex.cpp
   VocBase/AuthInfo.cpp
   VocBase/CleanupThread.cpp
+  VocBase/CompactorThread.cpp
   VocBase/DatafileStatistics.cpp
   VocBase/Ditch.cpp
   VocBase/EdgeCollectionInfo.cpp
@@ -320,7 +321,6 @@ add_executable(${BIN_ARANGOD}
   VocBase/SingleServerTraverser.cpp
   VocBase/Traverser.cpp
   VocBase/collection.cpp
-  VocBase/compactor.cpp
   VocBase/datafile.cpp
   VocBase/modes.cpp
   VocBase/replication-applier.cpp
@@ -355,7 +355,7 @@ target_link_libraries(${BIN_ARANGOD}
 
 install(
   TARGETS ${BIN_ARANGOD}
-  RUNTIME DESTINATION ${ARANGODB_INSTALL_SBIN})
+  RUNTIME DESTINATION ${CMAKE_INSTALL_FULL_SBINDIR})
 
 install_config(arangod)
 
@@ -370,7 +370,7 @@ endif ()
 ################################################################################
 
 install_command_alias(${BIN_ARANGOD}
-  ${ARANGODB_INSTALL_SBIN}
+  ${CMAKE_INSTALL_FULL_SBINDIR}
   arango-dfdb)
 
 install_config(arango-dfdb)
@@ -380,7 +380,7 @@ install_config(arango-dfdb)
 ################################################################################
 
 install_command_alias(${BIN_ARANGOD}
-  ${ARANGODB_INSTALL_SBIN}
+  ${CMAKE_INSTALL_FULL_SBINDIR}
   arango-secure-installation)
 
 install_config(arango-secure-installation)
@@ -390,7 +390,7 @@ install_config(arango-secure-installation)
 ################################################################################
 
 install_command_alias(${BIN_ARANGOD}
-  ${ARANGODB_INSTALL_SBIN}
+  ${CMAKE_INSTALL_FULL_SBINDIR}
   arango-init-database)
 
 install_config(arango-init-database)

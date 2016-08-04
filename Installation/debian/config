@@ -1,0 +1,78 @@
+#!/bin/sh
+set -e
+
+# source debconf stuff
+. /usr/share/debconf/confmodule
+
+db_version 2.0
+
+db_capb backup 
+
+DO_CONFIGURE=no
+
+if test -n "$2"; then
+# do we want to reconfigure?
+    if test "`echo $2 | sed -e 's/[a-zA-Z.-]//g' -e 's;ubuntu;;'`" -lt 127 \
+	-o "$1" = reconfigure
+	then
+	DO_CONFIGURE=yes
+    fi
+else 
+# are we in first install?
+    if test "$1" = "configure"; then
+	DO_CONFIGURE=yes
+    fi
+fi
+
+if test "$DO_CONFIGURE" = "yes"; then
+    STATE=1
+    LASTSTATE=8
+    while [ "$STATE" != 0 -a "$STATE" -le "$LASTSTATE" ]; do
+
+	case "$STATE" in
+	    1)
+		db_input high arangodb3/password || true
+                db_go
+                db_get arangodb3/password
+                #if [ -z "$RET" ]; then
+                #fi
+                ROOT_PW="${RET}"
+                ;;
+            2)
+		db_input high arangodb3/password_again || true
+                db_go
+                db_get arangodb3/password_again
+                if [ "${ROOT_PW}" = "${RET}" ]; then
+                    ROOT_PW=""
+                    break
+                else
+                    db_input critical arangodb3/password_mismatch
+	            STATE=$(($STATE - 1))
+                fi
+                db_set arangodb3/password_again ""
+		;;
+	    3)
+                db_input high arangodb3/upgrade || true
+		;;
+	    4)
+                db_get arangodb3/upgrade
+
+                if [ "$RET" = "true" ]; then
+                    db_input high arangodb3/backup || true
+                    db_go
+                else
+                    db_set arangodb3/backup "false"
+                fi
+		;;
+
+	esac
+	if db_go; then
+	    STATE=$(($STATE + 1))
+	else
+	    STATE=$(($STATE - 1))
+	fi
+	
+    done
+fi
+
+exit 0

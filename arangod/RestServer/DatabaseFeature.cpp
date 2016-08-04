@@ -132,13 +132,13 @@ void DatabaseManagerThread::run() {
         // and tries to free it at the same time!
       }
 
-      if (database->_type != TRI_VOCBASE_TYPE_COORDINATOR) {
+      if (database->type() != TRI_VOCBASE_TYPE_COORDINATOR) {
         // regular database
         // ---------------------------
 
 #ifdef ARANGODB_ENABLE_ROCKSDB
         // delete persistent indexes for this database
-        RocksDBFeature::dropDatabase(database->_id);
+        RocksDBFeature::dropDatabase(database->id());
 #endif
   
         LOG(TRACE) << "physically removing database directory '"
@@ -150,7 +150,7 @@ void DatabaseManagerThread::run() {
         // remove apps directory for database
         auto appPath = dealer->appPath();
 
-        if (database->_isOwnAppsDirectory && !appPath.empty()) {
+        if (database->isOwnAppsDirectory() && !appPath.empty()) {
           path = arangodb::basics::FileUtils::buildFilename(
               arangodb::basics::FileUtils::buildFilename(appPath, "_db"),
               database->name());
@@ -394,20 +394,20 @@ int DatabaseFeature::recoveryDone() {
     TRI_vocbase_t* vocbase = p.second;
     // iterate over all databases
     TRI_ASSERT(vocbase != nullptr);
-    TRI_ASSERT(vocbase->_type == TRI_VOCBASE_TYPE_NORMAL);
+    TRI_ASSERT(vocbase->type() == TRI_VOCBASE_TYPE_NORMAL);
 
     // start the compactor for the database
     engine->recoveryDone(vocbase);
 
     // start the replication applier
-    TRI_ASSERT(vocbase->_replicationApplier != nullptr);
+    TRI_ASSERT(vocbase->replicationApplier() != nullptr);
 
-    if (vocbase->_replicationApplier->_configuration._autoStart) {
+    if (vocbase->replicationApplier()->_configuration._autoStart) {
       if (!_replicationApplier) {
         LOG(INFO) << "replication applier explicitly deactivated for database '"
                   << vocbase->name() << "'";
       } else {
-        int res = vocbase->_replicationApplier->start(0, false, 0);
+        int res = vocbase->replicationApplier()->start(0, false, 0);
 
         if (res != TRI_ERROR_NO_ERROR) {
           LOG(WARN) << "unable to start replication applier for database '"
@@ -443,18 +443,15 @@ int DatabaseFeature::createDatabaseCoordinator(TRI_voc_tick_t id, std::string co
 
   // name not yet in use, release the read lock
   auto vocbase = std::make_unique<TRI_vocbase_t>(TRI_VOCBASE_TYPE_COORDINATOR, id, name);
-  // vocbase is now active
-  vocbase->_state = (sig_atomic_t)TRI_VOCBASE_STATE_NORMAL;
 
   try {
-    vocbase->_replicationApplier.reset(TRI_CreateReplicationApplier(vocbase.get()));
+    vocbase->addReplicationApplier(TRI_CreateReplicationApplier(vocbase.get()));
   } catch (...) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
   // increase reference counter
   vocbase->use();
-  vocbase->_state = (sig_atomic_t)TRI_VOCBASE_STATE_NORMAL;
 
   {
     MUTEX_LOCKER(mutexLocker, _databasesMutex);
@@ -522,11 +519,9 @@ int DatabaseFeature::createDatabase(TRI_voc_tick_t id, std::string const& name,
     // createDatabase must return a valid database or throw
     vocbase.reset(engine->createDatabase(id, builder.slice())); 
     TRI_ASSERT(vocbase != nullptr);
-    // vocbase is now active
-    vocbase->_state = (sig_atomic_t)TRI_VOCBASE_STATE_NORMAL;
 
     try {
-      vocbase->_replicationApplier.reset(TRI_CreateReplicationApplier(vocbase.get()));
+      vocbase->addReplicationApplier(TRI_CreateReplicationApplier(vocbase.get()));
     } catch (std::exception const& ex) {
       LOG(FATAL) << "initializing replication applier for database '"
                  << vocbase->name() << "' failed: " << ex.what();
@@ -549,14 +544,13 @@ int DatabaseFeature::createDatabase(TRI_voc_tick_t id, std::string const& name,
       engine->recoveryDone(vocbase.get());
 
       // start the replication applier
-      if (vocbase->_replicationApplier->_configuration._autoStart) {
-        if (_replicationApplier) {
-          res = vocbase->_replicationApplier->start(0, false, 0);
+      if (_replicationApplier &&
+          vocbase->replicationApplier()->_configuration._autoStart) {
+        res = vocbase->replicationApplier()->start(0, false, 0);
 
-          if (res != TRI_ERROR_NO_ERROR) {
-            LOG(WARN) << "unable to start replication applier for database '"
-                      << name << "': " << TRI_errno_string(res);
-          }
+        if (res != TRI_ERROR_NO_ERROR) {
+          LOG(WARN) << "unable to start replication applier for database '"
+                    << name << "': " << TRI_errno_string(res);
         }
       }
 
@@ -610,7 +604,7 @@ int DatabaseFeature::dropDatabaseCoordinator(TRI_voc_tick_t id, bool force) {
          it != newLists->_coordinatorDatabases.end(); it++) {
       vocbase = it->second;
 
-      if (vocbase->_id == id &&
+      if (vocbase->id() == id &&
           (force || vocbase->name() != TRI_VOC_SYSTEM_DATABASE)) {
         newLists->_droppedDatabases.emplace(vocbase);
         newLists->_coordinatorDatabases.erase(it);
@@ -645,7 +639,6 @@ int DatabaseFeature::dropDatabase(std::string const& name, bool writeMarker, boo
   }
 
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  std::string path;
   TRI_voc_tick_t id = 0;
   int res;
   {
@@ -664,9 +657,9 @@ int DatabaseFeature::dropDatabase(std::string const& name, bool writeMarker, boo
         return TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
       } else {
         vocbase = it->second;
-        id = vocbase->_id;
+        id = vocbase->id();
         // mark as deleted
-        TRI_ASSERT(vocbase->_type == TRI_VOCBASE_TYPE_NORMAL);
+        TRI_ASSERT(vocbase->type() == TRI_VOCBASE_TYPE_NORMAL);
     
         if (!vocbase->markAsDropped()) {
           // deleted by someone else?
@@ -688,7 +681,7 @@ int DatabaseFeature::dropDatabase(std::string const& name, bool writeMarker, boo
     _databasesProtector.scan();
     delete oldLists;
 
-    vocbase->_isOwnAppsDirectory = removeAppsDirectory;
+    vocbase->setIsOwnAppsDirectory(removeAppsDirectory);
 
     // invalidate all entries for the database
     arangodb::aql::QueryCache::instance()->invalidate(vocbase);
@@ -722,7 +715,7 @@ int DatabaseFeature::dropDatabase(TRI_voc_tick_t id, bool writeMarker, bool wait
     for (auto& p : theLists->_databases) {
       TRI_vocbase_t* vocbase = p.second;
 
-      if (vocbase->_id == id) {
+      if (vocbase->id() == id) {
         name = vocbase->name();
         break;
       }
@@ -744,7 +737,7 @@ std::vector<TRI_voc_tick_t> DatabaseFeature::getDatabaseIdsCoordinator(bool incl
       TRI_ASSERT(vocbase != nullptr);
 
       if (includeSystem || vocbase->name() != TRI_VOC_SYSTEM_DATABASE) {
-        ids.emplace_back(vocbase->_id);
+        ids.emplace_back(vocbase->id());
       }
     }
   }
@@ -763,7 +756,7 @@ std::vector<TRI_voc_tick_t> DatabaseFeature::getDatabaseIds(bool includeSystem) 
       TRI_vocbase_t* vocbase = p.second;
       TRI_ASSERT(vocbase != nullptr);
       if (includeSystem || vocbase->name() != TRI_VOC_SYSTEM_DATABASE) {
-        ids.emplace_back(vocbase->_id);
+        ids.emplace_back(vocbase->id());
       }
     }
   }
@@ -837,7 +830,7 @@ TRI_vocbase_t* DatabaseFeature::useDatabaseCoordinator(TRI_voc_tick_t id) {
   for (auto& p : theLists->_coordinatorDatabases) {
     TRI_vocbase_t* vocbase = p.second;
 
-    if (vocbase->_id == id) {
+    if (vocbase->id() == id) {
       bool result TRI_UNUSED = vocbase->use();
 
       // if we got here, no one else can have deleted the database
@@ -885,7 +878,7 @@ TRI_vocbase_t* DatabaseFeature::useDatabase(TRI_voc_tick_t id) {
   for (auto& p : theLists->_databases) {
     TRI_vocbase_t* vocbase = p.second;
 
-    if (vocbase->_id == id) {
+    if (vocbase->id() == id) {
       vocbase->use();
       return vocbase;
     }
@@ -942,9 +935,9 @@ void DatabaseFeature::closeDatabases() {
     for (auto& p : _databasesLists.load()->_databases) {
       TRI_vocbase_t* vocbase = p.second;
       TRI_ASSERT(vocbase != nullptr);
-      TRI_ASSERT(vocbase->_type == TRI_VOCBASE_TYPE_NORMAL);
-      if (vocbase->_replicationApplier != nullptr) {
-        vocbase->_replicationApplier->stop(false);
+      TRI_ASSERT(vocbase->type() == TRI_VOCBASE_TYPE_NORMAL);
+      if (vocbase->replicationApplier() != nullptr) {
+        vocbase->replicationApplier()->stop(false);
       }
     }
   }
@@ -977,7 +970,7 @@ void DatabaseFeature::closeOpenDatabases() {
   for (auto& p : oldList->_databases) {
     TRI_vocbase_t* vocbase = p.second;
     TRI_ASSERT(vocbase != nullptr);
-    TRI_ASSERT(vocbase->_type == TRI_VOCBASE_TYPE_NORMAL);
+    TRI_ASSERT(vocbase->type() == TRI_VOCBASE_TYPE_NORMAL);
     vocbase->shutdown();
 
     delete vocbase;
@@ -986,7 +979,7 @@ void DatabaseFeature::closeOpenDatabases() {
   for (auto& p : oldList->_coordinatorDatabases) {
     TRI_vocbase_t* vocbase = p.second;
     TRI_ASSERT(vocbase != nullptr);
-    TRI_ASSERT(vocbase->_type == TRI_VOCBASE_TYPE_COORDINATOR);
+    TRI_ASSERT(vocbase->type() == TRI_VOCBASE_TYPE_COORDINATOR);
 
     delete vocbase;
   }
@@ -1097,11 +1090,9 @@ int DatabaseFeature::iterateDatabases(VPackSlice const& databases) {
     TRI_vocbase_t* vocbase = engine->openDatabase(it, _upgrade);
     // we found a valid database
     TRI_ASSERT(vocbase != nullptr);
-    // vocbase is now active
-    vocbase->_state = (sig_atomic_t)TRI_VOCBASE_STATE_NORMAL;
     
     try {
-      vocbase->_replicationApplier.reset(TRI_CreateReplicationApplier(vocbase));
+      vocbase->addReplicationApplier(TRI_CreateReplicationApplier(vocbase));
     } catch (std::exception const& ex) {
       LOG(FATAL) << "initializing replication applier for database '"
                  << vocbase->name() << "' failed: " << ex.what();
@@ -1155,13 +1146,13 @@ void DatabaseFeature::closeDroppedDatabases() {
   for (TRI_vocbase_t* vocbase : oldList->_droppedDatabases) {
     TRI_ASSERT(vocbase != nullptr);
 
-    if (vocbase->_type == TRI_VOCBASE_TYPE_NORMAL) {
+    if (vocbase->type() == TRI_VOCBASE_TYPE_NORMAL) {
       vocbase->shutdown();
       delete vocbase;
-    } else if (vocbase->_type == TRI_VOCBASE_TYPE_COORDINATOR) {
+    } else if (vocbase->type() == TRI_VOCBASE_TYPE_COORDINATOR) {
       delete vocbase;
     } else {
-      LOG(ERR) << "unknown database type " << vocbase->_type << " "
+      LOG(ERR) << "unknown database type " << vocbase->type() << " "
                << vocbase->name() << " - close doing nothing.";
     }
   }
