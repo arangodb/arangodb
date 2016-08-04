@@ -57,7 +57,7 @@ static int FetchDocumentById(arangodb::Transaction* trx,
 }
 
 SingleServerEdgeCursor::SingleServerEdgeCursor(size_t nrCursors)
-    : _cursors(), _currentCursor(0), _cachePos(0) {
+    : _cursors(), _currentCursor(0), _currentSubCursor(0), _cachePos(0) {
   _cursors.reserve(nrCursors);
   _cache.reserve(1000);
 };
@@ -74,18 +74,24 @@ bool SingleServerEdgeCursor::next(std::vector<VPackSlice>& result, size_t& curso
   }
   // We need to refill the cache.
   _cachePos = 0;
-  auto& cursor = _cursors[_currentCursor];
+  auto& cursorSet = _cursors[_currentCursor];
+  auto& cursor = cursorSet[_currentSubCursor];
   // NOTE: We cannot clear the cache,
   // because the cursor expect's it to be filled.
   do {
     if (!cursor->hasMore()) {
       // This one is exhausted, next
-      ++_currentCursor;
-      if (_currentCursor == _cursors.size()) {
-        // We are done, all cursors exhausted.
-        return false;
+      ++_currentSubCursor;
+      if (_currentSubCursor == cursorSet.size()) {
+        ++_currentCursor;
+        _currentSubCursor = 0;
+        if (_currentCursor == _cursors.size()) {
+          // We are done, all cursors exhausted.
+          return false;
+        }
+        cursorSet = _cursors[_currentCursor];
       }
-      cursor = _cursors[_currentCursor];
+      cursor = cursorSet[_currentSubCursor];
       // If we switch the cursor. We have to clear the cache.
       _cache.clear();
     } else {
@@ -103,13 +109,15 @@ bool SingleServerEdgeCursor::readAll(std::unordered_set<VPackSlice>& result, siz
     return false;
   }
   cursorId = _currentCursor;
-  auto& cursor = _cursors[_currentCursor];
-  while (cursor->hasMore()) {
-    // NOTE: We cannot clear the cache,
-    // because the cursor expect's it to be filled.
-    cursor->getMoreMptr(_cache);
-    for (auto const& mptr : _cache) {
-      result.emplace(mptr->vpack());
+  auto& cursorSet = _cursors[_currentCursor];
+  for (auto& cursor : cursorSet) {
+    while (cursor->hasMore()) {
+      // NOTE: We cannot clear the cache,
+      // because the cursor expect's it to be filled.
+      cursor->getMoreMptr(_cache);
+      for (auto const& mptr : _cache) {
+        result.emplace(mptr->vpack());
+      }
     }
   }
   _currentCursor++;

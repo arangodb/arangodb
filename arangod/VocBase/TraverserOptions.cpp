@@ -451,7 +451,6 @@ bool arangodb::traverser::TraverserOptions::evaluateEdgeExpression(
     expression = specific->second[cursorId].expression;
   } else {
     TRI_ASSERT(!_baseLookupInfos.empty());
-    LOG(ERR) << _baseLookupInfos.size() << " vs " << cursorId;
     TRI_ASSERT(_baseLookupInfos.size() > cursorId);
     expression = _baseLookupInfos[cursorId].expression;
   }
@@ -531,10 +530,13 @@ arangodb::traverser::TraverserOptions::nextCursorLocal(
     TRI_ASSERT(idNode->type == aql::NODE_TYPE_VALUE);
     TRI_ASSERT(idNode->isValueType(aql::VALUE_TYPE_STRING));
     idNode->setStringValue(vid, vidLength);
+    std::vector<OperationCursor*> csrs;
+    csrs.reserve(info.idxHandles.size());
     for (auto const& it : info.idxHandles) {
-      opCursors.emplace_back(_trx->indexScanForCondition(
+      csrs.emplace_back(_trx->indexScanForCondition(
           it, node, _tmpVar, UINT64_MAX, 1000, false));
     }
+    opCursors.emplace_back(std::move(csrs));
   }
   return allCursor.release();
 }

@@ -279,3 +279,7 @@ bool TraverserEngine::lockCollection(std::string const& shard) {
   }
   return true;
 }
+
+std::shared_ptr<arangodb::TransactionContext> TraverserEngine::context() const {
+  return _trx->transactionContext();
+}

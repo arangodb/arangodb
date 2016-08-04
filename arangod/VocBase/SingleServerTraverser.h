@@ -40,8 +40,9 @@ class PathEnumerator;
 
 class SingleServerEdgeCursor : public EdgeCursor {
  private:
-  std::vector<OperationCursor*> _cursors;
+  std::vector<std::vector<OperationCursor*>> _cursors;
   size_t _currentCursor;
+  size_t _currentSubCursor;
   std::vector<TRI_doc_mptr_t*> _cache;
   size_t _cachePos;
 
@@ -55,7 +56,7 @@ class SingleServerEdgeCursor : public EdgeCursor {
 
   bool readAll(std::unordered_set<arangodb::velocypack::Slice>&, size_t&) override;
 
-  std::vector<OperationCursor*>& getCursors() {
+  std::vector<std::vector<OperationCursor*>>& getCursors() {
     return _cursors;
   }
 };

@@ -218,9 +218,7 @@ void InternalRestTraverserHandler::queryEngine() {
         "");
     return;
   }
-  LOG(ERR) << "We return " << result.toJson();
-
-  generateResult(GeneralResponse::ResponseCode::OK, result.slice());
+  generateResult(GeneralResponse::ResponseCode::OK, result.slice(), engine->context());
 }
 
 void InternalRestTraverserHandler::destroyEngine() {

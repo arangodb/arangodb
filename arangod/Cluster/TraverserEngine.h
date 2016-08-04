@@ -33,6 +33,7 @@ struct TRI_vocbase_t;
 namespace arangodb {
 
 class Transaction;
+class TransactionContext;
 
 namespace aql {
 class Collections;
@@ -69,6 +70,8 @@ class TraverserEngine {
                       arangodb::velocypack::Builder&);
 
    bool lockCollection(std::string const&);
+
+   std::shared_ptr<TransactionContext> context() const;
 
   private:
     std::unique_ptr<TraverserOptions> _opts;
