@@ -54,8 +54,6 @@ class VppResponse : public GeneralResponse {
                   bool generateBody,
                   arangodb::velocypack::Options const&) override final;
 
-  // TODO - returns a pair for Slices representing Header and Payload if the
-  // Response
   VPackMessageNoOwnBuffer prepareForNetwork();
 
   void setConnectionType(ConnectionType type) override {

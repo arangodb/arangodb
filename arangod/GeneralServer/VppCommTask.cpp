@@ -18,8 +18,7 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
-/// @author Achim Brandt
+/// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "VppCommTask.h"
@@ -121,23 +120,33 @@ std::unique_ptr<basics::StringBuffer> createChunkForNetworkMultiFollow(
 
 void VppCommTask::addResponse(VppResponse* response, bool isError) {
   if (isError) {
+    // FIXME
     // what do we need to do?
     // clean read buffer? reset process read cursor
   }
 
   VPackMessageNoOwnBuffer response_message = response->prepareForNetwork();
-  VPackSlice& header = response_message._header;
-  VPackSlice& payload = response_message._payload;
   uint64_t& id = response_message._id;
 
-  uint32_t message_length = header.byteSize() + payload.byteSize();
+  std::vector<VPackSlice> slices;
+  slices.push_back(response_message._header);
+  // if payload != Slice()
+  slices.push_back(response_message._payload);
+
+  uint32_t message_length = 0;
+
+  for (auto const& slice : slices) {
+    message_length = slice.byteSize();
+  }
 
   // FIXME
   // If the message is big we will create many small chunks in a loop.
   // For the first tests we just send single Messages
   StringBuffer tmp(TRI_UNKNOWN_MEM_ZONE, message_length, false);
-  tmp.appendText(header.startAs<char>(), header.byteSize());
-  tmp.appendText(payload.startAs<char>(), payload.byteSize());
+
+  for (auto const& slice : slices) {
+    tmp.appendText(slice.startAs<char>(), slice.byteSize());
+  }
 
   // adds chunk header infromation and creates SingBuffer* that can be
   // used with _writeBuffers
