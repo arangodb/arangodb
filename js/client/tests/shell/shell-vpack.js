@@ -47,7 +47,7 @@ function RequestSuite () {
     append = append || '';
     return arango.getEndpoint().replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:') + base + append;
   };
-  
+
   var buildUrlBroken = function (append) {
     return arango.getEndpoint().replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:') + '/_not-there' + append;
   };
@@ -57,51 +57,88 @@ function RequestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test http DELETE
 ////////////////////////////////////////////////////////////////////////////////
-    
 
-    versionHttp: function () {
+    testVersionJsonJson: function () {
       var path = '/_api/version';
       var headers = {
-        'content-type': 'application/x-velocypack',
-        'content-type': 'application/x-velocypack'
+        'content-type': 'application/json',
+        'accept'      : 'application/json'
       };
-      var res = request.post(buildUrl(path), {headers : headers, timeout: 300});
-
+      //var res = request.post(buildUrl(path), {headers : headers, timeout: 300});
+      var res = request.post(path, {headers : headers, timeout: 300});
 
       expect(res).to.be.a(request.Response);
       expect(res.body).to.be.a('string');
       expect(Number(res.headers['content-length'])).to.equal(res.rawBody.length);
       var obj = JSON.parse(res.body);
-      expect(obj.path).to.equal(path);
+      var expected = { "server" : "arango" , "version" : "3.0.x-devel" };
+      //expect(JSON.stringify(obj)).to.equal(JSON.stringify(expected));
+      expect(obj).to.eql(expected);
     },
 
-    versionHttpVpack: function () {
+//    testVersionVpackJson: function () {
+//      var path = '/_api/version';
+//      var headers = {
+//        'content-type': 'application/x-velocypack',
+//        'accept'      : 'application/json'
+//      };
+//      var res = request.post(buildUrl(path), {headers : headers, timeout: 300});
+//
+//      expect(res).to.be.a(request.Response);
+//      expect(res.body).to.be.a('string');
+//      expect(Number(res.headers['content-length'])).to.equal(res.rawBody.length);
+//      var obj = JSON.parse(res.body);
+//      expect(obj.path).to.equal(path);
+//    },
+//
+    testVersionJsonVpack: function () {
       var path = '/_api/version';
       var headers = {
-        'content-type': 'application/x-velocypack',
-        'content-type': 'application/x-velocypack'
+        'content-type': 'application/json',
+        'accept'      : 'application/x-velocypack'
       };
-      var res = request.post(buildUrl(path), {headers : headers, timeout: 300});
-
-
-      expect(res).to.be.a(request.Response);
-      expect(res.body).to.be.a('string');
-      expect(Number(res.headers['content-length'])).to.equal(res.rawBody.length);
-      var obj = JSON.parse(res.body);
-      expect(obj.path).to.equal(path);
-    },
-
-    vpackEcho: function () {
-      var path = '/_admin/echo';
-      var body = "foooo"
-      var res = request.post(buildUrl(path),{ headers : headers, body : body, timeout: 300});
+      //var res = request.post(buildUrl(path,false), {headers : headers, timeout: 300});
+      var res = request.post(path, {headers : headers, timeout: 300});
 
       expect(res).to.be.a(request.Response);
       expect(res.body).to.be.a('string');
       expect(Number(res.headers['content-length'])).to.equal(res.rawBody.length);
+      var expected = "velocypack blablba echt scheisse" ;
+      require("internal").print(JSON.stringify(res.body));
+      require("internal").print(JSON.stringify(expected));
       //var obj = JSON.parse(res.body);
-      expect(res.body).to.equal(body);
-    }
+      expect(res.body).to.eql(expected);
+    },
+//
+//    testVersionVpackVpack: function () {
+//      var path = '/_api/version';
+//      var headers = {
+//        'content-type': 'application/x-velocypack',
+//        'accept'      : 'application/x-velocypack'
+//      };
+//      var res = request.post(buildUrl(path), {headers : headers, timeout: 300});
+//
+//      expect(res).to.be.a(request.Response);
+//      expect(res.body).to.be.a('string');
+//      expect(Number(res.headers['content-length'])).to.equal(res.rawBody.length);
+//      var obj = JSON.parse(res.body);
+//      expect(obj.path).to.equal(path);
+//    },
+//
+//    ///////////////////////////////////////////////////////////////////////////////////////
+//    ///////////////////////////////////////////////////////////////////////////////////////
+//
+//    testVpackEcho: function () {
+//      var path = '/_admin/echo';
+//      var body = "foooo"
+//      var res = request.post(buildUrl(path),{ headers : headers, body : body, timeout: 300});
+//
+//      expect(res).to.be.a(request.Response);
+//      expect(res.body).to.be.a('string');
+//      expect(Number(res.headers['content-length'])).to.equal(res.rawBody.length);
+//      //var obj = JSON.parse(res.body);
+//      expect(res.body).to.equal(body);
+//    }
 
 
 

@@ -69,7 +69,7 @@ HttpRequest::HttpRequest(
       _vpackBuilder(nullptr),
       _headers(headers) {
   _contentType = contentType;
-  _contentTypeResponse = ContentType::JSON;
+  _contentTypeResponse = contentType;
 }
 
 void HttpRequest::parseHeader(size_t length) {

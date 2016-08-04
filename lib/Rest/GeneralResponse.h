@@ -106,7 +106,8 @@ class GeneralResponse {
     VPACK,   // application/x-velocypack
     TEXT,    // text/plain
     HTML,    // text/html
-    DUMP     // application/x-arango-dump
+    DUMP,    // application/x-arango-dump
+    UNSET
   };
 
   enum ConnectionType {

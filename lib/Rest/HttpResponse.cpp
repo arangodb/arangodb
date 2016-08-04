@@ -232,6 +232,7 @@ void HttpResponse::writeHeader(StringBuffer* output) {
 
   // add "Content-Type" header
   switch (_contentType) {
+    case ContentType::UNSET:
     case ContentType::JSON:
       output->appendText(TRI_CHAR_LENGTH_PAIR(
           "Content-Type: application/json; charset=utf-8\r\n"));
@@ -300,7 +301,7 @@ void HttpResponse::writeHeader(StringBuffer* output) {
 
 void HttpResponse::setPayload(GeneralRequest const* request,
                               arangodb::velocypack::Slice const& slice,
-                              bool generateBody, VPackOptions const& options){
+                              bool generateBody, VPackOptions const& options) {
   // VELOCYPACK
   if (request != nullptr && request->velocyPackResponse()) {
     setContentType(HttpResponse::ContentType::VPACK);
