@@ -50,6 +50,23 @@ Object.keys(internal.errors).forEach(function (key) {
   exports[key] = internal.errors[key].code;
 });
 
+exports.aql = function () {
+  let strings = arguments[0];
+  const bindVars = {};
+  let query = strings[0];
+  for (let i = 1; i < arguments.length; i++) {
+    let value = arguments[i];
+    let name = `value${i - 1}`;
+    if (value && value.constructor && value.constructor.name === 'ArangoCollection') {
+      name = `@${name}`;
+      value = value.name();
+    }
+    bindVars[name] = value;
+    query += `@${name}${strings[i]}`;
+  }
+  return {query, bindVars};
+};
+
 exports.errors = internal.errors;
 
 // -----------------------------------------------------------------------------
