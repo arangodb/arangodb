@@ -156,9 +156,9 @@ struct TRI_vocbase_t {
   
   /// @brief database state
   enum class State {
-    INACTIVE = 0,
-    NORMAL = 1,
-    SHUTDOWN = 2,
+    NORMAL = 0,
+    SHUTDOWN_COMPACTOR = 1,
+    SHUTDOWN_CLEANUP = 2,
     FAILED_VERSION = 3
   };
 

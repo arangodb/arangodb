@@ -38,8 +38,8 @@ class CleanupThread : public Thread {
  public:
   explicit CleanupThread(TRI_vocbase_t* vocbase);
   ~CleanupThread();
-  
-  void signal() { _condition.signal(); }
+
+  void signal();
 
  protected:
   void run() override;
@@ -62,7 +62,7 @@ class CleanupThread : public Thread {
 
  private:
   TRI_vocbase_t* _vocbase;
-  
+
   arangodb::basics::ConditionVariable _condition;
 };
 

@@ -64,72 +64,6 @@ static char const* ReasonNothingToCompact =
     "checked datafiles, but no compaction opportunity found";
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief minimum size of dead data (in bytes) in a datafile that will make
-/// the datafile eligible for compaction at all.
-///
-/// Any datafile with less dead data than the threshold will not become a
-/// candidate for compaction.
-////////////////////////////////////////////////////////////////////////////////
-
-#define COMPACTOR_DEAD_SIZE_THRESHOLD (1024 * 128)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief percentage of dead documents in a datafile that will trigger the
-/// compaction
-///
-/// for example, if the collection contains 800 bytes of alive and 400 bytes of
-/// dead documents, the share of the dead documents is 400 / (400 + 800) = 33 %.
-/// if this value if higher than the threshold, the datafile will be compacted
-////////////////////////////////////////////////////////////////////////////////
-
-#define COMPACTOR_DEAD_SIZE_SHARE (0.1)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief minimum number of deletion marker in file from which on we will
-/// compact it if nothing else qualifies file for compaction
-////////////////////////////////////////////////////////////////////////////////
-
-#define COMPACTOR_DEAD_THRESHOLD (16384)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief maximum number of datafiles to join together in one compaction run
-////////////////////////////////////////////////////////////////////////////////
-
-#define COMPACTOR_MAX_FILES 3
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief maximum multiple of journal filesize of a compacted file
-/// a value of 3 means that the maximum filesize of the compacted file is
-/// 3 x (collection->journalSize)
-////////////////////////////////////////////////////////////////////////////////
-
-#define COMPACTOR_MAX_SIZE_FACTOR (3)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief maximum filesize of resulting compacted file
-////////////////////////////////////////////////////////////////////////////////
-
-#define COMPACTOR_MAX_RESULT_FILESIZE (128 * 1024 * 1024)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief datafiles smaller than the following value will be merged with others
-////////////////////////////////////////////////////////////////////////////////
-
-#define COMPACTOR_MIN_SIZE (128 * 1024)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief re-try compaction of a specific collection in this interval (in s)
-////////////////////////////////////////////////////////////////////////////////
-
-#define COMPACTOR_COLLECTION_INTERVAL (10.0)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief compactify interval in microseconds
-////////////////////////////////////////////////////////////////////////////////
-
-static int const COMPACTOR_INTERVAL = (1 * 1000 * 1000);
-  
-////////////////////////////////////////////////////////////////////////////////
 /// @brief auxiliary struct used when initializing compaction
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -151,15 +85,6 @@ struct compaction_context_t {
   TRI_collection_t* _document;
   TRI_datafile_t* _compactor;
   DatafileStatisticsContainer _dfi;
-  bool _keepDeletions;
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief compaction instruction for a single datafile
-////////////////////////////////////////////////////////////////////////////////
-
-struct compaction_info_t {
-  TRI_datafile_t* _datafile;
   bool _keepDeletions;
 };
 
@@ -491,7 +416,7 @@ static bool CalculateSize(TRI_df_marker_t const* marker, void* data,
 
 static compaction_initial_context_t InitCompaction(
     arangodb::Transaction* trx, TRI_collection_t* document,
-    std::vector<compaction_info_t> const& toCompact) {
+    std::vector<CompactorThread::compaction_info_t> const& toCompact) {
   compaction_initial_context_t context;
 
   memset(&context, 0, sizeof(compaction_initial_context_t));
@@ -545,13 +470,10 @@ static compaction_initial_context_t InitCompaction(
   return context;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief compact a list of datafiles
-////////////////////////////////////////////////////////////////////////////////
-
-static void CompactifyDatafiles(
-    TRI_collection_t* document,
+/// @brief compact the specified datafiles
+void CompactorThread::compactDatafiles(TRI_collection_t* document,
     std::vector<compaction_info_t> const& toCompact) {
+
   TRI_datafile_t* compactor;
   compaction_context_t context;
   size_t i;
@@ -729,11 +651,8 @@ static void CompactifyDatafiles(
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief checks all datafiles of a collection
-////////////////////////////////////////////////////////////////////////////////
-
-static bool CompactifyDocumentCollection(TRI_collection_t* document) {
+bool CompactorThread::compactCollection(TRI_collection_t* document) {
   // we can hopefully get away without the lock here...
   //  if (! document->isFullyCollected()) {
   //    return false;
@@ -768,7 +687,7 @@ static bool CompactifyDocumentCollection(TRI_collection_t* document) {
   }
   
   std::vector<compaction_info_t> toCompact;
-  toCompact.reserve(COMPACTOR_MAX_FILES);
+  toCompact.reserve(maxFiles());
 
   // now we have datafiles that we can process 
   size_t const n = datafiles.size();
@@ -780,13 +699,12 @@ static bool CompactifyDocumentCollection(TRI_collection_t* document) {
   uint64_t const numDocuments = GetNumberOfDocuments(document);
 
   // get maximum size of result file
-  uint64_t maxSize = (uint64_t)COMPACTOR_MAX_SIZE_FACTOR *
-                     (uint64_t)document->_info.maximalSize();
+  uint64_t maxSize = maxSizeFactor() * (uint64_t)document->_info.maximalSize();
   if (maxSize < 8 * 1024 * 1024) {
     maxSize = 8 * 1024 * 1024;
   }
-  if (maxSize >= COMPACTOR_MAX_RESULT_FILESIZE) {
-    maxSize = COMPACTOR_MAX_RESULT_FILESIZE;
+  if (maxSize >= maxResultFilesize()) {
+    maxSize = maxResultFilesize();
   }
 
   if (start >= n || numDocuments == 0) {
@@ -819,7 +737,7 @@ static bool CompactifyDocumentCollection(TRI_collection_t* document) {
       break;
     }
 
-    if (!doCompact && df->_maximalSize < COMPACTOR_MIN_SIZE && i < n - 1) {
+    if (!doCompact && df->_maximalSize < smallDatafileSize() && i < n - 1) {
       // very small datafile and not the last one. let's compact it so it's
       // merged with others
       doCompact = true;
@@ -836,20 +754,18 @@ static bool CompactifyDocumentCollection(TRI_collection_t* document) {
       // compact first datafile(s) if they contain only deletions
       doCompact = true;
       reason = ReasonOnlyDeletions;
-    } else if (dfi.sizeDead >= (int64_t)COMPACTOR_DEAD_SIZE_THRESHOLD) {
+    } else if (dfi.sizeDead >= deadSizeThreshold()) {
       // the size of dead objects is above some threshold
       doCompact = true;
       reason = ReasonDeadSize;
     } else if (dfi.sizeDead > 0 &&
                (((double)dfi.sizeDead /
-                     ((double)dfi.sizeDead + (double)dfi.sizeAlive) >=
-                 COMPACTOR_DEAD_SIZE_SHARE) ||
-                ((double)dfi.sizeDead / (double)df->_maximalSize >=
-                 COMPACTOR_DEAD_SIZE_SHARE))) {
+                     ((double)dfi.sizeDead + (double)dfi.sizeAlive) >= deadShare()) ||
+                ((double)dfi.sizeDead / (double)df->_maximalSize >= deadShare()))) {
       // the size of dead objects is above some share
       doCompact = true;
       reason = ReasonDeadSizeShare;
-    } else if (dfi.numberDead >= (int64_t)COMPACTOR_DEAD_THRESHOLD) {
+    } else if (dfi.numberDead >= deadNumberThreshold()) {
       // the number of dead objects is above some threshold
       doCompact = true;
       reason = ReasonDeadCount;
@@ -923,8 +839,8 @@ static bool CompactifyDocumentCollection(TRI_collection_t* document) {
       break;
     }
 
-    if (totalSize >= COMPACTOR_MIN_SIZE &&
-        toCompact.size() >= COMPACTOR_MAX_FILES) {
+    if (totalSize >= smallDatafileSize() &&
+        toCompact.size() >= maxFiles()) {
       // found enough files to compact
       break;
     }
@@ -951,7 +867,7 @@ static bool CompactifyDocumentCollection(TRI_collection_t* document) {
   document->setCompactionStatus(reason);
 
   document->setNextCompactionStartIndex(start);
-  CompactifyDatafiles(document, toCompact);
+  compactDatafiles(document, toCompact);
 
   return true;
 }
@@ -1086,6 +1002,11 @@ CompactorThread::CompactorThread(TRI_vocbase_t* vocbase)
 
 CompactorThread::~CompactorThread() { shutdown(); }
 
+void CompactorThread::signal() {
+  CONDITION_LOCKER(locker, _condition);
+  locker.signal();
+}
+
 void CompactorThread::run() {
   std::vector<TRI_vocbase_col_t*> collections;
 
@@ -1093,6 +1014,7 @@ void CompactorThread::run() {
     int numCompacted = 0;
     // keep initial _state value as vocbase->_state might change during
     // compaction loop
+    TRI_vocbase_t::State state = _vocbase->state();
 
     {
       // check if compaction is currently disallowed
@@ -1100,8 +1022,6 @@ void CompactorThread::run() {
 
       if (compactionLocker.isLocked() && !HasActiveBlockers(_vocbase)) {
         // compaction is currently allowed
-        double now = TRI_microtime();
-
         try {
           // copy all collections
           collections = _vocbase->collections();
@@ -1143,8 +1063,8 @@ void CompactorThread::run() {
               }
 
               try {
-                if (document->_lastCompaction + COMPACTOR_COLLECTION_INTERVAL <=
-                    now) {
+                double const now = TRI_microtime();
+                if (document->_lastCompaction + compactionCollectionInterval() <= now) {
                   auto ce = document->ditches()->createCompactionDitch(__FILE__,
                                                                       __LINE__);
 
@@ -1153,7 +1073,7 @@ void CompactorThread::run() {
                     LOG_TOPIC(WARN, Logger::COMPACTOR) << "out of memory when trying to create compaction ditch";
                   } else {
                     try {
-                      worked = CompactifyDocumentCollection(document);
+                      worked = compactCollection(document);
 
                       if (!worked) {
                         // set compaction stamp
@@ -1190,19 +1110,19 @@ void CompactorThread::run() {
       }
     }
 
-    if (isStopping()) {
-      // server shutdown
-      break;
-    }
-
     if (numCompacted > 0) {
       // no need to sleep long or go into wait state if we worked.
       // maybe there's still work left
       usleep(1000);
-    } else {
+    } else if (state != TRI_vocbase_t::State::SHUTDOWN_COMPACTOR && _vocbase->state() == TRI_vocbase_t::State::NORMAL) {
       // only sleep while server is still running
       CONDITION_LOCKER(locker, _condition);
-      _condition.wait(COMPACTOR_INTERVAL);
+      _condition.wait(compactionSleepTime());
+    }
+  
+    if (state == TRI_vocbase_t::State::SHUTDOWN_COMPACTOR) {
+      // server shutdown
+      break;
     }
   }
 

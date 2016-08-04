@@ -443,8 +443,6 @@ int DatabaseFeature::createDatabaseCoordinator(TRI_voc_tick_t id, std::string co
 
   // name not yet in use, release the read lock
   auto vocbase = std::make_unique<TRI_vocbase_t>(TRI_VOCBASE_TYPE_COORDINATOR, id, name);
-  // vocbase is now active
-  vocbase->setState(TRI_vocbase_t::State::NORMAL);
 
   try {
     vocbase->addReplicationApplier(TRI_CreateReplicationApplier(vocbase.get()));

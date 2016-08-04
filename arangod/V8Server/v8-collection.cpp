@@ -1180,20 +1180,12 @@ static void JS_NameVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
-  if (!collection->_isLocal) {
-    std::string const collectionName(collection->name());
-    v8::Handle<v8::Value> result = TRI_V8_STRING(collectionName.c_str());
-    TRI_V8_RETURN(result);
+  std::string const collectionName(collection->name());
+
+  if (collectionName.empty()) {
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
   }
-
-  // this copies the name into a new place so we can safely access it later
-  // if we wouldn't do this, we would risk other threads modifying the name
-  // while
-  // we're reading it
-  std::string name(collection->_vocbase->collectionName(collection->_cid));
-
-  v8::Handle<v8::Value> result = TRI_V8_STD_STRING(name);
-
+  v8::Handle<v8::Value> result = TRI_V8_STD_STRING(collectionName);
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
 }

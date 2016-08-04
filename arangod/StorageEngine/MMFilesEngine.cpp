@@ -949,9 +949,6 @@ TRI_vocbase_t* MMFilesEngine::openExistingDatabase(TRI_voc_tick_t id, std::strin
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
     
-  // vocbase is now active
-  vocbase->setState(TRI_vocbase_t::State::NORMAL);
-
   return vocbase.release();
 }
       
