@@ -216,6 +216,9 @@ struct ClusterCommResult {
   /// @brief stringify the internal error state
   std::string stringifyErrorMessage() const;
 
+  /// @brief return an error code for a result
+  int getErrorCode() const;
+
   /// @brief stringify a cluster comm status
   static char const* stringifyStatus(ClusterCommOpStatus status);
 };
