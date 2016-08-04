@@ -330,25 +330,30 @@ ${MAKE_CMD_PREFIX} ${MAKE} ${VERBOSE_MAKE} "${PAR}" "${PARALLEL_BUILDS}" ${MAKE_
 git rev-parse HEAD > ../last_compiled_version.sha
 
 if [ -n "$CPACK"  -a -n "${TARGET_DIR}" ];  then
-    for PACK in ${CPACK}; do 
-#        if [ "$PACK" == "DEB" ]; then
-#            make prepare_debian
-#        fi
-        
-        cpack -G "$PACK"
-
-        EXT=`echo $PACK|tr '[:upper:]' '[:lower:]'`
-        if [ "$PACK" == "Bundle" ]; then
-            EXT = 'dmg'
-        fi
-        if [ "$PACK" == "NSIS" ]; then
-            true
-        else
-            cp *.${EXT} ${TARGET_DIR}
-        fi
-    done
+    make packages
+    #todo cmake -build -target packages
 fi
-        
+#if [ -n "$CPACK"  -a -n "${TARGET_DIR}" ];  then
+#    for PACK in ${CPACK}; do 
+##        if [ "$PACK" == "DEB" ]; then
+##            make prepare_debian
+##        fi
+#        
+#        cpack -G "$PACK"
+#
+#        EXT=`echo $PACK|tr '[:upper:]' '[:lower:]'`
+#        if [ "$PACK" == "Bundle" ]; then
+#            EXT = 'dmg'
+#        fi
+#        if [ "$PACK" == "NSIS" ]; then
+#            true
+#        else
+#            cp *.${EXT} ${TARGET_DIR}
+#        fi
+#    done
+#fi
+
+
 # and install
 
 if test -n "${TARGET_DIR}";  then

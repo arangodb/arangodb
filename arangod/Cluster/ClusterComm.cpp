@@ -115,6 +115,61 @@ void ClusterCommResult::setDestination(std::string const& dest,
     }
   }
 }
+  
+/// @brief stringify the internal error state
+std::string ClusterCommResult::stringifyErrorMessage() const {
+  // append status string
+  std::string result(stringifyStatus(status));
+  
+  if (!serverID.empty()) {
+    result.append(", cluster node: '");
+    result.append(serverID);
+    result.push_back('\'');
+  }
+
+  if (!shardID.empty()) {
+    result.append(", shard: '");
+    result.append(shardID);
+    result.push_back('\'');
+  }
+  
+  if (!endpoint.empty()) {
+    result.append(", endpoint: '");
+    result.append(endpoint);
+    result.push_back('\'');
+  }
+
+  if (!errorMessage.empty()) {
+    result.append(", error: '");
+    result.append(errorMessage);
+    result.push_back('\'');
+  }
+
+  return result;
+}
+  
+/// @brief stringify a cluster comm status
+char const* ClusterCommResult::stringifyStatus(ClusterCommOpStatus status) {
+  switch (status) {
+    case CL_COMM_SUBMITTED:
+      return "submitted";
+    case CL_COMM_SENDING:
+      return "sending";
+    case CL_COMM_SENT:
+      return "sent";
+    case CL_COMM_TIMEOUT:
+      return "timeout";
+    case CL_COMM_RECEIVED:
+      return "received";
+    case CL_COMM_ERROR:
+      return "error";
+    case CL_COMM_DROPPED:
+      return "dropped";
+    case CL_COMM_BACKEND_UNAVAILABLE:
+      return "backend unavailable";
+  }
+  return "unknown";
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ClusterComm constructor

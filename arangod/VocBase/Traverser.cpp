@@ -138,19 +138,24 @@ void TraverserExpression::toVelocyPack(VPackBuilder& builder) const {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TraverserExpression::recursiveCheck(arangodb::aql::AstNode const* node,
-                                         arangodb::velocypack::Slice& element) const {
+                                         arangodb::velocypack::Slice& element,
+                                         arangodb::velocypack::Slice& base) const {
+
+  base = arangodb::basics::VelocyPackHelper::EmptyObjectValue();
+
   switch (node->type) {
     case arangodb::aql::NODE_TYPE_REFERENCE:
       // We are on the variable access
       return true;
     case arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS: {
       std::string name(node->getString());
-      if (!recursiveCheck(node->getMember(0), element)) {
+      if (!recursiveCheck(node->getMember(0), element, base)) {
         return false;
       }
       if (!element.isObject() || !element.hasKey(name)) {
         return false;
       }
+      base = element; // set base object
       element = element.get(name);
       break;
     }
@@ -159,7 +164,7 @@ bool TraverserExpression::recursiveCheck(arangodb::aql::AstNode const* node,
       if (!index->isIntValue()) {
         return false;
       }
-      if (!recursiveCheck(node->getMember(0), element)) {
+      if (!recursiveCheck(node->getMember(0), element, base)) {
         return false;
       }
       auto idx = index->getIntValue();
@@ -182,14 +187,22 @@ bool TraverserExpression::recursiveCheck(arangodb::aql::AstNode const* node,
 bool TraverserExpression::matchesCheck(arangodb::Transaction* trx,
                                        VPackSlice const& element) const {
   TRI_ASSERT(trx != nullptr);
+  VPackSlice base = arangodb::basics::VelocyPackHelper::EmptyObjectValue();
 
   VPackSlice value = element.resolveExternal(); 
   
   // initialize compare value to Null
   VPackSlice result = arangodb::basics::VelocyPackHelper::NullValue();
   // perform recursive check. this may modify value
-  if (recursiveCheck(varAccess, value)) {
+  if (recursiveCheck(varAccess, value, base)) {
     result = value;
+  }
+
+  // hack for _id attribute
+  TransactionBuilderLeaser builder(trx);
+  if (result.isCustom() && base.isObject()) {
+    builder->add(VPackValue(trx->extractIdString(base)));
+    result = builder->slice();
   }
 
   TRI_ASSERT(compareTo != nullptr);

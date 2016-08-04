@@ -36,6 +36,11 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
+
+namespace aql {
+class QueryRegistry;
+}
+
 namespace consensus {
 
 class Agent;
@@ -85,7 +90,7 @@ class State {
   bool configure(Agent* agent);
 
   /// @brief Load persisted data from above or start with empty log
-  bool loadCollections(TRI_vocbase_t*, bool);
+  bool loadCollections(TRI_vocbase_t*, aql::QueryRegistry*, bool);
 
   /// @brief Pipe to ostream
   friend std::ostream& operator<<(std::ostream& os, State const& s) {
@@ -140,6 +145,9 @@ class State {
   std::string _endpoint;            /**< @brief persistence end point */
   bool _collectionsChecked;         /**< @brief Collections checked */
   bool _collectionsLoaded;
+
+  aql::QueryRegistry* _queryRegistry;
+
 
   size_t _compaction_step;
   size_t _cur;

@@ -757,10 +757,15 @@ std::string Transaction::extractIdString(CollectionNameResolver const* resolver,
       
       if (*p == basics::VelocyPackHelper::IdAttribute) {
         id = VPackSlice(p + 1);
-        // we should be pointing to a custom value now
-        TRI_ASSERT(id.isCustom() && id.head() == 0xf3);
+        if (id.isCustom()) {
+          // we should be pointing to a custom value now
+          TRI_ASSERT(id.head() == 0xf3);
  
-        return makeIdFromCustom(resolver, id, key);
+          return makeIdFromCustom(resolver, id, key);
+        }
+        if (id.isString()) {
+          return id.copyString();
+        }
       }
     }
 
