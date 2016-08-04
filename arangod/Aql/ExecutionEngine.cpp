@@ -764,8 +764,10 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
         auto serverList = clusterInfo->getResponsibleServer(shard);
         TRI_ASSERT(!serverList->empty());
         auto& pair = mappingServerToCollections[(*serverList)[0]];
-        if (pair.first.size() == i) {
-          pair.first.emplace_back();
+        if (pair.first.empty()) {
+          // We need to exactly maintain the ordering.
+          // A server my be responsible for a shard in edge collection 1 but not 0 or 2.
+          pair.first.resize(length);
         }
         pair.first[i].emplace_back(shard);
       }
@@ -776,6 +778,11 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
         auto serverList = clusterInfo->getResponsibleServer(shard);
         TRI_ASSERT(!serverList->empty());
         auto& pair = mappingServerToCollections[(*serverList)[0]];
+        if (pair.first.empty()) {
+          // We need to exactly maintain the ordering.
+          // A server my be responsible for a shard in edge collection 1 but not 0 or 2.
+          pair.first.resize(length);
+        }
         pair.second.emplace_back(shard);
       }
     }
