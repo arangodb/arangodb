@@ -136,6 +136,7 @@ void TraverserEngine::getEdges(VPackSlice vertex, size_t depth, VPackBuilder& bu
     }
   } else if (vertex.isString()) {
     auto edgeCursor = _opts->nextCursor(vertex, depth);
+
     while(edgeCursor->next(result, cursorId)) {
       if (!_opts->evaluateEdgeExpression(result.back(), vertex, depth, cursorId)) {
         filtered++;

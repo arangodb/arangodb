@@ -62,7 +62,8 @@ SingleServerEdgeCursor::SingleServerEdgeCursor(size_t nrCursors)
   _cache.reserve(1000);
 };
 
-bool SingleServerEdgeCursor::next(std::vector<VPackSlice>& result, size_t& cursorId) {
+bool SingleServerEdgeCursor::next(std::vector<VPackSlice>& result,
+                                  size_t& cursorId) {
   if (_currentCursor == _cursors.size()) {
     return false;
   }
@@ -75,6 +76,15 @@ bool SingleServerEdgeCursor::next(std::vector<VPackSlice>& result, size_t& curso
   // We need to refill the cache.
   _cachePos = 0;
   auto& cursorSet = _cursors[_currentCursor];
+  while (cursorSet.empty()) {
+    // Fast Forward to the next non-empty cursor set
+    _currentCursor++;
+    _currentSubCursor = 0;
+    if (_currentCursor == _cursors.size()) {
+      return false;
+    }
+    cursorSet = _cursors[_currentCursor];
+  }
   auto& cursor = cursorSet[_currentSubCursor];
   // NOTE: We cannot clear the cache,
   // because the cursor expect's it to be filled.
@@ -82,7 +92,7 @@ bool SingleServerEdgeCursor::next(std::vector<VPackSlice>& result, size_t& curso
     if (!cursor->hasMore()) {
       // This one is exhausted, next
       ++_currentSubCursor;
-      if (_currentSubCursor == cursorSet.size()) {
+      while (_currentSubCursor == cursorSet.size()) {
         ++_currentCursor;
         _currentSubCursor = 0;
         if (_currentCursor == _cursors.size()) {
@@ -104,7 +114,8 @@ bool SingleServerEdgeCursor::next(std::vector<VPackSlice>& result, size_t& curso
   return true;
 }
 
-bool SingleServerEdgeCursor::readAll(std::unordered_set<VPackSlice>& result, size_t& cursorId) {
+bool SingleServerEdgeCursor::readAll(std::unordered_set<VPackSlice>& result,
+                                     size_t& cursorId) {
   if (_currentCursor >= _cursors.size()) {
     return false;
   }
