@@ -29,6 +29,7 @@
 #include <velocypack/Options.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include "Meta/conversion.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
@@ -302,38 +303,42 @@ void HttpResponse::writeHeader(StringBuffer* output) {
 void HttpResponse::setPayload(GeneralRequest const* request,
                               arangodb::velocypack::Slice const& slice,
                               bool generateBody, VPackOptions const& options) {
-  // VELOCYPACK
-  if (request != nullptr && request->velocyPackResponse()) {
-    setContentType(HttpResponse::ContentType::VPACK);
-    size_t length = static_cast<size_t>(slice.byteSize());
-
-    if (generateBody) {
-      _body.appendText(slice.startAs<const char>(), length);
-    } else {
-      headResponse(length);
-    }
+  if (request == nullptr) {  // error
   }
+  // VELOCYPACK
+  _contentType = meta::to_enum<GeneralResponse::ContentType>(
+      meta::underlying_value(request->contentType()));
 
-  // JSON
-  else {
-    setContentType(HttpResponse::ContentType::JSON);
+  switch (_contentType) {
+    case GeneralResponse::ContentType::VPACK: {
+      size_t length = static_cast<size_t>(slice.byteSize());
+      if (generateBody) {
+        _body.appendText(slice.startAs<const char>(), length);
+      } else {
+        headResponse(length);
+      }
+      break;
+    }
+    default: {
+      setContentType(HttpResponse::ContentType::JSON);
 
-    if (generateBody) {
-      arangodb::basics::VelocyPackDumper dumper(&_body, &options);
-      dumper.dumpValue(slice);
-    } else {
-      // TODO can we optimize this?
-      // Just dump some where else to find real length
-      StringBuffer tmp(TRI_UNKNOWN_MEM_ZONE, false);
+      if (generateBody) {
+        arangodb::basics::VelocyPackDumper dumper(&_body, &options);
+        dumper.dumpValue(slice);
+      } else {
+        // TODO can we optimize this?
+        // Just dump some where else to find real length
+        StringBuffer tmp(TRI_UNKNOWN_MEM_ZONE, false);
 
-      // convert object to string
-      VPackStringBufferAdapter buffer(tmp.stringBuffer());
+        // convert object to string
+        VPackStringBufferAdapter buffer(tmp.stringBuffer());
 
-      // usual dumping -  but not to the response body
-      VPackDumper dumper(&buffer, &options);
-      dumper.dump(slice);
+        // usual dumping -  but not to the response body
+        VPackDumper dumper(&buffer, &options);
+        dumper.dump(slice);
 
-      headResponse(tmp.length());
+        headResponse(tmp.length());
+      }
     }
   }
 };

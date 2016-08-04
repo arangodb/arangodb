@@ -94,7 +94,7 @@ const optionsDocumentation = [
   '   - `loopSleepWhen`: sleep every nth iteration',
   '   - `loopSleepSec`: sleep seconds between iterations',
   '',
-  '   - `server`: server_url for external server',
+  '   - `server`: server_url (e.g. tcp://127.0.0.1:8529) for external server',
   '   - `cluster`: if set to true the tests are run with the coordinator',
   '     of a small local cluster',
   '   - `clusterNodes`: number of DB-Servers to use',

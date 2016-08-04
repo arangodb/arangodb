@@ -24,6 +24,7 @@
 
 #include "HttpCommTask.h"
 
+#include "Meta/conversion.h"
 #include "Basics/HybridLogicalClock.h"
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/GeneralServerFeature.h"
@@ -550,8 +551,11 @@ void HttpCommTask::processRequest() {
   }
 
   // create a handler and execute
-  executeRequest(_request,
-                 new HttpResponse(GeneralResponse::ResponseCode::SERVER_ERROR));
+  HttpResponse* response =
+      new HttpResponse(GeneralResponse::ResponseCode::SERVER_ERROR);
+  response->setContentType(meta::to_enum<GeneralResponse::ContentType>(
+      meta::underlying_value(_request->contentType())));
+  executeRequest(_request, response);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
