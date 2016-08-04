@@ -340,6 +340,9 @@ struct TRI_vocbase_t {
 
   /// @brief unloads a collection
   int unloadCollection(TRI_vocbase_col_t* collection, bool force);
+  
+  /// @brief callback for unloading a collection
+  static bool UnloadCollectionCallback(TRI_collection_t* col, void* data);
 
   /// @brief locks a collection for usage, loading or manifesting it
   /// Note that this will READ lock the collection you have to release the

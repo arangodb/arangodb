@@ -241,11 +241,8 @@ bool TRI_vocbase_t::unregisterCollection(TRI_vocbase_col_t* collection) {
   return true;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief unloads a collection
-////////////////////////////////////////////////////////////////////////////////
-
-static bool UnloadCollectionCallback(TRI_collection_t* col, void* data) {
+/// @brief callback for unloading a collection
+bool TRI_vocbase_t::UnloadCollectionCallback(TRI_collection_t* col, void* data) {
   TRI_vocbase_col_t* collection = static_cast<TRI_vocbase_col_t*>(data);
   TRI_ASSERT(collection != nullptr);
 
@@ -844,11 +841,8 @@ static uint64_t GetNumericFilenamePart(char const* filename) {
   return StringUtils::uint64(pos2 + 1, pos1 - pos2 - 1);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief compare two filenames, based on the numeric part contained in
 /// the filename. this is used to sort datafile filenames on startup
-////////////////////////////////////////////////////////////////////////////////
-
 static bool FilenameStringComparator(std::string const& lhs,
                                      std::string const& rhs) {
   uint64_t const numLeft = GetNumericFilenamePart(lhs.c_str());
