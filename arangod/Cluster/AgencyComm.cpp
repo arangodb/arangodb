@@ -1719,13 +1719,11 @@ AgencyCommResult AgencyComm::sendWithFailover(
       std::string endpoint;
 
       // transform location into an endpoint
-      int offset;
+      int offset { 11 };
       if (result.location().substr(0, 7) == "http://") {
         endpoint = "http+tcp://" + result.location().substr(7);
-        offset = 11;
       } else if (result.location().substr(0, 8) == "https://") {
-        endpoint = "ssl://" + result.location().substr(8);
-        offset = 6;
+        endpoint = "http+ssl://" + result.location().substr(8);
       } else {
         // invalid endpoint, return an error
         break;
