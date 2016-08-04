@@ -1,0 +1,1 @@
+module.exports = [require("./Buenos_Aires.js"),require("./Catamarca.js"),require("./ComodRivadavia.js"),require("./Cordoba.js"),require("./Jujuy.js"),require("./La_Rioja.js"),require("./Mendoza.js"),require("./Rio_Gallegos.js"),require("./Salta.js"),require("./San_Juan.js"),require("./San_Luis.js"),require("./Tucuman.js"),require("./Ushuaia.js")]

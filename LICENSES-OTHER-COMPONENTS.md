@@ -168,7 +168,7 @@
 * GITHUB: https://github.com/jshttp/http-errors
 * License: [MIT License](https://github.com/jshttp/http-errors/blob/master/LICENSE)
 
-#### inflect
+#### i (inflect)
 
 * GITHUB: https://github.com/pksunkara/inflect
 * License: [MIT-style License](https://github.com/pksunkara/inflect/blob/master/LICENSE)
@@ -220,11 +220,6 @@
 * GITHUB: https://github.com/mochajs/mocha
 * License: [MIT License](https://github.com/mochajs/mocha/blob/master/LICENSE)
 
-#### node-semver
-
-* GITHUB: https://github.com/npm/node-semver
-* License: [ISC License](https://github.com/npm/node-semver/blob/master/LICENSE)
-
 #### qs
 
 * GITHUB: https://github.com/hapijs/qs
@@ -251,6 +246,11 @@
 
 * GITHUB: https://github.com/jshttp/statuses
 * License: [MIT License](https://github.com/jshttp/statuses/blob/master/LICENSE)
+
+#### timezone
+
+* GITHUB: https://github.com/bigeasy/timezone
+* License: [MIT License](https://github.com/bigeasy/timezone/blob/master/LICENSE)
 
 #### type-is
 

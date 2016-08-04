@@ -146,6 +146,31 @@ std::string ClusterCommResult::stringifyErrorMessage() const {
   return result;
 }
   
+/// @brief return an error code for a result
+int ClusterCommResult::getErrorCode() const {
+  switch (status) {
+    case CL_COMM_SUBMITTED:
+    case CL_COMM_SENDING:
+    case CL_COMM_SENT:
+    case CL_COMM_RECEIVED:
+      return TRI_ERROR_NO_ERROR;
+
+    case CL_COMM_TIMEOUT:
+      return TRI_ERROR_CLUSTER_TIMEOUT;
+
+    case CL_COMM_ERROR:
+      return TRI_ERROR_INTERNAL;
+    
+    case CL_COMM_DROPPED:
+      return TRI_ERROR_INTERNAL;
+    
+    case CL_COMM_BACKEND_UNAVAILABLE:
+      return TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE;
+  }
+
+  return TRI_ERROR_INTERNAL;
+}
+  
 /// @brief stringify a cluster comm status
 char const* ClusterCommResult::stringifyStatus(ClusterCommOpStatus status) {
   switch (status) {
