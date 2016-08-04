@@ -27,20 +27,47 @@
 #include "Basics/Common.h"
 #include "Basics/ConditionVariable.h"
 #include "Basics/Thread.h"
+#include "VocBase/DatafileStatistics.h"
 #include "VocBase/voc-types.h"
 
 struct TRI_collection_t;
 struct TRI_datafile_t;
+struct TRI_df_marker_t;
 struct TRI_vocbase_t;
 
 namespace arangodb {
+class Transaction;
 
 class CompactorThread : public Thread {
- public:
+ private:
   /// @brief compaction instruction for a single datafile
   struct compaction_info_t {
     TRI_datafile_t* _datafile;
     bool _keepDeletions;
+  };
+
+  /// @brief auxiliary struct used when initializing compaction
+  struct compaction_initial_context_t {
+    arangodb::Transaction* _trx;
+    TRI_collection_t* _document;
+    int64_t _targetSize;
+    TRI_voc_fid_t _fid;
+    bool _keepDeletions;
+    bool _failed;
+
+    compaction_initial_context_t(arangodb::Transaction* trx, TRI_collection_t* document)
+        : _trx(trx), _document(document), _targetSize(0), _fid(0), _keepDeletions(false), _failed(false) {}
+  };
+
+  /// @brief compaction state
+  struct compaction_context_t {
+    arangodb::Transaction* _trx;
+    TRI_collection_t* _document;
+    TRI_datafile_t* _compactor;
+    DatafileStatisticsContainer _dfi;
+    bool _keepDeletions;
+
+    compaction_context_t() : _trx(nullptr), _document(nullptr), _compactor(nullptr), _dfi(), _keepDeletions(true) {}
   };
 
  public:
@@ -49,15 +76,42 @@ class CompactorThread : public Thread {
 
   void signal();
 
+  /// @brief callback to drop a datafile
+  static void DropDatafileCallback(TRI_datafile_t* datafile, void*);
+  /// @brief callback to rename a datafile
+  static void RenameDatafileCallback(TRI_datafile_t* datafile, void*);
+
  protected:
   void run() override;
 
  private:
+  /// @brief calculate the target size for the compactor to be created
+  compaction_initial_context_t getCompactionContext(
+    arangodb::Transaction* trx, TRI_collection_t* document,
+    std::vector<compaction_info_t> const& toCompact);
+
   /// @brief compact the specified datafiles
   void compactDatafiles(TRI_collection_t*, std::vector<compaction_info_t> const&);
 
   /// @brief checks all datafiles of a collection
   bool compactCollection(TRI_collection_t*);
+
+  int removeCompactorFile(TRI_collection_t* document, TRI_datafile_t* datafile);
+
+  /// @brief remove an empty datafile
+  int removeDatafile(TRI_collection_t* document, TRI_datafile_t* datafile);
+
+  /// @brief check whether there is an active compaction blocker
+  /// note that this must be called while holding the compactionBlockers lock
+  bool hasActiveBlockers() const;
+
+  /// @brief determine the number of documents in the collection
+  uint64_t getNumberOfDocuments(TRI_collection_t* document);
+
+  /// @brief write a copy of the marker into the datafile
+  int copyMarker(TRI_collection_t* document,
+                 TRI_datafile_t* compactor, TRI_df_marker_t const* marker,
+                 TRI_df_marker_t** result);
 
   /// @brief wait time between compaction runs when idle
   static constexpr unsigned compactionSleepTime() { return 1000 * 1000; }
@@ -95,7 +149,6 @@ class CompactorThread : public Thread {
   /// if this value if higher than the threshold, the datafile will be compacted
   static constexpr double deadShare() { return 0.1; }
 
-
  private:
   TRI_vocbase_t* _vocbase;
 
@@ -115,8 +168,5 @@ int TRI_TouchBlockerCompactorVocBase(TRI_vocbase_t*, TRI_voc_tick_t, double);
 
 /// @brief remove an existing compaction blocker
 int TRI_RemoveBlockerCompactorVocBase(TRI_vocbase_t*, TRI_voc_tick_t);
-
-/// @brief compactor event loop
-void TRI_CompactorVocBase(void*);
 
 #endif
