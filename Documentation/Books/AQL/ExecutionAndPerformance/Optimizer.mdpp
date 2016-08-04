@@ -278,18 +278,24 @@ There is an upper bound on the number of warning a query may produce. If that
 bound is reached, no further warnings will be returned.
 
 
-!SUBSECTION Clustering
+!SUBSECTION The Optimizer and the ArangoDB CLuster
+
 When you're running AQL in the cluster, the parsing of the query is done on the
-Coordinator. The coordinator then chops the query into parts, which are to
+coordinator. The coordinator then chops the query into snipets, which are to
 remain on the coordinator, and others that are to be distributed over the network
 to the shards. The cutting sites are interconnected
 via *Scatter-*, *Gather-* and *RemoteNodes*.
-These nodes mark the network borders. The optimizer strives to reduce the amount
+
+These nodes mark the network borders of the snippets. The optimizer strives to reduce the amount
 of data transfered via these network interfaces by pushing `FILTER`s out to the shards,
 as its vital to the query performance to reduce that data amount to transfer over the
-network links. As usual the optimizer can only take certain assumptions for granted
-when doing so, I.e. [User defined functions have to be executed on the coordinator](../Extending/README.md).
-In doubt, you should modify your query to reduce the number of round trips.
+network links.
+
+Snippets market with **DBS** are executed on the shards, **COOR** ones are excuted on the coordinator.
+
+**As usual the optimizer can only take certain assumptions for granted when doing so, i.e. [User defined functions have to be executed on the coordinator](../Extending/README.md). In doubt, you should modify your query to reduce the number interconnections between your snippets.**
+
+When optimizing your query you may want to look at simpler parts of it first.
 
 !SUBSECTION List of execution nodes
 
