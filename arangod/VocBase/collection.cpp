@@ -203,7 +203,7 @@ TRI_collection_t::TRI_collection_t(TRI_vocbase_t* vocbase,
         _tickMax(0),
         _info(parameters), 
         _state(TRI_COL_STATE_WRITE), 
-        _lastError(0),
+        _lastError(TRI_ERROR_NO_ERROR),
         _ditches(this),
         _masterPointers(),
         _uncollectedLogfileEntries(0),
@@ -327,14 +327,15 @@ int TRI_collection_t::beginRead() {
   }
   // LOCKING-DEBUG
   // std::cout << "BeginRead: " << document->_info._name << std::endl;
-  TRI_READ_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(this);
+  READ_LOCKER(locker, _lock);
 
   try {
     _vocbase->_deadlockDetector.addReader(this, false);
   } catch (...) {
-    TRI_READ_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(this);
     return TRI_ERROR_OUT_OF_MEMORY;
   }
+
+  locker.steal();
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -359,7 +360,7 @@ int TRI_collection_t::endRead() {
 
   // LOCKING-DEBUG
   // std::cout << "EndRead: " << document->_info._name << std::endl;
-  TRI_READ_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(this);
+  _lock.unlockRead();
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -379,15 +380,16 @@ int TRI_collection_t::beginWrite() {
   }
   // LOCKING_DEBUG
   // std::cout << "BeginWrite: " << document->_info._name << std::endl;
-  TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(this);
+  WRITE_LOCKER(locker, _lock);
 
   // register writer
   try {
     _vocbase->_deadlockDetector.addWriter(this, false);
   } catch (...) {
-    TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(this);
     return TRI_ERROR_OUT_OF_MEMORY;
   }
+
+  locker.steal();
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -415,7 +417,7 @@ int TRI_collection_t::endWrite() {
 
   // LOCKING-DEBUG
   // std::cout << "EndWrite: " << document->_info._name << std::endl;
-  TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(this);
+  _lock.unlockWrite();
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -445,7 +447,18 @@ int TRI_collection_t::beginReadTimed(uint64_t timeout,
   int iterations = 0;
   bool wasBlocked = false;
 
-  while (!TRI_TRY_READ_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(this)) {
+  while (true) {
+    TRY_READ_LOCKER(locker, _lock);
+
+    if (locker.isLocked()) {
+      // when we are here, we've got the read lock
+      _vocbase->_deadlockDetector.addReader(this, wasBlocked);
+      
+      // keep lock and exit loop
+      locker.steal();
+      return TRI_ERROR_NO_ERROR;
+    }
+
     try {
       if (!wasBlocked) {
         // insert reader
@@ -492,16 +505,6 @@ int TRI_collection_t::beginReadTimed(uint64_t timeout,
       return TRI_ERROR_LOCK_TIMEOUT;
     }
   }
-
-  try {
-    // when we are here, we've got the read lock
-    _vocbase->_deadlockDetector.addReader(this, wasBlocked);
-  } catch (...) {
-    TRI_READ_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(this);
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
-
-  return TRI_ERROR_NO_ERROR;
 }
 
 /// @brief write locks a collection, with a timeout
@@ -529,7 +532,17 @@ int TRI_collection_t::beginWriteTimed(uint64_t timeout,
   int iterations = 0;
   bool wasBlocked = false;
 
-  while (!TRI_TRY_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(this)) {
+  while (true) {
+    TRY_WRITE_LOCKER(locker, _lock);
+
+    if (locker.isLocked()) {
+      // register writer
+      _vocbase->_deadlockDetector.addWriter(this, wasBlocked);
+      // keep lock and exit loop
+      locker.steal();
+      return TRI_ERROR_NO_ERROR;
+    }
+
     try {
       if (!wasBlocked) {
         // insert writer
@@ -576,16 +589,6 @@ int TRI_collection_t::beginWriteTimed(uint64_t timeout,
       return TRI_ERROR_LOCK_TIMEOUT;
     }
   }
-
-  try {
-    // register writer
-    _vocbase->_deadlockDetector.addWriter(this, wasBlocked);
-  } catch (...) {
-    TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(this);
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
-
-  return TRI_ERROR_NO_ERROR;
 }
 
 /// @brief returns information about the collection

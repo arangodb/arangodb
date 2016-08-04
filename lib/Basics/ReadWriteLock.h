@@ -67,6 +67,12 @@ class ReadWriteLock {
   /// @brief releases the read-lock or write-lock
   void unlock();
 
+  /// @brief releases the read-lock
+  void unlockRead();
+  
+  /// @brief releases the write-lock
+  void unlockWrite();
+
  private:
   /// @brief read-write lock variable
   TRI_read_write_lock_t _rwlock;

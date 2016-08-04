@@ -134,7 +134,7 @@ class CollectionNameResolver {
     TRI_vocbase_col_t const* collection = getCollectionStruct(name);
 
     if (collection != nullptr) {
-      return collection->_type;
+      return collection->type();
     }
     return TRI_COL_TYPE_UNKNOWN;
   }
@@ -288,7 +288,7 @@ class CollectionNameResolver {
           // DBserver case of a shard:
           name = arangodb::basics::StringUtils::itoa((*it).second->planId());
           std::shared_ptr<CollectionInfo> ci =
-              ClusterInfo::instance()->getCollection((*it).second->_dbName, name);
+              ClusterInfo::instance()->getCollection((*it).second->dbName(), name);
           name = ci->name();  // can be empty, if collection unknown
         }
       }

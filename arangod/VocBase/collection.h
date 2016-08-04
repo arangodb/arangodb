@@ -80,30 +80,6 @@ struct DocumentOperation;
 /// @brief predefined collection name for statistics
 #define TRI_COL_NAME_STATISTICS "_statistics"
 
-/// @brief read locks the documents and indexes
-#define TRI_READ_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(a) \
-  a->_lock.readLock()
-
-/// @brief tries to read lock the documents and indexes
-#define TRI_TRY_READ_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(a) \
-  a->_lock.tryReadLock()
-
-/// @brief read unlocks the documents and indexes
-#define TRI_READ_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(a) \
-  a->_lock.unlock()
-
-/// @brief write locks the documents and indexes
-#define TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(a) \
-  a->_lock.writeLock()
-
-/// @brief tries to write lock the documents and indexes
-#define TRI_TRY_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(a) \
-  a->_lock.tryWriteLock()
-
-/// @brief write unlocks the documents and indexes
-#define TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(a) \
-  a->_lock.unlock()
-
 /// @brief collection info
 struct TRI_doc_collection_info_t {
   TRI_voc_ssize_t _numberDatafiles;
@@ -300,7 +276,6 @@ struct TRI_collection_t {
   TRI_collection_t() = delete;
   
   TRI_collection_t(TRI_vocbase_t* vocbase, arangodb::VocbaseCollectionInfo const& parameters);
-
   ~TRI_collection_t();
 
  public:
@@ -588,20 +563,20 @@ struct TRI_collection_t {
 
   TRI_col_state_e _state;  // state of the collection
   int _lastError;          // last (critical) error
+ 
+ private: 
   std::string _path;
-  
+
   // the following contains in the cluster/DBserver case the information
   // which other servers are in sync with this shard. It is unset in all
   // other cases.
   std::unique_ptr<arangodb::FollowerInfo> _followers;
 
+ public:
   arangodb::basics::ReadWriteLock _filesLock;
   std::vector<TRI_datafile_t*> _datafiles;   // all datafiles
   std::vector<TRI_datafile_t*> _journals;    // all journals
   std::vector<TRI_datafile_t*> _compactors;  // all compactor files
-  
-  // lock for indexes
-  arangodb::basics::ReadWriteLock _lock;
   
   arangodb::DatafileStatistics _datafileStatistics;
   
@@ -611,13 +586,14 @@ struct TRI_collection_t {
 
   std::unique_ptr<arangodb::KeyGenerator> _keyGenerator;
 
-  std::vector<arangodb::Index*> _indexes;
-
   std::atomic<int64_t> _uncollectedLogfileEntries;
   int64_t _numberDocuments;
   arangodb::basics::ReadWriteLock _compactionLock;
   double _lastCompaction;
   
+ private:
+  std::vector<arangodb::Index*> _indexes;
+
   // whether or not any of the indexes may need to be garbage-collected
   // this flag may be modifying when an index is added to a collection
   // if true, the cleanup thread will periodically call the cleanup functions of
@@ -627,7 +603,6 @@ struct TRI_collection_t {
   // number of persistent indexes
   size_t _persistentIndexes;
 
- protected:
   arangodb::Mutex _compactionStatusLock;
   size_t _nextCompactionStartIndex;
   char const* _lastCompactionStatus;
@@ -635,8 +610,10 @@ struct TRI_collection_t {
 
   // whether or not secondary indexes should be filled
   bool _useSecondaryIndexes;
+  
+  // lock for indexes
+  arangodb::basics::ReadWriteLock _lock;
 
- private:
   std::vector<std::string> _indexFiles;   // all index filenames
 };
 

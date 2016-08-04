@@ -283,7 +283,7 @@ class Transaction {
   std::string name(TRI_voc_cid_t cid) const {
     auto c = trxCollection(cid);
     TRI_ASSERT(c != nullptr);
-    return c->_collection->_name;
+    return c->_collection->name();
   }
 
   //////////////////////////////////////////////////////////////////////////////

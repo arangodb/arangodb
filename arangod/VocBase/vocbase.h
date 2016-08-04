@@ -125,7 +125,7 @@ constexpr auto TRI_INDEX_HANDLE_SEPARATOR_STR = "/";
 
 /// @brief collection enum
 enum TRI_col_type_e {
-  TRI_COL_TYPE_UNKNOWN = 0,           // only used when initializing
+  TRI_COL_TYPE_UNKNOWN = 0, // only used to signal an invalid collection type
   TRI_COL_TYPE_DOCUMENT = 2,
   TRI_COL_TYPE_EDGE = 3
 };
@@ -433,6 +433,7 @@ class TRI_vocbase_col_t {
   TRI_voc_cid_t cid() const { return _cid; }
   TRI_voc_cid_t planId() const { return _planId; }
   TRI_col_type_t type() const { return _type; }
+  TRI_vocbase_col_status_e status() const { return _status; }
   uint32_t internalVersion() const { return _internalVersion; }
   std::string const& dbName() const { return _dbName; }
   std::string name() const { return _name; }
@@ -443,15 +444,25 @@ class TRI_vocbase_col_t {
   bool canRename() const { return _canRename; }
 
  public:
+  
+  void increaseVersion() { ++_internalVersion; }
 
   /// @brief returns a translation of a collection status
   char const* statusString() const { return statusString(_status); }
   static char const* statusString(TRI_vocbase_col_status_e status);
   
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Transform the information for this collection to velocypack
-  //////////////////////////////////////////////////////////////////////////////
+  /// @brief set the collection status from the outside
+  void setStatus(TRI_vocbase_col_status_e status);
 
+  /// @brief set the collection name from the outside
+  void setName(std::string const& name) { _name = name; }
+
+  /// @brief try to fetch the collection status under a lock
+  /// the boolean value will be set to true if the lock could be acquired
+  /// if the boolean is false, the return value is always TRI_VOC_COL_STATUS_CORRUPTED 
+  TRI_vocbase_col_status_e tryFetchStatus(bool& found);
+
+  /// @brief transform the information for this collection to velocypack
   std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack(bool,
                                                               TRI_voc_tick_t);
 
@@ -478,11 +489,10 @@ class TRI_vocbase_col_t {
   void toVelocyPackIndexes(arangodb::velocypack::Builder&, TRI_voc_tick_t);
 
  public:
-  TRI_vocbase_t* _vocbase;
+  TRI_vocbase_t* const _vocbase;
   TRI_voc_cid_t const _cid;     // local collection identifier
  private:
   TRI_voc_cid_t _planId;  // cluster-wide collection identifier
- public:
   TRI_col_type_t _type;   // collection type
   uint32_t _internalVersion;  // is incremented when a collection is renamed
   // this is used to prevent caching of collection objects
@@ -490,12 +500,16 @@ class TRI_vocbase_col_t {
  public:
   arangodb::basics::ReadWriteLock _lock;  // lock protecting the status and name
 
+ private:
   TRI_vocbase_col_status_e _status;  // status of the collection
+ public:
   TRI_collection_t* _collection;  // NULL or pointer to loaded collection
+ private:
   std::string const _dbName;  // name of the database
   std::string _name;          // name of the collection
   std::string const _path;    // storage path
 
+ public:
   bool _isLocal;    // if true, the collection is local. if false,
                     // the collection is a remote (cluster) collection
   bool _canDrop;    // true if the collection can be dropped

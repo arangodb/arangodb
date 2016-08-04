@@ -139,7 +139,7 @@ std::string SingleCollectionTransaction::name() {
   trxCollection(); // will ensure we have the _trxCollection object set
   TRI_ASSERT(_trxCollection != nullptr);
   TRI_ASSERT(_trxCollection->_collection != nullptr);
-  return _trxCollection->_collection->_name; 
+  return _trxCollection->_collection->name(); 
 }
 
 ////////////////////////////////////////////////////////////////////////////////

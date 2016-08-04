@@ -203,13 +203,9 @@ void CleanupThread::cleanupCollection(TRI_vocbase_col_t* collection,
       // collection
       bool isUnloading = false;
       bool gotStatus = false;
-      {
-        TRY_READ_LOCKER(readLocker, document->_lock);
-
-        if (readLocker.isLocked()) {
-          isUnloading = (collection->_status == TRI_VOC_COL_STATUS_UNLOADING);
-          gotStatus = true;
-        }
+      TRI_vocbase_col_status_e s = collection->tryFetchStatus(gotStatus);
+      if (gotStatus) {
+        isUnloading = (s == TRI_VOC_COL_STATUS_UNLOADING);
       }
 
       if (gotStatus && !isUnloading) {
@@ -232,12 +228,10 @@ void CleanupThread::cleanupCollection(TRI_vocbase_col_t* collection,
 
         // if there is still some garbage collection to perform,
         // check if the collection was deleted already
-        {
-          TRY_READ_LOCKER(readLocker, document->_lock);
-
-          if (readLocker.isLocked()) {
-            isDeleted = (collection->_status == TRI_VOC_COL_STATUS_DELETED);
-          }
+        bool found;
+        TRI_vocbase_col_status_e s = collection->tryFetchStatus(found);
+        if (found) {
+          isDeleted = (s == TRI_VOC_COL_STATUS_DELETED);
         }
 
         if (!isDeleted && document->_vocbase->isDropped()) {

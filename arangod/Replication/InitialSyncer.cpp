@@ -628,7 +628,7 @@ int InitialSyncer::handleCollectionDump(
     url += "&includeSystem=" + std::string(_includeSystem ? "true" : "false");
 
     std::string const typeString =
-        (col->_type == TRI_COL_TYPE_EDGE
+        (col->type() == TRI_COL_TYPE_EDGE
              ? "edge"
              : "document");
 

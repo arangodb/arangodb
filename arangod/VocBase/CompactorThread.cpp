@@ -281,14 +281,22 @@ CompactorThread::compaction_initial_context_t CompactorThread::getCompactionCont
     };
 
 
-    TRI_READ_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
     bool ok;
-    try {
-      ok = TRI_IterateDatafile(df, calculateSize);
-    } catch (...) {
-      ok = false;
+    {
+      int res = document->beginRead();
+
+      if (res != TRI_ERROR_NO_ERROR) {
+        ok = false;
+      } else {
+        // got read lock
+        try {
+          ok = TRI_IterateDatafile(df, calculateSize);
+        } catch (...) {
+          ok = false;
+        }
+        document->endRead();
+      }
     }
-    TRI_READ_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
 
     if (df->isPhysical(df)) {
       TRI_MMFileAdvise(df->_data, df->_maximalSize, TRI_MADVISE_RANDOM);
@@ -834,7 +842,7 @@ void CompactorThread::run() {
             bool doCompact = document->_info.doCompact();
 
             // for document collection, compactify datafiles
-            if (collection->_status == TRI_VOC_COL_STATUS_LOADED && doCompact) {
+            if (collection->status() == TRI_VOC_COL_STATUS_LOADED && doCompact) {
               // check whether someone else holds a read-lock on the compaction
               // lock
 

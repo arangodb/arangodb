@@ -849,7 +849,7 @@ static void DropVocbaseColCoordinator(
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
 
-  std::string const databaseName(collection->_dbName);
+  std::string const databaseName(collection->dbName());
   std::string const cid = StringUtils::itoa(collection->_cid);
 
   ClusterInfo* ci = ClusterInfo::instance();
@@ -861,7 +861,7 @@ static void DropVocbaseColCoordinator(
     TRI_V8_THROW_EXCEPTION_MESSAGE(res, errorMsg);
   }
 
-  collection->_status = TRI_VOC_COL_STATUS_DELETED;
+  collection->setStatus(TRI_VOC_COL_STATUS_DELETED);
 
   TRI_V8_RETURN_UNDEFINED();
 }
@@ -918,7 +918,7 @@ static TRI_doc_collection_info_t* GetFiguresCoordinator(
     TRI_vocbase_col_t* collection) {
   TRI_ASSERT(collection != nullptr);
 
-  std::string const databaseName(collection->_dbName);
+  std::string const databaseName(collection->dbName());
   std::string const cid = StringUtils::itoa(collection->_cid);
 
   TRI_doc_collection_info_t* result = nullptr;
@@ -1141,7 +1141,7 @@ static void JS_LoadVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
       TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
     }
 
-    std::string const databaseName(collection->_dbName);
+    std::string const databaseName(collection->dbName());
     std::string const cid = StringUtils::itoa(collection->_cid);
 
     int res = ClusterInfo::instance()->setCollectionStatusCoordinator(
@@ -1254,7 +1254,7 @@ static void JS_PropertiesVocbaseCol(
   }
 
   if (ServerState::instance()->isCoordinator()) {
-    std::string const databaseName = std::string(collection->_dbName);
+    std::string const databaseName(collection->dbName());
     arangodb::VocbaseCollectionInfo info =
         ClusterInfo::instance()->getCollectionProperties(
             databaseName, StringUtils::itoa(collection->_cid));
@@ -1557,7 +1557,7 @@ static void JS_RenameVocbaseCol(
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_CLUSTER_UNSUPPORTED);
   }
 
-  std::string const oldName(collection->_name);
+  std::string const oldName(collection->name());
 
   int res = collection->_vocbase->renameCollection(collection, name, doOverride, true);
 
@@ -2008,7 +2008,7 @@ static int GetRevisionCoordinator(TRI_vocbase_col_t* collection,
                                   TRI_voc_rid_t& rid) {
   TRI_ASSERT(collection != nullptr);
 
-  std::string const databaseName(collection->_dbName);
+  std::string const databaseName(collection->dbName());
   std::string const cid = StringUtils::itoa(collection->_cid);
 
   int res = revisionOnCoordinator(databaseName, cid, rid);
@@ -2195,7 +2195,7 @@ static void JS_InsertVocbaseCol(
   }
 
   bool const isEdgeCollection =
-      ((TRI_col_type_e)collection->_type == TRI_COL_TYPE_EDGE);
+      ((TRI_col_type_e)collection->type() == TRI_COL_TYPE_EDGE);
 
   uint32_t const argLength = args.Length();
 
@@ -2326,7 +2326,7 @@ static void JS_InsertVocbaseCol(
   }
 
   TIMER_START(JS_INSERT_INSERT);
-  OperationResult result = trx.insert(collection->_name, builder.slice(), options);
+  OperationResult result = trx.insert(collection->name(), builder.slice(), options);
   TIMER_STOP(JS_INSERT_INSERT);
 
   res = trx.finish(result.code);
@@ -2372,7 +2372,7 @@ static void JS_StatusVocbaseCol(
   }
 
   if (ServerState::instance()->isCoordinator()) {
-    std::string const databaseName = std::string(collection->_dbName);
+    std::string const databaseName(collection->dbName());
 
     std::shared_ptr<CollectionInfo> const ci =
         ClusterInfo::instance()->getCollection(
@@ -2388,7 +2388,7 @@ static void JS_StatusVocbaseCol(
   TRI_vocbase_col_status_e status;
   {
     READ_LOCKER(readLocker, collection->_lock);
-    status = collection->_status;
+    status = collection->status();
   }
 
   TRI_V8_RETURN(v8::Number::New(isolate, (int)status));
@@ -2422,7 +2422,7 @@ static void JS_TruncateVocbaseCol(
     TRI_V8_THROW_EXCEPTION(res);
   }
 
-  OperationResult result = trx.truncate(collection->_name, opOptions);
+  OperationResult result = trx.truncate(collection->name(), opOptions);
 
   res = trx.finish(result.code);
 
@@ -2467,8 +2467,8 @@ static void JS_TruncateDatafileVocbaseCol(
   {
     READ_LOCKER(readLocker, collection->_lock);
 
-    if (collection->_status != TRI_VOC_COL_STATUS_UNLOADED &&
-        collection->_status != TRI_VOC_COL_STATUS_CORRUPTED) {
+    if (collection->status() != TRI_VOC_COL_STATUS_UNLOADED &&
+        collection->status() != TRI_VOC_COL_STATUS_CORRUPTED) {
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_UNLOADED);
     }
 
@@ -2511,8 +2511,8 @@ static void JS_TryRepairDatafileVocbaseCol(
   {
     READ_LOCKER(readLocker, collection->_lock);
 
-    if (collection->_status != TRI_VOC_COL_STATUS_UNLOADED &&
-        collection->_status != TRI_VOC_COL_STATUS_CORRUPTED) {
+    if (collection->status() != TRI_VOC_COL_STATUS_UNLOADED &&
+        collection->status() != TRI_VOC_COL_STATUS_CORRUPTED) {
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_UNLOADED);
     }
 
@@ -2543,14 +2543,14 @@ static void JS_TypeVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   if (ServerState::instance()->isCoordinator()) {
-    std::string const databaseName = std::string(collection->_dbName);
+    std::string const databaseName = collection->dbName();
 
     std::shared_ptr<CollectionInfo> const ci =
         ClusterInfo::instance()->getCollection(
             databaseName, StringUtils::itoa(collection->_cid));
 
     if ((*ci).empty()) {
-      TRI_V8_RETURN(v8::Number::New(isolate, (int)collection->_type));
+      TRI_V8_RETURN(v8::Number::New(isolate, (int)collection->type()));
     } else {
       TRI_V8_RETURN(v8::Number::New(isolate, (int)ci->type()));
     }
@@ -2560,7 +2560,7 @@ static void JS_TypeVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_col_type_e type;
   {
     READ_LOCKER(readLocker, collection->_lock);
-    type = (TRI_col_type_e)collection->_type;
+    type = (TRI_col_type_e)collection->type();
   }
 
   TRI_V8_RETURN(v8::Number::New(isolate, (int)type));
@@ -2587,7 +2587,7 @@ static void JS_UnloadVocbaseCol(
   int res;
 
   if (ServerState::instance()->isCoordinator()) {
-    std::string const databaseName(collection->_dbName);
+    std::string const databaseName(collection->dbName());
 
     res = ClusterInfo::instance()->setCollectionStatusCoordinator(
         databaseName, StringUtils::itoa(collection->_cid),
@@ -2980,8 +2980,8 @@ static void JS_DatafilesVocbaseCol(
   {
     READ_LOCKER(readLocker, collection->_lock);
 
-    if (collection->_status != TRI_VOC_COL_STATUS_UNLOADED &&
-        collection->_status != TRI_VOC_COL_STATUS_CORRUPTED) {
+    if (collection->status() != TRI_VOC_COL_STATUS_UNLOADED &&
+        collection->status() != TRI_VOC_COL_STATUS_CORRUPTED) {
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_UNLOADED);
     }
 
@@ -3052,8 +3052,8 @@ static void JS_DatafileScanVocbaseCol(
   {
     READ_LOCKER(readLocker, collection->_lock);
 
-    if (collection->_status != TRI_VOC_COL_STATUS_UNLOADED &&
-        collection->_status != TRI_VOC_COL_STATUS_CORRUPTED) {
+    if (collection->status() != TRI_VOC_COL_STATUS_UNLOADED &&
+        collection->status() != TRI_VOC_COL_STATUS_CORRUPTED) {
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_UNLOADED);
     }
 

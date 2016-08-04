@@ -1851,7 +1851,7 @@ static void MapGetVocBase(v8::Local<v8::String> const name,
 
       {
         CONDITIONAL_READ_LOCKER(readLocker, collection->_lock, lock);
-        status = collection->_status;
+        status = collection->status();
         cid = collection->_cid;
         internalVersion = collection->internalVersion();
       }

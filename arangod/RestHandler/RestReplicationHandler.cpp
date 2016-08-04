@@ -321,16 +321,13 @@ BAD_CALL:
   return status::DONE;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief comparator to sort collections
 /// sort order is by collection type first (vertices before edges, this is
 /// because edges depend on vertices being there), then name
-////////////////////////////////////////////////////////////////////////////////
-
 bool RestReplicationHandler::sortCollections(TRI_vocbase_col_t const* l,
                                              TRI_vocbase_col_t const* r) {
-  if (l->_type != r->_type) {
-    return l->_type < r->_type;
+  if (l->type() != r->type()) {
+    return l->type() < r->type();
   }
   std::string const leftName = l->name();
   std::string const rightName = r->name();
@@ -338,18 +335,9 @@ bool RestReplicationHandler::sortCollections(TRI_vocbase_col_t const* l,
   return strcasecmp(leftName.c_str(), rightName.c_str()) < 0;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief filter a collection based on collection attributes
-////////////////////////////////////////////////////////////////////////////////
-
 bool RestReplicationHandler::filterCollection(TRI_vocbase_col_t* collection,
                                               void* data) {
-  if (collection->_type != (TRI_col_type_t)TRI_COL_TYPE_DOCUMENT &&
-      collection->_type != (TRI_col_type_t)TRI_COL_TYPE_EDGE) {
-    // invalid type
-    return false;
-  }
-
   bool includeSystem = *((bool*)data);
 
   std::string const collectionName(collection->name());
@@ -1316,7 +1304,7 @@ int RestReplicationHandler::createCollection(VPackSlice const& slice,
     col = _vocbase->lookupCollection(cid);
   }
 
-  if (col != nullptr && (TRI_col_type_t)col->_type == (TRI_col_type_t)type) {
+  if (col != nullptr && (TRI_col_type_t)col->type() == (TRI_col_type_t)type) {
     // collection already exists. TODO: compare attributes
     return TRI_ERROR_NO_ERROR;
   }
@@ -2793,7 +2781,7 @@ void RestReplicationHandler::handleCommandCreateKeys() {
 
     // initialize a container with the keys
     auto keys =
-        std::make_unique<CollectionKeys>(_vocbase, col->_name, id, 300.0);
+        std::make_unique<CollectionKeys>(_vocbase, col->name(), id, 300.0);
 
     std::string const idString(std::to_string(keys->id()));
 

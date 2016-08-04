@@ -460,10 +460,9 @@ static void EnsureIndexCoordinator(
   TRI_ASSERT(collection != nullptr);
   TRI_ASSERT(!slice.isNone());
 
-  std::string const databaseName(collection->_dbName);
+  std::string const databaseName(collection->dbName());
   std::string const cid = StringUtils::itoa(collection->_cid);
-  // TODO: protect against races on _name
-  std::string const collectionName(collection->_name);
+  std::string const collectionName(collection->name());
 
   VPackBuilder resultBuilder;
   std::string errorMsg;
@@ -591,7 +590,7 @@ static void EnsureIndexLocal(v8::FunctionCallbackInfo<v8::Value> const& args,
   }
 
   TRI_collection_t* document = trx.documentCollection();
-  std::string const& collectionName = std::string(collection->_name);
+  std::string const collectionName(collection->name());
 
   // disallow index creation in read-only mode
   if (!TRI_collection_t::IsSystemName(collectionName) && create &&
@@ -792,9 +791,8 @@ static void EnsureIndex(v8::FunctionCallbackInfo<v8::Value> const& args,
   if (res == TRI_ERROR_NO_ERROR && ServerState::instance()->isCoordinator()) {
     TRI_ASSERT(slice.isObject());
 
-    std::string const dbname(collection->_dbName);
-    // TODO: someone might rename the collection while we're reading its name...
-    std::string const collname(collection->_name);
+    std::string const dbname(collection->dbName());
+    std::string const collname(collection->name());
     std::shared_ptr<CollectionInfo> c =
         ClusterInfo::instance()->getCollection(dbname, collname);
 
@@ -1157,7 +1155,7 @@ static void DropIndexCoordinator(
     }
   }
 
-  std::string const databaseName(collection->_dbName);
+  std::string const databaseName(collection->dbName());
   std::string const cid = StringUtils::itoa(collection->_cid);
   std::string errorMsg;
 
@@ -1240,9 +1238,9 @@ static void GetIndexesCoordinator(
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
-  std::string const databaseName(collection->_dbName);
+  std::string const databaseName(collection->dbName());
   std::string const cid = StringUtils::itoa(collection->_cid);
-  std::string const collectionName(collection->_name);
+  std::string const collectionName(collection->name());
 
   std::shared_ptr<CollectionInfo> c =
       ClusterInfo::instance()->getCollection(databaseName, cid);
@@ -1305,7 +1303,7 @@ static void JS_GetIndexesVocbaseCol(
   trx.lockRead();
 
   TRI_collection_t* document = trx.documentCollection();
-  std::string const& collectionName = std::string(collection->_name);
+  std::string const collectionName(collection->name());
 
   // get list of indexes
   auto indexes(document->indexesToVelocyPack(withFigures));

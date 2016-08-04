@@ -338,7 +338,7 @@ static int LockCollection(TRI_transaction_collection_t* trxCollection,
   TRI_ASSERT(trxCollection->_collection != nullptr);
 
   if (arangodb::Transaction::_makeNolockHeaders != nullptr) {
-    std::string collName(trxCollection->_collection->_name);
+    std::string collName(trxCollection->_collection->name());
     auto it = arangodb::Transaction::_makeNolockHeaders->find(collName);
     if (it != arangodb::Transaction::_makeNolockHeaders->end()) {
       // do not lock by command
@@ -392,7 +392,7 @@ static int UnlockCollection(TRI_transaction_collection_t* trxCollection,
   TRI_ASSERT(trxCollection->_collection != nullptr);
 
   if (arangodb::Transaction::_makeNolockHeaders != nullptr) {
-    std::string collName(trxCollection->_collection->_name);
+    std::string collName(trxCollection->_collection->name());
     auto it = arangodb::Transaction::_makeNolockHeaders->find(collName);
     if (it != arangodb::Transaction::_makeNolockHeaders->end()) {
       // do not lock by command

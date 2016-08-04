@@ -30,37 +30,25 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief slot for a "collection"
-////////////////////////////////////////////////////////////////////////////////
-
 static int const SLOT_COLLECTION = 2;
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief releases a collection
-////////////////////////////////////////////////////////////////////////////////
-
 void ReleaseCollection(TRI_vocbase_col_t const* collection) {
   collection->_vocbase->releaseCollection(const_cast<TRI_vocbase_col_t*>(collection));
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief convert a collection info into a TRI_vocbase_col_t
-////////////////////////////////////////////////////////////////////////////////
-
 TRI_vocbase_col_t* CoordinatorCollection(TRI_vocbase_t* vocbase,
                                          CollectionInfo const& ci) {
   auto c = std::make_unique<TRI_vocbase_col_t>(vocbase, ci.type(), ci.id(), ci.name(), ci.id(), "");
   c->_isLocal = false;
-  c->_status = ci.status();
+  c->setStatus(ci.status());
 
   return c.release();
 }
 
-///////////////////////////////////////////////////////////////////////////////
 /// @brief check if a name belongs to a collection
-////////////////////////////////////////////////////////////////////////////////
-
 bool EqualCollection(CollectionNameResolver const* resolver,
                      std::string const& collectionName,
                      TRI_vocbase_col_t const* collection) {
@@ -68,7 +56,7 @@ bool EqualCollection(CollectionNameResolver const* resolver,
     return true;
   }
 
-  if (collectionName == std::string(collection->_name)) {
+  if (collectionName == collection->name()) {
     return true;
   }
 

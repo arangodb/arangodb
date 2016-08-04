@@ -171,7 +171,7 @@ TRI_vocbase_col_t* TRI_vocbase_t::registerCollection(bool doLock,
     }
   }
 
-  collection->_status = TRI_VOC_COL_STATUS_UNLOADED;
+  collection->setStatus(TRI_VOC_COL_STATUS_UNLOADED);
 
   return collection.release();
 }
@@ -244,12 +244,12 @@ static bool UnloadCollectionCallback(TRI_collection_t* col, void* data) {
 
   WRITE_LOCKER_EVENTUAL(locker, collection->_lock, 1000);
 
-  if (collection->_status != TRI_VOC_COL_STATUS_UNLOADING) {
+  if (collection->status() != TRI_VOC_COL_STATUS_UNLOADING) {
     return false;
   }
 
   if (collection->_collection == nullptr) {
-    collection->_status = TRI_VOC_COL_STATUS_CORRUPTED;
+    collection->setStatus(TRI_VOC_COL_STATUS_CORRUPTED);
     return true;
   }
 
@@ -279,14 +279,13 @@ static bool UnloadCollectionCallback(TRI_collection_t* col, void* data) {
     LOG(ERR) << "failed to close collection '" << colName
              << "': " << TRI_last_error();
 
-    collection->_status = TRI_VOC_COL_STATUS_CORRUPTED;
+    collection->setStatus(TRI_VOC_COL_STATUS_CORRUPTED);
     return true;
   }
 
   delete document;
 
-  collection->_status = TRI_VOC_COL_STATUS_UNLOADED;
-  collection->_collection = nullptr;
+  collection->setStatus(TRI_VOC_COL_STATUS_UNLOADED);
 
   return true;
 }
@@ -299,7 +298,7 @@ bool TRI_vocbase_t::DropCollectionCallback(TRI_collection_t* col, void* data) {
   {
     WRITE_LOCKER_EVENTUAL(statusLock, collection->_lock, 1000); 
 
-    if (collection->_status != TRI_VOC_COL_STATUS_DELETED) {
+    if (collection->status() != TRI_VOC_COL_STATUS_DELETED) {
       LOG(ERR) << "someone resurrected the collection '" << name << "'";
       return false;
     }
@@ -476,7 +475,7 @@ TRI_vocbase_col_t* TRI_vocbase_t::createCollectionWorker(
   // cid might have been assigned
   cid = col->_info.id();
 
-  collection->_status = TRI_VOC_COL_STATUS_LOADED;
+  collection->setStatus(TRI_VOC_COL_STATUS_LOADED);
   collection->_collection = document;
 
   if (writeMarker) {
@@ -491,12 +490,12 @@ int TRI_vocbase_t::renameCollectionWorker(TRI_vocbase_col_t* collection,
                             std::string const& oldName,
                             std::string const& newName) {
   // cannot rename a corrupted collection
-  if (collection->_status == TRI_VOC_COL_STATUS_CORRUPTED) {
+  if (collection->status() == TRI_VOC_COL_STATUS_CORRUPTED) {
     return TRI_set_errno(TRI_ERROR_ARANGO_CORRUPTED_COLLECTION);
   }
 
   // cannot rename a deleted collection
-  if (collection->_status == TRI_VOC_COL_STATUS_DELETED) {
+  if (collection->status() == TRI_VOC_COL_STATUS_DELETED) {
     return TRI_set_errno(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
   }
     
@@ -510,9 +509,9 @@ int TRI_vocbase_t::renameCollectionWorker(TRI_vocbase_col_t* collection,
       return TRI_set_errno(TRI_ERROR_ARANGO_DUPLICATE_NAME);
     }
 
-    if (collection->_status == TRI_VOC_COL_STATUS_UNLOADED) {
+    if (collection->status() == TRI_VOC_COL_STATUS_UNLOADED) {
       // collection is unloaded
-      collection->_name = newName;
+      collection->setName(newName);
 
       try {
         arangodb::VocbaseCollectionInfo info =
@@ -531,9 +530,9 @@ int TRI_vocbase_t::renameCollectionWorker(TRI_vocbase_col_t* collection,
       }
       // fall-through intentional
     }
-    else if (collection->_status == TRI_VOC_COL_STATUS_LOADED ||
-             collection->_status == TRI_VOC_COL_STATUS_UNLOADING ||
-             collection->_status == TRI_VOC_COL_STATUS_LOADING) {
+    else if (collection->status() == TRI_VOC_COL_STATUS_LOADED ||
+             collection->status() == TRI_VOC_COL_STATUS_UNLOADING ||
+             collection->status() == TRI_VOC_COL_STATUS_LOADING) {
       // collection is loaded
       int res = collection->_collection->rename(newName);
 
@@ -554,7 +553,7 @@ int TRI_vocbase_t::renameCollectionWorker(TRI_vocbase_col_t* collection,
     TRI_ASSERT(it2.second);
     
     _collectionsByName.erase(oldName);
-    collection->_name = newName;
+    collection->setName(newName);
 
     TRI_ASSERT(_collectionsByName.size() == _collectionsById.size());
   }  // _colllectionsLock
@@ -562,7 +561,7 @@ int TRI_vocbase_t::renameCollectionWorker(TRI_vocbase_col_t* collection,
   // to prevent caching returning now invalid old collection name in db's
   // NamedPropertyAccessor,
   // i.e. db.<old-collection-name>
-  ++collection->_internalVersion;
+  collection->increaseVersion();
 
   // invalidate all entries for the two collections
   arangodb::aql::QueryCache::instance()->invalidate(
@@ -584,20 +583,20 @@ int TRI_vocbase_t::loadCollection(TRI_vocbase_col_t* collection,
 
     // return original status to the caller
     if (setStatus) {
-      status = collection->_status;
+      status = collection->status();
     }
 
-    if (collection->_status == TRI_VOC_COL_STATUS_LOADED) {
+    if (collection->status() == TRI_VOC_COL_STATUS_LOADED) {
       // DO NOT release the lock
       locker.steal();
       return TRI_ERROR_NO_ERROR;
     }
 
-    if (collection->_status == TRI_VOC_COL_STATUS_DELETED) {
+    if (collection->status() == TRI_VOC_COL_STATUS_DELETED) {
       return TRI_set_errno(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
     }
 
-    if (collection->_status == TRI_VOC_COL_STATUS_CORRUPTED) {
+    if (collection->status() == TRI_VOC_COL_STATUS_CORRUPTED) {
       return TRI_set_errno(TRI_ERROR_ARANGO_CORRUPTED_COLLECTION);
     }
   }
@@ -610,14 +609,14 @@ int TRI_vocbase_t::loadCollection(TRI_vocbase_col_t* collection,
   WRITE_LOCKER_EVENTUAL(locker, collection->_lock, 1000);
 
   // someone else loaded the collection, release the WRITE lock and try again
-  if (collection->_status == TRI_VOC_COL_STATUS_LOADED) {
+  if (collection->status() == TRI_VOC_COL_STATUS_LOADED) {
     locker.unlock();
     return loadCollection(collection, status, false);
   }
 
   // someone is trying to unload the collection, cancel this,
   // release the WRITE lock and try again
-  if (collection->_status == TRI_VOC_COL_STATUS_UNLOADING) {
+  if (collection->status() == TRI_VOC_COL_STATUS_UNLOADING) {
     // check if there is a deferred drop action going on for this collection
     if (collection->_collection->ditches()->contains(
             arangodb::Ditch::TRI_DITCH_COLLECTION_DROP)) {
@@ -630,24 +629,24 @@ int TRI_vocbase_t::loadCollection(TRI_vocbase_col_t* collection,
     }
 
     // no drop action found, go on
-    collection->_status = TRI_VOC_COL_STATUS_LOADED;
+    collection->setStatus(TRI_VOC_COL_STATUS_LOADED);
     locker.unlock();
 
     return loadCollection(collection, status, false);
   }
 
   // deleted, give up
-  if (collection->_status == TRI_VOC_COL_STATUS_DELETED) {
+  if (collection->status() == TRI_VOC_COL_STATUS_DELETED) {
     return TRI_set_errno(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
   }
 
   // corrupted, give up
-  if (collection->_status == TRI_VOC_COL_STATUS_CORRUPTED) {
+  if (collection->status() == TRI_VOC_COL_STATUS_CORRUPTED) {
     return TRI_set_errno(TRI_ERROR_ARANGO_CORRUPTED_COLLECTION);
   }
 
   // currently loading
-  if (collection->_status == TRI_VOC_COL_STATUS_LOADING) {
+  if (collection->status() == TRI_VOC_COL_STATUS_LOADING) {
     locker.unlock();
 
     // loop until the status changes
@@ -655,7 +654,7 @@ int TRI_vocbase_t::loadCollection(TRI_vocbase_col_t* collection,
       TRI_vocbase_col_status_e status;
       {
         READ_LOCKER_EVENTUAL(readLocker, collection->_lock, 1000);
-        status = collection->_status;
+        status = collection->status();
       }
 
       if (status != TRI_VOC_COL_STATUS_LOADING) {
@@ -674,9 +673,9 @@ int TRI_vocbase_t::loadCollection(TRI_vocbase_col_t* collection,
   }
 
   // unloaded, load collection
-  if (collection->_status == TRI_VOC_COL_STATUS_UNLOADED) {
+  if (collection->status() == TRI_VOC_COL_STATUS_UNLOADED) {
     // set the status to loading
-    collection->_status = TRI_VOC_COL_STATUS_LOADING;
+    collection->setStatus(TRI_VOC_COL_STATUS_LOADING);
 
     // release the lock on the collection temporarily
     // this will allow other threads to check the collection's
@@ -699,16 +698,15 @@ int TRI_vocbase_t::loadCollection(TRI_vocbase_col_t* collection,
     locker.lockEventual(1000);
 
     // no one else must have changed the status
-    TRI_ASSERT(collection->_status == TRI_VOC_COL_STATUS_LOADING);
+    TRI_ASSERT(collection->status() == TRI_VOC_COL_STATUS_LOADING);
 
     if (document == nullptr) {
-      collection->_status = TRI_VOC_COL_STATUS_CORRUPTED;
+      collection->setStatus(TRI_VOC_COL_STATUS_CORRUPTED);
       return TRI_set_errno(TRI_ERROR_ARANGO_CORRUPTED_COLLECTION);
     }
 
-    collection->_internalVersion = 0;
     collection->_collection = document;
-    collection->_status = TRI_VOC_COL_STATUS_LOADED;
+    collection->setStatus(TRI_VOC_COL_STATUS_LOADED);
 
     // release the WRITE lock and try again
     locker.unlock();
@@ -717,7 +715,7 @@ int TRI_vocbase_t::loadCollection(TRI_vocbase_col_t* collection,
   }
 
   std::string const colName(collection->name());
-  LOG(ERR) << "unknown collection status " << collection->_status << " for '"
+  LOG(ERR) << "unknown collection status " << collection->status() << " for '"
            << colName << "'";
 
   return TRI_set_errno(TRI_ERROR_INTERNAL);
@@ -734,14 +732,14 @@ int TRI_vocbase_t::dropCollectionWorker(TRI_vocbase_col_t* collection,
   arangodb::aql::QueryCache::instance()->invalidate(this, colName.c_str());
 
   // collection already deleted
-  if (collection->_status == TRI_VOC_COL_STATUS_DELETED) {
+  if (collection->status() == TRI_VOC_COL_STATUS_DELETED) {
     // mark collection as deleted
     unregisterCollection(collection);
     return TRI_ERROR_NO_ERROR;
   }
 
   // collection is unloaded
-  if (collection->_status == TRI_VOC_COL_STATUS_UNLOADED) {
+  if (collection->status() == TRI_VOC_COL_STATUS_UNLOADED) {
     try {
       arangodb::VocbaseCollectionInfo info =
           arangodb::VocbaseCollectionInfo::fromFile(collection->path(),
@@ -764,7 +762,7 @@ int TRI_vocbase_t::dropCollectionWorker(TRI_vocbase_col_t* collection,
       return TRI_set_errno(e.code());
     }
 
-    collection->_status = TRI_VOC_COL_STATUS_DELETED;
+    collection->setStatus(TRI_VOC_COL_STATUS_DELETED);
     unregisterCollection(collection);
 
     locker.unlock();
@@ -779,7 +777,7 @@ int TRI_vocbase_t::dropCollectionWorker(TRI_vocbase_col_t* collection,
   }
 
   // collection is loading
-  if (collection->_status == TRI_VOC_COL_STATUS_LOADING) {
+  if (collection->status() == TRI_VOC_COL_STATUS_LOADING) {
     // loop until status changes
     // try again later
     state = DROP_AGAIN;
@@ -787,8 +785,8 @@ int TRI_vocbase_t::dropCollectionWorker(TRI_vocbase_col_t* collection,
   }
 
   // collection is loaded
-  if (collection->_status == TRI_VOC_COL_STATUS_LOADED ||
-           collection->_status == TRI_VOC_COL_STATUS_UNLOADING) {
+  if (collection->status() == TRI_VOC_COL_STATUS_LOADED ||
+      collection->status() == TRI_VOC_COL_STATUS_UNLOADING) {
     collection->_collection->_info.setDeleted(true);
 
     bool doSync = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database")->forceSyncProperties();
@@ -800,7 +798,7 @@ int TRI_vocbase_t::dropCollectionWorker(TRI_vocbase_col_t* collection,
       return res;
     }
 
-    collection->_status = TRI_VOC_COL_STATUS_DELETED;
+    collection->setStatus(TRI_VOC_COL_STATUS_DELETED);
     unregisterCollection(collection);
 
     locker.unlock();
@@ -849,6 +847,19 @@ static bool FilenameStringComparator(std::string const& lhs,
   uint64_t const numLeft = GetNumericFilenamePart(lhs.c_str());
   uint64_t const numRight = GetNumericFilenamePart(rhs.c_str());
   return numLeft < numRight;
+}
+  
+/// @brief try to fetch the collection status under a lock
+/// the boolean value will be set to true if the lock could be acquired
+/// if the boolean is false, the return value is always TRI_VOC_COL_STATUS_CORRUPTED 
+TRI_vocbase_col_status_e TRI_vocbase_col_t::tryFetchStatus(bool& found) {
+  TRY_READ_LOCKER(locker, _lock);
+  if (locker.isLocked()) {
+    found = true;
+    return _status;
+  }
+  found = false;
+  return TRI_VOC_COL_STATUS_CORRUPTED;
 }
   
 void TRI_vocbase_col_t::toVelocyPack(VPackBuilder& builder, bool includeIndexes,
@@ -948,6 +959,17 @@ char const* TRI_vocbase_col_t::statusString(TRI_vocbase_col_status_e status) {
     case TRI_VOC_COL_STATUS_NEW_BORN:
     default:
       return "unknown";
+  }
+}
+   
+/// @brief set the collection status from the outside
+void TRI_vocbase_col_t::setStatus(TRI_vocbase_col_status_e status) {
+  _status = status; 
+
+  if (status == TRI_VOC_COL_STATUS_LOADED) {
+    _internalVersion = 0;
+  } else if (status == TRI_VOC_COL_STATUS_UNLOADED) {
+    _collection = nullptr;
   }
 }
 
@@ -1066,8 +1088,8 @@ std::shared_ptr<VPackBuilder> TRI_vocbase_t::inventory(TRI_voc_tick_t maxTick,
     for (auto& collection : collections) {
       READ_LOCKER(readLocker, collection->_lock);
 
-      if (collection->_status == TRI_VOC_COL_STATUS_DELETED ||
-          collection->_status == TRI_VOC_COL_STATUS_CORRUPTED) {
+      if (collection->status() == TRI_VOC_COL_STATUS_DELETED ||
+          collection->status() == TRI_VOC_COL_STATUS_CORRUPTED) {
         // we do not need to care about deleted or corrupted collections
         continue;
       }
@@ -1224,22 +1246,22 @@ int TRI_vocbase_t::unloadCollection(TRI_vocbase_col_t* collection, bool force) {
     WRITE_LOCKER_EVENTUAL(locker, collection->_lock, 1000);
 
     // cannot unload a corrupted collection
-    if (collection->_status == TRI_VOC_COL_STATUS_CORRUPTED) {
+    if (collection->status() == TRI_VOC_COL_STATUS_CORRUPTED) {
       return TRI_set_errno(TRI_ERROR_ARANGO_CORRUPTED_COLLECTION);
     }
 
     // an unloaded collection is unloaded
-    if (collection->_status == TRI_VOC_COL_STATUS_UNLOADED) {
+    if (collection->status() == TRI_VOC_COL_STATUS_UNLOADED) {
       return TRI_ERROR_NO_ERROR;
     }
 
     // an unloading collection is treated as unloaded
-    if (collection->_status == TRI_VOC_COL_STATUS_UNLOADING) {
+    if (collection->status() == TRI_VOC_COL_STATUS_UNLOADING) {
       return TRI_ERROR_NO_ERROR;
     }
 
     // a loading collection
-    if (collection->_status == TRI_VOC_COL_STATUS_LOADING) {
+    if (collection->status() == TRI_VOC_COL_STATUS_LOADING) {
       // throw away the write locker. we're going to switch to a read locker now
       locker.unlock();
 
@@ -1249,7 +1271,7 @@ int TRI_vocbase_t::unloadCollection(TRI_vocbase_col_t* collection, bool force) {
 
         {
           READ_LOCKER_EVENTUAL(readLocker, collection->_lock, 1000);
-          status = collection->_status;
+          status = collection->status();
         }
 
         if (status != TRI_VOC_COL_STATUS_LOADING) {
@@ -1263,17 +1285,17 @@ int TRI_vocbase_t::unloadCollection(TRI_vocbase_col_t* collection, bool force) {
     }
 
     // a deleted collection is treated as unloaded
-    if (collection->_status == TRI_VOC_COL_STATUS_DELETED) {
+    if (collection->status() == TRI_VOC_COL_STATUS_DELETED) {
       return TRI_ERROR_NO_ERROR;
     }
 
     // must be loaded
-    if (collection->_status != TRI_VOC_COL_STATUS_LOADED) {
+    if (collection->status() != TRI_VOC_COL_STATUS_LOADED) {
       return TRI_set_errno(TRI_ERROR_INTERNAL);
     }
 
     // mark collection as unloading
-    collection->_status = TRI_VOC_COL_STATUS_UNLOADING;
+    collection->setStatus(TRI_VOC_COL_STATUS_UNLOADING);
 
     // add callback for unload
     collection->_collection->ditches()->createUnloadCollectionDitch(

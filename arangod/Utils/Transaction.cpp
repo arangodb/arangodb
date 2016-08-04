@@ -537,7 +537,7 @@ std::vector<std::string> Transaction::collectionNames() const {
 
   for (auto& trxCollection : _trx->_collections) {
     if (trxCollection->_collection != nullptr) {
-      result.emplace_back(trxCollection->_collection->_name);
+      result.emplace_back(trxCollection->_collection->name());
     }
   }
 
