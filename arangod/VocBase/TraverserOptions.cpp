@@ -266,7 +266,8 @@ arangodb::traverser::TraverserOptions::TraverserOptions(
 
     _depthLookupInfo.reserve(read.length());
     for (auto const& depth : VPackObjectIterator(read)) {
-      auto it = _depthLookupInfo.emplace(depth.key.getNumber<size_t>(), std::vector<LookupInfo>());
+      size_t d = basics::StringUtils::uint64(depth.key.copyString());
+      auto it = _depthLookupInfo.emplace(d, std::vector<LookupInfo>());
       TRI_ASSERT(it.second);
       VPackSlice list = depth.value;
       it.first->second.reserve(length);
@@ -288,9 +289,10 @@ arangodb::traverser::TraverserOptions::TraverserOptions(
     for (auto const& info : VPackObjectIterator(read)) {
       arangodb::basics::Json infoJson(TRI_UNKNOWN_MEM_ZONE,
           arangodb::basics::VelocyPackHelper::velocyPackToJson(info.value));
-      auto it =
-          _vertexExpressions.emplace(info.key.getNumber<size_t>(),
-                                   new aql::Expression(query->ast(), infoJson));
+
+      size_t d = basics::StringUtils::uint64(info.key.copyString());
+      auto it = _vertexExpressions.emplace(
+          d, new aql::Expression(query->ast(), infoJson));
       TRI_ASSERT(it.second);
     }
   }
@@ -399,7 +401,7 @@ void arangodb::traverser::TraverserOptions::buildEngineInfo(VPackBuilder& result
     result.add(VPackValue("depthLookupInfo"));
     result.openObject();
     for (auto const& pair : _depthLookupInfo) {
-      result.add(VPackValue(pair.first));
+      result.add(VPackValue(basics::StringUtils::itoa(pair.first)));
       result.openArray();
       for (auto const& it : pair.second) {
         it.buildEngineInfo(result);
@@ -413,7 +415,7 @@ void arangodb::traverser::TraverserOptions::buildEngineInfo(VPackBuilder& result
     result.add(VPackValue("vertexExpressions"));
     result.openObject();
     for (auto const& pair : _vertexExpressions) {
-      result.add(VPackValue(pair.first));
+      result.add(VPackValue(basics::StringUtils::itoa(pair.first)));
       // Do we need verbosity true here?
       pair.second->toVelocyPack(result, false);
     }
