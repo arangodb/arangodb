@@ -64,8 +64,7 @@ class State {
                            std::vector<bool> const& indices, term_t term);
   
   /// @brief Log entries (followers)
-  index_t log(query_t const& queries, term_t term, index_t prevLogIndex,
-              term_t prevLogTerm);
+  arangodb::consensus::index_t log(query_t const& queries, size_t ndups = 0);
   
   /// @brief Find entry at index with term
   bool find(index_t index, term_t term);
@@ -103,7 +102,7 @@ class State {
 
   bool compact(arangodb::consensus::index_t cind);
 
-  void removeConflicts(query_t const&);
+  size_t removeConflicts(query_t const&);
 
 
  private:

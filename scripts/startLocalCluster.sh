@@ -52,7 +52,7 @@ COMP=100
 BASE=4001
 NATH=$(( $NRDBSERVERS + $NRCOORDINATORS + $NRAGENTS ))
 
-rm -rf cluster
+#rm -rf cluster
 mkdir -p cluster
 echo Starting agency ... 
 if [ $NRAGENTS -gt 1 ]; then
