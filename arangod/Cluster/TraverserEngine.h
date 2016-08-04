@@ -62,6 +62,9 @@ class TraverserEngine {
    void getEdges(arangodb::velocypack::Slice, size_t,
                  arangodb::velocypack::Builder&);
 
+   void getVertexData(arangodb::velocypack::Slice,
+                      arangodb::velocypack::Builder&);
+
    void getVertexData(arangodb::velocypack::Slice, size_t,
                       arangodb::velocypack::Builder&);
 

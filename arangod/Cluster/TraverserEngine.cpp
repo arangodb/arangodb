@@ -116,9 +116,9 @@ void TraverserEngine::getEdges(VPackSlice vertex, size_t depth, VPackBuilder& bu
   size_t filtered = 0;
   std::vector<VPackSlice> result;
   builder.openObject();
+  builder.add(VPackValue("edges"));
+  builder.openArray();
   if (vertex.isArray()) {
-    builder.add(VPackValue("edges"));
-    builder.openArray();
     for (VPackSlice v : VPackArrayIterator(vertex)) {
       TRI_ASSERT(v.isString());
       result.clear();
@@ -129,14 +129,11 @@ void TraverserEngine::getEdges(VPackSlice vertex, size_t depth, VPackBuilder& bu
           result.pop_back();
         }
       }
-      builder.openArray();
       for (auto const& it : result) {
         builder.add(it);
       }
-      builder.close();
       // Result now contains all valid edges, probably multiples.
     }
-    builder.close();
   } else if (vertex.isString()) {
     auto edgeCursor = _opts->nextCursor(vertex, depth);
     while(edgeCursor->next(result, cursorId)) {
@@ -145,26 +142,66 @@ void TraverserEngine::getEdges(VPackSlice vertex, size_t depth, VPackBuilder& bu
         result.pop_back();
       }
     }
-    builder.add(VPackValue("edges"));
-    builder.openArray();
     for (auto const& it : result) {
       builder.add(it);
     }
-    builder.close();
     // Result now contains all valid edges, probably multiples.
   } else {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
   }
+  builder.close();
   builder.add("readIndex", VPackValue(read));
   builder.add("filtered", VPackValue(filtered));
   builder.close();
 }
 
-void TraverserEngine::getVertexData(VPackSlice vertex, size_t depth, VPackBuilder& builder) {
-  // We just hope someone has locked the shards properly. We have no clue... Thanks locking
+void TraverserEngine::getVertexData(VPackSlice vertex, VPackBuilder& builder) {
+  // We just hope someone has locked the shards properly. We have no clue...
+  // Thanks locking
+  TRI_ASSERT(vertex.isString() || vertex.isArray());
+  builder.openObject();
+  VPackBuilder tmpResult;
+  bool found;
+  int res = TRI_ERROR_NO_ERROR;
+  auto workOnOneDocument = [&](VPackSlice v) {
+    tmpResult.clear();
+    found = false;
+    for (std::string const& shard : _vertexShards) {
+      res = _trx->documentFastPath(shard, v, tmpResult);
+      if (res == TRI_ERROR_NO_ERROR) {
+        found = true;
+        // FOUND short circuit.
+        break;
+      }
+      if (res != TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
+        // We are in a very bad condition here...
+        THROW_ARANGO_EXCEPTION(res);
+      }
+    }
+    // TODO FILTERING!
+    // HOWTO Distinguish filtered vs NULL?
+    builder.add(v);
+    if (!found) {
+      builder.add(arangodb::basics::VelocyPackHelper::NullValue());
+    } else {
+      builder.add(tmpResult.slice());
+    }
+  };
 
-  // TODO use external or internal builder for result
-  // Alternative: Dump directly into body.
+  if (vertex.isArray()) {
+    for (VPackSlice v : VPackArrayIterator(vertex)) {
+      workOnOneDocument(v);
+    }
+  } else {
+    workOnOneDocument(vertex);
+  }
+  builder.close(); // The outer object
+}
+
+void TraverserEngine::getVertexData(VPackSlice vertex, size_t depth,
+                                    VPackBuilder& builder) {
+  // We just hope someone has locked the shards properly. We have no clue...
+  // Thanks locking
   TRI_ASSERT(vertex.isString() || vertex.isArray());
   size_t read = 0;
   size_t filtered = 0;

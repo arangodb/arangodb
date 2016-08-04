@@ -27,6 +27,7 @@
 #include "Aql/Expression.h"
 #include "Aql/Query.h"
 #include "Basics/JsonHelper.h"
+#include "Cluster/ClusterEdgeCursor.h"
 #include "VocBase/SingleServerTraverser.h"
 
 using Json = arangodb::basics::Json;
@@ -433,6 +434,10 @@ bool arangodb::traverser::TraverserOptions::vertexHasFilter(
 bool arangodb::traverser::TraverserOptions::evaluateEdgeExpression(
     arangodb::velocypack::Slice edge, arangodb::velocypack::Slice vertex,
     size_t depth, size_t cursorId) const {
+  if (arangodb::ServerState::instance()->isCoordinator()) {
+    // The Coordinator never checks conditions. The DBServer is responsible!
+    return true;
+  }
   bool mustDestroy = false;
   auto specific = _depthLookupInfo.find(depth);
   arangodb::aql::Expression* expression = nullptr;
@@ -446,6 +451,7 @@ bool arangodb::traverser::TraverserOptions::evaluateEdgeExpression(
     expression = specific->second[cursorId].expression;
   } else {
     TRI_ASSERT(!_baseLookupInfos.empty());
+    LOG(ERR) << _baseLookupInfos.size() << " vs " << cursorId;
     TRI_ASSERT(_baseLookupInfos.size() > cursorId);
     expression = _baseLookupInfos[cursorId].expression;
   }
@@ -494,15 +500,15 @@ bool arangodb::traverser::TraverserOptions::evaluateVertexExpression(
 arangodb::traverser::EdgeCursor*
 arangodb::traverser::TraverserOptions::nextCursor(VPackSlice vertex,
                                                   size_t depth) const {
+  if (arangodb::ServerState::instance()->isCoordinator()) {
+    return nextCursorCoordinator(vertex, depth);
+  }
   auto specific = _depthLookupInfo.find(depth);
   std::vector<LookupInfo> list;
   if (specific != _depthLookupInfo.end()) {
     list = specific->second;
   } else {
     list = _baseLookupInfos;
-  }
-  if (arangodb::ServerState::instance()->isCoordinator()) {
-    return nextCursorCoordinator(vertex, depth, list);
   }
   return nextCursorLocal(vertex, depth, list);
 }
@@ -535,8 +541,12 @@ arangodb::traverser::TraverserOptions::nextCursorLocal(
 
 arangodb::traverser::EdgeCursor*
 arangodb::traverser::TraverserOptions::nextCursorCoordinator(
-    VPackSlice vertex, size_t depth, std::vector<LookupInfo>& list) const {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+    VPackSlice vertex, size_t depth) const {
+  TRI_ASSERT(_traverser != nullptr);
+  auto cursor = std::make_unique<ClusterEdgeCursor>(vertex, depth, _traverser);
+  return cursor.release();
+  LOG(ERR) << "ULF ULF";
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_DIRECTORY_ALREADY_EXISTS);
 }
 
 void arangodb::traverser::TraverserOptions::clearVariableValues() {
@@ -548,4 +558,8 @@ void arangodb::traverser::TraverserOptions::setVariableValue(
   _ctx->setVariableValue(var, value);
 }
 
+void arangodb::traverser::TraverserOptions::linkTraverser(
+    arangodb::traverser::ClusterTraverser* trav) {
+  _traverser = trav;
+}
 

@@ -33,19 +33,18 @@ class CollectionNameResolver;
 class Transaction;
 
 namespace traverser {
+class ClusterEdgeCursor;
 
 class PathEnumerator;
 
 class ClusterTraverser final : public Traverser {
+  friend class ClusterEdgeCursor;
 
  public:
   ClusterTraverser(
       TraverserOptions* opts,
       std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines,
-      std::string const& dbname, Transaction* trx)
-      : Traverser(opts, trx),
-        _dbname(dbname),
-        _engines(engines) {}
+      std::string const& dbname, Transaction* trx);
 
   ~ClusterTraverser() {
   }
@@ -120,13 +119,12 @@ class ClusterTraverser final : public Traverser {
 
  private:
 
-  void fetchVertices(std::unordered_set<std::string>&, size_t);
+  void fetchVertices();
 
   bool vertexMatchesCondition(arangodb::velocypack::Slice const&,
                               std::vector<TraverserExpression*> const&);
 
-  std::unordered_map<std::string,
-                     std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
+  std::unordered_map<arangodb::velocypack::Slice, arangodb::velocypack::Slice>
       _edges;
 
   std::unordered_map<arangodb::velocypack::Slice,
@@ -140,6 +138,10 @@ class ClusterTraverser final : public Traverser {
   arangodb::velocypack::Builder _builder;
 
   std::unordered_map<ServerID, traverser::TraverserEngineID> const* _engines;
+
+  std::unordered_set<arangodb::velocypack::Slice> _verticesToFetch;
+
+  std::vector<std::shared_ptr<arangodb::velocypack::Builder>> _datalake;
 
 };
 

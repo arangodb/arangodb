@@ -32,7 +32,16 @@ using namespace arangodb;
 
 using ClusterTraverser = arangodb::traverser::ClusterTraverser;
 
+ClusterTraverser::ClusterTraverser(
+    TraverserOptions* opts,
+    std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines,
+    std::string const& dbname, Transaction* trx)
+    : Traverser(opts, trx), _dbname(dbname), _engines(engines) {
+  _opts->linkTraverser(this);
+}
+
 void ClusterTraverser::setStartVertex(std::string const& id) {
+  _verticesToFetch.clear();
   _startIdBuilder->clear();
   _startIdBuilder->add(VPackValue(id));
   VPackSlice idSlice = _startIdBuilder->slice();
@@ -43,16 +52,6 @@ void ClusterTraverser::setStartVertex(std::string const& id) {
     if (firstSlash == std::string::npos ||
         id.find("/", firstSlash + 1) != std::string::npos) {
       // We can stop here. The start vertex is not a valid _id
-      ++_filteredPaths;
-      _done = true;
-      return;
-    }
-    std::unordered_set<std::string> vertexToFetch;
-    vertexToFetch.emplace(id);
-    fetchVertices(vertexToFetch, 0); // this inserts the vertex
-    it = _vertices.find(idSlice);
-    if (it == _vertices.end()) {
-      // We can stop here. The start vertex does not match condition.
       ++_filteredPaths;
       _done = true;
       return;
@@ -78,18 +77,38 @@ void ClusterTraverser::setStartVertex(std::string const& id) {
 
 bool ClusterTraverser::getVertex(VPackSlice edge,
                                  std::vector<VPackSlice>& result) {
-  return _vertexGetter->getVertex(edge, result);
+  bool res = _vertexGetter->getVertex(edge, result);
+  if (res) {
+    VPackSlice other = result.back();
+    if (_vertices.find(other) == _vertices.end()) {
+      // Vertex not yet cached. Prepare it.
+      _verticesToFetch.emplace(other);
+    }
+  }
+  return res;
 }
 
 bool ClusterTraverser::getSingleVertex(VPackSlice edge, VPackSlice comp,
                                        size_t depth, VPackSlice& result) {
-  return _vertexGetter->getSingleVertex(edge, comp, depth, result);
+  bool res = _vertexGetter->getSingleVertex(edge, comp, depth, result);
+  if (res) {
+    if (_vertices.find(result) == _vertices.end()) {
+      // Vertex not yet cached. Prepare it.
+      _verticesToFetch.emplace(result);
+    }
+  }
+  return res;
 }
 
-
-void ClusterTraverser::fetchVertices(std::unordered_set<std::string>& verticesToFetch, size_t depth) {
-  _readDocuments += verticesToFetch.size();
-
+void ClusterTraverser::fetchVertices() {
+  _readDocuments += _verticesToFetch.size();
+  TransactionBuilderLeaser lease(_trx);
+  int res = fetchVerticesFromEngines(_dbname, _engines, _verticesToFetch,
+                                     _vertices, *(lease.get()));
+  if (res != TRI_ERROR_NO_ERROR) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
+  _verticesToFetch.clear();
 #warning Reimplement this. Fetching Documents Coordinator-Case
   /*
   std::vector<TraverserExpression*> expVertices;
@@ -138,7 +157,13 @@ bool ClusterTraverser::next() {
 aql::AqlValue ClusterTraverser::fetchVertexData(VPackSlice idString) {
   TRI_ASSERT(idString.isString());
   auto cached = _vertices.find(idString);
-  // All vertices are cached!!
+  if (cached == _vertices.end()) {
+    // Vertex not yet cached. Prepare for load.
+    _verticesToFetch.emplace(idString);
+    fetchVertices();
+    cached = _vertices.find(idString);
+  }
+  // Now all vertices are cached!!
   TRI_ASSERT(cached != _vertices.end());
   return aql::AqlValue((*cached).second->data());
 }

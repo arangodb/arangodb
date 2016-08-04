@@ -44,6 +44,8 @@ class TraversalNode;
 
 namespace traverser {
 
+class ClusterTraverser;
+
 /// @brief Abstract class used in the traversals
 /// to abstract away access to indexes / DBServers.
 /// Returns edges as VelocyPack.
@@ -94,6 +96,7 @@ struct TraverserOptions {
   std::unordered_map<size_t, aql::Expression*> _vertexExpressions;
   aql::Variable const* _tmpVar;
   aql::FixedVarExpressionContext* _ctx;
+  arangodb::traverser::ClusterTraverser* _traverser;
 
  public:
   uint64_t minDepth;
@@ -148,12 +151,13 @@ struct TraverserOptions {
 
   void setVariableValue(aql::Variable const*, aql::AqlValue const);
 
+  void linkTraverser(arangodb::traverser::ClusterTraverser*);
+
  private:
   EdgeCursor* nextCursorLocal(arangodb::velocypack::Slice, size_t,
                               std::vector<LookupInfo>&) const;
 
-  EdgeCursor* nextCursorCoordinator(arangodb::velocypack::Slice, size_t,
-                                    std::vector<LookupInfo>&) const;
+  EdgeCursor* nextCursorCoordinator(arangodb::velocypack::Slice, size_t) const;
 };
 
 }

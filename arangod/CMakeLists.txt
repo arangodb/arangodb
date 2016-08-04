@@ -165,6 +165,7 @@ add_executable(${BIN_ARANGOD}
   Cluster/AgencyCallbackRegistry.cpp
   Cluster/AgencyComm.cpp
   Cluster/ClusterComm.cpp
+  Cluster/ClusterEdgeCursor.cpp
   Cluster/ClusterFeature.cpp
   Cluster/ClusterInfo.cpp
   Cluster/ClusterMethods.cpp

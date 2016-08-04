@@ -180,13 +180,6 @@ void InternalRestTraverserHandler::queryEngine() {
   VPackSlice body = parsedBody->slice();
   VPackSlice depthSlice = body.get("depth");
 
-  if (!depthSlice.isInteger()) {
-    generateError(
-        GeneralResponse::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-        "expecting 'depth' to be an integer value");
-    return;
-  }
-
   VPackSlice keysSlice = body.get("keys");
 
   if (!keysSlice.isString() && !keysSlice.isArray()) {
@@ -198,9 +191,26 @@ void InternalRestTraverserHandler::queryEngine() {
 
   VPackBuilder result;
   if (option == "edge") {
+    if (!depthSlice.isInteger()) {
+      generateError(
+          GeneralResponse::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+          "expecting 'depth' to be an integer value");
+      return;
+    }
+
     engine->getEdges(keysSlice, depthSlice.getNumericValue<size_t>(), result);
   } else if (option == "vertex") {
-    engine->getVertexData(keysSlice, depthSlice.getNumericValue<size_t>(), result);
+    if (depthSlice.isNone()) {
+      engine->getVertexData(keysSlice, result);
+    } else {
+      if (!depthSlice.isInteger()) {
+        generateError(
+            GeneralResponse::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+            "expecting 'depth' to be an integer value");
+        return;
+      }
+      engine->getVertexData(keysSlice, depthSlice.getNumericValue<size_t>(), result);
+    }
   } else {
     // PATH Info wrong other error
     generateError(
@@ -208,6 +218,7 @@ void InternalRestTraverserHandler::queryEngine() {
         "");
     return;
   }
+  LOG(ERR) << "We return " << result.toJson();
 
   generateResult(GeneralResponse::ResponseCode::OK, result.slice());
 }
