@@ -180,7 +180,13 @@ void ClusterTraverser::addVertexToVelocyPack(VPackSlice id,
                                              VPackBuilder& result) {
   TRI_ASSERT(id.isString());
   auto cached = _vertices.find(id);
-  // All vertices are cached!!
+  if (cached == _vertices.end()) {
+    // Vertex not yet cached. Prepare for load.
+    _verticesToFetch.emplace(id);
+    fetchVertices();
+    cached = _vertices.find(id);
+  }
+  // Now all vertices are cached!!
   TRI_ASSERT(cached != _vertices.end());
   result.add(VPackSlice((*cached).second->data()));
 }

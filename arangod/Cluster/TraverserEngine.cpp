@@ -180,10 +180,8 @@ void TraverserEngine::getVertexData(VPackSlice vertex, VPackBuilder& builder) {
     }
     // TODO FILTERING!
     // HOWTO Distinguish filtered vs NULL?
-    builder.add(v);
-    if (!found) {
-      builder.add(arangodb::basics::VelocyPackHelper::NullValue());
-    } else {
+    if (found) {
+      builder.add(v);
       builder.add(tmpResult.slice());
     }
   };

@@ -1674,7 +1674,6 @@ int fetchVerticesFromEngines(
   cc->performRequests(requests, CL_DEFAULT_TIMEOUT, nrDone, Logger::REQUESTS);
 
   // Now listen to the results:
-
   for (auto const& req : requests) {
     auto res = req.result;
     int commError = handleGeneralCommErrors(&res);
@@ -1692,7 +1691,7 @@ int fetchVerticesFromEngines(
     for (auto const& pair : VPackObjectIterator(resSlice)) {
       if (vertexIds.erase(pair.key) == 0) {
         // We either found the same vertex twice,
-        // or found a vertex we did not requests.
+        // or found a vertex we did not request.
         // Anyways something somewhere went seriously wrong
         return TRI_ERROR_CLUSTER_GOT_CONTRADICTING_ANSWERS;
       }
