@@ -2,24 +2,24 @@
 
 !SECTION Naming
 
-The *::* symbol is used inside AQL as the namespace separator. Using
-the namespace separator, users can create a multi-level hierarchy of
-function groups if required.
+Built-in AQL functions that are shipped with ArangoDB reside in the namespace
+*_aql*, which is also the default namespace to look in if an unqualified
+function name is found.
 
-Examples:
+To refer to a user-defined AQL function, the function name must be fully
+qualified to also include the user-defined namespace. The *::* symbol is used
+as the namespace separator. Users can create a multi-level hierarchy of function
+groups if required:
 
 ```js
-RETURN myfunctions::myfunc()
-RETURN myfunctions::math::random()
+MYGROUP::MYFUNC()
+MYFUNCTIONS::MATH::RANDOM()
 ```
 
-**Note**: As all function names in AQL, user function names are also
-case-insensitive.
+**Note**: Adding user functions to the *_aql* namespace is disallowed and will
+fail.
 
-Built-in AQL functions reside in the namespace *_aql*, which is also
-the default namespace to look in if an unqualified function name is
-found. Adding user functions to the *_aql* namespace is disallowed and
-will fail.
+User function names are case-insensitive like all function names in AQL.
 
 !SECTION Variables and side effects
 
@@ -87,8 +87,8 @@ and state outside of the user function itself.
 User functions must only return primitive types (i.e. *null*, boolean
 values, numeric values, string values) or aggregate types (arrays or
 objects) composed of these types.
-Returning any other JavaScript object type from a user function may lead
-to undefined behavior and should be avoided.
+Returning any other JavaScript object type (Function, Date, RegExp etc.) from
+a user function may lead to undefined behavior and should be avoided.
 
 !SECTION Enforcing strict mode
 
@@ -111,17 +111,3 @@ function (values) {
 ```
 
 Any violation of the strict mode will trigger a runtime error.
-
-!SECTION Miscellaneous
-
-Internally, user functions are stored in a system collection named
-*_aqlfunctions* of the selected database. The functions will be exclusively
-available for queries in that particular database.
-
-Documents in the *_aqlfunctions* collection (or any other system collection)
-should not be accessed directly, but only via the dedicated interfaces.
-
-Keep in mind that system collections are excluded from dumps created with
-[arangodump](../../Manual/Administration/Arangodump.html) by default. To include AQL user
-functions in a dump, the dump needs to be started with the
-option *--include-system-collections true*.

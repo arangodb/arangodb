@@ -29,37 +29,4 @@ i.e. *LENGTH(foo)* and *length(foo)* are equivalent.
  
 It is possible to extend AQL with user-defined functions. These functions need to
 be written in JavaScript, and be registered before usage in a query. Please refer
-to [Extending AQL](../Extending/index.html) for more details on this.
-
-By default, any function used in an AQL query will be sought in the built-in 
-function namespace *_aql*. This is the default namespace that contains all AQL
-functions that are shipped with ArangoDB. 
-To refer to a user-defined AQL function, the function name must be fully qualified
-to also include the user-defined namespace. The *::* symbol is used as the namespace
-separator:
-
-```js
-MYGROUP::MYFUNC()
-MYFUNCTIONS::MATH::RANDOM()
-```
-
-As all AQL function names, user function names are also case-insensitive.
-
-!SUBSUBSECTION Technical Details
-ArangoDB stores user defined functions in the `_functions` system collection.
-When an AQL statement refers to such a function, its loaded from that collection.
-
-Since the optimizer doesn't know anything about this function, it won't be able
-to use indices for these functions.
-
-When used in clusters, the UDF is executed on the coordinator. Depending on your
-query layout, this may result in many documents having to be passed up from the
-DB-Servers to the Coordinator. To avoid this, you should make sure that the query
-contains effective `FILTER` statements that can be used to DB-Server to reduce
-the query result before passing it up to the Coordinator and your UDF.
-
-Since the Coordinator doesn't have own local collections, the `_functions` collection
-is sharded across the cluster. Therefore (as usual) it has to be accessed through the coordinator -
-you mustn't talk to the DB-Servers directly. Once its in there, it will be available
-on all coordinators.
-
+to [Extending AQL](../Extending/index.html) for more details.
