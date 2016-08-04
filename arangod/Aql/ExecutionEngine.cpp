@@ -526,6 +526,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     std::string error;
     int count = 0;
     int nrok = 0;
+    int errorCode = TRI_ERROR_NO_ERROR;
     for (count = (int)shardIds->size(); count > 0; count--) {
       auto res = cc->wait("", coordTransactionID, 0, "", 30.0);
 
@@ -561,13 +562,19 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
         }
       } else {
         error += res.stringifyErrorMessage();
+        if (errorCode == TRI_ERROR_NO_ERROR) {
+          errorCode = res.getErrorCode();
+        }
       }
     }
 
     // std::cout << "GOT ALL RESPONSES FROM DB SERVERS: " << nrok << "\n";
 
     if (nrok != (int)shardIds->size()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, error);
+      if (errorCode == TRI_ERROR_NO_ERROR) {
+        errorCode = TRI_ERROR_INTERNAL; // must have an error
+      }
+      THROW_ARANGO_EXCEPTION_MESSAGE(errorCode, error);
     }
   }
 
