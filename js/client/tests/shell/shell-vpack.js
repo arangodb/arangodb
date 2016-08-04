@@ -78,7 +78,7 @@ function RequestSuite () {
       expect(res).to.be.a(request.Response);
       expect(res.body).to.be.a('string');
       expect(Number(res.headers['content-length'])).to.equal(res.rawBody.length);
-      expect(String(res.headers['content-type'])).to.equal("application/json");
+      expect(String(res.headers['content-type'])).to.have.string("application/json");
 
       var obj = JSON.parse(res.body);
       var expected = { "server" : "arango" , "version" : "3.0.devel" };
@@ -97,7 +97,7 @@ function RequestSuite () {
       expect(res).to.be.a(request.Response);
       expect(res.body).to.be.a('string');
       expect(Number(res.headers['content-length'])).to.equal(res.rawBody.length);
-      expect(String(res.headers['content-type'])).to.equal("application/json");
+      expect(String(res.headers['content-type'])).to.have.string("application/json");
 
       var obj = JSON.parse(res.body);
       var expected = { "server" : "arango" , "version" : "3.0.devel" };
@@ -117,7 +117,7 @@ function RequestSuite () {
       expect(res).to.be.a(request.Response);
       expect(res.body).to.be.a('string');
       expect(Number(res.headers['content-length'])).to.equal(res.rawBody.length);
-      expect(String(res.headers['content-type'])).to.equal("application/x-velocypack");
+      expect(String(res.headers['content-type'])).to.have.string("application/x-velocypack");
 
       var obj = VPACK_TO_V8(res.body);
       var expected = { "server" : "arango" , "version" : "3.0.devel" };
@@ -137,7 +137,7 @@ function RequestSuite () {
       expect(res).to.be.a(request.Response);
       expect(res.body).to.be.a('string');
       expect(Number(res.headers['content-length'])).to.equal(res.rawBody.length);
-      expect(String(res.headers['content-type'])).to.equal("application/x-velocypack");
+      expect(String(res.headers['content-type'])).to.have.string("application/x-velocypack");
 
       var obj = VPACK_TO_V8(res.body);
       var expected = { "server" : "arango" , "version" : "3.0.devel" };
