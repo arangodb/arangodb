@@ -85,6 +85,7 @@ class TraversalNode : public ExecutionNode {
  private:
   TraversalNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
                 std::vector<std::unique_ptr<aql::Collection>> const& edgeColls,
+                std::vector<std::unique_ptr<aql::Collection>> const& vertexColls,
                 Variable const* inVariable, std::string const& vertexId,
                 std::vector<TRI_edge_direction_e> directions,
                 std::unique_ptr<traverser::TraverserOptions>& options);

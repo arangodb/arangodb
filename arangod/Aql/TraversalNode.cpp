@@ -318,6 +318,7 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id,
 TraversalNode::TraversalNode(
     ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
     std::vector<std::unique_ptr<aql::Collection>> const& edgeColls,
+    std::vector<std::unique_ptr<aql::Collection>> const& vertexColls,
     Variable const* inVariable, std::string const& vertexId,
     std::vector<TRI_edge_direction_e> directions,
     std::unique_ptr<traverser::TraverserOptions>& options)
@@ -343,6 +344,12 @@ TraversalNode::TraversalNode(
     _edgeColls.emplace_back(std::make_unique<aql::Collection>(
         it->getName(), _vocbase, TRI_TRANSACTION_READ));
     _graphJson.add(arangodb::basics::Json(it->getName()));
+  }
+
+  for (auto& it : vertexColls) {
+    // Collections cannot be copied. So we need to create new ones to prevent leaks
+    _vertexColls.emplace_back(std::make_unique<aql::Collection>(
+        it->getName(), _vocbase, TRI_TRANSACTION_READ));
   }
 }
 
@@ -452,7 +459,7 @@ TraversalNode::TraversalNode(ExecutionPlan* plan,
 
   if (!base.has("edgeCollections")) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_BAD_JSON_PLAN,
-                                   "traverser needs an array if edge collections.");
+                                   "traverser needs an array of edge collections.");
   }
   {
     TRI_json_t const* list =
@@ -467,6 +474,26 @@ TraversalNode::TraversalNode(ExecutionPlan* plan,
           std::make_unique<aql::Collection>(e, _vocbase, TRI_TRANSACTION_READ));
     }
   }
+
+  if (!base.has("vertexCollections")) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_BAD_JSON_PLAN,
+                                   "traverser needs an array of vertex collections.");
+  }
+  {
+    TRI_json_t const* list =
+        JsonHelper::checkAndGetArrayValue(base.json(), "vertexCollections");
+    size_t count = TRI_LengthVector(&list->_value._objects);
+    // List of edge collection names
+    for (size_t i = 0; i < count; ++i) {
+      auto vName = static_cast<TRI_json_t const*>(
+          TRI_AtVector(&list->_value._objects, i));
+      std::string v = JsonHelper::getStringValue(vName, "");
+      _vertexColls.emplace_back(
+          std::make_unique<aql::Collection>(v, _vocbase, TRI_TRANSACTION_READ));
+    }
+  }
+
+
 
   // Out variables
   if (base.has("vertexOutVariable")) {
@@ -643,6 +670,16 @@ void TraversalNode::toVelocyPackHelper(arangodb::velocypack::Builder& nodes,
     }
   }
 
+  nodes.add(VPackValue("vertexCollections"));
+  {
+    VPackArrayBuilder guard(&nodes);
+    for (auto const& v : _vertexColls) {
+      nodes.add(VPackValue(v->getName()));
+    }
+  }
+
+
+
   // In variable
   if (usesInVariable()) {
     nodes.add(VPackValue("inVariable"));
@@ -750,8 +787,8 @@ ExecutionNode* TraversalNode::clone(ExecutionPlan* plan, bool withDependencies,
   TRI_ASSERT(!_optionsBuild);
   auto tmp =
       std::make_unique<arangodb::traverser::TraverserOptions>(*_options.get());
-  auto c = new TraversalNode(plan, _id, _vocbase, _edgeColls, _inVariable,
-                             _vertexId, _directions, tmp);
+  auto c = new TraversalNode(plan, _id, _vocbase, _edgeColls, _vertexColls,
+                             _inVariable, _vertexId, _directions, tmp);
 
   if (usesVertexOutVariable()) {
     auto vertexOutVariable = _vertexOutVariable;
