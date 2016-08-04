@@ -195,9 +195,13 @@ size_t State::removeConflicts (query_t const& transactions) {
       if (idx-_cur < _log.size()) {
         
         for (auto const& slice : VPackArrayIterator(slices)) {
+
+          LOG(WARN) << slice.toJson();
           
           auto trm = slice.get("term").getUInt();
           idx = slice.get("index").getUInt();
+
+          LOG(WARN) << VPackSlice(_log.at(idx-_cur).entry->data());
           
           if (trm > VPackSlice(
                 _log.at(idx-_cur).entry->data()).get("term").getUInt()) { 

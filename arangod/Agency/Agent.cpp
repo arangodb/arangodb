@@ -260,8 +260,7 @@ bool Agent::recvAppendEntriesRPC(term_t term,
         << "Appending " << nqs - ndups << " entries to state machine." <<
         nqs << " " << ndups;
 
-      size_t highest = _state.log(queries, ndups);
-      
+      _state.log(queries, ndups);
   
     }
     
