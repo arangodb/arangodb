@@ -127,7 +127,7 @@ void CleanupThread::run() {
       usleep(10000);
     }
 
-    if (state == TRI_vocbase_t::State::SHUTDOWN_CLEANUP) {
+    if (state == TRI_vocbase_t::State::SHUTDOWN_CLEANUP || isStopping()) {
       // server shutdown
       break;
     }

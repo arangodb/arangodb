@@ -109,6 +109,13 @@ TRI_vocbase_col_t::TRI_vocbase_col_t(TRI_vocbase_t* vocbase, TRI_col_type_e type
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_vocbase_col_t::~TRI_vocbase_col_t() {}
+          
+/// @brief signal the cleanup thread to wake up
+void TRI_vocbase_t::signalCleanup() {
+  if (_cleanupThread) {
+    _cleanupThread->signal();
+  }
+}
 
 /// @brief adds a new collection
 /// caller must hold _collectionsLock in write mode or set doLock
@@ -1012,8 +1019,6 @@ void TRI_vocbase_t::shutdown() {
     while (_compactorThread->isRunning()) {
       usleep(5000);
     }
-    
-    _compactorThread.reset();
   }
 
   // this will signal the cleanup thread to do one last iteration
@@ -1026,8 +1031,6 @@ void TRI_vocbase_t::shutdown() {
     while (_cleanupThread->isRunning()) {
       usleep(5000);
     }
-  
-    _cleanupThread.reset();
   }
 
   // free dead collections (already dropped but pointers still around)
@@ -1039,6 +1042,9 @@ void TRI_vocbase_t::shutdown() {
   for (auto& collection : _collections) {
     delete collection;
   }
+    
+  _compactorThread.reset();
+  _cleanupThread.reset();
 }
 
 /// @brief returns names of all known (document) collections

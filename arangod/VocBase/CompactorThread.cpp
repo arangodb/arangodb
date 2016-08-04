@@ -549,7 +549,10 @@ void CompactorThread::compactDatafiles(TRI_collection_t* document,
         if (b == nullptr) {
           LOG_TOPIC(ERR, Logger::COMPACTOR) << "out of memory when creating datafile-rename ditch";
           TRI_Free(TRI_CORE_MEM_ZONE, copy);
+        } else {
+          _vocbase->signalCleanup();
         }
+
       } else {
         // datafile is empty after compaction and thus useless
         removeDatafile(document, compaction._datafile);
@@ -561,6 +564,8 @@ void CompactorThread::compactDatafiles(TRI_collection_t* document,
 
         if (b == nullptr) {
           LOG_TOPIC(ERR, Logger::COMPACTOR) << "out of memory when creating datafile-drop ditch";
+        } else {
+          _vocbase->signalCleanup();
         }
       }
     }
@@ -568,11 +573,13 @@ void CompactorThread::compactDatafiles(TRI_collection_t* document,
 }
 
 /// @brief checks all datafiles of a collection
-bool CompactorThread::compactCollection(TRI_collection_t* document) {
+bool CompactorThread::compactCollection(TRI_collection_t* document, bool& wasBlocked) {
   // we can hopefully get away without the lock here...
   //  if (! document->isFullyCollected()) {
   //    return false;
   //  }
+
+  wasBlocked = false;
 
   // if we cannot acquire the read lock instantly, we will exit directly.
   // otherwise we'll risk a multi-thread deadlock between synchronizer,
@@ -581,6 +588,7 @@ bool CompactorThread::compactCollection(TRI_collection_t* document) {
 
   if (!readLocker.isLocked()) {
     // unable to acquire the lock at the moment
+    wasBlocked = true;
     return false;
   }
   
@@ -590,6 +598,7 @@ bool CompactorThread::compactCollection(TRI_collection_t* document) {
     // if this happens, then a previous compaction attempt for this collection
     // failed or is not finished yet
     document->setCompactionStatus(ReasonCompactionBlocked);
+    wasBlocked = true;
     return false;
   }
 
@@ -770,13 +779,13 @@ bool CompactorThread::compactCollection(TRI_collection_t* document) {
   if (toCompact.empty()) {
     // nothing to compact. now reset start index
     document->setNextCompactionStartIndex(0);
-
+    
     // cleanup local variables
     document->setCompactionStatus(ReasonNothingToCompact);
     LOG_TOPIC(DEBUG, Logger::COMPACTOR) << "inspecting datafiles of collection yielded: " << ReasonNothingToCompact;
     return false;
   }
-
+    
   // handle datafiles with dead objects
   TRI_ASSERT(toCompact.size() >= 1);
   TRI_ASSERT(reason != nullptr);
@@ -800,9 +809,9 @@ void CompactorThread::signal() {
 
 void CompactorThread::run() {
   std::vector<TRI_vocbase_col_t*> collections;
+  int numCompacted = 0;
 
   while (true) {
-    int numCompacted = 0;
     // keep initial _state value as vocbase->_state might change during
     // compaction loop
     TRI_vocbase_t::State state = _vocbase->state();
@@ -813,6 +822,7 @@ void CompactorThread::run() {
 
       if (compactionLocker.isLocked() && !hasActiveBlockers()) {
         // compaction is currently allowed
+        numCompacted = 0;
         try {
           // copy all collections
           collections = _vocbase->collections();
@@ -857,22 +867,22 @@ void CompactorThread::run() {
                 double const now = TRI_microtime();
                 if (document->_lastCompaction + compactionCollectionInterval() <= now) {
                   auto ce = document->ditches()->createCompactionDitch(__FILE__,
-                                                                      __LINE__);
+                                                                       __LINE__);
 
                   if (ce == nullptr) {
                     // out of memory
                     LOG_TOPIC(WARN, Logger::COMPACTOR) << "out of memory when trying to create compaction ditch";
                   } else {
                     try {
-                      worked = compactCollection(document);
+                      bool wasBlocked = false;
+                      worked = compactCollection(document, wasBlocked);
 
-                      if (!worked) {
+                      if (!worked && !wasBlocked) {
                         // set compaction stamp
                         document->_lastCompaction = now;
                       }
-                      // if we worked, then we don't set the compaction stamp to
-                      // force
-                      // another round of compaction
+                      // if we worked or were blocked, then we don't set the compaction stamp to
+                      // force another round of compaction
                     } catch (...) {
                       LOG_TOPIC(ERR, Logger::COMPACTOR) << "an unknown exception occurred during compaction";
                       // in case an error occurs, we must still free this ditch
@@ -911,7 +921,7 @@ void CompactorThread::run() {
       _condition.wait(compactionSleepTime());
     }
   
-    if (state == TRI_vocbase_t::State::SHUTDOWN_COMPACTOR) {
+    if (state == TRI_vocbase_t::State::SHUTDOWN_COMPACTOR || isStopping()) {
       // server shutdown
       break;
     }

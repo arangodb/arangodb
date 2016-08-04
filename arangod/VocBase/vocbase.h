@@ -237,6 +237,9 @@ struct TRI_vocbase_t {
   bool isOwnAppsDirectory() const { return _isOwnAppsDirectory; }
   void setIsOwnAppsDirectory(bool value) { _isOwnAppsDirectory = value; }
 
+  /// @brief signal the cleanup thread to wake up
+  void signalCleanup();
+
   /// @brief whether or not the vocbase has been marked as deleted
   inline bool isDropped() const {
     auto refCount = _refCount.load();

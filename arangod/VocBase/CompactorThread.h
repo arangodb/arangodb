@@ -94,7 +94,7 @@ class CompactorThread : public Thread {
   void compactDatafiles(TRI_collection_t*, std::vector<compaction_info_t> const&);
 
   /// @brief checks all datafiles of a collection
-  bool compactCollection(TRI_collection_t*);
+  bool compactCollection(TRI_collection_t*, bool& wasBlocked);
 
   int removeCompactorFile(TRI_collection_t* document, TRI_datafile_t* datafile);
 
