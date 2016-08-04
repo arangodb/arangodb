@@ -1696,7 +1696,10 @@ int fetchVerticesFromEngines(
         return TRI_ERROR_CLUSTER_GOT_CONTRADICTING_ANSWERS;
       }
       TRI_ASSERT(result.find(pair.key) == result.end());
-      result.emplace(pair.key, VPackBuilder::clone(pair.value).steal());
+      auto val = VPackBuilder::clone(pair.value);
+      VPackSlice id = val.slice().get(StaticStrings::IdString);
+      TRI_ASSERT(id.isString());
+      result.emplace(id, val.steal());
     }
   }
 
