@@ -75,7 +75,7 @@ bool SingleServerEdgeCursor::next(std::vector<VPackSlice>& result,
   }
   // We need to refill the cache.
   _cachePos = 0;
-  auto& cursorSet = _cursors[_currentCursor];
+  auto cursorSet = _cursors[_currentCursor];
   while (cursorSet.empty()) {
     // Fast Forward to the next non-empty cursor set
     _currentCursor++;
@@ -85,7 +85,7 @@ bool SingleServerEdgeCursor::next(std::vector<VPackSlice>& result,
     }
     cursorSet = _cursors[_currentCursor];
   }
-  auto& cursor = cursorSet[_currentSubCursor];
+  auto cursor = cursorSet[_currentSubCursor];
   // NOTE: We cannot clear the cache,
   // because the cursor expect's it to be filled.
   do {
