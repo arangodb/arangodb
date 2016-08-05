@@ -49,6 +49,11 @@
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 
+#include <velocypack/Validator.h>
+#include <velocypack/velocypack-aliases.h>
+
+#include <iostream>
+
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
@@ -390,12 +395,6 @@ static v8::Handle<v8::Object> RequestCppToV8(v8::Isolate* isolate,
   v8::Handle<v8::Object> headerFields = v8::Object::New(isolate);
 
   auto headers = request->headers();
-  headers["content-length"] = StringUtils::itoa(request->contentLength());
-
-  for (auto const& it : headers) {
-    headerFields->ForceSet(TRI_V8_STD_STRING(it.first),
-                           TRI_V8_STD_STRING(it.second));
-  }
 
   TRI_GET_GLOBAL_STRING(HeadersKey);
   req->ForceSet(HeadersKey, headerFields);
@@ -410,16 +409,38 @@ static v8::Handle<v8::Object> RequestCppToV8(v8::Isolate* isolate,
       }
       std::string const& body = httpreq->body();
       req->ForceSet(RequestBodyKey, TRI_V8_STD_STRING(body));
-    } else {
+      headers["content-length"] = StringUtils::itoa(request->contentLength());
+    } else if (GeneralRequest::ContentType::VPACK == request->contentType()) {
+      // the VPACK is passed as it is to to Javascript
+      // should we convert and validate here in a central place?
+      // should the work be done in javascript
       VPackSlice slice = request->payload();
-      V8Buffer* buffer =
-          V8Buffer::New(isolate, slice.startAs<char>(),
-                        std::distance(slice.begin(), slice.end()));
-      v8::Local<v8::Object> bufferObject =
-          v8::Local<v8::Object>::New(isolate, buffer->_handle);
-      req->ForceSet(RequestBodyKey, bufferObject);
+
+      VPackValidator validator;
+      validator.validate(slice.start(), slice.byteSize());
+
+      // auto result = TRI_VPackToV8(isolate, slice);
+      std::string jsonString = slice.toJson();
+
+      // V8Buffer* buffer =
+      //    V8Buffer::New(isolate, slice.startAs<char>(),
+      //                  std::distance(slice.begin(), slice.end()));
+      // v8::Local<v8::Object> bufferObject =
+      //    v8::Local<v8::Object>::New(isolate, buffer->_handle);
+
+      // We are unable to use NON JSON compatible VPACK -- FIXME
+
+      req->ForceSet(RequestBodyKey, TRI_V8_STD_STRING(jsonString));
+      headers["content-length"] = StringUtils::itoa(jsonString.size());
+    } else {
+      throw std::logic_error("unhandled request type");
     }
   };
+
+  for (auto const& it : headers) {
+    headerFields->ForceSet(TRI_V8_STD_STRING(it.first),
+                           TRI_V8_STD_STRING(it.second));
+  }
 
   // copy request type
   switch (request->requestType()) {
@@ -541,6 +562,8 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
   // .........................................................................
   // body
   // .........................................................................
+  //
+  //  OBI FIXME - vpack
 
   TRI_GET_GLOBAL_STRING(BodyKey);
   TRI_GET_GLOBAL_STRING(BodyFromFileKey);
