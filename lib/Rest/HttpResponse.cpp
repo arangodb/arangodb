@@ -304,10 +304,14 @@ void HttpResponse::setPayload(GeneralRequest const* request,
                               arangodb::velocypack::Slice const& slice,
                               bool generateBody, VPackOptions const& options) {
   if (request == nullptr) {  // error
+    throw std::logic_error("request is nullptr in HttpResponse");
   }
 
-  _contentType = meta::enum_to_enum<GeneralResponse::ContentType>(
-      request->contentTypeResponse());
+  if (_contentType != GeneralResponse::ContentType::CUSTOM) {
+    // do not overwrite the content type set by the user!!!
+    _contentType = meta::enum_to_enum<GeneralResponse::ContentType>(
+        request->contentTypeResponse());
+  }
 
   switch (_contentType) {
     case GeneralResponse::ContentType::VPACK: {
