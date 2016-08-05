@@ -3950,16 +3950,20 @@ function unitTestPrettyPrintResults (r) {
           continue;
         }
 
-        print(RED + '    [FAILED]  ' + name + RESET);
+        print(RED + '    [FAILED]  ' + name + '\n' + RESET);
 
         let details = failedCases[name];
 
+        let count = 0;
         for (let one in details) {
           if (!details.hasOwnProperty(one)) {
             continue;
           }
-
+          if(count > 0){
+            print("\n");
+          }
           print(RED + "      '" + one + "' failed: " + details[one] + RESET);
+          count++;
         }
       }
     }

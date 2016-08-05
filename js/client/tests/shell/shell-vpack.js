@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global arango, Buffer */
+/*global arango, Buffer, VPACK_TO_V8, V8_TO_VPACK */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test request module
@@ -38,11 +38,11 @@ var qs = require('qs');
 var print = require("internal").print;
 
 var print_vpack_as_json = function(data){
-  print(JSON.stringify(VPACK_TO_V8(data)))
-}
+  print(JSON.stringify(VPACK_TO_V8(data)));
+};
 var print_body_as_json = function(data){
-  print(JSON.stringify(JSON.parse(data)))
-}
+  print(JSON.stringify(JSON.parse(data)));
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -105,7 +105,6 @@ function RequestSuite () {
     },
 
     testVersionJsonVpack: function () {
-      return true
       var path = '/_api/version';
       var headers = {
         'content-type': 'application/json',
@@ -125,7 +124,6 @@ function RequestSuite () {
     },
 
     testVersionVpackVpack: function () {
-      return true
       var path = '/_api/version';
       var headers = {
         'content-type': 'application/x-velocypack',
@@ -155,15 +153,15 @@ function RequestSuite () {
       };
 
       var obj = { "server" : "arango" , "version" : "3.0.devel" };
-      var body = V8_TO_VPACK(obj)
+      var body = V8_TO_VPACK(obj);
       var res = request.post(buildUrl(path),{ headers : headers, body : body, timeout: 300});
 
       expect(res).to.be.a(request.Response);
       expect(res.body).to.be.a('string');
       expect(Number(res.headers['content-length'])).to.equal(res.rawBody.length);
       //var obj = JSON.parse(res.body);
-      print(res.body)
-      expect(VPACK_TO_V8(res.body)).to.equal(VPACK_TO_V8(body));
+      print(res.body);
+      expect(VPACK_TO_V8(res.body.rawBody)).to.equal(VPACK_TO_V8(body));
     }
 
   };
