@@ -102,8 +102,9 @@ int OtherEngine::waitUntilDeletion(TRI_voc_tick_t id, bool force) {
 // and throw only then, so that subsequent collection creation requests will not fail.
 // the WAL entry for the collection creation will be written *after* the call
 // to "createCollection" returns
-void OtherEngine::createCollection(TRI_voc_tick_t databaseId, TRI_voc_cid_t id,
-                                   arangodb::velocypack::Slice const& data) {
+std::string OtherEngine::createCollection(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
+                                          arangodb::VocbaseCollectionInfo const& parameters) {
+  return "test";
 }
 
 // asks the storage engine to drop the specified collection and persist the 
@@ -126,8 +127,8 @@ void OtherEngine::dropCollection(TRI_voc_tick_t databaseId, TRI_voc_cid_t id,
 // and throw only then, so that subsequent collection creation/rename requests will 
 // not fail. the WAL entry for the rename will be written *after* the call
 // to "renameCollection" returns
-void OtherEngine::renameCollection(TRI_voc_tick_t databaseId, TRI_voc_cid_t id,
-                                   arangodb::velocypack::Slice const& data) {
+void OtherEngine::renameCollection(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
+                                   std::string const& name) {
 }
 
 // asks the storage engine to change properties of the collection as specified in 

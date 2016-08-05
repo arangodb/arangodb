@@ -492,12 +492,12 @@ int TRI_vocbase_t::renameCollectionWorker(TRI_vocbase_col_t* collection,
                             std::string const& newName) {
   // cannot rename a corrupted collection
   if (collection->status() == TRI_VOC_COL_STATUS_CORRUPTED) {
-    return TRI_set_errno(TRI_ERROR_ARANGO_CORRUPTED_COLLECTION);
+    return TRI_ERROR_ARANGO_CORRUPTED_COLLECTION;
   }
 
   // cannot rename a deleted collection
   if (collection->status() == TRI_VOC_COL_STATUS_DELETED) {
-    return TRI_set_errno(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
     
   {
@@ -507,28 +507,15 @@ int TRI_vocbase_t::renameCollectionWorker(TRI_vocbase_col_t* collection,
     auto it = _collectionsByName.find(newName);
 
     if (it != _collectionsByName.end()) {
-      return TRI_set_errno(TRI_ERROR_ARANGO_DUPLICATE_NAME);
+      return TRI_ERROR_ARANGO_DUPLICATE_NAME;
     }
 
     if (collection->status() == TRI_VOC_COL_STATUS_UNLOADED) {
       // collection is unloaded
       collection->setName(newName);
 
-      try {
-        arangodb::VocbaseCollectionInfo info =
-            arangodb::VocbaseCollectionInfo::fromFile(collection->path(),
-                                                      this, newName, true);
-
-        bool doSync = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database")->forceSyncProperties();
-        int res = info.saveToFile(collection->path(), doSync);
-
-        if (res != TRI_ERROR_NO_ERROR) {
-          return TRI_set_errno(res);
-        }
-
-      } catch (arangodb::basics::Exception const& e) {
-        return TRI_set_errno(e.code());
-      }
+      StorageEngine* engine = EngineSelectorFeature::ENGINE;
+      engine->renameCollection(this, collection->cid(), newName); 
       // fall-through intentional
     }
     else if (collection->status() == TRI_VOC_COL_STATUS_LOADED ||
@@ -538,13 +525,13 @@ int TRI_vocbase_t::renameCollectionWorker(TRI_vocbase_col_t* collection,
       int res = collection->_collection->rename(newName);
 
       if (res != TRI_ERROR_NO_ERROR) {
-        return TRI_set_errno(res);
+        return res;
       }
       // fall-through intentional
     }
     else {
       // unknown status
-      return TRI_set_errno(TRI_ERROR_INTERNAL);
+      return TRI_ERROR_INTERNAL;
     }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE

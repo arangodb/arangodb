@@ -27,6 +27,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/files.h"
+#include "Random/RandomGenerator.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -124,9 +125,9 @@ void MMFilesEngine::prepare() {
   TRI_ASSERT(EngineSelectorFeature::ENGINE = this);
 
   // get base path from DatabaseServerFeature 
-  auto database = application_features::ApplicationServer::getFeature<DatabasePathFeature>("DatabasePath");
-  _basePath = database->directory();
-  _databasePath += database->subdirectoryName("databases") + TRI_DIR_SEPARATOR_CHAR;
+  auto databasePathFeature = application_features::ApplicationServer::getFeature<DatabasePathFeature>("DatabasePath");
+  _basePath = databasePathFeature->directory();
+  _databasePath += databasePathFeature->subdirectoryName("databases") + TRI_DIR_SEPARATOR_CHAR;
   
   TRI_ASSERT(!_basePath.empty());
   TRI_ASSERT(!_databasePath.empty());
@@ -255,7 +256,7 @@ void MMFilesEngine::getDatabases(arangodb::velocypack::Builder& result) {
     // a valid database directory
 
     // now read data from parameter.json file
-    std::string const file = parametersFile(id);
+    std::string const file = databaseParametersFilename(id);
 
     if (!TRI_ExistsFile(file.c_str())) {
       // no parameter.json file
@@ -474,6 +475,8 @@ int MMFilesEngine::prepareDropDatabase(TRI_vocbase_t* vocbase) {
 
 // perform a physical deletion of the database      
 int MMFilesEngine::dropDatabase(TRI_vocbase_t* vocbase) {
+  _collectionPaths.erase(vocbase->id());
+
   return dropDatabaseDirectory(databaseDirectory(vocbase->id()));
 }
 
@@ -516,8 +519,103 @@ int MMFilesEngine::waitUntilDeletion(TRI_voc_tick_t id, bool force) {
 // and throw only then, so that subsequent collection creation requests will not fail.
 // the WAL entry for the collection creation will be written *after* the call
 // to "createCollection" returns
-void MMFilesEngine::createCollection(TRI_voc_tick_t databaseId, TRI_voc_cid_t id,
-                                     arangodb::velocypack::Slice const& data) {
+std::string MMFilesEngine::createCollection(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
+                                            arangodb::VocbaseCollectionInfo const& parameters) {
+  std::string const path = databasePath(vocbase);
+
+  // sanity check
+  if (sizeof(TRI_df_header_marker_t) + sizeof(TRI_df_footer_marker_t) > parameters.maximalSize()) {
+    LOG(ERR) << "cannot create datafile '" << parameters.name() << "' in '"
+             << path << "', maximal size '"
+             << parameters.maximalSize() << "' is too small";
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATAFILE_FULL);
+  }
+
+  if (!TRI_IsDirectory(path.c_str())) {
+    LOG(ERR) << "cannot create collection '" << path << "', path is not a directory";
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATADIR_INVALID);
+  }
+
+  std::string const dirname = createCollectionDirectoryName(path, id);
+  registerCollectionPath(vocbase->id(), id, dirname);
+
+  // directory must not exist
+  if (TRI_ExistsFile(dirname.c_str())) {
+    LOG(ERR) << "cannot create collection '" << parameters.name()
+             << "' in directory '" << dirname << "': directory already exists";
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_DIRECTORY_ALREADY_EXISTS);
+  }
+
+  // use a temporary directory first. this saves us from leaving an empty
+  // directory behind, and the server refusing to start
+  std::string const tmpname = dirname + ".tmp";
+
+  // create directory
+  std::string errorMessage;
+  long systemError;
+  int res = TRI_CreateDirectory(tmpname.c_str(), systemError, errorMessage);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    LOG(ERR) << "cannot create collection '" << parameters.name()
+             << "' in directory '" << path << "': " << TRI_errno_string(res)
+             << " - " << systemError << " - " << errorMessage;
+    THROW_ARANGO_EXCEPTION(res);
+  }
+
+  TRI_IF_FAILURE("CreateCollection::tempDirectory") { THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG); }
+
+  // create a temporary file (.tmp)
+  std::string const tmpfile(
+      arangodb::basics::FileUtils::buildFilename(tmpname.c_str(), ".tmp"));
+  res = TRI_WriteFile(tmpfile.c_str(), "", 0);
+
+  // this file will be renamed to this filename later...
+  std::string const tmpfile2(
+      arangodb::basics::FileUtils::buildFilename(dirname.c_str(), ".tmp"));
+
+  TRI_IF_FAILURE("CreateCollection::tempFile") { THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG); }
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    LOG(ERR) << "cannot create collection '" << parameters.name()
+             << "' in directory '" << path << "': " << TRI_errno_string(res)
+             << " - " << systemError << " - " << errorMessage;
+    TRI_RemoveDirectory(tmpname.c_str());
+    THROW_ARANGO_EXCEPTION(res);
+  }
+
+  TRI_IF_FAILURE("CreateCollection::renameDirectory") { THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG); }
+
+  res = TRI_RenameFile(tmpname.c_str(), dirname.c_str());
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    LOG(ERR) << "cannot create collection '" << parameters.name()
+             << "' in directory '" << path << "': " << TRI_errno_string(res)
+             << " - " << systemError << " - " << errorMessage;
+    TRI_RemoveDirectory(tmpname.c_str());
+    THROW_ARANGO_EXCEPTION(res);
+  }
+
+  // now we have the collection directory in place with the correct name and a
+  // .tmp file in it
+
+  // delete .tmp file
+  TRI_UnlinkFile(tmpfile2.c_str());
+
+  // save the parameters file
+  auto doSync = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database")->forceSyncProperties();
+  res = parameters.saveToFile(dirname, doSync);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    LOG(ERR) << "cannot save collection parameters in directory '" << dirname << "': '" << TRI_last_error() << "'";
+    THROW_ARANGO_EXCEPTION(res);
+  }
+
+/* TODO: is this necessary? 
+  // remove the temporary file
+  std::string tmpfile = dirname + ".tmp";
+  TRI_UnlinkFile(tmpfile.c_str());
+*/
+  return dirname;
 }
 
 // asks the storage engine to drop the specified collection and persist the 
@@ -530,6 +628,7 @@ void MMFilesEngine::createCollection(TRI_voc_tick_t databaseId, TRI_voc_cid_t id
 // to "dropCollection" returns
 void MMFilesEngine::dropCollection(TRI_voc_tick_t databaseId, TRI_voc_cid_t id, 
                                    std::function<bool()> const& canRemovePhysically) {
+  unregisterCollectionPath(databaseId, id);
 }
 
 // asks the storage engine to rename the collection as specified in the VPack
@@ -540,8 +639,19 @@ void MMFilesEngine::dropCollection(TRI_voc_tick_t databaseId, TRI_voc_cid_t id,
 // and throw only then, so that subsequent collection creation/rename requests will 
 // not fail. the WAL entry for the rename will be written *after* the call
 // to "renameCollection" returns
-void MMFilesEngine::renameCollection(TRI_voc_tick_t databaseId, TRI_voc_cid_t id,
-                                     arangodb::velocypack::Slice const& data) {
+void MMFilesEngine::renameCollection(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
+                                     std::string const& name) {
+  std::string const path = collectionDirectory(vocbase->id(), id);
+
+  arangodb::VocbaseCollectionInfo info =
+         arangodb::VocbaseCollectionInfo::fromFile(path, vocbase, name, true);
+
+  auto doSync = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database")->forceSyncProperties();
+  int res = info.saveToFile(path, doSync);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
 }
 
 // asks the storage engine to change properties of the collection as specified in 
@@ -862,7 +972,7 @@ int MMFilesEngine::saveDatabaseParameters(TRI_voc_tick_t id,
   TRI_ASSERT(!name.empty());
 
   VPackBuilder builder = databaseToVelocyPack(id, name, deleted);
-  std::string const file = parametersFile(id);
+  std::string const file = databaseParametersFilename(id);
 
   if (!arangodb::basics::VelocyPackHelper::velocyPackToFile(
           file.c_str(), builder.slice(), true)) {
@@ -893,8 +1003,23 @@ std::string MMFilesEngine::databaseDirectory(TRI_voc_tick_t id) const {
   return _databasePath + "database-" + std::to_string(id);
 }
 
-std::string MMFilesEngine::parametersFile(TRI_voc_tick_t id) const {
+std::string MMFilesEngine::databaseParametersFilename(TRI_voc_tick_t id) const {
   return basics::FileUtils::buildFilename(databaseDirectory(id), TRI_VOC_PARAMETER_FILE);
+}
+
+std::string MMFilesEngine::collectionDirectory(TRI_voc_tick_t databaseId, TRI_voc_cid_t id) const {
+  auto it = _collectionPaths.find(databaseId);
+
+  if (it == _collectionPaths.end()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "trying to determine directory for unknown collection"); 
+  }
+
+  auto it2 = (*it).second.find(id);
+
+  if (it2 == (*it).second.end()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "trying to determine directory for unknown collection"); 
+  }
+  return (*it2).second;
 }
 
 /// @brief open an existing database. internal function
@@ -1005,5 +1130,33 @@ bool MMFilesEngine::findMaxTickInJournals(std::string const& path) {
   // compactor files don't need to be iterated... they just contain data
   // copied from other files, so their tick values will never be any higher
   return iterateFiles(structure.journals);
+}
+
+/// @brief create a full directory name for a collection
+std::string MMFilesEngine::createCollectionDirectoryName(std::string const& basePath, TRI_voc_cid_t cid) {
+  std::string filename("collection-");
+  filename.append(std::to_string(cid));
+  filename.push_back('-');
+  filename.append(std::to_string(RandomGenerator::interval(UINT32_MAX)));
+
+  return arangodb::basics::FileUtils::buildFilename(basePath, filename);
+}
+
+void MMFilesEngine::registerCollectionPath(TRI_voc_tick_t databaseId, TRI_voc_cid_t id, std::string const& path) {
+  auto it = _collectionPaths.find(databaseId);
+
+  if (it == _collectionPaths.end()) {
+    it = _collectionPaths.emplace(databaseId, std::unordered_map<TRI_voc_cid_t, std::string>()).first;
+  }
+  (*it).second[id] = path;
+}
+
+void MMFilesEngine::unregisterCollectionPath(TRI_voc_tick_t databaseId, TRI_voc_cid_t id) {
+  auto it = _collectionPaths.find(databaseId);
+
+  if (it == _collectionPaths.end()) {
+    return;
+  }
+  (*it).second.erase(id);
 }
 

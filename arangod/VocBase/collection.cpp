@@ -47,7 +47,6 @@
 #include "Indexes/PrimaryIndex.h"
 #include "Indexes/SkiplistIndex.h"
 #include "Logger/Logger.h"
-#include "Random/RandomGenerator.h"
 #include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
@@ -1631,19 +1630,6 @@ bool TRI_collection_t::closeDataFiles(std::vector<TRI_datafile_t*> const& files)
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the full directory name for a collection
-////////////////////////////////////////////////////////////////////////////////
-
-static std::string GetCollectionDirectory(std::string const& path, TRI_voc_cid_t cid) {
-  std::string filename("collection-");
-  filename.append(std::to_string(cid));
-  filename.push_back('-');
-  filename.append(std::to_string(RandomGenerator::interval(UINT32_MAX)));
-
-  return arangodb::basics::FileUtils::buildFilename(path, filename);
-}
-
 
 VocbaseCollectionInfo::VocbaseCollectionInfo(CollectionInfo const& other)
     : _version(TRI_COL_VERSION),
@@ -2244,94 +2230,6 @@ int TRI_collection_t::close() {
 
   // close datafiles
   closeDataFiles(_datafiles);
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-/// @brief creates a new collection, worker function
-int TRI_collection_t::createWorker() {
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  std::string const path = engine->databasePath(_vocbase);
-
-  // sanity check
-  if (sizeof(TRI_df_header_marker_t) + sizeof(TRI_df_footer_marker_t) >
-      _info.maximalSize()) {
-    LOG(ERR) << "cannot create datafile '" << _info.name() << "' in '"
-             << path << "', maximal size '"
-             << (unsigned int)_info.maximalSize() << "' is too small";
-    return TRI_ERROR_ARANGO_DATAFILE_FULL;
-  }
-
-  if (!TRI_IsDirectory(path.c_str())) {
-    LOG(ERR) << "cannot create collection '" << path << "', path is not a directory";
-    return TRI_ERROR_ARANGO_DATADIR_INVALID;
-  }
-
-  std::string const dirname =
-      GetCollectionDirectory(path, _info.id());
-
-  // directory must not exist
-  if (TRI_ExistsFile(dirname.c_str())) {
-    LOG(ERR) << "cannot create collection '" << _info.name()
-             << "' in directory '" << dirname << "': directory already exists";
-    return TRI_ERROR_ARANGO_COLLECTION_DIRECTORY_ALREADY_EXISTS;
-  }
-
-  // use a temporary directory first. this saves us from leaving an empty
-  // directory behind, and the server refusing to start
-  std::string const tmpname = dirname + ".tmp";
-
-  // create directory
-  std::string errorMessage;
-  long systemError;
-  int res = TRI_CreateDirectory(tmpname.c_str(), systemError, errorMessage);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    LOG(ERR) << "cannot create collection '" << _info.name()
-             << "' in directory '" << path << "': " << TRI_errno_string(res)
-             << " - " << systemError << " - " << errorMessage;
-    return res;
-  }
-
-  TRI_IF_FAILURE("CreateCollection::tempDirectory") { return TRI_ERROR_DEBUG; }
-
-  // create a temporary file (.tmp)
-  std::string const tmpfile(
-      arangodb::basics::FileUtils::buildFilename(tmpname.c_str(), ".tmp"));
-  res = TRI_WriteFile(tmpfile.c_str(), "", 0);
-
-  // this file will be renamed to this filename later...
-  std::string const tmpfile2(
-      arangodb::basics::FileUtils::buildFilename(dirname.c_str(), ".tmp"));
-
-  TRI_IF_FAILURE("CreateCollection::tempFile") { return TRI_ERROR_DEBUG; }
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    LOG(ERR) << "cannot create collection '" << _info.name()
-             << "' in directory '" << path << "': " << TRI_errno_string(res)
-             << " - " << systemError << " - " << errorMessage;
-    TRI_RemoveDirectory(tmpname.c_str());
-    return res;
-  }
-
-  TRI_IF_FAILURE("CreateCollection::renameDirectory") { return TRI_ERROR_DEBUG; }
-
-  res = TRI_RenameFile(tmpname.c_str(), dirname.c_str());
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    LOG(ERR) << "cannot create collection '" << _info.name()
-             << "' in directory '" << path << "': " << TRI_errno_string(res)
-             << " - " << systemError << " - " << errorMessage;
-    TRI_RemoveDirectory(tmpname.c_str());
-    return res;
-  }
-
-  // now we have the collection directory in place with the correct name and a
-  // .tmp file in it
-  _path = dirname;
-
-  // delete .tmp file
-  TRI_UnlinkFile(tmpfile2.c_str());
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -5436,37 +5334,21 @@ TRI_collection_t* TRI_collection_t::create(
   }
 
   parameters.setCollectionId(cid);
-  
+      
   auto collection = std::make_unique<TRI_collection_t>(vocbase, parameters); 
 
-  int res = collection->createWorker();
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    LOG(ERR) << "cannot create document collection";
-    return nullptr;
-  }
-
   // create document collection
-  res = collection->createInitialIndexes();
+  int res = collection->createInitialIndexes();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG(ERR) << "cannot initialize document collection";
+    LOG(ERR) << "cannot initialize collection";
     return nullptr;
   }
-
-  // save the parameters block (within create, no need to lock)
-  bool doSync = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database")->forceSyncProperties();
-  res = parameters.saveToFile(collection->path(), doSync);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    LOG(ERR) << "cannot save collection parameters in directory '" << collection->path() << "': '" << TRI_last_error() << "'";
-    return nullptr;
-  }
-
-  // remove the temporary file
-  std::string tmpfile = collection->path() + ".tmp";
-  TRI_UnlinkFile(tmpfile.c_str());
-
+  
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  std::string const path = engine->createCollection(vocbase, cid, parameters);
+  collection->setPath(path);
+  
   return collection.release();
 }
 

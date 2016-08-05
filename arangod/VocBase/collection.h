@@ -366,6 +366,8 @@ struct TRI_collection_t {
   inline bool useSecondaryIndexes() const { return _useSecondaryIndexes; }
 
   void useSecondaryIndexes(bool value) { _useSecondaryIndexes = value; }
+  
+  void setPath(std::string const& path) { _path = path; }
 
   /// @brief renames a collection
   int rename(std::string const& name);
@@ -492,9 +494,6 @@ struct TRI_collection_t {
   TRI_datafile_t* createDatafile(TRI_voc_fid_t fid,
                                  TRI_voc_size_t journalSize, 
                                  bool isCompactor);
-
-  // worker function for creating a collection
-  int createWorker(); 
 
   /// @brief creates the initial indexes for the collection
   int createInitialIndexes();

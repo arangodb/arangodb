@@ -33,6 +33,7 @@
 #include <velocypack/Slice.h>
 
 namespace arangodb {
+class VocbaseCollectionInfo;
 
 class StorageEngine : public application_features::ApplicationFeature {
  public:
@@ -84,6 +85,9 @@ class StorageEngine : public application_features::ApplicationFeature {
 
   // return the path for a database
   virtual std::string databasePath(TRI_vocbase_t const* vocbase) const = 0;
+  
+  // return the path for a collection
+  virtual std::string collectionPath(TRI_vocbase_t const* vocbase, TRI_voc_cid_t id) const = 0;
 
   virtual TRI_vocbase_t* openDatabase(arangodb::velocypack::Slice const& parameters, bool isUpgrade) = 0;
 
@@ -123,8 +127,8 @@ class StorageEngine : public application_features::ApplicationFeature {
   // and throw only then, so that subsequent collection creation requests will not fail.
   // the WAL entry for the collection creation will be written *after* the call
   // to "createCollection" returns
-  virtual void createCollection(TRI_voc_tick_t databaseId, TRI_voc_cid_t id,
-                                arangodb::velocypack::Slice const& data) = 0;
+  virtual std::string createCollection(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
+                                       arangodb::VocbaseCollectionInfo const& parameters) = 0;
 
   // asks the storage engine to drop the specified collection and persist the 
   // deletion info. Note that physical deletion of the collection data must not 
@@ -145,8 +149,8 @@ class StorageEngine : public application_features::ApplicationFeature {
   // and throw only then, so that subsequent collection creation/rename requests will 
   // not fail. the WAL entry for the rename will be written *after* the call
   // to "renameCollection" returns
-  virtual void renameCollection(TRI_voc_tick_t databaseId, TRI_voc_cid_t id,
-                                arangodb::velocypack::Slice const& data) = 0;
+  virtual void renameCollection(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
+                                std::string const& name) = 0;
   
   // asks the storage engine to change properties of the collection as specified in 
   // the VPack Slice object and persist them. If this operation fails 
