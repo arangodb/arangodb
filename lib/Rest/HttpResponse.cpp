@@ -309,7 +309,7 @@ void HttpResponse::setPayload(GeneralRequest const* request,
 
   if (_contentType != GeneralResponse::ContentType::CUSTOM) {
     // do not overwrite the content type set by the user!!!
-    _contentType = meta::enum_to_enum<GeneralResponse::ContentType>(
+    _contentType = meta::enumToEnum<GeneralResponse::ContentType>(
         request->contentTypeResponse());
   }
 
