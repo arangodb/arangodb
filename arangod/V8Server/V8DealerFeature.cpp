@@ -927,7 +927,6 @@ void V8DealerFeature::initializeContext(size_t i) {
 
       TRI_InitV8UserStructures(isolate, localContext);
       TRI_InitV8Buffer(isolate, localContext);
-      TRI_InitV8Conversions(localContext);
       TRI_InitV8Utils(isolate, localContext, _startupPath, modulesPath);
       TRI_InitV8DebugUtils(isolate, localContext, _startupPath, modulesPath);
       TRI_InitV8Shell(isolate, localContext);

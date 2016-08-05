@@ -331,7 +331,7 @@ static void JS_Base64Decode(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   try {
-    std::string const value = TRI_ObjectToString(args[0]);
+    std::string const value = TRI_ObjectToString(isolate, args[0]);
     std::string const base64 = StringUtils::decodeBase64(value);
 
     TRI_V8_RETURN_STD_STRING(base64);
@@ -360,7 +360,7 @@ static void JS_Base64Encode(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   try {
-    std::string const&& value = TRI_ObjectToString(args[0]);
+    std::string const&& value = TRI_ObjectToString(isolate, args[0]);
     std::string const&& base64 = StringUtils::encodeBase64(value);
 
     TRI_V8_RETURN_STD_STRING(base64);
@@ -549,7 +549,7 @@ static void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE(signature);
   }
 
-  std::string url = TRI_ObjectToString(args[0]);
+  std::string url = TRI_ObjectToString(isolate, args[0]);
 
   if (!url.empty() && url[0] == '/') {
     std::vector<std::string> endpoints;
@@ -597,7 +597,7 @@ static void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (args.Length() > 1) {
     if (args[1]->IsString() || args[1]->IsStringObject()) {
       // supplied body is a string
-      body = TRI_ObjectToString(args[1]);
+      body = TRI_ObjectToString(isolate, args[1]);
     } else if (args[1]->IsObject() && V8Buffer::hasInstance(isolate, args[1])) {
       // supplied body is a Buffer object
       char const* data = V8Buffer::data(args[1].As<v8::Object>());
@@ -637,7 +637,7 @@ static void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
     // method
     if (options->Has(TRI_V8_ASCII_STRING("method"))) {
       std::string methodString =
-          TRI_ObjectToString(options->Get(TRI_V8_ASCII_STRING("method")));
+          TRI_ObjectToString(isolate, options->Get(TRI_V8_ASCII_STRING("method")));
 
       method = HttpRequest::translateMethod(methodString);
     }
@@ -651,8 +651,8 @@ static void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
         for (uint32_t i = 0; i < props->Length(); i++) {
           v8::Handle<v8::Value> key = props->Get(i);
-          headerFields[TRI_ObjectToString(key)] =
-              TRI_ObjectToString(v8Headers->Get(key));
+          headerFields[TRI_ObjectToString(isolate, key)] =
+              TRI_ObjectToString(isolate, v8Headers->Get(key));
         }
       }
     }
@@ -708,7 +708,7 @@ static void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::string outfile;
   if (args.Length() >= 4) {
     if (args[3]->IsString() || args[3]->IsStringObject()) {
-      outfile = TRI_ObjectToString(args[3]);
+      outfile = TRI_ObjectToString(isolate, args[3]);
     }
 
     if (outfile.empty()) {
@@ -1097,7 +1097,7 @@ static void JS_ChMod(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_TYPE_ERROR("<path> must be a string");
   }
 
-  std::string const modeStr = TRI_ObjectToString(args[1]);
+  std::string const modeStr = TRI_ObjectToString(isolate, args[1]);
 
   if ((modeStr.length() > 5) || (modeStr.length() == 0)) {
     TRI_V8_THROW_TYPE_ERROR(
@@ -1216,7 +1216,7 @@ static void JS_GetTempFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
   char const* p = nullptr;
   std::string path;
   if (args.Length() > 0) {
-    path = TRI_ObjectToString(args[0]);
+    path = TRI_ObjectToString(isolate, args[0]);
     p = path.c_str();
   }
 
@@ -1485,8 +1485,8 @@ static void JS_UnzipFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
         "<password>)");
   }
 
-  std::string const filename = TRI_ObjectToString(args[0]);
-  std::string const outPath = TRI_ObjectToString(args[1]);
+  std::string const filename = TRI_ObjectToString(isolate, args[0]);
+  std::string const outPath = TRI_ObjectToString(isolate, args[1]);
 
   bool skipPaths = false;
   if (args.Length() > 2) {
@@ -1501,7 +1501,7 @@ static void JS_UnzipFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
   char const* p = nullptr;
   std::string password;
   if (args.Length() > 4) {
-    password = TRI_ObjectToString(args[4]);
+    password = TRI_ObjectToString(isolate, args[4]);
     p = password.c_str();
   }
   std::string errMsg;
@@ -1530,8 +1530,8 @@ static void JS_ZipFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
         "zipFile(<filename>, <chdir>, <files>, <password>)");
   }
 
-  std::string const filename = TRI_ObjectToString(args[0]);
-  std::string const dir = TRI_ObjectToString(args[1]);
+  std::string const filename = TRI_ObjectToString(isolate, args[0]);
+  std::string const dir = TRI_ObjectToString(isolate, args[1]);
 
   if (!args[2]->IsArray()) {
     TRI_V8_THROW_EXCEPTION_USAGE("<files> must be a list");
@@ -1545,7 +1545,7 @@ static void JS_ZipFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
   for (uint32_t i = 0; i < files->Length(); ++i) {
     v8::Handle<v8::Value> file = files->Get(i);
     if (file->IsString()) {
-      filenames.emplace_back(TRI_ObjectToString(file));
+      filenames.emplace_back(TRI_ObjectToString(isolate, file));
     } else {
       res = TRI_ERROR_BAD_PARAMETER;
       break;
@@ -1560,7 +1560,7 @@ static void JS_ZipFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
   char const* p = nullptr;
   std::string password;
   if (args.Length() == 4) {
-    password = TRI_ObjectToString(args[3]);
+    password = TRI_ObjectToString(isolate, args[3]);
     p = password.c_str();
   }
 
@@ -1612,7 +1612,7 @@ static void JS_Load(v8::FunctionCallbackInfo<v8::Value> const& args) {
   current->ForceSet(TRI_V8_ASCII_STRING("__filename"), filename);
 
   auto oldDirname = current->Get(TRI_V8_ASCII_STRING("__dirname"));
-  auto dirname = TRI_Dirname(TRI_ObjectToString(filename).c_str());
+  auto dirname = TRI_Dirname(TRI_ObjectToString(isolate, filename).c_str());
   current->ForceSet(TRI_V8_ASCII_STRING("__dirname"), TRI_V8_STRING(dirname));
   TRI_FreeString(TRI_CORE_MEM_ZONE, dirname);
 
@@ -1963,7 +1963,7 @@ static void JS_MTime(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("mtime(<filename>)");
   }
 
-  std::string filename = TRI_ObjectToString(args[0]);
+  std::string filename = TRI_ObjectToString(isolate, args[0]);
 
   int64_t mtime;
   int res = TRI_MTimeFile(filename.c_str(), &mtime);
@@ -1989,8 +1989,8 @@ static void JS_MoveFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("move(<source>, <destination>)");
   }
 
-  std::string source = TRI_ObjectToString(args[0]);
-  std::string destination = TRI_ObjectToString(args[1]);
+  std::string source = TRI_ObjectToString(isolate, args[0]);
+  std::string destination = TRI_ObjectToString(isolate, args[1]);
 
   bool const sourceIsDirectory = TRI_IsDirectory(source.c_str());
   bool const destinationIsDirectory = TRI_IsDirectory(destination.c_str());
@@ -2036,8 +2036,8 @@ static void JS_CopyRecursive(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("copyRecursive(<source>, <destination>)");
   }
 
-  std::string source = TRI_ObjectToString(args[0]);
-  std::string destination = TRI_ObjectToString(args[1]);
+  std::string source = TRI_ObjectToString(isolate, args[0]);
+  std::string destination = TRI_ObjectToString(isolate, args[1]);
 
   bool const sourceIsDirectory = TRI_IsDirectory(source.c_str());
   bool const destinationIsDirectory = TRI_IsDirectory(destination.c_str());
@@ -2090,8 +2090,8 @@ static void JS_CopyFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("copyFile(<source>, <destination>)");
   }
 
-  std::string source = TRI_ObjectToString(args[0]);
-  std::string destination = TRI_ObjectToString(args[1]);
+  std::string source = TRI_ObjectToString(isolate, args[0]);
+  std::string destination = TRI_ObjectToString(isolate, args[1]);
 
   bool const destinationIsDirectory = TRI_IsDirectory(destination.c_str());
 
@@ -2770,7 +2770,7 @@ static void JS_Sha512(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("sha512(<text>)");
   }
 
-  std::string key = TRI_ObjectToString(args[0]);
+  std::string key = TRI_ObjectToString(isolate, args[0]);
 
   // create sha512
   char* hash = 0;
@@ -2812,7 +2812,7 @@ static void JS_Sha384(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("sha384(<text>)");
   }
 
-  std::string key = TRI_ObjectToString(args[0]);
+  std::string key = TRI_ObjectToString(isolate, args[0]);
 
   // create sha384
   char* hash = 0;
@@ -2854,7 +2854,7 @@ static void JS_Sha256(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("sha256(<text>)");
   }
 
-  std::string key = TRI_ObjectToString(args[0]);
+  std::string key = TRI_ObjectToString(isolate, args[0]);
 
   // create sha256
   char* hash = 0;
@@ -2896,7 +2896,7 @@ static void JS_Sha224(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("sha224(<text>)");
   }
 
-  std::string key = TRI_ObjectToString(args[0]);
+  std::string key = TRI_ObjectToString(isolate, args[0]);
 
   // create sha224
   char* hash = 0;
@@ -2938,7 +2938,7 @@ static void JS_Sha1(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("sha1(<text>)");
   }
 
-  std::string key = TRI_ObjectToString(args[0]);
+  std::string key = TRI_ObjectToString(isolate, args[0]);
 
   // create sha1
   char* hash = 0;
@@ -3105,8 +3105,8 @@ static void JS_PBKDF2(v8::FunctionCallbackInfo<v8::Value> const& args) {
         "PBKDF2(<salt>, <password>, <iterations>, <keyLength>)");
   }
 
-  std::string salt = TRI_ObjectToString(args[0]);
-  std::string password = TRI_ObjectToString(args[1]);
+  std::string salt = TRI_ObjectToString(isolate, args[0]);
+  std::string password = TRI_ObjectToString(isolate, args[1]);
   int iterations = (int)TRI_ObjectToInt64(args[2]);
   int keyLength = (int)TRI_ObjectToInt64(args[3]);
 
@@ -3130,16 +3130,16 @@ static void JS_HMAC(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::HandleScope scope(isolate);
 
   // extract arguments
-  if (args.Length() < 2 || !args[0]->IsString() || !args[1]->IsString()) {
+  if (args.Length() < 2) {
     TRI_V8_THROW_EXCEPTION_USAGE("HMAC(<key>, <text>, <algorithm>)");
   }
 
-  std::string key = TRI_ObjectToString(args[0]);
-  std::string message = TRI_ObjectToString(args[1]);
+  std::string key = TRI_ObjectToString(isolate, args[0]);
+  std::string message = TRI_ObjectToString(isolate, args[1]);
 
   SslInterface::Algorithm al = SslInterface::Algorithm::ALGORITHM_SHA256;
   if (args.Length() > 2 && !args[2]->IsUndefined()) {
-    std::string algorithm = TRI_ObjectToString(args[2]);
+    std::string algorithm = TRI_ObjectToString(isolate, args[2]);
     StringUtils::tolowerInPlace(&algorithm);
 
     if (algorithm == "sha1") {
@@ -3620,7 +3620,7 @@ static void JS_TestPort(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("testPort(<address>)");
   }
 
-  std::string address = TRI_ObjectToString(args[0]);
+  std::string address = TRI_ObjectToString(isolate, args[0]);
   Endpoint* endpoint = Endpoint::serverFactory(address, 10, false);
   if (nullptr == endpoint) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
@@ -3705,7 +3705,7 @@ static void JS_VPackToV8(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   if (args[0]->IsString() || args[0]->IsStringObject()) {
     // supplied argument is a string
-    std::string const value = TRI_ObjectToString(args[0]);
+    std::string const value = TRI_ObjectToString(isolate, args[0]);
     
     VPackValidator validator;
     validator.validate(value.c_str(), value.size(), false); 
@@ -3827,7 +3827,7 @@ static void JS_SplitWordlist(v8::FunctionCallbackInfo<v8::Value> const& args) {
         "SplitWordlist(<value>, minLength, [<maxLength>, [<lowerCase>]])");
   }
 
-  std::string stringToTokenize = TRI_ObjectToString(args[0]);
+  std::string stringToTokenize = TRI_ObjectToString(isolate, args[0]);
 
   size_t minLength = static_cast<size_t>(TRI_ObjectToUInt64(args[1], true));
 
