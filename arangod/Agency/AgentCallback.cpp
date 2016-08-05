@@ -41,6 +41,8 @@ bool AgentCallback::operator()(arangodb::ClusterCommResult* res) {
     if (_agent) {
       _agent->reportIn(_slaveID, _last);
     }
+  } else {
+    LOG(WARN) << "last: " << _last << "follower: " << _slaveID;
   }
   return true;
 }

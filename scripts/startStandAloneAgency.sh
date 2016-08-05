@@ -22,8 +22,8 @@ fi
 MINP=0.5
 MAXP=2.0
 SFRE=2.5
-COMP=10
-BASE=4001
+COMP=2000
+BASE=5001
 
 rm -rf agency
 mkdir -p agency
