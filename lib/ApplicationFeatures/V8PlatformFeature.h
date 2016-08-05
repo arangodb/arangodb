@@ -69,7 +69,7 @@ class V8PlatformFeature final
 
  private:
   std::vector<std::string> _v8Options;
-  uint64_t _v8MaxHeap = 3 * 1024;
+  uint64_t _v8MaxHeap = TRI_V8_MAXHEAP;
 
  public:
   v8::Isolate* createIsolate();
