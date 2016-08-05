@@ -166,6 +166,8 @@ struct TRI_vocbase_t {
   ~TRI_vocbase_t();
 
  private:
+  /// @brief sleep interval used when polling for a loading collection's status
+  static constexpr unsigned collectionStatusPollInterval() { return 10 * 1000; }  
   
   /// @brief states for dropping
   enum DropState {

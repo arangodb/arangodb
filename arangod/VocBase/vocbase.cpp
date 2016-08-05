@@ -68,9 +68,6 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 
-/// @brief sleep interval used when polling for a loading collection's status
-#define COLLECTION_STATUS_POLL_INTERVAL (1000 * 10)
-
 static std::atomic<bool> ThrowCollectionNotLoaded(false);
 
 /// @brief collection constructor
@@ -670,7 +667,7 @@ int TRI_vocbase_t::loadCollection(TRI_vocbase_col_t* collection,
         return TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED;
       }
 
-      usleep(COLLECTION_STATUS_POLL_INTERVAL);
+      usleep(collectionStatusPollInterval());
     }
 
     return loadCollection(collection, status, false);
@@ -1278,7 +1275,7 @@ int TRI_vocbase_t::unloadCollection(TRI_vocbase_col_t* collection, bool force) {
           break;
         }
         // sleep without lock
-        usleep(COLLECTION_STATUS_POLL_INTERVAL);
+        usleep(collectionStatusPollInterval());
       }
       // if we get here, the status has changed
       return unloadCollection(collection, force);
@@ -1351,7 +1348,7 @@ int TRI_vocbase_t::dropCollection(TRI_vocbase_col_t* collection, bool writeMarke
 
     // try again in next iteration
     TRI_ASSERT(state == DROP_AGAIN);
-    usleep(COLLECTION_STATUS_POLL_INTERVAL);
+    usleep(collectionStatusPollInterval());
   }
 }
 
