@@ -747,15 +747,8 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     // All info in opts is identical for each traverser engine.
     // Only the shards are different.
     std::vector<std::unique_ptr<arangodb::aql::Collection>> const& edges = en->edgeColls();
-    std::vector<std::unique_ptr<arangodb::aql::Collection>> const& vertices = en->vertexColls();
-    if (vertices.empty()) {
-      // This case indicates we do not have a named graph. We simply use
-      // ALL collections known to this traversal.
-      // TODO implement
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-    }
 
-    // Here we create a mapping
+     // Here we create a mapping
     // ServerID => ResponsibleShards
     // Where Responsible shards is divided in edgeCollections and vertexCollections
     // For edgeCollections the Ordering is important for the index access.
@@ -779,18 +772,48 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
         pair.first[i].emplace_back(shard);
       }
     }
-    for (auto const& it : vertices) {
-      auto shardIds = it->shardIds();
-      for (auto const& shard : *shardIds) {
-        auto serverList = clusterInfo->getResponsibleServer(shard);
-        TRI_ASSERT(!serverList->empty());
-        auto& pair = mappingServerToCollections[(*serverList)[0]];
-        if (pair.first.empty()) {
-          // We need to exactly maintain the ordering.
-          // A server my be responsible for a shard in edge collection 1 but not 0 or 2.
-          pair.first.resize(length);
+
+   std::vector<std::unique_ptr<arangodb::aql::Collection>> const& vertices = en->vertexColls();
+    if (vertices.empty()) {
+      std::unordered_set<std::string> knownEdges;
+      for (auto const& it : edges) {
+        knownEdges.emplace(it->getName());
+      }
+      // This case indicates we do not have a named graph. We simply use
+      // ALL collections known to this query.
+      auto cs = query->collections()->collections();
+      for (auto const& collection : (*cs)) {
+        if (knownEdges.find(collection.second->getName()) == knownEdges.end()) { 
+          // This collection is not one of the edge collections used in this graph.
+          auto shardIds = collection.second->shardIds();
+          for (auto const& shard : *shardIds) {
+            auto serverList = clusterInfo->getResponsibleServer(shard);
+            TRI_ASSERT(!serverList->empty());
+            auto& pair = mappingServerToCollections[(*serverList)[0]];
+            if (pair.first.empty()) {
+              // We need to exactly maintain the ordering.
+              // A server my be responsible for a shard in edge collection 1 but not 0 or 2.
+              pair.first.resize(length);
+            }
+            pair.second.emplace_back(shard);
+          }
         }
-        pair.second.emplace_back(shard);
+      }
+    } else {
+      // This Traversal is started with a GRAPH. It knows all relevant collections.
+      for (auto const& it : vertices) {
+        auto shardIds = it->shardIds();
+        for (auto const& shard : *shardIds) {
+          auto serverList = clusterInfo->getResponsibleServer(shard);
+          TRI_ASSERT(!serverList->empty());
+          auto& pair = mappingServerToCollections[(*serverList)[0]];
+          if (pair.first.empty()) {
+            // We need to exactly maintain the ordering.
+            // A server my be responsible for a shard in edge collection 1 but not 0 or 2.
+            pair.first.resize(length);
+          }
+          pair.second.emplace_back(shard);
+        }
       }
     }
     // Now we create a VPack Object containing the relevant information
