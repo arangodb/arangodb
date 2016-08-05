@@ -177,6 +177,7 @@ global.DEFINE_MODULE('buffer', (function () {
         } else {
           target[name] = value;
         }
+        return true;
       } 
     };
     if (!(this instanceof Buffer)) {
