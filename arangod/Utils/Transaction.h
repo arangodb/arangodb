@@ -449,11 +449,14 @@ class Transaction {
   ///        If there was an error the code is returned and it is guaranteed
   ///        that result remains unmodified.
   ///        Does not care for revision handling!
+  ///        shouldLock indicates if the transaction should lock the collection
+  ///        if set to false it will not lock it (make sure it is already locked!)
   //////////////////////////////////////////////////////////////////////////////
 
   int documentFastPath(std::string const& collectionName,
                        arangodb::velocypack::Slice const value,
-                       arangodb::velocypack::Builder& result);
+                       arangodb::velocypack::Builder& result,
+                       bool shouldLock);
   
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return one  document from a collection, fast path

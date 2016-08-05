@@ -168,7 +168,7 @@ void TraverserEngine::getVertexData(VPackSlice vertex, VPackBuilder& builder) {
     tmpResult.clear();
     found = false;
     for (std::string const& shard : _vertexShards) {
-      res = _trx->documentFastPath(shard, v, tmpResult);
+      res = _trx->documentFastPath(shard, v, tmpResult, false);
       if (res == TRI_ERROR_NO_ERROR) {
         found = true;
         // FOUND short circuit.
@@ -213,7 +213,7 @@ void TraverserEngine::getVertexData(VPackSlice vertex, size_t depth,
     for (VPackSlice v : VPackArrayIterator(vertex)) {
       found = false;
       for (std::string const& shard : _vertexShards) {
-        res = _trx->documentFastPath(shard, v, builder);
+        res = _trx->documentFastPath(shard, v, builder, false);
         if (res == TRI_ERROR_NO_ERROR) {
           read++;
           found = true;
@@ -235,7 +235,7 @@ void TraverserEngine::getVertexData(VPackSlice vertex, size_t depth,
   } else if (vertex.isString()) {
     found = false;
     for (std::string const& shard : _vertexShards) {
-      res = _trx->documentFastPath(shard, vertex, builder);
+      res = _trx->documentFastPath(shard, vertex, builder, false);
       if (res == TRI_ERROR_NO_ERROR) {
         read++;
         found = true;

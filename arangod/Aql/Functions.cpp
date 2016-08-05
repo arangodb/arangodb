@@ -590,7 +590,8 @@ static void GetDocumentByIdentifier(arangodb::Transaction* trx,
   
   int res = TRI_ERROR_NO_ERROR;
   try {
-    res = trx->documentFastPath(collectionName, searchBuilder->slice(), result);
+    res = trx->documentFastPath(collectionName, searchBuilder->slice(), result,
+                                true);
   } catch (arangodb::basics::Exception const& ex) {
     res = ex.code();
   }

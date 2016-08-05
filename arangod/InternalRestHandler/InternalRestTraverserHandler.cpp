@@ -232,10 +232,6 @@ void InternalRestTraverserHandler::destroyEngine() {
   }
 
   traverser::TraverserEngineID id = basics::StringUtils::uint64(suffix[0]);
-  auto engine = _registry->get(id);
-  if (engine != nullptr) {
-    _registry->returnEngine(id);
-  }
   _registry->destroy(id);
   generateResult(GeneralResponse::ResponseCode::OK,
                  arangodb::basics::VelocyPackHelper::TrueValue());

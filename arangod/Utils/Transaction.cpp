@@ -1324,7 +1324,8 @@ void Transaction::invokeOnAllElements(std::string const& collectionName,
 
 int Transaction::documentFastPath(std::string const& collectionName,
                                   VPackSlice const value,
-                                  VPackBuilder& result) {
+                                  VPackBuilder& result,
+                                  bool shouldLock) {
   TRI_ASSERT(getStatus() == TRI_TRANSACTION_RUNNING);
   if (!value.isObject() && !value.isString()) {
     // must provide a document object or string
@@ -1354,7 +1355,7 @@ int Transaction::documentFastPath(std::string const& collectionName,
   }
 
   TRI_doc_mptr_t mptr;
-  int res = document->read(this, key, &mptr, !isLocked(document, TRI_TRANSACTION_READ));
+  int res = document->read(this, key, &mptr, shouldLock && !isLocked(document, TRI_TRANSACTION_READ));
   
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
