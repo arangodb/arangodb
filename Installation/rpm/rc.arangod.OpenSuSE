@@ -1,0 +1,183 @@
+#!/bin/sh
+# Copyright (c) 2011-2012 triAGENS GmbH Cologne, Germany.
+#
+# Author: Achim Brandt <a.brandt@triagens.de>
+#
+# /etc/init.d/arangodb3
+#
+#   and symbolic its link
+#
+# /usr/sbin/rcarangodb3
+#
+### BEGIN INIT INFO
+# Provides: arangodb
+# Required-Start: $network $remote_fs
+# Required-Stop: $network $remote_fs
+# Default-Start: 3 5
+# Default-Stop: 0 1 2 6
+# Short-Description: Start the ArangoDB daemon
+# Description: Start the Arango Database Server daemon.
+### END INIT INFO
+
+ARANGO_BIN=/usr/sbin/arangod
+test -x $ARANGO_BIN || exit 5
+
+ARANGO_SYSCONFIG=/etc/arangodb3/arangod.conf
+test -r $ARANGO_SYSCONFIG || exit 6
+
+
+ARANGO_TIMEOUT=120
+ARANGO_PIDFILE=/var/run/arangodb/arangod.pid
+
+. /etc/rc.status
+
+# Shell functions sourced from /etc/rc.status:
+#      rc_check         check and set local and overall rc status
+#      rc_status        check and set local and overall rc status
+#      rc_status -v     ditto but be verbose in local rc status
+#      rc_status -v -r  ditto and clear the local rc status
+#      rc_failed        set local and overall rc status to failed
+#      rc_reset         clear local rc status (overall remains)
+#      rc_exit          exit appropriate to overall rc status
+
+# First reset status of this service
+rc_reset
+
+start () {
+    PIDDIR=`dirname $ARANGO_PIDFILE`
+    [ -d $PIDDIR ] || mkdir $PIDDIR || exit 1
+
+    ( cd /var/log/arangodb3 && chown -R arangodb:arangodb . && chmod 700 . ) || exit 1
+    ( cd /var/lib/arangodb3 && chown -R arangodb:arangodb . && chmod 700 . ) || exit 1
+    ( cd /var/lib/arangodb3-apps && chown -R arangodb:arangodb . && chmod 700 . ) || exit 1
+    ( cd $PIDDIR && chown arangodb:arangodb . && chmod 700 . ) || exit 1
+
+    ulimit -H -n 131072 || true
+    ulimit -S -n 131072 || true
+
+    if [ "$1" = "--upgrade" ];  then
+      $ARANGO_BIN --uid arangodb --gid arangodb $@
+      rc_status -v
+    else
+      $ARANGO_BIN --uid arangodb --gid arangodb --log.foreground-tty false --database.check-version
+      RETVAL=$?
+
+      if test $RETVAL -eq 0;  then
+        startproc $ARANGO_BIN --uid arangodb --gid arangodb --log.foreground-tty false --pid-file "$ARANGO_PIDFILE" --temp.path "/var/tmp/arangod" --supervisor $@ 
+        rc_status -v
+      else
+        echo "database version check failed, maybe need to run 'upgrade'?"
+        rc_status -v
+      fi
+    fi
+}
+
+case "$1" in
+
+  ################################################################################
+  ## Start daemon with startproc(8). If this fails
+  ## the echo return value is set appropriate.
+  ################################################################################
+
+  start)
+    echo -n "Starting ArangoDB daemon"
+
+    start
+    ;;
+
+  ################################################################################
+  ## Stop daemon with killproc(8) and if this fails
+  ## set echo the echo return value.
+  ################################################################################
+
+  stop)
+    echo -n "Shutting down ArangoDB daemon"
+
+    killproc -t $ARANGO_TIMEOUT -p $ARANGO_PIDFILE -TERM $ARANGO_BIN
+
+    # Remember status and be verbose
+    rc_status -v
+    ;;
+
+  ################################################################################
+  ## Stop the service and if this succeeds (i.e. the
+  ## service was running before), start it again.
+  ################################################################################
+
+  try-restart)
+    $0 status >/dev/null &&  $0 restart
+
+    # Remember status and be quiet
+    rc_status
+
+    ;;
+
+  ################################################################################
+  ## Stop the service and regardless of whether it was
+  ## running or not, start it again.
+  ################################################################################
+
+  restart)
+    $0 stop
+    $0 start
+
+    # Remember status and be quiet
+    rc_status
+    ;;
+
+  ################################################################################
+  ## Signal the daemon to reload its config. Most daemons
+  ## do this on signal 1 (SIGHUP).
+  ################################################################################
+
+  force-reload|reload)
+    echo -n "Reload service ArangoDB"
+
+    echo "reload is currently not supported"
+
+    rc_status -v
+
+    ;;
+
+  ################################################################################
+  ## Check status with checkproc(8), if process is running
+  ## checkproc will return with exit status 0.
+  ## Status has a slightly different for the status command:
+  ##
+  ## 0 - service running
+  ## 1 - service dead, but /var/run/  pid  file exists
+  ## 2 - service dead, but /var/lock/ lock file exists
+  ## 3 - service not running
+  ################################################################################
+
+  status)
+    echo -n "Checking for service ArangoDB"
+
+    checkproc -p $ARANGO_PIDFILE $ARANGO_BIN
+
+    rc_status -v
+
+    ;;
+
+  ################################################################################
+  ## upgrade database
+  ################################################################################
+
+  upgrade)
+    echo -n "Upgrading ArangoDB database files"
+
+    start --upgrade
+    ;;
+
+  ################################################################################
+  ## print usage message
+  ################################################################################
+
+  *)
+    echo "Usage: $0 {start|stop|restart|force-reload|status|upgrade}"
+    exit 1
+
+    ;;
+esac
+
+rc_exit
