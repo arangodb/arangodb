@@ -248,22 +248,29 @@ bool Agent::recvAppendEntriesRPC(term_t term,
     return false;
   }
 
-  _state.removeConflicts(queries);
-    
-  if (queries->slice().length()) {
-    LOG_TOPIC(DEBUG, Logger::AGENCY) << "Appending "
-                                     << queries->slice().length()
-                                     << " entries to state machine.";
-    /* bool success = */
-    _state.log(queries, term, prevIndex, prevTerm);
-  }
+  size_t nqs   = queries->slice().length();
 
+  if (nqs > 0) {
+
+    size_t ndups = _state.removeConflicts(queries);
+    
+    if (nqs > ndups) {
+      
+      LOG_TOPIC(DEBUG, Logger::AGENCY)
+        << "Appending " << nqs - ndups << " entries to state machine." <<
+        nqs << " " << ndups;
+
+      _state.log(queries, ndups);
+  
+    }
+    
+  }
+  
   _spearhead.apply(_state.slices(_lastCommitIndex + 1, leaderCommitIndex));
   _readDB.apply(_state.slices(_lastCommitIndex + 1, leaderCommitIndex));
   _lastCommitIndex = leaderCommitIndex;
-
+  
   if (_lastCommitIndex >= _nextCompationAfter) {
-
     _state.compact(_lastCommitIndex);
     _nextCompationAfter += _config.compactionStepSize;
   }
