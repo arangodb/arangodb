@@ -61,16 +61,18 @@
 #include "V8/v8-globals.h"
 #include "V8/v8-vpack.h"
 
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
+#include <velocypack/Validator.h>
+#include <velocypack/velocypack-aliases.h>
+
 using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::httpclient;
 using namespace arangodb::rest;
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief Random string generators
-////////////////////////////////////////////////////////////////////////////////
-
 namespace {
 static UniformCharacter JSAlphaNumGenerator(
     "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789");
@@ -80,10 +82,7 @@ static UniformCharacter JSSaltGenerator(
     "[]:;<>,.?/|");
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief Converts an object to a UTF-8-encoded and normalized character array.
-////////////////////////////////////////////////////////////////////////////////
-
 TRI_Utf8ValueNFC::TRI_Utf8ValueNFC(TRI_memory_zone_t* memoryZone,
                                    v8::Handle<v8::Value> const obj)
     : _str(nullptr), _length(0), _memoryZone(memoryZone) {
@@ -3667,6 +3666,73 @@ static void JS_IsStopping(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
+/// @brief convert a V8 value to VPack
+static void JS_V8ToVPack(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  // extract the argument
+  if (args.Length() != 1) {
+    TRI_V8_THROW_EXCEPTION_USAGE("V8_TO_VPACK(value)");
+  }
+
+  VPackBuilder builder;
+  int res = TRI_V8ToVPack(isolate, builder, args[0], false);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_THROW_EXCEPTION(res);
+  }
+
+  VPackSlice slice = builder.slice();
+              
+  V8Buffer* buffer = V8Buffer::New(isolate, slice.startAs<char const>(), slice.byteSize());
+  v8::Local<v8::Object> bufferObject = v8::Local<v8::Object>::New(isolate, buffer->_handle);
+  TRI_V8_RETURN(bufferObject);
+  
+  TRI_V8_RETURN_FALSE();
+  TRI_V8_TRY_CATCH_END
+}
+
+/// @brief convert a VPack value to V8
+static void JS_VPackToV8(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  // extract the argument
+  if (args.Length() != 1) {
+    TRI_V8_THROW_EXCEPTION_USAGE("VPACK_TO_V8(value)");
+  }
+
+  if (args[0]->IsString() || args[0]->IsStringObject()) {
+    // supplied argument is a string
+    std::string const value = TRI_ObjectToString(args[0]);
+    
+    VPackValidator validator;
+    validator.validate(value.c_str(), value.size(), false); 
+
+    VPackSlice slice(value.c_str());
+    v8::Handle<v8::Value> result = TRI_VPackToV8(isolate, slice);
+    TRI_V8_RETURN(result);
+  } else if (args[0]->IsObject() && V8Buffer::hasInstance(isolate, args[0])) {
+    // argument is a buffer
+    char const* data = V8Buffer::data(args[0].As<v8::Object>());
+    size_t size = V8Buffer::length(args[0].As<v8::Object>());
+
+    VPackValidator validator;
+    validator.validate(data, size, false); 
+
+    VPackSlice slice(data);
+    v8::Handle<v8::Value> result = TRI_VPackToV8(isolate, slice);
+
+    TRI_V8_RETURN(result);
+  } else {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "invalid argument type for VPACK_TO_V8()");
+  }
+  
+  TRI_V8_RETURN_FALSE();
+  TRI_V8_TRY_CATCH_END
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoError
 ////////////////////////////////////////////////////////////////////////////////
@@ -4433,6 +4499,12 @@ void TRI_InitV8Utils(v8::Isolate* isolate, v8::Handle<v8::Context> context,
 
   TRI_AddGlobalFunctionVocbase(
       isolate, context, TRI_V8_ASCII_STRING("SYS_IS_STOPPING"), JS_IsStopping);
+  
+  TRI_AddGlobalFunctionVocbase(
+      isolate, context, TRI_V8_ASCII_STRING("V8_TO_VPACK"), JS_V8ToVPack);
+  
+  TRI_AddGlobalFunctionVocbase(
+      isolate, context, TRI_V8_ASCII_STRING("VPACK_TO_V8"), JS_VPackToV8);
 
   // .............................................................................
   // create the global variables

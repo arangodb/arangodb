@@ -143,7 +143,8 @@ checked for, and false otherwise.
 
 The following type check functions are available:
 
-- `IS_NULL(value) → bool`: Check whether *value* is a *null* value
+- `IS_NULL(value) → bool`: Check whether *value* is a *null* value, also see
+  [HAS()](Document.md#has)
 
 - `IS_BOOL(value) → bool`: Check whether *value* is a *boolean* value
 
