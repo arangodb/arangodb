@@ -119,11 +119,14 @@ The following [NPM modules](https://www.npmjs.com) are preinstalled:
 * [minimatch](https://github.com/isaacs/minimatch)
   is a glob matcher for matching wildcards in file paths.
 
-* [node-semver](https://github.com/npm/node-semver)
-  is a utility library for handling semver version numbers.
-
 * [qs](https://github.com/hapijs/qs)
   provides utilities for dealing with query strings using a different format than the **querystring** module.
 
+* [semver](https://github.com/npm/node-semver)
+  is a utility library for handling semver version numbers.
+
 * [sinon](http://sinonjs.org)
   is a mocking library for writing test stubs, mocks and spies.
+
+* [timezone](https://github.com/bigeasy/timezone)
+  is a library for converting date time values between formats and timezones.

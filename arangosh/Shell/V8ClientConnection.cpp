@@ -230,8 +230,8 @@ static void ObjectToMap(v8::Isolate* isolate,
 
     for (uint32_t i = 0; i < props->Length(); i++) {
       v8::Local<v8::Value> key = props->Get(i);
-      myMap.emplace(TRI_ObjectToString(key),
-                    TRI_ObjectToString(v8Headers->Get(key)));
+      myMap.emplace(TRI_ObjectToString(isolate, key),
+                    TRI_ObjectToString(isolate, v8Headers->Get(key)));
     }
   }
 }
@@ -317,7 +317,7 @@ static void ClientConnection_ConstructorCallback(
 
   try {
     if (args.Length() > 0 && args[0]->IsString()) {
-      std::string definition = TRI_ObjectToString(args[0]);
+      std::string definition = TRI_ObjectToString(isolate, args[0]);
       connection = client->createConnection(definition);
     } else {
       connection = client->createConnection();
@@ -374,15 +374,15 @@ static void ClientConnection_reconnect(
         "reconnect(<endpoint>, <database>, [, <username>, <password>])");
   }
 
-  std::string const endpoint = TRI_ObjectToString(args[0]);
-  std::string databaseName = TRI_ObjectToString(args[1]);
+  std::string const endpoint = TRI_ObjectToString(isolate, args[0]);
+  std::string databaseName = TRI_ObjectToString(isolate, args[1]);
 
   std::string username;
 
   if (args.Length() < 3) {
     username = client->username();
   } else {
-    username = TRI_ObjectToString(args[2]);
+    username = TRI_ObjectToString(isolate, args[2]);
   }
 
   std::string password;
@@ -399,7 +399,7 @@ static void ClientConnection_reconnect(
       std::cout << std::endl << std::flush;
     }
   } else {
-    password = TRI_ObjectToString(args[3]);
+    password = TRI_ObjectToString(isolate, args[3]);
   }
   
   client->setEndpoint(endpoint);
@@ -823,7 +823,7 @@ static void ClientConnection_httpSendFile(
 
   TRI_Utf8ValueNFC url(TRI_UNKNOWN_MEM_ZONE, args[0]);
 
-  std::string const infile = TRI_ObjectToString(args[1]);
+  std::string const infile = TRI_ObjectToString(isolate, args[1]);
 
   if (!FileUtils::exists(infile)) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FILE_NOT_FOUND);
@@ -921,7 +921,7 @@ static void ClientConnection_importCsv(
     v8::Handle<v8::Object> options = args[2]->ToObject();
     // separator
     if (options->Has(separatorKey)) {
-      separator = TRI_ObjectToString(options->Get(separatorKey));
+      separator = TRI_ObjectToString(isolate, options->Get(separatorKey));
 
       if (separator.length() < 1) {
         TRI_V8_THROW_EXCEPTION_PARAMETER(
@@ -931,7 +931,7 @@ static void ClientConnection_importCsv(
 
     // quote
     if (options->Has(quoteKey)) {
-      quote = TRI_ObjectToString(options->Get(quoteKey));
+      quote = TRI_ObjectToString(isolate, options->Get(quoteKey));
 
       if (quote.length() > 1) {
         TRI_V8_THROW_EXCEPTION_PARAMETER(
@@ -954,8 +954,8 @@ static void ClientConnection_importCsv(
   ih.setQuote(quote);
   ih.setSeparator(separator.c_str());
 
-  std::string fileName = TRI_ObjectToString(args[0]);
-  std::string collectionName = TRI_ObjectToString(args[1]);
+  std::string fileName = TRI_ObjectToString(isolate, args[0]);
+  std::string collectionName = TRI_ObjectToString(isolate, args[1]);
 
   if (ih.importDelimited(collectionName, fileName, ImportHelper::CSV)) {
     v8::Handle<v8::Object> result = v8::Object::New(isolate);
@@ -1020,8 +1020,8 @@ static void ClientConnection_importJson(
 
   ImportHelper ih(httpClient.get(), DefaultChunkSize);
 
-  std::string fileName = TRI_ObjectToString(args[0]);
-  std::string collectionName = TRI_ObjectToString(args[1]);
+  std::string fileName = TRI_ObjectToString(isolate, args[0]);
+  std::string collectionName = TRI_ObjectToString(isolate, args[1]);
 
   if (ih.importJson(collectionName, fileName)) {
     v8::Handle<v8::Object> result = v8::Object::New(isolate);
@@ -1255,7 +1255,7 @@ static void ClientConnection_setDatabaseName(
     TRI_V8_THROW_EXCEPTION_USAGE("setDatabaseName(<name>)");
   }
 
-  std::string const dbName = TRI_ObjectToString(args[0]);
+  std::string const dbName = TRI_ObjectToString(isolate, args[0]);
   v8connection->setDatabaseName(dbName);
   client->setDatabaseName(dbName);
 

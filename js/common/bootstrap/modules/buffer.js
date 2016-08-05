@@ -163,8 +163,26 @@ global.DEFINE_MODULE('buffer', (function () {
 
   // Buffer
   function Buffer (subject, encoding, offset) {
+    var handler = {
+      get: function(target, name) {
+        if (name === '__buffer__') { return true; } 
+        if (typeof name === 'string' && name.match(/^\d+$/)) {
+          return target.parent[name]; 
+        }
+        return target[name];
+      },
+      set: function(target, name, value) { 
+        if (typeof name === 'string' && name.match(/^\d+$/)) {
+          target.parent[name] = value;
+        } else {
+          target[name] = value;
+        }
+        return true;
+      } 
+    };
     if (!(this instanceof Buffer)) {
-      return new Buffer(subject, encoding, offset);
+      var b = new Buffer(subject, encoding, offset);
+      return new Proxy(b, handler);
     }
 
     var type;
@@ -234,6 +252,7 @@ global.DEFINE_MODULE('buffer', (function () {
     }
 
 
+    return new Proxy(this, handler);
   // SlowBuffer.makeFastBuffer(this.parent, this, this.offset, this.length)
   }
 
@@ -245,6 +264,8 @@ global.DEFINE_MODULE('buffer', (function () {
 
   exports.SlowBuffer = SlowBuffer;
   exports.Buffer = Buffer;
+
+  Buffer.prototype.__buffer__ = true;
 
   Buffer.isEncoding = function (encoding) {
     switch (encoding && encoding.toLowerCase()) {
