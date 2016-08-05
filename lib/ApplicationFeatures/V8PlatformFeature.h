@@ -69,7 +69,13 @@ class V8PlatformFeature final
 
  private:
   std::vector<std::string> _v8Options;
+#if defined(__arm__)
+  uint64_t _v8MaxHeap = 1 * 1024;
+#elif defined(__aarch64__)
+  uint64_t _v8MaxHeap = 1 * 1024;
+#else
   uint64_t _v8MaxHeap = 3 * 1024;
+#endif  
 
  public:
   v8::Isolate* createIsolate();
