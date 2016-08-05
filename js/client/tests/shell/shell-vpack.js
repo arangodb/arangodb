@@ -28,6 +28,8 @@
 /// @author Copyright 2016, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+'use strict';
+
 var jsunity = require('jsunity');
 var expect = require('expect.js');
 var request = require('@arangodb/request');
@@ -44,128 +46,130 @@ var print_body_as_json = function(data){
   print(JSON.stringify(JSON.parse(data)));
 };
 
+var buildUrl = function (append, base) {
+  base = base === false ? '' : '/_admin/echo';
+  append = append || '';
+  return arango.getEndpoint().replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:') + base + append;
+};
+
+var buildUrlBroken = function (append) {
+  return arango.getEndpoint().replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:') + '/_not-there' + append;
+};
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
 function RequestSuite () {
-  'use strict';
-  var buildUrl = function (append, base) {
-    base = base === false ? '' : '/_admin/echo';
-    append = append || '';
-    return arango.getEndpoint().replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:') + base + append;
+  return { testVersionJsonJson : verionJsonJson
+         , testVersionVpackJson: verionVpackJson
+         , testVersionJsonVpack: versionJsonVpack
+         , testVersionVpackVpack: versionVpackVpack
+
+         , testEchoVpackVpack: echoVpackVpack
+         }
+};
+
+
+function verionJsonJson() {
+  var path = '/_api/version';
+  var headers = {
+    'content-type': 'application/json',
+    'accept'      : 'application/json'
   };
 
-  var buildUrlBroken = function (append) {
-    return arango.getEndpoint().replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:') + '/_not-there' + append;
+  var res = request.post(buildUrl(path, false), {headers : headers, timeout: 300});
+
+  expect(res).to.be.a(request.Response);
+  expect(res.body).to.be.a('string');
+  expect(Number(res.headers['content-length'])).to.equal(res.rawBody.length);
+  expect(String(res.headers['content-type'])).to.have.string("application/json");
+
+  var obj = JSON.parse(res.body);
+  var expected = { "server" : "arango" , "version" : "3.0.devel" };
+  expect(obj).to.eql(expected); //eql compares deep
+};
+
+function verionVpackJson() {
+  var path = '/_api/version';
+  var headers = {
+    'content-type': 'application/x-velocypack',
+    'accept'      : 'application/json'
   };
 
-  return {
+  var res = request.post(buildUrl(path, false), {headers : headers, timeout: 300});
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test http DELETE
-////////////////////////////////////////////////////////////////////////////////
+  expect(res).to.be.a(request.Response);
+  expect(res.body).to.be.a('string');
+  expect(Number(res.headers['content-length'])).to.equal(res.rawBody.length);
+  expect(String(res.headers['content-type'])).to.have.string("application/json");
 
-    testVersionJsonJson: function () {
-      var path = '/_api/version';
-      var headers = {
-        'content-type': 'application/json',
-        'accept'      : 'application/json'
-      };
+  var obj = JSON.parse(res.body);
+  var expected = { "server" : "arango" , "version" : "3.0.devel" };
+  expect(obj).to.eql(expected); //eql compares deep
+};
 
-      var res = request.post(buildUrl(path, false), {headers : headers, timeout: 300});
-
-      expect(res).to.be.a(request.Response);
-      expect(res.body).to.be.a('string');
-      expect(Number(res.headers['content-length'])).to.equal(res.rawBody.length);
-      expect(String(res.headers['content-type'])).to.have.string("application/json");
-
-      var obj = JSON.parse(res.body);
-      var expected = { "server" : "arango" , "version" : "3.0.devel" };
-      expect(obj).to.eql(expected); //eql compares deep
-    },
-
-    testVersionVpackJson: function () {
-      var path = '/_api/version';
-      var headers = {
-        'content-type': 'application/x-velocypack',
-        'accept'      : 'application/json'
-      };
-
-      var res = request.post(buildUrl(path, false), {headers : headers, timeout: 300});
-
-      expect(res).to.be.a(request.Response);
-      expect(res.body).to.be.a('string');
-      expect(Number(res.headers['content-length'])).to.equal(res.rawBody.length);
-      expect(String(res.headers['content-type'])).to.have.string("application/json");
-
-      var obj = JSON.parse(res.body);
-      var expected = { "server" : "arango" , "version" : "3.0.devel" };
-      expect(obj).to.eql(expected); //eql compares deep
-    },
-
-    testVersionJsonVpack: function () {
-      var path = '/_api/version';
-      var headers = {
-        'content-type': 'application/json',
-        'accept'      : 'application/x-velocypack'
-      };
-
-      var res = request.post(buildUrl(path,false), {headers : headers, timeout: 300});
-
-      expect(res).to.be.a(request.Response);
-      expect(res.body).to.be.a('string');
-      expect(Number(res.headers['content-length'])).to.equal(res.rawBody.length);
-      expect(String(res.headers['content-type'])).to.have.string("application/x-velocypack");
-
-      var obj = VPACK_TO_V8(res.body);
-      var expected = { "server" : "arango" , "version" : "3.0.devel" };
-      expect(obj).to.eql(expected); //eql compares deep
-    },
-
-    testVersionVpackVpack: function () {
-      var path = '/_api/version';
-      var headers = {
-        'content-type': 'application/x-velocypack',
-        'accept'      : 'application/x-velocypack'
-      };
-
-      var res = request.post(buildUrl(path,false), {headers : headers, timeout: 300});
-
-      expect(res).to.be.a(request.Response);
-      expect(res.body).to.be.a('string');
-      expect(Number(res.headers['content-length'])).to.equal(res.rawBody.length);
-      expect(String(res.headers['content-type'])).to.have.string("application/x-velocypack");
-
-      var obj = VPACK_TO_V8(res.body);
-      var expected = { "server" : "arango" , "version" : "3.0.devel" };
-      expect(obj).to.eql(expected); //eql compares deep
-    },
-
-    ///////////////////////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////////////////////
-
-    testVpackEcho: function () {
-      var path = '/_admin/echo';
-      var headers = {
-        'content-type': 'application/x-velocypack',
-        'accept'      : 'application/x-velocypack'
-      };
-
-      var obj = { "server" : "arango" , "version" : "3.0.devel" };
-      var body = V8_TO_VPACK(obj);
-      var res = request.post(buildUrl(path),{ headers : headers, body : body, timeout: 300});
-
-      expect(res).to.be.a(request.Response);
-      expect(res.body).to.be.a('string');
-      expect(Number(res.headers['content-length'])).to.equal(res.rawBody.length);
-      //var obj = JSON.parse(res.body);
-      print(res.body);
-      expect(VPACK_TO_V8(res.body.rawBody)).to.equal(VPACK_TO_V8(body));
-    }
-
+function versionJsonVpack () {
+  var path = '/_api/version';
+  var headers = {
+    'content-type': 'application/json',
+    'accept'      : 'application/x-velocypack'
   };
-}
+
+  var res = request.post(buildUrl(path,false), {headers : headers, timeout: 300});
+
+  expect(res).to.be.a(request.Response);
+  expect(res.body).to.be.a('string');
+  expect(Number(res.headers['content-length'])).to.equal(res.rawBody.length);
+  expect(String(res.headers['content-type'])).to.have.string("application/x-velocypack");
+
+  var obj = VPACK_TO_V8(res.body);
+  var expected = { "server" : "arango" , "version" : "3.0.devel" };
+  expect(obj).to.eql(expected); //eql compares deep
+};
+
+function versionVpackVpack () {
+  var path = '/_api/version';
+  var headers = {
+    'content-type': 'application/x-velocypack',
+    'accept'      : 'application/x-velocypack'
+  };
+
+  var res = request.post(buildUrl(path,false), {headers : headers, timeout: 300});
+
+  expect(res).to.be.a(request.Response);
+  expect(res.body).to.be.a('string');
+  expect(Number(res.headers['content-length'])).to.equal(res.rawBody.length);
+  expect(String(res.headers['content-type'])).to.have.string("application/x-velocypack");
+
+  var obj = VPACK_TO_V8(res.body);
+  var expected = { "server" : "arango" , "version" : "3.0.devel" };
+  expect(obj).to.eql(expected); //eql compares deep
+};
+
+///////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////
+
+function echoVpackVpack () {
+  var path = '/_admin/echo';
+  var headers = {
+    'content-type': 'application/x-velocypack',
+    'accept'      : 'application/x-velocypack'
+  };
+
+  var obj = { "server" : "arango" , "version" : "3.0.devel" };
+  var body = V8_TO_VPACK(obj);
+  var res = request.post(buildUrl(path),{ headers : headers, body : body, timeout: 300});
+
+  expect(res).to.be.a(request.Response);
+  expect(res.body).to.be.a('string');
+  print(res.body);
+  //expect(Number(res.headers['content-length'])).to.equal(res.rawBody.length);
+  //var obj = JSON.parse(res.body);
+  //print_vpack_as_json(res.body);
+  //expect(VPACK_TO_V8().to.equal();
+};
+
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -175,4 +179,3 @@ function RequestSuite () {
 jsunity.run(RequestSuite);
 
 return jsunity.done();
-
