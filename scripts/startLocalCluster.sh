@@ -46,8 +46,8 @@ fi
 
 SECONDARIES="$5"
 
-MINP=0.5
-MAXP=2.5
+MINP=1.0
+MAXP=2.0
 COMP=1000
 BASE=4001
 NATH=$(( $NRDBSERVERS + $NRCOORDINATORS + $NRAGENTS ))
@@ -77,6 +77,7 @@ if [ $NRAGENTS -gt 1 ]; then
            --server.statistics false \
            --server.threads $NATH \
            --log.force-direct true \
+           --log.level agency=debug \
            > cluster/$port.stdout 2>&1 &
    done
 fi
@@ -104,6 +105,7 @@ build/bin/arangod \
     --server.statistics false \
     --server.threads $NATH \
     --log.force-direct true \
+    --log.level agency=debug \
     > cluster/$(( $BASE + $aid )).stdout 2>&1 &
 
 start() {
