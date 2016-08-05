@@ -47,5 +47,6 @@ The following methods exist on the collection object (returned by *db.name*):
 * [collection.rename()](../../DataModeling/Collections/CollectionMethods.md#rename)
 * [collection.replace(selector, data)](../../DataModeling/Documents/DocumentMethods.md#replace)
 * [collection.replaceByExample(example, data)](../../DataModeling/Documents/DocumentMethods.md#replace-by-example)
+* [collection.save(data)](../../DataModeling/Documents/DocumentMethods.md#insert)
 * [collection.update(selector, data)](../../DataModeling/Documents/DocumentMethods.md#update)
 * [collection.updateByExample(example, data)](../../DataModeling/Documents/DocumentMethods.md#update-by-example)
