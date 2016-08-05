@@ -79,6 +79,9 @@
 #include <velocypack/Value.h>
 #include <velocypack/velocypack-aliases.h>
 
+// TODO: remove this
+#define TRI_VOC_PARAMETER_FILE "parameter.json"
+
 using namespace arangodb;
 using namespace arangodb::basics;
 

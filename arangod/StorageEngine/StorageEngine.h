@@ -71,6 +71,11 @@ class StorageEngine : public application_features::ApplicationFeature {
   // by the storage engine. this method must sort out databases that were not
   // fully created (see "createDatabase" below). called at server start only
   virtual void getDatabases(arangodb::velocypack::Builder& result) = 0;
+ 
+  // fills the provided builder with information about the collection 
+  virtual void getCollectionInfo(TRI_vocbase_t* vocbase, TRI_voc_cid_t cid, 
+                                 arangodb::velocypack::Builder& result, 
+                                 bool includeIndexes, TRI_voc_tick_t maxTick) = 0;
 
   // fill the Builder object with an array of collections (and their corresponding
   // indexes) that were detected by the storage engine. called at server start separately

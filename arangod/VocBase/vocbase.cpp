@@ -803,37 +803,6 @@ int TRI_vocbase_t::dropCollectionWorker(TRI_vocbase_col_t* collection,
   return TRI_set_errno(TRI_ERROR_INTERNAL);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief extract the numeric part from a filename
-/// the filename must look like this: /.*type-abc\.ending$/, where abc is
-/// a number, and type and ending are arbitrary letters
-////////////////////////////////////////////////////////////////////////////////
-
-static uint64_t GetNumericFilenamePart(char const* filename) {
-  char const* pos1 = strrchr(filename, '.');
-
-  if (pos1 == nullptr) {
-    return 0;
-  }
-
-  char const* pos2 = strrchr(filename, '-');
-
-  if (pos2 == nullptr || pos2 > pos1) {
-    return 0;
-  }
-
-  return StringUtils::uint64(pos2 + 1, pos1 - pos2 - 1);
-}
-
-/// @brief compare two filenames, based on the numeric part contained in
-/// the filename. this is used to sort datafile filenames on startup
-static bool FilenameStringComparator(std::string const& lhs,
-                                     std::string const& rhs) {
-  uint64_t const numLeft = GetNumericFilenamePart(lhs.c_str());
-  uint64_t const numRight = GetNumericFilenamePart(rhs.c_str());
-  return numLeft < numRight;
-}
-  
 /// @brief try to fetch the collection status under a lock
 /// the boolean value will be set to true if the lock could be acquired
 /// if the boolean is false, the return value is always TRI_VOC_COL_STATUS_CORRUPTED 
@@ -850,17 +819,9 @@ TRI_vocbase_col_status_e TRI_vocbase_col_t::tryFetchStatus(bool& found) {
 void TRI_vocbase_col_t::toVelocyPack(VPackBuilder& builder, bool includeIndexes,
                                      TRI_voc_tick_t maxTick) {
   TRI_ASSERT(!builder.isClosed());
-  std::string const filename = basics::FileUtils::buildFilename(path(), TRI_VOC_PARAMETER_FILE);
-
-  std::shared_ptr<VPackBuilder> fileInfoBuilder =
-      arangodb::basics::VelocyPackHelper::velocyPackFromFile(filename);
-  builder.add("parameters", fileInfoBuilder->slice());
-
-  if (includeIndexes) {
-    builder.add("indexes", VPackValue(VPackValueType::Array));
-    toVelocyPackIndexes(builder, maxTick);
-    builder.close();
-  }
+  
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  engine->getCollectionInfo(_vocbase, _cid, builder, includeIndexes, maxTick);
 }
 
 std::shared_ptr<VPackBuilder> TRI_vocbase_col_t::toVelocyPack(
@@ -871,59 +832,6 @@ std::shared_ptr<VPackBuilder> TRI_vocbase_col_t::toVelocyPack(
     toVelocyPack(*builder, includeIndexes, maxTick);
   }
 
-  return builder;
-}
-
-void TRI_vocbase_col_t::toVelocyPackIndexes(VPackBuilder& builder,
-                                            TRI_voc_tick_t maxTick) {
-  TRI_ASSERT(!builder.isClosed());
-
-  std::vector<std::string> files = TRI_FilesDirectory(path().c_str());
-
-  // sort by index id
-  std::sort(files.begin(), files.end(), FilenameStringComparator);
-
-  for (auto const& file : files) {
-    if (StringUtils::isPrefix(file, "index-") &&
-        StringUtils::isSuffix(file, ".json")) {
-      std::string const filename = basics::FileUtils::buildFilename(path(), file);
-      std::shared_ptr<VPackBuilder> indexVPack =
-          arangodb::basics::VelocyPackHelper::velocyPackFromFile(filename);
-
-      VPackSlice const indexSlice = indexVPack->slice();
-      VPackSlice const id = indexSlice.get("id");
-
-      if (id.isNumber()) {
-        uint64_t iid = id.getNumericValue<uint64_t>();
-        if (iid <= static_cast<uint64_t>(maxTick)) {
-          // convert "id" to string
-          VPackBuilder toMerge;
-          {
-            VPackObjectBuilder b(&toMerge);
-            char* idString = TRI_StringUInt64(iid);
-            toMerge.add("id", VPackValue(idString));
-          }
-          VPackBuilder mergedBuilder =
-              VPackCollection::merge(indexSlice, toMerge.slice(), false);
-          builder.add(mergedBuilder.slice());
-        }
-      } else if (id.isString()) {
-        std::string data = id.copyString();
-        uint64_t iid = StringUtils::uint64(data);
-        if (iid <= static_cast<uint64_t>(maxTick)) {
-          builder.add(indexSlice);
-        }
-      }
-    }
-  }
-}
-
-std::shared_ptr<VPackBuilder> TRI_vocbase_col_t::toVelocyPackIndexes(
-    TRI_voc_tick_t maxTick) {
-  auto builder = std::make_shared<VPackBuilder>();
-  builder->openArray();
-  toVelocyPackIndexes(*builder, maxTick);
-  builder->close();
   return builder;
 }
 

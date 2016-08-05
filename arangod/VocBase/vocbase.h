@@ -474,27 +474,9 @@ class TRI_vocbase_col_t {
   std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack(bool,
                                                               TRI_voc_tick_t);
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Transform the information for this collection to velocypack
+  /// @brief transform the information for this collection to velocypack
   ///        The builder has to be an opened Type::Object
-  //////////////////////////////////////////////////////////////////////////////
-
   void toVelocyPack(arangodb::velocypack::Builder&, bool, TRI_voc_tick_t);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Transform the information for the indexes of this collection to
-  /// velocypack
-  //////////////////////////////////////////////////////////////////////////////
-
-  std::shared_ptr<arangodb::velocypack::Builder> toVelocyPackIndexes(
-      TRI_voc_tick_t);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Transform the information for this collection to velocypack
-  ///        The builder has to be an opened Type::Array
-  //////////////////////////////////////////////////////////////////////////////
-
-  void toVelocyPackIndexes(arangodb::velocypack::Builder&, TRI_voc_tick_t);
 
  public:
   TRI_vocbase_t* const _vocbase;

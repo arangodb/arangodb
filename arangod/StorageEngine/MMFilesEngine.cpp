@@ -42,6 +42,7 @@
 #include "Indexes/RocksDBIndex.h"
 #endif
 
+#include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -49,6 +50,8 @@ using namespace arangodb;
 using namespace arangodb::basics;
 
 namespace {
+/// @brief collection meta info filename
+static constexpr char const* parametersFilename() { return "parameter.json"; }
 
 /// @brief extract the numeric part from a filename
 /// the filename must look like this: /.*type-abc\.ending$/, where abc is
@@ -327,6 +330,61 @@ void MMFilesEngine::getDatabases(arangodb::velocypack::Builder& result) {
   }
 
   result.close();
+}
+
+// fills the provided builder with information about the collection 
+void MMFilesEngine::getCollectionInfo(TRI_vocbase_t* vocbase, TRI_voc_cid_t id, 
+                                      arangodb::velocypack::Builder& builder, 
+                                      bool includeIndexes, TRI_voc_tick_t maxTick) {
+
+  std::string const path = collectionDirectory(vocbase->id(), id);
+
+  std::shared_ptr<VPackBuilder> fileInfoBuilder =
+      arangodb::basics::VelocyPackHelper::velocyPackFromFile(basics::FileUtils::buildFilename(path, parametersFilename()));
+  builder.add("parameters", fileInfoBuilder->slice());
+
+  if (includeIndexes) {
+    builder.add("indexes", VPackValue(VPackValueType::Array));
+
+    std::vector<std::string> files = TRI_FilesDirectory(path.c_str());
+
+    // sort by index id
+    std::sort(files.begin(), files.end(), DatafileIdStringComparator());
+
+    for (auto const& file : files) {
+      if (StringUtils::isPrefix(file, "index-") &&
+          StringUtils::isSuffix(file, ".json")) {
+        std::string const filename = basics::FileUtils::buildFilename(path, file);
+        std::shared_ptr<VPackBuilder> indexVPack =
+            arangodb::basics::VelocyPackHelper::velocyPackFromFile(filename);
+
+        VPackSlice const indexSlice = indexVPack->slice();
+        VPackSlice const id = indexSlice.get("id");
+
+        if (id.isNumber()) {
+          uint64_t iid = id.getNumericValue<uint64_t>();
+          if (iid <= static_cast<uint64_t>(maxTick)) {
+            // convert "id" to string
+            VPackBuilder toMerge;
+            {
+              VPackObjectBuilder b(&toMerge);
+              toMerge.add("id", VPackValue(std::to_string(iid)));
+            }
+            VPackBuilder mergedBuilder =
+                VPackCollection::merge(indexSlice, toMerge.slice(), false);
+            builder.add(mergedBuilder.slice());
+          }
+        } else if (id.isString()) {
+          std::string data = id.copyString();
+          uint64_t iid = StringUtils::uint64(data);
+          if (iid <= static_cast<uint64_t>(maxTick)) {
+            builder.add(indexSlice);
+          }
+        }
+      }
+    }
+    builder.close();
+  }
 }
 
 // fill the Builder object with an array of collections (and their corresponding
@@ -1004,7 +1062,7 @@ std::string MMFilesEngine::databaseDirectory(TRI_voc_tick_t id) const {
 }
 
 std::string MMFilesEngine::databaseParametersFilename(TRI_voc_tick_t id) const {
-  return basics::FileUtils::buildFilename(databaseDirectory(id), TRI_VOC_PARAMETER_FILE);
+  return basics::FileUtils::buildFilename(databaseDirectory(id), parametersFilename());
 }
 
 std::string MMFilesEngine::collectionDirectory(TRI_voc_tick_t databaseId, TRI_voc_cid_t id) const {
@@ -1020,6 +1078,10 @@ std::string MMFilesEngine::collectionDirectory(TRI_voc_tick_t databaseId, TRI_vo
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "trying to determine directory for unknown collection"); 
   }
   return (*it2).second;
+}
+
+std::string MMFilesEngine::collectionParametersFilename(TRI_voc_tick_t databaseId, TRI_voc_cid_t id) const {
+  return basics::FileUtils::buildFilename(collectionDirectory(databaseId, id), parametersFilename());
 }
 
 /// @brief open an existing database. internal function

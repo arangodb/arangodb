@@ -55,6 +55,12 @@ void OtherEngine::prepare() {
 // fully created (see "createDatabase" below). called at server start only
 void OtherEngine::getDatabases(arangodb::velocypack::Builder& result) {
 }
+  
+// fills the provided builder with information about the collection 
+void OtherEngine::getCollectionInfo(TRI_vocbase_t* vocbase, TRI_voc_cid_t cid, 
+                                    arangodb::velocypack::Builder& result, 
+                                    bool includeIndexes, TRI_voc_tick_t maxTick) {
+}
 
 // fill the Builder object with an array of collections (and their corresponding
 // indexes) that were detected by the storage engine. called at server start only
