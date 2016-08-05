@@ -25,7 +25,7 @@ SFRE=2.5
 COMP=1000
 BASE=5001
 
-#rm -rf agency
+rm -rf agency
 mkdir -p agency
 echo -n "Starting agency ... "
 if [ $NRAGENTS -gt 1 ]; then
