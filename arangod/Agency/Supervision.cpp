@@ -424,7 +424,7 @@ void Supervision::shrinkCluster () {
     targetNumDBServers = _snapshot("/Target/NumberOfDBServers").getUInt();
   } catch (std::exception const& e) {
     LOG_TOPIC(DEBUG, Logger::AGENCY)
-      << "Cannot retrieve targeted number of db servers from agency" << e.what();
+      << "Targeted number of DB servers not set yet: " << e.what();
     return;
   }
   
