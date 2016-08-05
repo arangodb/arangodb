@@ -883,8 +883,8 @@ function runStressTest (options, command, testname) {
 // / @brief executes a command, possible with valgrind
 // //////////////////////////////////////////////////////////////////////////////
 
-function executeValgrind (cmd, args, options, valgrindTest) {
-  if (valgrindTest && options.valgrind) {
+function executeArangod (cmd, args, options) {
+  if (options.valgrind) {
     let valgrindOpts = {};
 
     if (options.valgrindArgs) {
@@ -1269,7 +1269,7 @@ function shutdownInstance (instanceInfo, options) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function startInstanceCluster (instanceInfo, protocol, options,
-  addArgs, name, rootDir) {
+  addArgs, rootDir) {
   let makeArgs = function (name, args) {
     args = args || options.extraArgs;
 
@@ -1279,7 +1279,7 @@ function startInstanceCluster (instanceInfo, protocol, options,
     let subArgs = makeArgsArangod(options, fs.join(subDir, 'apps'));
     subArgs = Object.assign(subArgs, args);
 
-    return [subArgs, name, subDir];
+    return [subArgs, subDir];
   };
 
   options.agencySize = 1;
@@ -1342,7 +1342,7 @@ function startInstanceCluster (instanceInfo, protocol, options,
   return true;
 }
 
-function startArango (protocol, options, addArgs, name, rootDir, isAgency) {
+function startArango (protocol, options, addArgs, rootDir, isAgency) {
   const dataDir = fs.join(rootDir, 'data');
   const appDir = fs.join(rootDir, 'apps');
 
@@ -1389,7 +1389,7 @@ function startArango (protocol, options, addArgs, name, rootDir, isAgency) {
   }
 
   instanceInfo.url = endpointToURL(instanceInfo.endpoint);
-  instanceInfo.pid = executeValgrind(ARANGOD_BIN, toArgv(args), options, name).pid;
+  instanceInfo.pid = executeArangod(ARANGOD_BIN, toArgv(args), options).pid;
 
   if (platform.substr(0, 3) === 'win') {
     const procdumpArgs = [
@@ -1411,7 +1411,7 @@ function startArango (protocol, options, addArgs, name, rootDir, isAgency) {
 }
 
 function startInstanceAgency (instanceInfo, protocol, options,
-  addArgs, testname, rootDir) {
+  addArgs, rootDir) {
   const dataDir = fs.join(rootDir, 'data');
 
   const N = options.agencySize;
@@ -1446,7 +1446,7 @@ function startInstanceAgency (instanceInfo, protocol, options,
     let dir = fs.join(rootDir, 'agency-' + i);
     fs.makeDirectoryRecursive(dir);
 
-    instanceInfo.arangods.push(startArango(protocol, options, instanceArgs, testname, rootDir, true));
+    instanceInfo.arangods.push(startArango(protocol, options, instanceArgs, rootDir, true));
   }
 
   instanceInfo.endpoint = instanceInfo.arangods[instanceInfo.arangods.length - 1].endpoint;
@@ -1457,8 +1457,8 @@ function startInstanceAgency (instanceInfo, protocol, options,
 }
 
 function startInstanceSingleServer (instanceInfo, protocol, options,
-  addArgs, testname, rootDir) {
-  instanceInfo.arangods.push(startArango(protocol, options, addArgs, testname, rootDir, false));
+  addArgs, rootDir) {
+  instanceInfo.arangods.push(startArango(protocol, options, addArgs, rootDir, false));
 
   instanceInfo.endpoint = instanceInfo.arangods[instanceInfo.arangods.length - 1].endpoint;
   instanceInfo.url = instanceInfo.arangods[instanceInfo.arangods.length - 1].url;
@@ -1482,13 +1482,13 @@ function startInstance (protocol, options, addArgs, testname, tmpDir) {
     }
     else if (options.cluster) {
       startInstanceCluster(instanceInfo, protocol, options,
-        addArgs, testname, rootDir);
+        addArgs, rootDir);
     } else if (options.agency) {
       startInstanceAgency(instanceInfo, protocol, options,
-        addArgs, testname, rootDir);
+        addArgs, rootDir);
     } else {
       startInstanceSingleServer(instanceInfo, protocol, options,
-        addArgs, testname, rootDir);
+        addArgs, rootDir);
     }
 
     if (!options.cluster) {
