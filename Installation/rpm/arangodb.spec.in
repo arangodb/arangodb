@@ -39,158 +39,22 @@
 
 Name:           @CPACK_PACKAGE_NAME@
 Version:        @CPACK_PACKAGE_VERSION@
-Release:        1.1
+Release:        @ARANGODB_PACKAGE_REVISION@
 Summary:        The open-source, multi-model NoSQL database
 License:        Apache-2.0
 Group:          Productivity/Databases/Servers
 Conflicts:	arangodb3-client
 Url:            http://www.arangodb.com
-Source:         arangodb-%{version}.tar.bz2
-Source1:        init-files.tar.bz2
 Vendor:         @CPACK_PACKAGE_VENDOR@
 Prefix:         @CPACK_PACKAGING_INSTALL_PREFIX@
 BuildRoot:      @CMAKE_CURRENT_BINARY_DIR@/_CPack_Packages/Linux/RPM/@CPACK_PACKAGE_FILE_NAME@
 
-BuildRequires: cmake make, python
 %{?systemd_requires}
 
 %define debug_package %{nil}
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                build dependencies
-## -----------------------------------------------------------------------------
-
-################################################################################
-### @brief SUSE
-################################################################################
-
-%if 0%{?suse_version}
-
-%if 0%{?sles_version} == 11
-BuildRequires: python-argparse
-%endif
-
-BuildRequires: cmake
-BuildRequires: libopenssl-devel
-BuildRequires: pwdutils
-BuildRequires: fdupes
-BuildRequires: libicu-devel
-
-%if 0%{?suse_version} == 1310 || 0%{?suse_version} == 1320
-BuildRequires: libstdc++6
-%endif
-
-%if 0%{?suse_version} >= 1210
-BuildRequires: systemd
-%endif
-
-%if 0%{?suse_version} == 1315 || 0%{?suse_version} == 1330
-BuildRequires: gcc5-c++
-
-%define C_COMPILER   gcc-5
-%define CXX_COMPILER g++-5
-%else
-BuildRequires: arangodb-gcc54
-
-%define C_COMPILER   /opt/arangodb/bin/gcc
-%define CXX_COMPILER /opt/arangodb/bin/g++
-%endif
-
-%if 0%{?sles_version} == 11
-BuildRequires: libicu-devel
-%define JEMALLOC_OPT %{nil}
-%else
-%if 0%{?suse_version} == 1315
-BuildRequires: arangodb-jemalloc-devel-static
-%else
-BuildRequires: jemalloc-devel-static
-%endif
-%define JEMALLOC_OPT -DFORCE_JEMALLOC_LIB=:libjemalloc.a
-%endif
-
-%endif
-
-################################################################################
-### @brief red-hat or centos
-################################################################################
-
-%if 0%{?centos_version} || 0%{?rhel_version}
-
-%if 0%{?centos_version} == 600
-BuildRequires: python-argparse
-%endif
-
-%if 0%{?rhel_version} == 600
-BuildRequires: cmake = 3.5.2
-BuildRequires: python-argparse
-%else
-BuildRequires: cmake
-%endif
-
-%define _skipFdupes 1
-
-BuildRequires: glibc-devel
-BuildRequires: arangodb-gcc54
-BuildRequires: arangodb-jemalloc-devel-static
-BuildRequires: openssl-devel
-BuildRequires: redhat-rpm-config
-
-%define JEMALLOC_OPT -DFORCE_JEMALLOC_LIB=:libjemalloc.a
-%define C_COMPILER   /opt/arangodb/bin/gcc
-%define CXX_COMPILER /opt/arangodb/bin/g++
-
-%ifarch i686 i586 i486 i386
-%define optflags -O2 -g -march=i586
-%endif
-
-%endif
-
-################################################################################
-### @brief fedora
-################################################################################
-
-%if 0%{?fedora_version} 
-
-%define _skipFdupes 1
-
-BuildRequires: cmake
-BuildRequires: glibc-devel
-BuildRequires: openssl-devel
-BuildRequires: libicu-devel
-
-%if 0%{fedora_version} == 22 || 0%{fedora_version} == 23
-BuildRequires: libstdc++-static
-BuildRequires: gcc-c++
-BuildRequires: jemalloc-devel
-
-%define JEMALLOC_OPT %{nil}
-%define C_COMPILER   gcc
-%define CXX_COMPILER g++
-
-%else
-BuildRequires: arangodb-gcc54
-BuildRequires: arangodb-jemalloc-devel-static
-
-%define JEMALLOC_OPT -DFORCE_JEMALLOC_LIB=:libjemalloc.a
-%define C_COMPILER   /opt/arangodb/bin/gcc
-%define CXX_COMPILER /opt/arangodb/bin/g++
-%endif
-
-%endif
-
-################################################################################
-### @brief mdk
-################################################################################
-
-%if 0%{?mdkversion}
-BuildRequires: openssl-devel
-BuildRequires: libicu-devel
-
-%define _skipFdupes 1
-%endif
-
-## -----------------------------------------------------------------------------
-## --SECTION--                                               client only package
 ## -----------------------------------------------------------------------------
 
 %package client
@@ -216,92 +80,20 @@ The ArangoDB shell as stand-alone program. It also contains the utility programs
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                             build
 ## -----------------------------------------------------------------------------
-
-%prep
-%setup -q -n arangodb-%{version}
-%setup -q -n arangodb-%{version} -T -D -a 1
-
-%build
-export CC="%{C_COMPILER}"
-export CXX="%{CXX_COMPILER}"
-export CFLAGS="-g -static-libgcc -O3 -fno-omit-frame-pointer"
-export CXXFLAGS="-g -static-libgcc -static-libstdc++ -O3 -fno-omit-frame-pointer"
-export V8_CFLAGS="-static-libgcc"
-export V8_CXXFLAGS="-static-libgcc -static-libstdc++"
-export V8_LDFLAGS="-static-libgcc -static-libstdc++"
-export PATH="/opt/arangodb/bin:$PATH"
-
-mkdir build
-cd build
-
-cmake \
-  -DVERBOSE=On \
-  -DUSE_OPTIMIZE_FOR_ARCHITECTURE=Off \
-  -DCMAKE_BUILD_TYPE=RelWithDebInfo \
-  -DCMAKE_C_FLAGS="${CFLAGS}" \
-  -DCMAKE_CXX_FLAGS="${CXXFLAGS}" \
-  -DCMAKE_C_COMPILER="%{C_COMPILER}" \
-  -DCMAKE_CXX_COMPILER="%{CXX_COMPILER}" \
-  %{JEMALLOC_OPT} \
-  -DETCDIR=/etc \
-  -DVARDIR=/var \
-  -DCMAKE_INSTALL_PREFIX:PATH=/usr \
-  -DCMAKE_INSTALL_DATADIR:PATH=/usr/share \
-  -DCMAKE_SKIP_RPATH:BOOL=ON \
-  -DCMAKE_USER_MAKE_RULES_OVERRIDE= \
-  ..
-
-make %{?_smp_mflags} VERBOSE=1 V=1 Verbose=1 all
+# requires source:
+#%prep
+#%setup -q -n arangodb-%{version}
+#%setup -q -n arangodb-%{version} -T -D -a 1
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                           install
 ## -----------------------------------------------------------------------------
-
-%install
-export CC="%{C_COMPILER}"
-export CXX="%{CXX_COMPILER}"
-export CFLAGS="-g -static-libgcc -O3 -fno-omit-frame-pointer"
-export CXXFLAGS="-g -static-libgcc -static-libstdc++ -O3 -fno-omit-frame-pointer"
-export V8_CFLAGS="-static-libgcc"
-export V8_CXXFLAGS="-static-libgcc -static-libstdc++"
-export V8_LDFLAGS="-static-libgcc -static-libstdc++"
-export PATH="/opt/arangodb/bin:$PATH"
-
-find js -xtype l -exec rm "{}" ";"
-
-cd build
-make DESTDIR=%{buildroot} install
 
 mkdir -p %{buildroot}%{_databasedir}
 mkdir -p %{buildroot}%{_appdir}
 mkdir -p %{buildroot}%{_logdir}
 mkdir -p %{buildroot}%{_piddir}
 
-# use %doc to install readme
-rm -f %{buildroot}/usr/share/doc/packages/arangodb3/*
-rm -f %{buildroot}/usr/share/doc/arangodb3/*
-
-%if 0%{?suse_version}
-
-%if 0%{?suse_version} >= 1230
-%{__install} -D -m 0755 ../rc.arangod.OpenSuSE_13 %{buildroot}%{_sysconfdir}/init.d/arangodb3
-%else
-%{__install} -D -m 0755 ../rc.arangod.OpenSuSE %{buildroot}%{_sysconfdir}/init.d/arangodb3
-%endif
-
-ln -s %{_sysconfdir}/init.d/arangodb3 %{buildroot}%{_sbindir}/rcarangodb
-
-%if 0%{?suse_version} >= 1210
-%{__install} -D -m 0644 ../arangodb.service %{buildroot}%{_unitdir}/arangodb3.service
-%endif
-
-%else
-%{__install} -D -m 0755 ../rc.arangod.Centos %{buildroot}%{_sysconfdir}/init.d/arangodb3
-%endif
-
-%if %{_skipFdupes} == 0
-%fdupes %{buildroot}%{_datadir}/arangodb3
-%endif
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                             check
@@ -315,10 +107,17 @@ ln -s %{_sysconfdir}/init.d/arangodb3 %{buildroot}%{_sbindir}/rcarangodb
 
 %files
 %defattr(-,root,root,0755)
-%doc README
-%doc README.md
-%doc LICENSE
-%doc LICENSES-OTHER-COMPONENTS.md
+#@CPACK_PACKAGING_INSTALL_PREFIX@/@LIB_INSTALL_DIR@/*
+#@CPACK_PACKAGING_INSTALL_PREFIX@/bin/*
+#%doc README
+#%doc README.md
+#%doc LICENSE
+#%doc LICENSES-OTHER-COMPONENTS.md
+/usr/share/doc/arangodb3/LICENSE.txt
+/usr/share/doc/arangodb3/LICENSES-OTHER-COMPONENTS.md
+/usr/share/doc/arangodb3/README.md
+/usr/share/doc/arangodb3/README.txt
+
 %attr(0755,arangodb,arangodb) %{_databasedir}
 %attr(0755,arangodb,arangodb) %{_appdir}
 %attr(0755,arangodb,arangodb) %{_logdir}
@@ -339,10 +138,10 @@ ln -s %{_sysconfdir}/init.d/arangodb3 %{buildroot}%{_sbindir}/rcarangodb
 
 %files client
 %defattr(-,root,root,0755)
-%doc README
-%doc README.md
-%doc LICENSE
-%doc LICENSES-OTHER-COMPONENTS.md
+#%doc README
+#%doc README.md
+#%doc LICENSE
+#%doc LICENSES-OTHER-COMPONENTS.md
 
 %config(noreplace) %attr(-,arangodb,arangodb) %{_cfgdir}/arangosh.conf
 %config(noreplace) %attr(-,arangodb,arangodb) %{_cfgdir}/arangoimp.conf
