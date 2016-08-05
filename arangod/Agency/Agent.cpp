@@ -248,22 +248,29 @@ bool Agent::recvAppendEntriesRPC(term_t term,
     return false;
   }
 
-  _state.removeConflicts(queries);
-    
-  if (queries->slice().length()) {
-    LOG_TOPIC(DEBUG, Logger::AGENCY) << "Appending "
-                                     << queries->slice().length()
-                                     << " entries to state machine.";
-    /* bool success = */
-    _state.log(queries, term, prevIndex, prevTerm);
-  }
+  size_t nqs   = queries->slice().length();
 
+  if (nqs > 0) {
+
+    size_t ndups = _state.removeConflicts(queries);
+    
+    if (nqs > ndups) {
+      
+      LOG_TOPIC(DEBUG, Logger::AGENCY)
+        << "Appending " << nqs - ndups << " entries to state machine." <<
+        nqs << " " << ndups;
+
+      _state.log(queries, ndups);
+  
+    }
+    
+  }
+  
   _spearhead.apply(_state.slices(_lastCommitIndex + 1, leaderCommitIndex));
   _readDB.apply(_state.slices(_lastCommitIndex + 1, leaderCommitIndex));
   _lastCommitIndex = leaderCommitIndex;
-
+  
   if (_lastCommitIndex >= _nextCompationAfter) {
-
     _state.compact(_lastCommitIndex);
     _nextCompationAfter += _config.compactionStepSize;
   }
@@ -329,7 +336,8 @@ priv_rpc_ret_t Agent::sendAppendEntriesRPC(
       "1", 1, _config.endpoints[follower_id],
       arangodb::GeneralRequest::RequestType::POST, path.str(),
       std::make_shared<std::string>(builder.toJson()), headerFields,
-      std::make_shared<AgentCallback>(this, follower_id, highest), 1, true);
+      std::make_shared<AgentCallback>(this, follower_id, highest),
+      0.5*_config.minPing, true, 0.75*_config.minPing);
 
   _lastSent.at(follower_id) = std::chrono::system_clock::now();
   _lastHighest.at(follower_id) = highest;
@@ -444,7 +452,7 @@ void Agent::run() {
   while (!this->isStopping() && size() > 1) {
 
     if (leading()) {             // Only if leading
-      _appendCV.wait(10000);
+      _appendCV.wait(1000);
     } else {
       _appendCV.wait();         // Else wait for our moment in the sun
     }
