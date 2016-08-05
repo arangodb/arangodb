@@ -1262,7 +1262,7 @@ static void JS_KeyspaceCreate(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract vocbase");
   }
 
-  std::string const&& name = TRI_ObjectToString(args[0]);
+  std::string const name = TRI_ObjectToString(args[0]);
   int64_t size = 0;
 
   if (args.Length() > 1) {
@@ -1323,7 +1323,7 @@ static void JS_KeyspaceDrop(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract vocbase");
   }
 
-  std::string const&& name = TRI_ObjectToString(args[0]);
+  std::string const name = TRI_ObjectToString(args[0]);
 
   auto h = &(static_cast<UserStructures*>(vocbase->_userStructures)->hashes);
   {
@@ -1361,7 +1361,7 @@ static void JS_KeyspaceCount(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract vocbase");
   }
 
-  std::string const&& name = TRI_ObjectToString(args[0]);
+  std::string const name = TRI_ObjectToString(args[0]);
 
   auto h = &(static_cast<UserStructures*>(vocbase->_userStructures)->hashes);
   uint32_t count;
@@ -1375,7 +1375,7 @@ static void JS_KeyspaceCount(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
 
     if (args.Length() > 1) {
-      std::string const&& prefix = TRI_ObjectToString(args[1]);
+      std::string const prefix = TRI_ObjectToString(args[1]);
       count = hash->keyspaceCount(prefix);
     } else {
       count = hash->keyspaceCount();
@@ -1404,7 +1404,7 @@ static void JS_KeyspaceExists(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract vocbase");
   }
 
-  std::string const&& name = TRI_ObjectToString(args[0]);
+  std::string const name = TRI_ObjectToString(args[0]);
 
   auto h = &(static_cast<UserStructures*>(vocbase->_userStructures)->hashes);
 
@@ -1436,7 +1436,7 @@ static void JS_KeyspaceKeys(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract vocbase");
   }
 
-  std::string const&& name = TRI_ObjectToString(args[0]);
+  std::string const name = TRI_ObjectToString(args[0]);
 
   auto h = &(static_cast<UserStructures*>(vocbase->_userStructures)->hashes);
   READ_LOCKER(readLocker, h->lock);
@@ -1448,7 +1448,7 @@ static void JS_KeyspaceKeys(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   if (args.Length() > 1) {
-    std::string const&& prefix = TRI_ObjectToString(args[1]);
+    std::string const prefix = TRI_ObjectToString(args[1]);
     TRI_V8_RETURN(hash->keyspaceKeys(isolate, prefix));
   }
 
@@ -1474,7 +1474,7 @@ static void JS_KeyspaceGet(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract vocbase");
   }
 
-  std::string const&& name = TRI_ObjectToString(args[0]);
+  std::string const name = TRI_ObjectToString(args[0]);
 
   auto h = &(static_cast<UserStructures*>(vocbase->_userStructures)->hashes);
   READ_LOCKER(readLocker, h->lock);
@@ -1486,7 +1486,7 @@ static void JS_KeyspaceGet(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   if (args.Length() > 1) {
-    std::string const&& prefix = TRI_ObjectToString(args[1]);
+    std::string const prefix = TRI_ObjectToString(args[1]);
     TRI_V8_RETURN(hash->keyspaceGet(isolate, prefix));
   }
 
@@ -1512,7 +1512,7 @@ static void JS_KeyspaceRemove(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract vocbase");
   }
 
-  std::string const&& name = TRI_ObjectToString(args[0]);
+  std::string const name = TRI_ObjectToString(args[0]);
 
   auto h = &(static_cast<UserStructures*>(vocbase->_userStructures)->hashes);
   READ_LOCKER(readLocker, h->lock);
@@ -1524,7 +1524,7 @@ static void JS_KeyspaceRemove(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   if (args.Length() > 1) {
-    std::string const&& prefix = TRI_ObjectToString(args[1]);
+    std::string const prefix = TRI_ObjectToString(args[1]);
     TRI_V8_RETURN(hash->keyspaceRemove(isolate, prefix));
   }
 
@@ -1550,8 +1550,8 @@ static void JS_KeyGet(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract vocbase");
   }
 
-  std::string const&& name = TRI_ObjectToString(args[0]);
-  std::string const&& key = TRI_ObjectToString(args[1]);
+  std::string const name = TRI_ObjectToString(args[0]);
+  std::string const key = TRI_ObjectToString(args[1]);
 
   auto h = &(static_cast<UserStructures*>(vocbase->_userStructures)->hashes);
   v8::Handle<v8::Value> result;
@@ -1589,8 +1589,8 @@ static void JS_KeySet(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract vocbase");
   }
 
-  std::string const&& name = TRI_ObjectToString(args[0]);
-  std::string const&& key = TRI_ObjectToString(args[1]);
+  std::string const name = TRI_ObjectToString(args[0]);
+  std::string const key = TRI_ObjectToString(args[1]);
   bool replace = true;
 
   if (args.Length() > 3) {
@@ -1637,8 +1637,8 @@ static void JS_KeySetCas(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract vocbase");
   }
 
-  std::string const&& name = TRI_ObjectToString(args[0]);
-  std::string const&& key = TRI_ObjectToString(args[1]);
+  std::string const name = TRI_ObjectToString(args[0]);
+  std::string const key = TRI_ObjectToString(args[1]);
 
   if (args[2]->IsUndefined()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
@@ -1688,8 +1688,8 @@ static void JS_KeyRemove(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract vocbase");
   }
 
-  std::string const&& name = TRI_ObjectToString(args[0]);
-  std::string const&& key = TRI_ObjectToString(args[1]);
+  std::string const name = TRI_ObjectToString(args[0]);
+  std::string const key = TRI_ObjectToString(args[1]);
 
   auto h = &(static_cast<UserStructures*>(vocbase->_userStructures)->hashes);
   bool result;
@@ -1730,8 +1730,8 @@ static void JS_KeyExists(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract vocbase");
   }
 
-  std::string const&& name = TRI_ObjectToString(args[0]);
-  std::string const&& key = TRI_ObjectToString(args[1]);
+  std::string const name = TRI_ObjectToString(args[0]);
+  std::string const key = TRI_ObjectToString(args[1]);
 
   auto h = &(static_cast<UserStructures*>(vocbase->_userStructures)->hashes);
   bool result;
@@ -1776,8 +1776,8 @@ static void JS_KeyIncr(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract vocbase");
   }
 
-  std::string const&& name = TRI_ObjectToString(args[0]);
-  std::string const&& key = TRI_ObjectToString(args[1]);
+  std::string const name = TRI_ObjectToString(args[0]);
+  std::string const key = TRI_ObjectToString(args[1]);
 
   double incr = 1.0;
 
@@ -1826,8 +1826,8 @@ static void JS_KeyUpdate(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract vocbase");
   }
 
-  std::string const&& name = TRI_ObjectToString(args[0]);
-  std::string const&& key = TRI_ObjectToString(args[1]);
+  std::string const name = TRI_ObjectToString(args[0]);
+  std::string const key = TRI_ObjectToString(args[1]);
 
   bool nullMeansRemove = false;
   if (args.Length() > 3) {
@@ -1865,8 +1865,8 @@ static void JS_KeyKeys(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract vocbase");
   }
 
-  std::string const&& name = TRI_ObjectToString(args[0]);
-  std::string const&& key = TRI_ObjectToString(args[1]);
+  std::string const name = TRI_ObjectToString(args[0]);
+  std::string const key = TRI_ObjectToString(args[1]);
 
   auto h = &(static_cast<UserStructures*>(vocbase->_userStructures)->hashes);
   READ_LOCKER(readLocker, h->lock);
@@ -1899,8 +1899,8 @@ static void JS_KeyValues(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract vocbase");
   }
 
-  std::string const&& name = TRI_ObjectToString(args[0]);
-  std::string const&& key = TRI_ObjectToString(args[1]);
+  std::string const name = TRI_ObjectToString(args[0]);
+  std::string const key = TRI_ObjectToString(args[1]);
 
   auto h = &(static_cast<UserStructures*>(vocbase->_userStructures)->hashes);
   READ_LOCKER(readLocker, h->lock);
@@ -1933,8 +1933,8 @@ static void JS_KeyPush(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract vocbase");
   }
 
-  std::string const&& name = TRI_ObjectToString(args[0]);
-  std::string const&& key = TRI_ObjectToString(args[1]);
+  std::string const name = TRI_ObjectToString(args[0]);
+  std::string const key = TRI_ObjectToString(args[1]);
 
   auto h = &(static_cast<UserStructures*>(vocbase->_userStructures)->hashes);
   READ_LOCKER(readLocker, h->lock);
@@ -1973,8 +1973,8 @@ static void JS_KeyPop(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract vocbase");
   }
 
-  std::string const&& name = TRI_ObjectToString(args[0]);
-  std::string const&& key = TRI_ObjectToString(args[1]);
+  std::string const name = TRI_ObjectToString(args[0]);
+  std::string const key = TRI_ObjectToString(args[1]);
 
   auto h = &(static_cast<UserStructures*>(vocbase->_userStructures)->hashes);
   READ_LOCKER(readLocker, h->lock);
@@ -2007,9 +2007,9 @@ static void JS_KeyTransfer(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract vocbase");
   }
 
-  std::string const&& name = TRI_ObjectToString(args[0]);
-  std::string const&& keyFrom = TRI_ObjectToString(args[1]);
-  std::string const&& keyTo = TRI_ObjectToString(args[2]);
+  std::string const name = TRI_ObjectToString(args[0]);
+  std::string const keyFrom = TRI_ObjectToString(args[1]);
+  std::string const keyTo = TRI_ObjectToString(args[2]);
 
   auto h = &(static_cast<UserStructures*>(vocbase->_userStructures)->hashes);
   READ_LOCKER(readLocker, h->lock);
@@ -2042,8 +2042,8 @@ static void JS_KeyGetAt(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract vocbase");
   }
 
-  std::string const&& name = TRI_ObjectToString(args[0]);
-  std::string const&& key = TRI_ObjectToString(args[1]);
+  std::string const name = TRI_ObjectToString(args[0]);
+  std::string const key = TRI_ObjectToString(args[1]);
   int64_t offset = TRI_ObjectToInt64(args[2]);
 
   auto h = &(static_cast<UserStructures*>(vocbase->_userStructures)->hashes);
@@ -2077,8 +2077,8 @@ static void JS_KeySetAt(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract vocbase");
   }
 
-  std::string const&& name = TRI_ObjectToString(args[0]);
-  std::string const&& key = TRI_ObjectToString(args[1]);
+  std::string const name = TRI_ObjectToString(args[0]);
+  std::string const key = TRI_ObjectToString(args[1]);
   int64_t offset = TRI_ObjectToInt64(args[2]);
 
   auto h = &(static_cast<UserStructures*>(vocbase->_userStructures)->hashes);
@@ -2117,8 +2117,8 @@ static void JS_KeyType(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract vocbase");
   }
 
-  std::string const&& name = TRI_ObjectToString(args[0]);
-  std::string const&& key = TRI_ObjectToString(args[1]);
+  std::string const name = TRI_ObjectToString(args[0]);
+  std::string const key = TRI_ObjectToString(args[1]);
 
   auto h = &(static_cast<UserStructures*>(vocbase->_userStructures)->hashes);
   char const* result;
@@ -2156,8 +2156,8 @@ static void JS_KeyCount(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract vocbase");
   }
 
-  std::string const&& name = TRI_ObjectToString(args[0]);
-  std::string const&& key = TRI_ObjectToString(args[1]);
+  std::string const name = TRI_ObjectToString(args[0]);
+  std::string const key = TRI_ObjectToString(args[1]);
 
   auto h = &(static_cast<UserStructures*>(vocbase->_userStructures)->hashes);
   uint32_t result;
