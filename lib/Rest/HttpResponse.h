@@ -78,6 +78,8 @@ class HttpResponse : public GeneralResponse {
 
   /// @brief set content-type from a string. this should only be used in
   /// cases when the content-type is user-defined
+  /// this is a functionality so that user can set a type like application/zip
+  /// from java script code
   void setContentType(std::string const& contentType) override {
     _headers[arangodb::StaticStrings::ContentTypeHeader] = contentType;
     _contentType = ContentType::CUSTOM;

@@ -60,17 +60,7 @@ void VppResponse::reset(ResponseCode code) {
 void VppResponse::setPayload(GeneralRequest const* request,
                              arangodb::velocypack::Slice const& slice,
                              bool generateBody, VPackOptions const& options) {
-  // VELOCYPACK
-  if (request != nullptr && request->velocyPackResponse()) {
-    setContentType(VppResponse::ContentType::VPACK);
-    // size_t length = static_cast<size_t>(slice.byteSize());
-    if (generateBody) {
-    }
-  } else {  // JSON
-    setContentType(VppResponse::ContentType::JSON);
-    if (generateBody) {
-    } else {
-    }
+  if (generateBody) {
   }
 };
 

@@ -305,9 +305,9 @@ void HttpResponse::setPayload(GeneralRequest const* request,
                               bool generateBody, VPackOptions const& options) {
   if (request == nullptr) {  // error
   }
-  // VELOCYPACK
-  _contentType = meta::to_enum<GeneralResponse::ContentType>(
-      meta::underlying_value(request->contentType()));
+
+  _contentType = meta::enum_to_enum<GeneralResponse::ContentType>(
+      request->contentTypeResponse());
 
   switch (_contentType) {
     case GeneralResponse::ContentType::VPACK: {

@@ -196,6 +196,7 @@ class GeneralRequest {
   };
 
   ContentType contentType() const { return _contentType; }
+  ContentType contentTypeResponse() const { return _contentTypeResponse; }
 
  protected:
   ProtocolVersion _version;
