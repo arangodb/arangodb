@@ -2038,12 +2038,7 @@ static void JS_UseDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (TRI_IsDeletedVocBase(vocbase)) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
-
-  if (TRI_EqualString(name.c_str(), vocbase->_name)) {
-    // same database. nothing to do
-    TRI_V8_RETURN(WrapVocBase(isolate, vocbase));
-  }
-
+  
   if (ServerState::instance()->isCoordinator()) {
     vocbase = TRI_UseCoordinatorDatabaseServer(
         static_cast<TRI_server_t*>(v8g->_server), name.c_str());
@@ -2062,7 +2057,6 @@ static void JS_UseDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_ASSERT(orig != nullptr);
 
   v8g->_vocbase = vocbase;
-  TRI_ASSERT(orig != vocbase);
   TRI_ReleaseDatabaseServer(static_cast<TRI_server_t*>(v8g->_server),
                             static_cast<TRI_vocbase_t*>(orig));
 
