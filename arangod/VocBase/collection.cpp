@@ -239,7 +239,11 @@ TRI_collection_t::TRI_collection_t(TRI_vocbase_t* vocbase,
 }
   
 TRI_collection_t::~TRI_collection_t() {
-  this->close();
+  try {
+    this->close();
+  } catch (...) {
+    // ignore any errors here
+  }
 
   _ditches.destroy();
 
@@ -1618,6 +1622,9 @@ bool TRI_collection_t::closeDataFiles(std::vector<TRI_datafile_t*> const& files)
 
   for (auto const& datafile : files) {
     TRI_ASSERT(datafile != nullptr);
+    if (datafile->_state == TRI_DF_STATE_CLOSED) {
+      continue;
+    }
     result &= TRI_CloseDatafile(datafile);
   }
 
