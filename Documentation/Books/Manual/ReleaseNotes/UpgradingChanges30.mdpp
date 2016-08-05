@@ -122,12 +122,12 @@ are missing from the replacement document, an `REPLACE` operation will fail.
 
 !SUBSUBSECTION Graph functions
 
-In version 3.0 all former graph related functions have been removed from AQL to be replaced
-by native AQL constructs.
+In version 3.0 all former graph related functions have been removed from AQL to
+be replaced by [native AQL constructs](../../AQL/Graphs/index.html).
 These constructs allow for more fine-grained filtering on several graph levels.
 Also this allows the AQL optimizer to automatically improve these queries by
 enhancing them with appropriate indexes.
-We have create recipes to upgrade from 2.8 to 3.0 when using these functions.
+We have created recipes to upgrade from 2.8 to 3.0 when using these functions.
 
 The functions:
 
@@ -161,7 +161,7 @@ are covered in [Migrating GRAPH_* Measurements from 2.8 or earlier to 3.0](https
 * TRAVERSAL
 * TRAVERSAL_TREE
 
-are covered in  [#Migrating anonymous graph Functions from 2.8 or earlier to 3.0](https://docs.arangodb.com/cookbook/AQL/MigratingEdgeFunctionsTo3.html)
+are covered in [Migrating anonymous graph functions from 2.8 or earlier to 3.0](https://docs.arangodb.com/3/cookbook/AQL/MigratingEdgeFunctionsTo3.html)
 
 !SUBSECTION Typecasting functions
 
