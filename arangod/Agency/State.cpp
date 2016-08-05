@@ -199,13 +199,14 @@ size_t State::removeConflicts (query_t const& transactions) {
 
           auto trm = slice.get("term").getUInt();
           idx = slice.get("index").getUInt();
-
-          if (trm > _log.at(pos).term) { 
+          pos = idx-_cur;
+          
+          if (idx == _log.at(pos).index && trm != _log.at(pos).term) { 
             
             LOG_TOPIC(DEBUG, Logger::AGENCY)
               << "Removing " << _log.size()-pos
-              << " entries from log starting with " << idx << "="
-              << _log.at(pos).index;
+              << " entries from log starting with " << idx << "=="
+              << _log.at(pos).index << " and " << trm << "=" <<_log.at(pos).term;
             
             // persisted logs
             std::stringstream aql;
@@ -228,23 +229,27 @@ size_t State::removeConflicts (query_t const& transactions) {
             // volatile logs
             {
               MUTEX_LOCKER(mutexLocker, _logLock);
-              _log.erase(_log.begin()+pos-1, _log.end());
+              _log.erase(_log.begin()+pos, _log.end());
             }
             
             break;
             
-          }
+          } else {
+
+            LOG(WARN) << _log.at(pos);
+            LOG(WARN) << slice.toJson();
           
-          ++ndups;
+            ++ndups;
+          }
           
         }
       } 
     } catch (std::exception const& e) {
-      LOG_TOPIC(ERR, Logger::AGENCY) << e.what() << " " << __FILE__ << __LINE__;
+      LOG_TOPIC(DEBUG, Logger::AGENCY) << e.what() << " " << __FILE__ << __LINE__;
     }
     
   }
-  
+
   return ndups;
   
 }
@@ -285,7 +290,7 @@ std::vector<VPackSlice> State::slices(
   std::vector<VPackSlice> slices;
   MUTEX_LOCKER(mutexLocker, _logLock);
 
-  if (_log.empty()) {
+  if (_log.empty()) { 
     return slices;
   }
 
