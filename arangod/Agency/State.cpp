@@ -201,47 +201,59 @@ size_t State::removeConflicts (query_t const& transactions) {
           idx = slice.get("index").getUInt();
           pos = idx-_cur;
           
-          if (idx == _log.at(pos).index && trm != _log.at(pos).term) { 
-            
-            LOG_TOPIC(DEBUG, Logger::AGENCY)
-              << "Removing " << _log.size()-pos
-              << " entries from log starting with " << idx << "=="
-              << _log.at(pos).index << " and " << trm << "=" <<_log.at(pos).term;
-            
-            // persisted logs
-            std::stringstream aql;
-            aql << "FOR l IN log FILTER l._key >= '" << stringify(idx)
-                << "' REMOVE l IN log";
-            
-            arangodb::aql::Query
-              query(false, _vocbase, aql.str().c_str(), aql.str().size(),
-                    bindVars, nullptr, arangodb::aql::PART_MAIN);
-            
-            auto queryResult = query.execute(_queryRegistry);
-            
-            if (queryResult.code != TRI_ERROR_NO_ERROR) {
-              THROW_ARANGO_EXCEPTION_MESSAGE(
-                queryResult.code, queryResult.details);
-            }
-            
-            queryResult.result->slice();
-            
-            // volatile logs
-            {
-              MUTEX_LOCKER(mutexLocker, _logLock);
-              _log.erase(_log.begin()+pos, _log.end());
-            }
-            
-            break;
-            
-          } else {
+          LOG(WARN) << __LINE__;
 
-            LOG(WARN) << _log.at(pos);
-            LOG(WARN) << slice.toJson();
-          
-            ++ndups;
+          if (pos < _log.size()) {
+
+            if (idx == _log.at(pos).index && trm != _log.at(pos).term) { 
+              
+              LOG(WARN) << __LINE__;
+              
+              LOG_TOPIC(DEBUG, Logger::AGENCY)
+                << "Removing " << _log.size()-pos
+                << " entries from log starting with " << idx << "=="
+                << _log.at(pos).index << " and " << trm << "=" <<_log.at(pos).term;
+              
+              // persisted logs
+              std::stringstream aql;
+              aql << "FOR l IN log FILTER l._key >= '" << stringify(idx)
+                  << "' REMOVE l IN log";
+              
+              LOG(WARN) << __LINE__;
+              arangodb::aql::Query
+                query(false, _vocbase, aql.str().c_str(), aql.str().size(),
+                      bindVars, nullptr, arangodb::aql::PART_MAIN);
+              
+              LOG(WARN) << __LINE__;
+              auto queryResult = query.execute(_queryRegistry);
+              
+              LOG(WARN) << __LINE__;
+              if (queryResult.code != TRI_ERROR_NO_ERROR) {
+                THROW_ARANGO_EXCEPTION_MESSAGE(
+                  queryResult.code, queryResult.details);
+              }
+              
+              LOG(WARN) << __LINE__;
+              queryResult.result->slice();
+              
+              LOG(WARN) << __LINE__;
+              // volatile logs
+              {
+                MUTEX_LOCKER(mutexLocker, _logLock);
+                _log.erase(_log.begin()+pos, _log.end());
+              }
+              
+              LOG(WARN) << __LINE__;
+              break;
+              
+            } else {
+              
+              LOG(WARN) << _log.at(pos);
+              LOG(WARN) << slice.toJson();
+              
+              ++ndups;
+            }
           }
-          
         }
       } 
     } catch (std::exception const& e) {
