@@ -191,25 +191,21 @@ size_t State::removeConflicts (query_t const& transactions) {
     try {
       
       auto idx = slices[0].get("index").getUInt();
+      auto pos = idx-_cur;
       
-      if (idx-_cur < _log.size()) {
+      if (pos < _log.size()) {
         
         for (auto const& slice : VPackArrayIterator(slices)) {
 
-          LOG(WARN) << slice.toJson();
-          
           auto trm = slice.get("term").getUInt();
           idx = slice.get("index").getUInt();
 
-          LOG(WARN) << VPackSlice(_log.at(idx-_cur).entry->data());
-          
-          if (trm > VPackSlice(
-                _log.at(idx-_cur).entry->data()).get("term").getUInt()) { 
+          if (trm > _log.at(pos).term) { 
             
             LOG_TOPIC(DEBUG, Logger::AGENCY)
-              << "Removing " << _log.size()-idx+_cur
+              << "Removing " << _log.size()-pos
               << " entries from log starting with " << idx << "="
-              << _log.at(idx-_cur).index;
+              << _log.at(pos).index;
             
             // persisted logs
             std::stringstream aql;
@@ -232,7 +228,7 @@ size_t State::removeConflicts (query_t const& transactions) {
             // volatile logs
             {
               MUTEX_LOCKER(mutexLocker, _logLock);
-              _log.erase(_log.begin()+idx-_cur-1, _log.end());
+              _log.erase(_log.begin()+pos-1, _log.end());
             }
             
             break;
