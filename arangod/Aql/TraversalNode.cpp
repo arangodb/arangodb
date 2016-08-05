@@ -585,12 +585,11 @@ TraversalNode::~TraversalNode() {
                                  url + arangodb::basics::StringUtils::itoa(it.second), "", headers, 30.0);
       if (res->status != CL_COMM_SENT) {
         // Note If there was an error on server side we do not have CL_COMM_SENT
-        std::string message("could not start all traversal engines");
+        std::string message("Could not destruct all traversal engines");
         if (res->errorMessage.length() > 0) {
           message += std::string(" : ") + res->errorMessage;
         }
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_COLLECTION_LOCK_FAILED,
-                                       message);
+        LOG(ERR) << message;
       }
     }
   }
