@@ -46,6 +46,13 @@ constexpr inline typename std::enable_if<
 to_enum(T value) noexcept {
   return static_cast<E>(value);
 }
+
+template <typename E_OUT, typename E_IN>
+constexpr inline typename std::enable_if<
+    std::is_enum<E_IN>::value && std::is_enum<E_OUT>::value, E_OUT>::type
+enum_to_enum(E_IN value) noexcept {
+  return to_enum<E_OUT>(underlying_value(value));
+}
 }
 }
 
