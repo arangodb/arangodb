@@ -17,6 +17,7 @@
     outputCounter: 0,
 
     allowUpload: false,
+    renderComplete: false,
 
     customQueries: [],
     queries: [],
@@ -222,7 +223,6 @@
           this.deselect(this.queryPreview);
         } else {
           $('#updateCurrentQuery').hide();
-          
           if (this.settings.aqlWidth === undefined) {
             $('.aqlEditorWrapper').first().width($(window).width() * 0.33);
           } else {
@@ -329,26 +329,35 @@
       this.currentQuery = this.collection.findWhere({name: name});
 
       if (this.currentQuery) {
-        localStorage.setItem('lastOpenQuery', this.currentQuery.get('name'));  
+        localStorage.setItem('lastOpenQuery', this.currentQuery.get('name'));
       }
 
       $('#updateCurrentQuery').show();
 
       // render a button to revert back to last query
       $('#lastQuery').remove();
-      $('#currentQueryName').remove();
 
       $('#queryContent .arangoToolbarTop .pull-left')
         .append('<span id="lastQuery" class="clickable">Previous Query</span>');
 
-      $('#queryContent .arangoToolbarTop .pull-left')
-        .append('<span id="currentQueryName">' + name + '</span>');
+      this.breadcrumb(name);
 
       $('#lastQuery').hide().fadeIn(500)
         .on('click', function () {
+          $('#updateCurrentQuery').hide();
           self.aqlEditor.setValue(self.state.lastQuery.query, 1);
           self.fillBindParamTable(self.state.lastQuery.bindParam);
           self.updateBindParams();
+
+          self.collection.each(function (model) {
+            model = model.toJSON();
+
+            if (model.value === self.state.lastQuery.query) {
+              self.breadcrumb(model.name);
+            } else {
+              self.breadcrumb();
+            }
+          });
 
           $('#lastQuery').fadeOut(500, function () {
             $(this).remove();
@@ -536,39 +545,47 @@
     },
 
     getCachedQueryAfterRender: function () {
-      // get cached query if available
-      var queryObject = this.getCachedQuery();
-      var self = this;
+      if (this.renderComplete === false) {
+        // get cached query if available
+        var queryObject = this.getCachedQuery();
+        var self = this;
 
-      if (queryObject !== null && queryObject !== undefined && queryObject !== '') {
-        this.aqlEditor.setValue(queryObject.query, 1);
+        if (queryObject !== null && queryObject !== undefined && queryObject !== '') {
+          this.aqlEditor.setValue(queryObject.query, 1);
 
-        var queryName = localStorage.getItem('lastOpenQuery');
+          var queryName = localStorage.getItem('lastOpenQuery');
 
-        if (queryName) {
-          $('#queryContent .arangoToolbarTop .pull-left')
-            .append('<span id="currentQueryName">' + queryName + '</span>');
-          $('#updateCurrentQuery').show();
+          if (queryName !== undefined && queryName !== 'undefined') {
+            try {
+              var query = this.collection.findWhere({name: queryName}).toJSON();
+              if (query.value === queryObject.query) {
+                self.breadcrumb(queryName);
+                $('#updateCurrentQuery').show();
+              }
+            } catch (ignore) {
+            }
+          }
+
+          // reset undo history for initial text value
+          this.aqlEditor.getSession().setUndoManager(new ace.UndoManager());
+
+          if (queryObject.parameter !== '' || queryObject !== undefined) {
+            try {
+              // then fill values into input boxes
+              self.bindParamTableObj = JSON.parse(queryObject.parameter);
+
+              var key;
+              _.each($('#arangoBindParamTable input'), function (element) {
+                key = $(element).attr('name');
+                $(element).val(self.bindParamTableObj[key]);
+              });
+
+              // resave cached query
+              self.setCachedQuery(self.aqlEditor.getValue(), JSON.stringify(self.bindParamTableObj));
+            } catch (ignore) {}
+          }
         }
-
-        // reset undo history for initial text value
-        this.aqlEditor.getSession().setUndoManager(new ace.UndoManager());
-
-        if (queryObject.parameter !== '' || queryObject !== undefined) {
-          try {
-            // then fill values into input boxes
-            self.bindParamTableObj = JSON.parse(queryObject.parameter);
-
-            var key;
-            _.each($('#arangoBindParamTable input'), function (element) {
-              key = $(element).attr('name');
-              $(element).val(self.bindParamTableObj[key]);
-            });
-
-            // resave cached query
-            self.setCachedQuery(self.aqlEditor.getValue(), JSON.stringify(self.bindParamTableObj));
-          } catch (ignore) {}
-        }
+        this.renderComplete = true;
       }
     },
 
@@ -641,7 +658,6 @@
       this.fillSelectBoxes();
       this.makeResizeable();
       this.initQueryImport();
-      this.getCachedQueryAfterRender();
 
       // set height of editor wrapper
       $('.inputEditorWrapper').height($(window).height() / 10 * 5 + 25);
@@ -1148,21 +1164,20 @@
       }, 500);
     },
 
-    updateAQL: function() {
+    updateAQL: function () {
       var content = this.aqlEditor.getValue();
       var queryName = localStorage.getItem('lastOpenQuery');
       var query = this.collection.findWhere({name: queryName});
-
       if (query) {
         query.set('value', content);
-        var callback = function(error) {
+        var callback = function (error) {
           if (error) {
             arangoHelper.arangoError('Query', 'Could not save query');
-          }
-          else {
+          } else {
             var self = this;
+            arangoHelper.arangoNotification('Queries', 'Saved query ' + queryName);
             this.collection.fetch({
-              success: function() {
+              success: function () {
                 self.updateLocalQueries();
               }
             });
@@ -1174,13 +1189,13 @@
       this.refreshAQL(true);
     },
 
-    createAQL: function() {
+    createAQL: function () {
       localStorage.setItem('lastOpenQuery', undefined);
       this.aqlEditor.setValue('');
 
       this.refreshAQL(true);
 
-      $('#currentQueryName').remove();
+      this.breadcrumb();
       $('#updateCurrentQuery').hide();
     },
 
@@ -1298,15 +1313,25 @@
               self.updateLocalQueries();
               $('#updateCurrentQuery').show();
 
-              $('#currentQueryName').remove();
-              $('#queryContent .arangoToolbarTop .pull-left')
-                .append('<span id="currentQueryName">' + saveName + '</span>');
+              self.breadcrumb(saveName);
             }
           });
         }
       }.bind(this);
       this.collection.saveCollectionQueries(callback);
       window.modalView.hide();
+    },
+
+    breadcrumb: function (name) {
+      window.setTimeout(function () {
+        if (name) {
+          $('#subNavigationBar .breadcrumb').html(
+            'Query: ' + name
+          );
+        } else {
+          $('#subNavigationBar .breadcrumb').html('');
+        }
+      }, 50);
     },
 
     verifyQueryAndParams: function () {
@@ -1931,6 +1956,8 @@
 
       this.collection.fetch({
         success: function () {
+          self.getCachedQueryAfterRender();
+
           // old storage method
           var item = localStorage.getItem('customQueries');
           if (item) {

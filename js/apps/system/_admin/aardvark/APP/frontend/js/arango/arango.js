@@ -255,6 +255,7 @@
         );
         if (!menu.disabled) {
           $('#subNavigationBar .bottom').children().last().bind('click', function () {
+            $('#subNavigationBar .breadcrumb').html('');
             window.App.navigate(menu.route, {trigger: true});
           });
         }
