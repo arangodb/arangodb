@@ -297,7 +297,7 @@ if [ -n "$CXX" ]; then
     CONFIGURE_OPTIONS="${CONFIGURE_OPTIONS} -DCMAKE_CXX_COMPILER=${CXX}"
 fi
 
-if [ -z "${MSVC}"]; then
+if [ -z "${MSVC}" ]; then
     # MSVC doesn't know howto do assembler in first place.
     CONFIGURE_OPTIONS="${CONFIGURE_OPTIONS} -DUSE_OPTIMIZE_FOR_ARCHITECTURE=Off"
 fi
