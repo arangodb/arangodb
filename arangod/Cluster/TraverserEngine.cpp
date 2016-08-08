@@ -93,9 +93,7 @@ TraverserEngine::TraverserEngine(TRI_vocbase_t* vocbase,
       _collections.add(name, TRI_TRANSACTION_READ); 
       shards.emplace_back(std::move(name));
     }
-    if (!shards.empty()) {
-      _vertexShards.emplace(collection.key.copyString(), shards);
-    }
+    _vertexShards.emplace(collection.key.copyString(), shards);
   }
 
   _trx = new arangodb::AqlTransaction(
@@ -196,6 +194,7 @@ void TraverserEngine::getVertexData(VPackSlice vertex, VPackBuilder& builder) {
       }
     }
     if (!found) {
+      builder.add(arangodb::basics::VelocyPackHelper::NullValue());
       builder.removeLast();
     }
   };
@@ -233,6 +232,7 @@ void TraverserEngine::getVertexData(VPackSlice vertex, size_t depth,
                                          name + " please add 'WITH " + name +
                                          "' as the first line in your AQL");
     }
+    builder.add(v);
     for (std::string const& shard : shards->second) {
       res = _trx->documentFastPath(shard, v, builder, false);
       if (res == TRI_ERROR_NO_ERROR) {

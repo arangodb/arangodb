@@ -759,6 +759,18 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
         std::pair<std::vector<std::vector<ShardID>>,
                   std::unordered_map<std::string, std::vector<ShardID>>>>
         mappingServerToCollections;
+    auto servers = clusterInfo->getCurrentDBServers();
+    // Initialize on engine for every server known to this cluster
+    // Thanks to locking mechanism we cannot leave any out, even it
+    // is not responsible for anything...
+    for (auto s : servers) {
+      mappingServerToCollections.emplace(
+          s,
+          std::make_pair<std::vector<std::vector<ShardID>>,
+                         std::unordered_map<std::string, std::vector<ShardID>>>(
+              std::vector<std::vector<ShardID>>(),
+              std::unordered_map<std::string, std::vector<ShardID>>()));
+    }
     size_t length = edges.size();
     for (size_t i = 0; i < length; ++i) {
       auto shardIds = edges[i]->shardIds();
@@ -837,8 +849,8 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     //       [ <shards of edge collection 2> ]
     //     ],
     //     "vertices" : {
-    //       "v1": [<shards of v1>],
-    //       "v2": [<shards of v2>]
+    //       "v1": [<shards of v1>], // may be empty
+    //       "v2": [<shards of v2>]  // may be empty
     //     }
     //   }
     // }
