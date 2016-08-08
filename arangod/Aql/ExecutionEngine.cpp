@@ -748,7 +748,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     // Only the shards are different.
     std::vector<std::unique_ptr<arangodb::aql::Collection>> const& edges = en->edgeColls();
 
-     // Here we create a mapping
+    // Here we create a mapping
     // ServerID => ResponsibleShards
     // Where Responsible shards is divided in edgeCollections and vertexCollections
     // For edgeCollections the Ordering is important for the index access.
@@ -772,14 +772,6 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
       // We need to exactly maintain the ordering.
       // A server my be responsible for a shard in edge collection 1 but not 0 or 2.
       info.first.resize(length);
-      /*
-      mappingServerToCollections.emplace(
-          s,
-          std::make_pair<std::vector<std::vector<ShardID>>,
-                         std::unordered_map<std::string, std::vector<ShardID>>>(
-              std::vector<std::vector<ShardID>>(),
-              std::unordered_map<std::string, std::vector<ShardID>>()));
-      */
     }
     for (size_t i = 0; i < length; ++i) {
       auto shardIds = edges[i]->shardIds();
@@ -834,6 +826,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
         }
       }
     }
+
     // Now we create a VPack Object containing the relevant information
     // for the Traverser Engines.
     // First the options (which are identical for all engines.
