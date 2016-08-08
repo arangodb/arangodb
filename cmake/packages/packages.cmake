@@ -1,4 +1,4 @@
-if (NOT(MSVC) AND NOT  ("${PACKAGING}" STREQUAL "RPM"))
+if (NOT(MSVC))
   set(CPACK_SET_DESTDIR ON)
 endif()
 
