@@ -146,140 +146,6 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
     },
 
     ////////////////////////////////////////////////////////////////////////////////
-    /// @brief checks GRAPH_VERTICES()
-    ////////////////////////////////////////////////////////////////////////////////
-    
-    /*
-    testVertices: function () {
-      var bindVars = {
-        name: gN,
-        example: v1 + "/v1",
-        options: {direction : 'any'}
-      };
-      var actual = getRawQueryResults(AQL_VERTICES, bindVars);
-      assertEqual(actual[0]._id, v1 + '/v1');
-    },
-
-    testVerticesRestricted: function() {
-      var bindVars = {
-        name: gN,
-        example: {},
-        options: {
-          direction : 'any',
-          vertexCollectionRestriction: or
-        }
-      };
-      var actual = getRawQueryResults(AQL_VERTICES, bindVars);
-      assertEqual(actual.length, 1);
-      assertEqual(actual[0]._id, 'UnitTestsAhuacatlOrphan/orphan');
-    },
-
-    testVerticesExample: function () {
-      var bindVars = {
-        name: gN,
-        example: startExample,
-        options: {direction : 'any'}
-      };
-      var actual = getRawQueryResults(AQL_VERTICES, bindVars);
-      assertEqual(actual.length, 4);
-      assertEqual(actual[0]._id, 'UnitTestsAhuacatlVertex1/v1');
-      assertEqual(actual[1]._id, 'UnitTestsAhuacatlVertex1/v2');
-      assertEqual(actual[2]._id, 'UnitTestsAhuacatlVertex2/v3');
-      assertEqual(actual[3]._id, 'UnitTestsAhuacatlVertex4/v8');
-    },
-
-    testVerticesWithInboundEdges: function () {
-      var bindVars = {
-        name: gN,
-        example: v3 + "/v5",
-        options: {direction : 'inbound'}
-      };
-      var actual = getRawQueryResults(AQL_VERTICES, bindVars);
-      assertEqual(actual.length, 1);
-      assertEqual(actual[0]._id, 'UnitTestsAhuacatlVertex3/v5');
-    },
-
-    testVerticesWithInboundEdgesHasNoInboundEdges: function () {
-      var bindVars = {
-        name: gN,
-        example: v2 + "/v3",
-        options: {direction : 'inbound'}
-      };
-      var actual = getRawQueryResults(AQL_VERTICES, bindVars);
-      assertEqual(actual.length, 0);
-    },
-
-    testVerticesWithInboundEdgesAndExample: function () {
-      var bindVars = {
-        name: gN,
-        example: startExample,
-        options: {direction : 'inbound'}
-      };
-      var actual = getRawQueryResults(AQL_VERTICES, bindVars);
-      assertEqual(actual.length, 3);
-      assertEqual(actual[0]._id, 'UnitTestsAhuacatlVertex1/v1');
-      assertEqual(actual[1]._id, 'UnitTestsAhuacatlVertex1/v2');
-      assertEqual(actual[2]._id, 'UnitTestsAhuacatlVertex4/v8');
-    },
-
-    testVerticesWithInboundEdgesRestrictedHasNoInbound: function() {
-      var bindVars = {
-        name: gN,
-        example: {},
-        options: {
-          direction : 'inbound',
-          vertexCollectionRestriction: v2
-        }
-      };
-      var actual = getRawQueryResults(AQL_VERTICES, bindVars);
-      assertEqual(actual.length, 0);
-    },
-
-    testVerticesWithInboundEdgesRestrictedHasInbound: function() {
-      var bindVars = {
-        name: gN,
-        example: {},
-        options: {
-          direction : 'inbound',
-          vertexCollectionRestriction: v3
-        }
-      };
-      var actual = getRawQueryResults(AQL_VERTICES, bindVars);
-      assertEqual(actual.length, 2);
-      assertEqual(actual[0]._id, v3 + '/v5');
-      assertEqual(actual[1]._id, v3 + '/v6');
-    },
-
-    testVerticesWithOutboundEdgesRestrictedHasOutbound: function() {
-      var bindVars = {
-        name: gN,
-        example: {},
-        options: {
-          direction : 'outbound',
-          vertexCollectionRestriction: v2
-        }
-      };
-      var actual = getRawQueryResults(AQL_VERTICES, bindVars);
-      assertEqual(actual.length, 2);
-      assertEqual(actual[0]._id, v2 + '/v3');
-      assertEqual(actual[1]._id, v2 + '/v4');
-    },
-
-    testVerticesWithOutboundEdgesRestrictedHasNoOutbound: function() {
-      var bindVars = {
-        name: gN,
-        example: {},
-        options: {
-          direction : 'outbound',
-          vertexCollectionRestriction: v3
-        }
-      };
-      var actual = getRawQueryResults(AQL_VERTICES, bindVars);
-      assertEqual(actual.length, 0);
-    },
-    */
-
-    ////////////////////////////////////////////////////////////////////////////////
     /// @brief checks edges with a GRAPH
     ////////////////////////////////////////////////////////////////////////////////
 
@@ -298,7 +164,10 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
     },
 
     testEdgesAnyRestricted: function () {
-      var query = `FOR v, e IN ANY @start @@collection SORT e.what RETURN e.what`;
+      var query = `WITH ${v1}, ${v2}, ${v3}, ${v4}
+                   FOR v, e IN ANY @start @@collection
+                   SORT e.what
+                   RETURN e.what`;
       var bindVars = {
         start: v1 + "/v1",
         "@collection": e1
@@ -360,7 +229,8 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
     },
 
     testEdgesInboundStartExampleRestricted: function() {
-      var query = `${AQL_PICK_START_EXAMPLE}
+      var query = `WITH ${v1}, ${v2}, ${v3}, ${v4}
+                   ${AQL_PICK_START_EXAMPLE}
                    FOR v, e IN INBOUND start @@collection SORT e.what RETURN e.what`;
       var bindVars = {
         "@collection": e2
@@ -410,8 +280,11 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
     },
 
     testEdgesOutboundStartExampleRestricted: function() {
-      var query = `${AQL_PICK_START_EXAMPLE}
-                   FOR v, e IN OUTBOUND start @@collection SORT e.what RETURN e.what`;
+      var query = `WITH ${v1}, ${v2}, ${v3}, ${v4}
+                   ${AQL_PICK_START_EXAMPLE}
+                   FOR v, e IN OUTBOUND start @@collection
+                   SORT e.what
+                   RETURN e.what`;
       var bindVars = {
         "@collection": e2
       };
@@ -1702,10 +1575,11 @@ function ahuacatlQueryMultiCollectionMadnessTestSuite() {
       var bindVars = {
         start: s1
       };
-      var query = `FOR v IN 2 ANY @start ${e1}, ${e2}
-                     FILTER IS_SAME_COLLECTION(${v3}, v)
-                     SORT v._id
-                     RETURN v`;
+      var query = `WITH ${v1}, ${v2}, ${v3}
+                   FOR v IN 2 ANY @start ${e1}, ${e2}
+                   FILTER IS_SAME_COLLECTION(${v3}, v)
+                   SORT v._id
+                   RETURN v`;
       var actual = getRawQueryResults(query, bindVars);
       assertEqual(actual.length, 1);
       assertEqual(actual[0]._id, t1);
@@ -1715,10 +1589,11 @@ function ahuacatlQueryMultiCollectionMadnessTestSuite() {
       var bindVars = {
         start: s2
       };
-      var query = `FOR v IN 2 ANY @start ${e1}, ${e2}
-                     FILTER IS_SAME_COLLECTION(${v3}, v)
-                     SORT v._id
-                     RETURN v`;
+      var query = `WITH ${v1}, ${v2}, ${v3}
+                   FOR v IN 2 ANY @start ${e1}, ${e2}
+                   FILTER IS_SAME_COLLECTION(${v3}, v)
+                   SORT v._id
+                   RETURN v`;
       var actual = getRawQueryResults(query, bindVars);
       assertEqual(actual.length, 2);
       assertEqual(actual[0]._id, t1);
