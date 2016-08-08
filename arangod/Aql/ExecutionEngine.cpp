@@ -760,29 +760,33 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
                   std::unordered_map<std::string, std::vector<ShardID>>>>
         mappingServerToCollections;
     auto servers = clusterInfo->getCurrentDBServers();
+    size_t length = edges.size();
+
     // Initialize on engine for every server known to this cluster
     // Thanks to locking mechanism we cannot leave any out, even it
     // is not responsible for anything...
     for (auto s : servers) {
+      // We insert at lease an empty vector for every edge collection
+      // Used in the traverser.
+      auto& info = mappingServerToCollections[s];
+      // We need to exactly maintain the ordering.
+      // A server my be responsible for a shard in edge collection 1 but not 0 or 2.
+      info.first.resize(length);
+      /*
       mappingServerToCollections.emplace(
           s,
           std::make_pair<std::vector<std::vector<ShardID>>,
                          std::unordered_map<std::string, std::vector<ShardID>>>(
               std::vector<std::vector<ShardID>>(),
               std::unordered_map<std::string, std::vector<ShardID>>()));
+      */
     }
-    size_t length = edges.size();
     for (size_t i = 0; i < length; ++i) {
       auto shardIds = edges[i]->shardIds();
       for (auto const& shard : *shardIds) {
         auto serverList = clusterInfo->getResponsibleServer(shard);
         TRI_ASSERT(!serverList->empty());
         auto& pair = mappingServerToCollections[(*serverList)[0]];
-        if (pair.first.empty()) {
-          // We need to exactly maintain the ordering.
-          // A server my be responsible for a shard in edge collection 1 but not 0 or 2.
-          pair.first.resize(length);
-        }
         pair.first[i].emplace_back(shard);
       }
     }
@@ -798,6 +802,10 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
       // ALL collections known to this query.
       auto cs = query->collections()->collections();
       for (auto const& collection : (*cs)) {
+        for (auto& entry : mappingServerToCollections) {
+          entry.second.second.emplace(collection.second->getName(),
+                                      std::vector<ShardID>());
+        }
         if (knownEdges.find(collection.second->getName()) == knownEdges.end()) {
           // This collection is not one of the edge collections used in this
           // graph.
@@ -806,11 +814,6 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
             auto serverList = clusterInfo->getResponsibleServer(shard);
             TRI_ASSERT(!serverList->empty());
             auto& pair = mappingServerToCollections[(*serverList)[0]];
-            if (pair.first.empty()) {
-              // We need to exactly maintain the ordering.
-              // A server my be responsible for a shard in edge collection 1 but not 0 or 2.
-              pair.first.resize(length);
-            }
             pair.second[collection.second->getName()].emplace_back(shard);
           }
         }
@@ -818,16 +821,15 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     } else {
       // This Traversal is started with a GRAPH. It knows all relevant collections.
       for (auto const& it : vertices) {
+        for (auto& entry : mappingServerToCollections) {
+          entry.second.second.emplace(it->getName(),
+                                      std::vector<ShardID>());
+        }
         auto shardIds = it->shardIds();
         for (auto const& shard : *shardIds) {
           auto serverList = clusterInfo->getResponsibleServer(shard);
           TRI_ASSERT(!serverList->empty());
           auto& pair = mappingServerToCollections[(*serverList)[0]];
-          if (pair.first.empty()) {
-            // We need to exactly maintain the ordering.
-            // A server my be responsible for a shard in edge collection 1 but not 0 or 2.
-            pair.first.resize(length);
-          }
           pair.second[it->getName()].emplace_back(shard);
         }
       }
