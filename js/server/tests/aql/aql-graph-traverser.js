@@ -626,7 +626,7 @@ function multiCollectionGraphSuite () {
     },
 
     testThirdEntryIsPath: function () {
-      var query = `WITH {$vn}
+      var query = `WITH ${vn}
         FOR x, e, p IN OUTBOUND @startId @@eCol
         SORT x._key
         RETURN p`;
@@ -1234,8 +1234,7 @@ function potentialErrorsSuite () {
     },
 
     testCrazyStart7: function () {
-      var query = `WITH ${cn}
-        FOR x IN OUTBOUND
+      var query = `FOR x IN OUTBOUND
         (FOR y IN @@vCol FILTER y._id == @startId RETURN y) @@eCol
         RETURN x._id`;
       var bindVars = {
