@@ -28,7 +28,7 @@ include(InstallMacros)
 
 # install ----------------------------------------------------------------------
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/Documentation/man/
-  DESTINATION share/man)
+  DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/man)
 
 install_readme(README README.txt)
 install_readme(README.md README.md)
@@ -50,7 +50,7 @@ include(InstallArangoDBJSClient)
 
 install(
   DIRECTORY ${PROJECT_SOURCE_DIR}/js/actions ${PROJECT_SOURCE_DIR}/js/apps ${PROJECT_SOURCE_DIR}/js/contrib ${PROJECT_SOURCE_DIR}/js/node ${PROJECT_SOURCE_DIR}/js/server
-  DESTINATION share/arangodb3/js
+  DESTINATION ${CMAKE_INSTALL_DATAROOTDIR_ARANGO}/js
   REGEX "^.*/server/tests$" EXCLUDE
   REGEX "^.*/aardvark/APP/node_modules$" EXCLUDE
 )
