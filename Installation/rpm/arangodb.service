@@ -1,0 +1,36 @@
+# This file is part of package arangodb.
+#
+# Description:
+#
+#  Used to start ArangoDB
+#
+#  A universal open-source database with a flexible data model 
+#  for documents, graphs, and key-values. Build high 
+#  performance applications using a convenient sql-like query 
+#  language or JavaScript extensions.
+#
+#  http://www.arangodb.com
+#
+
+[Unit]
+Description=ArangoDB
+After=syslog.target network.target
+
+[Service]
+Type=simple
+LimitNOFILE=131072
+PIDFile=/var/run/arangodb/arangod.pid
+ExecStartPre=/usr/bin/install -g arangodb -o arangodb -d /var/run/arangodb
+ExecStartPre=/usr/bin/chown -R arangodb:arangodb /var/log/arangodb3
+ExecStartPre=/usr/bin/chmod 700 /var/log/arangodb3
+ExecStartPre=/usr/bin/chown -R arangodb:arangodb /var/lib/arangodb3
+ExecStartPre=/usr/bin/chmod 700 /var/lib/arangodb3
+ExecStartPre=/usr/bin/chown -R arangodb:arangodb /var/lib/arangodb3-apps
+ExecStartPre=/usr/bin/chmod 700 /var/lib/arangodb3-apps
+ExecStartPre=/usr/sbin/arangod --uid arangodb --gid arangodb --pid-file /var/run/arangodb/arangod.pid --server.rest-server false --database.auto-upgrade true
+ExecStart=/usr/sbin/arangod --uid arangodb --gid arangodb --pid-file /var/run/arangodb/arangod.pid
+TimeoutStopSec=120
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

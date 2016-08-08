@@ -61,7 +61,7 @@ macro (install_config name)
   endif ()
   install(
     FILES ${PROJECT_BINARY_DIR}/${CMAKE_INSTALL_SYSCONFDIR_ARANGO}/${name}.conf
-    DESTINATION ${CMAKE_INSTALL_FULL_SYSCONFDIR_ARANGO})
+    DESTINATION ${CMAKE_INSTALL_SYSCONFDIR_ARANGO})
 endmacro ()
 
 # installs a readme file converting EOL ----------------------------------------
