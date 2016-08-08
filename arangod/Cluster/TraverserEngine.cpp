@@ -69,7 +69,7 @@ TraverserEngine::TraverserEngine(TRI_vocbase_t* vocbase,
 
   VPackSlice vertexSlice = shardsSlice.get(VERTICES);
 
-  if (vertexSlice.isNone() || !vertexSlice.isArray()) {
+  if (vertexSlice.isNone() || !vertexSlice.isObject()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
         "The " + SHARDS + " object requires an " + VERTICES + " attribute.");
@@ -85,11 +85,17 @@ TraverserEngine::TraverserEngine(TRI_vocbase_t* vocbase,
   }
 
   // Add all Vertex shards to the transaction
-  for (VPackSlice const shard : VPackArrayIterator(vertexSlice)) {
-    TRI_ASSERT(shard.isString());
-    std::string name = shard.copyString();
-    _collections.add(name, TRI_TRANSACTION_READ); 
-    _vertexShards.emplace_back(std::move(name));
+  for (auto const& collection : VPackObjectIterator(vertexSlice)) {
+    std::vector<std::string> shards;
+    for (VPackSlice const shard : VPackArrayIterator(collection.value)) {
+      TRI_ASSERT(shard.isString());
+      std::string name = shard.copyString();
+      _collections.add(name, TRI_TRANSACTION_READ); 
+      shards.emplace_back(std::move(name));
+    }
+    if (!shards.empty()) {
+      _vertexShards.emplace(collection.key.copyString(), shards);
+    }
   }
 
   _trx = new arangodb::AqlTransaction(
@@ -161,14 +167,24 @@ void TraverserEngine::getVertexData(VPackSlice vertex, VPackBuilder& builder) {
   // Thanks locking
   TRI_ASSERT(vertex.isString() || vertex.isArray());
   builder.openObject();
-  VPackBuilder tmpResult;
   bool found;
   int res = TRI_ERROR_NO_ERROR;
   auto workOnOneDocument = [&](VPackSlice v) {
-    tmpResult.clear();
     found = false;
-    for (std::string const& shard : _vertexShards) {
-      res = _trx->documentFastPath(shard, v, tmpResult, false);
+    StringRef id(v);
+    std::string name = id.substr(0, id.find('/')).toString();
+    auto shards = _vertexShards.find(name);
+    if (shards == _vertexShards.end()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_COLLECTION_LOCK_FAILED,
+                                     "Collection not known to Traversal " +
+                                         name + " please add 'WITH " + name +
+                                         "' as the first line in your AQL");
+      // The collection is not known here!
+      // Maybe handle differently
+    }
+    builder.add(v);
+    for (std::string const& shard : shards->second) {
+      res = _trx->documentFastPath(shard, v, builder, false);
       if (res == TRI_ERROR_NO_ERROR) {
         found = true;
         // FOUND short circuit.
@@ -179,11 +195,8 @@ void TraverserEngine::getVertexData(VPackSlice vertex, VPackBuilder& builder) {
         THROW_ARANGO_EXCEPTION(res);
       }
     }
-    // TODO FILTERING!
-    // HOWTO Distinguish filtered vs NULL?
-    if (found) {
-      builder.add(v);
-      builder.add(tmpResult.slice());
+    if (!found) {
+      builder.removeLast();
     }
   };
 
@@ -208,34 +221,20 @@ void TraverserEngine::getVertexData(VPackSlice vertex, size_t depth,
   bool found = false;
   builder.openObject();
   builder.add(VPackValue("vertices"));
-  if (vertex.isArray()) {
-    builder.openArray();
-    for (VPackSlice v : VPackArrayIterator(vertex)) {
-      found = false;
-      for (std::string const& shard : _vertexShards) {
-        res = _trx->documentFastPath(shard, v, builder, false);
-        if (res == TRI_ERROR_NO_ERROR) {
-          read++;
-          found = true;
-          // FOUND short circuit.
-          break;
-        }
-        if (res != TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
-          // We are in a very bad condition here...
-          THROW_ARANGO_EXCEPTION(res);
-        }
-      }
-      // TODO FILTERING!
-      // HOWTO Distinguish filtered vs NULL?
-      if (!found) {
-        builder.add(arangodb::basics::VelocyPackHelper::NullValue());
-      }
-    }
-    builder.close();
-  } else if (vertex.isString()) {
+
+  auto workOnOneDocument = [&](VPackSlice v) {
     found = false;
-    for (std::string const& shard : _vertexShards) {
-      res = _trx->documentFastPath(shard, vertex, builder, false);
+    StringRef id(v);
+    std::string name = id.substr(0, id.find('/')).toString();
+    auto shards = _vertexShards.find(name);
+    if (shards == _vertexShards.end()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_COLLECTION_LOCK_FAILED,
+                                     "Collection not known to Traversal " +
+                                         name + " please add 'WITH " + name +
+                                         "' as the first line in your AQL");
+    }
+    for (std::string const& shard : shards->second) {
+      res = _trx->documentFastPath(shard, v, builder, false);
       if (res == TRI_ERROR_NO_ERROR) {
         read++;
         found = true;
@@ -250,10 +249,18 @@ void TraverserEngine::getVertexData(VPackSlice vertex, size_t depth,
     // TODO FILTERING!
     // HOWTO Distinguish filtered vs NULL?
     if (!found) {
-      builder.add(arangodb::basics::VelocyPackHelper::NullValue());
+      builder.removeLast();
     }
+  };
+
+  if (vertex.isArray()) {
+    builder.openArray();
+    for (VPackSlice v : VPackArrayIterator(vertex)) {
+      workOnOneDocument(v);
+    }
+    builder.close();
   } else {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
+    workOnOneDocument(vertex);
   }
   builder.add("readIndex", VPackValue(read));
   builder.add("filtered", VPackValue(filtered));

@@ -79,7 +79,7 @@ class TraverserEngine {
     arangodb::Transaction* _trx;
     arangodb::aql::Collections _collections;
     std::unordered_set<std::string> _locked;
-    std::vector<std::string> _vertexShards;
+    std::unordered_map<std::string, std::vector<std::string>> _vertexShards;
 };
 } // namespace traverser
 } // namespace arangodb

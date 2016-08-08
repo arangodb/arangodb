@@ -164,7 +164,7 @@ int fetchEdgesFromEngines(
 ///        If no server responds with a document
 ///        a 'null' will be inserted into the result.
 
-int fetchVerticesFromEngines(
+void fetchVerticesFromEngines(
     std::string const&,
     std::unordered_map<ServerID, traverser::TraverserEngineID> const*,
     std::unordered_set<arangodb::velocypack::Slice>&,

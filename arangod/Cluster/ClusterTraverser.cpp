@@ -103,11 +103,8 @@ bool ClusterTraverser::getSingleVertex(VPackSlice edge, VPackSlice comp,
 void ClusterTraverser::fetchVertices() {
   _readDocuments += _verticesToFetch.size();
   TransactionBuilderLeaser lease(_trx);
-  int res = fetchVerticesFromEngines(_dbname, _engines, _verticesToFetch,
-                                     _vertices, *(lease.get()));
-  if (res != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION(res);
-  }
+  fetchVerticesFromEngines(_dbname, _engines, _verticesToFetch, _vertices,
+                           *(lease.get()));
   _verticesToFetch.clear();
 #warning Reimplement this. Fetching Documents Coordinator-Case
   /*

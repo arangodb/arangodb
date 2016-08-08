@@ -1635,7 +1635,7 @@ int fetchEdgesFromEngines(
 ///        If no server responds with a document
 ///        a 'null' will be inserted into the result.
 
-int fetchVerticesFromEngines(
+void fetchVerticesFromEngines(
     std::string const& dbname,
     std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines,
     std::unordered_set<VPackSlice>& vertexIds,
@@ -1679,21 +1679,29 @@ int fetchVerticesFromEngines(
     int commError = handleGeneralCommErrors(&res);
     if (commError != TRI_ERROR_NO_ERROR) {
       // oh-oh cluster is in a bad state
-      return commError;
+      THROW_ARANGO_EXCEPTION(commError);
     }
     TRI_ASSERT(res.answer != nullptr);
     auto resBody = res.answer->toVelocyPackBuilderPtr(&VPackOptions::Defaults);
     VPackSlice resSlice = resBody->slice();
     if (!resSlice.isObject()) {
       // Response has invalid format
-      return TRI_ERROR_HTTP_CORRUPTED_JSON;
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_HTTP_CORRUPTED_JSON);
+    }
+    if (res.answer_code != GeneralResponse::ResponseCode::OK) {
+      int code = arangodb::basics::VelocyPackHelper::getNumericValue<int>(
+          resSlice, "errorNum", TRI_ERROR_INTERNAL);
+      // We have an error case here. Throw it.
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          code, arangodb::basics::VelocyPackHelper::getStringValue(
+                    resSlice, "errorMessage", TRI_errno_string(code)));
     }
     for (auto const& pair : VPackObjectIterator(resSlice)) {
       if (vertexIds.erase(pair.key) == 0) {
         // We either found the same vertex twice,
         // or found a vertex we did not request.
         // Anyways something somewhere went seriously wrong
-        return TRI_ERROR_CLUSTER_GOT_CONTRADICTING_ANSWERS;
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_GOT_CONTRADICTING_ANSWERS);
       }
       TRI_ASSERT(result.find(pair.key) == result.end());
       auto val = VPackBuilder::clone(pair.value);
@@ -1710,8 +1718,6 @@ int fetchVerticesFromEngines(
                .steal());
   }
   vertexIds.clear();
-
-  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

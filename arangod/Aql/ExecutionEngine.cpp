@@ -754,8 +754,10 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     // For edgeCollections the Ordering is important for the index access.
     // Also the same edgeCollection can be included twice (iff direction is ANY)
     auto clusterInfo = arangodb::ClusterInfo::instance();
-    std::unordered_map<ServerID,
-                       std::pair<std::vector<std::vector<ShardID>>, std::vector<ShardID>>>
+    std::unordered_map<
+        ServerID,
+        std::pair<std::vector<std::vector<ShardID>>,
+                  std::unordered_map<std::string, std::vector<ShardID>>>>
         mappingServerToCollections;
     size_t length = edges.size();
     for (size_t i = 0; i < length; ++i) {
@@ -773,7 +775,8 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
       }
     }
 
-   std::vector<std::unique_ptr<arangodb::aql::Collection>> const& vertices = en->vertexColls();
+    std::vector<std::unique_ptr<arangodb::aql::Collection>> const& vertices =
+        en->vertexColls();
     if (vertices.empty()) {
       std::unordered_set<std::string> knownEdges;
       for (auto const& it : edges) {
@@ -783,8 +786,9 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
       // ALL collections known to this query.
       auto cs = query->collections()->collections();
       for (auto const& collection : (*cs)) {
-        if (knownEdges.find(collection.second->getName()) == knownEdges.end()) { 
-          // This collection is not one of the edge collections used in this graph.
+        if (knownEdges.find(collection.second->getName()) == knownEdges.end()) {
+          // This collection is not one of the edge collections used in this
+          // graph.
           auto shardIds = collection.second->shardIds();
           for (auto const& shard : *shardIds) {
             auto serverList = clusterInfo->getResponsibleServer(shard);
@@ -795,7 +799,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
               // A server my be responsible for a shard in edge collection 1 but not 0 or 2.
               pair.first.resize(length);
             }
-            pair.second.emplace_back(shard);
+            pair.second[collection.second->getName()].emplace_back(shard);
           }
         }
       }
@@ -812,7 +816,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
             // A server my be responsible for a shard in edge collection 1 but not 0 or 2.
             pair.first.resize(length);
           }
-          pair.second.emplace_back(shard);
+          pair.second[it->getName()].emplace_back(shard);
         }
       }
     }
@@ -832,9 +836,10 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     //       [ <shards of edge collection 1> ],
     //       [ <shards of edge collection 2> ]
     //     ],
-    //     "vertices" : [
-    //       <shards of vertex collections>
-    //     ]
+    //     "vertices" : {
+    //       "v1": [<shards of v1>],
+    //       "v2": [<shards of v2>]
+    //     }
     //   }
     // }
 
@@ -853,10 +858,15 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
       engineInfo.add(VPackValue("shards"));
       engineInfo.openObject();
       engineInfo.add(VPackValue("vertices"));
-      engineInfo.openArray();
-      for (auto const& v : list.second.second) {
-        shardSet.emplace(v);
-        engineInfo.add(VPackValue(v));
+      engineInfo.openObject();
+      for (auto const& col : list.second.second) {
+        engineInfo.add(VPackValue(col.first));
+        engineInfo.openArray();
+        for (auto const& v : col.second) {
+          shardSet.emplace(v);
+          engineInfo.add(VPackValue(v));
+        }
+        engineInfo.close(); // this collection
       }
       engineInfo.close(); // vertices
 
