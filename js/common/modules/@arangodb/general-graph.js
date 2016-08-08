@@ -334,6 +334,16 @@ var buildFilter = function (examples, bindVars, varname) {
   return `${filter}`;
 };
 
+// Returns WITH v1, ... vn if we do not use the graph name.
+var generateWithStatement = function (graph, options) {
+  if (!options.hasOwnProperty("edgeCollectionRestriction")
+    || !Array.isArray(options.edgeCollectionRestriction)
+    || options.edgeCollectionRestriction.length == 0) {
+    return "";
+  }
+  return "WITH " + Object.keys(graph.__vertexCollections).join(", ");
+}
+
 // Returns FOR <varname> IN (...)
 // So start contains every object in the graph
 // matching the example(s)
@@ -1310,8 +1320,11 @@ Graph.prototype._neighbors = function (vertexExample, options) {
 
   var bindVars = {};
   var query = `
+    ${generateWithStatement(this, options)}
     ${transformExampleToAQL(vertexExample, Object.keys(this.__vertexCollections), bindVars, "start")}
-    FOR v, e IN ${options.minDepth || 1}..${options.maxDepth || 1} ${options.direction || "ANY"} start ${Array.isArray(options.edgeCollectionRestriction) && options.edgeCollectionRestriction.length > 0 ? buildEdgeCollectionRestriction(options.edgeCollectionRestriction) : "GRAPH @graphName"} OPTIONS {bfs: true}
+    FOR v, e IN ${options.minDepth || 1}..${options.maxDepth || 1} ${options.direction || "ANY"} start
+    ${Array.isArray(options.edgeCollectionRestriction) && options.edgeCollectionRestriction.length > 0 ? buildEdgeCollectionRestriction(options.edgeCollectionRestriction) : "GRAPH @graphName"}
+    OPTIONS {bfs: true}
     ${buildFilter(options.neighborExamples, bindVars, "v")}
     ${buildFilter(options.edgeExamples, bindVars, "e")}
     ${Array.isArray(options.vertexCollectionRestriction) && options.vertexCollectionRestriction.length > 0 ? buildVertexCollectionRestriction(options.vertexCollectionRestriction,"v") : ""}
@@ -1341,6 +1354,7 @@ Graph.prototype._commonNeighbors = function (vertex1Example, vertex2Example, opt
     }
   }
   var query = `
+    ${generateWithStatement(this, optionsVertex1.hasOwnProperty("edgeCollectionRestriction") ? optionsVertex1 : optionsVertex2 )}
     ${transformExampleToAQL(vertex1Example, Object.keys(this.__vertexCollections), bindVars, "left")}
       LET leftNeighbors = (FOR v IN ${optionsVertex1.minDepth || 1}..${optionsVertex1.maxDepth || 1} ${optionsVertex1.direction || "ANY"} left
         GRAPH @graphName OPTIONS {bfs: true, uniqueVertices: "global"} 
@@ -1399,6 +1413,7 @@ Graph.prototype._commonProperties = function (vertex1Example, vertex2Example, op
   }
   var bindVars = {};
   var query = `
+    ${generateWithStatement(this, options)}
     ${transformExampleToAQL(vertex1Example, Object.keys(this.__vertexCollections), bindVars, "left")}
       SORT left._id
       LET toZip = (
@@ -1427,6 +1442,7 @@ Graph.prototype._countCommonProperties = function (vertex1Example, vertex2Exampl
   }
   var bindVars = {};
   var query = `
+    ${generateWithStatement(this, options)}
     ${transformExampleToAQL(vertex1Example, Object.keys(this.__vertexCollections), bindVars, "left")}
       SORT left._id
       LET s = SUM(
@@ -1449,6 +1465,7 @@ Graph.prototype._paths = function (options) {
   options = options || {};
 
   var query = `
+    ${generateWithStatement(this, options)}
     FOR source IN ${startInAllCollections(Object.keys(this.__vertexCollections))}
     FOR v, e, p IN ${options.minLength || 0}..${options.maxLength || 10} ${options.direction || "OUTBOUND"} source GRAPH @graphName `;
   if (options.followCycles) {
@@ -1471,6 +1488,7 @@ Graph.prototype._shortestPath = function (startVertexExample, endVertexExample, 
   var bindVars = {};
   options = options || {};
   var query = `
+    ${generateWithStatement(this, options)}
     ${transformExampleToAQL(startVertexExample, Object.keys(this.__vertexCollections), bindVars, "start")}
       ${transformExampleToAQL(endVertexExample, Object.keys(this.__vertexCollections), bindVars, "target")}
       FILTER target._id != start._id
@@ -1519,6 +1537,7 @@ Graph.prototype._distanceTo = function (startVertexExample, endVertexExample, op
   var bindVars = {};
   options = options || {};
   var query = `
+    ${generateWithStatement(this, options)}
     ${transformExampleToAQL(startVertexExample, Object.keys(this.__vertexCollections), bindVars, "start")}
       ${transformExampleToAQL(endVertexExample, Object.keys(this.__vertexCollections), bindVars, "target")}
       FILTER target._id != start._id
