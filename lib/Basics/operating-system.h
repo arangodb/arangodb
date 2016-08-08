@@ -51,10 +51,10 @@
 // --Section--                                                       v8 features
 // -----------------------------------------------------------------------------
 
-#define TRI_V8_MAXHEAP 3 * 1024
 #if defined(__arm__) || defined(__aarch64__)
-#undef TRI_V8_MAXHEAP
 #define TRI_V8_MAXHEAP 1 * 1024
+#else
+#define TRI_V8_MAXHEAP 3 * 1024
 #endif
 
 // -----------------------------------------------------------------------------
