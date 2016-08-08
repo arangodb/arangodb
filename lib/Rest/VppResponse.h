@@ -50,7 +50,7 @@ class VppResponse : public GeneralResponse {
 
   // required by base
   void reset(ResponseCode code) override final;
-  void setPayload(GeneralRequest const*, arangodb::velocypack::Slice const&,
+  void setPayload(ContentType contentType, arangodb::velocypack::Slice const&,
                   bool generateBody,
                   arangodb::velocypack::Options const&) override final;
 
@@ -58,7 +58,7 @@ class VppResponse : public GeneralResponse {
 
   void setConnectionType(ConnectionType type) override {
     _connectionType = type;
-  }
+  };
 
   void setContentType(ContentType type) override { _contentType = type; }
 

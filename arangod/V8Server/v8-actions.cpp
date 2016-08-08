@@ -414,6 +414,7 @@ static v8::Handle<v8::Object> RequestCppToV8(v8::Isolate* isolate,
       // the VPACK is passed as it is to to Javascript
       // should we convert and validate here in a central place?
       // should the work be done in javascript
+      // FIXME not every VPack can be converted to JSON
       VPackSlice slice = request->payload();
 
       VPackValidator validator;
@@ -605,6 +606,7 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
         }
       }
 
+      // what type is out? always json?
       response->body().appendText(out);
     } else {
       TRI_GET_GLOBAL_STRING(BodyKey);

@@ -29,6 +29,7 @@
 #include "Basics/tri-strings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/VPackStringBufferAdapter.h"
+#include "Meta/conversion.h"
 #include "Cluster/ServerState.h"
 #include "Rest/HttpRequest.h"
 #include "Utils/StandaloneTransactionContext.h"
@@ -224,8 +225,8 @@ void RestVocbaseBaseHandler::generate20x(
           collectionName, slice.get(StaticStrings::KeyString).copyString(),
           true));
       _response->setHeaderNC(StaticStrings::Location,
-                            std::string("/_db/" + _request->databaseName() +
-                                        DOCUMENT_PATH + "/" + escapedHandle));
+                             std::string("/_db/" + _request->databaseName() +
+                                         DOCUMENT_PATH + "/" + escapedHandle));
     }
   }
 
@@ -339,7 +340,9 @@ void RestVocbaseBaseHandler::generateDocument(VPackSlice const& input,
   }
 
   try {
-    _response->setPayload(_request, document, generateBody, *options);
+    _response->setPayload(meta::enumToEnum<GeneralResponse::ContentType>(
+                              _request->contentTypeResponse()),
+                          document, generateBody, *options);
   } catch (...) {
     generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
                   TRI_ERROR_INTERNAL, "cannot generate output");
@@ -593,7 +596,7 @@ TRI_voc_rid_t RestVocbaseBaseHandler::extractRevision(char const* header,
     TRI_voc_rid_t rid = 0;
 
     bool isOld;
-    rid = TRI_StringToRidWithCheck(s, e-s, isOld);
+    rid = TRI_StringToRidWithCheck(s, e - s, isOld);
     isValid = (rid != 0);
 
     return rid;

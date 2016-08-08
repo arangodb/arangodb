@@ -128,7 +128,11 @@ class GeneralResponse {
 
   // TODO OBI - check what can be implemented in this base class
   // virtual basics::StringBuffer& body() = 0;
+
+  // the first function sets the conent type as the name suggests it
   virtual void setContentType(ContentType type) = 0;
+  // these functions set the content type to CUSTOM and add information to the
+  // header
   virtual void setContentType(std::string const& contentType) = 0;
   virtual void setContentType(std::string&& contentType) = 0;
   virtual void setConnectionType(ConnectionType type) = 0;
@@ -172,9 +176,17 @@ class GeneralResponse {
 
   // generates the response body, sets the content type; this might
   // throw an error
-  virtual void setPayload(GeneralRequest const*,
-                          arangodb::velocypack::Slice const&, bool generateBody,
-                          arangodb::velocypack::Options const&) = 0;
+  virtual void setPayload(ContentType contentType,
+                          arangodb::velocypack::Slice const&,
+                          bool generateBody = true,
+                          arangodb::velocypack::Options const& = arangodb::
+                              velocypack::Options::Defaults) = 0;
+
+  // virtual void setPayload(ContentType contentType,
+  //                        VPackBuffer<uint8_t>&& sliceBuffer,
+  //                        bool generateBody = true,
+  //                        arangodb::velocypack::Options const& = arangodb::
+  //                            velocypack::Options::Defaults) = 0;
 
  protected:
   ResponseCode _responseCode;  // http response code

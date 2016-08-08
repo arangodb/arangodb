@@ -163,8 +163,8 @@ function echoVpackVpack () {
 
   expect(res).to.be.a(request.Response);
   expect(res.body).to.be.a('string');
+  expect(Number(res.headers['content-length'])).to.equal(res.rawBody.length);
   print(res.body);
-  //expect(Number(res.headers['content-length'])).to.equal(res.rawBody.length);
   //var obj = JSON.parse(res.body);
   //print_vpack_as_json(res.body);
   //expect(VPACK_TO_V8().to.equal();

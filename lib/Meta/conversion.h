@@ -36,19 +36,19 @@ using enable_enum_t = typename std::enable_if<
 }
 
 template <typename E>
-constexpr inline details::enable_enum_t<E> underlyingValue(E e) noexcept {
+constexpr details::enable_enum_t<E> underlyingValue(E e) noexcept {
   return static_cast<typename std::underlying_type<E>::type>(e);
 }
 
 template <typename E, typename T>
-constexpr inline typename std::enable_if<
+constexpr typename std::enable_if<
     std::is_enum<E>::value && std::is_integral<T>::value, E>::type
 toEnum(T value) noexcept {
   return static_cast<E>(value);
 }
 
 template <typename E_OUT, typename E_IN>
-constexpr inline typename std::enable_if<
+constexpr typename std::enable_if<
     std::is_enum<E_IN>::value && std::is_enum<E_OUT>::value, E_OUT>::type
 enumToEnum(E_IN value) noexcept {
   return toEnum<E_OUT>(underlyingValue(value));

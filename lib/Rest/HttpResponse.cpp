@@ -300,17 +300,14 @@ void HttpResponse::writeHeader(StringBuffer* output) {
   // end of header, body to follow
 }
 
-void HttpResponse::setPayload(GeneralRequest const* request,
+void HttpResponse::setPayload(ContentType contentType,
                               arangodb::velocypack::Slice const& slice,
                               bool generateBody, VPackOptions const& options) {
-  if (request == nullptr) {  // error
-    throw std::logic_error("request is nullptr in HttpResponse");
-  }
-
   if (_contentType != GeneralResponse::ContentType::CUSTOM) {
     // do not overwrite the content type set by the user!!!
-    _contentType = meta::enumToEnum<GeneralResponse::ContentType>(
-        request->contentTypeResponse());
+    _contentType = contentType;
+    //    _contentType =
+    //    meta::enumToEnum<GeneralResponse::ContentType>(request->contentTypeResponse());
   }
 
   switch (_contentType) {

@@ -38,8 +38,8 @@ class GeneralCommTask;
 }
 
 class HttpResponse : public GeneralResponse {
-  friend class rest::GeneralCommTask;
   friend class rest::HttpCommTask;
+  friend class rest::GeneralCommTask;
   friend class RestBatchHandler;  // TODO must be removed
 
  public:
@@ -97,7 +97,7 @@ class HttpResponse : public GeneralResponse {
  public:
   void reset(ResponseCode code) override final;
 
-  void setPayload(GeneralRequest const*, arangodb::velocypack::Slice const&,
+  void setPayload(ContentType, arangodb::velocypack::Slice const&,
                   bool generateBody,
                   arangodb::velocypack::Options const&) override final;
 

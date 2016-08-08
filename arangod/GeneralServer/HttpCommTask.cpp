@@ -553,6 +553,8 @@ void HttpCommTask::processRequest() {
   // create a handler and execute
   HttpResponse* response =
       new HttpResponse(GeneralResponse::ResponseCode::SERVER_ERROR);
+  response->setContentType(meta::enumToEnum<GeneralResponse::ContentType>(
+      _request->contentTypeResponse()));
   executeRequest(_request, response);
 }
 
