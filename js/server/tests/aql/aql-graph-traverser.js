@@ -2648,6 +2648,145 @@ function optionsSuite() {
   };
 }
 
+function optimizeQuantifierSuite() {
+  /********************************
+   * Graph under test
+   * C <-+             +-> F
+   *     |             |
+   *     +-B<---A--->E-+
+   *     |             |
+   * D <-+             +-> G
+   *
+   *
+   * Left side has foo: true , right foo: false
+   * Top has bar: true, bottom bar: false.
+   * A,B,E has bar: true
+   * A has foo: true
+   * Edges have foo and bar like their target
+   *******************************/
+
+
+  const gn = "UnitTestGraph";
+  let vertices = {};
+  let edges = {};
+
+  return {
+    setUp: function () {
+      cleanup();
+      vc = db._create(vn, {numberOfShards: 4});
+      ec = db._createEdgeCollection(en, {numberOfShards: 4});
+      vertices.A = vc.save({_key: "A", foo: true, bar: true})._id;
+      vertices.B = vc.save({_key: "B", foo: true, bar: true})._id;
+      vertices.C = vc.save({_key: "C", foo: true, bar: true})._id;
+      vertices.D = vc.save({_key: "D", foo: true, bar: false})._id;
+      vertices.E = vc.save({_key: "E", foo: false, bar: true})._id;
+      vertices.F = vc.save({_key: "F", foo: false, bar: true})._id;
+      vertices.G = vc.save({_key: "G", foo: false, bar: false})._id;
+
+      edges.AB = ec.save({_key: "AB", _from: vertices.A, _to: vertices.B, foo: true, bar: true})._id;
+      edges.BC = ec.save({_key: "BC", _from: vertices.B, _to: vertices.C, foo: true, bar: true})._id;
+      edges.BD = ec.save({_key: "BD", _from: vertices.B, _to: vertices.D, foo: true, bar: false})._id;
+      edges.AE = ec.save({_key: "AE", _from: vertices.A, _to: vertices.E, foo: false, bar: true})._id;
+      edges.EF = ec.save({_key: "EF", _from: vertices.E, _to: vertices.F, foo: false, bar: true})._id;
+      edges.EG = ec.save({_key: "EG", _from: vertices.E, _to: vertices.G, foo: false, bar: false})._id;
+
+      try {
+        gm._drop(gn);
+      } catch (e) {
+        // It is expected that this graph does not exist.
+      }
+
+      gm._create(gn, [gm._relation(en, vn, vn)]);
+    },
+
+    tearDown: function () {
+      try {
+        gm._drop(gn);
+      } catch (e) {
+        // It is expected that this graph does not exist.
+      }
+      cleanup();
+    },
+
+    testAllVerticesSingle: function () {
+      let query = `
+        FOR v, e, p IN 0..2 OUTBOUND "${vertices.A}" GRAPH "${gn}"
+        FILTER p.vertices[*].foo ALL == true
+        SORT v._key
+        RETURN v._id
+      `;
+      let cursor = db._query(query);
+      assertEqual(cursor.count(), 4);
+      let result = cursor.toArray();
+      assertEqual(result, [vertices.A, vertices.B, vertices.C, vertices.D]);
+
+      let stats = cursor.getExtra().stats;
+      assertEqual(stats.scannedFull, 0);
+      assertEqual(stats.scannedIndex, 9);
+      assertEqual(stats.filtered, 1);
+    },
+
+    testAllEdgesSingle: function () {
+      let query = `
+        FOR v, e, p IN 0..2 OUTBOUND "${vertices.A}" GRAPH "${gn}"
+        FILTER p.edges[*].foo ALL == true
+        SORT v._key
+        RETURN v._id
+      `;
+      let cursor = db._query(query);
+      assertEqual(cursor.count(), 4);
+      let result = cursor.toArray();
+      assertEqual(result, [vertices.A, vertices.B, vertices.C, vertices.D]);
+
+      let stats = cursor.getExtra().stats;
+      assertEqual(stats.scannedFull, 0);
+      assertEqual(stats.scannedIndex, 8);
+      assertEqual(stats.filtered, 1);
+    },
+
+    testNoneVerticesSingle: function () {
+      let query = `
+        FOR v, e, p IN 0..2 OUTBOUND "${vertices.A}" GRAPH "${gn}"
+        FILTER p.vertices[*].foo NONE == false
+        SORT v._key
+        RETURN v._id
+      `;
+      let cursor = db._query(query);
+      assertEqual(cursor.count(), 4);
+      let result = cursor.toArray();
+      assertEqual(result, [vertices.A, vertices.B, vertices.C, vertices.D]);
+
+      let stats = cursor.getExtra().stats;
+      assertEqual(stats.scannedFull, 0);
+      assertEqual(stats.scannedIndex, 9);
+      assertEqual(stats.filtered, 1);
+    },
+
+    testNoneEdgesSingle: function () {
+      let query = `
+        FOR v, e, p IN 0..2 OUTBOUND "${vertices.A}" GRAPH "${gn}"
+        FILTER p.edges[*].foo NONE == false
+        SORT v._key
+        RETURN v._id
+      `;
+      let cursor = db._query(query);
+      assertEqual(cursor.count(), 4);
+      let result = cursor.toArray();
+      assertEqual(result, [vertices.A, vertices.B, vertices.C, vertices.D]);
+
+      let stats = cursor.getExtra().stats;
+      assertEqual(stats.scannedFull, 0);
+      assertEqual(stats.scannedIndex, 8);
+      assertEqual(stats.filtered, 1);
+    },
+
+
+
+
+  };
+
+};
+
 jsunity.run(namedGraphSuite);
 jsunity.run(multiCollectionGraphSuite);
 jsunity.run(multiEdgeCollectionGraphSuite);
@@ -2659,5 +2798,6 @@ jsunity.run(brokenGraphSuite);
 jsunity.run(multiEdgeDirectionSuite);
 jsunity.run(subQuerySuite);
 jsunity.run(optionsSuite);
+jsunity.run(optimizeQuantifierSuite);
 
 return jsunity.done();
