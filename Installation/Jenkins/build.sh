@@ -36,6 +36,49 @@ case `uname -m` in
         ;;
 esac
 
+compute_relative()
+{
+    # http://stackoverflow.com/questions/2564634/convert-absolute-path-into-relative-path-given-a-current-directory-using-bash
+    # both $1 and $2 are absolute paths beginning with /
+    # returns relative path to $2/$target from $1/$source
+    source=$1
+    target=$2
+
+    common_part=$source # for now
+    result="" # for now
+
+    while [[ "${target#$common_part}" == "${target}" ]]; do
+        # no match, means that candidate common part is not correct
+        # go up one level (reduce common part)
+        common_part="$(dirname $common_part)"
+        # and record that we went back, with correct / handling
+        if [[ -z $result ]]; then
+            result=".."
+        else
+            result="../$result"
+        fi
+    done
+
+    if [[ $common_part == "/" ]]; then
+        # special case for root (no common path)
+        result="$result/"
+    fi
+
+    # since we now have identified the common part,
+    # compute the non-common part
+    forward_part="${target#$common_part}"
+
+    # and now stick all parts together
+    if [[ -n $result ]] && [[ -n $forward_part ]]; then
+        result="$result$forward_part"
+    elif [[ -n $forward_part ]]; then
+        # extra slash removal
+        result="${forward_part:1}"
+    fi
+
+    echo $result
+}
+
 # check if there are any relevant changes to the source code
 
 LASTREV=""
@@ -333,16 +376,21 @@ if test ${CLEAN_IT} -eq 1; then
     git clean -f -d -x
 fi
 
+SRC=`pwd`
+
 test -d ${BUILD_DIR} || mkdir ${BUILD_DIR}
 cd ${BUILD_DIR}
 
+DST=`pwd`
+SOURCE_DIR=`compute_relative ${DST}/ ${SRC}/`
+
 if [ ! -f Makefile -o ! -f CMakeCache.txt ];  then
     CFLAGS="${CFLAGS}" CXXFLAGS="${CXXFLAGS}" LDFLAGS="${LDFLAGS}" LIBS="${LIBS}" \
-          cmake .. ${CONFIGURE_OPTIONS} -G "${GENERATOR}"
+          cmake ${SOURCE_DIR} ${CONFIGURE_OPTIONS} -G "${GENERATOR}"
 fi
 
 ${MAKE_CMD_PREFIX} ${MAKE} ${MAKE_PARAMS}
-git rev-parse HEAD > ../last_compiled_version.sha
+git rev-parse HEAD > ${SOURCE_DIR}/last_compiled_version.sha
 
 if [ -n "$CPACK"  -a -n "${TARGET_DIR}" ];  then
     ${PACKAGE_MAKE} packages
@@ -380,7 +428,7 @@ if test -n "${TARGET_DIR}";  then
     mkdir -p ${dir}
     trap "rm -rf ${TARFILE_TMP}" EXIT
 
-    (cd ..
+    (cd ${SOURCE_DIR}
 
      touch 3rdParty/.keepme
      touch arangod/.keepme
@@ -403,7 +451,7 @@ if test -n "${TARGET_DIR}";  then
         tar -u -f ${TARFILE_TMP} \
             --files-from files.$$
 
-        (cd ..
+        (cd ${SOURCE_DIR}
 
          find . \
               \( -name *.cpp -o -name *.h -o -name *.c -o -name *.hpp -o -name *.ll -o -name *.y \) > files.$$
