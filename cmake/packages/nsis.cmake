@@ -66,3 +66,35 @@ set(CPACK_ARANGODB_NSIS_DEFINES "
     !define TRI_FRIENDLY_SVC_NAME '${ARANGODB_FRIENDLY_STRING}'
     !define TRI_AARDVARK_URL 'http://127.0.0.1:8529'
     ")
+
+
+################################################################################
+# hook to build the server package
+################################################################################
+add_custom_target(package-arongodb-server-nsis
+  COMMAND ${CMAKE_COMMAND} .
+  COMMAND ${CMAKE_CPACK_COMMAND} -G NSIS
+  WORKING_DIRECTORY ${PROJECT_BINARY_DIR})
+
+list(APPEND PACKAGES_LIST package-arongodb-server-nsis)
+
+add_custom_target(package-arongodb-server-zip
+  COMMAND ${CMAKE_COMMAND} .
+  COMMAND ${CMAKE_CPACK_COMMAND} -G ZIP
+  WORKING_DIRECTORY ${PROJECT_BINARY_DIR})
+
+list(APPEND PACKAGES_LIST package-arongodb-server-zip)
+
+################################################################################
+# hook to build the client package
+################################################################################
+set(CLIENT_BUILD_DIR ${CMAKE_CURRENT_BINARY_DIR}/packages/arangodb-client)
+configure_file(cmake/packages/client/nsiszip.txt ${CLIENT_BUILD_DIR}/CMakeLists.txt @ONLY)
+add_custom_target(package-arongodb-client-nsis
+  COMMAND ${CMAKE_COMMAND} .
+  COMMAND ${CMAKE_CPACK_COMMAND} -G NSIS
+  COMMAND cp *.exe ${PROJECT_BINARY_DIR} 
+  WORKING_DIRECTORY ${CLIENT_BUILD_DIR})
+
+
+list(APPEND PACKAGES_LIST package-arongodb-client-nsis)
