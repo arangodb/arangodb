@@ -162,7 +162,7 @@ class JsonHelper {
     if (!isNumber(sub)) {
       std::string msg = "The attribute '" + std::string(name) +
                         "' was not found or is not a number.";
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg);
     }
     return static_cast<T>(sub->_value._number);
   }
