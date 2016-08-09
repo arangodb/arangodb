@@ -67,9 +67,9 @@ void Constituent::configure(Agent* agent) {
     _role = LEADER;
   } else {
     _id = _agent->config().id;
-    if (_agent->config().notify) {  // (notify everyone)
+/*    if (_agent->config().notify) {  // (notify everyone)
       notifyAll();
-    }
+      }*/
   }
   
 }

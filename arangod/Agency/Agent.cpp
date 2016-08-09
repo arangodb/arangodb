@@ -367,6 +367,8 @@ bool Agent::load() {
         << "Failed to load persistent state on startup.";
   }
 
+  inception();
+  
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "Reassembling spearhead and read stores.";
   _spearhead.apply(_state.slices(_lastCommitIndex + 1));
 
@@ -374,7 +376,7 @@ bool Agent::load() {
     CONDITION_LOCKER(guard, _appendCV);
     guard.broadcast();
   }
-  
+
   reportIn(id(), _state.lastLog().index);
 
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "Starting spearhead worker.";
@@ -574,6 +576,17 @@ Agent& Agent::operator=(VPackSlice const& compaction) {
   _nextCompationAfter = _lastCommitIndex + _config.compactionStepSize;
 
   return *this;
+  
+}
+
+
+void inception() {
+
+  if (_config.poolSize == _config.pool.size()) { // Persisted pool
+
+    if (_config)
+    
+  }
   
 }
 

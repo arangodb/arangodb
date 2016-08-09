@@ -43,11 +43,12 @@ class AgencyFeature : virtual public application_features::ApplicationFeature {
   void unprepare() override final;
 
  private:
+  bool _activated;
   uint64_t _size;  // agency size (default: 5)
-  uint32_t _agentId;
+  arangodb::consensus::id_t _agentId;
   double _minElectionTimeout;                 // min election timeout
   double _maxElectionTimeout;                 // max election timeout
-  std::vector<std::string> _agencyEndpoints;  // agency adresses
+  std::map<std::string, std::string> _agencyEndpoints;  // agency adresses
   bool _notify;  // interval between retry to slaves
   bool _supervision;
   bool _waitForSync;

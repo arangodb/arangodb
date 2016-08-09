@@ -124,7 +124,11 @@ RestHandler::status RestAgencyPrivHandler::execute() {
         } else {
           return reportBadQuery();  // bad query
         }
-      } else {
+      } else if (_request->suffix()[0] == "notifyAll") {
+        if (_agent->activeAgentStartupSequence()) {
+        } else {
+        }
+      }else {
         generateError(GeneralResponse::ResponseCode::NOT_FOUND,
                       404);  // nothing else here
         return RestHandler::status::DONE;

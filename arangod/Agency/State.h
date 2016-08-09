@@ -117,6 +117,7 @@ class State {
   bool loadPersisted();
   bool loadCompacted();
   bool loadRemaining();
+  bool loadOrPersistConfiguration();
 
   /// @brief Check collections
   bool checkCollections();

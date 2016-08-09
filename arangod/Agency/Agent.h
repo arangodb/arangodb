@@ -105,6 +105,9 @@ class Agent : public arangodb::Thread {
   ///        2. Report success of write processes.
   void run() override final;
 
+  /// @brief Startup process of detection of agent pool, active agency, gossip etc
+  void inception();
+
   /// @brief Start orderly shutdown of threads
   void beginShutdown() override final;
 
