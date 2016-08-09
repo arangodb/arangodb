@@ -324,10 +324,10 @@
           var settings = {
             defaultEdgeLabelColor: '#000',
             defaultEdgeLabelActiveColor: '#000',
-            defaultEdgeLabelSize: 10,
+            defaultEdgeLabelSize: 12,
             edgeLabelSize: 'fixed',
-            edgeLabelSizePowRatio: 1,
-            edgeLabelThreshold: 1
+            edgeLabelThreshold: 1,
+            edgeLabelSizePowRatio: 1
           };
 
           // Export the previously designed settings:
@@ -1309,8 +1309,6 @@
       // adjust display settings for big graphs
       if (graph.nodes) {
         if (graph.nodes.length > 250) {
-          // show node label if size is 15
-          settings.labelThreshold = 15;
           settings.hideEdgesOnMove = true;
         }
       }
@@ -1323,19 +1321,17 @@
             settings.minArrowSize = 7;
           }
         }
-
-        if (this.graphConfig.nodeLabelThreshold) {
-          settings.labelThreshold = this.graphConfig.nodeLabelThreshold;
-        }
-
-        if (this.graphConfig.edgeLabelThreshold) {
-          settings.edgeLabelThreshold = this.graphConfig.edgeLabelThreshold;
-        }
       }
 
       // adjust display settings for webgl renderer
       if (renderer === 'webgl') {
         settings.enableEdgeHovering = false;
+      }
+
+      if (aqlMode) {
+        console.log(true);
+        settings.minNodeSize = 2;
+        settings.maxNodeSize = 4;
       }
 
       // create sigma graph
@@ -1370,7 +1366,7 @@
           scaleNodes: 1.05,
           gridSize: 75,
           easing: 'quadraticInOut', // animation transition function
-          duration: 10000 // animation duration. Long here for the purposes of this example only
+          duration: 1500 // animation duration
         });
 
         noverlapListener.bind('start stop interpolate', function (e) {
@@ -1381,9 +1377,9 @@
         });
       } else if (algorithm === 'fruchtermann') {
         var frListener = sigma.layouts.fruchtermanReingold.configure(s, {
-          iterations: 500,
+          iterations: 100,
           easing: 'quadraticInOut',
-          duration: 800
+          duration: 1500
         });
 
         frListener.bind('start stop interpolate', function (e) {});
@@ -1602,8 +1598,10 @@
 
       dragListener.bind('drag', function (event) {
         self.dragging = true;
+        console.log(1);
       });
       dragListener.bind('drop', function (event) {
+        console.log(2);
         window.setTimeout(function () {
           self.dragging = false;
         }, 400);
@@ -1736,7 +1734,7 @@
       }
 
       $('#toggleForce .fa').removeClass('fa-play').addClass('fa-pause');
-      $('#toggleForce span').html('Start layout');
+      $('#toggleForce span').html('Stop layout');
       this.layouting = true;
       this.currentGraph.startForceAtlas2({
         worker: true
@@ -1746,12 +1744,12 @@
 
     stopLayout: function () {
       $('#toggleForce .fa').removeClass('fa-pause').addClass('fa-play');
-      $('#toggleForce span').html('Stop layout');
+      $('#toggleForce span').html('Start layout');
       this.layouting = false;
       this.currentGraph.stopForceAtlas2();
       sigma.plugins.dragNodes(this.currentGraph, this.currentGraph.renderers[0]);
-      this.currentGraph.settings('drawLabels', false);
-      this.currentGraph.settings('drawEdgeLabels', false);
+      this.currentGraph.settings('drawLabels', true);
+      this.currentGraph.settings('drawEdgeLabels', true);
       this.currentGraph.refresh({ skipIndexation: true });
     }
 

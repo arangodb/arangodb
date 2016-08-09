@@ -86,12 +86,6 @@
           val: 'false'
         }
       },
-      'nodeLabelThreshold': {
-        type: 'range',
-        name: 'Label threshold',
-        desc: 'The minimum size a node must have on screen to see its label displayed. This does not affect hovering behavior.',
-        default: '_key'
-      },
       'nodeColorByCollection': {
         type: 'select',
         name: 'Use collection color',
@@ -156,12 +150,6 @@
           val: 'false'
         }
       },
-      'edgeLabelThreshold': {
-        type: 'range',
-        name: 'Label threshold',
-        desc: 'The minimum size an edge must have on screen to see its label displayed. This does not affect hovering behavior.',
-        default: '_key'
-      },
       'edgeColorByCollection': {
         type: 'select',
         name: 'Use collection color',
@@ -189,13 +177,13 @@
       'edgeEditable': {
         type: 'select',
         name: 'Editable',
-        no: {
-          name: 'No',
-          val: 'false'
-        },
         yes: {
           name: 'Yes',
           val: 'true'
+        },
+        no: {
+          name: 'No',
+          val: 'false'
         },
         desc: 'Should edges be editable?'
       },
@@ -336,17 +324,15 @@
         nodeColor: '#2ecc71',
         nodeColorAttribute: '',
         nodeColorByCollection: 'true',
-        nodeLabelThreshold: 2,
         edgeColor: '#cccccc',
         edgeColorAttribute: '',
         edgeColorByCollection: 'false',
-        edgeLabelThreshold: 2,
         nodeLabel: '_key',
         edgeLabel: '',
         edgeType: 'arrow',
         nodeSize: '',
         nodeSizeByEdges: 'true',
-        edgeEditable: 'false',
+        edgeEditable: 'true',
         nodeLabelByCollection: 'false',
         edgeLabelByCollection: 'true',
         nodeStart: '',
@@ -404,6 +390,16 @@
       if ($('#g_edgeColorAttribute').val() !== '') {
         $('#g_edgeColor').prop('disabled', true);
       }
+
+      // node label
+      if ($('#g_nodeLabelByCollection').val() === 'true') {
+        $('#g_nodeLabel').prop('disabled', true);
+      }
+
+      // edge label
+      if ($('#g_edgeLabelByCollection').val() === 'true') {
+        $('#g_edgeLabel').prop('disabled', true);
+      }
     },
 
     continueRender: function () {
@@ -418,10 +414,6 @@
         _.each(this.graphConfig, function (val, key) {
           $('#g_' + key).val(val);
         });
-
-        // range customization
-        $('#g_nodeLabelThreshold_label').text(this.graphConfig.nodeLabelThreshold);
-        $('#g_edgeLabelThreshold_label').text(this.graphConfig.edgeLabelThreshold);
       } else {
         this.setDefaults(true);
       }
