@@ -68,6 +68,7 @@ class RestAgencyPrivHandler : public arangodb::RestBaseHandler {
   status reportTooManySuffices();
   status reportBadQuery();
   status reportMethodNotAllowed();
+  status reportGone();
 
   consensus::Agent* _agent;
 };

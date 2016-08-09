@@ -73,6 +73,11 @@ inline RestHandler::status RestAgencyPrivHandler::reportMethodNotAllowed() {
   return RestHandler::status::DONE;
 }
 
+inline RestHandler::status RestAgencyPrivHandler::reportMethodNotAllowed() {
+  generateError(GeneralResponse::ResponseCode::GONE, 410);
+  return RestHandler::status::DONE;
+}
+
 RestHandler::status RestAgencyPrivHandler::execute() {
   try {
     VPackBuilder result;
@@ -127,6 +132,7 @@ RestHandler::status RestAgencyPrivHandler::execute() {
       } else if (_request->suffix()[0] == "notifyAll") {
         if (_agent->activeAgentStartupSequence()) {
         } else {
+          return reportGone();
         }
       }else {
         generateError(GeneralResponse::ResponseCode::NOT_FOUND,
