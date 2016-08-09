@@ -118,9 +118,17 @@ std::unique_ptr<basics::StringBuffer> createChunkForNetworkMultiFollow(
 }
 }
 
+VppCommTask::VppCommTask(GeneralServer* server, TRI_socket_t sock,
+                         ConnectionInfo&& info, double timeout)
+    : Task("VppCommTask"),
+      GeneralCommTask(server, sock, std::move(info), timeout) {
+  _protocol = "vpp";
+  // connectionStatisticsAgentSetVpp();
+}
+
 void VppCommTask::addResponse(VppResponse* response, bool isError) {
   if (isError) {
-    // FIXME
+    // FIXME (obi)
     // what do we need to do?
     // clean read buffer? reset process read cursor
   }
@@ -130,16 +138,17 @@ void VppCommTask::addResponse(VppResponse* response, bool isError) {
 
   std::vector<VPackSlice> slices;
   slices.push_back(response_message._header);
+
   // if payload != Slice()
   slices.push_back(response_message._payload);
 
   uint32_t message_length = 0;
 
   for (auto const& slice : slices) {
-    message_length = slice.byteSize();
+    message_length += slice.byteSize();
   }
 
-  // FIXME
+  // FIXME (obi)
   // If the message is big we will create many small chunks in a loop.
   // For the first tests we just send single Messages
   StringBuffer tmp(TRI_UNKNOWN_MEM_ZONE, message_length, false);
@@ -177,7 +186,7 @@ VppCommTask::ChunkHeader VppCommTask::readChunkHeader() {
   cursor += sizeof(header._messageID);
 
   // extract total len of message
-  if (header._isFirst && header._chunk == 1) {
+  if (header._isFirst && header._chunk > 1) {
     std::memcpy(&header._messageLength, cursor, sizeof(header._messageLength));
     cursor += sizeof(header._messageLength);
   } else {
@@ -233,13 +242,15 @@ bool VppCommTask::processRead() {
   // CASE 1: message is in one chunk
   if (chunkHeader._isFirst && chunkHeader._chunk == 1) {
     std::size_t payloadOffset = findAndValidateVPacks(vpackBegin, chunkEnd);
-    VPackMessage message;
     message._id = chunkHeader._messageID;
     message._buffer.append(vpackBegin, std::distance(vpackBegin, chunkEnd));
     message._header = VPackSlice(message._buffer.data());
     if (payloadOffset) {
       message._payload = VPackSlice(message._buffer.data() + payloadOffset);
     }
+    VPackValidator val;
+    val.validate(message._header.begin(), message._header.byteSize());
+
     do_execute = true;
   }
   // CASE 2:  message is in multiple chunks
@@ -308,6 +319,7 @@ bool VppCommTask::processRead() {
 
   // for now we can handle only one request at a time
   // lock _request???? REVIEW (fc)
+  LOG(ERR) << message._header.toJson();
   _request = new VppRequest(_connectionInfo, std::move(message));
   GeneralServerFeature::HANDLER_FACTORY->setRequestContext(_request);
   _request->setClientTaskId(_taskId);

@@ -38,7 +38,7 @@ struct VPackMessage {
   VPackMessage(VPackBuffer<uint8_t>&& buff, VPackSlice head, VPackSlice pay,
                uint64_t id)
       : _buffer(std::move(buff)), _header(head), _payload(pay), _id(id) {}
-  VPackMessage(VPackMessage&&) = default;  // not necessary just to make sure!
+  VPackMessage(VPackMessage&& other) = default;
 
   VPackBuffer<uint8_t> _buffer;
   VPackSlice _header;

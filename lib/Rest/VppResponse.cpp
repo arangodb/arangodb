@@ -1,4 +1,4 @@
-////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
 /// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
@@ -61,6 +61,12 @@ void VppResponse::setPayload(ContentType contentType,
                              arangodb::velocypack::Slice const& slice,
                              bool generateBody, VPackOptions const& options) {
   if (generateBody) {
+    // addPayload(slice);
+    if (_payload.empty()) {
+      throw std::logic_error("payload should be empty!!");
+    }
+    _payload.append(slice.startAs<char>(),
+                    std::distance(slice.begin(), slice.end()));
   }
 };
 

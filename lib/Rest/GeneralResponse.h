@@ -182,6 +182,19 @@ class GeneralResponse {
                           arangodb::velocypack::Options const& = arangodb::
                               velocypack::Options::Defaults) = 0;
 
+  virtual void addPayload(VPackSlice const& slice) {
+    _vpackPayloads.emplace_back(slice.byteSize());
+    std::memcpy(&_vpackPayloads.back(), slice.start(), slice.byteSize());
+  };
+
+  virtual void addPayload(VPackBuffer<uint8_t>&& buffer) {
+    _vpackPayloads.push_back(std::move(buffer));
+  };
+
+  virtual void addHeaderInformation(std::string s /* any or variant */){
+
+  };
+
   // virtual void setPayload(ContentType contentType,
   //                        VPackBuffer<uint8_t>&& sliceBuffer,
   //                        bool generateBody = true,
@@ -192,6 +205,8 @@ class GeneralResponse {
   ResponseCode _responseCode;  // http response code
   std::unordered_map<std::string, std::string>
       _headers;  // headers/metadata map
+
+  std::vector<VPackBuffer<uint8_t>> _vpackPayloads;
 };
 }
 

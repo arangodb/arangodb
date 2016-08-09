@@ -63,11 +63,11 @@ class GeneralRequest {
   enum class RequestType {
     DELETE_REQ = 0,  // windows redefines DELETE
     GET,
-    HEAD,
-    OPTIONS,
     POST,
     PUT,
+    HEAD,
     PATCH,
+    OPTIONS,
     VSTREAM_CRED,
     VSTREAM_REGISTER,
     VSTREAM_STATUS,
