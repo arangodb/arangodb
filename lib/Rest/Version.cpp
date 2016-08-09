@@ -37,6 +37,7 @@
 #include "Basics/StringUtils.h"
 #include "Basics/Utf8Helper.h"
 #include "Basics/build-date.h"
+#include "Basics/build-repository.h"
 #include "Basics/conversions.h"
 
 #ifdef ARANGODB_ENABLE_ROCKSDB
@@ -95,6 +96,7 @@ void Version::initialize() {
   Values["asm-crc32"] = (ENABLE_ASM_CRC32) ? "true" : "false";
   Values["boost-version"] = getBoostVersion();
   Values["build-date"] = getBuildDate();
+  Values["build-repository"] = getBuildRepository();
   Values["compiler"] = getCompiler();
   Values["endianness"] = getEndianness();
   Values["fd-setsize"] = arangodb::basics::StringUtils::itoa(FD_SETSIZE);
@@ -330,6 +332,19 @@ std::string Version::getBuildDate() {
   return std::string(__DATE__).append(" ").append(__TIME__);
 #endif
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get build repository
+////////////////////////////////////////////////////////////////////////////////
+
+std::string Version::getBuildRepository() {
+#ifdef ARANGODB_BUILD_REPOSITORY
+  return std::string(ARANGODB_BUILD_REPOSITORY);
+#else
+  return std::string("");
+#endif
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return a server version string
