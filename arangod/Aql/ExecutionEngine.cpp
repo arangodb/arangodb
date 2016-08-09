@@ -838,6 +838,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     //
     // {
     //   "options": <options.toVelocyPack>,
+    //   "variables": [<vars used in conditions>], // optional
     //   "shards": {
     //     "edges" : [
     //       [ <shards of edge collection 1> ],
@@ -854,6 +855,19 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
                                         query->vocbase()->_name) +
                           "/_internal/traverser");
     auto cc = arangodb::ClusterComm::instance();
+    bool hasVars = false;
+    VPackBuilder varInfo;
+    std::vector<aql::Variable const*> vars;
+    en->getConditionVariables(vars);
+    if (!vars.empty()) {
+      hasVars = true;
+      varInfo.openArray();
+      for (auto v : vars) {
+        v->toVelocyPack(varInfo);
+      }
+      varInfo.close();
+    }
+
     VPackBuilder engineInfo;
     for (auto const& list : mappingServerToCollections) {
       std::unordered_set<std::string> shardSet;
@@ -861,6 +875,10 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
       engineInfo.openObject();
       engineInfo.add(VPackValue("options"));
       engineInfo.add(optsBuilder.slice());
+      if (hasVars) {
+        engineInfo.add(VPackValue("variables"));
+        engineInfo.add(varInfo.slice());
+      }
 
       engineInfo.add(VPackValue("shards"));
       engineInfo.openObject();

@@ -305,8 +305,6 @@ class TraversalNode : public ExecutionNode {
   ///        traversal
   bool _specializedNeighborsSearch;
 
-#warning THIS IS ALL NEW STUFF
-
   /// @brief Temporary pseudo variable for the currently traversed object.
   Variable const* _tmpObjVariable;
 

@@ -24,6 +24,7 @@
 #include "TraverserEngine.h"
 
 #include "Basics/Exceptions.h"
+#include "Aql/Ast.h"
 #include "Aql/Query.h"
 #include "Utils/AqlTransaction.h"
 #include "Utils/CollectionNameResolver.h"
@@ -37,6 +38,7 @@ using namespace arangodb::traverser;
 static const std::string OPTIONS = "options";
 static const std::string SHARDS = "shards";
 static const std::string EDGES = "edges";
+static const std::string VARIABLES = "variables";
 static const std::string VERTICES = "vertices";
 
 TraverserEngine::TraverserEngine(TRI_vocbase_t* vocbase,
@@ -103,6 +105,21 @@ TraverserEngine::TraverserEngine(TRI_vocbase_t* vocbase,
   auto opts = std::make_shared<VPackBuilder>();
   _query = new aql::Query(true, vocbase, "", 0, params, opts, aql::PART_DEPENDENT);
   _query->injectTransaction(_trx);
+
+  VPackSlice variablesSlice = info.get(VARIABLES);
+  if (!variablesSlice.isNone()) {
+    if (!variablesSlice.isArray()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_BAD_PARAMETER,
+          "The optional " + VARIABLES + " has to be an array.");
+    }
+    for (auto v : VPackArrayIterator(variablesSlice)) {
+      // TODO do we have to keep the variable somewhere?
+      _query->ast()->variables()->createVariable(v);
+    }
+  }
+
+
   _trx->begin(); // We begin the transaction before we lock.
                  // We also setup indexes before we lock.
   _opts.reset(new TraverserOptions(_query, optsSlice, edgesSlice));
