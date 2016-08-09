@@ -487,11 +487,12 @@
       docFrameView.render();
       docFrameView.setType(type);
 
-      // check if document is valid
+      /*
       if (docFrameView.collection.toJSON().length === 0) {
         this.closeDocEditor();
         return;
       }
+      */
 
       // remove header
       $('.arangoFrame .headerBar').remove();
