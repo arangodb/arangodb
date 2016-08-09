@@ -416,8 +416,11 @@ void arangodb::traverser::TraverserOptions::buildEngineInfo(VPackBuilder& result
     result.openObject();
     for (auto const& pair : _vertexExpressions) {
       result.add(VPackValue(basics::StringUtils::itoa(pair.first)));
-      // Do we need verbosity true here?
-      pair.second->toVelocyPack(result, false);
+      result.openObject();
+      result.add(VPackValue("expression"));
+      pair.second->toVelocyPack(result, true);
+      result.close();
+
     }
     result.close();
   }
@@ -549,8 +552,6 @@ arangodb::traverser::TraverserOptions::nextCursorCoordinator(
   TRI_ASSERT(_traverser != nullptr);
   auto cursor = std::make_unique<ClusterEdgeCursor>(vertex, depth, _traverser);
   return cursor.release();
-  LOG(ERR) << "ULF ULF";
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_DIRECTORY_ALREADY_EXISTS);
 }
 
 void arangodb::traverser::TraverserOptions::clearVariableValues() {

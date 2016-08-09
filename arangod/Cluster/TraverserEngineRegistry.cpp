@@ -67,15 +67,11 @@ TraverserEngineID TraverserEngineRegistry::createNew(TRI_vocbase_t* vocbase,
                                                      VPackSlice engineInfo) {
   WRITE_LOCKER(writeLocker, _lock);
   TraverserEngineID id = TRI_NewTickServer();
+  TRI_ASSERT(id != 0);
   TRI_ASSERT(_engines.find(id) == _engines.end());
-  try {
-    auto info = std::make_unique<EngineInfo>(vocbase, engineInfo);
-    _engines.emplace(id, info.get());
-    info.release();
-  } catch (...) {
-    // In case the emplace fails
-    return 0;
-  }
+  auto info = std::make_unique<EngineInfo>(vocbase, engineInfo);
+  _engines.emplace(id, info.get());
+  info.release();
   return id;
 }
 

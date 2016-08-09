@@ -916,6 +916,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
         VPackSlice resultSlice = builder->slice();
         TRI_ASSERT(resultSlice.isNumber());
         auto engineId = resultSlice.getNumericValue<traverser::TraverserEngineID>();
+        TRI_ASSERT(engineId != 0);
         traverserEngines.emplace(engineId, shardSet);
         en->addEngine(engineId, list.first);
       }
