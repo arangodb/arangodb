@@ -61,7 +61,7 @@
         value: 2
       },
       'limit': {
-        desc: 'Limit nodes count.',
+        desc: 'Limit nodes count. If empty or zero, no limit is set.',
         type: 'number',
         name: 'Limit',
         value: 250

@@ -375,7 +375,7 @@ authRouter.get('/graph/:name', function (req, res) {
       aqlQuery = config.query;
     } else {
       var limit = 0;
-      if (config !== undefined && config.limit.length > 0) {
+      if (config !== undefined && config.limit.length > 0 && config.limit !== '0') {
         limit = config.limit;
       }
 
