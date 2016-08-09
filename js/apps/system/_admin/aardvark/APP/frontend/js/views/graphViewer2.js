@@ -1329,7 +1329,6 @@
       }
 
       if (aqlMode) {
-        console.log(true);
         settings.minNodeSize = 2;
         settings.maxNodeSize = 4;
       }
@@ -1583,8 +1582,14 @@
         // suggestion rendering time
         var duration = graph.nodes.length;
 
-        if (duration < 250) {
-          duration = 250;
+        if (aqlMode) {
+          if (duration < 250) {
+            duration = 250;
+          }
+        } else {
+          if (duration <= 250) {
+            duration = 500;
+          }
         }
 
         window.setTimeout(function () {
@@ -1651,20 +1656,13 @@
           if (self.graphConfig.nodeSizeByEdges === 'false') {
             // make nodes a bit bigger
             var maxNodeSize = s.settings('maxNodeSize');
-            console.log(maxNodeSize);
             var factor = 1;
             var length = s.graph.nodes().length;
 
-            if (length < 100) {
-              factor = 2.5;
-            } else if (length < 1000) {
-              factor = 0.7;
-            }
+            factor = 0.5;
             maxNodeSize = maxNodeSize * factor;
             s.settings('maxNodeSize', maxNodeSize);
-
-            s.refresh({
-            });
+            s.refresh({});
           }
         }
       }

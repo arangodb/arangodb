@@ -375,8 +375,10 @@ authRouter.get('/graph/:name', function (req, res) {
       aqlQuery = config.query;
     } else {
       var limit = 0;
-      if (config !== undefined && config.limit.length > 0 && config.limit !== '0') {
-        limit = config.limit;
+      if (config.limit !== undefined) {
+        if (config.limit.length > 0 && config.limit !== '0') {
+          limit = config.limit;
+        }
       }
 
       aqlQuery =
@@ -530,7 +532,7 @@ authRouter.get('/graph/:name', function (req, res) {
           nodeObj = {
             id: node._id,
             label: nodeLabel,
-            size: nodeSize || 10,
+            size: nodeSize || 3,
             color: config.nodeColor || '#2ecc71',
             x: Math.random(),
             y: Math.random()
