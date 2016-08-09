@@ -1309,7 +1309,6 @@ function complexInternaSuite () {
       var query = `WITH ${vn2}
         FOR x IN OUTBOUND @startId @@eCol
         RETURN x`;
-        require("internal").print(query);
       var bindVars = {
         "@eCol": en,
         "startId": vn + "/1"
@@ -1690,7 +1689,7 @@ function complexFilteringSuite () {
       // 1 Edge (Tri1->Tri2)
       // 1 Primary (Tri2)
       if (isCluster) {
-        assertEqual(stats.scannedIndex, 3);
+        assertEqual(stats.scannedIndex, 2);
       }
       else {
         assertEqual(stats.scannedIndex, 2);
@@ -1729,13 +1728,13 @@ function complexFilteringSuite () {
       assertEqual(cursor.count(), 0);
       var stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
-      // 1 Primary (Tri1)
-      // 1 Edge (Tri1->Tri2)
       if (isCluster) {
-        assertEqual(stats.scannedIndex, 2);
+        // The lookup will be using the primary Index.
+        // It will find 0 elements.
+        assertEqual(stats.scannedIndex, 0);
       }
       else {
-        // SingleServer can go shortcut here
+        // SingleServer will get the start vertex.
         assertEqual(stats.scannedIndex, 1);
       }
       assertEqual(stats.filtered, 1);
@@ -1891,12 +1890,11 @@ function complexFilteringSuite () {
       var stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
       if (isCluster) {
-        // 1 Primary (A)
         // 2 Edge
         // 1 Primary (B)
         // 2 Edge
         // 2 Primary (C,F)
-        assertEqual(stats.scannedIndex, 8);
+        assertEqual(stats.scannedIndex, 7);
       }
       else {
         // 2 Edge Lookups (A)
@@ -1926,12 +1924,10 @@ function complexFilteringSuite () {
       var stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
       if (isCluster) {
-        // 1 Primary lookup A
         // 2 Edge Lookups (A)
-        // 2 Primary lookup B,D
         // 4 Edge Lookups (2 B) (2 D)
         // 2 Primary Lookups (C, F)
-        assertEqual(stats.scannedIndex, 11);
+        assertEqual(stats.scannedIndex, 9);
       }
       else {
         // 2 Edge Lookups (A)
