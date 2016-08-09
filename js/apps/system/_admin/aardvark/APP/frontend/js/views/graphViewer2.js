@@ -98,6 +98,10 @@
           });
           return edgesToReturn;
         });
+
+        sigma.classes.graph.addMethod('getNodeEdgesCount', function (id) {
+          return this.allNeighborsCount[id];
+        });
       } catch (ignore) {}
     },
 
@@ -1204,18 +1208,6 @@
           });
         }
 
-        /*
-        // For instance, reset all node size as their initial size
-        sigmaInstance.graph.nodes().forEach(function (node) {
-          node.color = self.graphConfig.nodeColor ? self.graphConfig.nodeColor : 'rgb(46, 204, 113)';
-        });
-
-        // Then increase the size of selected nodes...
-        nodes.forEach(function (node) {
-          node.color = 'red';
-        });
-        */
-
         self.activeNodes = nodes;
         sigmaInstance.refresh();
       });
@@ -1279,7 +1271,9 @@
         borderSize: 3,
         defaultNodeBorderColor: '#8c8c8c',
         doubleClickEnabled: false,
-        minNodeSize: 20,
+        minNodeSize: 5,
+        maxNodeSize: 50,
+        batchEdgesDrawing: true,
         minEdgeSize: 1,
         maxEdgeSize: 4,
         enableEdgeHovering: true,
@@ -1314,7 +1308,7 @@
 
       // adjust display settings for big graphs
       if (graph.nodes) {
-        if (graph.nodes.length > 500) {
+        if (graph.nodes.length > 250) {
           // show node label if size is 15
           settings.labelThreshold = 15;
           settings.hideEdgesOnMove = true;
@@ -1363,6 +1357,13 @@
         });
       }
 
+      s.graph.nodes().forEach(function (n) {
+        n.originalColor = n.color;
+      });
+      s.graph.edges().forEach(function (e) {
+        e.originalColor = e.color;
+      });
+
       if (algorithm === 'noverlap') {
         var noverlapListener = s.configNoverlap({
           nodeMargin: 0.1,
@@ -1387,13 +1388,6 @@
 
         frListener.bind('start stop interpolate', function (e) {});
       }
-
-      s.graph.nodes().forEach(function (n) {
-        n.originalColor = n.color;
-      });
-      s.graph.edges().forEach(function (e) {
-        e.originalColor = e.color;
-      });
 
       // for canvas renderer allow graph editing
       if (renderer === 'canvas') {
@@ -1585,7 +1579,7 @@
 
         $(this.el).append(
           '<div id="toggleForce" style="' + style2 + '">' +
-            '<i class="fa fa-pause"></i>' +
+            '<i style="margin-right: 5px;" class="fa fa-pause"></i><span> Stop layout</span>' +
           '</div>'
         );
         self.startLayout();
@@ -1622,11 +1616,9 @@
       // focus last input box if available
       if (toFocus) {
         $('#' + toFocus).focus();
-        /*
         $('#graphSettingsContent').animate({
           scrollTop: $('#' + toFocus).offset().top
         }, 2000);
-       */
       }
 
       var enableLasso = function () {
@@ -1658,21 +1650,27 @@
       // clear up info div
       $('#calculatingGraph').remove();
 
-      // make nodes a bit bigger
-      var maxNodeSize = s.settings('maxNodeSize');
-      var factor = 1;
-      var length = s.graph.nodes().length;
-
-      if (length < 100) {
-        factor = 2.5;
-      } else if (length < 1000) {
-        factor = 0.7;
-      }
-
       if (!aqlMode) {
-        maxNodeSize = maxNodeSize * factor;
-        s.settings('maxNodeSize', maxNodeSize);
-        s.refresh();
+        if (self.graphConfig) {
+          if (self.graphConfig.nodeSizeByEdges === 'false') {
+            // make nodes a bit bigger
+            var maxNodeSize = s.settings('maxNodeSize');
+            console.log(maxNodeSize);
+            var factor = 1;
+            var length = s.graph.nodes().length;
+
+            if (length < 100) {
+              factor = 2.5;
+            } else if (length < 1000) {
+              factor = 0.7;
+            }
+            maxNodeSize = maxNodeSize * factor;
+            s.settings('maxNodeSize', maxNodeSize);
+
+            s.refresh({
+            });
+          }
+        }
       }
 
       self.calcFinished = new Date();
@@ -1726,6 +1724,8 @@
 
     startLayout: function (kill) {
       var self = this;
+      this.currentGraph.settings('drawLabels', false);
+      this.currentGraph.settings('drawEdgeLabels', false);
 
       if (kill === true) {
         this.currentGraph.killForceAtlas2();
@@ -1736,6 +1736,7 @@
       }
 
       $('#toggleForce .fa').removeClass('fa-play').addClass('fa-pause');
+      $('#toggleForce span').html('Start layout');
       this.layouting = true;
       this.currentGraph.startForceAtlas2({
         worker: true
@@ -1745,9 +1746,13 @@
 
     stopLayout: function () {
       $('#toggleForce .fa').removeClass('fa-pause').addClass('fa-play');
+      $('#toggleForce span').html('Stop layout');
       this.layouting = false;
       this.currentGraph.stopForceAtlas2();
       sigma.plugins.dragNodes(this.currentGraph, this.currentGraph.renderers[0]);
+      this.currentGraph.settings('drawLabels', false);
+      this.currentGraph.settings('drawEdgeLabels', false);
+      this.currentGraph.refresh({ skipIndexation: true });
     }
 
   });

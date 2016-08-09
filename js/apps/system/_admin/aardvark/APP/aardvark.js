@@ -402,6 +402,8 @@ authRouter.get('/graph/:name', function (req, res) {
     var nodeNames = {};
     var edgesObj = {};
     var edgesArr = [];
+    var nodeEdgesCount = {};
+    var handledEdges = {};
 
     var tmpObjEdges = {};
     var tmpObjNodes = {};
@@ -432,6 +434,24 @@ authRouter.get('/graph/:name', function (req, res) {
 
             if (!edgeLabel) {
               edgeLabel = 'attribute ' + config.edgeLabel + ' not found';
+            }
+          }
+
+          if (config.nodeSizeByEdges === 'true') {
+            if (handledEdges[edge._id] === undefined) {
+              handledEdges[edge._id] = true;
+
+              if (nodeEdgesCount[edge._from] === undefined) {
+                nodeEdgesCount[edge._from] = 1;
+              } else {
+                nodeEdgesCount[edge._from] += 1;
+              }
+
+              if (nodeEdgesCount[edge._to] === undefined) {
+                nodeEdgesCount[edge._to] = 1;
+              } else {
+                nodeEdgesCount[edge._to] += 1;
+              }
             }
           }
 
@@ -495,7 +515,7 @@ authRouter.get('/graph/:name', function (req, res) {
             nodeLabel = JSON.stringify(nodeLabel);
           }
 
-          if (config.nodeSize) {
+          if (config.nodeSize && config.nodeSizeByEdges === 'false') {
             nodeSize = node[config.nodeSize];
           }
 
@@ -534,6 +554,10 @@ authRouter.get('/graph/:name', function (req, res) {
     });
 
     _.each(nodesObj, function (node) {
+      if (config.nodeSizeByEdges === 'true') {
+        // + 10 visual adjustment sigma
+        node.size = nodeEdgesCount[node.id] + 10;
+      }
       nodesArr.push(node);
     });
 

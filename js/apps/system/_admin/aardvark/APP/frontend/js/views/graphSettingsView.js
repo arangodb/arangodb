@@ -27,7 +27,7 @@
       'layout': {
         type: 'select',
         name: 'Layout algorithm',
-        desc: 'Different graph algorithms. No overlap is very fast, force is slower and fruchtermann is the slowest. The calculation time strongly depends on your nodes and edges counts.',
+        desc: 'Different graph algorithms. No overlap is very fast (more than 5000 nodes), force is slower (less than 5000 nodes) and fruchtermann is the slowest (less than 500 nodes). The calculation time strongly depends on your nodes and edges counts.',
         noverlap: {
           name: 'No overlap',
           val: 'noverlap'
@@ -92,17 +92,6 @@
         desc: 'The minimum size a node must have on screen to see its label displayed. This does not affect hovering behavior.',
         default: '_key'
       },
-      'nodeColor': {
-        type: 'color',
-        name: 'Color',
-        desc: 'Default node color. RGB or HEX value.',
-        default: '#2ecc71'
-      },
-      'nodeColorAttribute': {
-        type: 'string',
-        name: 'Color attribute',
-        desc: 'If an attribute is given, nodes will then be colorized by the attribute. This setting ignores default node color if set.'
-      },
       'nodeColorByCollection': {
         type: 'select',
         name: 'Use collection color',
@@ -115,6 +104,30 @@
           val: 'true'
         },
         desc: 'Should nodes be colorized by their collection? If enabled, node color and node color attribute will be ignored.'
+      },
+      'nodeColor': {
+        type: 'color',
+        name: 'Color',
+        desc: 'Default node color. RGB or HEX value.',
+        default: '#2ecc71'
+      },
+      'nodeColorAttribute': {
+        type: 'string',
+        name: 'Color attribute',
+        desc: 'If an attribute is given, nodes will then be colorized by the attribute. This setting ignores default node color if set.'
+      },
+      'nodeSizeByEdges': {
+        type: 'select',
+        name: 'Size by edge count',
+        yes: {
+          name: 'Yes',
+          val: 'true'
+        },
+        no: {
+          name: 'No',
+          val: 'false'
+        },
+        desc: 'Should nodes be sized by their edges? If enabled, node sizing attribute will be ignored.'
       },
       'nodeSize': {
         type: 'string',
@@ -149,17 +162,6 @@
         desc: 'The minimum size an edge must have on screen to see its label displayed. This does not affect hovering behavior.',
         default: '_key'
       },
-      'edgeColor': {
-        type: 'color',
-        name: 'Color',
-        desc: 'Default edge color. RGB or HEX value.',
-        default: '#cccccc'
-      },
-      'edgeColorAttribute': {
-        type: 'string',
-        name: 'Color attribute',
-        desc: 'If an attribute is given, edges will then be colorized by the attribute. This setting ignores default edge color if set.'
-      },
       'edgeColorByCollection': {
         type: 'select',
         name: 'Use collection color',
@@ -172,6 +174,17 @@
           val: 'true'
         },
         desc: 'Should edges be colorized by their collection? If enabled, edge color and edge color attribute will be ignored.'
+      },
+      'edgeColor': {
+        type: 'color',
+        name: 'Color',
+        desc: 'Default edge color. RGB or HEX value.',
+        default: '#cccccc'
+      },
+      'edgeColorAttribute': {
+        type: 'string',
+        name: 'Color attribute',
+        desc: 'If an attribute is given, edges will then be colorized by the attribute. This setting ignores default edge color if set.'
       },
       'edgeEditable': {
         type: 'select',
@@ -332,6 +345,7 @@
         edgeLabel: '',
         edgeType: 'arrow',
         nodeSize: '',
+        nodeSizeByEdges: 'true',
         edgeEditable: 'false',
         nodeLabelByCollection: 'false',
         edgeLabelByCollection: 'true',
@@ -369,6 +383,10 @@
     },
 
     handleDependencies: function () {
+      // node sizing
+      if ($('#g_nodeSizeByEdges').val() === 'true') {
+        $('#g_nodeSize').prop('disabled', true);
+      }
       // node color
       if ($('#g_nodeColorByCollection').val() === 'true') {
         $('#g_nodeColorAttribute').prop('disabled', true);
