@@ -434,6 +434,7 @@ struct FunctionDefiner {
                              true, false, true});
     add({"NOT_NULL", "AQL_NOT_NULL", ".|+", true, true, false,
                           true, true, &Functions::NotNull});
+    add({"COALESCE", "AQL_COALESCE", ".|+", true, true, false, true, true, &Functions::Coalesce });
     add({"FIRST_LIST", "AQL_FIRST_LIST", ".|+", true, true,
                             false, true, true, &Functions::FirstList});
     add({"FIRST_DOCUMENT", "AQL_FIRST_DOCUMENT", ".|+", true, true, false,
