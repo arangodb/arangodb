@@ -1598,10 +1598,8 @@
 
       dragListener.bind('drag', function (event) {
         self.dragging = true;
-        console.log(1);
       });
       dragListener.bind('drop', function (event) {
-        console.log(2);
         window.setTimeout(function () {
           self.dragging = false;
         }, 400);

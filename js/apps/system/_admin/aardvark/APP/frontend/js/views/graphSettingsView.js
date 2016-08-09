@@ -59,6 +59,12 @@
         type: 'number',
         name: 'Search depth',
         value: 2
+      },
+      'limit': {
+        desc: 'Limit nodes count.',
+        type: 'number',
+        name: 'Limit',
+        value: 250
       }
     },
 
