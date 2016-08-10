@@ -689,6 +689,7 @@ function runThere (options, instanceInfo, file) {
     };
   }
 }
+runThere.info = 'runThere';
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief runs a list of tests
@@ -3381,7 +3382,7 @@ testFuncs.resilience = function (options) {
   if (options.dbServers < 5) {
     options.dbServers = 5;
   }
-  return performTests(options, testsCases.resilience, 'resilience');
+  return performTests(options, testsCases.resilience, 'resilience', runThere);
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -3411,7 +3412,7 @@ testFuncs.shell_replication = function (options) {
   };
   _.defaults(opts, options);
 
-  return performTests(opts, testsCases.replication, 'shell_replication');
+  return performTests(opts, testsCases.replication, 'shell_replication', runThere);
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -3431,7 +3432,7 @@ testFuncs.shell_client = function (options) {
 testFuncs.server_http = function (options) {
   findTests();
 
-  return performTests(options, testsCases.server_http, 'server_http');
+  return performTests(options, testsCases.server_http, 'server_http', runThere);
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -3442,7 +3443,7 @@ testFuncs.shell_server = function (options) {
   findTests();
   options.propagateInstanceInfo = true;
 
-  return performTests(options, testsCases.server, 'shell_server');
+  return performTests(options, testsCases.server, 'shell_server', runThere);
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -3466,7 +3467,7 @@ testFuncs.shell_server_aql = function (options) {
 
     cases = splitBuckets(options, cases);
 
-    return performTests(options, cases, name);
+    return performTests(options, cases, name, runThere);
   }
 
   return {
@@ -3484,7 +3485,7 @@ testFuncs.shell_server_aql = function (options) {
 testFuncs.shell_server_only = function (options) {
   findTests();
 
-  return performTests(options, testsCases.server_only, 'shell_server_only');
+  return performTests(options, testsCases.server_only, 'shell_server_only', runThere);
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -3495,7 +3496,7 @@ testFuncs.shell_server_perf = function (options) {
   findTests();
 
   return performTests(options, testsCases.server_aql_performance,
-    'shell_server_perf');
+    'shell_server_perf', runThere);
 };
 
 // //////////////////////////////////////////////////////////////////////////////
