@@ -1242,7 +1242,7 @@ TRI_vocbase_t* TRI_CreateInitialVocBase(
   try {
     auto vocbase =
         std::make_unique<TRI_vocbase_t>(server, type, path, id, name, defaults);
-
+    
     return vocbase.release();
   } catch (...) {
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);

@@ -1471,7 +1471,6 @@ int TRI_CreateCoordinatorDatabaseServer(TRI_server_t* server,
   }
 
   // name not yet in use, release the read lock
-
   TRI_vocbase_t* vocbase = TRI_CreateInitialVocBase(
       server, TRI_VOCBASE_TYPE_COORDINATOR, "none", tick, name, defaults);
 
