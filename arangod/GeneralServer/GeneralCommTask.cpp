@@ -144,9 +144,9 @@ void GeneralCommTask::fillWriteBuffer() {
 
     TRI_ASSERT(buffer != nullptr);
 
-    //REVIEW (fc)
+    // REVIEW (fc)
     TRI_request_statistics_t* statistics = nullptr;
-    if(!_writeBuffersStats.empty()){
+    if (!_writeBuffersStats.empty()) {
       statistics = _writeBuffersStats.front();
       _writeBuffersStats.pop_front();
     }
