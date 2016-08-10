@@ -2724,6 +2724,20 @@ function optimizeQuantifierSuite() {
       assertEqual(stats.scannedFull, 0);
       assertEqual(stats.scannedIndex, 9);
       assertEqual(stats.filtered, 1);
+
+      query = `
+        FOR v, e, p IN 0..2 OUTBOUND "${vertices.A}" GRAPH "${gn}"
+        FILTER p.vertices[*].foo ALL == false
+        SORT v._key
+        RETURN v._id
+      `;
+      cursor = db._query(query);
+      assertEqual(cursor.count(), 0);
+
+      stats = cursor.getExtra().stats;
+      assertEqual(stats.scannedFull, 0);
+      assertEqual(stats.scannedIndex, 1);
+      assertEqual(stats.filtered, 1);
     },
 
     testAllEdgesSingle: function () {
@@ -2739,6 +2753,22 @@ function optimizeQuantifierSuite() {
       assertEqual(result, [vertices.A, vertices.B, vertices.C, vertices.D]);
 
       let stats = cursor.getExtra().stats;
+      assertEqual(stats.scannedFull, 0);
+      assertEqual(stats.scannedIndex, 8);
+      assertEqual(stats.filtered, 1);
+
+      query = `
+        FOR v, e, p IN 0..2 OUTBOUND "${vertices.A}" GRAPH "${gn}"
+        FILTER p.edges[*].foo ALL == false
+        SORT v._key
+        RETURN v._id
+      `;
+      cursor = db._query(query);
+      assertEqual(cursor.count(), 4);
+      result = cursor.toArray();
+      assertEqual(result, [vertices.A, vertices.E, vertices.F, vertices.G]);
+
+      stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
       assertEqual(stats.scannedIndex, 8);
       assertEqual(stats.filtered, 1);
@@ -2760,6 +2790,20 @@ function optimizeQuantifierSuite() {
       assertEqual(stats.scannedFull, 0);
       assertEqual(stats.scannedIndex, 9);
       assertEqual(stats.filtered, 1);
+
+      query = `
+        FOR v, e, p IN 0..2 OUTBOUND "${vertices.A}" GRAPH "${gn}"
+        FILTER p.vertices[*].foo NONE == true
+        SORT v._key
+        RETURN v._id
+      `;
+      cursor = db._query(query);
+      assertEqual(cursor.count(), 0);
+
+      stats = cursor.getExtra().stats;
+      assertEqual(stats.scannedFull, 0);
+      assertEqual(stats.scannedIndex, 1);
+      assertEqual(stats.filtered, 1);
     },
 
     testNoneEdgesSingle: function () {
@@ -2778,10 +2822,137 @@ function optimizeQuantifierSuite() {
       assertEqual(stats.scannedFull, 0);
       assertEqual(stats.scannedIndex, 8);
       assertEqual(stats.filtered, 1);
+
+      query = `
+        FOR v, e, p IN 0..2 OUTBOUND "${vertices.A}" GRAPH "${gn}"
+        FILTER p.edges[*].foo NONE == true
+        SORT v._key
+        RETURN v._id
+      `;
+      cursor = db._query(query);
+      assertEqual(cursor.count(), 4);
+      result = cursor.toArray();
+      assertEqual(result, [vertices.A, vertices.E, vertices.F, vertices.G]);
+
+      stats = cursor.getExtra().stats;
+      assertEqual(stats.scannedFull, 0);
+      assertEqual(stats.scannedIndex, 8);
+      assertEqual(stats.filtered, 1);
     },
 
+    testAllVerticesMultiple: function () {
+      let query = `
+        FOR v, e, p IN 0..2 OUTBOUND "${vertices.A}" GRAPH "${gn}"
+        FILTER p.vertices[*].foo ALL == true
+        FILTER p.vertices[*].bar ALL == true
+        SORT v._key
+        RETURN v._id
+      `;
+      let cursor = db._query(query);
+      assertEqual(cursor.count(), 3);
+      let result = cursor.toArray();
+      assertEqual(result, [vertices.A, vertices.B, vertices.C]);
 
+      let stats = cursor.getExtra().stats;
+      assertEqual(stats.scannedFull, 0);
+      assertEqual(stats.scannedIndex, 9);
+      assertEqual(stats.filtered, 2);
+    },
 
+    testAllEdgesMultiple: function () {
+      let query = `
+        FOR v, e, p IN 0..2 OUTBOUND "${vertices.A}" GRAPH "${gn}"
+        FILTER p.edges[*].foo ALL == true
+        FILTER p.edges[*].bar ALL == true
+        SORT v._key
+        RETURN v._id
+      `;
+      let cursor = db._query(query);
+      assertEqual(cursor.count(), 3);
+      let result = cursor.toArray();
+      assertEqual(result, [vertices.A, vertices.B, vertices.C]);
+
+      let stats = cursor.getExtra().stats;
+      assertEqual(stats.scannedFull, 0);
+      assertEqual(stats.scannedIndex, 9);
+      assertEqual(stats.filtered, 2);
+    },
+
+    testAllNoneVerticesMultiple: function () {
+      let query = `
+        FOR v, e, p IN 0..2 OUTBOUND "${vertices.A}" GRAPH "${gn}"
+        FILTER p.vertices[*].foo ALL == true
+        FILTER p.vertices[*].bar NONE == false
+        SORT v._key
+        RETURN v._id
+      `;
+      let cursor = db._query(query);
+      assertEqual(cursor.count(), 3);
+      let result = cursor.toArray();
+      assertEqual(result, [vertices.A, vertices.B, vertices.C]);
+
+      let stats = cursor.getExtra().stats;
+      assertEqual(stats.scannedFull, 0);
+      assertEqual(stats.scannedIndex, 9);
+      assertEqual(stats.filtered, 2);
+    },
+
+    testAllNoneEdgesMultiple: function () {
+      let query = `
+        FOR v, e, p IN 0..2 OUTBOUND "${vertices.A}" GRAPH "${gn}"
+        FILTER p.edges[*].foo ALL == true
+        FILTER p.edges[*].bar NONE == false
+        SORT v._key
+        RETURN v._id
+      `;
+      let cursor = db._query(query);
+      assertEqual(cursor.count(), 3);
+      let result = cursor.toArray();
+      assertEqual(result, [vertices.A, vertices.B, vertices.C]);
+
+      let stats = cursor.getExtra().stats;
+      assertEqual(stats.scannedFull, 0);
+      assertEqual(stats.scannedIndex, 9);
+      assertEqual(stats.filtered, 2);
+    },
+
+    testAllVerticesDepth: function () {
+      let query = `
+        FOR v, e, p IN 0..2 OUTBOUND "${vertices.A}" GRAPH "${gn}"
+        FILTER p.vertices[*].foo ALL == true
+        FILTER p.vertices[2].bar == false
+        SORT v._key
+        RETURN v._id
+      `;
+      let cursor = db._query(query);
+      assertEqual(cursor.count(), 1);
+      let result = cursor.toArray();
+      assertEqual(result, [vertices.D]);
+
+      let stats = cursor.getExtra().stats;
+      assertEqual(stats.scannedFull, 0);
+      assertEqual(stats.scannedIndex, 9);
+      assertEqual(stats.filtered, 2);
+    },
+
+    testAllEdgesAndDepth: function () {
+      let query = `
+        FOR v, e, p IN 0..2 OUTBOUND "${vertices.A}" GRAPH "${gn}"
+        FILTER p.edges[*].foo ALL == true
+        FILTER p.edges[1].bar == false
+        SORT v._key
+        RETURN v._id
+      `;
+      let cursor = db._query(query);
+      assertEqual(cursor.count(), 1);
+      let result = cursor.toArray();
+      assertEqual(result, [vertices.D]);
+
+      let stats = cursor.getExtra().stats;
+      assertEqual(stats.scannedFull, 0);
+      assertEqual(stats.scannedIndex, 9);
+      assertEqual(stats.filtered, 2);
+    }
 
   };
 
