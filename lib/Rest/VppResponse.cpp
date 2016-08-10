@@ -62,7 +62,7 @@ void VppResponse::setPayload(ContentType contentType,
                              bool generateBody, VPackOptions const& options) {
   if (generateBody) {
     // addPayload(slice);
-    if (_payload.empty()) {
+    if (slice.isEmptyObject()) {
       throw std::logic_error("payload should be empty!!");
     }
     _payload.append(slice.startAs<char>(),

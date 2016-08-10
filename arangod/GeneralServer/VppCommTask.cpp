@@ -69,7 +69,7 @@ std::unique_ptr<basics::StringBuffer> createChunkForNetworkDetail(
     uint32_t totalMessageLength = 0) {
   using basics::StringBuffer;
   bool firstOfMany = false;
-  if (isFirstChunk && chunk == 1) {
+  if (isFirstChunk && chunk > 1) {
     firstOfMany = true;
   }
 
