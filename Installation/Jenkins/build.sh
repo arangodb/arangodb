@@ -309,7 +309,7 @@ if [ "${VERBOSE}" == 1 ];  then
     MAKE_PARAMS="${MAKE_PARAMS} V=1 Verbose=1 VERBOSE=1"
 fi
 
-if [ -n "${PAR}"]; then 
+if [ -n "${PAR}" ]; then 
      MAKE_PARAMS="${MAKE_PARAMS} ${PAR} ${PARALLEL_BUILDS}"
 fi
 
