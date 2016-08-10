@@ -231,6 +231,8 @@ class TraversalNode : public ExecutionNode {
 
   AstNode* getTemporaryRefNode() const;
 
+  Variable const* getTemporaryVariable() const;
+
   void getConditionVariables(std::vector<Variable const*>&) const;
 
   /// @brief Compute the traversal options containing the expressions

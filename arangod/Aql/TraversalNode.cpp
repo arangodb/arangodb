@@ -941,7 +941,6 @@ void TraversalNode::prepareOptions() {
         break;
     }
     info.expression = new Expression(ast, info.indexCondition->clone(ast));
-#warning hard-coded nrItems.
     res = trx->getBestIndexHandleForFilterCondition(
         _edgeColls[i]->getName(), info.indexCondition, _tmpObjVariable, 1000,
         info.idxHandles[0]);
@@ -1062,6 +1061,10 @@ arangodb::traverser::TraverserOptions* TraversalNode::options() const {
 
 AstNode* TraversalNode::getTemporaryRefNode() const {
   return _tmpObjVarNode;
+}
+
+Variable const* TraversalNode::getTemporaryVariable() const {
+  return _tmpObjVariable;
 }
 
 void TraversalNode::getConditionVariables(
