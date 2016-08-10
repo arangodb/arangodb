@@ -1829,11 +1829,10 @@ function complexFilteringSuite () {
         // 1 Primary Lookups A -> D (D)
         // 0 Primary Lookups A -> B -> C
         // 0 Primary Lookups A -> B -> F
-        assertEqual(stats.scannedIndex, 13);
+        assertEqual(stats.scannedIndex, 12);
       }
       // 2 Filter (E, G)
-      // 2 Filter A->B, A->D path too short
-      assertEqual(stats.filtered, 4);
+      assertEqual(stats.filtered, 2);
     },
 
     testVertexLevelsCombined: function () {
@@ -1866,12 +1865,11 @@ function complexFilteringSuite () {
         // 2 Edge Lookups (0 B) (2 D)
         // 2 Primary Lookups for Eval (E, G)
         // 1 Primary Lookups A -> D
-        assertEqual(stats.scannedIndex, 9);
+        assertEqual(stats.scannedIndex, 8);
       }
       // 1 Filter (B)
       // 2 Filter (E, G)
-      // Filter A->D too short
-      assertEqual(stats.filtered, 4);
+      assertEqual(stats.filtered, 3);
     },
 
     testEdgeLevel0: function () {
@@ -1936,11 +1934,10 @@ function complexFilteringSuite () {
         // 1 Primary Lookups A -> D
         // 1 Primary Lookups A -> B -> C
         // 1 Primary Lookups A -> B -> F
-        assertEqual(stats.scannedIndex, 11);
+        assertEqual(stats.scannedIndex, 10);
       }
       // 2 Filter On (D->E, D->G)
-      // Filter on A->D, A->B because path is too short is not counted. No Document!
-      assertEqual(stats.filtered, 4);
+      assertEqual(stats.filtered, 2);
     },
 
     testVertexLevel1Less: function () {
