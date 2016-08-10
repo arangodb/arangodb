@@ -112,7 +112,7 @@ function FoxxmasterSuite() {
       assertNotNull(server);
 
       let instance = instanceInfo.arangods.filter(arangod => {
-        if (arangod.isAgency) {
+        if (arangod.role == 'agent') {
           return false;
         }
         let url = arangod.endpoint.replace(/tcp/, 'http') + '/_admin/server/id';
@@ -128,7 +128,7 @@ function FoxxmasterSuite() {
       assertTrue(suspendExternal(instance.pid));
 
       let newEndpoint = instanceInfo.arangods.filter(arangod => {
-        return arangod.role == 'COORDINATOR' && arangod.pid != instance.pid;
+        return arangod.role == 'coordinator' && arangod.pid != instance.pid;
       })[0];
       arango.reconnect(newEndpoint.endpoint, db._name(), 'root', '');
       let waitInterval = 0.1;

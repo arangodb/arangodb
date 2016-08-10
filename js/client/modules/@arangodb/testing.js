@@ -1198,7 +1198,7 @@ function shutdownInstance (instanceInfo, options) {
   const n = instanceInfo.arangods.length;
 
   let nonagencies = instanceInfo.arangods
-    .filter(arangod => !arangod.isAgency);
+    .filter(arangod => arangod.role != 'agent');
   nonagencies.forEach(arangod => shutdownArangod(arangod, options)
   );
 
@@ -1222,7 +1222,7 @@ function shutdownInstance (instanceInfo, options) {
     // are agents:
     if (!agentsKilled && nrAgents > 0 && toShutdown.length === nrAgents) {
       instanceInfo.arangods
-        .filter(arangod => arangod.isAgency)
+        .filter(arangod => arangod.role == 'agent')
         .forEach(arangod => shutdownArangod(arangod, options));
       agentsKilled = true;
     }
@@ -1308,7 +1308,7 @@ function startInstanceCluster (instanceInfo, protocol, options,
     primaryArgs['cluster.my-role'] = 'PRIMARY';
     primaryArgs['cluster.agency-endpoint'] = agencyEndpoint;
 
-    startInstanceSingleServer(instanceInfo, protocol, options, ...makeArgs('dbserver' + i, primaryArgs));
+    startInstanceSingleServer(instanceInfo, protocol, options, ...makeArgs('dbserver' + i, primaryArgs), 'dbserver');
   }
   
   for (i=0;i<options.coordinators;i++) {
@@ -1320,7 +1320,7 @@ function startInstanceCluster (instanceInfo, protocol, options,
     coordinatorArgs['cluster.my-role'] = 'COORDINATOR';
     coordinatorArgs['cluster.agency-endpoint'] = agencyEndpoint;
 
-    startInstanceSingleServer(instanceInfo, protocol, options, ...makeArgs('coordinator' + i, coordinatorArgs));
+    startInstanceSingleServer(instanceInfo, protocol, options, ...makeArgs('coordinator' + i, coordinatorArgs), 'coordinator');
   }
 
   // disabled because not in use (jslint)
@@ -1354,7 +1354,7 @@ function startInstanceCluster (instanceInfo, protocol, options,
   return true;
 }
 
-function startArango (protocol, options, addArgs, rootDir, isAgency) {
+function startArango (protocol, options, addArgs, rootDir, role) {
   const dataDir = fs.join(rootDir, 'data');
   const appDir = fs.join(rootDir, 'apps');
 
@@ -1374,7 +1374,7 @@ function startArango (protocol, options, addArgs, rootDir, isAgency) {
   }
 
   let instanceInfo = {
-  isAgency, port, endpoint, rootDir};
+  role, port, endpoint, rootDir};
 
   args['server.endpoint'] = endpoint;
   args['database.directory'] = dataDir;
@@ -1402,7 +1402,7 @@ function startArango (protocol, options, addArgs, rootDir, isAgency) {
 
   instanceInfo.url = endpointToURL(instanceInfo.endpoint);
   instanceInfo.pid = executeArangod(ARANGOD_BIN, toArgv(args), options).pid;
-  instanceInfo.role = args['cluster.my-role'];
+  instanceInfo.role = role;
 
   if (platform.substr(0, 3) === 'win') {
     const procdumpArgs = [
@@ -1459,19 +1459,20 @@ function startInstanceAgency (instanceInfo, protocol, options,
     let dir = fs.join(rootDir, 'agency-' + i);
     fs.makeDirectoryRecursive(dir);
 
-    instanceInfo.arangods.push(startArango(protocol, options, instanceArgs, rootDir, true));
+    instanceInfo.arangods.push(startArango(protocol, options, instanceArgs, rootDir, 'agent'));
   }
 
   instanceInfo.endpoint = instanceInfo.arangods[instanceInfo.arangods.length - 1].endpoint;
   instanceInfo.url = instanceInfo.arangods[instanceInfo.arangods.length - 1].url;
+  instanceInfo.role = 'agent';
   print('Agency Endpoint: ' + instanceInfo.endpoint);
 
   return instanceInfo;
 }
 
 function startInstanceSingleServer (instanceInfo, protocol, options,
-  addArgs, rootDir) {
-  instanceInfo.arangods.push(startArango(protocol, options, addArgs, rootDir, false));
+  addArgs, rootDir, role) {
+  instanceInfo.arangods.push(startArango(protocol, options, addArgs, rootDir, role));
 
   instanceInfo.endpoint = instanceInfo.arangods[instanceInfo.arangods.length - 1].endpoint;
   instanceInfo.url = instanceInfo.arangods[instanceInfo.arangods.length - 1].url;
@@ -1501,7 +1502,7 @@ function startInstance (protocol, options, addArgs, testname, tmpDir) {
         addArgs, rootDir);
     } else {
       startInstanceSingleServer(instanceInfo, protocol, options,
-        addArgs, rootDir);
+        addArgs, rootDir, 'single');
     }
 
     if (!options.cluster) {
