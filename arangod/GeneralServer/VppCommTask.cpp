@@ -23,6 +23,7 @@
 
 #include "VppCommTask.h"
 
+#include "Basics/StringBuffer.h"
 #include "Basics/HybridLogicalClock.h"
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/GeneralServerFeature.h"
@@ -74,7 +75,7 @@ std::unique_ptr<basics::StringBuffer> createChunkForNetworkDetail(
   }
 
   chunk <<= 1;
-  chunk |= isFirstChunk ? 0x0 : 0x1;
+  chunk |= isFirstChunk ? 0x1 : 0x0;
 
   uint32_t dataLength = std::distance(start, end);
   uint32_t chunkLength = dataLength;
@@ -85,13 +86,38 @@ std::unique_ptr<basics::StringBuffer> createChunkForNetworkDetail(
 
   auto buffer =
       std::make_unique<StringBuffer>(TRI_UNKNOWN_MEM_ZONE, chunkLength, false);
-  buffer->appendInteger(chunkLength);
-  buffer->appendInteger(chunk);  // chunkX //contains is first
-  buffer->appendInteger(id);
+
+  //TRI_AppendUInt32StringBuffer(buffer->stringBuffer(), chunkLength);
+  //buffer->appendInteger(chunkLength);
+  char cChunkLength[sizeof(chunkLength)];
+  char const * cChunkLengthPtr = cChunkLength;
+  std::memcpy(&cChunkLength, &chunkLength, sizeof(chunkLength));
+  buffer->appendText(cChunkLengthPtr, sizeof(chunkLength));
+
+
+
+  //TRI_AppendUInt32StringBuffer(buffer->stringBuffer(), chunk);
+  //buffer->appendInteger(chunk);  // chunkX //contains is first
+  char cChunk[sizeof(chunk)];
+  char const * cChunkPtr = cChunk;
+  std::memcpy(&cChunk, &chunk, sizeof(chunk));
+  buffer->appendText(cChunkPtr, sizeof(chunk));
+
+
+  //TRI_AppendUInt32StringBuffer(buffer->stringBuffer(), id);
+  //buffer->appendInteger(id);
+  char cId[sizeof(id)];
+  char const * cIdPtr = cId;
+  std::memcpy(&cId, &id, sizeof(id));
+  buffer->appendText(cIdPtr, sizeof(id));
 
   if (firstOfMany) {
-    TRI_ASSERT(totalMessageLength != 0);
-    buffer->appendInteger(totalMessageLength);
+    //TRI_ASSERT(totalMessageLength != 0);
+    //buffer->appendInteger(totalMessageLength);
+    char cTotalMessageLength[sizeof(totalMessageLength)];
+    char const * cTotalMessageLengthPtr = cTotalMessageLength;
+    std::memcpy(&cTotalMessageLength, &totalMessageLength, sizeof(totalMessageLength));
+    buffer->appendText(cTotalMessageLengthPtr, sizeof(totalMessageLength));
   }
   buffer->appendText(std::string(start, dataLength));
 
