@@ -3762,80 +3762,11 @@ testFuncs.stress_locks = function (options) {
 
 testFuncs.agency = function (options) {
   findTests();
-
-  var saveAgency = options.agency;
-  var saveCluster = options.cluster;
-
+  
   options.agency = true;
   options.cluster = false;
 
-  let instanceInfo = startInstance('tcp', options, {}, 'agency');
-
-  if (instanceInfo === false) {
-    return {
-      shell_client: {
-        status: false,
-        message: 'failed to start agency!'
-      }
-    };
-  }
-
-  let results = {};
-  let filtered = {};
-  let continueTesting = true;
-
-  for (let i = 0; i < testsCases.agency.length; i++) {
-    let te = testsCases.agency[i];
-
-    if (filterTestcaseByOptions(te, options, filtered)) {
-      if (!continueTesting) {
-        print('Skipping, ' + te + ' server is gone.');
-
-        results[te] = {
-          status: false,
-          message: instanceInfo.exitStatus
-        };
-
-        instanceInfo.exitStatus = 'server is gone.';
-
-        break;
-      }
-
-      let agencyServers = instanceInfo.arangods.map(arangod => {
-        return arangod.url;
-      });
-
-      print('\narangosh: Trying', te, '...');
-
-      const reply = runInArangosh(options, instanceInfo, te, {
-        'flatCommands': agencyServers.join(' ')
-      });
-      results[te] = reply;
-
-      if (reply.status !== true) {
-        options.cleanup = false;
-
-        if (!options.force) {
-          break;
-        }
-      }
-
-      continueTesting = checkInstanceAlive(instanceInfo, options);
-    } else {
-      if (options.extremeVerbosity) {
-        print('Skipped ' + te + ' because of ' + filtered.filter);
-      }
-    }
-  }
-
-  print('Shutting down...');
-  shutdownInstance(instanceInfo, options);
-  print('done.');
-
-  options.agency = saveAgency;
-  options.cluster = saveCluster;
-
-  return results;
+  return performTests(options, testsCases.agency, 'agency', createArangoshRunner());
 };
 
 // //////////////////////////////////////////////////////////////////////////////
