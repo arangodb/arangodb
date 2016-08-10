@@ -61,6 +61,8 @@ struct Functions {
 
   static AqlValue IsNull(arangodb::aql::Query*, arangodb::AqlTransaction*,
                          VPackFunctionParameters const&);
+  static AqlValue Coalesce(arangodb::aql::Query*, arangodb::AqlTransaction*,
+                         VPackFunctionParameters const&);
   static AqlValue IsBool(arangodb::aql::Query*, arangodb::AqlTransaction*,
                          VPackFunctionParameters const&);
   static AqlValue IsNumber(arangodb::aql::Query*, arangodb::AqlTransaction*,

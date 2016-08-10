@@ -823,6 +823,21 @@ AqlValue Functions::IsNull(arangodb::aql::Query* query,
   return AqlValue(a.isNull(true));
 }
 
+/// @brief function COALESCE
+AqlValue Functions::Coalesce(arangodb::aql::Query* query,
+                           arangodb::AqlTransaction* trx,
+                           VPackFunctionParameters const& parameters) {
+  size_t const n = parameters.size();
+  for (size_t i=0;i<n;i++) {
+    AqlValue a = ExtractFunctionParameterValue(trx, parameters, i);
+    if (!a.isNull(false)) {
+      return a.clone();
+    }
+  }
+  return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+}
+
+
 /// @brief function IS_BOOL
 AqlValue Functions::IsBool(arangodb::aql::Query* query,
                            arangodb::AqlTransaction* trx,
