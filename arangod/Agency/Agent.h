@@ -105,6 +105,18 @@ class Agent : public arangodb::Thread {
   ///        2. Report success of write processes.
   void run() override final;
 
+  /// @brief Are we still booting?
+  void booting();
+
+  /// @brief Gossip out
+  void gossip();
+
+  /// @brief Gossip in
+  void gossip(query_t const& word);
+  
+  /// @brief Gossip in
+  bool activeAgency();
+  
   /// @brief Startup process of detection of agent pool, active agency, gossip etc
   void inception();
 
@@ -179,11 +191,19 @@ class Agent : public arangodb::Thread {
   /// @brief Condition variable for waitFor
   arangodb::basics::ConditionVariable _waitForCV;
 
+  /// @brief Condition variable for waitFor
+  arangodb::basics::ConditionVariable _configCV;
+
   /// @brief Confirmed indices of all members of agency
-  std::vector<index_t> _confirmed;
-  std::vector<index_t> _lastHighest;
-  std::vector<TimePoint> _lastSent;
+  //std::vector<index_t> _confirmed;
+  std::map<std::string, index_t> _confirmed;
+  std::map<std::string, index_t> _lastHighest;
+  std::map<std::string, TimePoint> _lastSent;
   arangodb::Mutex _ioLock; /**< @brief Read/Write lock */
+  arangodb::Mutex _cfgLock; /**< @brief configuration gossip lock */
+
+  /// @brief Server active agents rest handler
+  bool _serveActiveAgents;
 
   /// @brief Next compaction after
   arangodb::consensus::index_t _nextCompationAfter;

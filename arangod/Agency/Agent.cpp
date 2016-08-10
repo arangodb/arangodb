@@ -48,12 +48,13 @@ Agent::Agent(config_t const& config)
       _lastCommitIndex(0),
       _spearhead(this),
       _readDB(this),
+      _serveActiveAgents(false),
       _nextCompationAfter(_config.compactionStepSize) {
   _state.configure(this);
   _constituent.configure(this);
-  _confirmed.resize(size(), 0);  // agency's size and reset to 0
-  _lastHighest.resize(size(), 0);
-  _lastSent.resize(size());
+//  _confirmed.resize(size(), 0);  // agency's size and reset to 0
+  //_lastHighest.resize(size(), 0);
+  //_lastSent.resize(size());
 }
 
 
@@ -105,22 +106,8 @@ std::string const& Agent::endpoint() const {
 priv_rpc_ret_t Agent::requestVote(
   term_t t, arangodb::consensus::id_t id, index_t lastLogIndex,
   index_t lastLogTerm, query_t const& query) {
-  
-  /// Are we receiving new endpoints
-  if (query != nullptr) {  // record new endpoints
-    if (query->slice().hasKey("endpoints") &&
-        query->slice().get("endpoints").isArray()) {
-      size_t j = 0;
-      for (auto const& i : VPackArrayIterator(query->slice().get("endpoints"))) {
-        _config.endpoints[j++] = i.copyString();
-      }
-    }
-  }
-
-  /// Constituent handles this
-  return priv_rpc_ret_t(_constituent.vote(t, id, lastLogIndex, lastLogTerm),
-                        this->term());
-  
+  return priv_rpc_ret_t(
+    _constituent.vote(t, id, lastLogIndex, lastLogTerm), this->term());
 }
 
 
@@ -182,8 +169,6 @@ void Agent::reportIn(arangodb::consensus::id_t id, index_t index) {
 
   MUTEX_LOCKER(mutexLocker, _ioLock);
 
-  TRI_ASSERT(id<_confirmed.size());
-
   if (index > _confirmed[id]) {  // progress this follower?
     _confirmed[id] = index;
   }
@@ -192,7 +177,7 @@ void Agent::reportIn(arangodb::consensus::id_t id, index_t index) {
 
     size_t n = 0;
 
-    for (size_t i = 0; i < size(); ++i) {
+    for (auto const& i : _config.active) {
       n += (_confirmed[i] >= index);
     }
 
@@ -294,8 +279,8 @@ priv_rpc_ret_t Agent::sendAppendEntriesRPC(
   std::vector<log_t> unconfirmed = _state.get(last_confirmed);
   index_t highest = unconfirmed.back().index;
 
-  if (highest == _lastHighest.at(follower_id) && (long)(500.0e6*_config.minPing) >
-      (std::chrono::system_clock::now() - _lastSent.at(follower_id)).count()) {
+  if (highest == _lastHighest[follower_id] && (long)(500.0e6*_config.minPing) >
+      (std::chrono::system_clock::now() - _lastSent[follower_id]).count()) {
     return priv_rpc_ret_t(true, t);
   }
   
@@ -339,8 +324,8 @@ priv_rpc_ret_t Agent::sendAppendEntriesRPC(
       std::make_shared<AgentCallback>(this, follower_id, highest),
       0.5*_config.minPing, true, 0.75*_config.minPing);
 
-  _lastSent.at(follower_id) = std::chrono::system_clock::now();
-  _lastHighest.at(follower_id) = highest;
+  _lastSent[follower_id] = std::chrono::system_clock::now();
+  _lastHighest[follower_id] = highest;
 
   return priv_rpc_ret_t(true, t);
   
@@ -437,7 +422,7 @@ read_ret_t Agent::read(query_t const& query) {
   }
 
   // Retrieve data from readDB
-  query_t result = std::make_shared<arangodb::velocypack::Builder>();
+  auto result = std::make_shared<arangodb::velocypack::Builder>();
   std::vector<bool> success = _readDB.read(query, result);
   
   return read_ret_t(true, _constituent.leaderID(), success, result);
@@ -580,15 +565,189 @@ Agent& Agent::operator=(VPackSlice const& compaction) {
 }
 
 
-void inception() {
+/// Are we still starting up?
+bool Agent::booting() {
+  MUTEX_LOCKER(mutexLocker, _cfgLock);
+  return (_config.poolSize > _config.pool.size());
+}
 
-  if (_config.poolSize == _config.pool.size()) { // Persisted pool
 
-    if (_config)
-    
+/// Gossip to others
+void Agent::gossip() {
+
+  if (booting()) {
+
+    std::map<std::string, std::string> pool;
+    { 
+      MUTEX_LOCKER(mutexLocker, _cfgLock);
+      pool = _config.pool
+    }
+
+    if (!pool.empty()) {
+
+      query_t word;
+      try {
+        word = std::make_shared<arangodb::velocypack::Builder>();
+        word->openObject();
+        word->add("pool", VPackValue(VPackValueType::Object));
+        for (auto const& i : pool) {
+          word->add(i.first, VPackValue(i.second));
+        }
+        word->close();
+        word->close();
+      } catch (std::exception const& e) {
+        LOG_TOPIC(ERR, Logger::AGENCY)
+          << "Failed to build pool vpack: "
+          << e.what() << " " << __FILE__ << ":" << __LINE__;
+      }
+      
+      auto headerFields =
+        std::make_unique<std::unordered_map<std::string, std::string>>();
+      std::string path = "/_api/agency/gosssip";
+        
+      for (auto const& agent : pool) {
+        arangodb::ClusterComm::instance()->asyncRequest(
+          "1", 1, pool.second, GeneralRequest::RequestType::POST, path,
+          std::make_shared<std::string>(word->toString()), headerFields,
+          std::make_shared<GossipCallback>(), 1.0, true);
+      }
+      
+    }
+  }
+
+}
+
+
+/// Handle incomint gossip
+void Agent::gossip(query_t const& word) {
+
+  TRI_ASSERT(word->isObject());
+
+  MUTEX_LOCKER(mutexLocker, _cfgLock);
+  for (auto const& ent : VPackObjectIterator(word)) {
+    TRI_ASSERT(ent.value.isString());
+    auto it = _config.pool.find(ent.key);
+    if (it != _config.pool.end()) {
+      TRI_ASSERT(it->second == ent.value.copyString());
+    } else {
+      _config.pool[ent.key] = ent.value;
+    }
   }
   
 }
 
+
+/// Check for persisted agency
+/// - yes: Ask leader for agents
+///   - if my id among those: RAFT
+///   - else: relax
+/// - no: 
+bool Agent::activeAgency() {
+
+  std::map<std::string, std::string> pool;
+  { 
+    MUTEX_LOCKER(mutexLocker, _cfgLock);
+    pool = _config.pool;
+    active = _config.active;
+  }
+
+  if (_config.size() == active.size()) {
+    
+  }
+
+}
+
+inline static query_t getResponse(
+  std::string const& endpoint, std::sting const& path, double timeout = 1.0) {
+
+  query_t ret = nullptr;
+  
+  auto headerFields =
+    std::make_unique<std::unordered_map<std::string, std::string>>();
+  
+  auto res = arangodb::ClusterComm::instance()->syncRequest(
+    "1", 1, endpoint, GeneralRequest::RequestType::GET, path, std::string(),
+    headerFields, 1.0);
+
+  if (res.status == CL_COMM_RECEIVED) {
+    ret = res.result->getBodyVelocyPack();
+  }
+
+  return ret;
+
+}
+
+bool Agent::persistedAgents() {
+  
+  std::vector<std::string> active;
+  {
+    MUTEX_LOCKER(mutexLocker, _cfgLock);
+    active = _config.active;
+  }
+
+  auto const& it = active.find(config.id);
+  auto start = std::chrono::system_clock::now();
+
+  if (it != active.end()) { // Serve /_api/agency/activeAgents
+    
+    _serveActiveAgents = true;
+    while (true) {
+    }
+    
+  } else {
+
+    std::string path = "/_api/agency/config";
+
+    while (true) { // try to connect an agent until attempts futile for too long
+
+      for (auto const& ep : active) {
+
+        auto res = getResponse(ep, path);
+
+        if (res != nullptr) { // Got in touch with an active agent
+          auto slice = res->slice();
+          LOG_TOPIC(DEBUG, Logger::AGENCY)
+            << "Got response from a persisted agent with configuration "
+            << slice.toJson();
+          MUTEX_LOCKER(mutexLocker, _cfgLock);
+          _config.override(res);
+          
+        }
+        
+      }
+      
+      if (60.0e9 > std::chrono::system_clock::now() - start) { // 1 min timeout
+        return false;
+      } 
+    }
+  }
+  
+  _serveActiveAgents = false;
+  return false;
+  
+}
+
+/// Initial inception of the agency world
+void Agent::inception() {
+
+  auto start = std::chrono::system_clock::now(); //
+  
+  if (persistedAgents()) {
+    return;
+  }
+
+  CONDITION_LOCKER(guard, _configCV);
+
+  while (booting) {
+
+    if (activeAgency()) {
+      return;
+    }
+    
+    _configCV.wait(1000);
+      
+  }
+  
+}
 
 }} // namespace

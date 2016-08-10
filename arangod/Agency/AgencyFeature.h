@@ -45,7 +45,7 @@ class AgencyFeature : virtual public application_features::ApplicationFeature {
  private:
   bool _activated;
   uint64_t _size;  // agency size (default: 5)
-  arangodb::consensus::id_t _agentId;
+  std::string _agentId;
   double _minElectionTimeout;                 // min election timeout
   double _maxElectionTimeout;                 // max election timeout
   std::map<std::string, std::string> _agencyEndpoints;  // agency adresses

@@ -50,8 +50,8 @@ using namespace arangodb::rest;
 using namespace arangodb::velocypack;
 using namespace arangodb;
 
-static const arangodb::consensus::id_t NO_LEADER =
-  (std::numeric_limits<arangodb::consensus::id_t>::max)();
+static const arangodb::consensus::id_t NO_LEADER = "";
+//  (std::numeric_limits<arangodb::consensus::id_t>::max)();
 
 /// Raft role names for display purposes 
 const std::vector<std::string> roleStr ({"Follower", "Candidate", "Leader"});
@@ -67,9 +67,6 @@ void Constituent::configure(Agent* agent) {
     _role = LEADER;
   } else {
     _id = _agent->config().id;
-/*    if (_agent->config().notify) {  // (notify everyone)
-      notifyAll();
-      }*/
   }
   
 }

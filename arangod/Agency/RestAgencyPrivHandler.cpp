@@ -73,7 +73,7 @@ inline RestHandler::status RestAgencyPrivHandler::reportMethodNotAllowed() {
   return RestHandler::status::DONE;
 }
 
-inline RestHandler::status RestAgencyPrivHandler::reportMethodNotAllowed() {
+inline RestHandler::status RestAgencyPrivHandler::reportGone() {
   generateError(GeneralResponse::ResponseCode::GONE, 410);
   return RestHandler::status::DONE;
 }
@@ -129,8 +129,11 @@ RestHandler::status RestAgencyPrivHandler::execute() {
         } else {
           return reportBadQuery();  // bad query
         }
-      } else if (_request->suffix()[0] == "notifyAll") {
+      } else if (_request->suffix()[0] == "gossip") {
         if (_agent->activeAgentStartupSequence()) {
+          arangodb::velocypack::Options options;
+          query_t query = _request->toVelocyPackBuilderPtr(&options);
+          _agent->gossip(query);
         } else {
           return reportGone();
         }
