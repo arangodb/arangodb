@@ -23,6 +23,8 @@
 // / @author Alan Plum
 // //////////////////////////////////////////////////////////////////////////////
 
+const isCluster = require("@arangodb/cluster").isCluster();
+
 var _ = require('lodash');
 var flatten = require('internal').flatten;
 var arangodb = require('@arangodb');
@@ -206,7 +208,7 @@ Object.assign(Job.prototype, {
     db._jobs.update(this.id, {
       status: 'pending'
     });
-    updateQueueDelay();
+    updateQueueDelayClusterAware();
   }
 });
 
@@ -226,6 +228,13 @@ function asNumber (num) {
     return -1;
   }
   return num ? Number(num) : 0;
+}
+
+function updateQueueDelayClusterAware() {
+  if (isCluster) {
+    global.ArangoAgency.set('Current/FoxxmasterQueueupdate', true);
+  }
+  updateQueueDelay();
 }
 
 Object.assign(Queue.prototype, {
@@ -275,7 +284,8 @@ Object.assign(Queue.prototype, {
     job.failure = typeof opts.failure === 'function' ? opts.failure.toString() : opts.failure;
 
     job = db._jobs.save(job);
-    updateQueueDelay();
+
+    updateQueueDelayClusterAware();
     return job._id;
   },
   get(id) {

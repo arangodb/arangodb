@@ -47,6 +47,7 @@ const functionsDocumentation = {
   'replication_static': 'replication static tests',
   'replication_sync': 'replication sync tests',
   'resilience': 'resilience tests',
+  'client_resilience': 'client resilience tests',
   'shell_client': 'shell client tests',
   'shell_replication': 'shell replication tests',
   'shell_server': 'shell server tests',
@@ -97,7 +98,8 @@ const optionsDocumentation = [
   '   - `server`: server_url for external server',
   '   - `cluster`: if set to true the tests are run with the coordinator',
   '     of a small local cluster',
-  '   - `clusterNodes`: number of DB-Servers to use',
+  '   - `dbServers`: number of DB-Servers to use',
+  '   - `coordinators`: number coordinators to use',
   '   - `agency`: if set to true agency tests are done',
   '   - `agencySize`: number of agents in agency',
   '   - `test`: path to single test to execute for "single" test target',
@@ -138,9 +140,10 @@ const optionsDefaults = {
   'buildType': '',
   'cleanup': true,
   'cluster': false,
-  'clusterNodes': 2,
   'concurrency': 3,
+  'coordinators': 1,
   'coreDirectory': '/var/tmp',
+  'dbServers': 2,
   'duration': 10,
   'extraArgs': {},
   'extremeVerbosity': false,
@@ -647,7 +650,6 @@ function runThere (options, instanceInfo, file) {
     }
 
     if (options.propagateInstanceInfo) {
-      testCode = 'global.instanceInfo = ' + JSON.stringify(instanceInfo) + ';\n' + testCode;
     }
 
     let httpOptions = makeAuthorizationHeaders(options);
@@ -692,7 +694,7 @@ function runThere (options, instanceInfo, file) {
 // / @brief runs a list of tests
 // //////////////////////////////////////////////////////////////////////////////
 
-function performTests (options, testList, testname) {
+function performTests (options, testList, testname, runFn) {
   let instanceInfo = startInstance('tcp', options, {}, testname);
 
   if (instanceInfo === false) {
@@ -741,8 +743,8 @@ function performTests (options, testList, testname) {
           break;
         }
 
-        print('\n' + Date() + ' arangod: Trying', te, '...');
-        let reply = runThere(options, instanceInfo, te);
+        print('\n' + Date() + ' ' + runFn.info + ': Trying', te, '...');
+        let reply = runFn(options, instanceInfo, te);
 
         if (reply.hasOwnProperty('status')) {
           results[te] = reply;
@@ -959,6 +961,7 @@ function executeAndWait (cmd, args, options, valgrindTest) {
       message: 'true or false as binary name for test cmd =' + cmd + 'args =' + args
     };
   }
+
   const res = executeExternalAndWait(cmd, args);
   const deltaTime = time() - startTime;
 
@@ -1033,11 +1036,10 @@ function runInArangosh (options, instanceInfo, file, addArgs) {
   if (addArgs !== undefined) {
     args = Object.assign(args, addArgs);
   }
-
+  fs.write('instanceinfo.json', JSON.stringify(instanceInfo));
   let rc = executeAndWait(ARANGOSH_BIN, toArgv(args), options);
 
   let result;
-
   try {
     result = JSON.parse(fs.read('testresult.json'));
   } catch (x) {
@@ -1050,6 +1052,14 @@ function runInArangosh (options, instanceInfo, file, addArgs) {
   } else {
     return rc;
   }
+}
+
+function createArangoshRunner(args) {
+  let runner = function(options, instanceInfo, file) {
+    return runInArangosh(options, instanceInfo, file, args);
+  }
+  runner.info = 'arangosh';
+  return runner;
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -1288,7 +1298,7 @@ function startInstanceCluster (instanceInfo, protocol, options,
 
   let agencyEndpoint = instanceInfo.endpoint;
   let i;
-  for (i = 0; i < options.clusterNodes; i++) {
+  for (i = 0; i < options.dbServers; i++) {
     let endpoint = protocol + '://127.0.0.1:' + findFreePort(options.maxPort);
     let primaryArgs = _.clone(options.extraArgs);
     primaryArgs['server.endpoint'] = endpoint;
@@ -1299,16 +1309,18 @@ function startInstanceCluster (instanceInfo, protocol, options,
 
     startInstanceSingleServer(instanceInfo, protocol, options, ...makeArgs('dbserver' + i, primaryArgs));
   }
+  
+  for (i=0;i<options.coordinators;i++) {
+    let endpoint = protocol + '://127.0.0.1:' + findFreePort(options.maxPort);
+    let coordinatorArgs = _.clone(options.extraArgs);
+    coordinatorArgs['server.endpoint'] = endpoint;
+    coordinatorArgs['cluster.my-address'] = endpoint;
+    coordinatorArgs['cluster.my-local-info'] = endpoint;
+    coordinatorArgs['cluster.my-role'] = 'COORDINATOR';
+    coordinatorArgs['cluster.agency-endpoint'] = agencyEndpoint;
 
-  let endpoint = protocol + '://127.0.0.1:' + findFreePort(options.maxPort);
-  let coordinatorArgs = _.clone(options.extraArgs);
-  coordinatorArgs['server.endpoint'] = endpoint;
-  coordinatorArgs['cluster.my-address'] = endpoint;
-  coordinatorArgs['cluster.my-local-info'] = endpoint;
-  coordinatorArgs['cluster.my-role'] = 'COORDINATOR';
-  coordinatorArgs['cluster.agency-endpoint'] = agencyEndpoint;
-
-  startInstanceSingleServer(instanceInfo, protocol, options, ...makeArgs('coordinator', coordinatorArgs));
+    startInstanceSingleServer(instanceInfo, protocol, options, ...makeArgs('coordinator' + i, coordinatorArgs));
+  }
 
   // disabled because not in use (jslint)
   // let coordinatorUrl = instanceInfo.url
@@ -1336,8 +1348,7 @@ function startInstanceCluster (instanceInfo, protocol, options,
       wait(0.5, false);
     }
   });
-
-  arango.reconnect(endpoint, '_system', 'root', '');
+  arango.reconnect(instanceInfo.endpoint, '_system', 'root', '');
 
   return true;
 }
@@ -1390,6 +1401,7 @@ function startArango (protocol, options, addArgs, rootDir, isAgency) {
 
   instanceInfo.url = endpointToURL(instanceInfo.endpoint);
   instanceInfo.pid = executeArangod(ARANGOD_BIN, toArgv(args), options).pid;
+  instanceInfo.role = args['cluster.my-role'];
 
   if (platform.substr(0, 3) === 'win') {
     const procdumpArgs = [
@@ -1781,6 +1793,14 @@ function findTests () {
     }).map(
     function (x) {
       return fs.join(makePathUnix('js/server/tests/resilience'), x);
+    }).sort();
+  
+  testsCases.client_resilience = _.filter(fs.list(makePathUnix('js/client/tests/resilience')),
+    function (p) {
+      return p.substr(-3) === '.js';
+    }).map(
+    function (x) {
+      return fs.join(makePathUnix('js/client/tests/resilience'), x);
     }).sort();
 
   testsCases.server = testsCases.common.concat(testsCases.server_only);
@@ -3358,10 +3378,25 @@ testFuncs.resilience = function (options) {
   findTests();
   options.propagateInstanceInfo = true;
   options.cluster = true;
-  if (options.clusterNodes < 5) {
-    options.clusterNodes = 5;
+  if (options.dbServers < 5) {
+    options.dbServers = 5;
   }
   return performTests(options, testsCases.resilience, 'resilience');
+};
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief TEST: client resilience
+// //////////////////////////////////////////////////////////////////////////////
+
+testFuncs.client_resilience = function (options) {
+  findTests();
+  options.propagateInstanceInfo = true;
+  options.cluster = true;
+  if (options.coordinators < 2) {
+    options.coordinators = 2;
+  }
+
+  return performTests(options, testsCases.client_resilience, 'client_resilience', createArangoshRunner());
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -3386,64 +3421,7 @@ testFuncs.shell_replication = function (options) {
 testFuncs.shell_client = function (options) {
   findTests();
 
-  let instanceInfo = startInstance('tcp', options, {}, 'shell_client');
-
-  if (instanceInfo === false) {
-    return {
-      shell_client: {
-        status: false,
-        message: 'failed to start server!'
-      }
-    };
-  }
-
-  let results = {};
-  let filtered = {};
-  let continueTesting = true;
-
-  for (let i = 0; i < testsCases.client.length; i++) {
-    const te = testsCases.client[i];
-
-    if (filterTestcaseByOptions(te, options, filtered)) {
-      if (!continueTesting) {
-        print('Skipping, ' + te + ' server is gone.');
-
-        results[te] = {
-          status: false,
-          message: instanceInfo.exitStatus
-        };
-
-        instanceInfo.exitStatus = 'server is gone.';
-
-        break;
-      }
-
-      print('\narangosh: Trying', te, '...');
-
-      const reply = runInArangosh(options, instanceInfo, te);
-      results[te] = reply;
-
-      if (reply.status !== true) {
-        options.cleanup = false;
-
-        if (!options.force) {
-          break;
-        }
-      }
-
-      continueTesting = checkInstanceAlive(instanceInfo, options);
-    } else {
-      if (options.extremeVerbosity) {
-        print('Skipped ' + te + ' because of ' + filtered.filter);
-      }
-    }
-  }
-
-  print('Shutting down...');
-  shutdownInstance(instanceInfo, options);
-  print('done.');
-
-  return results;
+  return performTests(options, testsCases.client, 'shell_client', createArangoshRunner());
 };
 
 // //////////////////////////////////////////////////////////////////////////////

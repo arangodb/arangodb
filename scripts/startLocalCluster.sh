@@ -129,9 +129,9 @@ start() {
                 --log.level info \
                 --server.statistics true \
                 --server.threads 5 \
-                --javascript.startup-directory ./js \
                 --server.authentication false \
-                --javascript.app-path ./js/apps \
+                --javascript.startup-directory ./js \
+                --javascript.app-path cluster/apps$PORT \
                 --log.force-direct true \
                 > cluster/$PORT.stdout 2>&1 &
 }
