@@ -526,6 +526,12 @@ function agencyTestSuite () {
            {"b///////c":4}}]]);
       assertEqual(readAndCheck([["/"]]),
                   [{"\\":{"a":{"^&%^&$^&%$":{"b\\\n":{"b":{"c":4}}}}}}]);
+    },
+
+    testKeysBeginningWithSameString: function() {
+      var res = writeAgency([[{"/bumms":{"op":"set","new":"fallera"}, "/bummsfallera": {"op":"set","new":"lalalala"}}]]);
+      assertEqual(res.statusCode, 200);
+      assertEqual(readAndCheck([["/bumms", "/bummsfallera"]]), [{bumms:"fallera", bummsfallera: "lalalala"}]);
     }
   };
 }
