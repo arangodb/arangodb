@@ -324,10 +324,10 @@ class TraversalNode : public ExecutionNode {
 
   /// @brief The global edge condition. Does not contain
   ///        _from and _to checks
-  AstNode const* _globalEdgeCondition;
+  std::vector<AstNode const*> _globalEdgeConditions;
 
   /// @brief The global vertex condition
-  AstNode const* _globalVertexCondition;
+  std::vector<AstNode const*> _globalVertexConditions;
 
   /// @brief List of all depth specific conditions for edges
   std::unordered_map<size_t, EdgeConditionBuilder> _edgeConditions;

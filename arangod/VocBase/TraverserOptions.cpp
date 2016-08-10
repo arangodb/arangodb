@@ -124,6 +124,7 @@ void arangodb::traverser::TraverserOptions::LookupInfo::buildEngineInfo(
 arangodb::traverser::TraverserOptions::TraverserOptions(
     arangodb::Transaction* trx, Json const& json)
     : _trx(trx),
+      _baseVertexExpression(nullptr),
       _tmpVar(nullptr),
       _ctx(new aql::FixedVarExpressionContext()),
       minDepth(1),
@@ -165,6 +166,7 @@ arangodb::traverser::TraverserOptions::TraverserOptions(
 arangodb::traverser::TraverserOptions::TraverserOptions(
     arangodb::aql::Query* query, VPackSlice info, VPackSlice collections)
     : _trx(query->trx()),
+      _baseVertexExpression(nullptr),
       _tmpVar(nullptr),
       _ctx(new aql::FixedVarExpressionContext()),
       minDepth(1),
@@ -296,6 +298,18 @@ arangodb::traverser::TraverserOptions::TraverserOptions(
       TRI_ASSERT(it.second);
     }
   }
+
+  read = info.get("baseVertexExpression");
+  if (!read.isNone()) {
+    if (!read.isObject()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_BAD_PARAMETER,
+          "The options require vertexExpressions to be an object");
+    }
+    arangodb::basics::Json infoJson(TRI_UNKNOWN_MEM_ZONE,
+        arangodb::basics::VelocyPackHelper::velocyPackToJson(read));
+    _baseVertexExpression = new aql::Expression(query->ast(), infoJson);
+  }
 }
 
 arangodb::traverser::TraverserOptions::TraverserOptions(
@@ -312,6 +326,7 @@ arangodb::traverser::TraverserOptions::TraverserOptions(
   TRI_ASSERT(other._depthLookupInfo.empty());
   TRI_ASSERT(other._vertexExpressions.empty());
   TRI_ASSERT(other._tmpVar == nullptr);
+  TRI_ASSERT(other._baseVertexExpression == nullptr);
 }
 
 arangodb::traverser::TraverserOptions::~TraverserOptions() {
@@ -319,6 +334,9 @@ arangodb::traverser::TraverserOptions::~TraverserOptions() {
     if (pair.second != nullptr) {
       delete pair.second;
     }
+  }
+  if (_baseVertexExpression != nullptr) {
+    delete _baseVertexExpression;
   }
   if (_ctx != nullptr) {
     delete _ctx;
@@ -420,8 +438,15 @@ void arangodb::traverser::TraverserOptions::buildEngineInfo(VPackBuilder& result
       result.add(VPackValue("expression"));
       pair.second->toVelocyPack(result, true);
       result.close();
-
     }
+    result.close();
+  }
+
+  if (_baseVertexExpression != nullptr) {
+    result.add(VPackValue("baseVertexExpression"));
+    result.openObject();
+    result.add(VPackValue("expression"));
+    _baseVertexExpression->toVelocyPack(result, true);
     result.close();
   }
 
@@ -433,6 +458,9 @@ void arangodb::traverser::TraverserOptions::buildEngineInfo(VPackBuilder& result
 
 bool arangodb::traverser::TraverserOptions::vertexHasFilter(
     size_t depth) const {
+  if (_baseVertexExpression != nullptr) {
+    return true;
+  }
   return _vertexExpressions.find(depth) != _vertexExpressions.end();
 }
 
@@ -488,17 +516,25 @@ bool arangodb::traverser::TraverserOptions::evaluateEdgeExpression(
 bool arangodb::traverser::TraverserOptions::evaluateVertexExpression(
     arangodb::velocypack::Slice vertex, size_t depth) const {
   bool mustDestroy = false;
+  arangodb::aql::Expression* expression = nullptr;
+
   auto specific = _vertexExpressions.find(depth);
   if (specific != _vertexExpressions.end()) {
-    arangodb::aql::Expression* expression = specific->second;
-    TRI_ASSERT(!expression->isV8());
-    expression->setVariable(_tmpVar, vertex);
-    aql::AqlValue res = expression->execute(_trx, _ctx, mustDestroy);
-    TRI_ASSERT(res.isBoolean());
-    expression->clearVariable(_tmpVar);
-    return res.toBoolean();
+    expression = specific->second;
+  } else {
+    expression = _baseVertexExpression;
   }
-  return true;
+
+  if (expression == nullptr) {
+    return true;
+  }
+
+  TRI_ASSERT(!expression->isV8());
+  expression->setVariable(_tmpVar, vertex);
+  aql::AqlValue res = expression->execute(_trx, _ctx, mustDestroy);
+  TRI_ASSERT(res.isBoolean());
+  expression->clearVariable(_tmpVar);
+  return res.toBoolean();
 }
 
 arangodb::traverser::EdgeCursor*

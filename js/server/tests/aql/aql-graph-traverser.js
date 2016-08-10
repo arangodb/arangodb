@@ -2754,7 +2754,11 @@ function optimizeQuantifierSuite() {
 
       let stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
-      assertEqual(stats.scannedIndex, 8);
+      if (isCluster) {
+        assertEqual(stats.scannedIndex, 7);
+      } else {
+        assertEqual(stats.scannedIndex, 8);
+      }
       assertEqual(stats.filtered, 1);
 
       query = `
@@ -2770,7 +2774,11 @@ function optimizeQuantifierSuite() {
 
       stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
-      assertEqual(stats.scannedIndex, 8);
+      if (isCluster) {
+        assertEqual(stats.scannedIndex, 7);
+      } else {
+        assertEqual(stats.scannedIndex, 8);
+      }
       assertEqual(stats.filtered, 1);
     },
 
@@ -2820,7 +2828,11 @@ function optimizeQuantifierSuite() {
 
       let stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
-      assertEqual(stats.scannedIndex, 8);
+      if (isCluster) {
+        assertEqual(stats.scannedIndex, 7);
+      } else {
+        assertEqual(stats.scannedIndex, 8);
+      }
       assertEqual(stats.filtered, 1);
 
       query = `
@@ -2836,7 +2848,11 @@ function optimizeQuantifierSuite() {
 
       stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
-      assertEqual(stats.scannedIndex, 8);
+      if (isCluster) {
+        assertEqual(stats.scannedIndex, 7);
+      } else {
+        assertEqual(stats.scannedIndex, 8);
+      }
       assertEqual(stats.filtered, 1);
     },
 
@@ -2874,7 +2890,11 @@ function optimizeQuantifierSuite() {
 
       let stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
-      assertEqual(stats.scannedIndex, 9);
+      if (isCluster) {
+        assertEqual(stats.scannedIndex, 5);
+      } else {
+        assertEqual(stats.scannedIndex, 7);
+      }
       assertEqual(stats.filtered, 2);
     },
 
@@ -2912,7 +2932,11 @@ function optimizeQuantifierSuite() {
 
       let stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
-      assertEqual(stats.scannedIndex, 9);
+      if (isCluster) {
+        assertEqual(stats.scannedIndex, 5);
+      } else {
+        assertEqual(stats.scannedIndex, 7);
+      }
       assertEqual(stats.filtered, 2);
     },
 
@@ -2950,12 +2974,14 @@ function optimizeQuantifierSuite() {
 
       let stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
-      assertEqual(stats.scannedIndex, 9);
+      if (isCluster) {
+        assertEqual(stats.scannedIndex, 5);
+      } else {
+        assertEqual(stats.scannedIndex, 7);
+      }
       assertEqual(stats.filtered, 2);
     }
-
   };
-
 };
 
 jsunity.run(namedGraphSuite);

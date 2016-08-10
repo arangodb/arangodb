@@ -94,6 +94,7 @@ struct TraverserOptions {
   std::vector<LookupInfo> _baseLookupInfos;
   std::unordered_map<size_t, std::vector<LookupInfo>> _depthLookupInfo;
   std::unordered_map<size_t, aql::Expression*> _vertexExpressions;
+  aql::Expression* _baseVertexExpression;
   aql::Variable const* _tmpVar;
   aql::FixedVarExpressionContext* _ctx;
   arangodb::traverser::ClusterTraverser* _traverser;
@@ -111,6 +112,7 @@ struct TraverserOptions {
 
   explicit TraverserOptions(arangodb::Transaction* trx)
       : _trx(trx),
+        _baseVertexExpression(nullptr),
         _tmpVar(nullptr),
         _ctx(new aql::FixedVarExpressionContext()),
         minDepth(1),
