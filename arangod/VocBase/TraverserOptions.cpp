@@ -315,6 +315,7 @@ arangodb::traverser::TraverserOptions::TraverserOptions(
 arangodb::traverser::TraverserOptions::TraverserOptions(
     TraverserOptions const& other)
     : _trx(other._trx),
+      _baseVertexExpression(nullptr),
       _tmpVar(nullptr),
       _ctx(new aql::FixedVarExpressionContext()),
       minDepth(other.minDepth),

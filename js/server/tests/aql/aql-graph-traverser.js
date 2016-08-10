@@ -1852,12 +1852,11 @@ function complexFilteringSuite () {
       var stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
       if (isCluster) {
-        // 1 Primary lookup A
         // 2 Edge Lookups (A)
         // 2 Primary lookup B,D
         // 2 Edge Lookups (0 B) (2 D)
         // 2 Primary Lookups (E, G)
-        assertEqual(stats.scannedIndex, 9);
+        assertEqual(stats.scannedIndex, 8);
       }
       else {
         // 2 Edge Lookups (A)
