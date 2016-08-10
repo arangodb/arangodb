@@ -230,7 +230,7 @@ bool VppCommTask::processRead() {
 
   auto chunkBegin = prv._readBufferCursor;
   if (chunkBegin == nullptr || !isChunkComplete(chunkBegin)) {
-    return true;  // no data or incomplete
+    return false;  // no data or incomplete
   }
 
   ChunkHeader chunkHeader = readChunkHeader();
@@ -314,7 +314,7 @@ bool VppCommTask::processRead() {
   }
 
   if (!do_execute) {
-    return true;  // we have no complete request, so we return early
+    return false;  // we have no complete request, so we return early
   }
 
   // for now we can handle only one request at a time
