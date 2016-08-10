@@ -424,7 +424,7 @@ bool Store::read(VPackSlice const& query, Builder& ret) const {
   // Remove double ranges (inclusion / identity)
   query_strs.sort();  // sort paths
   for (auto i = query_strs.begin(), j = i; i != query_strs.end(); ++i) {
-    if (i != j && i->compare(0, j->size(), *j) == 0) {
+    if (i != j && i->compare(0, i->size(), *j) == 0) {
       *i = "";
     } else {
       j = i;
