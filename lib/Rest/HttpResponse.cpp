@@ -45,11 +45,11 @@ bool HttpResponse::HIDE_PRODUCT_HEADER = false;
 
 HttpResponse::HttpResponse(ResponseCode code)
     : GeneralResponse(code),
-      _connectionType(CONNECTION_KEEP_ALIVE),
-      _contentType(ContentType::TEXT),
       _isHeadResponse(false),
       _body(TRI_UNKNOWN_MEM_ZONE, false),
       _bodySize(0) {
+  _contentType = ContentType::TEXT;
+  _connectionType = CONNECTION_KEEP_ALIVE;
   if (_body.c_str() == nullptr) {
     // no buffer could be reserved. out of memory!
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
@@ -59,7 +59,6 @@ HttpResponse::HttpResponse(ResponseCode code)
 void HttpResponse::reset(ResponseCode code) {
   _responseCode = code;
   _headers.clear();
-
   _connectionType = CONNECTION_KEEP_ALIVE;
   _contentType = ContentType::TEXT;
   _isHeadResponse = false;

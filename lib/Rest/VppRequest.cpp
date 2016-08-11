@@ -39,9 +39,6 @@
 #include "Meta/conversion.h"
 #include "Logger/Logger.h"
 
-// TODO (obi)
-// - REMOVE TRI_ASSERT
-
 using namespace arangodb;
 using namespace arangodb::basics;
 
@@ -73,7 +70,6 @@ VppRequest::VppRequest(ConnectionInfo const& connectionInfo,
 }
 
 VPackSlice VppRequest::payload(VPackOptions const* options) {
-  // TODO (obi)- handle options??
   return _message._payload;
 }
 
@@ -82,12 +78,8 @@ std::unordered_map<std::string, std::string> const& VppRequest::headers()
   if (!_headers) {
     using namespace std;
     _headers = make_unique<unordered_map<string, string>>();
-    LOG(ERR) << _message._header.toJson();
-    TRI_ASSERT(_message._header.isObject());
     VPackSlice meta = _message._header.get("meta");
-    // TRI_ASSERT(meta.isObject());
     for (auto const& it : VPackObjectIterator(meta)) {
-      TRI_ASSERT(it.key.isString());
       _headers->emplace(it.key.copyString(), it.value.copyString());
     }
   }
@@ -109,13 +101,11 @@ void VppRequest::parseHeaderInformation() {
   using namespace std;
   auto& vHeader = _message._header;
 
-  TRI_ASSERT(vHeader.isObject());
   _databaseName = vHeader.get("database").copyString();
   _requestPath = vHeader.get("request").copyString();
   _type = meta::toEnum<RequestType>(vHeader.get("requestType").getInt());
 
   VPackSlice params = _message._header.get("parameter");
-  TRI_ASSERT(params.isObject());
   for (auto const& it : VPackObjectIterator(params)) {
     if (it.value.isArray()) {
       vector<string> tmp;

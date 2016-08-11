@@ -126,17 +126,25 @@ class GeneralResponse {
   // response code from integer error code
   static ResponseCode responseCode(int);
 
-  // TODO OBI - check what can be implemented in this base class
-  // virtual basics::StringBuffer& body() = 0;
+  /// @brief set content-type this sets the contnt type like you expect it
+  void setContentType(ContentType type) { _contentType = type; }
 
-  // the first function sets the conent type as the name suggests it
-  virtual void setContentType(ContentType type) = 0;
-  // these functions set the content type to CUSTOM and add information to the
-  // header
-  virtual void setContentType(std::string const& contentType) = 0;
-  virtual void setContentType(std::string&& contentType) = 0;
-  virtual void setConnectionType(ConnectionType type) = 0;
-  // virtual void writeHeader(basics::StringBuffer*) = 0;
+  /// @brief set content-type from a string. this should only be used in
+  /// cases when the content-type is user-defined
+  /// this is a functionality so that user can set a type like application/zip
+  /// from java script code the ContentType will be CUSTOM!!
+  void setContentType(std::string const& contentType) {
+    _headers[arangodb::StaticStrings::ContentTypeHeader] = contentType;
+    _contentType = ContentType::CUSTOM;
+  }
+
+  void setContentType(std::string&& contentType) {
+    _headers[arangodb::StaticStrings::ContentTypeHeader] =
+        std::move(contentType);
+    _contentType = ContentType::CUSTOM;
+  }
+
+  void setConnectionType(ConnectionType type) { _connectionType = type; }
 
  protected:
   explicit GeneralResponse(ResponseCode);
@@ -207,6 +215,8 @@ class GeneralResponse {
       _headers;  // headers/metadata map
 
   std::vector<VPackBuffer<uint8_t>> _vpackPayloads;
+  ContentType _contentType;
+  ConnectionType _connectionType;
 };
 }
 

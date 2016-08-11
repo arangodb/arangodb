@@ -49,35 +49,16 @@ class VppResponse : public GeneralResponse {
   static bool HIDE_PRODUCT_HEADER;
 
   // required by base
-  void reset(ResponseCode code) override final;
+  void reset(ResponseCode code) final;
   void setPayload(ContentType contentType, arangodb::velocypack::Slice const&,
                   bool generateBody,
-                  arangodb::velocypack::Options const&) override final;
+                  arangodb::velocypack::Options const&) final;
 
   VPackMessageNoOwnBuffer prepareForNetwork();
 
-  void setConnectionType(ConnectionType type) override {
-    _connectionType = type;
-  };
-
-  void setContentType(ContentType type) override { _contentType = type; }
-
-  void setContentType(std::string const& contentType) override {
-    _headers[arangodb::StaticStrings::ContentTypeHeader] = contentType;
-    _contentType = ContentType::CUSTOM;
-  }
-
-  void setContentType(std::string&& contentType) override {
-    _headers[arangodb::StaticStrings::ContentTypeHeader] =
-        std::move(contentType);
-    _contentType = ContentType::CUSTOM;
-  }
-  // end - required by base
  private:
   //_responseCode   - from Base
   //_headers        - from Base
-  ConnectionType _connectionType;
-  ContentType _contentType;
   std::shared_ptr<VPackBuffer<uint8_t>>
       _header;  // generated form _headers when prepared for network
   VPackBuffer<uint8_t> _payload;

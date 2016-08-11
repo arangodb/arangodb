@@ -36,12 +36,14 @@
 #include <velocypack/Validator.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include <iostream>
 #include <stdexcept>
 
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
+static bool debug = false;
 namespace {
 std::size_t findAndValidateVPacks(char const* vpHeaderStart,
                                   char const* chunkEnd) {
@@ -170,24 +172,19 @@ void VppCommTask::addResponse(VppResponse* response, bool isError) {
   std::vector<VPackSlice> slices;
   slices.push_back(response_message._header);
 
-  // if payload != Slice()
   if (response_message._generateBody) {
     slices.push_back(response_message._payload);
-  }
-
-  // calculate message length
-  uint32_t message_length = 0;
-  for (auto const& slice : slices) {
-    message_length += slice.byteSize();
   }
 
   // FIXME (obi)
   // If the message is big we will create many small chunks in a loop.
   // For the first tests we just send single Messages
-  StringBuffer tmp(TRI_UNKNOWN_MEM_ZONE, message_length, false);
 
-  for (auto const& slice : slices) {
-    tmp.appendText(slice.startAs<char>(), slice.byteSize());
+  if (debug) {
+    LOG(ERR) << "got request:";
+    for (auto const& slice : slices) {
+      LOG(ERR) << slice.toJson();
+    }
   }
 
   // adds chunk header infromation and creates SingBuffer* that can be
@@ -287,6 +284,9 @@ bool VppCommTask::processRead() {
     val.validate(message._header.begin(), message._header.byteSize());
 
     doExecute = true;
+    if (debug) {
+      LOG(ERR) << "CASE 1";
+    }
   }
   // CASE 2:  message is in multiple chunks
   auto incompleteMessageItr = _incompleteMessages.find(chunkHeader._messageID);
@@ -308,6 +308,9 @@ bool VppCommTask::processRead() {
       throw std::logic_error("insert failed");
     }
 
+    if (debug) {
+      LOG(ERR) << "CASE 2a";
+    }
     // CASE 2b: chunk continues a message
   } else {  // followup chunk of some mesage
     if (incompleteMessageItr == _incompleteMessages.end()) {
@@ -335,6 +338,12 @@ bool VppCommTask::processRead() {
       // check length
 
       doExecute = true;
+      if (debug) {
+        LOG(ERR) << "CASE 2b - complete";
+      }
+    }
+    if (debug) {
+      LOG(ERR) << "CASE 2b - still incomplete";
     }
   }
 
@@ -354,7 +363,9 @@ bool VppCommTask::processRead() {
     //    return false;  // we have no complete request, so we return early
     // for now we can handle only one request at a time
     // lock _request???? REVIEW (fc)
-    LOG(ERR) << message._header.toJson();
+    if (debug) {
+      LOG(ERR) << "got request:" << message._header.toJson();
+    }
     _request = new VppRequest(_connectionInfo, std::move(message));
     GeneralServerFeature::HANDLER_FACTORY->setRequestContext(_request);
     _request->setClientTaskId(_taskId);
@@ -374,72 +385,13 @@ bool VppCommTask::processRead() {
 }
 
 void VppCommTask::completedWriteBuffer() {
-  //  _writeBuffer = nullptr;
-  //  _writeLength = 0;
-  //
-  //  if (_writeBufferStatistics != nullptr) {
-  //    _writeBufferStatistics->_writeEnd = TRI_StatisticsTime();
-  //    TRI_ReleaseRequestStatistics(_writeBufferStatistics);
-  //    _writeBufferStatistics = nullptr;
-  //  }
-  //
-  //  fillWriteBuffer();
-  //
-  //  if (!_clientClosed && _closeRequested && !hasWriteBuffer() &&
-  //      _writeBuffers.empty() && !_isChunked) {
-  //    _clientClosed = true;
-  //  }
+  // REVIEW (fc)
 }
 
 void VppCommTask::resetState(bool close) {
   // REVIEW (fc)
   // is there a case where we do not want to close the connection
   replyToIncompleteMessages();
-
-  /*
-  if (close) {
-    clearRequest();
-
-    _requestPending = false;
-    _isChunked = false;
-    _closeRequested = true;
-
-    _readPosition = 0;
-    _bodyPosition = 0;
-    _bodyLength = 0;
-  } else {
-    _requestPending = true;
-
-    bool compact = false;
-
-    if (_sinceCompactification > RunCompactEvery) {
-      compact = true;
-    } else if (_readBuffer->length() > MaximalPipelineSize) {
-      compact = true;
-    }
-
-    if (compact) {
-      _readBuffer->erase_front(_bodyPosition + _bodyLength);
-
-      _sinceCompactification = 0;
-      _readPosition = 0;
-    } else {
-      _readPosition = _bodyPosition + _bodyLength;
-
-      if (_readPosition == _readBuffer->length()) {
-        _sinceCompactification = 0;
-        _readPosition = 0;
-        _readBuffer->reset();
-      }
-    }
-
-    _bodyPosition = 0;
-    _bodyLength = 0;
-  }
-
-  _newRequest = true;
-  _readRequestBody = false;
-  */
 }
 
 // GeneralResponse::ResponseCode VppCommTask::authenticateRequest() {

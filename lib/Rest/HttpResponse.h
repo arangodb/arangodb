@@ -68,29 +68,6 @@ class HttpResponse : public GeneralResponse {
   basics::StringBuffer& body() { return _body; }
   size_t bodySize() const;
 
-  /// @brief set type of connection
-  void setConnectionType(ConnectionType type) override {
-    _connectionType = type;
-  }
-
-  /// @brief set content-type
-  void setContentType(ContentType type) override { _contentType = type; }
-
-  /// @brief set content-type from a string. this should only be used in
-  /// cases when the content-type is user-defined
-  /// this is a functionality so that user can set a type like application/zip
-  /// from java script code
-  void setContentType(std::string const& contentType) override {
-    _headers[arangodb::StaticStrings::ContentTypeHeader] = contentType;
-    _contentType = ContentType::CUSTOM;
-  }
-
-  void setContentType(std::string&& contentType) override {
-    _headers[arangodb::StaticStrings::ContentTypeHeader] =
-        std::move(contentType);
-    _contentType = ContentType::CUSTOM;
-  }
-
   // you should call writeHeader only after the body has been created
   void writeHeader(basics::StringBuffer*);  // override;
 
@@ -106,8 +83,6 @@ class HttpResponse : public GeneralResponse {
   int deflate(size_t = 16384);
 
  private:
-  ConnectionType _connectionType;
-  ContentType _contentType;
   bool _isHeadResponse;
   std::vector<std::string> _cookies;
   basics::StringBuffer _body;

@@ -44,12 +44,10 @@ using namespace arangodb::basics;
 bool VppResponse::HIDE_PRODUCT_HEADER = false;
 
 VppResponse::VppResponse(ResponseCode code, uint64_t id)
-    : GeneralResponse(code),
-      _connectionType(CONNECTION_KEEP_ALIVE),
-      _contentType(ContentType::VPACK),
-      _header(nullptr),
-      _payload(),
-      _messageID(id) {}
+    : GeneralResponse(code), _header(nullptr), _payload(), _messageID(id) {
+  _contentType = ContentType::VPACK;
+  _connectionType = CONNECTION_KEEP_ALIVE;
+}
 
 void VppResponse::reset(ResponseCode code) {
   _responseCode = code;
