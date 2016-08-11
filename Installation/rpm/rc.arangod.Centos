@@ -1,0 +1,99 @@
+#!/bin/bash
+#
+# arangod        Startup script for the ArangoDB Server
+#
+# chkconfig: - 85 15
+# description: ArangoDB Server
+# processname: arangod
+# config: /etc/arangodb3/arangod.conf
+
+# Source function library.
+. /etc/rc.d/init.d/functions
+
+# Path to the server binary
+ARANGO_BIN=/usr/sbin/arangod
+test -x $ARANGO_BIN || exit 5
+
+ARANGO_SYSCONFIG=/etc/arangodb3/arangod.conf
+test -r $ARANGO_SYSCONFIG || exit 6
+
+pidfile=/var/run/arangodb/arangod.pid
+
+RETVAL=0
+
+start() {
+  echo -n $"Starting $ARANGO_BIN: "
+
+  PIDDIR=`dirname $pidfile`
+  [ -d $PIDDIR ] || mkdir $PIDDIR || exit 1
+
+  ( cd /var/log/arangodb3 && chown -R arangodb:arangodb . && chmod 700 .) || exit 1
+  ( cd /var/lib/arangodb3 && chown -R arangodb:arangodb . && chmod 700 .) || exit 1
+  ( cd /var/lib/arangodb3-apps && chown -R arangodb:arangodb . && chmod 700 .) || exit 1
+  ( cd $PIDDIR && chown arangodb:arangodb . && chmod 700 .) || exit 1
+
+  ulimit -H -n 131072 || true
+  ulimit -S -n 131072 || true
+
+  if [ "$1" = "--upgrade" ];  then
+    $ARANGO_BIN --uid arangodb --gid arangodb $@
+    RETVAL=$?
+  else
+    $ARANGO_BIN --uid arangodb --gid arangodb --log.foreground-tty false --database.check-version
+    RETVAL=$?
+
+    if test $RETVAL -eq 0;  then
+      $ARANGO_BIN --uid arangodb --gid arangodb --log.foreground-tty false --pid-file "$pidfile" --temp.path "/var/tmp/arangod" --supervisor $@
+      RETVAL=$?
+    else
+      echo "database version check failed, maybe need to run 'upgrade'?"
+    fi
+  fi
+
+  echo
+  return $RETVAL
+}
+
+
+
+stop() {
+  echo -n $"Stopping $ARANGO_BIN: "
+  killproc -p "${pidfile}" -d 10 $ARANGO_BIN
+
+  RETVAL=$?
+  echo
+}
+
+
+# See how we were called.
+case "$1" in
+  start)
+    start
+    ;;
+
+  stop)
+    stop
+    ;;
+
+  status)
+    status -p ${pidfile} $ARANGO_BIN
+    RETVAL=$?
+    ;;
+
+  restart)
+    stop
+    start
+    ;;
+
+  upgrade)
+    echo $"Upgrading ArangoDB database files"
+
+    start --upgrade
+    ;;
+
+  *)
+    echo $"Usage: $0 {start|stop|restart|status|help|upgrade}"
+    exit 1
+esac
+
+exit $RETVAL

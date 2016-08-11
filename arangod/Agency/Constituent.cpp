@@ -378,7 +378,7 @@ void Constituent::callElection() {
       operationIDs[i] = arangodb::ClusterComm::instance()->asyncRequest(
           "1", 1, config().endpoints[i], GeneralRequest::RequestType::GET,
           path.str(), std::make_shared<std::string>(body), headerFields,
-          nullptr, config().minPing, true);
+          nullptr, 0.75*config().minPing, true, 0.5*config().minPing);
     }
   }
 

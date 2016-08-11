@@ -45,9 +45,6 @@
 
     saveCollectionQueries: function (callback) {
       if (this.activeUser === false || this.activeUser === null) {
-        return false;
-      }
-      if (this.activeUser === false || this.activeUser === null) {
         this.activeUser = 'root';
       }
 

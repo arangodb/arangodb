@@ -262,6 +262,7 @@
           );
           if (!menu.disabled) {
             $(self.subEl + ' .bottom').children().last().bind('click', function (elem) {
+              $('#subNavigationBar .breadcrumb').html('');
               self.activeSubMenu = menu;
               self.renderSubView(menu, elem);
             });

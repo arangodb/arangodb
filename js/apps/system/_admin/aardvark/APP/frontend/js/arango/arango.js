@@ -255,6 +255,7 @@
         );
         if (!menu.disabled) {
           $('#subNavigationBar .bottom').children().last().bind('click', function () {
+            $('#subNavigationBar .breadcrumb').html('');
             window.App.navigate(menu.route, {trigger: true});
           });
         }
@@ -486,11 +487,12 @@
       docFrameView.render();
       docFrameView.setType(type);
 
-      // check if document is valid
+      /*
       if (docFrameView.collection.toJSON().length === 0) {
         this.closeDocEditor();
         return;
       }
+      */
 
       // remove header
       $('.arangoFrame .headerBar').remove();

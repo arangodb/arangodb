@@ -27,7 +27,7 @@
       'layout': {
         type: 'select',
         name: 'Layout algorithm',
-        desc: 'Different graph algorithms. No overlap is very fast, force is slower and fruchtermann is the slowest. The calculation time strongly depends on your nodes and edges counts.',
+        desc: 'Different graph algorithms. No overlap is very fast (more than 5000 nodes), force is slower (less than 5000 nodes) and fruchtermann is the slowest (less than 500 nodes). The calculation time strongly depends on your nodes and edges counts.',
         noverlap: {
           name: 'No overlap',
           val: 'noverlap'
@@ -59,6 +59,12 @@
         type: 'number',
         name: 'Search depth',
         value: 2
+      },
+      'limit': {
+        desc: 'Limit nodes count. If empty or zero, no limit is set.',
+        type: 'number',
+        name: 'Limit',
+        value: 250
       }
     },
 
@@ -86,23 +92,6 @@
           val: 'false'
         }
       },
-      'nodeLabelThreshold': {
-        type: 'range',
-        name: 'Label threshold',
-        desc: 'The minimum size a node must have on screen to see its label displayed. This does not affect hovering behavior.',
-        default: '_key'
-      },
-      'nodeColor': {
-        type: 'color',
-        name: 'Color',
-        desc: 'Default node color. RGB or HEX value.',
-        default: '#2ecc71'
-      },
-      'nodeColorAttribute': {
-        type: 'string',
-        name: 'Color attribute',
-        desc: 'If an attribute is given, nodes will then be colorized by the attribute. This setting ignores default node color if set.'
-      },
       'nodeColorByCollection': {
         type: 'select',
         name: 'Use collection color',
@@ -115,6 +104,30 @@
           val: 'true'
         },
         desc: 'Should nodes be colorized by their collection? If enabled, node color and node color attribute will be ignored.'
+      },
+      'nodeColor': {
+        type: 'color',
+        name: 'Color',
+        desc: 'Default node color. RGB or HEX value.',
+        default: '#2ecc71'
+      },
+      'nodeColorAttribute': {
+        type: 'string',
+        name: 'Color attribute',
+        desc: 'If an attribute is given, nodes will then be colorized by the attribute. This setting ignores default node color if set.'
+      },
+      'nodeSizeByEdges': {
+        type: 'select',
+        name: 'Size by edge count',
+        yes: {
+          name: 'Yes',
+          val: 'true'
+        },
+        no: {
+          name: 'No',
+          val: 'false'
+        },
+        desc: 'Should nodes be sized by their edges? If enabled, node sizing attribute will be ignored.'
       },
       'nodeSize': {
         type: 'string',
@@ -143,23 +156,6 @@
           val: 'false'
         }
       },
-      'edgeLabelThreshold': {
-        type: 'range',
-        name: 'Label threshold',
-        desc: 'The minimum size an edge must have on screen to see its label displayed. This does not affect hovering behavior.',
-        default: '_key'
-      },
-      'edgeColor': {
-        type: 'color',
-        name: 'Color',
-        desc: 'Default edge color. RGB or HEX value.',
-        default: '#cccccc'
-      },
-      'edgeColorAttribute': {
-        type: 'string',
-        name: 'Color attribute',
-        desc: 'If an attribute is given, edges will then be colorized by the attribute. This setting ignores default edge color if set.'
-      },
       'edgeColorByCollection': {
         type: 'select',
         name: 'Use collection color',
@@ -173,16 +169,27 @@
         },
         desc: 'Should edges be colorized by their collection? If enabled, edge color and edge color attribute will be ignored.'
       },
+      'edgeColor': {
+        type: 'color',
+        name: 'Color',
+        desc: 'Default edge color. RGB or HEX value.',
+        default: '#cccccc'
+      },
+      'edgeColorAttribute': {
+        type: 'string',
+        name: 'Color attribute',
+        desc: 'If an attribute is given, edges will then be colorized by the attribute. This setting ignores default edge color if set.'
+      },
       'edgeEditable': {
         type: 'select',
         name: 'Editable',
-        no: {
-          name: 'No',
-          val: 'false'
-        },
         yes: {
           name: 'Yes',
           val: 'true'
+        },
+        no: {
+          name: 'No',
+          val: 'false'
         },
         desc: 'Should edges be editable?'
       },
@@ -323,16 +330,15 @@
         nodeColor: '#2ecc71',
         nodeColorAttribute: '',
         nodeColorByCollection: 'true',
-        nodeLabelThreshold: 2,
         edgeColor: '#cccccc',
         edgeColorAttribute: '',
         edgeColorByCollection: 'false',
-        edgeLabelThreshold: 2,
         nodeLabel: '_key',
         edgeLabel: '',
         edgeType: 'arrow',
         nodeSize: '',
-        edgeEditable: 'false',
+        nodeSizeByEdges: 'true',
+        edgeEditable: 'true',
         nodeLabelByCollection: 'false',
         edgeLabelByCollection: 'true',
         nodeStart: '',
@@ -369,6 +375,10 @@
     },
 
     handleDependencies: function () {
+      // node sizing
+      if ($('#g_nodeSizeByEdges').val() === 'true') {
+        $('#g_nodeSize').prop('disabled', true);
+      }
       // node color
       if ($('#g_nodeColorByCollection').val() === 'true') {
         $('#g_nodeColorAttribute').prop('disabled', true);
@@ -386,6 +396,16 @@
       if ($('#g_edgeColorAttribute').val() !== '') {
         $('#g_edgeColor').prop('disabled', true);
       }
+
+      // node label
+      if ($('#g_nodeLabelByCollection').val() === 'true') {
+        $('#g_nodeLabel').prop('disabled', true);
+      }
+
+      // edge label
+      if ($('#g_edgeLabelByCollection').val() === 'true') {
+        $('#g_edgeLabel').prop('disabled', true);
+      }
     },
 
     continueRender: function () {
@@ -400,10 +420,6 @@
         _.each(this.graphConfig, function (val, key) {
           $('#g_' + key).val(val);
         });
-
-        // range customization
-        $('#g_nodeLabelThreshold_label').text(this.graphConfig.nodeLabelThreshold);
-        $('#g_edgeLabelThreshold_label').text(this.graphConfig.edgeLabelThreshold);
       } else {
         this.setDefaults(true);
       }
