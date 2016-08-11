@@ -712,17 +712,6 @@ arangodb::PrimaryIndex* TRI_collection_t::primaryIndex() {
   return static_cast<arangodb::PrimaryIndex*>(_indexes[0]);
 }
 
-/// @brief return the collection's edge index, if it exists
-arangodb::EdgeIndex* TRI_collection_t::edgeIndex() {
-  if (_indexes.size() >= 2 &&
-      _indexes[1]->type() == arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX) {
-    // edge index must be the index at position #1
-    return static_cast<arangodb::EdgeIndex*>(_indexes[1]);
-  }
-
-  return nullptr;
-}
-
 /// @brief get an index by id
 arangodb::Index* TRI_collection_t::lookupIndex(TRI_idx_iid_t iid) const {
   for (auto const& it : _indexes) {

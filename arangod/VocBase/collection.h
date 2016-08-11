@@ -310,7 +310,6 @@ struct TRI_collection_t {
   std::vector<arangodb::Index*> const& allIndexes() const;
   arangodb::Index* lookupIndex(TRI_idx_iid_t) const;
   arangodb::PrimaryIndex* primaryIndex();
-  arangodb::EdgeIndex* edgeIndex();
   arangodb::Index* removeIndex(TRI_idx_iid_t);
  
   /// @brief enumerate all indexes of the collection, but don't fill them yet
