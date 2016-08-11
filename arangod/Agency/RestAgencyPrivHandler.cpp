@@ -130,11 +130,11 @@ RestHandler::status RestAgencyPrivHandler::execute() {
           return reportBadQuery();  // bad query
         }
       } else if (_request->suffix()[0] == "gossip") {
-        if (_agent->activeAgentStartupSequence()) {
+        if (_agent->serveActiveAgent()) { // only during startup (see Agent)
           arangodb::velocypack::Options options;
           query_t query = _request->toVelocyPackBuilderPtr(&options);
           _agent->gossip(query);
-        } else {
+        } else {                         // Gone!
           return reportGone();
         }
       }else {

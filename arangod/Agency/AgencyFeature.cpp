@@ -70,7 +70,7 @@ void AgencyFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      new UInt64Parameter(&_size));
 
   options->addOption("--agency.pool-size", "number of agent pool",
-                     new UInt64Parameter(&_pool_size));
+                     new UInt64Parameter(&_poolSize));
 
   options->addOption(
       "--agency.election-timeout-min",
@@ -122,7 +122,7 @@ void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   }
 
   // Agency size
-  if (_pool_size < _size) {
+  if (_poolSize < _size) {
     LOG_TOPIC(FATAL, Logger::AGENCY)
         << "AGENCY: agency pool size must be larger than agency size.";
     FATAL_ERROR_EXIT();
@@ -191,7 +191,7 @@ void AgencyFeature::start() {
   _agent.reset(
     new consensus::Agent(
       consensus::config_t(
-        std::string(), _minElectionTimeout, _maxElectionTimeout, endpoint,
+        _size, _poolSize, _minElectionTimeout, _maxElectionTimeout, endpoint,
         _agencyEndpoints, _supervision, _waitForSync, _supervisionFrequency,
         _compactionStepSize)));
 

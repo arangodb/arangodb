@@ -56,7 +56,7 @@ class Agent : public arangodb::Thread {
                              index_t, query_t const&);
 
   /// @brief Provide configuration
-  config_t const& config() const;
+  config_t const config() const;
 
   /// @brief Start thread
   bool start();
@@ -106,13 +106,16 @@ class Agent : public arangodb::Thread {
   void run() override final;
 
   /// @brief Are we still booting?
-  void booting();
+  bool booting();
 
   /// @brief Gossip out
   void gossip();
 
   /// @brief Gossip in
   void gossip(query_t const& word);
+
+  /// @brief Persisted agents
+  bool persistedAgents();
   
   /// @brief Gossip in
   bool activeAgency();
@@ -147,10 +150,21 @@ class Agent : public arangodb::Thread {
   /// @brief Get spearhead store
   Store const& spearhead() const;
 
+  bool serveActiveAgent();
+
+  /// State reads persisted state and prepares the agent
   friend class State;
+
+  
 
  private:
   Agent& operator=(VPackSlice const&);
+
+  /// @brief Get current term
+  bool id(arangodb::consensus::id_t const&);
+
+  /// @brief Get current term
+  bool mergeConfiguration(VPackSlice const&);
 
   /// @brief Leader ID
   void lastCommitted(arangodb::consensus::index_t);
@@ -200,10 +214,10 @@ class Agent : public arangodb::Thread {
   std::map<std::string, index_t> _lastHighest;
   std::map<std::string, TimePoint> _lastSent;
   arangodb::Mutex _ioLock; /**< @brief Read/Write lock */
-  arangodb::Mutex _cfgLock; /**< @brief configuration gossip lock */
+  mutable arangodb::Mutex _cfgLock; /**< @brief configuration gossip lock */
 
   /// @brief Server active agents rest handler
-  bool _serveActiveAgents;
+  bool _serveActiveAgent;
 
   /// @brief Next compaction after
   arangodb::consensus::index_t _nextCompationAfter;

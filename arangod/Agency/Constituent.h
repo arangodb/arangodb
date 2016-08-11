@@ -26,7 +26,6 @@
 
 #include "AgencyCommon.h"
 #include "AgentConfiguration.h"
-#include "NotifierThread.h"
 
 #include "Basics/Common.h"
 #include "Basics/Thread.h"
@@ -109,7 +108,7 @@ class Constituent : public arangodb::Thread {
   void candidate();
 
   /// @brief Become leader
-  void lead(std::vector<bool> const&);
+  void lead(std::map<arangodb::consensus::id_t,bool> const&);
 
   /// @brief Call for vote (by leader or candidates after timeout)
   void callElection();
@@ -119,11 +118,6 @@ class Constituent : public arangodb::Thread {
 
   /// @brief Wait for sync
   bool waitForSync() const;
-
-  /// @brief Notify everyone, that we are good to go.
-  ///        This is the task of the last process starting up.
-  ///        Will be taken care of by gossip
-  void notifyAll();
 
   /// @brief Sleep for how long
   duration_t sleepFor(double, double);
@@ -140,8 +134,6 @@ class Constituent : public arangodb::Thread {
   role_t _role;                        /**< @brief My role */
   Agent* _agent;                       /**< @brief My boss */
   arangodb::consensus::id_t _votedFor;
-
-  std::unique_ptr<NotifierThread> _notifier;
 
   arangodb::basics::ConditionVariable _cv;  // agency callbacks
   mutable arangodb::Mutex _castLock;

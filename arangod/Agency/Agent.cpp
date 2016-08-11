@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Agent.h"
+#include "GossipCallback.h"
 
 #include "Basics/ConditionLocker.h"
 #include "RestServer/DatabaseFeature.h"
@@ -48,19 +49,31 @@ Agent::Agent(config_t const& config)
       _lastCommitIndex(0),
       _spearhead(this),
       _readDB(this),
-      _serveActiveAgents(false),
+      _serveActiveAgent(false),
       _nextCompationAfter(_config.compactionStepSize) {
   _state.configure(this);
   _constituent.configure(this);
-//  _confirmed.resize(size(), 0);  // agency's size and reset to 0
-  //_lastHighest.resize(size(), 0);
-  //_lastSent.resize(size());
 }
 
 
 /// This agent's id
 arangodb::consensus::id_t Agent::id() const {
-  return _config.id;
+  return config().id;
+}
+
+
+/// Agent's id is set once from state machine
+bool Agent::id(arangodb::consensus::id_t const& id) {
+  MUTEX_LOCKER(mutexLocker, _cfgLock);  
+  _config.id = id;
+  return true;
+}
+
+
+/// Merge command line and persisted comfigurations
+bool Agent::mergeConfiguration(VPackSlice const& persisted) {
+  MUTEX_LOCKER(mutexLocker, _cfgLock);  
+  return _config.merge(persisted);
 }
 
 
@@ -111,8 +124,9 @@ priv_rpc_ret_t Agent::requestVote(
 }
 
 
-/// Get configuration
-config_t const& Agent::config() const {
+/// Get copy of momentary configuration
+config_t const Agent::config() const {
+  MUTEX_LOCKER(mutexLocker, _cfgLock);  
   return _config;
 }
 
@@ -318,7 +332,7 @@ priv_rpc_ret_t Agent::sendAppendEntriesRPC(
 
   // Send request
   arangodb::ClusterComm::instance()->asyncRequest(
-      "1", 1, _config.endpoints[follower_id],
+      "1", 1, _config.pool[follower_id],
       arangodb::GeneralRequest::RequestType::POST, path.str(),
       std::make_shared<std::string>(builder.toJson()), headerFields,
       std::make_shared<AgentCallback>(this, follower_id, highest),
@@ -445,7 +459,7 @@ void Agent::run() {
     }
 
     // Append entries to followers
-    for (arangodb::consensus::id_t i = 0; i < size(); ++i) {
+    for (auto const& i : _config.active) {
       if (i != id()) {
         sendAppendEntriesRPC(i);
       }
@@ -580,7 +594,7 @@ void Agent::gossip() {
     std::map<std::string, std::string> pool;
     { 
       MUTEX_LOCKER(mutexLocker, _cfgLock);
-      pool = _config.pool
+      pool = _config.pool;
     }
 
     if (!pool.empty()) {
@@ -607,7 +621,7 @@ void Agent::gossip() {
         
       for (auto const& agent : pool) {
         arangodb::ClusterComm::instance()->asyncRequest(
-          "1", 1, pool.second, GeneralRequest::RequestType::POST, path,
+          "1", 1, agent.second, GeneralRequest::RequestType::POST, path,
           std::make_shared<std::string>(word->toString()), headerFields,
           std::make_shared<GossipCallback>(), 1.0, true);
       }
@@ -621,16 +635,16 @@ void Agent::gossip() {
 /// Handle incomint gossip
 void Agent::gossip(query_t const& word) {
 
-  TRI_ASSERT(word->isObject());
+  TRI_ASSERT(word->slice().isObject());
 
   MUTEX_LOCKER(mutexLocker, _cfgLock);
-  for (auto const& ent : VPackObjectIterator(word)) {
+  for (auto const& ent : VPackObjectIterator(word->slice())) {
     TRI_ASSERT(ent.value.isString());
-    auto it = _config.pool.find(ent.key);
+    auto it = _config.pool.find(ent.key.copyString());
     if (it != _config.pool.end()) {
       TRI_ASSERT(it->second == ent.value.copyString());
     } else {
-      _config.pool[ent.key] = ent.value;
+      _config.pool[ent.key.copyString()] = ent.value.copyString();
     }
   }
   
@@ -645,6 +659,7 @@ void Agent::gossip(query_t const& word) {
 bool Agent::activeAgency() {
 
   std::map<std::string, std::string> pool;
+  std::vector<std::string> active;
   { 
     MUTEX_LOCKER(mutexLocker, _cfgLock);
     pool = _config.pool;
@@ -655,22 +670,21 @@ bool Agent::activeAgency() {
     
   }
 
+  return false;
+
 }
 
 inline static query_t getResponse(
-  std::string const& endpoint, std::sting const& path, double timeout = 1.0) {
+  std::string const& endpoint, std::string const& path, double timeout = 1.0) {
 
   query_t ret = nullptr;
-  
-  auto headerFields =
-    std::make_unique<std::unordered_map<std::string, std::string>>();
-  
+  std::unordered_map<std::string, std::string> headerFields;
   auto res = arangodb::ClusterComm::instance()->syncRequest(
     "1", 1, endpoint, GeneralRequest::RequestType::GET, path, std::string(),
     headerFields, 1.0);
 
-  if (res.status == CL_COMM_RECEIVED) {
-    ret = res.result->getBodyVelocyPack();
+  if (res->status == CL_COMM_RECEIVED) {
+    ret = res->result->getBodyVelocyPack();
   }
 
   return ret;
@@ -685,13 +699,33 @@ bool Agent::persistedAgents() {
     active = _config.active;
   }
 
-  auto const& it = active.find(config.id);
+  // 1 min timeout
+  std::chrono::seconds timeout(60);
+
+  auto const& it = find(active.begin(), active.end(), _config.id);
   auto start = std::chrono::system_clock::now();
 
-  if (it != active.end()) { // Serve /_api/agency/activeAgents
+  if (it != active.end()) { 
     
-    _serveActiveAgents = true;
+    {
+      MUTEX_LOCKER(mutexLocker, _cfgLock);
+      _serveActiveAgent = true; // Serve /_api/agency/activeAgents
+    }
+    
     while (true) {
+      
+      if (std::chrono::system_clock::now() - start > timeout) { 
+        {
+          MUTEX_LOCKER(mutexLocker, _cfgLock);
+          _config.active.clear();
+        }
+        return false;
+      } 
+    }
+    
+    {
+      MUTEX_LOCKER(mutexLocker, _cfgLock);
+      _serveActiveAgent = false;  // Unserve /_api/agency/activeAgents
     }
     
   } else {
@@ -710,27 +744,39 @@ bool Agent::persistedAgents() {
             << "Got response from a persisted agent with configuration "
             << slice.toJson();
           MUTEX_LOCKER(mutexLocker, _cfgLock);
-          _config.override(res);
+          _config.override(slice);
           
         }
         
       }
-      
-      if (60.0e9 > std::chrono::system_clock::now() - start) { // 1 min timeout
+
+      if (std::chrono::system_clock::now() - start > timeout) { 
+        {
+          MUTEX_LOCKER(mutexLocker, _cfgLock);
+          _config.active.clear();
+        }
         return false;
       } 
+
     }
   }
   
-  _serveActiveAgents = false;
   return false;
   
 }
+
+
+/// Do we serve agentStartupSequence
+bool Agent::serveActiveAgent() {
+  return _serveActiveAgent;
+}
+
 
 /// Initial inception of the agency world
 void Agent::inception() {
 
   auto start = std::chrono::system_clock::now(); //
+  std::chrono::seconds timeout(300);
   
   if (persistedAgents()) {
     return;
@@ -738,13 +784,19 @@ void Agent::inception() {
 
   CONDITION_LOCKER(guard, _configCV);
 
-  while (booting) {
+  while (booting()) {
 
     if (activeAgency()) {
       return;
     }
     
     _configCV.wait(1000);
+
+    if (std::chrono::system_clock::now() - start > timeout) {
+      LOG_TOPIC(ERR, Logger::AGENCY) <<
+        "Failed to find complete pool of agents.";
+      FATAL_ERROR_EXIT();
+    }
       
   }
   

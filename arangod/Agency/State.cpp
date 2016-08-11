@@ -505,9 +505,9 @@ bool State::loadOrPersistConfiguration() {
 
   if (result.isArray() && result.length()) { // We already have a persisted conf
 
-    try (config.merge(result)) {
-        0;   
-      } catch (std::exception const& e) {
+    try {
+      _agent->mergeConfiguration(result);
+    } catch (std::exception const& e) {
       LOG_TOPIC(ERR, Logger::AGENCY)
         << "Failed to merge persisted configuration into runtime configuration:"
         << e.what();
@@ -519,7 +519,7 @@ bool State::loadOrPersistConfiguration() {
     LOG_TOPIC(DEBUG, Logger::AGENCY) << "New agency!";
 
     TRI_ASSERT(_agent != nullptr);
-    _agent->config().id = to_string(boost::uuids::random_generator()());
+    _agent->id(to_string(boost::uuids::random_generator()()));
     
     auto transactionContext =
       std::make_shared<StandaloneTransactionContext>(_vocbase);
@@ -535,7 +535,7 @@ bool State::loadOrPersistConfiguration() {
     
     try {
       result = trx.insert(
-        "configuration", _agent.config().toBuilder().slice(), _options);
+        "configuration", _agent->config().toBuilder()->slice(), _options);
     } catch (std::exception const& e) {
       LOG_TOPIC(ERR, Logger::AGENCY)
         << "Failed to persist configuration entry:" << e.what();
@@ -549,7 +549,6 @@ bool State::loadOrPersistConfiguration() {
   }
   
   return true;
-
   
 }
 

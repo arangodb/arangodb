@@ -211,7 +211,7 @@ struct config_t {
 
 
   /// @brief merge from persisted configuration
-  void merge (VPackSlice const& conf) { 
+  bool merge (VPackSlice const& conf) { 
     
     id = conf.get(idStr).copyString(); // I get my id
     pool[id] = endpoint; // Register my endpoint with it
@@ -349,6 +349,8 @@ struct config_t {
     }
     LOG_TOPIC(DEBUG, Logger::AGENCY) << ss.str();
 
+    return true;
+    
   }
   
 };
