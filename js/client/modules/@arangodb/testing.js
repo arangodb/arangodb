@@ -649,9 +649,6 @@ function runThere (options, instanceInfo, file) {
         'return runTest(' + JSON.stringify(file) + ', true);';
     }
 
-    if (options.propagateInstanceInfo) {
-    }
-
     let httpOptions = makeAuthorizationHeaders(options);
     httpOptions.method = 'POST';
     httpOptions.timeout = 3600;
@@ -3378,7 +3375,6 @@ testFuncs.replication_sync = function (options) {
 
 testFuncs.resilience = function (options) {
   findTests();
-  options.propagateInstanceInfo = true;
   options.cluster = true;
   if (options.dbServers < 5) {
     options.dbServers = 5;
@@ -3392,7 +3388,6 @@ testFuncs.resilience = function (options) {
 
 testFuncs.client_resilience = function (options) {
   findTests();
-  options.propagateInstanceInfo = true;
   options.cluster = true;
   if (options.coordinators < 2) {
     options.coordinators = 2;
@@ -3442,7 +3437,6 @@ testFuncs.server_http = function (options) {
 
 testFuncs.shell_server = function (options) {
   findTests();
-  options.propagateInstanceInfo = true;
 
   return performTests(options, testsCases.server, 'shell_server', runThere);
 };
@@ -3764,10 +3758,18 @@ testFuncs.stress_locks = function (options) {
 testFuncs.agency = function (options) {
   findTests();
   
+  let saveAgency = options.agency; 
+  let saveCluster = options.cluster;
+
   options.agency = true;
   options.cluster = false;
 
-  return performTests(options, testsCases.agency, 'agency', createArangoshRunner());
+  let results = performTests(options, testsCases.agency, 'agency', createArangoshRunner());
+  
+  options.agency = saveAgency;
+  options.cluster = saveCluster;
+
+  return results;
 };
 
 // //////////////////////////////////////////////////////////////////////////////
