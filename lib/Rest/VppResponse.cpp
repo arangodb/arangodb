@@ -56,16 +56,14 @@ void VppResponse::reset(ResponseCode code) {
   _headers.clear();
   _connectionType = CONNECTION_KEEP_ALIVE;
   _contentType = ContentType::TEXT;
+  _generateBody = false;  // payload has to be set
 }
 
 void VppResponse::setPayload(ContentType contentType,
                              arangodb::velocypack::Slice const& slice,
                              bool generateBody, VPackOptions const& options) {
   if (generateBody) {
-    // addPayload(slice);
-    if (slice.isEmptyObject()) {
-      throw std::logic_error("payload should be empty!!");
-    }
+    _generateBody = true;
     _payload.append(slice.startAs<char>(),
                     std::distance(slice.begin(), slice.end()));
   }
@@ -79,12 +77,10 @@ VPackMessageNoOwnBuffer VppResponse::prepareForNetwork() {
   builder.add(
       "responseCode",
       VPackValue(static_cast<int>(meta::underlyingValue(_responseCode))));
-  // for (auto const& item : _headers) {
-  //  builder.add(item.first, VPackValue(item.second));
-  //}
   builder.close();
   _header = builder.steal();
   return VPackMessageNoOwnBuffer(VPackSlice(_header->data()),
-                                 VPackSlice(_payload.data()), _messageID);
+                                 VPackSlice(_payload.data()), _messageID,
+                                 _generateBody);
 }
 // void VppResponse::writeHeader(basics::StringBuffer*) {}

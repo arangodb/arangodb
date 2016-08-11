@@ -143,7 +143,11 @@ class GeneralCommTask : public SocketTask, public RequestStatisticsAgent {
   void signalTask(TaskData*) override;
 
  protected:
+  // is called in a loop as long as it returns true
+  // return false if there is not enought data to do
+  // any more processing
   virtual bool processRead() = 0;
+
   virtual void handleChunk(char const*, size_t) = 0;
 
  protected:

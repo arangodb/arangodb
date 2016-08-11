@@ -66,18 +66,30 @@ std::size_t findAndValidateVPacks(char const* vpHeaderStart,
 }
 
 std::unique_ptr<basics::StringBuffer> createChunkForNetworkDetail(
-    char* start, char* end, bool isFirstChunk, uint32_t chunk, uint64_t id,
-    uint32_t totalMessageLength = 0) {
+    std::vector<VPackSlice> const& slices, bool isFirstChunk, uint32_t chunk,
+    uint64_t id, uint32_t totalMessageLength = 0) {
   using basics::StringBuffer;
   bool firstOfMany = false;
+
+  // if we have more than one chunk and the chunk is the first
+  // then we are sending the first in a series. if this condition
+  // is true we also send extra 8 bytes for the messageLength
+  // (length of all VPackData)
   if (isFirstChunk && chunk > 1) {
     firstOfMany = true;
   }
 
+  // build chunkX -- see VelocyStream Documentaion
   chunk <<= 1;
   chunk |= isFirstChunk ? 0x1 : 0x0;
 
-  uint32_t dataLength = std::distance(start, end);
+  // get the lenght of VPack data
+  uint32_t dataLength = 0;
+  for (auto& slice : slices) {
+    dataLength += slice.byteSize();
+  }
+
+  // calculate length of current chunk
   uint32_t chunkLength = dataLength;
   chunkLength += (sizeof(chunkLength) + sizeof(chunk) + sizeof(id));
   if (firstOfMany) {
@@ -87,58 +99,53 @@ std::unique_ptr<basics::StringBuffer> createChunkForNetworkDetail(
   auto buffer =
       std::make_unique<StringBuffer>(TRI_UNKNOWN_MEM_ZONE, chunkLength, false);
 
-  // TRI_AppendUInt32StringBuffer(buffer->stringBuffer(), chunkLength);
-  // buffer->appendInteger(chunkLength);
   char cChunkLength[sizeof(chunkLength)];
   char const* cChunkLengthPtr = cChunkLength;
   std::memcpy(&cChunkLength, &chunkLength, sizeof(chunkLength));
   buffer->appendText(cChunkLengthPtr, sizeof(chunkLength));
 
-  // TRI_AppendUInt32StringBuffer(buffer->stringBuffer(), chunk);
-  // buffer->appendInteger(chunk);  // chunkX //contains is first
   char cChunk[sizeof(chunk)];
   char const* cChunkPtr = cChunk;
   std::memcpy(&cChunk, &chunk, sizeof(chunk));
   buffer->appendText(cChunkPtr, sizeof(chunk));
 
-  // TRI_AppendUInt32StringBuffer(buffer->stringBuffer(), id);
-  // buffer->appendInteger(id);
   char cId[sizeof(id)];
   char const* cIdPtr = cId;
   std::memcpy(&cId, &id, sizeof(id));
   buffer->appendText(cIdPtr, sizeof(id));
 
   if (firstOfMany) {
-    // TRI_ASSERT(totalMessageLength != 0);
-    // buffer->appendInteger(totalMessageLength);
     char cTotalMessageLength[sizeof(totalMessageLength)];
     char const* cTotalMessageLengthPtr = cTotalMessageLength;
     std::memcpy(&cTotalMessageLength, &totalMessageLength,
                 sizeof(totalMessageLength));
     buffer->appendText(cTotalMessageLengthPtr, sizeof(totalMessageLength));
   }
-  buffer->appendText(std::string(start, dataLength));
+
+  // append data in slices
+  for (auto const& slice : slices) {
+    buffer->appendText(std::string(slice.startAs<char>(), slice.byteSize()));
+  }
 
   return buffer;
 }
 
-std::unique_ptr<basics::StringBuffer> createChunkForNetworkSingle(char* start,
-                                                                  char* end,
-                                                                  uint64_t id) {
-  return createChunkForNetworkDetail(start, end, true, 1, id, 0 /*unused*/);
+std::unique_ptr<basics::StringBuffer> createChunkForNetworkSingle(
+    std::vector<VPackSlice> const& slices, uint64_t id) {
+  return createChunkForNetworkDetail(slices, true, 1, id, 0 /*unused*/);
 }
 
 std::unique_ptr<basics::StringBuffer> createChunkForNetworkMultiFirst(
-    char* start, char* end, uint64_t id, uint32_t numberOfChunks,
+    std::vector<VPackSlice> const& slices, uint64_t id, uint32_t numberOfChunks,
     uint32_t totalMessageLength) {
-  return createChunkForNetworkDetail(start, end, true, numberOfChunks, id,
+  return createChunkForNetworkDetail(slices, true, numberOfChunks, id,
                                      totalMessageLength);
 }
 
 std::unique_ptr<basics::StringBuffer> createChunkForNetworkMultiFollow(
-    char* start, char* end, uint64_t id, uint32_t chunkNumber,
+    std::vector<VPackSlice> const& slices, uint64_t id, uint32_t chunkNumber,
     uint32_t totalMessageLength) {
-  return createChunkForNetworkDetail(start, end, false, chunkNumber, id, 0);
+  return createChunkForNetworkDetail(slices, false, chunkNumber, id, 0);
 }
 }
 
@@ -164,10 +171,12 @@ void VppCommTask::addResponse(VppResponse* response, bool isError) {
   slices.push_back(response_message._header);
 
   // if payload != Slice()
-  slices.push_back(response_message._payload);
+  if (response_message._generateBody) {
+    slices.push_back(response_message._payload);
+  }
 
+  // calculate message length
   uint32_t message_length = 0;
-
   for (auto const& slice : slices) {
     message_length += slice.byteSize();
   }
@@ -183,7 +192,7 @@ void VppCommTask::addResponse(VppResponse* response, bool isError) {
 
   // adds chunk header infromation and creates SingBuffer* that can be
   // used with _writeBuffers
-  auto buffer = createChunkForNetworkSingle(tmp.begin(), tmp.end(), id);
+  auto buffer = createChunkForNetworkSingle(slices, id);
   _writeBuffers.push_back(buffer.get());
   buffer.release();
 
@@ -194,7 +203,7 @@ void VppCommTask::addResponse(VppResponse* response, bool isError) {
 VppCommTask::ChunkHeader VppCommTask::readChunkHeader() {
   VppCommTask::ChunkHeader header;
 
-  auto cursor = _readBuffer->begin();
+  auto cursor = _processReadVariables._readBufferCursor;
 
   std::memcpy(&header._chunkLength, cursor, sizeof(header._chunkLength));
   cursor += sizeof(header._chunkLength);
@@ -217,7 +226,8 @@ VppCommTask::ChunkHeader VppCommTask::readChunkHeader() {
     header._messageLength = 0;  // not needed
   }
 
-  header._headerLength = std::distance(_readBuffer->begin(), cursor);
+  header._headerLength =
+      std::distance(_processReadVariables._readBufferCursor, cursor);
 
   return header;
 }
@@ -260,7 +270,8 @@ bool VppCommTask::processRead() {
   ChunkHeader chunkHeader = readChunkHeader();
   auto chunkEnd = chunkBegin + chunkHeader._chunkLength;
   auto vpackBegin = chunkBegin + chunkHeader._headerLength;
-  bool do_execute = false;
+  bool doExecute = false;
+  bool read_maybe_only_part_of_buffer = false;
   VPackMessage message;  // filled in CASE 1 or CASE 2b
 
   // CASE 1: message is in one chunk
@@ -275,7 +286,7 @@ bool VppCommTask::processRead() {
     VPackValidator val;
     val.validate(message._header.begin(), message._header.byteSize());
 
-    do_execute = true;
+    doExecute = true;
   }
   // CASE 2:  message is in multiple chunks
   auto incompleteMessageItr = _incompleteMessages.find(chunkHeader._messageID);
@@ -309,7 +320,7 @@ bool VppCommTask::processRead() {
     // check buffer longer than length
 
     // MESSAGE COMPLETE
-    if (im._currentChunk == im._numberOfChunks) {
+    if (im._currentChunk == im._numberOfChunks - 1 /* zero based counting */) {
       std::size_t payloadOffset = findAndValidateVPacks(
           reinterpret_cast<char const*>(im._buffer.data()),
           reinterpret_cast<char const*>(im._buffer.data() +
@@ -323,11 +334,13 @@ bool VppCommTask::processRead() {
       _incompleteMessages.erase(incompleteMessageItr);
       // check length
 
-      do_execute = true;
+      doExecute = true;
     }
   }
 
   // clean buffer up to length of chunk
+  read_maybe_only_part_of_buffer = true;
+  prv._currentChunkLength = 0;
   prv._readBufferCursor = chunkEnd;
   std::size_t processedDataLen =
       std::distance(_readBuffer->begin(), prv._readBufferCursor);
@@ -337,21 +350,27 @@ bool VppCommTask::processRead() {
                                       // begin of this function
   }
 
-  if (!do_execute) {
-    return false;  // we have no complete request, so we return early
+  if (doExecute) {
+    //    return false;  // we have no complete request, so we return early
+    // for now we can handle only one request at a time
+    // lock _request???? REVIEW (fc)
+    LOG(ERR) << message._header.toJson();
+    _request = new VppRequest(_connectionInfo, std::move(message));
+    GeneralServerFeature::HANDLER_FACTORY->setRequestContext(_request);
+    _request->setClientTaskId(_taskId);
+    _protocolVersion = _request->protocolVersion();
+    executeRequest(_request,
+                   new VppResponse(GeneralResponse::ResponseCode::SERVER_ERROR,
+                                   chunkHeader._messageID));
   }
 
-  // for now we can handle only one request at a time
-  // lock _request???? REVIEW (fc)
-  LOG(ERR) << message._header.toJson();
-  _request = new VppRequest(_connectionInfo, std::move(message));
-  GeneralServerFeature::HANDLER_FACTORY->setRequestContext(_request);
-  _request->setClientTaskId(_taskId);
-  _protocolVersion = _request->protocolVersion();
-  executeRequest(_request,
-                 new VppResponse(GeneralResponse::ResponseCode::SERVER_ERROR,
-                                 chunkHeader._messageID));
-  return true;
+  if (read_maybe_only_part_of_buffer) {
+    if (prv._readBufferCursor == _readBuffer->end()) {
+      return false;
+    }
+    return true;
+  }
+  return doExecute;
 }
 
 void VppCommTask::completedWriteBuffer() {

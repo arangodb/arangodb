@@ -82,6 +82,7 @@ class VppResponse : public GeneralResponse {
       _header;  // generated form _headers when prepared for network
   VPackBuffer<uint8_t> _payload;
   uint64_t _messageID;
+  bool _generateBody;  // this must be true if payload should be send
 };
 }
 

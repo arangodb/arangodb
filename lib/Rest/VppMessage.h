@@ -34,21 +34,28 @@ namespace arangodb {
 namespace rest {
 
 struct VPackMessage {
-  VPackMessage() : _buffer(), _header(), _payload(), _id() {}
+  VPackMessage()
+      : _buffer(), _header(), _payload(), _id(), _generateBody(true) {}
   VPackMessage(VPackBuffer<uint8_t>&& buff, VPackSlice head, VPackSlice pay,
-               uint64_t id)
-      : _buffer(std::move(buff)), _header(head), _payload(pay), _id(id) {}
+               uint64_t id, bool generateBody = true)
+      : _buffer(std::move(buff)),
+        _header(head),
+        _payload(pay),
+        _id(id),
+        _generateBody(generateBody) {}
   VPackMessage(VPackMessage&& other) = default;
 
   VPackBuffer<uint8_t> _buffer;
   VPackSlice _header;
   VPackSlice _payload;
   uint64_t _id;
+  bool _generateBody;
 };
 
 struct VPackMessageNoOwnBuffer : VPackMessage {
-  VPackMessageNoOwnBuffer(VPackSlice head, VPackSlice pay, uint64_t id)
-      : VPackMessage(VPackBuffer<uint8_t>(), head, pay, id) {}
+  VPackMessageNoOwnBuffer(VPackSlice head, VPackSlice pay, uint64_t id,
+                          bool generateBody = true)
+      : VPackMessage(VPackBuffer<uint8_t>(), head, pay, id, generateBody) {}
 };
 }
 }
