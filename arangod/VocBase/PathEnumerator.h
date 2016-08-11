@@ -25,6 +25,7 @@
 #define ARANGODB_VOCBASE_PATHENUMERATOR_H 1
 
 #include "Basics/Common.h"
+#include "VocBase/TraverserOptions.h"
 #include <velocypack/Slice.h>
 #include <stack>
 
@@ -38,7 +39,6 @@ class Builder;
 }
 
 namespace traverser {
-class EdgeCursor;
 class Traverser;
 struct TraverserOptions;
 
@@ -113,7 +113,7 @@ class DepthFirstEnumerator final : public PathEnumerator {
   /// @brief The stack of EdgeCursors to walk through.
   //////////////////////////////////////////////////////////////////////////////
 
-  std::stack<EdgeCursor*> _edgeCursors;
+  std::stack<std::unique_ptr<EdgeCursor>> _edgeCursors;
 
  public:
   DepthFirstEnumerator(Traverser* traverser,
@@ -122,7 +122,6 @@ class DepthFirstEnumerator final : public PathEnumerator {
       : PathEnumerator(traverser, startVertex, opts) {}
 
   ~DepthFirstEnumerator() {
-#warning Who is responsible for the cursors? Traverser or this class? Maybe they are just leased.
   }
 
   //////////////////////////////////////////////////////////////////////////////
