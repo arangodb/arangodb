@@ -51,8 +51,11 @@ Agent::Agent(config_t const& config)
       _readDB(this),
       _serveActiveAgent(false),
       _nextCompationAfter(_config.compactionStepSize) {
+  LOG(WARN)<< __FILE__ << __LINE__;
   _state.configure(this);
+  LOG(WARN)<< __FILE__ << __LINE__;
   _constituent.configure(this);
+  LOG(WARN)<< __FILE__ << __LINE__;
 }
 
 

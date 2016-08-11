@@ -115,17 +115,25 @@ void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   ServerState::instance()->setRole(ServerState::ROLE_AGENT);
 
   // Agency size
-  if (_size < 1) {
-    LOG_TOPIC(FATAL, Logger::AGENCY)
-        << "AGENCY: agency must have size greater 0";
-    FATAL_ERROR_EXIT();
+  if (result.touched("agency.size")) {
+    if (_size < 1) {
+      LOG_TOPIC(FATAL, Logger::AGENCY)
+        << "agency must have size greater 0";
+      FATAL_ERROR_EXIT();
+    }
+  } else {
+    _size = 1;
   }
 
-  // Agency size
-  if (_poolSize < _size) {
-    LOG_TOPIC(FATAL, Logger::AGENCY)
-        << "AGENCY: agency pool size must be larger than agency size.";
-    FATAL_ERROR_EXIT();
+  // Agency pool size
+  if (result.touched("agency.pool-size")) {
+    if (_poolSize < _size) {
+      LOG_TOPIC(FATAL, Logger::AGENCY)
+        << "agency pool size must be larger than agency size.";
+      FATAL_ERROR_EXIT();
+    }
+  } else {
+    _poolSize = 1;
   }
 
   // Size needs to be odd
@@ -157,12 +165,15 @@ void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
       << "agency.election-timeout-max should probably be chosen longer!"
       << " " << __FILE__ << __LINE__;
   }
+
 }
 
 void AgencyFeature::prepare() {
   _agencyEndpoints.resize(static_cast<size_t>(_size));
 }
 
+#warning iostream
+#include<iostream>
 void AgencyFeature::start() {
 
   if (!isEnabled()) {
@@ -187,6 +198,7 @@ void AgencyFeature::start() {
   }
   
   endpoint = std::string("tcp://localhost:" + port);
+  LOG_TOPIC(DEBUG, Logger::AGENCY) << "Agency endpoint " << endpoint;
 
   _agent.reset(
     new consensus::Agent(
@@ -194,8 +206,12 @@ void AgencyFeature::start() {
         _size, _poolSize, _minElectionTimeout, _maxElectionTimeout, endpoint,
         _agencyEndpoints, _supervision, _waitForSync, _supervisionFrequency,
         _compactionStepSize)));
-
+  std::cout << __FILE__ << __LINE__ << std::endl;
+  LOG_TOPIC(DEBUG, Logger::AGENCY) << "Starting agency personality";  
   _agent->start();
+
+  LOG(WARN) << __FILE__ << __LINE__;
+  LOG_TOPIC(DEBUG, Logger::AGENCY) << "Loading agency";  
   _agent->load();
 }
 
