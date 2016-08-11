@@ -462,7 +462,7 @@ bool V8ShellFeature::runScript(std::vector<std::string> const& files,
       auto oldDirname =
           current->Get(TRI_V8_ASCII_STRING2(_isolate, "__dirname"));
 
-      auto dirname = FileUtils::dirname(TRI_ObjectToString(filename).c_str());
+      auto dirname = FileUtils::dirname(TRI_ObjectToString(filename));
 
       current->ForceSet(TRI_V8_ASCII_STRING2(_isolate, "__dirname"),
                         TRI_V8_STD_STRING2(_isolate, dirname));

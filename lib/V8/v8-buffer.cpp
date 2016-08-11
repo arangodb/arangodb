@@ -761,6 +761,10 @@ bool V8Buffer::hasInstance(v8::Isolate* isolate, v8::Handle<v8::Value> val) {
     return true;
   }
 
+  if (obj->Has(TRI_V8_ASCII_STRING("__buffer__"))) {
+    return true;
+  }
+    
   return strcmp(*v8::String::Utf8Value(obj->GetConstructorName()), "Buffer") ==
          0;
 }
@@ -1701,7 +1705,7 @@ void TRI_InitV8Buffer(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
 
   TRI_V8_AddMethod(isolate, ft, TRI_V8_ASCII_STRING("byteLength"),
                    JS_ByteLength);
-
+  
   // create the exports
   v8::Handle<v8::Object> exports = v8::Object::New(isolate);
 

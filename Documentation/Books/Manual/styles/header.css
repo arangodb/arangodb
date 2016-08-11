@@ -108,9 +108,9 @@ body {
 }
 
 .arangodb-version-switcher {
-  width: 62px;
+  width: 65px;
   height: 44px;
-  margin-left: 24px;
+  margin-left: 16px;
   float: left;
   display: inline;
   font-weight: bold;
@@ -141,7 +141,8 @@ body {
 .arangodb-navmenu {
   display: block;
   float: right;
-  margin: 0px;
+  margin: 0;
+  padding: 0;
 }
 
 .arangodb-navmenu li {
@@ -165,9 +166,13 @@ body {
   background-color: #88A049 !important;
 }
 
+.downloadIcon {
+  margin-right: 10px;
+}
+
 /** simple responsive updates **/
 
-@media screen and (max-width: 1100px) {
+@media screen and (max-width: 1000px) {
   .arangodb-logo {
     margin-left: 10px;
   }
@@ -176,6 +181,10 @@ body {
     margin-right: 5px !important;
   }
 
+  .downloadIcon {
+    margin-right: 0;
+  }
+  
   .socialIcons {
     display: none !important;
   }
@@ -188,10 +197,6 @@ body {
   .google-search .gsc-input-box,
   .google-search .gsc-input-box input {
     width: 130px !important;
-  }
-
-  .arangodb-navmenu {
-    padding: 0;
   }
 
   .arangodb-navmenu li a {
@@ -214,14 +219,14 @@ body {
 
   .arangodb-version-switcher {
     margin: 0;
-    width: 50px;
   }
 
 }
 
-@media screen and (max-width: 480px) {
-  .arangodb-version-switcher {
-    display: none;
+@media screen and (max-width: 530px) {
+  .arangodb-version-switcher,
+  .downloadIcon {
+    display: none !important;
   }
 
   .google-search,

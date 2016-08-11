@@ -57,7 +57,8 @@ ServerState::ServerState()
       _state(STATE_UNDEFINED),
       _initialized(false),
       _clusterEnabled(false),
-      _foxxmaster("") {
+      _foxxmaster(""),
+      _foxxmasterQueueupdate(false) {
   storeRole(ROLE_UNDEFINED);
 }
 
@@ -1006,5 +1007,16 @@ std::string const& ServerState::getFoxxmaster() {
 }
 
 void ServerState::setFoxxmaster(std::string const& foxxmaster) {
+  if (_foxxmaster != foxxmaster) {
+    setFoxxmasterQueueupdate(true);
+  }
   _foxxmaster = foxxmaster;
+}
+
+bool ServerState::getFoxxmasterQueueupdate() {
+  return _foxxmasterQueueupdate;
+}
+
+void ServerState::setFoxxmasterQueueupdate(bool value) {
+  _foxxmasterQueueupdate = value;
 }

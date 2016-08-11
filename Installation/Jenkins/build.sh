@@ -76,9 +76,10 @@ BUILD_CONFIG=RelWithDebInfo
 PAR="-j"
 GENERATOR="Unix Makefiles"
 MAKE=make
+PACKAGE_MAKE=make
 MAKE_PARAMS=""
 MAKE_CMD_PREFIX=""
-CONFIGURE_OPTIONS="$CMAKE_OPENSSL"
+CONFIGURE_OPTIONS="-DCMAKE_INSTALL_PREFIX=/ -DCMAKE_INSTALL_LOCALSTATEDIR=/var$CMAKE_OPENSSL"
 MAINTAINER_MODE="-DUSE_MAINTAINER_MODE=off"
 
 TARGET_DIR=""
@@ -91,6 +92,7 @@ GCC5=0
 GOLD=0
 SANITIZE=0
 VERBOSE=0
+MSVC=
 
 case "$1" in
     standard)
@@ -164,6 +166,7 @@ while [ $# -gt 0 ];  do
         
          --msvc)
              shift
+             MSVC=1
              CC=""
              CXX=""
              PAR=""
@@ -171,6 +174,8 @@ while [ $# -gt 0 ];  do
              GENERATOR="Visual Studio 14 Win64"
              CPACK="ZIP NSIS"
              MAKE='cmake --build . --config RelWithDebInfo'
+             PACKAGE_MAKE='cmake --build . --config RelWithDebInfo --target'
+             CONFIGURE_OPTIONS="${CONFIGURE_OPTIONS} -DV8_TARGET_ARCHS=Release"
              ;;
          
         --gold)
@@ -198,6 +203,7 @@ while [ $# -gt 0 ];  do
 	    export CC="/opt/csw/bin/gcc"
 	    export CXX="/opt/csw/bin/g++"
 	    MAKE=/opt/csw/bin/gmake
+            PACKAGE_MAKE=/opt/csw/bin/gmake
 	    PATH=/opt/csw/bin/:${PATH}
 	    shift
 	    ;;
@@ -291,7 +297,22 @@ if [ -n "$CXX" ]; then
     CONFIGURE_OPTIONS="${CONFIGURE_OPTIONS} -DCMAKE_CXX_COMPILER=${CXX}"
 fi
 
-CONFIGURE_OPTIONS="${CONFIGURE_OPTIONS} -DUSE_OPTIMIZE_FOR_ARCHITECTURE=Off"
+if [ -z "${MSVC}" ]; then
+    # MSVC doesn't know howto do assembler in first place.
+    CONFIGURE_OPTIONS="${CONFIGURE_OPTIONS} -DUSE_OPTIMIZE_FOR_ARCHITECTURE=Off"
+fi
+
+CONFIGURE_OPTIONS="${CONFIGURE_OPTIONS} ${MAINTAINER_MODE}"
+
+if [ "${VERBOSE}" == 1 ];  then
+    CONFIGURE_OPTIONS="${CONFIGURE_OPTIONS} -DVERBOSE=ON"
+    MAKE_PARAMS="${MAKE_PARAMS} V=1 Verbose=1 VERBOSE=1"
+fi
+
+if [ -n "${PAR}" ]; then 
+     MAKE_PARAMS="${MAKE_PARAMS} ${PAR} ${PARALLEL_BUILDS}"
+fi
+
 
 echo "using compiler & linker:"
 echo "  CC: $CC"
@@ -302,7 +323,8 @@ echo "  CFLAGS: $CFLAGS"
 echo "  CXXFLAGS: $CXXFLAGS"
 echo "  LDFLAGS: $LDFLAGS"
 echo "  LIBS: $LIBS"
-echo "  CONFIGURE_OPTIONS: ${CONFIGURE_OPTIONS} ${MAINTAINER_MODE}"
+echo "  CONFIGURE_OPTIONS: ${CONFIGURE_OPTIONS}"
+echo "  MAKE: ${MAKE_CMD_PREFIX} ${MAKE} ${MAKE_PARAMS}"
 
 # compile everything
 
@@ -310,28 +332,20 @@ if test ${CLEAN_IT} -eq 1; then
     echo "found fundamental changes, rebuilding from scratch!"
     git clean -f -d -x
 fi
-set
+
 test -d ${BUILD_DIR} || mkdir ${BUILD_DIR}
 cd ${BUILD_DIR}
 
-VERBOSE_MAKE=""
-
-if [ "${VERBOSE}" == 1 ];  then
-    CONFIGURE_OPTIONS="${CONFIGURE_OPTIONS} -DVERBOSE=ON"
-    VERBOSE_MAKE="V=1 Verbose=1 VERBOSE=1"
-fi
-
 if [ ! -f Makefile -o ! -f CMakeCache.txt ];  then
     CFLAGS="${CFLAGS}" CXXFLAGS="${CXXFLAGS}" LDFLAGS="${LDFLAGS}" LIBS="${LIBS}" \
-          cmake .. -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_INSTALL_LOCALSTATEDIR=/var -DVARDIR=/var ${CONFIGURE_OPTIONS} ${MAINTAINER_MODE} -G "${GENERATOR}"
+          cmake .. ${CONFIGURE_OPTIONS} -G "${GENERATOR}"
 fi
 
-${MAKE_CMD_PREFIX} ${MAKE} ${VERBOSE_MAKE} "${PAR}" "${PARALLEL_BUILDS}" ${MAKE_PARAMS}
+${MAKE_CMD_PREFIX} ${MAKE} ${MAKE_PARAMS}
 git rev-parse HEAD > ../last_compiled_version.sha
 
 if [ -n "$CPACK"  -a -n "${TARGET_DIR}" ];  then
-    make packages
-    #todo cmake -build -target packages
+    ${PACKAGE_MAKE} packages
 fi
 #if [ -n "$CPACK"  -a -n "${TARGET_DIR}" ];  then
 #    for PACK in ${CPACK}; do 
@@ -401,9 +415,8 @@ if test -n "${TARGET_DIR}";  then
         )
 
         rm files.$$
-
-        gzip < ${TARFILE_TMP} > ${dir}/${TARFILE}
-        md5sum < ${dir}/${TARFILE} > ${dir}/${TARFILE}.md5
-        rm ${TARFILE_TMP}
     fi
+
+    gzip < ${TARFILE_TMP} > ${dir}/${TARFILE}
+    md5sum < ${dir}/${TARFILE} > ${dir}/${TARFILE}.md5
 fi

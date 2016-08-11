@@ -8,7 +8,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2010-2016 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -25,11 +25,12 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Max Neunhoeffer
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2016, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
 var wait = require("internal").wait;
+const instanceInfo = JSON.parse(require('fs').read('instanceinfo.json'));
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -42,7 +43,9 @@ function agencyTestSuite () {
 /// @brief the agency servers
 ////////////////////////////////////////////////////////////////////////////////
 
-  var agencyServers = ARGUMENTS[0].split(" ");
+  var agencyServers = instanceInfo.arangods.map(arangod => {
+    return arangod.url;
+  });
   var whoseTurn = 0;
   var request = require("@arangodb/request");
 
@@ -526,6 +529,12 @@ function agencyTestSuite () {
            {"b///////c":4}}]]);
       assertEqual(readAndCheck([["/"]]),
                   [{"\\":{"a":{"^&%^&$^&%$":{"b\\\n":{"b":{"c":4}}}}}}]);
+    },
+
+    testKeysBeginningWithSameString: function() {
+      var res = writeAgency([[{"/bumms":{"op":"set","new":"fallera"}, "/bummsfallera": {"op":"set","new":"lalalala"}}]]);
+      assertEqual(res.statusCode, 200);
+      assertEqual(readAndCheck([["/bumms", "/bummsfallera"]]), [{bumms:"fallera", bummsfallera: "lalalala"}]);
     }
   };
 }
