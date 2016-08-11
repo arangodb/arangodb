@@ -60,6 +60,9 @@ class TraverserEngine {
     ~TraverserEngine();
 
   public:
+   // The engine is NOT copyable.
+   TraverserEngine(TraverserEngine const&) = delete;
+
    void getEdges(arangodb::velocypack::Slice, size_t,
                  arangodb::velocypack::Builder&);
 

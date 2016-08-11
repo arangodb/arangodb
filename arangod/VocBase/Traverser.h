@@ -50,7 +50,7 @@ namespace traverser {
 
 struct TraverserOptions;
 
-#warning Deprecated
+//TODO Deprecated
 class TraverserExpression {
  public:
   bool isEdgeAccess;
@@ -298,11 +298,8 @@ class Traverser {
     return skipped;
   }
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief Get the next possible path in the graph.
-  //////////////////////////////////////////////////////////////////////////////
-
-  virtual bool next() = 0;
+  bool next();
 
   /// @brief Function to load the other sides vertex of an edge
   ///        Returns true if the vertex passes filtering conditions
@@ -322,13 +319,13 @@ class Traverser {
   /// @brief Builds only the last vertex as AQLValue
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual aql::AqlValue lastVertexToAqlValue() = 0;
+  aql::AqlValue lastVertexToAqlValue();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Builds only the last edge as AQLValue
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual aql::AqlValue lastEdgeToAqlValue() = 0;
+  aql::AqlValue lastEdgeToAqlValue();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Builds the complete path as AQLValue
@@ -340,7 +337,7 @@ class Traverser {
   ///        NOTE: Will clear the given buffer and will leave the path in it.
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual aql::AqlValue pathToAqlValue(arangodb::velocypack::Builder&) = 0;
+  aql::AqlValue pathToAqlValue(arangodb::velocypack::Builder&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Get the number of filtered paths

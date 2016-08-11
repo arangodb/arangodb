@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "SingleServerTraverser.h"
+#include "Basics/StringRef.h"
 #include "Utils/Transaction.h"
 #include "VocBase/MasterPointer.h"
 
@@ -36,19 +37,16 @@ using namespace arangodb::traverser;
 ////////////////////////////////////////////////////////////////////////////////
 
 static int FetchDocumentById(arangodb::Transaction* trx,
-                             std::string const& id,
+                             StringRef const& id,
                              TRI_doc_mptr_t* mptr) {
   size_t pos = id.find('/');
   if (pos == std::string::npos) {
     TRI_ASSERT(false);
     return TRI_ERROR_INTERNAL;
   }
-  if (id.find('/', pos + 1) != std::string::npos) {
-    TRI_ASSERT(false);
-    return TRI_ERROR_INTERNAL;
-  }
 
-  int res = trx->documentFastPathLocal(id.substr(0, pos), id.substr(pos + 1), mptr);
+  int res = trx->documentFastPathLocal(id.substr(0, pos).toString(),
+                                       id.substr(pos + 1).toString(), mptr);
 
   if (res != TRI_ERROR_NO_ERROR && res != TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
     THROW_ARANGO_EXCEPTION(res);
@@ -147,8 +145,8 @@ aql::AqlValue SingleServerTraverser::fetchVertexData(VPackSlice id) {
 
   if (it == _vertices.end()) {
     TRI_doc_mptr_t mptr;
-#warning Do we need the copy here?
-    int res = FetchDocumentById(_trx, id.copyString(), &mptr);
+    StringRef ref(id);
+    int res = FetchDocumentById(_trx, ref, &mptr);
     ++_readDocuments;
     if (res != TRI_ERROR_NO_ERROR) {
       return aql::AqlValue(basics::VelocyPackHelper::NullValue());
@@ -173,8 +171,8 @@ void SingleServerTraverser::addVertexToVelocyPack(VPackSlice id,
 
   if (it == _vertices.end()) {
     TRI_doc_mptr_t mptr;
-#warning Do we need the copy here?
-    int res = FetchDocumentById(_trx, id.copyString(), &mptr);
+    StringRef ref(id);
+    int res = FetchDocumentById(_trx, ref, &mptr);
     ++_readDocuments;
     if (res != TRI_ERROR_NO_ERROR) {
       result.add(basics::VelocyPackHelper::NullValue());
@@ -222,25 +220,4 @@ bool SingleServerTraverser::getVertex(VPackSlice edge,
 bool SingleServerTraverser::getSingleVertex(VPackSlice edge, VPackSlice vertex,
                                             size_t depth, VPackSlice& result) {
   return _vertexGetter->getSingleVertex(edge, vertex, depth, result);
-}
-
-bool SingleServerTraverser::next() {
-  TRI_ASSERT(!_done);
-  bool res = _enumerator->next();
-  if (!res) {
-    _done = true;
-  }
-  return res;
-}
-
-aql::AqlValue SingleServerTraverser::lastVertexToAqlValue() {
-  return _enumerator->lastVertexToAqlValue();
-}
-
-aql::AqlValue SingleServerTraverser::lastEdgeToAqlValue() {
-  return _enumerator->lastEdgeToAqlValue();
-}
-
-aql::AqlValue SingleServerTraverser::pathToAqlValue(VPackBuilder& builder) {
-  return _enumerator->pathToAqlValue(builder);
 }

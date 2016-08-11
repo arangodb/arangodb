@@ -142,16 +142,6 @@ class TraversalBlock : public ExecutionBlock {
   /// @brief Checks if we output the path
   bool usesPathOutput() { return _pathVar != nullptr; }
 
-  /// @brief optimized version of neighbors search, must properly implement this
-  void neighbors(std::string const& startVertex);
-
-  /// @brief worker for neighbors() function
-  void runNeighbors(std::vector<VPackSlice> const& startVertices,
-                    std::unordered_set<VPackSlice, arangodb::basics::VelocyPackHelper::VPackStringHash, arangodb::basics::VelocyPackHelper::VPackStringEqual>& visited,
-                    std::vector<VPackSlice>& distinct,
-                    TRI_edge_direction_e direction,
-                    uint64_t depth);
-
 };
 }  // namespace arangodb::aql
 }  // namespace arangodb

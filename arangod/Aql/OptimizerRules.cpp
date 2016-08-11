@@ -3657,54 +3657,6 @@ void arangodb::aql::optimizeTraversalsRule(Optimizer* opt,
       n->walk(&finder);
     }
   }
-  
-    
-  // now check if we can use an optimized version of the neighbors search...
-  if (!arangodb::ServerState::instance()->isRunningInCluster()) {
-    for (auto const& n : tNodes) {
-      TraversalNode* traversal = static_cast<TraversalNode*>(n);
-
-      if (traversal->edgeOutVariable() != nullptr ||
-          traversal->pathOutVariable() != nullptr) {
-        // traversal produces edges or paths
-        continue;
-      }
-      
-      /*
-      if (!traversal->expressions()->empty()) {
-        // traversal has filter expressions
-        continue;
-      }
-      */
-      
-      if (!traversal->allDirectionsEqual()) {
-        // not all directions are equal
-        continue;
-      }
-      
-      traverser::TraverserOptions const* options = traversal->options();
-      TRI_ASSERT(options != nullptr);
-
-      if (options->maxDepth > 100) {
-        // neighbors search is recursive... do not use recursive version if
-        // depth is potentially high
-        continue;
-      }
-
-      if (options->uniqueVertices != traverser::TraverserOptions::GLOBAL ||
-          options->uniqueEdges != traverser::TraverserOptions::NONE) {
-        // neighbors search is hard-coded to global vertex uniqueness
-        continue;
-      }
-
-      if (!options->useBreadthFirst) {
-        continue;
-      }
-
-      traversal->specializeToNeighborsSearch();
-      modified = true;
-    }
-  }
 
   opt->addPlan(plan, rule, modified);
 }

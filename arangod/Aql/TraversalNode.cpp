@@ -41,24 +41,33 @@ using namespace arangodb::aql;
 TraversalNode::EdgeConditionBuilder::EdgeConditionBuilder(
     TraversalNode const* tn)
     : _tn(tn), _containsCondition(false) {
-      _modCondition = _tn->_plan->getAst()->createNodeNaryOperator(NODE_TYPE_OPERATOR_NARY_AND);
-    }
+  _modCondition =
+      _tn->_plan->getAst()->createNodeNaryOperator(NODE_TYPE_OPERATOR_NARY_AND);
+}
 
 TraversalNode::EdgeConditionBuilder::EdgeConditionBuilder(
     TraversalNode const* tn, arangodb::basics::Json const& condition)
     : _tn(tn), _containsCondition(false) {
-      _modCondition = new AstNode(_tn->_plan->getAst(), condition);
-      TRI_ASSERT(_modCondition != nullptr);
-      TRI_ASSERT(_modCondition->type == NODE_TYPE_OPERATOR_NARY_AND);
-    }
+  _modCondition = new AstNode(_tn->_plan->getAst(), condition);
+  TRI_ASSERT(_modCondition != nullptr);
+  TRI_ASSERT(_modCondition->type == NODE_TYPE_OPERATOR_NARY_AND);
+}
 
-void TraversalNode::EdgeConditionBuilder::addConditionPart(AstNode const* part) {
+TraversalNode::EdgeConditionBuilder::EdgeConditionBuilder(
+    TraversalNode const* tn, EdgeConditionBuilder const* other)
+    : _tn(tn),
+      _modCondition(other->_modCondition),
+      _containsCondition(other->_containsCondition) {}
+
+void TraversalNode::EdgeConditionBuilder::addConditionPart(
+    AstNode const* part) {
   _modCondition->addMember(part);
 }
 
 AstNode* TraversalNode::EdgeConditionBuilder::getOutboundCondition() {
   if (_containsCondition) {
-    _modCondition->changeMember(_modCondition->numMembers() - 1, _tn->_fromCondition);
+    _modCondition->changeMember(_modCondition->numMembers() - 1,
+                                _tn->_fromCondition);
   } else {
     for (auto& it : _tn->_globalEdgeConditions) {
       _modCondition->addMember(it);
@@ -125,7 +134,6 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id,
       _inVariable(nullptr),
       _graphObj(nullptr),
       _condition(nullptr),
-      _specializedNeighborsSearch(false),
       _tmpObjVariable(_plan->getAst()->variables()->createTemporaryVariable()),
       _tmpObjVarNode(_plan->getAst()->createNodeReference(_tmpObjVariable)),
       _tmpIdNode(_plan->getAst()->createNodeValueString("", 0)),
@@ -318,7 +326,7 @@ TraversalNode::TraversalNode(
     std::vector<std::unique_ptr<aql::Collection>> const& edgeColls,
     std::vector<std::unique_ptr<aql::Collection>> const& vertexColls,
     Variable const* inVariable, std::string const& vertexId,
-    std::vector<TRI_edge_direction_e> directions,
+    std::vector<TRI_edge_direction_e> const& directions,
     std::unique_ptr<traverser::TraverserOptions>& options)
     : ExecutionNode(plan, id),
       _vocbase(vocbase),
@@ -330,7 +338,6 @@ TraversalNode::TraversalNode(
       _directions(directions),
       _graphObj(nullptr),
       _condition(nullptr),
-      _specializedNeighborsSearch(false),
       _fromCondition(nullptr),
       _toCondition(nullptr),
       _optionsBuild(false) {
@@ -361,15 +368,14 @@ TraversalNode::TraversalNode(ExecutionPlan* plan,
       _inVariable(nullptr),
       _graphObj(nullptr),
       _condition(nullptr),
-      _specializedNeighborsSearch(false),
+      _options(std::make_unique<traverser::TraverserOptions>(
+          _plan->getAst()->query()->trx(), base)),
       _tmpObjVariable(nullptr),
       _tmpObjVarNode(nullptr),
       _tmpIdNode(nullptr),
       _fromCondition(nullptr),
       _toCondition(nullptr),
       _optionsBuild(false) {
-  _options = std::make_unique<arangodb::traverser::TraverserOptions>(
-      _plan->getAst()->query()->trx(), base);
   auto dirList = base.get("directions");
   TRI_ASSERT(dirList.json() != nullptr);
   for (size_t i = 0; i < dirList.size(); ++i) {
@@ -569,12 +575,10 @@ TraversalNode::TraversalNode(ExecutionPlan* plan,
       auto value = Json(TRI_UNKNOWN_MEM_ZONE,
                         static_cast<TRI_json_t const*>(
                             TRI_AtVector(&list->_value._objects, i + 1)));
-      _edgeConditions.emplace(std::make_pair(
-          StringUtils::uint64(key), EdgeConditionBuilder(this, value)));
+      auto ecbuilder = std::make_unique<EdgeConditionBuilder>(this, value);
+      _edgeConditions.emplace(StringUtils::uint64(key), std::move(ecbuilder));
     }
   }
-   
-  _specializedNeighborsSearch = arangodb::basics::JsonHelper::getBooleanValue(base.json(), "specializedNeighborsSearch", false);
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
   checkConditionsDefined();
@@ -647,14 +651,6 @@ bool TraversalNode::allDirectionsEqual() const {
   return true;
 }
 
-void TraversalNode::specializeToNeighborsSearch() {
-  TRI_ASSERT(allDirectionsEqual());
-  TRI_ASSERT(!_directions.empty());
-
-  _specializedNeighborsSearch = true;
-}
-
-/// @brief toVelocyPack, for TraversalNode
 void TraversalNode::toVelocyPackHelper(arangodb::velocypack::Builder& nodes,
                                        bool verbose) const {
   ExecutionNode::toVelocyPackHelperGeneric(nodes,
@@ -791,7 +787,7 @@ void TraversalNode::toVelocyPackHelper(arangodb::velocypack::Builder& nodes,
     nodes.openObject();
     for (auto const& it : _edgeConditions) {
       nodes.add(VPackValue(basics::StringUtils::itoa(it.first)));
-      it.second.toVelocyPack(nodes, verbose);
+      it.second->toVelocyPack(nodes, verbose);
     }
     nodes.close();
   }
@@ -840,10 +836,6 @@ ExecutionNode* TraversalNode::clone(ExecutionPlan* plan, bool withDependencies,
     c->setPathOutput(pathOutVariable);
   }
 
-  if (_specializedNeighborsSearch) {
-    c->specializeToNeighborsSearch();
-  }
-
   c->_conditionVariables.reserve(_conditionVariables.size());
   for (auto const& it: _conditionVariables) {
     c->_conditionVariables.emplace(it->clone());
@@ -869,7 +861,9 @@ ExecutionNode* TraversalNode::clone(ExecutionPlan* plan, bool withDependencies,
                                     _globalVertexConditions.end());
 
   for (auto const& it : _edgeConditions) {
-    c->_edgeConditions.emplace(it.first, it.second);
+    // Copy the builder
+    auto ecBuilder = std::make_unique<EdgeConditionBuilder>(this, it.second.get());
+    c->_edgeConditions.emplace(it.first, std::move(ecBuilder));
   }
 
   for (auto const& it : _vertexConditions) {
@@ -934,7 +928,6 @@ void TraversalNode::prepareOptions() {
   _options->_tmpVar = _tmpObjVariable;
 
   size_t numEdgeColls = _edgeColls.size();
-  AstNode* condition = nullptr;
   bool res = false;
   EdgeConditionBuilder globalEdgeConditionBuilder(this);
   Ast* ast = _plan->getAst();
@@ -969,7 +962,7 @@ void TraversalNode::prepareOptions() {
     _options->_baseLookupInfos.emplace_back(std::move(info));
   }
 
-  for (std::pair<size_t, EdgeConditionBuilder> it : _edgeConditions) {
+  for (auto& it : _edgeConditions) {
     auto ins = _options->_depthLookupInfo.emplace(
         it.first, std::vector<traverser::TraverserOptions::LookupInfo>());
     // We probably have to adopt minDepth. We cannot fulfill a condition of larger depth anyway
@@ -988,10 +981,10 @@ void TraversalNode::prepareOptions() {
       traverser::TraverserOptions::LookupInfo info;
       switch (dir) {
         case TRI_EDGE_IN:
-          info.indexCondition = builder.getInboundCondition()->clone(ast);
+          info.indexCondition = builder->getInboundCondition()->clone(ast);
           break;
         case TRI_EDGE_OUT:
-          info.indexCondition = builder.getOutboundCondition()->clone(ast);
+          info.indexCondition = builder->getOutboundCondition()->clone(ast);
           break;
         case TRI_EDGE_ANY:
           TRI_ASSERT(false);
@@ -1063,11 +1056,11 @@ void TraversalNode::registerCondition(bool isConditionOnEdge,
   if (isConditionOnEdge) {
     auto const& it = _edgeConditions.find(conditionLevel);
     if (it == _edgeConditions.end()) {
-      EdgeConditionBuilder builder(this);
-      builder.addConditionPart(condition);
-      _edgeConditions.emplace(conditionLevel, builder);
+      auto builder = std::make_unique<EdgeConditionBuilder>(this);
+      builder->addConditionPart(condition);
+      _edgeConditions.emplace(conditionLevel, std::move(builder));
     } else {
-      it->second.addConditionPart(condition);
+      it->second->addConditionPart(condition);
     }
   } else {
     auto const& it = _vertexConditions.find(conditionLevel);

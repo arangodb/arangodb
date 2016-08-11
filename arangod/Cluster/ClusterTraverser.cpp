@@ -106,49 +106,6 @@ void ClusterTraverser::fetchVertices() {
   fetchVerticesFromEngines(_dbname, _engines, _verticesToFetch, _vertices,
                            *(lease.get()));
   _verticesToFetch.clear();
-#warning Reimplement this. Fetching Documents Coordinator-Case
-  /*
-  std::vector<TraverserExpression*> expVertices;
-  auto found = _opts.expressions->find(depth);
-  if (found != _opts.expressions->end()) {
-    expVertices = found->second;
-  }
-
-  int res = getFilteredDocumentsOnCoordinator(_dbname, expVertices,
-                                              verticesToFetch, _vertices);
-  if (res != TRI_ERROR_NO_ERROR && 
-      res != TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
-    THROW_ARANGO_EXCEPTION(res);
-  }
-
-  // By convention verticesToFetch now contains all _ids of vertices that
-  // could not be found.
-  // Store them as NULL
-  for (auto const& it : verticesToFetch) {
-    VPackBuilder builder;
-    builder.add(VPackValue(VPackValueType::Null));
-    _vertices.emplace(it, builder.steal());
-  }
-  */
-}
-
-bool ClusterTraverser::vertexMatchesCondition(
-    VPackSlice const& v,
-    std::vector<arangodb::traverser::TraverserExpression*> const& exp) {
-  for (auto const& e : exp) {
-    if (!e->isEdgeAccess) {
-      if (v.isNone() || !e->matchesCheck(_trx, v)) {
-        ++_filteredPaths;
-        return false;
-      }
-    }
-  }
-  return true;
-}
-
-bool ClusterTraverser::next() {
-  TRI_ASSERT(!_done);
-  return _enumerator->next();
 }
 
 aql::AqlValue ClusterTraverser::fetchVertexData(VPackSlice idString) {
@@ -195,16 +152,4 @@ void ClusterTraverser::addVertexToVelocyPack(VPackSlice id,
 void ClusterTraverser::addEdgeToVelocyPack(arangodb::velocypack::Slice edge,
                          arangodb::velocypack::Builder& result) {
   result.add(edge);
-}
-
-aql::AqlValue ClusterTraverser::lastVertexToAqlValue() {
-  return _enumerator->lastVertexToAqlValue();
-}
-
-aql::AqlValue ClusterTraverser::lastEdgeToAqlValue() {
-  return _enumerator->lastEdgeToAqlValue();
-}
-
-aql::AqlValue ClusterTraverser::pathToAqlValue(VPackBuilder& builder) {
-  return _enumerator->pathToAqlValue(builder);
 }

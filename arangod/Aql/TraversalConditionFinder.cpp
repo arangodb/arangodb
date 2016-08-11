@@ -168,9 +168,6 @@ static bool checkPathVariableAccessFeasible(CalculationNode const* cn,
 
     for (auto const & node : onePath) {
       if (node->type == NODE_TYPE_FCALL) {
-        //
-        // we currently don't know how to execute functions in the
-        // traversal (-> TraverserExpression::recursiveCheck
         return false;
       }
       if (node->type == NODE_TYPE_OPERATOR_BINARY_IN ||

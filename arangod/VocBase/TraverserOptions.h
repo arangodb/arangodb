@@ -115,6 +115,7 @@ struct TraverserOptions {
         _baseVertexExpression(nullptr),
         _tmpVar(nullptr),
         _ctx(new aql::FixedVarExpressionContext()),
+        _traverser(nullptr),
         minDepth(1),
         maxDepth(1),
         useBreadthFirst(false),

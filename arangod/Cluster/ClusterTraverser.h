@@ -64,32 +64,6 @@ class ClusterTraverser final : public Traverser {
   bool getSingleVertex(arangodb::velocypack::Slice, arangodb::velocypack::Slice,
                        size_t, arangodb::velocypack::Slice&) override;
 
-  bool next() override;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Builds only the last vertex as AQLValue
-  //////////////////////////////////////////////////////////////////////////////
-
-  aql::AqlValue lastVertexToAqlValue() override;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Builds only the last edge as AQLValue
-  //////////////////////////////////////////////////////////////////////////////
-
-  aql::AqlValue lastEdgeToAqlValue() override;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Builds the complete path as AQLValue
-  ///        Has the format:
-  ///        {
-  ///           vertices: [<vertex-as-velocypack>],
-  ///           edges: [<edge-as-velocypack>]
-  ///        }
-  ///        NOTE: Will clear the given buffer and will leave the path in it.
-  //////////////////////////////////////////////////////////////////////////////
-
-  aql::AqlValue pathToAqlValue(arangodb::velocypack::Builder&) override;
-
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Function to fetch the real data of a vertex into an AQLValue
@@ -121,9 +95,6 @@ class ClusterTraverser final : public Traverser {
 
   void fetchVertices();
 
-  bool vertexMatchesCondition(arangodb::velocypack::Slice const&,
-                              std::vector<TraverserExpression*> const&);
-
   std::unordered_map<arangodb::velocypack::Slice, arangodb::velocypack::Slice>
       _edges;
 
@@ -131,11 +102,7 @@ class ClusterTraverser final : public Traverser {
                      std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
       _vertices;
 
-  std::stack<std::stack<std::string>> _iteratorCache;
-
   std::string _dbname;
-
-  arangodb::velocypack::Builder _builder;
 
   std::unordered_map<ServerID, traverser::TraverserEngineID> const* _engines;
 

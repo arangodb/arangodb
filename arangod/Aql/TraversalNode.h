@@ -50,13 +50,19 @@ class TraversalNode : public ExecutionNode {
       bool _containsCondition;
 
     public:
-     EdgeConditionBuilder(TraversalNode const*);
+     explicit EdgeConditionBuilder(TraversalNode const*);
 
-     EdgeConditionBuilder(TraversalNode const*, arangodb::basics::Json const&); 
+     EdgeConditionBuilder(TraversalNode const*, arangodb::basics::Json const&);
 
-      ~EdgeConditionBuilder() {}
+     EdgeConditionBuilder(TraversalNode const*, EdgeConditionBuilder const*);
 
-      void addConditionPart(AstNode const*);
+     ~EdgeConditionBuilder() {}
+
+     EdgeConditionBuilder(EdgeConditionBuilder const&) = delete;
+
+     EdgeConditionBuilder(EdgeConditionBuilder&&) = delete;
+
+     void addConditionPart(AstNode const*);
 
       AstNode* getOutboundCondition();
 
@@ -87,7 +93,7 @@ class TraversalNode : public ExecutionNode {
                 std::vector<std::unique_ptr<aql::Collection>> const& edgeColls,
                 std::vector<std::unique_ptr<aql::Collection>> const& vertexColls,
                 Variable const* inVariable, std::string const& vertexId,
-                std::vector<TRI_edge_direction_e> directions,
+                std::vector<TRI_edge_direction_e> const& directions,
                 std::unique_ptr<traverser::TraverserOptions>& options);
 
  public:
@@ -225,8 +231,6 @@ class TraversalNode : public ExecutionNode {
 
   bool allDirectionsEqual() const;
 
-  void specializeToNeighborsSearch();
-
   traverser::TraverserOptions* options() const;
 
   AstNode* getTemporaryRefNode() const;
@@ -303,10 +307,6 @@ class TraversalNode : public ExecutionNode {
   /// @brief Options for traversals
   std::unique_ptr<traverser::TraverserOptions> _options;
 
-  /// @brief Defines if you use a specialized neighbors search instead of general purpose
-  ///        traversal
-  bool _specializedNeighborsSearch;
-
   /// @brief Temporary pseudo variable for the currently traversed object.
   Variable const* _tmpObjVariable;
 
@@ -330,7 +330,7 @@ class TraversalNode : public ExecutionNode {
   std::vector<AstNode const*> _globalVertexConditions;
 
   /// @brief List of all depth specific conditions for edges
-  std::unordered_map<size_t, EdgeConditionBuilder> _edgeConditions;
+  std::unordered_map<size_t, std::unique_ptr<EdgeConditionBuilder>> _edgeConditions;
 
   /// @brief List of all depth specific conditions for vertices
   std::unordered_map<size_t, AstNode*> _vertexConditions;

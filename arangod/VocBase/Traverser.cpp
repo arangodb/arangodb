@@ -376,3 +376,24 @@ bool arangodb::traverser::Traverser::vertexMatchesConditions(VPackSlice v, size_
   return true;
 }
 
+bool arangodb::traverser::Traverser::next() {
+  TRI_ASSERT(!_done);
+  bool res = _enumerator->next();
+  if (!res) {
+    _done = true;
+  }
+  return res;
+}
+
+arangodb::aql::AqlValue arangodb::traverser::Traverser::lastVertexToAqlValue() {
+  return _enumerator->lastVertexToAqlValue();
+}
+
+arangodb::aql::AqlValue arangodb::traverser::Traverser::lastEdgeToAqlValue() {
+  return _enumerator->lastEdgeToAqlValue();
+}
+
+arangodb::aql::AqlValue arangodb::traverser::Traverser::pathToAqlValue(
+    VPackBuilder& builder) {
+  return _enumerator->pathToAqlValue(builder);
+}

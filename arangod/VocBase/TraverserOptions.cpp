@@ -472,7 +472,6 @@ bool arangodb::traverser::TraverserOptions::evaluateEdgeExpression(
     // The Coordinator never checks conditions. The DBServer is responsible!
     return true;
   }
-  bool mustDestroy = false;
   auto specific = _depthLookupInfo.find(depth);
   arangodb::aql::Expression* expression = nullptr;
 
@@ -506,17 +505,21 @@ bool arangodb::traverser::TraverserOptions::evaluateEdgeExpression(
     idNode->stealComputedValue();
     idNode->setStringValue(vid, vidLength);
 
+    bool mustDestroy = false;
     aql::AqlValue res = expression->execute(_trx, _ctx, mustDestroy);
     TRI_ASSERT(res.isBoolean());
     expression->clearVariable(_tmpVar);
-    return res.toBoolean();
+    bool result = res.toBoolean();
+    if (mustDestroy) {
+      res.destroy();
+    }
+    return result;
   }
   return true;
 }
 
 bool arangodb::traverser::TraverserOptions::evaluateVertexExpression(
     arangodb::velocypack::Slice vertex, size_t depth) const {
-  bool mustDestroy = false;
   arangodb::aql::Expression* expression = nullptr;
 
   auto specific = _vertexExpressions.find(depth);
@@ -532,10 +535,15 @@ bool arangodb::traverser::TraverserOptions::evaluateVertexExpression(
 
   TRI_ASSERT(!expression->isV8());
   expression->setVariable(_tmpVar, vertex);
+  bool mustDestroy = false;
   aql::AqlValue res = expression->execute(_trx, _ctx, mustDestroy);
   TRI_ASSERT(res.isBoolean());
+  bool result = res.toBoolean();
   expression->clearVariable(_tmpVar);
-  return res.toBoolean();
+  if (mustDestroy) {
+    res.destroy();
+  }
+  return result;
 }
 
 arangodb::traverser::EdgeCursor*

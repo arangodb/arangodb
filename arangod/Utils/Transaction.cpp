@@ -476,7 +476,6 @@ bool Transaction::findIndexHandleForAndNode(
     Transaction::IndexHandle& usedIndex) const {
   std::shared_ptr<Index> bestIndex;
   double bestCost = 0.0;
-  size_t coveredAttributes = 0;
 
   for (auto const& idx : indexes) {
     double filterCost = 0.0;
