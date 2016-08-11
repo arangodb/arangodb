@@ -35,6 +35,7 @@
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Basics/VelocyPackDumper.h"
 #include "Basics/tri-strings.h"
+#include "Meta/conversion.h"
 #include "Rest/VppRequest.h"
 
 using namespace arangodb;
@@ -73,9 +74,14 @@ void VppResponse::setPayload(ContentType contentType,
 VPackMessageNoOwnBuffer VppResponse::prepareForNetwork() {
   VPackBuilder builder;
   builder.openObject();
-  for (auto const& item : _headers) {
-    builder.add(item.first, VPackValue(item.second));
-  }
+  builder.add("version", VPackValue(int(1)));
+  builder.add("type", VPackValue(int(1)));  // 2 == response
+  builder.add(
+      "responseCode",
+      VPackValue(static_cast<int>(meta::underlyingValue(_responseCode))));
+  // for (auto const& item : _headers) {
+  //  builder.add(item.first, VPackValue(item.second));
+  //}
   builder.close();
   _header = builder.steal();
   return VPackMessageNoOwnBuffer(VPackSlice(_header->data()),
