@@ -538,6 +538,7 @@ int TRI_vocbase_t::renameCollectionWorker(TRI_vocbase_col_t* collection,
              collection->status() == TRI_VOC_COL_STATUS_UNLOADING ||
              collection->status() == TRI_VOC_COL_STATUS_LOADING) {
       // collection is loaded
+      TRI_ASSERT(collection->_collection != nullptr);
       int res = collection->_collection->rename(newName);
 
       if (res != TRI_ERROR_NO_ERROR) {
@@ -621,6 +622,7 @@ int TRI_vocbase_t::loadCollection(TRI_vocbase_col_t* collection,
   // someone is trying to unload the collection, cancel this,
   // release the WRITE lock and try again
   if (collection->status() == TRI_VOC_COL_STATUS_UNLOADING) {
+    TRI_ASSERT(collection->_collection != nullptr);
     // check if there is a deferred drop action going on for this collection
     if (collection->_collection->ditches()->contains(
             arangodb::Ditch::TRI_DITCH_COLLECTION_DROP)) {
@@ -791,6 +793,7 @@ int TRI_vocbase_t::dropCollectionWorker(TRI_vocbase_col_t* collection,
   // collection is loaded
   if (collection->status() == TRI_VOC_COL_STATUS_LOADED ||
       collection->status() == TRI_VOC_COL_STATUS_UNLOADING) {
+    TRI_ASSERT(collection->_collection != nullptr);
     collection->_collection->_info.setDeleted(true);
 
     bool doSync = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database")->forceSyncProperties();
@@ -1297,6 +1300,7 @@ int TRI_vocbase_t::unloadCollection(TRI_vocbase_col_t* collection, bool force) {
     // mark collection as unloading
     collection->setStatus(TRI_VOC_COL_STATUS_UNLOADING);
 
+    TRI_ASSERT(collection->_collection != nullptr);
     // add callback for unload
     collection->_collection->ditches()->createUnloadCollectionDitch(
         collection->_collection, collection, UnloadCollectionCallback, __FILE__,
@@ -1333,6 +1337,7 @@ int TRI_vocbase_t::dropCollection(TRI_vocbase_col_t* collection, bool writeMarke
       if (arangodb::wal::LogfileManager::instance()->isInRecovery()) {
         DropCollectionCallback(nullptr, collection);
       } else {
+        TRI_ASSERT(collection->_collection != nullptr);
         // add callback for dropping
         collection->_collection->ditches()->createDropCollectionDitch(
             collection->_collection, collection, DropCollectionCallback,

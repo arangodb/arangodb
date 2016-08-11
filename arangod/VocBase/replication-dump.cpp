@@ -618,6 +618,7 @@ int TRI_DumpCollectionReplication(TRI_replication_dump_t* dump,
   dump->_vpackOptions.customTypeHandler = customTypeHandler.get();
 
   TRI_collection_t* document = col->_collection;
+  TRI_ASSERT(document != nullptr);
 
   // create a barrier so the underlying collection is not unloaded
   auto b = document->ditches()->createReplicationDitch(__FILE__, __LINE__);

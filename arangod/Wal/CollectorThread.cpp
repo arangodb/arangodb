@@ -636,6 +636,7 @@ int CollectorThread::processCollectionOperations(CollectorCache* cache) {
   TRI_ASSERT(collection != nullptr);
 
   TRI_collection_t* document = collection->_collection;
+  TRI_ASSERT(document != nullptr);
 
   // first try to read-lock the compactor-lock, afterwards try to write-lock the
   // collection

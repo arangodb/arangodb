@@ -953,6 +953,7 @@ static TRI_doc_collection_info_t* GetFigures(TRI_vocbase_col_t* collection) {
   trx.lockRead();
 
   TRI_collection_t* document = collection->_collection;
+  TRI_ASSERT(document != nullptr);
   TRI_doc_collection_info_t* info = document->figures();
 
   trx.finish(res);
@@ -1357,6 +1358,7 @@ static void JS_PropertiesVocbaseCol(
   }
 
   TRI_collection_t* document = collection->_collection;
+  TRI_ASSERT(document != nullptr);
 
   // check if we want to change some parameters
   if (0 < args.Length()) {
@@ -1991,6 +1993,8 @@ static int GetRevision(TRI_vocbase_col_t* collection, TRI_voc_rid_t& rid) {
     return res;
   }
 
+  TRI_ASSERT(collection->_collection != nullptr);
+  TRI_ASSERT(collection->_collection->_info != nullptr);
   // READ-LOCK start
   trx.lockRead();
   rid = collection->_collection->_info.revision();
