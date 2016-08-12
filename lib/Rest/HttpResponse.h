@@ -78,6 +78,10 @@ class HttpResponse : public GeneralResponse {
                   bool generateBody,
                   arangodb::velocypack::Options const&) override final;
 
+  arangodb::Endpoint::TransportType transportType() override {
+    return arangodb::Endpoint::TransportType::HTTP;
+  }
+
  private:
   // the body must already be set. deflate is then run on the existing body
   int deflate(size_t = 16384);

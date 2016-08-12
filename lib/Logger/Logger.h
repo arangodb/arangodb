@@ -131,6 +131,7 @@ class Logger {
   static LogTopic AGENCYCOMM;
   static LogTopic COLLECTOR;
   static LogTopic COMPACTOR;
+  static LogTopic COMMUNICATION;
   static LogTopic CONFIG;
   static LogTopic DATAFILES;
   static LogTopic HEARTBEAT;

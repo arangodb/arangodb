@@ -31,6 +31,7 @@
 #include "GeneralServer/RestHandlerFactory.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
+#include "Logger/LoggerFeature.h"
 #include "VocBase/ticks.h"
 
 #include <velocypack/Validator.h>
@@ -43,7 +44,6 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-static bool debug = false;
 namespace {
 std::size_t findAndValidateVPacks(char const* vpHeaderStart,
                                   char const* chunkEnd) {
@@ -180,11 +180,9 @@ void VppCommTask::addResponse(VppResponse* response, bool isError) {
   // If the message is big we will create many small chunks in a loop.
   // For the first tests we just send single Messages
 
-  if (debug) {
-    LOG(ERR) << "got request:";
-    for (auto const& slice : slices) {
-      LOG(ERR) << slice.toJson();
-    }
+  LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "got request:";
+  for (auto const& slice : slices) {
+    LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << slice.toJson();
   }
 
   // adds chunk header infromation and creates SingBuffer* that can be
@@ -284,9 +282,7 @@ bool VppCommTask::processRead() {
     val.validate(message._header.begin(), message._header.byteSize());
 
     doExecute = true;
-    if (debug) {
-      LOG(ERR) << "CASE 1";
-    }
+    LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "CASE 1";
   }
   // CASE 2:  message is in multiple chunks
   auto incompleteMessageItr = _incompleteMessages.find(chunkHeader._messageID);
@@ -308,9 +304,8 @@ bool VppCommTask::processRead() {
       throw std::logic_error("insert failed");
     }
 
-    if (debug) {
-      LOG(ERR) << "CASE 2a";
-    }
+    LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "CASE 2a";
+
     // CASE 2b: chunk continues a message
   } else {  // followup chunk of some mesage
     if (incompleteMessageItr == _incompleteMessages.end()) {
@@ -338,13 +333,9 @@ bool VppCommTask::processRead() {
       // check length
 
       doExecute = true;
-      if (debug) {
-        LOG(ERR) << "CASE 2b - complete";
-      }
+      LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "CASE 2b - complete";
     }
-    if (debug) {
-      LOG(ERR) << "CASE 2b - still incomplete";
-    }
+    LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "CASE 2b - still incomplete";
   }
 
   // clean buffer up to length of chunk
@@ -363,9 +354,8 @@ bool VppCommTask::processRead() {
     //    return false;  // we have no complete request, so we return early
     // for now we can handle only one request at a time
     // lock _request???? REVIEW (fc)
-    if (debug) {
-      LOG(ERR) << "got request:" << message._header.toJson();
-    }
+    LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
+        << "got request:" << message._header.toJson();
     _request = new VppRequest(_connectionInfo, std::move(message));
     GeneralServerFeature::HANDLER_FACTORY->setRequestContext(_request);
     _request->setClientTaskId(_taskId);

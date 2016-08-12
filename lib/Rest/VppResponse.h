@@ -53,6 +53,9 @@ class VppResponse : public GeneralResponse {
   void setPayload(ContentType contentType, arangodb::velocypack::Slice const&,
                   bool generateBody,
                   arangodb::velocypack::Options const&) final;
+  virtual arangodb::Endpoint::TransportType transportType() override {
+    return arangodb::Endpoint::TransportType::VPP;
+  };
 
   VPackMessageNoOwnBuffer prepareForNetwork();
 

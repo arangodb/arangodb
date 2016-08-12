@@ -29,6 +29,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/StringBuffer.h"
+#include "lib/Endpoint/Endpoint.h"
 
 #include "GeneralRequest.h"
 
@@ -146,6 +147,8 @@ class GeneralResponse {
 
   void setConnectionType(ConnectionType type) { _connectionType = type; }
 
+  virtual arangodb::Endpoint::TransportType transportType() = 0;
+
  protected:
   explicit GeneralResponse(ResponseCode);
 
@@ -190,18 +193,14 @@ class GeneralResponse {
                           arangodb::velocypack::Options const& = arangodb::
                               velocypack::Options::Defaults) = 0;
 
-  virtual void addPayload(VPackSlice const& slice) {
-    _vpackPayloads.emplace_back(slice.byteSize());
-    std::memcpy(&_vpackPayloads.back(), slice.start(), slice.byteSize());
-  };
+  // virtual void addPayload(VPackSlice const& slice) {
+  //   _vpackPayloads.emplace_back(slice.byteSize());
+  //   std::memcpy(&_vpackPayloads.back(), slice.start(), slice.byteSize());
+  // };
 
-  virtual void addPayload(VPackBuffer<uint8_t>&& buffer) {
-    _vpackPayloads.push_back(std::move(buffer));
-  };
-
-  virtual void addHeaderInformation(std::string s /* any or variant */){
-
-  };
+  // virtual void addPayload(VPackBuffer<uint8_t>&& buffer) {
+  //   _vpackPayloads.push_back(std::move(buffer));
+  // };
 
   // virtual void setPayload(ContentType contentType,
   //                        VPackBuffer<uint8_t>&& sliceBuffer,
