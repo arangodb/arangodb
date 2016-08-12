@@ -51,6 +51,7 @@
 #include "VocBase/vocbase.h"
 #include <velocypack/Validator.h>
 #include <velocypack/Builder.h>
+#include <velocypack/Parser.h>
 #include <velocypack/velocypack-aliases.h>
 
 #include <iostream>
@@ -560,16 +561,23 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
   }
   response->setResponseCode(code);
 
+  // string should not be used
+  std::string contentType = "application/json";
+  bool jsonContent = true;
   TRI_GET_GLOBAL_STRING(ContentTypeKey);
   if (res->Has(ContentTypeKey)) {
+    contentType = TRI_ObjectToString(res->Get(ContentTypeKey));
+    if (contentType != "application/json") {
+      jsonContent = false;
+    }
     switch (response->transportType()) {
       case Endpoint::TransportType::HTTP:
-        response->setContentType(TRI_ObjectToString(res->Get(ContentTypeKey)));
+        response->setContentType(contentType);
         break;
 
       case Endpoint::TransportType::VPP:
         response->setHeader(arangodb::StaticStrings::ContentTypeHeader,
-                            TRI_ObjectToString(res->Get(ContentTypeKey)));
+                            contentType);
         break;
 
       default:
@@ -591,7 +599,7 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
     // putting a list of transformations into the res.transformations
     // array, e.g. res.transformations = [ "base64encode" ]
     TRI_GET_GLOBAL_STRING(TransformationsKey);
-    v8::Handle<v8::Value> val = res->Get(TransformationsKey);
+    v8::Handle<v8::Value> transformArray = res->Get(TransformationsKey);
 
     switch (response->transportType()) {
       case Endpoint::TransportType::HTTP: {
@@ -599,10 +607,11 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
         //  HTTP SHOULD USE vpack interface
 
         HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(response);
-        if (val->IsArray()) {
+        if (transformArray->IsArray()) {
           TRI_GET_GLOBAL_STRING(BodyKey);
           std::string out(TRI_ObjectToString(res->Get(BodyKey)));
-          v8::Handle<v8::Array> transformations = val.As<v8::Array>();
+          v8::Handle<v8::Array> transformations =
+              transformArray.As<v8::Array>();
 
           for (uint32_t i = 0; i < transformations->Length(); i++) {
             v8::Handle<v8::Value> transformator =
@@ -645,10 +654,18 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
 
       case Endpoint::TransportType::VPP: {
         VPackBuilder builder;
-        if (val->IsArray()) {
+
+        v8::Handle<v8::Value> v8_body = res->Get(BodyKey);
+        std::string out;
+
+        // decode and set out
+        if (transformArray->IsArray()) {
           TRI_GET_GLOBAL_STRING(BodyKey);
-          std::string out(TRI_ObjectToString(res->Get(BodyKey)));
-          v8::Handle<v8::Array> transformations = val.As<v8::Array>();
+          out = TRI_ObjectToString(
+              res->Get(BodyKey));  // there is one case where we
+                                   // do not need a string
+          v8::Handle<v8::Array> transformations =
+              transformArray.As<v8::Array>();
 
           for (uint32_t i = 0; i < transformations->Length(); i++) {
             v8::Handle<v8::Value> transformator =
@@ -659,31 +676,51 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
             // check available transformations
             if (name == "base64decode") {
               out = StringUtils::decodeBase64(out);
-              // set the correct content-encoding header
-              response->setHeaderNC(StaticStrings::ContentEncoding,
-                                    StaticStrings::Binary);
+            }
+          }
+        }
+
+        // out is not set
+        if (out.empty()) {
+          if (jsonContent && !V8Buffer::hasInstance(isolate, v8_body)) {
+            TRI_V8ToVPack(isolate, builder, v8_body, false);
+            // done
+          } else if (V8Buffer::hasInstance(
+                         isolate,
+                         v8_body)) {  // body form buffer - could
+                                      // contain json or not
+            // REVIEW (fc) - is this correct?
+            auto obj = v8_body.As<v8::Object>();
+            out = std::string(V8Buffer::data(obj), V8Buffer::length(obj));
+          } else {  // body is text - does not contain json
+            out = TRI_ObjectToString(res->Get(BodyKey));  // should get moved
+          }
+        }
+
+        // there is a text body
+        if (!out.empty()) {
+          bool gotJson = false;
+          if (jsonContent) {  // the text body could contain an object
+            try {
+              VPackParser parser(builder);  // add json as vpack to the builder
+              parser.parse(out, false);
+              gotJson = true;
+            } catch (...) {  // do nothing
+                             // json could not be converted
+                             // there was no json - change content type?
             }
           }
 
-          // what type is out? always json?
-          // httpResponse->body().appendText(out);
-          if (false /*is json*/) {
-            // create vpack form json
-          } else {
-            builder.add(VPackValue(out));
-          }
-        } else {
-          TRI_GET_GLOBAL_STRING(BodyKey);
-          v8::Handle<v8::Value> b = res->Get(BodyKey);
-          if (V8Buffer::hasInstance(isolate, b)) {
-            TRI_V8ToVPack(isolate, builder, b, false);
-          } else {
-            builder.add(VPackValue(TRI_ObjectToString(b)));
+          if (!gotJson) {
+            builder.add(VPackValue(out));  // add test to the builder
           }
         }
+
+        response->setPayload(GeneralResponse::ContentType::VPACK,
+                             builder.slice(), true);
       } break;
-      default:
-        throw std::logic_error("unknown transport type");
+
+      default: { throw std::logic_error("unknown transport type"); }
     }
     bodySet = true;
   }
@@ -713,8 +750,14 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
         }
       } break;
 
-      case Endpoint::TransportType::VPP:
-        break;
+      case Endpoint::TransportType::VPP: {
+        VPackBuilder builder;
+
+        // create vpack form file
+
+        response->setPayload(GeneralResponse::ContentType::VPACK,
+                             builder.slice(), true);
+      } break;
 
       default:
         throw std::logic_error("unknown transport type");
