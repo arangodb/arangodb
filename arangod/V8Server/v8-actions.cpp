@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "v8-actions.h"
+#include "V8/v8-vpack.h"
 
 #include "Actions/ActionFeature.h"
 #include "Actions/actions.h"
@@ -48,8 +49,8 @@
 #include "V8Server/v8-vocbase.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
-
 #include <velocypack/Validator.h>
+#include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
 #include <iostream>
@@ -422,6 +423,8 @@ static v8::Handle<v8::Object> RequestCppToV8(v8::Isolate* isolate,
 
       // auto result = TRI_VPackToV8(isolate, slice);
       std::string jsonString = slice.toJson();
+      LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
+          << "json handed into v8 request:\n" << jsonString;
 
       // V8Buffer* buffer =
       //    V8Buffer::New(isolate, slice.startAs<char>(),
@@ -543,34 +546,44 @@ static v8::Handle<v8::Object> RequestCppToV8(v8::Isolate* isolate,
 // TODO this needs to be generalized
 static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
                             v8::Handle<v8::Object> const res,
-                            HttpResponse* response) {
+                            GeneralResponse* response) {
   GeneralResponse::ResponseCode code = GeneralResponse::ResponseCode::OK;
 
+  using arangodb::Endpoint;
+
+  // set response code
   TRI_GET_GLOBAL_STRING(ResponseCodeKey);
   if (res->Has(ResponseCodeKey)) {
     // Windows has issues with converting from a double to an enumeration type
     code = (GeneralResponse::ResponseCode)(
         (int)(TRI_ObjectToDouble(res->Get(ResponseCodeKey))));
   }
-
   response->setResponseCode(code);
 
   TRI_GET_GLOBAL_STRING(ContentTypeKey);
   if (res->Has(ContentTypeKey)) {
-    response->setContentType(TRI_ObjectToString(res->Get(ContentTypeKey)));
+    switch (response->transportType()) {
+      case Endpoint::TransportType::HTTP:
+        response->setContentType(TRI_ObjectToString(res->Get(ContentTypeKey)));
+        break;
+
+      case Endpoint::TransportType::VPP:
+        response->setHeader(arangodb::StaticStrings::ContentTypeHeader,
+                            TRI_ObjectToString(res->Get(ContentTypeKey)));
+        break;
+
+      default:
+        throw std::logic_error("unknown transport type");
+    }
   }
 
   // .........................................................................
   // body
   // .........................................................................
   //
-  //  OBI FIXME - vpack
 
+  bool bodySet = false;
   TRI_GET_GLOBAL_STRING(BodyKey);
-  TRI_GET_GLOBAL_STRING(BodyFromFileKey);
-  TRI_GET_GLOBAL_STRING(HeadersKey);
-  TRI_GET_GLOBAL_STRING(CookiesKey);
-
   if (res->Has(BodyKey)) {
     // check if we should apply result transformations
     // transformations turn the result from one type into another
@@ -580,72 +593,141 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
     TRI_GET_GLOBAL_STRING(TransformationsKey);
     v8::Handle<v8::Value> val = res->Get(TransformationsKey);
 
-    if (val->IsArray()) {
-      TRI_GET_GLOBAL_STRING(BodyKey);
-      std::string out(TRI_ObjectToString(res->Get(BodyKey)));
-      v8::Handle<v8::Array> transformations = val.As<v8::Array>();
+    switch (response->transportType()) {
+      case Endpoint::TransportType::HTTP: {
+        //  OBI FIXME - vpack
+        //  HTTP SHOULD USE vpack interface
 
-      for (uint32_t i = 0; i < transformations->Length(); i++) {
-        v8::Handle<v8::Value> transformator =
-            transformations->Get(v8::Integer::New(isolate, i));
-        std::string name = TRI_ObjectToString(transformator);
+        HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(response);
+        if (val->IsArray()) {
+          TRI_GET_GLOBAL_STRING(BodyKey);
+          std::string out(TRI_ObjectToString(res->Get(BodyKey)));
+          v8::Handle<v8::Array> transformations = val.As<v8::Array>();
 
-        // check available transformations
-        if (name == "base64encode") {
-          // base64-encode the result
-          out = StringUtils::encodeBase64(out);
-          // set the correct content-encoding header
-          response->setHeaderNC(StaticStrings::ContentEncoding,
-                                StaticStrings::Base64);
-        } else if (name == "base64decode") {
-          // base64-decode the result
-          out = StringUtils::decodeBase64(out);
-          // set the correct content-encoding header
-          response->setHeaderNC(StaticStrings::ContentEncoding,
-                                StaticStrings::Binary);
+          for (uint32_t i = 0; i < transformations->Length(); i++) {
+            v8::Handle<v8::Value> transformator =
+                transformations->Get(v8::Integer::New(isolate, i));
+            std::string name = TRI_ObjectToString(transformator);
+
+            // check available transformations
+            if (name == "base64encode") {
+              // base64-encode the result
+              out = StringUtils::encodeBase64(out);
+              // set the correct content-encoding header
+              response->setHeaderNC(StaticStrings::ContentEncoding,
+                                    StaticStrings::Base64);
+            } else if (name == "base64decode") {
+              // base64-decode the result
+              out = StringUtils::decodeBase64(out);
+              // set the correct content-encoding header
+              response->setHeaderNC(StaticStrings::ContentEncoding,
+                                    StaticStrings::Binary);
+            }
+          }
+
+          // what type is out? always json?
+          httpResponse->body().appendText(out);
+        } else {
+          TRI_GET_GLOBAL_STRING(BodyKey);
+          v8::Handle<v8::Value> b = res->Get(BodyKey);
+          if (V8Buffer::hasInstance(isolate, b)) {
+            // body is a Buffer
+            auto obj = b.As<v8::Object>();
+            httpResponse->body().appendText(V8Buffer::data(obj),
+                                            V8Buffer::length(obj));
+          } else {
+            // treat body as a string
+            httpResponse->body().appendText(
+                TRI_ObjectToString(res->Get(BodyKey)));
+          }
         }
-      }
+      } break;
 
-      // what type is out? always json?
-      response->body().appendText(out);
-    } else {
-      TRI_GET_GLOBAL_STRING(BodyKey);
-      v8::Handle<v8::Value> b = res->Get(BodyKey);
-      if (V8Buffer::hasInstance(isolate, b)) {
-        // body is a Buffer
-        auto obj = b.As<v8::Object>();
-        response->body().appendText(V8Buffer::data(obj), V8Buffer::length(obj));
-      } else {
-        // treat body as a string
-        response->body().appendText(TRI_ObjectToString(res->Get(BodyKey)));
-      }
+      case Endpoint::TransportType::VPP: {
+        VPackBuilder builder;
+        if (val->IsArray()) {
+          TRI_GET_GLOBAL_STRING(BodyKey);
+          std::string out(TRI_ObjectToString(res->Get(BodyKey)));
+          v8::Handle<v8::Array> transformations = val.As<v8::Array>();
+
+          for (uint32_t i = 0; i < transformations->Length(); i++) {
+            v8::Handle<v8::Value> transformator =
+                transformations->Get(v8::Integer::New(isolate, i));
+            std::string name = TRI_ObjectToString(transformator);
+
+            // we do not decode in the vpp case
+            // check available transformations
+            if (name == "base64decode") {
+              out = StringUtils::decodeBase64(out);
+              // set the correct content-encoding header
+              response->setHeaderNC(StaticStrings::ContentEncoding,
+                                    StaticStrings::Binary);
+            }
+          }
+
+          // what type is out? always json?
+          // httpResponse->body().appendText(out);
+          if (false /*is json*/) {
+            // create vpack form json
+          } else {
+            builder.add(VPackValue(out));
+          }
+        } else {
+          TRI_GET_GLOBAL_STRING(BodyKey);
+          v8::Handle<v8::Value> b = res->Get(BodyKey);
+          if (V8Buffer::hasInstance(isolate, b)) {
+            TRI_V8ToVPack(isolate, builder, b, false);
+          } else {
+            builder.add(VPackValue(TRI_ObjectToString(b)));
+          }
+        }
+      } break;
+      default:
+        throw std::logic_error("unknown transport type");
     }
+    bodySet = true;
   }
 
   // .........................................................................
   // body from file
   // .........................................................................
-
-  else if (res->Has(BodyFromFileKey)) {
+  TRI_GET_GLOBAL_STRING(BodyFromFileKey);
+  if (!bodySet && res->Has(BodyFromFileKey)) {
     TRI_Utf8ValueNFC filename(TRI_UNKNOWN_MEM_ZONE, res->Get(BodyFromFileKey));
     size_t length;
     char* content = TRI_SlurpFile(TRI_UNKNOWN_MEM_ZONE, *filename, &length);
 
-    if (content != nullptr) {
-      response->body().appendText(content, length);
-      TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, content);
-    } else {
-      std::string msg = std::string("cannot read file '") + *filename + "': " +
-                        TRI_last_error();
+    switch (response->transportType()) {
+      case Endpoint::TransportType::HTTP: {
+        HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(response);
+        if (content != nullptr) {
+          httpResponse->body().appendText(content, length);
+          TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, content);
+        } else {
+          std::string msg = std::string("cannot read file '") + *filename +
+                            "': " + TRI_last_error();
 
-      response->body().appendText(msg.c_str(), msg.size());
-      response->setResponseCode(GeneralResponse::ResponseCode::SERVER_ERROR);
+          httpResponse->body().appendText(msg.c_str(), msg.size());
+          response->setResponseCode(
+              GeneralResponse::ResponseCode::SERVER_ERROR);
+        }
+      } break;
+
+      case Endpoint::TransportType::VPP:
+        break;
+
+      default:
+        throw std::logic_error("unknown transport type");
     }
+
+    bodySet = true;
   }
 
   // .........................................................................
   // headers
   // .........................................................................
+
+  TRI_GET_GLOBAL_STRING(HeadersKey);
 
   if (res->Has(HeadersKey)) {
     v8::Handle<v8::Value> val = res->Get(HeadersKey);
@@ -665,23 +747,34 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
   // .........................................................................
   // cookies
   // .........................................................................
-
+  HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(response);
+  TRI_GET_GLOBAL_STRING(CookiesKey);
   if (res->Has(CookiesKey)) {
     v8::Handle<v8::Value> val = res->Get(CookiesKey);
     v8::Handle<v8::Object> v8Cookies = val.As<v8::Object>();
 
-    if (v8Cookies->IsArray()) {
-      v8::Handle<v8::Array> v8Array = v8Cookies.As<v8::Array>();
+    switch (response->transportType()) {
+      case Endpoint::TransportType::HTTP: {
+        if (v8Cookies->IsArray()) {
+          v8::Handle<v8::Array> v8Array = v8Cookies.As<v8::Array>();
 
-      for (uint32_t i = 0; i < v8Array->Length(); i++) {
-        v8::Handle<v8::Value> v8Cookie = v8Array->Get(i);
-        if (v8Cookie->IsObject()) {
-          AddCookie(isolate, v8g, response, v8Cookie.As<v8::Object>());
+          for (uint32_t i = 0; i < v8Array->Length(); i++) {
+            v8::Handle<v8::Value> v8Cookie = v8Array->Get(i);
+            if (v8Cookie->IsObject()) {
+              AddCookie(isolate, v8g, httpResponse, v8Cookie.As<v8::Object>());
+            }
+          }
+        } else if (v8Cookies->IsObject()) {
+          // one cookie
+          AddCookie(isolate, v8g, httpResponse, v8Cookies);
         }
-      }
-    } else if (v8Cookies->IsObject()) {
-      // one cookie
-      AddCookie(isolate, v8g, response, v8Cookies);
+      } break;
+
+      case Endpoint::TransportType::VPP:
+        break;
+
+      default:
+        throw std::logic_error("unknown transport type");
     }
   }
 }
