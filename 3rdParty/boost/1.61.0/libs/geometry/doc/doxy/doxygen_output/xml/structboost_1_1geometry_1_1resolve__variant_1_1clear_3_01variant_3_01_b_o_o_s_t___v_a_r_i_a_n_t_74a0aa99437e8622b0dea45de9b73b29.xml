@@ -1,0 +1,39 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="structboost_1_1geometry_1_1resolve__variant_1_1clear_3_01variant_3_01_b_o_o_s_t___v_a_r_i_a_n_t_74a0aa99437e8622b0dea45de9b73b29" kind="struct" prot="public">
+    <compoundname>boost::geometry::resolve_variant::clear&lt; variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; &gt;::visitor</compoundname>
+    <includes local="no">clear.hpp</includes>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="structboost_1_1geometry_1_1resolve__variant_1_1clear_3_01variant_3_01_b_o_o_s_t___v_a_r_i_a_n_t_74a0aa99437e8622b0dea45de9b73b29_1a53f03e1bb1c9f66410ae8f16ed955ee7" prot="public" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Geometry</type>
+          </param>
+        </templateparamlist>
+        <type>void</type>
+        <definition>void boost::geometry::resolve_variant::clear&lt; variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; &gt;::visitor::operator()</definition>
+        <argsstring>(Geometry &amp;geometry) const </argsstring>
+        <name>operator()</name>
+        <param>
+          <type>Geometry &amp;</type>
+          <declname>geometry</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/clear.hpp" line="158" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/clear.hpp" bodystart="157" bodyend="160"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/clear.hpp" line="155" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/clear.hpp" bodystart="154" bodyend="161"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1resolve__variant_1_1clear_3_01variant_3_01_b_o_o_s_t___v_a_r_i_a_n_t_74a0aa99437e8622b0dea45de9b73b29_1a53f03e1bb1c9f66410ae8f16ed955ee7" prot="public" virt="non-virtual"><scope>boost::geometry::resolve_variant::clear&lt; variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; &gt;::visitor</scope><name>operator()</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

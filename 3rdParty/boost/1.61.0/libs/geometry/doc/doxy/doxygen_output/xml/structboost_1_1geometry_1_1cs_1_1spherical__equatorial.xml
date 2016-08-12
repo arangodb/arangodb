@@ -1,0 +1,36 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="structboost_1_1geometry_1_1cs_1_1spherical__equatorial" kind="struct" prot="public">
+    <compoundname>boost::geometry::cs::spherical_equatorial</compoundname>
+    <includes local="no">cs.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename DegreeOrRadian</type>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-type">
+      <memberdef kind="typedef" id="structboost_1_1geometry_1_1cs_1_1spherical__equatorial_1aff2af44828f7271490eea83c3fd80e53" prot="public" static="no">
+        <type>core_detail::coordinate_system_units&lt; DegreeOrRadian &gt;::<ref refid="structboost_1_1geometry_1_1cs_1_1spherical__equatorial_1aff2af44828f7271490eea83c3fd80e53" kindref="member">units</ref></type>
+        <definition>typedef core_detail::coordinate_system_units&lt; DegreeOrRadian &gt;::units boost::geometry::cs::spherical_equatorial&lt; DegreeOrRadian &gt;::units</definition>
+        <argsstring></argsstring>
+        <name>units</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/core/cs.hpp" line="163" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/core/cs.hpp" bodystart="163" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+<para>Spherical equatorial coordinate system, in degree or in radian. </para>    </briefdescription>
+    <detaileddescription>
+<para>This one resembles the geographic coordinate system, and has latitude up from zero at the equator, to 90 at the pole (opposite to the spherical(polar) coordinate system). Used in astronomy and in GIS (but there is also the geographic)</para><para><simplesect kind="see"><para><ulink url="http://en.wikipedia.org/wiki/Spherical_coordinates">http://en.wikipedia.org/wiki/Spherical_coordinates</ulink> </para></simplesect>
+</para>    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/core/cs.hpp" line="159" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/core/cs.hpp" bodystart="158" bodyend="164"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1cs_1_1spherical__equatorial_1aff2af44828f7271490eea83c3fd80e53" prot="public" virt="non-virtual"><scope>boost::geometry::cs::spherical_equatorial</scope><name>units</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

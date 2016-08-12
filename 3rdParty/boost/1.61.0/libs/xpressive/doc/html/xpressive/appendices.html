@@ -1,0 +1,243 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Appendices</title>
+<link rel="stylesheet" href="../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../index.html" title="Chapter&#160;1.&#160;Boost.Xpressive">
+<link rel="up" href="../index.html" title="Chapter&#160;1.&#160;Boost.Xpressive">
+<link rel="prev" href="../boost_xpressive/acknowledgments.html" title="Acknowledgments">
+<link rel="next" href="../boost_xpressive/appendices/appendix_2__not_yet_implemented.html" title="Appendix 2: Not Yet Implemented">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../boost_xpressive/acknowledgments.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../boost_xpressive/appendices/appendix_2__not_yet_implemented.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="xpressive.appendices"></a><a class="link" href="appendices.html" title="Appendices">Appendices</a>
+</h2></div></div></div>
+<div class="toc"><dl>
+<dt><span class="section"><a href="appendices.html#boost_xpressive.appendices.appendix_1__history">Appendix
+      1: History</a></span></dt>
+<dt><span class="section"><a href="../boost_xpressive/appendices/appendix_2__not_yet_implemented.html">Appendix
+      2: Not Yet Implemented</a></span></dt>
+<dt><span class="section"><a href="../boost_xpressive/appendices/appendix_3__differences_from_boost_regex.html">Appendix
+      3: Differences from Boost.Regex</a></span></dt>
+<dt><span class="section"><a href="../boost_xpressive/appendices/perf.html">Appendix 4: Performance
+      Comparison</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="../boost_xpressive/appendices/perf.html#boost_xpressive.appendices.perf.perf_gcc">xpressive
+        vs. Boost.Regex with GCC (Cygwin)</a></span></dt>
+<dt><span class="section"><a href="../boost_xpressive/appendices/perf/perf_msvc.html">xpressive
+        vs. Boost.Regex with Visual C++</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="appendices/appendix_5__implementation_notes.html">Appendix
+      5: Implementation Notes</a></span></dt>
+<dd><dl><dt><span class="section"><a href="appendices/appendix_5__implementation_notes.html#boost_xpressive.appendices.appendix_5__implementation_notes.cycle_collection_with___tracking_ptr___">Cycle
+        collection with <code class="literal">tracking_ptr&lt;&gt;</code></a></span></dt></dl></dd>
+</dl></div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_xpressive.appendices.appendix_1__history"></a><a class="link" href="appendices.html#boost_xpressive.appendices.appendix_1__history" title="Appendix 1: History">Appendix
+      1: History</a>
+</h3></div></div></div>
+<h3>
+<a name="boost_xpressive.appendices.appendix_1__history.h0"></a>
+        <span><a name="boost_xpressive.appendices.appendix_1__history.version_2_1_0_6_12_2008"></a></span><a class="link" href="appendices.html#boost_xpressive.appendices.appendix_1__history.version_2_1_0_6_12_2008">Version
+        2.1.0 6/12/2008</a>
+      </h3>
+<p>
+        New Features:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" type="disc">
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">skip</span><span class="special">()</span></code>
+            primitive for static regexes, which allows you to specify parts of the
+            input string to ignore during regex matching.
+          </li>
+<li class="listitem">
+            Range-based <code class="computeroutput"><span class="identifier">regex_replace</span><span class="special">()</span></code> algorithm interface.
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">regex_replace</span><span class="special">()</span></code>
+            accepts formatter objects and formatter lambda expressions in addition
+            to format strings.
+          </li>
+</ul></div>
+<p>
+        Bugs Fixed:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" type="disc"><li class="listitem">
+            Semantic actions in look-aheads, look-behinds and independent sub-expressions
+            execute eagerly instead of causing a crash.
+          </li></ul></div>
+<h3>
+<a name="boost_xpressive.appendices.appendix_1__history.h1"></a>
+        <span><a name="boost_xpressive.appendices.appendix_1__history.version_2_0_1_10_23_2007"></a></span><a class="link" href="appendices.html#boost_xpressive.appendices.appendix_1__history.version_2_0_1_10_23_2007">Version
+        2.0.1 10/23/2007</a>
+      </h3>
+<p>
+        Bugs Fixed:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" type="disc"><li class="listitem">
+            <code class="computeroutput"><span class="identifier">sub_match</span><span class="special">&lt;&gt;</span></code>
+            constructor copies singular iterator causing debug assert.
+          </li></ul></div>
+<h3>
+<a name="boost_xpressive.appendices.appendix_1__history.h2"></a>
+        <span><a name="boost_xpressive.appendices.appendix_1__history.version_2_0_0__10_12_2007"></a></span><a class="link" href="appendices.html#boost_xpressive.appendices.appendix_1__history.version_2_0_0__10_12_2007">Version
+        2.0.0, 10/12/2007</a>
+      </h3>
+<p>
+        New Features:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" type="disc">
+<li class="listitem">
+            Semantic actions
+          </li>
+<li class="listitem">
+            Custom assertions
+          </li>
+<li class="listitem">
+            Named captures
+          </li>
+<li class="listitem">
+            Dynamic regex grammars
+          </li>
+<li class="listitem">
+            Recursive dynamic regexes with <code class="literal">(?R)</code> construct
+          </li>
+<li class="listitem">
+            Support for searching non-character data
+          </li>
+<li class="listitem">
+            Better errors for invalid static regexes
+          </li>
+<li class="listitem">
+            Range-based regex algorithm interface
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">match_flag_type</span><span class="special">::</span><span class="identifier">format_perl</span></code>, <code class="computeroutput"><span class="identifier">match_flag_type</span><span class="special">::</span><span class="identifier">format_sed</span></code>,
+            and <code class="computeroutput"><span class="identifier">match_flag_type</span><span class="special">::</span><span class="identifier">format_all</span></code>
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><span class="keyword">operator</span><span class="special">+(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span><span class="special">,</span> <span class="identifier">sub_match</span><span class="special">&lt;&gt;)</span></code>
+            and variants
+          </li>
+<li class="listitem">
+            Version 2 regex traits get <code class="computeroutput"><span class="identifier">tolower</span><span class="special">()</span></code> and <code class="computeroutput"><span class="identifier">toupper</span><span class="special">()</span></code>
+          </li>
+</ul></div>
+<p>
+        Bugs Fixed:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" type="disc"><li class="listitem">
+            Complementing single-character sets like <code class="computeroutput"><span class="special">~(</span><span class="identifier">set</span><span class="special">=</span><span class="char">'a'</span><span class="special">)</span></code> works.
+          </li></ul></div>
+<h3>
+<a name="boost_xpressive.appendices.appendix_1__history.h3"></a>
+        <span><a name="boost_xpressive.appendices.appendix_1__history.version_1_0_2__april_27__2007"></a></span><a class="link" href="appendices.html#boost_xpressive.appendices.appendix_1__history.version_1_0_2__april_27__2007">Version
+        1.0.2, April 27, 2007</a>
+      </h3>
+<p>
+        Bugs Fixed:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" type="disc"><li class="listitem">
+            Back-references greater than nine work as advertized.
+          </li></ul></div>
+<p>
+        This is the version that shipped as part of Boost 1.34.
+      </p>
+<h3>
+<a name="boost_xpressive.appendices.appendix_1__history.h4"></a>
+        <span><a name="boost_xpressive.appendices.appendix_1__history.version_1_0_1__october_2__2006"></a></span><a class="link" href="appendices.html#boost_xpressive.appendices.appendix_1__history.version_1_0_1__october_2__2006">Version
+        1.0.1, October 2, 2006</a>
+      </h3>
+<p>
+        Bugs Fixed:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" type="disc"><li class="listitem">
+            <code class="computeroutput"><span class="identifier">match_results</span><span class="special">::</span><span class="identifier">position</span><span class="special">()</span></code>
+            works for nested results.
+          </li></ul></div>
+<h3>
+<a name="boost_xpressive.appendices.appendix_1__history.h5"></a>
+        <span><a name="boost_xpressive.appendices.appendix_1__history.version_1_0_0__march_16__2006"></a></span><a class="link" href="appendices.html#boost_xpressive.appendices.appendix_1__history.version_1_0_0__march_16__2006">Version
+        1.0.0, March 16, 2006</a>
+      </h3>
+<p>
+        Version 1.0!
+      </p>
+<h3>
+<a name="boost_xpressive.appendices.appendix_1__history.h6"></a>
+        <span><a name="boost_xpressive.appendices.appendix_1__history.version_0_9_6__august_19__2005"></a></span><a class="link" href="appendices.html#boost_xpressive.appendices.appendix_1__history.version_0_9_6__august_19__2005">Version
+        0.9.6, August 19, 2005</a>
+      </h3>
+<p>
+        The version reviewed for acceptance into Boost. The review began September
+        8, 2005. Xpressive was accepted into Boost on September 28, 2005.
+      </p>
+<h3>
+<a name="boost_xpressive.appendices.appendix_1__history.h7"></a>
+        <span><a name="boost_xpressive.appendices.appendix_1__history.version_0_9_3__june_30__2005"></a></span><a class="link" href="appendices.html#boost_xpressive.appendices.appendix_1__history.version_0_9_3__june_30__2005">Version
+        0.9.3, June 30, 2005</a>
+      </h3>
+<p>
+        New Features:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" type="disc">
+<li class="listitem">
+            TR1-style regex_traits interface
+          </li>
+<li class="listitem">
+            Speed enhancements
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">syntax_option_type</span><span class="special">::</span><span class="identifier">ignore_white_space</span></code>
+          </li>
+</ul></div>
+<h3>
+<a name="boost_xpressive.appendices.appendix_1__history.h8"></a>
+        <span><a name="boost_xpressive.appendices.appendix_1__history.version_0_9_0__september_2__2004"></a></span><a class="link" href="appendices.html#boost_xpressive.appendices.appendix_1__history.version_0_9_0__september_2__2004">Version
+        0.9.0, September 2, 2004</a>
+      </h3>
+<p>
+        New Features:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" type="disc"><li class="listitem">
+            It sort of works.
+          </li></ul></div>
+<h3>
+<a name="boost_xpressive.appendices.appendix_1__history.h9"></a>
+        <span><a name="boost_xpressive.appendices.appendix_1__history.version_0_0_1__november_16__2003"></a></span><a class="link" href="appendices.html#boost_xpressive.appendices.appendix_1__history.version_0_0_1__november_16__2003">Version
+        0.0.1, November 16, 2003</a>
+      </h3>
+<p>
+        Announcement of xpressive: <a href="http://lists.boost.org/Archives/boost/2003/11/56312.php" target="_top">http://lists.boost.org/Archives/boost/2003/11/56312.php</a>
+      </p>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2007 Eric Niebler<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../boost_xpressive/acknowledgments.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../boost_xpressive/appendices/appendix_2__not_yet_implemented.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

@@ -1,0 +1,26 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="class_point_list" kind="class" prot="public">
+    <compoundname>PointList</compoundname>
+    <derivedcompoundref refid="classboost_1_1geometry_1_1model_1_1ring" prot="public" virt="non-virtual">boost::geometry::model::ring&lt; Point, ClockWise, Closed, PointList, PointAlloc &gt;</derivedcompoundref>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <inheritancegraph>
+      <node id="1599">
+        <label>ring&lt; Point, ClockWise, Closed, PointList, PointAlloc &gt;</label>
+        <link refid="classboost_1_1geometry_1_1model_1_1ring"/>
+        <childnode refid="1598" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="1598">
+        <label>PointList</label>
+        <link refid="class_point_list"/>
+      </node>
+    </inheritancegraph>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/ring.hpp" line="65"/>
+    <listofallmembers>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

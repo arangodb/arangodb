@@ -1,0 +1,15 @@
+<%
+  hana = (1...50).step(5).to_a + (50..125).step(25).to_a
+%>
+
+{
+  "title": {
+    "text": "Compile-time behavior of lexicographical_compare"
+  },
+  "series": [
+    {
+      "name": "hana::tuple",
+      "data": <%= time_compilation('compile.hana.tuple.erb.cpp', hana) %>
+    }
+  ]
+}

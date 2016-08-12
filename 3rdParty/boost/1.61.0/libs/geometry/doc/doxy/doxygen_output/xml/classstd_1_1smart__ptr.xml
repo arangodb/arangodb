@@ -1,0 +1,63 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="classstd_1_1smart__ptr" kind="class" prot="public">
+    <compoundname>std::smart_ptr</compoundname>
+    <templateparamlist>
+      <param>
+        <type>typename</type>
+        <declname>T</declname>
+        <defname>T</defname>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="classstd_1_1smart__ptr_1a28b08019309e26ad374ef88cd2641ea3" prot="public" static="no" mutable="no">
+        <type>T</type>
+        <definition>T std::smart_ptr&lt; T &gt;::ptr</definition>
+        <argsstring></argsstring>
+        <name>ptr</name>
+        <briefdescription>
+<para>STL member. </para>        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="" line="1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="classstd_1_1smart__ptr_1a34adc9f82172f037139e4b916c275e90" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>T *</type>
+        <definition>T* std::smart_ptr&lt; T &gt;::operator-&gt;</definition>
+        <argsstring>()</argsstring>
+        <name>operator-&gt;</name>
+        <briefdescription>
+<para>STL member. </para>        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="" line="1"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+<para>STL class. </para>    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <collaborationgraph>
+      <node id="2119">
+        <label>T</label>
+      </node>
+      <node id="2118">
+        <label>std::smart_ptr&lt; T &gt;</label>
+        <childnode refid="2119" relation="usage">
+          <edgelabel>ptr</edgelabel>
+        </childnode>
+      </node>
+    </collaborationgraph>
+    <location file="[STL]" line="1"/>
+    <listofallmembers>
+      <member refid="classstd_1_1smart__ptr_1a34adc9f82172f037139e4b916c275e90" prot="public" virt="non-virtual"><scope>std::smart_ptr</scope><name>operator-&gt;</name></member>
+      <member refid="classstd_1_1smart__ptr_1a28b08019309e26ad374ef88cd2641ea3" prot="public" virt="non-virtual"><scope>std::smart_ptr</scope><name>ptr</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

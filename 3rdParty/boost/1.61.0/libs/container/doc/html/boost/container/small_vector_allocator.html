@@ -1,0 +1,202 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Class template small_vector_allocator</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../../index.html" title="Chapter&#160;1.&#160;Boost.Container">
+<link rel="up" href="../../boost_container_header_reference.html#header.boost.container.small_vector_hpp" title="Header &lt;boost/container/small_vector.hpp&gt;">
+<link rel="prev" href="pmr/slist_of.html" title="Struct template slist_of">
+<link rel="next" href="small_vector_allocator/rebind.html" title="Struct template rebind">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="pmr/slist_of.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../boost_container_header_reference.html#header.boost.container.small_vector_hpp"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="small_vector_allocator/rebind.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="refentry">
+<a name="boost.container.small_vector_allocator"></a><div class="titlepage"></div>
+<div class="refnamediv">
+<h2><span class="refentrytitle">Class template small_vector_allocator</span></h2>
+<p>boost::container::small_vector_allocator</p>
+</div>
+<h2 xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv-title">Synopsis</h2>
+<div xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv"><pre class="synopsis"><span class="comment">// In header: &lt;<a class="link" href="../../boost_container_header_reference.html#header.boost.container.small_vector_hpp" title="Header &lt;boost/container/small_vector.hpp&gt;">boost/container/small_vector.hpp</a>&gt;
+
+</span><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Allocator<span class="special">&gt;</span> 
+<span class="keyword">class</span> <a class="link" href="small_vector_allocator.html" title="Class template small_vector_allocator">small_vector_allocator</a> <span class="special">:</span> <span class="keyword">public</span> <span class="identifier">Allocator</span> <span class="special">{</span>
+<span class="keyword">public</span><span class="special">:</span>
+  <span class="comment">// types</span>
+  <span class="keyword">typedef</span> <a class="link" href="allocator_traits.html" title="Struct template allocator_traits">allocator_traits</a><span class="special">&lt;</span> <span class="identifier">Allocator</span> <span class="special">&gt;</span><span class="special">::</span><span class="identifier">value_type</span>                             <a name="boost.container.small_vector_allocator.value_type"></a><span class="identifier">value_type</span><span class="special">;</span>                            
+  <span class="keyword">typedef</span> <a class="link" href="allocator_traits.html" title="Struct template allocator_traits">allocator_traits</a><span class="special">&lt;</span> <span class="identifier">Allocator</span> <span class="special">&gt;</span><span class="special">::</span><span class="identifier">pointer</span>                                <a name="boost.container.small_vector_allocator.pointer"></a><span class="identifier">pointer</span><span class="special">;</span>                               
+  <span class="keyword">typedef</span> <a class="link" href="allocator_traits.html" title="Struct template allocator_traits">allocator_traits</a><span class="special">&lt;</span> <span class="identifier">Allocator</span> <span class="special">&gt;</span><span class="special">::</span><span class="identifier">const_pointer</span>                          <a name="boost.container.small_vector_allocator.const_pointer"></a><span class="identifier">const_pointer</span><span class="special">;</span>                         
+  <span class="keyword">typedef</span> <a class="link" href="allocator_traits.html" title="Struct template allocator_traits">allocator_traits</a><span class="special">&lt;</span> <span class="identifier">Allocator</span> <span class="special">&gt;</span><span class="special">::</span><span class="identifier">reference</span>                              <a name="boost.container.small_vector_allocator.reference"></a><span class="identifier">reference</span><span class="special">;</span>                             
+  <span class="keyword">typedef</span> <a class="link" href="allocator_traits.html" title="Struct template allocator_traits">allocator_traits</a><span class="special">&lt;</span> <span class="identifier">Allocator</span> <span class="special">&gt;</span><span class="special">::</span><span class="identifier">const_reference</span>                        <a name="boost.container.small_vector_allocator.const_reference"></a><span class="identifier">const_reference</span><span class="special">;</span>                       
+  <span class="keyword">typedef</span> <a class="link" href="allocator_traits.html" title="Struct template allocator_traits">allocator_traits</a><span class="special">&lt;</span> <span class="identifier">Allocator</span> <span class="special">&gt;</span><span class="special">::</span><span class="identifier">size_type</span>                              <a name="boost.container.small_vector_allocator.size_type"></a><span class="identifier">size_type</span><span class="special">;</span>                             
+  <span class="keyword">typedef</span> <a class="link" href="allocator_traits.html" title="Struct template allocator_traits">allocator_traits</a><span class="special">&lt;</span> <span class="identifier">Allocator</span> <span class="special">&gt;</span><span class="special">::</span><span class="identifier">difference_type</span>                        <a name="boost.container.small_vector_allocator.difference_type"></a><span class="identifier">difference_type</span><span class="special">;</span>                       
+  <span class="keyword">typedef</span> <a class="link" href="allocator_traits.html" title="Struct template allocator_traits">allocator_traits</a><span class="special">&lt;</span> <span class="identifier">Allocator</span> <span class="special">&gt;</span><span class="special">::</span><span class="identifier">void_pointer</span>                           <a name="boost.container.small_vector_allocator.void_pointer"></a><span class="identifier">void_pointer</span><span class="special">;</span>                          
+  <span class="keyword">typedef</span> <a class="link" href="allocator_traits.html" title="Struct template allocator_traits">allocator_traits</a><span class="special">&lt;</span> <span class="identifier">Allocator</span> <span class="special">&gt;</span><span class="special">::</span><span class="identifier">const_void_pointer</span>                     <a name="boost.container.small_vector_allocator.const_void_pointer"></a><span class="identifier">const_void_pointer</span><span class="special">;</span>                    
+  <span class="keyword">typedef</span> <a class="link" href="allocator_traits.html" title="Struct template allocator_traits">allocator_traits</a><span class="special">&lt;</span> <span class="identifier">Allocator</span> <span class="special">&gt;</span><span class="special">::</span><span class="identifier">propagate_on_container_copy_assignment</span> <a name="boost.container.small_vector_allocator.propagate_on_c_idp19884800"></a><span class="identifier">propagate_on_container_copy_assignment</span><span class="special">;</span>
+  <span class="keyword">typedef</span> <a class="link" href="allocator_traits.html" title="Struct template allocator_traits">allocator_traits</a><span class="special">&lt;</span> <span class="identifier">Allocator</span> <span class="special">&gt;</span><span class="special">::</span><span class="identifier">propagate_on_container_move_assignment</span> <a name="boost.container.small_vector_allocator.propagate_on_c_idp19885984"></a><span class="identifier">propagate_on_container_move_assignment</span><span class="special">;</span>
+  <span class="keyword">typedef</span> <a class="link" href="allocator_traits.html" title="Struct template allocator_traits">allocator_traits</a><span class="special">&lt;</span> <span class="identifier">Allocator</span> <span class="special">&gt;</span><span class="special">::</span><span class="identifier">propagate_on_container_swap</span>            <a name="boost.container.small_vector_allocator.propagate_on_c_idp19887168"></a><span class="identifier">propagate_on_container_swap</span><span class="special">;</span>           
+  <span class="keyword">typedef</span> <span class="identifier">implementation_defined</span>                                                <a name="boost.container.small_vector_allocator.is_always_equal"></a><span class="identifier">is_always_equal</span><span class="special">;</span>                         <span class="comment">// An integral constant with member `value == false`. </span>
+  <span class="keyword">typedef</span> <span class="identifier">implementation_defined</span>                                                <a name="boost.container.small_vector_allocator.is_partially_propagable"></a><span class="identifier">is_partially_propagable</span><span class="special">;</span>                 <span class="comment">// An integral constant with member `value == true`. </span>
+
+  <span class="comment">// member classes/structs/unions</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> T2<span class="special">&gt;</span> 
+  <span class="keyword">struct</span> <a class="link" href="small_vector_allocator/rebind.html" title="Struct template rebind">rebind</a> <span class="special">{</span>
+    <span class="comment">// types</span>
+    <span class="keyword">typedef</span> <a class="link" href="allocator_traits.html" title="Struct template allocator_traits">allocator_traits</a><span class="special">&lt;</span> <span class="identifier">Allocator</span> <span class="special">&gt;</span><span class="special">::</span><span class="keyword">template</span> <span class="identifier">rebind_alloc</span><span class="special">&lt;</span> <span class="identifier">T2</span> <span class="special">&gt;</span><span class="special">::</span><span class="identifier">type</span> <a class="link" href="small_vector_allocator/rebind.html#boost.container.small_vector_allocator.rebind.other"><span class="identifier">other</span></a><span class="special">;</span>
+  <span class="special">}</span><span class="special">;</span>
+
+  <span class="comment">// <a class="link" href="small_vector_allocator.html#boost.container.small_vector_allocatorconstruct-copy-destruct">construct/copy/destruct</a></span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span><span class="special">...</span> Args<span class="special">&gt;</span> <span class="keyword">explicit</span> <a class="link" href="small_vector_allocator.html#idp19901872-bb"><span class="identifier">small_vector_allocator</span></a><span class="special">(</span><span class="identifier">Args</span> <span class="special">&amp;&amp;</span><span class="special">...</span><span class="special">)</span><span class="special">;</span>
+  <a class="link" href="small_vector_allocator.html#idp19904560-bb"><span class="identifier">small_vector_allocator</span></a><span class="special">(</span><span class="keyword">const</span> <a class="link" href="small_vector_allocator.html" title="Class template small_vector_allocator">small_vector_allocator</a> <span class="special">&amp;</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <a class="link" href="small_vector_allocator.html#idp19907424-bb"><span class="identifier">small_vector_allocator</span></a><span class="special">(</span><a class="link" href="small_vector_allocator.html" title="Class template small_vector_allocator">small_vector_allocator</a> <span class="special">&amp;&amp;</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> OtherAllocator<span class="special">&gt;</span> 
+    <a class="link" href="small_vector_allocator.html#idp19910128-bb"><span class="identifier">small_vector_allocator</span></a><span class="special">(</span><span class="keyword">const</span> <a class="link" href="small_vector_allocator.html" title="Class template small_vector_allocator">small_vector_allocator</a><span class="special">&lt;</span> <span class="identifier">OtherAllocator</span> <span class="special">&gt;</span> <span class="special">&amp;</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> OtherAllocator<span class="special">&gt;</span> 
+    <a class="link" href="small_vector_allocator.html#idp19913856-bb"><span class="identifier">small_vector_allocator</span></a><span class="special">(</span><a class="link" href="small_vector_allocator.html" title="Class template small_vector_allocator">small_vector_allocator</a><span class="special">&lt;</span> <span class="identifier">OtherAllocator</span> <span class="special">&gt;</span> <span class="special">&amp;&amp;</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <a class="link" href="small_vector_allocator.html" title="Class template small_vector_allocator">small_vector_allocator</a> <span class="special">&amp;</span> <a class="link" href="small_vector_allocator.html#idp19917424-bb"><span class="keyword">operator</span><span class="special">=</span></a><span class="special">(</span><span class="keyword">const</span> <a class="link" href="small_vector_allocator.html" title="Class template small_vector_allocator">small_vector_allocator</a> <span class="special">&amp;</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <a class="link" href="small_vector_allocator.html" title="Class template small_vector_allocator">small_vector_allocator</a> <span class="special">&amp;</span> <a class="link" href="small_vector_allocator.html#idp19920864-bb"><span class="keyword">operator</span><span class="special">=</span></a><span class="special">(</span><a class="link" href="small_vector_allocator.html" title="Class template small_vector_allocator">small_vector_allocator</a> <span class="special">&amp;&amp;</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> OtherAllocator<span class="special">&gt;</span> 
+    <a class="link" href="small_vector_allocator.html" title="Class template small_vector_allocator">small_vector_allocator</a> <span class="special">&amp;</span> 
+    <a class="link" href="small_vector_allocator.html#idp19924160-bb"><span class="keyword">operator</span><span class="special">=</span></a><span class="special">(</span><span class="keyword">const</span> <a class="link" href="small_vector_allocator.html" title="Class template small_vector_allocator">small_vector_allocator</a><span class="special">&lt;</span> <span class="identifier">OtherAllocator</span> <span class="special">&gt;</span> <span class="special">&amp;</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> OtherAllocator<span class="special">&gt;</span> 
+    <a class="link" href="small_vector_allocator.html" title="Class template small_vector_allocator">small_vector_allocator</a> <span class="special">&amp;</span> 
+    <a class="link" href="small_vector_allocator.html#idp19928464-bb"><span class="keyword">operator</span><span class="special">=</span></a><span class="special">(</span><a class="link" href="small_vector_allocator.html" title="Class template small_vector_allocator">small_vector_allocator</a><span class="special">&lt;</span> <span class="identifier">OtherAllocator</span> <span class="special">&gt;</span> <span class="special">&amp;&amp;</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+
+  <span class="comment">// <a class="link" href="small_vector_allocator.html#idp19890688-bb">public member functions</a></span>
+  <span class="identifier">pointer</span> <a class="link" href="small_vector_allocator.html#idp19891248-bb"><span class="identifier">allocate</span></a><span class="special">(</span><span class="identifier">size_type</span><span class="special">,</span> <span class="identifier">const_void_pointer</span> <span class="special">=</span> <span class="identifier">const_void_pointer</span><span class="special">(</span><span class="special">)</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">void</span> <a class="link" href="small_vector_allocator.html#idp19894096-bb"><span class="identifier">deallocate</span></a><span class="special">(</span><span class="identifier">pointer</span><span class="special">,</span> <span class="identifier">size_type</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="identifier">size_type</span> <a class="link" href="small_vector_allocator.html#idp19897040-bb"><span class="identifier">max_size</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <a class="link" href="small_vector_allocator.html" title="Class template small_vector_allocator">small_vector_allocator</a> <a class="link" href="small_vector_allocator.html#idp19898640-bb"><span class="identifier">select_on_container_copy_construction</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="keyword">bool</span> <a class="link" href="small_vector_allocator.html#idp19899904-bb"><span class="identifier">storage_is_unpropagable</span></a><span class="special">(</span><span class="identifier">pointer</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+
+  <span class="comment">// <a class="link" href="small_vector_allocator.html#idp19932608-bb">friend functions</a></span>
+  <span class="keyword">friend</span> <span class="keyword">void</span> <a class="link" href="small_vector_allocator.html#idp19933168-bb"><span class="identifier">swap</span></a><span class="special">(</span><a class="link" href="small_vector_allocator.html" title="Class template small_vector_allocator">small_vector_allocator</a> <span class="special">&amp;</span><span class="special">,</span> <a class="link" href="small_vector_allocator.html" title="Class template small_vector_allocator">small_vector_allocator</a> <span class="special">&amp;</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="keyword">friend</span> <span class="keyword">bool</span> <a class="link" href="small_vector_allocator.html#idp19937440-bb"><span class="keyword">operator</span><span class="special">==</span></a><span class="special">(</span><span class="keyword">const</span> <a class="link" href="small_vector_allocator.html" title="Class template small_vector_allocator">small_vector_allocator</a> <span class="special">&amp;</span><span class="special">,</span> 
+                         <span class="keyword">const</span> <a class="link" href="small_vector_allocator.html" title="Class template small_vector_allocator">small_vector_allocator</a> <span class="special">&amp;</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="keyword">friend</span> <span class="keyword">bool</span> <a class="link" href="small_vector_allocator.html#idp19942128-bb"><span class="keyword">operator</span><span class="special">!=</span></a><span class="special">(</span><span class="keyword">const</span> <a class="link" href="small_vector_allocator.html" title="Class template small_vector_allocator">small_vector_allocator</a> <span class="special">&amp;</span><span class="special">,</span> 
+                         <span class="keyword">const</span> <a class="link" href="small_vector_allocator.html" title="Class template small_vector_allocator">small_vector_allocator</a> <span class="special">&amp;</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+<span class="special">}</span><span class="special">;</span></pre></div>
+<div class="refsect1">
+<a name="idp30552368"></a><h2>Description</h2>
+<p>A non-standard allocator used to implement `small_vector`. Users should never use it directly. It is described here for documentation purposes.</p>
+<p>This allocator inherits from a standard-conforming allocator and forwards member functions to the standard allocator except when internal storage is being used as memory source.</p>
+<p>This allocator is a "partially_propagable" allocator and defines `is_partially_propagable` as true_type.</p>
+<p>A partially propagable allocator means that not all storage allocatod by an instance of `small_vector_allocator` can be deallocated by another instance of this type, even if both instances compare equal or an instance is propagated to another one using the copy/move constructor or assignment. The storage that can never be propagated is identified by `storage_is_unpropagable(p)`.</p>
+<p>`boost::container::vector` supports partially propagable allocators fallbacking to deep copy/swap/move operations when internal storage is being used to store vector elements.</p>
+<p>`small_vector_allocator` assumes that will be instantiated as `boost::container::vector&lt; T, small_vector_allocator&lt;Allocator&gt; &gt;` and internal storage can be obtained downcasting that vector to `small_vector_base&lt;T&gt;`. </p>
+<div class="refsect2">
+<a name="idp30555936"></a><h3>
+<a name="boost.container.small_vector_allocatorconstruct-copy-destruct"></a><code class="computeroutput">small_vector_allocator</code> 
+        public
+       construct/copy/destruct</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span><span class="special">...</span> Args<span class="special">&gt;</span> <span class="keyword">explicit</span> <a name="idp19901872-bb"></a><span class="identifier">small_vector_allocator</span><span class="special">(</span><span class="identifier">Args</span> <span class="special">&amp;&amp;</span><span class="special">...</span> args<span class="special">)</span><span class="special">;</span></pre>Constructor from arbitrary arguments. </li>
+<li class="listitem">
+<pre class="literallayout"><a name="idp19904560-bb"></a><span class="identifier">small_vector_allocator</span><span class="special">(</span><span class="keyword">const</span> <a class="link" href="small_vector_allocator.html" title="Class template small_vector_allocator">small_vector_allocator</a> <span class="special">&amp;</span> other<span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p>Constructor from other <code class="computeroutput"><a class="link" href="small_vector_allocator.html" title="Class template small_vector_allocator">small_vector_allocator</a></code>. Never throws </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><a name="idp19907424-bb"></a><span class="identifier">small_vector_allocator</span><span class="special">(</span><a class="link" href="small_vector_allocator.html" title="Class template small_vector_allocator">small_vector_allocator</a> <span class="special">&amp;&amp;</span> other<span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p>Move constructor from <code class="computeroutput"><a class="link" href="small_vector_allocator.html" title="Class template small_vector_allocator">small_vector_allocator</a></code>. Never throws </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> OtherAllocator<span class="special">&gt;</span> 
+  <a name="idp19910128-bb"></a><span class="identifier">small_vector_allocator</span><span class="special">(</span><span class="keyword">const</span> <a class="link" href="small_vector_allocator.html" title="Class template small_vector_allocator">small_vector_allocator</a><span class="special">&lt;</span> <span class="identifier">OtherAllocator</span> <span class="special">&gt;</span> <span class="special">&amp;</span> other<span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p>Constructor from related <code class="computeroutput"><a class="link" href="small_vector_allocator.html" title="Class template small_vector_allocator">small_vector_allocator</a></code>. Never throws </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> OtherAllocator<span class="special">&gt;</span> 
+  <a name="idp19913856-bb"></a><span class="identifier">small_vector_allocator</span><span class="special">(</span><a class="link" href="small_vector_allocator.html" title="Class template small_vector_allocator">small_vector_allocator</a><span class="special">&lt;</span> <span class="identifier">OtherAllocator</span> <span class="special">&gt;</span> <span class="special">&amp;&amp;</span> other<span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p>Move constructor from related <code class="computeroutput"><a class="link" href="small_vector_allocator.html" title="Class template small_vector_allocator">small_vector_allocator</a></code>. Never throws </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><a class="link" href="small_vector_allocator.html" title="Class template small_vector_allocator">small_vector_allocator</a> <span class="special">&amp;</span> 
+<a name="idp19917424-bb"></a><span class="keyword">operator</span><span class="special">=</span><span class="special">(</span><span class="keyword">const</span> <a class="link" href="small_vector_allocator.html" title="Class template small_vector_allocator">small_vector_allocator</a> <span class="special">&amp;</span> other<span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p>Assignment from other <code class="computeroutput"><a class="link" href="small_vector_allocator.html" title="Class template small_vector_allocator">small_vector_allocator</a></code>. Never throws </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><a class="link" href="small_vector_allocator.html" title="Class template small_vector_allocator">small_vector_allocator</a> <span class="special">&amp;</span> <a name="idp19920864-bb"></a><span class="keyword">operator</span><span class="special">=</span><span class="special">(</span><a class="link" href="small_vector_allocator.html" title="Class template small_vector_allocator">small_vector_allocator</a> <span class="special">&amp;&amp;</span> other<span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p>Move constructor from other <code class="computeroutput"><a class="link" href="small_vector_allocator.html" title="Class template small_vector_allocator">small_vector_allocator</a></code>. Never throws </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> OtherAllocator<span class="special">&gt;</span> 
+  <a class="link" href="small_vector_allocator.html" title="Class template small_vector_allocator">small_vector_allocator</a> <span class="special">&amp;</span> 
+  <a name="idp19924160-bb"></a><span class="keyword">operator</span><span class="special">=</span><span class="special">(</span><span class="keyword">const</span> <a class="link" href="small_vector_allocator.html" title="Class template small_vector_allocator">small_vector_allocator</a><span class="special">&lt;</span> <span class="identifier">OtherAllocator</span> <span class="special">&gt;</span> <span class="special">&amp;</span> other<span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p>Assignment from related <code class="computeroutput"><a class="link" href="small_vector_allocator.html" title="Class template small_vector_allocator">small_vector_allocator</a></code>. Never throws </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> OtherAllocator<span class="special">&gt;</span> 
+  <a class="link" href="small_vector_allocator.html" title="Class template small_vector_allocator">small_vector_allocator</a> <span class="special">&amp;</span> 
+  <a name="idp19928464-bb"></a><span class="keyword">operator</span><span class="special">=</span><span class="special">(</span><a class="link" href="small_vector_allocator.html" title="Class template small_vector_allocator">small_vector_allocator</a><span class="special">&lt;</span> <span class="identifier">OtherAllocator</span> <span class="special">&gt;</span> <span class="special">&amp;&amp;</span> other<span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p>Move assignment from related <code class="computeroutput"><a class="link" href="small_vector_allocator.html" title="Class template small_vector_allocator">small_vector_allocator</a></code>. Never throws </p>
+</li>
+</ol></div>
+</div>
+<div class="refsect2">
+<a name="idp30655648"></a><h3>
+<a name="idp19890688-bb"></a><code class="computeroutput">small_vector_allocator</code> public member functions</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">pointer</span> <a name="idp19891248-bb"></a><span class="identifier">allocate</span><span class="special">(</span><span class="identifier">size_type</span> count<span class="special">,</span> 
+                 <span class="identifier">const_void_pointer</span> hint <span class="special">=</span> <span class="identifier">const_void_pointer</span><span class="special">(</span><span class="special">)</span><span class="special">)</span><span class="special">;</span></pre>Allocates storage from the standard-conforming allocator. </li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">void</span> <a name="idp19894096-bb"></a><span class="identifier">deallocate</span><span class="special">(</span><span class="identifier">pointer</span> ptr<span class="special">,</span> <span class="identifier">size_type</span> n<span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p>Deallocates previously allocated memory. Never throws </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">size_type</span> <a name="idp19897040-bb"></a><span class="identifier">max_size</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p>Returns the maximum number of elements that could be allocated. Never throws </p>
+</li>
+<li class="listitem"><pre class="literallayout"><a class="link" href="small_vector_allocator.html" title="Class template small_vector_allocator">small_vector_allocator</a> <a name="idp19898640-bb"></a><span class="identifier">select_on_container_copy_construction</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre></li>
+<li class="listitem"><pre class="literallayout"><span class="keyword">bool</span> <a name="idp19899904-bb"></a><span class="identifier">storage_is_unpropagable</span><span class="special">(</span><span class="identifier">pointer</span> p<span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre></li>
+</ol></div>
+</div>
+<div class="refsect2">
+<a name="idp30690832"></a><h3>
+<a name="idp19932608-bb"></a><code class="computeroutput">small_vector_allocator</code> friend functions</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">friend</span> <span class="keyword">void</span> <a name="idp19933168-bb"></a><span class="identifier">swap</span><span class="special">(</span><a class="link" href="small_vector_allocator.html" title="Class template small_vector_allocator">small_vector_allocator</a> <span class="special">&amp;</span> l<span class="special">,</span> <a class="link" href="small_vector_allocator.html" title="Class template small_vector_allocator">small_vector_allocator</a> <span class="special">&amp;</span> r<span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p>Swaps two allocators, does nothing because this <code class="computeroutput"><a class="link" href="small_vector_allocator.html" title="Class template small_vector_allocator">small_vector_allocator</a></code> is stateless </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">friend</span> <span class="keyword">bool</span> <a name="idp19937440-bb"></a><span class="keyword">operator</span><span class="special">==</span><span class="special">(</span><span class="keyword">const</span> <a class="link" href="small_vector_allocator.html" title="Class template small_vector_allocator">small_vector_allocator</a> <span class="special">&amp;</span> l<span class="special">,</span> 
+                       <span class="keyword">const</span> <a class="link" href="small_vector_allocator.html" title="Class template small_vector_allocator">small_vector_allocator</a> <span class="special">&amp;</span> r<span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p>An <code class="computeroutput"><a class="link" href="small_vector_allocator.html" title="Class template small_vector_allocator">small_vector_allocator</a></code> always compares to true, as memory allocated with one instance can be deallocated by another instance (except for unpropagable storage) </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">friend</span> <span class="keyword">bool</span> <a name="idp19942128-bb"></a><span class="keyword">operator</span><span class="special">!=</span><span class="special">(</span><span class="keyword">const</span> <a class="link" href="small_vector_allocator.html" title="Class template small_vector_allocator">small_vector_allocator</a> <span class="special">&amp;</span> l<span class="special">,</span> 
+                       <span class="keyword">const</span> <a class="link" href="small_vector_allocator.html" title="Class template small_vector_allocator">small_vector_allocator</a> <span class="special">&amp;</span> r<span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p>An <code class="computeroutput"><a class="link" href="small_vector_allocator.html" title="Class template small_vector_allocator">small_vector_allocator</a></code> always compares to false, as memory allocated with one instance can be deallocated by another instance </p>
+</li>
+</ol></div>
+</div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2009-2015 Ion Gaztanaga<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="pmr/slist_of.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../boost_container_header_reference.html#header.boost.container.small_vector_hpp"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="small_vector_allocator/rebind.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

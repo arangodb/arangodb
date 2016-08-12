@@ -1,0 +1,39 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="structboost_1_1geometry_1_1closeable__view" kind="struct" prot="public">
+    <compoundname>boost::geometry::closeable_view</compoundname>
+    <includes local="no">closeable_view.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename Range</type>
+      </param>
+      <param>
+        <type><ref refid="group__enum_1ga7d33eca9a5389952bdf719972eb802b6" kindref="member">closure_selector</ref></type>
+        <declname>Close</declname>
+        <defname>Close</defname>
+      </param>
+    </templateparamlist>
+    <briefdescription>
+<para>View on a range, either closing it or leaving it as it is. </para>    </briefdescription>
+    <detaileddescription>
+<para>The <ref refid="structboost_1_1geometry_1_1closeable__view" kindref="compound">closeable_view</ref> is used internally by the library to handle all rings, either closed or open, the same way. The default method is closed, all algorithms process rings as if they are closed. Therefore, if they are opened, a view is created which closes them. The <ref refid="structboost_1_1geometry_1_1closeable__view" kindref="compound">closeable_view</ref> might be used by library users, but its main purpose is internally. <parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>Range</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Original range </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Close</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Specifies if it the range is closed, if so, nothing will happen. If it is open, it will iterate the first point after the last point. </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/views/closeable_view.hpp" line="81" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/views/closeable_view.hpp" bodystart="81" bodyend="81"/>
+    <listofallmembers>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

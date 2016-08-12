@@ -1,0 +1,280 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="structboost_1_1geometry_1_1strategy_1_1side_1_1detail_1_1multiplicable__integral" kind="struct" prot="public">
+    <compoundname>boost::geometry::strategy::side::detail::multiplicable_integral</compoundname>
+    <includes local="no">side_of_intersection.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename T</type>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-type">
+      <memberdef kind="typedef" id="structboost_1_1geometry_1_1strategy_1_1side_1_1detail_1_1multiplicable__integral_1a6046f4996e0d6f18b2e1e0e6211de9a0" prot="public" static="no">
+        <type>boost::make_unsigned&lt; T &gt;::type</type>
+        <definition>typedef boost::make_unsigned&lt;T&gt;::type boost::geometry::strategy::side::detail::multiplicable_integral&lt; T &gt;::unsigned_type</definition>
+        <argsstring></argsstring>
+        <name>unsigned_type</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/side_of_intersection.hpp" line="62" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/side_of_intersection.hpp" bodystart="62" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-static-attrib">
+      <memberdef kind="variable" id="structboost_1_1geometry_1_1strategy_1_1side_1_1detail_1_1multiplicable__integral_1ab389ebcc07c405820ca608ba1d1d99ea" prot="public" static="yes" mutable="no">
+        <type>const <ref refid="structboost_1_1geometry_1_1strategy_1_1side_1_1detail_1_1multiplicable__integral_1a6046f4996e0d6f18b2e1e0e6211de9a0" kindref="member">unsigned_type</ref></type>
+        <definition>const unsigned_type boost::geometry::strategy::side::detail::multiplicable_integral&lt; T &gt;::base</definition>
+        <argsstring></argsstring>
+        <name>base</name>
+        <initializer> <ref refid="structboost_1_1geometry_1_1strategy_1_1side_1_1detail_1_1multiplicable__integral_1a6046f4996e0d6f18b2e1e0e6211de9a0" kindref="member">unsigned_type</ref>(1) &lt;&lt; <ref refid="structboost_1_1geometry_1_1strategy_1_1side_1_1detail_1_1multiplicable__integral_1a06e3c9ffc1171e8bd4cb74ab8091f282" kindref="member">half_bits</ref></initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/side_of_intersection.hpp" line="63" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/side_of_intersection.hpp" bodystart="63" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structboost_1_1geometry_1_1strategy_1_1side_1_1detail_1_1multiplicable__integral_1ab855d6ebc807d65bc26261edd78d2ff8" prot="public" static="yes" mutable="no">
+        <type>const std::size_t</type>
+        <definition>const std::size_t boost::geometry::strategy::side::detail::multiplicable_integral&lt; T &gt;::bits</definition>
+        <argsstring></argsstring>
+        <name>bits</name>
+        <initializer> CHAR_BIT * sizeof(T)</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/side_of_intersection.hpp" line="60" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/side_of_intersection.hpp" bodystart="60" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structboost_1_1geometry_1_1strategy_1_1side_1_1detail_1_1multiplicable__integral_1a06e3c9ffc1171e8bd4cb74ab8091f282" prot="public" static="yes" mutable="no">
+        <type>const std::size_t</type>
+        <definition>const std::size_t boost::geometry::strategy::side::detail::multiplicable_integral&lt; T &gt;::half_bits</definition>
+        <argsstring></argsstring>
+        <name>half_bits</name>
+        <initializer> <ref refid="structboost_1_1geometry_1_1strategy_1_1side_1_1detail_1_1multiplicable__integral_1ab855d6ebc807d65bc26261edd78d2ff8" kindref="member">bits</ref> / 2</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/side_of_intersection.hpp" line="61" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/side_of_intersection.hpp" bodystart="61" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="structboost_1_1geometry_1_1strategy_1_1side_1_1detail_1_1multiplicable__integral_1af4349a567306fc2560d244c72fc8233b" prot="public" static="no" mutable="no">
+        <type><ref refid="structboost_1_1geometry_1_1strategy_1_1side_1_1detail_1_1multiplicable__integral_1a6046f4996e0d6f18b2e1e0e6211de9a0" kindref="member">unsigned_type</ref></type>
+        <definition>unsigned_type boost::geometry::strategy::side::detail::multiplicable_integral&lt; T &gt;::m_ls</definition>
+        <argsstring></argsstring>
+        <name>m_ls</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/side_of_intersection.hpp" line="67" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/side_of_intersection.hpp" bodystart="67" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structboost_1_1geometry_1_1strategy_1_1side_1_1detail_1_1multiplicable__integral_1a87c4425d825efaac01bb6fbfc61990ef" prot="public" static="no" mutable="no">
+        <type><ref refid="structboost_1_1geometry_1_1strategy_1_1side_1_1detail_1_1multiplicable__integral_1a6046f4996e0d6f18b2e1e0e6211de9a0" kindref="member">unsigned_type</ref></type>
+        <definition>unsigned_type boost::geometry::strategy::side::detail::multiplicable_integral&lt; T &gt;::m_ms</definition>
+        <argsstring></argsstring>
+        <name>m_ms</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/side_of_intersection.hpp" line="66" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/side_of_intersection.hpp" bodystart="66" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structboost_1_1geometry_1_1strategy_1_1side_1_1detail_1_1multiplicable__integral_1a90dbaa1113d07d9af07f8d7d982ad570" prot="public" static="no" mutable="no">
+        <type>int</type>
+        <definition>int boost::geometry::strategy::side::detail::multiplicable_integral&lt; T &gt;::m_sign</definition>
+        <argsstring></argsstring>
+        <name>m_sign</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/side_of_intersection.hpp" line="65" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/side_of_intersection.hpp" bodystart="65" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="structboost_1_1geometry_1_1strategy_1_1side_1_1detail_1_1multiplicable__integral_1a82683c65e98760a470dd6340b0425ac9" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type></type>
+        <definition>boost::geometry::strategy::side::detail::multiplicable_integral&lt; T &gt;::BOOST_STATIC_ASSERT</definition>
+        <argsstring>(boost::is_integral&lt; T &gt;::value)</argsstring>
+        <name>BOOST_STATIC_ASSERT</name>
+        <param>
+          <type>boost::is_integral&lt; T &gt;::value</type>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/side_of_intersection.hpp" line="58"/>
+      </memberdef>
+      <memberdef kind="function" id="structboost_1_1geometry_1_1strategy_1_1side_1_1detail_1_1multiplicable__integral_1a9afd9bf9ac41c9c96a07d6112aa16cfd" prot="public" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename CmpVal</type>
+          </param>
+        </templateparamlist>
+        <type>void</type>
+        <definition>void boost::geometry::strategy::side::detail::multiplicable_integral&lt; T &gt;::check_value</definition>
+        <argsstring>(CmpVal const &amp;cmp_val) const </argsstring>
+        <name>check_value</name>
+        <param>
+          <type>CmpVal const &amp;</type>
+          <declname>cmp_val</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/side_of_intersection.hpp" line="123" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/side_of_intersection.hpp" bodystart="122" bodyend="127"/>
+      </memberdef>
+      <memberdef kind="function" id="structboost_1_1geometry_1_1strategy_1_1side_1_1detail_1_1multiplicable__integral_1a5ef565a6831b53af0c47b46b20e47883" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type></type>
+        <definition>boost::geometry::strategy::side::detail::multiplicable_integral&lt; T &gt;::multiplicable_integral</definition>
+        <argsstring>(int sign, unsigned_type ms, unsigned_type ls)</argsstring>
+        <name>multiplicable_integral</name>
+        <param>
+          <type>int</type>
+          <declname>sign</declname>
+        </param>
+        <param>
+          <type><ref refid="structboost_1_1geometry_1_1strategy_1_1side_1_1detail_1_1multiplicable__integral_1a6046f4996e0d6f18b2e1e0e6211de9a0" kindref="member">unsigned_type</ref></type>
+          <declname>ms</declname>
+        </param>
+        <param>
+          <type><ref refid="structboost_1_1geometry_1_1strategy_1_1side_1_1detail_1_1multiplicable__integral_1a6046f4996e0d6f18b2e1e0e6211de9a0" kindref="member">unsigned_type</ref></type>
+          <declname>ls</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/side_of_intersection.hpp" line="71" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/side_of_intersection.hpp" bodystart="69" bodyend="71"/>
+      </memberdef>
+      <memberdef kind="function" id="structboost_1_1geometry_1_1strategy_1_1side_1_1detail_1_1multiplicable__integral_1a7fa6056542c99be28c858f84d99ac771" prot="public" static="no" const="no" explicit="yes" inline="yes" virt="non-virtual">
+        <type></type>
+        <definition>boost::geometry::strategy::side::detail::multiplicable_integral&lt; T &gt;::multiplicable_integral</definition>
+        <argsstring>(T const &amp;val)</argsstring>
+        <name>multiplicable_integral</name>
+        <param>
+          <type>T const &amp;</type>
+          <declname>val</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/side_of_intersection.hpp" line="74" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/side_of_intersection.hpp" bodystart="73" bodyend="84"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="friend">
+      <memberdef kind="friend" id="structboost_1_1geometry_1_1strategy_1_1side_1_1detail_1_1multiplicable__integral_1a283c9f1968db11cb50c80d6df67be519" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>friend <ref refid="structboost_1_1geometry_1_1strategy_1_1side_1_1detail_1_1multiplicable__integral" kindref="compound">multiplicable_integral</ref></type>
+        <definition>multiplicable_integral operator*</definition>
+        <argsstring>(multiplicable_integral const &amp;a, multiplicable_integral const &amp;b)</argsstring>
+        <name>operator*</name>
+        <param>
+          <type><ref refid="structboost_1_1geometry_1_1strategy_1_1side_1_1detail_1_1multiplicable__integral" kindref="compound">multiplicable_integral</ref> const &amp;</type>
+          <declname>a</declname>
+        </param>
+        <param>
+          <type><ref refid="structboost_1_1geometry_1_1strategy_1_1side_1_1detail_1_1multiplicable__integral" kindref="compound">multiplicable_integral</ref> const &amp;</type>
+          <declname>b</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/side_of_intersection.hpp" line="88" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/side_of_intersection.hpp" bodystart="86" bodyend="98"/>
+      </memberdef>
+      <memberdef kind="friend" id="structboost_1_1geometry_1_1strategy_1_1side_1_1detail_1_1multiplicable__integral_1a7daf862bccfb3e77a4cd466cb2137418" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>friend bool</type>
+        <definition>bool operator&lt;</definition>
+        <argsstring>(multiplicable_integral const &amp;a, multiplicable_integral const &amp;b)</argsstring>
+        <name>operator&lt;</name>
+        <param>
+          <type><ref refid="structboost_1_1geometry_1_1strategy_1_1side_1_1detail_1_1multiplicable__integral" kindref="compound">multiplicable_integral</ref> const &amp;</type>
+          <declname>a</declname>
+        </param>
+        <param>
+          <type><ref refid="structboost_1_1geometry_1_1strategy_1_1side_1_1detail_1_1multiplicable__integral" kindref="compound">multiplicable_integral</ref> const &amp;</type>
+          <declname>b</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/side_of_intersection.hpp" line="102" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/side_of_intersection.hpp" bodystart="100" bodyend="113"/>
+      </memberdef>
+      <memberdef kind="friend" id="structboost_1_1geometry_1_1strategy_1_1side_1_1detail_1_1multiplicable__integral_1ad19c0a543715dc3a42cb5cd7173739d0" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>friend bool</type>
+        <definition>bool operator&gt;</definition>
+        <argsstring>(multiplicable_integral const &amp;a, multiplicable_integral const &amp;b)</argsstring>
+        <name>operator&gt;</name>
+        <param>
+          <type><ref refid="structboost_1_1geometry_1_1strategy_1_1side_1_1detail_1_1multiplicable__integral" kindref="compound">multiplicable_integral</ref> const &amp;</type>
+          <declname>a</declname>
+        </param>
+        <param>
+          <type><ref refid="structboost_1_1geometry_1_1strategy_1_1side_1_1detail_1_1multiplicable__integral" kindref="compound">multiplicable_integral</ref> const &amp;</type>
+          <declname>b</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/side_of_intersection.hpp" line="117" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/side_of_intersection.hpp" bodystart="115" bodyend="119"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/side_of_intersection.hpp" line="53" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/side_of_intersection.hpp" bodystart="52" bodyend="128"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1strategy_1_1side_1_1detail_1_1multiplicable__integral_1ab389ebcc07c405820ca608ba1d1d99ea" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::side::detail::multiplicable_integral</scope><name>base</name></member>
+      <member refid="structboost_1_1geometry_1_1strategy_1_1side_1_1detail_1_1multiplicable__integral_1ab855d6ebc807d65bc26261edd78d2ff8" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::side::detail::multiplicable_integral</scope><name>bits</name></member>
+      <member refid="structboost_1_1geometry_1_1strategy_1_1side_1_1detail_1_1multiplicable__integral_1a82683c65e98760a470dd6340b0425ac9" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::side::detail::multiplicable_integral</scope><name>BOOST_STATIC_ASSERT</name></member>
+      <member refid="structboost_1_1geometry_1_1strategy_1_1side_1_1detail_1_1multiplicable__integral_1a9afd9bf9ac41c9c96a07d6112aa16cfd" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::side::detail::multiplicable_integral</scope><name>check_value</name></member>
+      <member refid="structboost_1_1geometry_1_1strategy_1_1side_1_1detail_1_1multiplicable__integral_1a06e3c9ffc1171e8bd4cb74ab8091f282" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::side::detail::multiplicable_integral</scope><name>half_bits</name></member>
+      <member refid="structboost_1_1geometry_1_1strategy_1_1side_1_1detail_1_1multiplicable__integral_1af4349a567306fc2560d244c72fc8233b" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::side::detail::multiplicable_integral</scope><name>m_ls</name></member>
+      <member refid="structboost_1_1geometry_1_1strategy_1_1side_1_1detail_1_1multiplicable__integral_1a87c4425d825efaac01bb6fbfc61990ef" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::side::detail::multiplicable_integral</scope><name>m_ms</name></member>
+      <member refid="structboost_1_1geometry_1_1strategy_1_1side_1_1detail_1_1multiplicable__integral_1a90dbaa1113d07d9af07f8d7d982ad570" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::side::detail::multiplicable_integral</scope><name>m_sign</name></member>
+      <member refid="structboost_1_1geometry_1_1strategy_1_1side_1_1detail_1_1multiplicable__integral_1a5ef565a6831b53af0c47b46b20e47883" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::side::detail::multiplicable_integral</scope><name>multiplicable_integral</name></member>
+      <member refid="structboost_1_1geometry_1_1strategy_1_1side_1_1detail_1_1multiplicable__integral_1a7fa6056542c99be28c858f84d99ac771" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::side::detail::multiplicable_integral</scope><name>multiplicable_integral</name></member>
+      <member refid="structboost_1_1geometry_1_1strategy_1_1side_1_1detail_1_1multiplicable__integral_1a283c9f1968db11cb50c80d6df67be519" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::side::detail::multiplicable_integral</scope><name>operator*</name></member>
+      <member refid="structboost_1_1geometry_1_1strategy_1_1side_1_1detail_1_1multiplicable__integral_1a7daf862bccfb3e77a4cd466cb2137418" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::side::detail::multiplicable_integral</scope><name>operator&lt;</name></member>
+      <member refid="structboost_1_1geometry_1_1strategy_1_1side_1_1detail_1_1multiplicable__integral_1ad19c0a543715dc3a42cb5cd7173739d0" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::side::detail::multiplicable_integral</scope><name>operator&gt;</name></member>
+      <member refid="structboost_1_1geometry_1_1strategy_1_1side_1_1detail_1_1multiplicable__integral_1a6046f4996e0d6f18b2e1e0e6211de9a0" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::side::detail::multiplicable_integral</scope><name>unsigned_type</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

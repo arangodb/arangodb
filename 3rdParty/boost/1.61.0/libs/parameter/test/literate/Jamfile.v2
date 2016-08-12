@@ -1,0 +1,33 @@
+
+import testing ;
+
+run extracting-parameter-types0.cpp ;
+run extracting-parameter-types1.cpp ;
+compile template-keywords0.cpp ;
+compile template-keywords1.cpp ;
+compile top-level0.cpp ;
+compile headers-and-namespaces0.cpp ;
+compile predicate-requirements0.cpp ;
+compile handling-out-parameters0.cpp ;
+compile writing-the-function0.cpp ;
+run building-argumentpacks0.cpp ;
+compile defining-the-keywords0.cpp ;
+compile defining-the-keywords1.cpp ;
+compile exercising-the-code-so-far0.cpp ;
+run lazy-default-computation0.cpp ;
+run lazy-default-computation1.cpp ;
+run namespaces0.cpp ;
+run namespaces1.cpp ;
+run namespaces2.cpp ;
+run namespaces3.cpp ;
+compile optional-parameters0.cpp ;
+compile static-member-functions0.cpp ;
+run parameter-enabled-constructors0.cpp ;
+compile required-parameters0.cpp ;
+compile class-template-skeleton0.cpp ;
+compile deduced-template-parameters0.cpp ;
+compile deduced-parameters0.cpp ;
+compile default-expression-evaluation0.cpp ;
+compile parameter-enabled-member-functions0.cpp ;
+compile parameter-enabled-member-functions1.cpp ;
+run fine-grained-name-control0.cpp ;

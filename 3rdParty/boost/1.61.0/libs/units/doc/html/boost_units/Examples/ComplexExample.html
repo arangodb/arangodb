@@ -1,0 +1,432 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Complex Example</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../../index.html" title="Chapter&#160;1.&#160;Boost.Units 1.1.0">
+<link rel="up" href="../Examples.html" title="Examples">
+<link rel="prev" href="UDTExample.html" title="User Defined Types">
+<link rel="next" href="PerformanceExample.html" title="Performance Example">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="UDTExample.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../Examples.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="PerformanceExample.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_units.Examples.ComplexExample"></a><a class="link" href="ComplexExample.html" title="Complex Example">Complex Example</a>
+</h3></div></div></div>
+<p>
+        (<a href="../../../../libs/units/example/complex.cpp" target="_top">complex.cpp</a>)
+      </p>
+<p>
+        This example demonstrates how to implement a replacement <code class="computeroutput"><span class="identifier">complex</span></code>
+        class that functions correctly both as a quantity value type and as a quantity
+        container class, including heterogeneous multiplication and division operations
+        and rational powers and roots. Naturally, heterogeneous operations are only
+        supported on compilers that implement <code class="computeroutput"><span class="identifier">typeof</span></code>.
+        The primary differences are that binary operations are not implemented using
+        the <code class="computeroutput"><span class="identifier">op</span><span class="special">=</span></code>
+        operators and use the utility classes <span class="underline"><code class="computeroutput"><a class="link" href="../../boost/units/add_typeof_helper.html" title="Struct template add_typeof_helper">add_typeof_helper</a></code></span>,
+        <span class="underline"><code class="computeroutput"><a class="link" href="../../boost/units/subtract_typeof_helper.html" title="Struct template subtract_typeof_helper">subtract_typeof_helper</a></code></span>,
+        <span class="underline"><code class="computeroutput"><a class="link" href="../../boost/units/multiply_typeof_helper.html" title="Struct template multiply_typeof_helper">multiply_typeof_helper</a></code></span>,
+        and <span class="underline"><code class="computeroutput"><a class="link" href="../../boost/units/divide_typeof_helper.html" title="Struct template divide_typeof_helper">divide_typeof_helper</a></code></span>.
+        In addition, <span class="underline"><code class="computeroutput"><a class="link" href="../../boost/units/power_typeof_helper.html" title="Struct template power_typeof_helper">power_typeof_helper</a></code></span>
+        and <span class="underline"><code class="computeroutput"><a class="link" href="../../boost/units/root_typeof_helper.html" title="Struct template root_typeof_helper">root_typeof_helper</a></code></span>
+        are defined for both cases :
+      </p>
+<p>
+</p>
+<pre class="programlisting"><span class="keyword">namespace</span> <span class="identifier">boost</span> <span class="special">{</span>
+
+<span class="keyword">namespace</span> <span class="identifier">units</span> <span class="special">{</span>
+
+<span class="comment">/// replacement complex class </span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">&gt;</span>
+<span class="keyword">class</span> <span class="identifier">complex</span>
+<span class="special">{</span>
+    <span class="keyword">public</span><span class="special">:</span>
+        <span class="keyword">typedef</span> <span class="identifier">complex</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;</span>  <span class="identifier">this_type</span><span class="special">;</span>
+
+        <span class="identifier">complex</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">T</span><span class="special">&amp;</span> <span class="identifier">r</span> <span class="special">=</span> <span class="number">0</span><span class="special">,</span><span class="keyword">const</span> <span class="identifier">T</span><span class="special">&amp;</span> <span class="identifier">i</span> <span class="special">=</span> <span class="number">0</span><span class="special">)</span> <span class="special">:</span> <span class="identifier">r_</span><span class="special">(</span><span class="identifier">r</span><span class="special">),</span><span class="identifier">i_</span><span class="special">(</span><span class="identifier">i</span><span class="special">)</span> <span class="special">{</span> <span class="special">}</span>
+        <span class="identifier">complex</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">this_type</span><span class="special">&amp;</span> <span class="identifier">source</span><span class="special">)</span> <span class="special">:</span> <span class="identifier">r_</span><span class="special">(</span><span class="identifier">source</span><span class="special">.</span><span class="identifier">r_</span><span class="special">),</span><span class="identifier">i_</span><span class="special">(</span><span class="identifier">source</span><span class="special">.</span><span class="identifier">i_</span><span class="special">)</span> <span class="special">{</span> <span class="special">}</span>
+
+        <span class="identifier">this_type</span><span class="special">&amp;</span> <span class="keyword">operator</span><span class="special">=(</span><span class="keyword">const</span> <span class="identifier">this_type</span><span class="special">&amp;</span> <span class="identifier">source</span><span class="special">)</span>
+        <span class="special">{</span>
+            <span class="keyword">if</span> <span class="special">(</span><span class="keyword">this</span> <span class="special">==</span> <span class="special">&amp;</span><span class="identifier">source</span><span class="special">)</span> <span class="keyword">return</span> <span class="special">*</span><span class="keyword">this</span><span class="special">;</span>
+
+            <span class="identifier">r_</span> <span class="special">=</span> <span class="identifier">source</span><span class="special">.</span><span class="identifier">r_</span><span class="special">;</span>
+            <span class="identifier">i_</span> <span class="special">=</span> <span class="identifier">source</span><span class="special">.</span><span class="identifier">i_</span><span class="special">;</span>
+
+            <span class="keyword">return</span> <span class="special">*</span><span class="keyword">this</span><span class="special">;</span>
+        <span class="special">}</span>
+
+        <span class="identifier">T</span><span class="special">&amp;</span> <span class="identifier">real</span><span class="special">()</span>                   <span class="special">{</span> <span class="keyword">return</span> <span class="identifier">r_</span><span class="special">;</span> <span class="special">}</span>
+        <span class="identifier">T</span><span class="special">&amp;</span> <span class="identifier">imag</span><span class="special">()</span>                   <span class="special">{</span> <span class="keyword">return</span> <span class="identifier">i_</span><span class="special">;</span> <span class="special">}</span>
+
+        <span class="keyword">const</span> <span class="identifier">T</span><span class="special">&amp;</span> <span class="identifier">real</span><span class="special">()</span> <span class="keyword">const</span>       <span class="special">{</span> <span class="keyword">return</span> <span class="identifier">r_</span><span class="special">;</span> <span class="special">}</span>
+        <span class="keyword">const</span> <span class="identifier">T</span><span class="special">&amp;</span> <span class="identifier">imag</span><span class="special">()</span> <span class="keyword">const</span>       <span class="special">{</span> <span class="keyword">return</span> <span class="identifier">i_</span><span class="special">;</span> <span class="special">}</span>
+
+        <span class="identifier">this_type</span><span class="special">&amp;</span> <span class="keyword">operator</span><span class="special">+=(</span><span class="keyword">const</span> <span class="identifier">T</span><span class="special">&amp;</span> <span class="identifier">val</span><span class="special">)</span>
+        <span class="special">{</span>
+            <span class="identifier">r_</span> <span class="special">+=</span> <span class="identifier">val</span><span class="special">;</span>
+            <span class="keyword">return</span> <span class="special">*</span><span class="keyword">this</span><span class="special">;</span>
+        <span class="special">}</span>
+
+        <span class="identifier">this_type</span><span class="special">&amp;</span> <span class="keyword">operator</span><span class="special">-=(</span><span class="keyword">const</span> <span class="identifier">T</span><span class="special">&amp;</span> <span class="identifier">val</span><span class="special">)</span>
+        <span class="special">{</span>
+            <span class="identifier">r_</span> <span class="special">-=</span> <span class="identifier">val</span><span class="special">;</span>
+            <span class="keyword">return</span> <span class="special">*</span><span class="keyword">this</span><span class="special">;</span>
+        <span class="special">}</span>
+
+        <span class="identifier">this_type</span><span class="special">&amp;</span> <span class="keyword">operator</span><span class="special">*=(</span><span class="keyword">const</span> <span class="identifier">T</span><span class="special">&amp;</span> <span class="identifier">val</span><span class="special">)</span>
+        <span class="special">{</span>
+            <span class="identifier">r_</span> <span class="special">*=</span> <span class="identifier">val</span><span class="special">;</span>
+            <span class="identifier">i_</span> <span class="special">*=</span> <span class="identifier">val</span><span class="special">;</span>
+            <span class="keyword">return</span> <span class="special">*</span><span class="keyword">this</span><span class="special">;</span>
+        <span class="special">}</span>
+
+        <span class="identifier">this_type</span><span class="special">&amp;</span> <span class="keyword">operator</span><span class="special">/=(</span><span class="keyword">const</span> <span class="identifier">T</span><span class="special">&amp;</span> <span class="identifier">val</span><span class="special">)</span>
+        <span class="special">{</span>
+            <span class="identifier">r_</span> <span class="special">/=</span> <span class="identifier">val</span><span class="special">;</span>
+            <span class="identifier">i_</span> <span class="special">/=</span> <span class="identifier">val</span><span class="special">;</span>
+            <span class="keyword">return</span> <span class="special">*</span><span class="keyword">this</span><span class="special">;</span>
+        <span class="special">}</span>
+
+        <span class="identifier">this_type</span><span class="special">&amp;</span> <span class="keyword">operator</span><span class="special">+=(</span><span class="keyword">const</span> <span class="identifier">this_type</span><span class="special">&amp;</span> <span class="identifier">source</span><span class="special">)</span>
+        <span class="special">{</span>
+            <span class="identifier">r_</span> <span class="special">+=</span> <span class="identifier">source</span><span class="special">.</span><span class="identifier">r_</span><span class="special">;</span>
+            <span class="identifier">i_</span> <span class="special">+=</span> <span class="identifier">source</span><span class="special">.</span><span class="identifier">i_</span><span class="special">;</span>
+            <span class="keyword">return</span> <span class="special">*</span><span class="keyword">this</span><span class="special">;</span>
+        <span class="special">}</span>
+
+        <span class="identifier">this_type</span><span class="special">&amp;</span> <span class="keyword">operator</span><span class="special">-=(</span><span class="keyword">const</span> <span class="identifier">this_type</span><span class="special">&amp;</span> <span class="identifier">source</span><span class="special">)</span>
+        <span class="special">{</span>
+            <span class="identifier">r_</span> <span class="special">-=</span> <span class="identifier">source</span><span class="special">.</span><span class="identifier">r_</span><span class="special">;</span>
+            <span class="identifier">i_</span> <span class="special">-=</span> <span class="identifier">source</span><span class="special">.</span><span class="identifier">i_</span><span class="special">;</span>
+            <span class="keyword">return</span> <span class="special">*</span><span class="keyword">this</span><span class="special">;</span>
+        <span class="special">}</span>
+
+        <span class="identifier">this_type</span><span class="special">&amp;</span> <span class="keyword">operator</span><span class="special">*=(</span><span class="keyword">const</span> <span class="identifier">this_type</span><span class="special">&amp;</span> <span class="identifier">source</span><span class="special">)</span>
+        <span class="special">{</span>
+            <span class="special">*</span><span class="keyword">this</span> <span class="special">=</span> <span class="special">*</span><span class="keyword">this</span> <span class="special">*</span> <span class="identifier">source</span><span class="special">;</span>
+            <span class="keyword">return</span> <span class="special">*</span><span class="keyword">this</span><span class="special">;</span>
+        <span class="special">}</span>
+
+        <span class="identifier">this_type</span><span class="special">&amp;</span> <span class="keyword">operator</span><span class="special">/=(</span><span class="keyword">const</span> <span class="identifier">this_type</span><span class="special">&amp;</span> <span class="identifier">source</span><span class="special">)</span>
+        <span class="special">{</span>
+            <span class="special">*</span><span class="keyword">this</span> <span class="special">=</span> <span class="special">*</span><span class="keyword">this</span> <span class="special">/</span> <span class="identifier">source</span><span class="special">;</span>
+            <span class="keyword">return</span> <span class="special">*</span><span class="keyword">this</span><span class="special">;</span>
+        <span class="special">}</span>
+
+    <span class="keyword">private</span><span class="special">:</span>
+        <span class="identifier">T</span>   <span class="identifier">r_</span><span class="special">,</span><span class="identifier">i_</span><span class="special">;</span>
+<span class="special">};</span>
+
+<span class="special">}</span>
+
+<span class="special">}</span>
+
+<span class="preprocessor">#if</span> <span class="identifier">BOOST_UNITS_HAS_BOOST_TYPEOF</span>
+
+<span class="preprocessor">#include</span> <span class="identifier">BOOST_TYPEOF_INCREMENT_REGISTRATION_GROUP</span><span class="special">()</span>
+
+<span class="identifier">BOOST_TYPEOF_REGISTER_TEMPLATE</span><span class="special">(</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">units</span><span class="special">::</span><span class="identifier">complex</span><span class="special">,</span> <span class="number">1</span><span class="special">)</span>
+
+<span class="preprocessor">#endif</span>
+
+<span class="keyword">namespace</span> <span class="identifier">boost</span> <span class="special">{</span>
+
+<span class="keyword">namespace</span> <span class="identifier">units</span> <span class="special">{</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">X</span><span class="special">&gt;</span>
+<span class="identifier">complex</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">unary_plus_typeof_helper</span><span class="special">&lt;</span><span class="identifier">X</span><span class="special">&gt;::</span><span class="identifier">type</span><span class="special">&gt;</span>
+<span class="keyword">operator</span><span class="special">+(</span><span class="keyword">const</span> <span class="identifier">complex</span><span class="special">&lt;</span><span class="identifier">X</span><span class="special">&gt;&amp;</span> <span class="identifier">x</span><span class="special">)</span>
+<span class="special">{</span>
+    <span class="keyword">typedef</span> <span class="keyword">typename</span> <span class="identifier">unary_plus_typeof_helper</span><span class="special">&lt;</span><span class="identifier">X</span><span class="special">&gt;::</span><span class="identifier">type</span>  <span class="identifier">type</span><span class="special">;</span>
+
+    <span class="keyword">return</span> <span class="identifier">complex</span><span class="special">&lt;</span><span class="identifier">type</span><span class="special">&gt;(</span><span class="identifier">x</span><span class="special">.</span><span class="identifier">real</span><span class="special">(),</span><span class="identifier">x</span><span class="special">.</span><span class="identifier">imag</span><span class="special">());</span>
+<span class="special">}</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">X</span><span class="special">&gt;</span>
+<span class="identifier">complex</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">unary_minus_typeof_helper</span><span class="special">&lt;</span><span class="identifier">X</span><span class="special">&gt;::</span><span class="identifier">type</span><span class="special">&gt;</span>
+<span class="keyword">operator</span><span class="special">-(</span><span class="keyword">const</span> <span class="identifier">complex</span><span class="special">&lt;</span><span class="identifier">X</span><span class="special">&gt;&amp;</span> <span class="identifier">x</span><span class="special">)</span>
+<span class="special">{</span>
+    <span class="keyword">typedef</span> <span class="keyword">typename</span> <span class="identifier">unary_minus_typeof_helper</span><span class="special">&lt;</span><span class="identifier">X</span><span class="special">&gt;::</span><span class="identifier">type</span> <span class="identifier">type</span><span class="special">;</span>
+
+    <span class="keyword">return</span> <span class="identifier">complex</span><span class="special">&lt;</span><span class="identifier">type</span><span class="special">&gt;(-</span><span class="identifier">x</span><span class="special">.</span><span class="identifier">real</span><span class="special">(),-</span><span class="identifier">x</span><span class="special">.</span><span class="identifier">imag</span><span class="special">());</span>
+<span class="special">}</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">X</span><span class="special">,</span><span class="keyword">class</span> <span class="identifier">Y</span><span class="special">&gt;</span>
+<span class="identifier">complex</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">add_typeof_helper</span><span class="special">&lt;</span><span class="identifier">X</span><span class="special">,</span><span class="identifier">Y</span><span class="special">&gt;::</span><span class="identifier">type</span><span class="special">&gt;</span>
+<span class="keyword">operator</span><span class="special">+(</span><span class="keyword">const</span> <span class="identifier">complex</span><span class="special">&lt;</span><span class="identifier">X</span><span class="special">&gt;&amp;</span> <span class="identifier">x</span><span class="special">,</span><span class="keyword">const</span> <span class="identifier">complex</span><span class="special">&lt;</span><span class="identifier">Y</span><span class="special">&gt;&amp;</span> <span class="identifier">y</span><span class="special">)</span>
+<span class="special">{</span>
+    <span class="keyword">typedef</span> <span class="keyword">typename</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">units</span><span class="special">::</span><span class="identifier">add_typeof_helper</span><span class="special">&lt;</span><span class="identifier">X</span><span class="special">,</span><span class="identifier">Y</span><span class="special">&gt;::</span><span class="identifier">type</span> <span class="identifier">type</span><span class="special">;</span>
+
+    <span class="keyword">return</span> <span class="identifier">complex</span><span class="special">&lt;</span><span class="identifier">type</span><span class="special">&gt;(</span><span class="identifier">x</span><span class="special">.</span><span class="identifier">real</span><span class="special">()+</span><span class="identifier">y</span><span class="special">.</span><span class="identifier">real</span><span class="special">(),</span><span class="identifier">x</span><span class="special">.</span><span class="identifier">imag</span><span class="special">()+</span><span class="identifier">y</span><span class="special">.</span><span class="identifier">imag</span><span class="special">());</span>
+<span class="special">}</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">X</span><span class="special">,</span><span class="keyword">class</span> <span class="identifier">Y</span><span class="special">&gt;</span>
+<span class="identifier">complex</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">units</span><span class="special">::</span><span class="identifier">subtract_typeof_helper</span><span class="special">&lt;</span><span class="identifier">X</span><span class="special">,</span><span class="identifier">Y</span><span class="special">&gt;::</span><span class="identifier">type</span><span class="special">&gt;</span>
+<span class="keyword">operator</span><span class="special">-(</span><span class="keyword">const</span> <span class="identifier">complex</span><span class="special">&lt;</span><span class="identifier">X</span><span class="special">&gt;&amp;</span> <span class="identifier">x</span><span class="special">,</span><span class="keyword">const</span> <span class="identifier">complex</span><span class="special">&lt;</span><span class="identifier">Y</span><span class="special">&gt;&amp;</span> <span class="identifier">y</span><span class="special">)</span>
+<span class="special">{</span>
+    <span class="keyword">typedef</span> <span class="keyword">typename</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">units</span><span class="special">::</span><span class="identifier">subtract_typeof_helper</span><span class="special">&lt;</span><span class="identifier">X</span><span class="special">,</span><span class="identifier">Y</span><span class="special">&gt;::</span><span class="identifier">type</span>    <span class="identifier">type</span><span class="special">;</span>
+
+    <span class="keyword">return</span> <span class="identifier">complex</span><span class="special">&lt;</span><span class="identifier">type</span><span class="special">&gt;(</span><span class="identifier">x</span><span class="special">.</span><span class="identifier">real</span><span class="special">()-</span><span class="identifier">y</span><span class="special">.</span><span class="identifier">real</span><span class="special">(),</span><span class="identifier">x</span><span class="special">.</span><span class="identifier">imag</span><span class="special">()-</span><span class="identifier">y</span><span class="special">.</span><span class="identifier">imag</span><span class="special">());</span>
+<span class="special">}</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">X</span><span class="special">,</span><span class="keyword">class</span> <span class="identifier">Y</span><span class="special">&gt;</span>
+<span class="identifier">complex</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">units</span><span class="special">::</span><span class="identifier">multiply_typeof_helper</span><span class="special">&lt;</span><span class="identifier">X</span><span class="special">,</span><span class="identifier">Y</span><span class="special">&gt;::</span><span class="identifier">type</span><span class="special">&gt;</span>
+<span class="keyword">operator</span><span class="special">*(</span><span class="keyword">const</span> <span class="identifier">complex</span><span class="special">&lt;</span><span class="identifier">X</span><span class="special">&gt;&amp;</span> <span class="identifier">x</span><span class="special">,</span><span class="keyword">const</span> <span class="identifier">complex</span><span class="special">&lt;</span><span class="identifier">Y</span><span class="special">&gt;&amp;</span> <span class="identifier">y</span><span class="special">)</span>
+<span class="special">{</span>
+    <span class="keyword">typedef</span> <span class="keyword">typename</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">units</span><span class="special">::</span><span class="identifier">multiply_typeof_helper</span><span class="special">&lt;</span><span class="identifier">X</span><span class="special">,</span><span class="identifier">Y</span><span class="special">&gt;::</span><span class="identifier">type</span>    <span class="identifier">type</span><span class="special">;</span>
+
+    <span class="keyword">return</span> <span class="identifier">complex</span><span class="special">&lt;</span><span class="identifier">type</span><span class="special">&gt;(</span><span class="identifier">x</span><span class="special">.</span><span class="identifier">real</span><span class="special">()*</span><span class="identifier">y</span><span class="special">.</span><span class="identifier">real</span><span class="special">()</span> <span class="special">-</span> <span class="identifier">x</span><span class="special">.</span><span class="identifier">imag</span><span class="special">()*</span><span class="identifier">y</span><span class="special">.</span><span class="identifier">imag</span><span class="special">(),</span>
+                         <span class="identifier">x</span><span class="special">.</span><span class="identifier">real</span><span class="special">()*</span><span class="identifier">y</span><span class="special">.</span><span class="identifier">imag</span><span class="special">()</span> <span class="special">+</span> <span class="identifier">x</span><span class="special">.</span><span class="identifier">imag</span><span class="special">()*</span><span class="identifier">y</span><span class="special">.</span><span class="identifier">real</span><span class="special">());</span>
+
+<span class="comment">//  fully correct implementation has more complex return type</span>
+<span class="comment">//</span>
+<span class="comment">//    typedef typename boost::units::multiply_typeof_helper&lt;X,Y&gt;::type xy_type;</span>
+<span class="comment">//    </span>
+<span class="comment">//    typedef typename boost::units::add_typeof_helper&lt;</span>
+<span class="comment">//      xy_type,xy_type&gt;::type         xy_plus_xy_type;</span>
+<span class="comment">//    typedef typename</span>
+<span class="comment">//        boost::units::subtract_typeof_helper&lt;xy_type,xy_type&gt;::type</span>
+<span class="comment">//        xy_minus_xy_type;</span>
+<span class="comment">//    </span>
+<span class="comment">//    BOOST_STATIC_ASSERT((boost::is_same&lt;xy_plus_xy_type,</span>
+<span class="comment">//                                       xy_minus_xy_type&gt;::value == true));</span>
+<span class="comment">//    </span>
+<span class="comment">//    return complex&lt;xy_plus_xy_type&gt;(x.real()*y.real()-x.imag()*y.imag(),</span>
+<span class="comment">//                                    x.real()*y.imag()+x.imag()*y.real());</span>
+<span class="special">}</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">X</span><span class="special">,</span><span class="keyword">class</span> <span class="identifier">Y</span><span class="special">&gt;</span>
+<span class="identifier">complex</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">units</span><span class="special">::</span><span class="identifier">divide_typeof_helper</span><span class="special">&lt;</span><span class="identifier">X</span><span class="special">,</span><span class="identifier">Y</span><span class="special">&gt;::</span><span class="identifier">type</span><span class="special">&gt;</span>
+<span class="keyword">operator</span><span class="special">/(</span><span class="keyword">const</span> <span class="identifier">complex</span><span class="special">&lt;</span><span class="identifier">X</span><span class="special">&gt;&amp;</span> <span class="identifier">x</span><span class="special">,</span><span class="keyword">const</span> <span class="identifier">complex</span><span class="special">&lt;</span><span class="identifier">Y</span><span class="special">&gt;&amp;</span> <span class="identifier">y</span><span class="special">)</span>
+<span class="special">{</span>
+    <span class="comment">// naive implementation of complex division</span>
+    <span class="keyword">typedef</span> <span class="keyword">typename</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">units</span><span class="special">::</span><span class="identifier">divide_typeof_helper</span><span class="special">&lt;</span><span class="identifier">X</span><span class="special">,</span><span class="identifier">Y</span><span class="special">&gt;::</span><span class="identifier">type</span> <span class="identifier">type</span><span class="special">;</span>
+
+    <span class="keyword">return</span> <span class="identifier">complex</span><span class="special">&lt;</span><span class="identifier">type</span><span class="special">&gt;((</span><span class="identifier">x</span><span class="special">.</span><span class="identifier">real</span><span class="special">()*</span><span class="identifier">y</span><span class="special">.</span><span class="identifier">real</span><span class="special">()+</span><span class="identifier">x</span><span class="special">.</span><span class="identifier">imag</span><span class="special">()*</span><span class="identifier">y</span><span class="special">.</span><span class="identifier">imag</span><span class="special">())/</span>
+                            <span class="special">(</span><span class="identifier">y</span><span class="special">.</span><span class="identifier">real</span><span class="special">()*</span><span class="identifier">y</span><span class="special">.</span><span class="identifier">real</span><span class="special">()+</span><span class="identifier">y</span><span class="special">.</span><span class="identifier">imag</span><span class="special">()*</span><span class="identifier">y</span><span class="special">.</span><span class="identifier">imag</span><span class="special">()),</span>
+                         <span class="special">(</span><span class="identifier">x</span><span class="special">.</span><span class="identifier">imag</span><span class="special">()*</span><span class="identifier">y</span><span class="special">.</span><span class="identifier">real</span><span class="special">()-</span><span class="identifier">x</span><span class="special">.</span><span class="identifier">real</span><span class="special">()*</span><span class="identifier">y</span><span class="special">.</span><span class="identifier">imag</span><span class="special">())/</span>
+                            <span class="special">(</span><span class="identifier">y</span><span class="special">.</span><span class="identifier">real</span><span class="special">()*</span><span class="identifier">y</span><span class="special">.</span><span class="identifier">real</span><span class="special">()+</span><span class="identifier">y</span><span class="special">.</span><span class="identifier">imag</span><span class="special">()*</span><span class="identifier">y</span><span class="special">.</span><span class="identifier">imag</span><span class="special">()));</span>
+
+<span class="comment">//  fully correct implementation has more complex return type</span>
+<span class="comment">//</span>
+<span class="comment">//  typedef typename boost::units::multiply_typeof_helper&lt;X,Y&gt;::type xy_type;</span>
+<span class="comment">//  typedef typename boost::units::multiply_typeof_helper&lt;Y,Y&gt;::type yy_type;</span>
+<span class="comment">//</span>
+<span class="comment">//  typedef typename boost::units::add_typeof_helper&lt;xy_type, xy_type&gt;::type</span>
+<span class="comment">//      xy_plus_xy_type;</span>
+<span class="comment">//  typedef typename boost::units::subtract_typeof_helper&lt;</span>
+<span class="comment">//      xy_type,xy_type&gt;::type xy_minus_xy_type;</span>
+<span class="comment">//</span>
+<span class="comment">//  typedef typename boost::units::divide_typeof_helper&lt;</span>
+<span class="comment">//      xy_plus_xy_type,yy_type&gt;::type      xy_plus_xy_over_yy_type;</span>
+<span class="comment">//  typedef typename boost::units::divide_typeof_helper&lt;</span>
+<span class="comment">//      xy_minus_xy_type,yy_type&gt;::type     xy_minus_xy_over_yy_type;</span>
+<span class="comment">//</span>
+<span class="comment">//  BOOST_STATIC_ASSERT((boost::is_same&lt;xy_plus_xy_over_yy_type,</span>
+<span class="comment">//                                  xy_minus_xy_over_yy_type&gt;::value == true));</span>
+<span class="comment">//</span>
+<span class="comment">//  return complex&lt;xy_plus_xy_over_yy_type&gt;(</span>
+<span class="comment">//      (x.real()*y.real()+x.imag()*y.imag())/</span>
+<span class="comment">//          (y.real()*y.real()+y.imag()*y.imag()),</span>
+<span class="comment">//      (x.imag()*y.real()-x.real()*y.imag())/</span>
+<span class="comment">//          (y.real()*y.real()+y.imag()*y.imag()));</span>
+<span class="special">}</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Y</span><span class="special">&gt;</span>
+<span class="identifier">complex</span><span class="special">&lt;</span><span class="identifier">Y</span><span class="special">&gt;</span>
+<span class="identifier">pow</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">complex</span><span class="special">&lt;</span><span class="identifier">Y</span><span class="special">&gt;&amp;</span> <span class="identifier">x</span><span class="special">,</span><span class="keyword">const</span> <span class="identifier">Y</span><span class="special">&amp;</span> <span class="identifier">y</span><span class="special">)</span>
+<span class="special">{</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">complex</span><span class="special">&lt;</span><span class="identifier">Y</span><span class="special">&gt;</span> <span class="identifier">tmp</span><span class="special">(</span><span class="identifier">x</span><span class="special">.</span><span class="identifier">real</span><span class="special">(),</span><span class="identifier">x</span><span class="special">.</span><span class="identifier">imag</span><span class="special">());</span>
+
+    <span class="identifier">tmp</span> <span class="special">=</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">pow</span><span class="special">(</span><span class="identifier">tmp</span><span class="special">,</span><span class="identifier">y</span><span class="special">);</span>
+
+    <span class="keyword">return</span> <span class="identifier">complex</span><span class="special">&lt;</span><span class="identifier">Y</span><span class="special">&gt;(</span><span class="identifier">tmp</span><span class="special">.</span><span class="identifier">real</span><span class="special">(),</span><span class="identifier">tmp</span><span class="special">.</span><span class="identifier">imag</span><span class="special">());</span>
+<span class="special">}</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Y</span><span class="special">&gt;</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">ostream</span><span class="special">&amp;</span> <span class="keyword">operator</span><span class="special">&lt;&lt;(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">ostream</span><span class="special">&amp;</span> <span class="identifier">os</span><span class="special">,</span><span class="keyword">const</span> <span class="identifier">complex</span><span class="special">&lt;</span><span class="identifier">Y</span><span class="special">&gt;&amp;</span> <span class="identifier">val</span><span class="special">)</span>
+<span class="special">{</span>
+    <span class="identifier">os</span> <span class="special">&lt;&lt;</span> <span class="identifier">val</span><span class="special">.</span><span class="identifier">real</span><span class="special">()</span> <span class="special">&lt;&lt;</span> <span class="string">" + "</span> <span class="special">&lt;&lt;</span> <span class="identifier">val</span><span class="special">.</span><span class="identifier">imag</span><span class="special">()</span> <span class="special">&lt;&lt;</span> <span class="string">" i"</span><span class="special">;</span>
+
+    <span class="keyword">return</span> <span class="identifier">os</span><span class="special">;</span>
+<span class="special">}</span>
+
+<span class="comment">/// specialize power typeof helper for complex&lt;Y&gt;</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Y</span><span class="special">,</span><span class="keyword">long</span> <span class="identifier">N</span><span class="special">,</span><span class="keyword">long</span> <span class="identifier">D</span><span class="special">&gt;</span>
+<span class="keyword">struct</span> <span class="identifier">power_typeof_helper</span><span class="special">&lt;</span><span class="identifier">complex</span><span class="special">&lt;</span><span class="identifier">Y</span><span class="special">&gt;,</span><span class="identifier">static_rational</span><span class="special">&lt;</span><span class="identifier">N</span><span class="special">,</span><span class="identifier">D</span><span class="special">&gt;</span> <span class="special">&gt;</span>
+<span class="special">{</span>
+    <span class="keyword">typedef</span> <span class="identifier">complex</span><span class="special">&lt;</span>
+        <span class="keyword">typename</span> <span class="identifier">power_typeof_helper</span><span class="special">&lt;</span><span class="identifier">Y</span><span class="special">,</span><span class="identifier">static_rational</span><span class="special">&lt;</span><span class="identifier">N</span><span class="special">,</span><span class="identifier">D</span><span class="special">&gt;</span> <span class="special">&gt;::</span><span class="identifier">type</span>
+    <span class="special">&gt;</span> <span class="identifier">type</span><span class="special">;</span>
+
+    <span class="keyword">static</span> <span class="identifier">type</span> <span class="identifier">value</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">complex</span><span class="special">&lt;</span><span class="identifier">Y</span><span class="special">&gt;&amp;</span> <span class="identifier">x</span><span class="special">)</span>
+    <span class="special">{</span>
+        <span class="keyword">const</span> <span class="identifier">static_rational</span><span class="special">&lt;</span><span class="identifier">N</span><span class="special">,</span><span class="identifier">D</span><span class="special">&gt;</span>  <span class="identifier">rat</span><span class="special">;</span>
+
+        <span class="keyword">const</span> <span class="identifier">Y</span>    <span class="identifier">m</span> <span class="special">=</span> <span class="identifier">Y</span><span class="special">(</span><span class="identifier">rat</span><span class="special">.</span><span class="identifier">numerator</span><span class="special">())/</span><span class="identifier">Y</span><span class="special">(</span><span class="identifier">rat</span><span class="special">.</span><span class="identifier">denominator</span><span class="special">());</span>
+
+        <span class="keyword">return</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">units</span><span class="special">::</span><span class="identifier">pow</span><span class="special">(</span><span class="identifier">x</span><span class="special">,</span><span class="identifier">m</span><span class="special">);</span>
+    <span class="special">}</span>
+<span class="special">};</span>
+
+<span class="comment">/// specialize root typeof helper for complex&lt;Y&gt;</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Y</span><span class="special">,</span><span class="keyword">long</span> <span class="identifier">N</span><span class="special">,</span><span class="keyword">long</span> <span class="identifier">D</span><span class="special">&gt;</span>
+<span class="keyword">struct</span> <span class="identifier">root_typeof_helper</span><span class="special">&lt;</span><span class="identifier">complex</span><span class="special">&lt;</span><span class="identifier">Y</span><span class="special">&gt;,</span><span class="identifier">static_rational</span><span class="special">&lt;</span><span class="identifier">N</span><span class="special">,</span><span class="identifier">D</span><span class="special">&gt;</span> <span class="special">&gt;</span>
+<span class="special">{</span>
+    <span class="keyword">typedef</span> <span class="identifier">complex</span><span class="special">&lt;</span>
+        <span class="keyword">typename</span> <span class="identifier">root_typeof_helper</span><span class="special">&lt;</span><span class="identifier">Y</span><span class="special">,</span><span class="identifier">static_rational</span><span class="special">&lt;</span><span class="identifier">N</span><span class="special">,</span><span class="identifier">D</span><span class="special">&gt;</span> <span class="special">&gt;::</span><span class="identifier">type</span>
+    <span class="special">&gt;</span> <span class="identifier">type</span><span class="special">;</span>
+
+    <span class="keyword">static</span> <span class="identifier">type</span> <span class="identifier">value</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">complex</span><span class="special">&lt;</span><span class="identifier">Y</span><span class="special">&gt;&amp;</span> <span class="identifier">x</span><span class="special">)</span>
+    <span class="special">{</span>
+        <span class="keyword">const</span> <span class="identifier">static_rational</span><span class="special">&lt;</span><span class="identifier">N</span><span class="special">,</span><span class="identifier">D</span><span class="special">&gt;</span>  <span class="identifier">rat</span><span class="special">;</span>
+
+        <span class="keyword">const</span> <span class="identifier">Y</span>    <span class="identifier">m</span> <span class="special">=</span> <span class="identifier">Y</span><span class="special">(</span><span class="identifier">rat</span><span class="special">.</span><span class="identifier">denominator</span><span class="special">())/</span><span class="identifier">Y</span><span class="special">(</span><span class="identifier">rat</span><span class="special">.</span><span class="identifier">numerator</span><span class="special">());</span>
+
+        <span class="keyword">return</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">units</span><span class="special">::</span><span class="identifier">pow</span><span class="special">(</span><span class="identifier">x</span><span class="special">,</span><span class="identifier">m</span><span class="special">);</span>
+    <span class="special">}</span>
+<span class="special">};</span>
+
+<span class="comment">/// specialize power typeof helper for complex&lt;quantity&lt;Unit,Y&gt; &gt;</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Y</span><span class="special">,</span><span class="keyword">class</span> <span class="identifier">Unit</span><span class="special">,</span><span class="keyword">long</span> <span class="identifier">N</span><span class="special">,</span><span class="keyword">long</span> <span class="identifier">D</span><span class="special">&gt;</span>
+<span class="keyword">struct</span> <span class="identifier">power_typeof_helper</span><span class="special">&lt;</span><span class="identifier">complex</span><span class="special">&lt;</span><span class="identifier">quantity</span><span class="special">&lt;</span><span class="identifier">Unit</span><span class="special">,</span><span class="identifier">Y</span><span class="special">&gt;</span> <span class="special">&gt;,</span><span class="identifier">static_rational</span><span class="special">&lt;</span><span class="identifier">N</span><span class="special">,</span><span class="identifier">D</span><span class="special">&gt;</span> <span class="special">&gt;</span>
+<span class="special">{</span>
+    <span class="keyword">typedef</span> <span class="keyword">typename</span>
+        <span class="identifier">power_typeof_helper</span><span class="special">&lt;</span><span class="identifier">Y</span><span class="special">,</span><span class="identifier">static_rational</span><span class="special">&lt;</span><span class="identifier">N</span><span class="special">,</span><span class="identifier">D</span><span class="special">&gt;</span> <span class="special">&gt;::</span><span class="identifier">type</span>       <span class="identifier">value_type</span><span class="special">;</span>
+    <span class="keyword">typedef</span> <span class="keyword">typename</span>
+        <span class="identifier">power_typeof_helper</span><span class="special">&lt;</span><span class="identifier">Unit</span><span class="special">,</span><span class="identifier">static_rational</span><span class="special">&lt;</span><span class="identifier">N</span><span class="special">,</span><span class="identifier">D</span><span class="special">&gt;</span> <span class="special">&gt;::</span><span class="identifier">type</span>    <span class="identifier">unit_type</span><span class="special">;</span>
+    <span class="keyword">typedef</span> <span class="identifier">quantity</span><span class="special">&lt;</span><span class="identifier">unit_type</span><span class="special">,</span><span class="identifier">value_type</span><span class="special">&gt;</span>                      <span class="identifier">quantity_type</span><span class="special">;</span>
+    <span class="keyword">typedef</span> <span class="identifier">complex</span><span class="special">&lt;</span><span class="identifier">quantity_type</span><span class="special">&gt;</span>                              <span class="identifier">type</span><span class="special">;</span>
+
+    <span class="keyword">static</span> <span class="identifier">type</span> <span class="identifier">value</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">complex</span><span class="special">&lt;</span><span class="identifier">quantity</span><span class="special">&lt;</span><span class="identifier">Unit</span><span class="special">,</span><span class="identifier">Y</span><span class="special">&gt;</span> <span class="special">&gt;&amp;</span> <span class="identifier">x</span><span class="special">)</span>
+    <span class="special">{</span>
+        <span class="keyword">const</span> <span class="identifier">complex</span><span class="special">&lt;</span><span class="identifier">value_type</span><span class="special">&gt;</span>   <span class="identifier">tmp</span> <span class="special">=</span>
+            <span class="identifier">pow</span><span class="special">&lt;</span><span class="identifier">static_rational</span><span class="special">&lt;</span><span class="identifier">N</span><span class="special">,</span><span class="identifier">D</span><span class="special">&gt;</span> <span class="special">&gt;(</span><span class="identifier">complex</span><span class="special">&lt;</span><span class="identifier">Y</span><span class="special">&gt;(</span><span class="identifier">x</span><span class="special">.</span><span class="identifier">real</span><span class="special">().</span><span class="identifier">value</span><span class="special">(),</span>
+                                                  <span class="identifier">x</span><span class="special">.</span><span class="identifier">imag</span><span class="special">().</span><span class="identifier">value</span><span class="special">()));</span>
+
+        <span class="keyword">return</span> <span class="identifier">type</span><span class="special">(</span><span class="identifier">quantity_type</span><span class="special">::</span><span class="identifier">from_value</span><span class="special">(</span><span class="identifier">tmp</span><span class="special">.</span><span class="identifier">real</span><span class="special">()),</span>
+                    <span class="identifier">quantity_type</span><span class="special">::</span><span class="identifier">from_value</span><span class="special">(</span><span class="identifier">tmp</span><span class="special">.</span><span class="identifier">imag</span><span class="special">()));</span>
+    <span class="special">}</span>
+<span class="special">};</span>
+
+<span class="comment">/// specialize root typeof helper for complex&lt;quantity&lt;Unit,Y&gt; &gt;</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Y</span><span class="special">,</span><span class="keyword">class</span> <span class="identifier">Unit</span><span class="special">,</span><span class="keyword">long</span> <span class="identifier">N</span><span class="special">,</span><span class="keyword">long</span> <span class="identifier">D</span><span class="special">&gt;</span>
+<span class="keyword">struct</span> <span class="identifier">root_typeof_helper</span><span class="special">&lt;</span><span class="identifier">complex</span><span class="special">&lt;</span><span class="identifier">quantity</span><span class="special">&lt;</span><span class="identifier">Unit</span><span class="special">,</span><span class="identifier">Y</span><span class="special">&gt;</span> <span class="special">&gt;,</span><span class="identifier">static_rational</span><span class="special">&lt;</span><span class="identifier">N</span><span class="special">,</span><span class="identifier">D</span><span class="special">&gt;</span> <span class="special">&gt;</span>
+<span class="special">{</span>
+    <span class="keyword">typedef</span> <span class="keyword">typename</span>
+        <span class="identifier">root_typeof_helper</span><span class="special">&lt;</span><span class="identifier">Y</span><span class="special">,</span><span class="identifier">static_rational</span><span class="special">&lt;</span><span class="identifier">N</span><span class="special">,</span><span class="identifier">D</span><span class="special">&gt;</span> <span class="special">&gt;::</span><span class="identifier">type</span>       <span class="identifier">value_type</span><span class="special">;</span>
+    <span class="keyword">typedef</span> <span class="keyword">typename</span>
+        <span class="identifier">root_typeof_helper</span><span class="special">&lt;</span><span class="identifier">Unit</span><span class="special">,</span><span class="identifier">static_rational</span><span class="special">&lt;</span><span class="identifier">N</span><span class="special">,</span><span class="identifier">D</span><span class="special">&gt;</span> <span class="special">&gt;::</span><span class="identifier">type</span>    <span class="identifier">unit_type</span><span class="special">;</span>
+    <span class="keyword">typedef</span> <span class="identifier">quantity</span><span class="special">&lt;</span><span class="identifier">unit_type</span><span class="special">,</span><span class="identifier">value_type</span><span class="special">&gt;</span>                      <span class="identifier">quantity_type</span><span class="special">;</span>
+    <span class="keyword">typedef</span> <span class="identifier">complex</span><span class="special">&lt;</span><span class="identifier">quantity_type</span><span class="special">&gt;</span>                              <span class="identifier">type</span><span class="special">;</span>
+
+    <span class="keyword">static</span> <span class="identifier">type</span> <span class="identifier">value</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">complex</span><span class="special">&lt;</span><span class="identifier">quantity</span><span class="special">&lt;</span><span class="identifier">Unit</span><span class="special">,</span><span class="identifier">Y</span><span class="special">&gt;</span> <span class="special">&gt;&amp;</span> <span class="identifier">x</span><span class="special">)</span>
+    <span class="special">{</span>
+        <span class="keyword">const</span> <span class="identifier">complex</span><span class="special">&lt;</span><span class="identifier">value_type</span><span class="special">&gt;</span>   <span class="identifier">tmp</span> <span class="special">=</span>
+            <span class="identifier">root</span><span class="special">&lt;</span><span class="identifier">static_rational</span><span class="special">&lt;</span><span class="identifier">N</span><span class="special">,</span><span class="identifier">D</span><span class="special">&gt;</span> <span class="special">&gt;(</span><span class="identifier">complex</span><span class="special">&lt;</span><span class="identifier">Y</span><span class="special">&gt;(</span><span class="identifier">x</span><span class="special">.</span><span class="identifier">real</span><span class="special">().</span><span class="identifier">value</span><span class="special">(),</span>
+                                                   <span class="identifier">x</span><span class="special">.</span><span class="identifier">imag</span><span class="special">().</span><span class="identifier">value</span><span class="special">()));</span>
+
+        <span class="keyword">return</span> <span class="identifier">type</span><span class="special">(</span><span class="identifier">quantity_type</span><span class="special">::</span><span class="identifier">from_value</span><span class="special">(</span><span class="identifier">tmp</span><span class="special">.</span><span class="identifier">real</span><span class="special">()),</span>
+                   <span class="identifier">quantity_type</span><span class="special">::</span><span class="identifier">from_value</span><span class="special">(</span><span class="identifier">tmp</span><span class="special">.</span><span class="identifier">imag</span><span class="special">()));</span>
+    <span class="special">}</span>
+<span class="special">};</span>
+
+<span class="special">}</span> <span class="comment">// namespace units</span>
+
+<span class="special">}</span> <span class="comment">// namespace boost</span>
+</pre>
+<p>
+      </p>
+<p>
+        With this replacement <code class="computeroutput"><span class="identifier">complex</span></code>
+        class, we can declare a complex variable :
+      </p>
+<p>
+</p>
+<pre class="programlisting"><span class="keyword">typedef</span> <span class="identifier">quantity</span><span class="special">&lt;</span><span class="identifier">length</span><span class="special">,</span><span class="identifier">complex</span><span class="special">&lt;</span><span class="keyword">double</span><span class="special">&gt;</span> <span class="special">&gt;</span>     <span class="identifier">length_dimension</span><span class="special">;</span>
+
+<span class="identifier">length_dimension</span>    <span class="identifier">L</span><span class="special">(</span><span class="identifier">complex</span><span class="special">&lt;</span><span class="keyword">double</span><span class="special">&gt;(</span><span class="number">2.0</span><span class="special">,</span><span class="number">1.0</span><span class="special">)*</span><span class="identifier">meters</span><span class="special">);</span>
+</pre>
+<p>
+      </p>
+<p>
+        to get the correct behavior for all cases supported by <span class="underline"><code class="computeroutput"><a class="link" href="../../boost/units/quantity.html" title="Class template quantity">quantity</a></code></span> with a <code class="computeroutput"><span class="identifier">complex</span></code> value type :
+      </p>
+<p>
+</p>
+<pre class="programlisting"><span class="special">+</span><span class="identifier">L</span>      <span class="special">=</span> <span class="number">2</span> <span class="special">+</span> <span class="number">1</span> <span class="identifier">i</span> <span class="identifier">m</span>
+<span class="special">-</span><span class="identifier">L</span>      <span class="special">=</span> <span class="special">-</span><span class="number">2</span> <span class="special">+</span> <span class="special">-</span><span class="number">1</span> <span class="identifier">i</span> <span class="identifier">m</span>
+<span class="identifier">L</span><span class="special">+</span><span class="identifier">L</span>     <span class="special">=</span> <span class="number">4</span> <span class="special">+</span> <span class="number">2</span> <span class="identifier">i</span> <span class="identifier">m</span>
+<span class="identifier">L</span><span class="special">-</span><span class="identifier">L</span>     <span class="special">=</span> <span class="number">0</span> <span class="special">+</span> <span class="number">0</span> <span class="identifier">i</span> <span class="identifier">m</span>
+<span class="identifier">L</span><span class="special">*</span><span class="identifier">L</span>     <span class="special">=</span> <span class="number">3</span> <span class="special">+</span> <span class="number">4</span> <span class="identifier">i</span> <span class="identifier">m</span><span class="special">^</span><span class="number">2</span>
+<span class="identifier">L</span><span class="special">/</span><span class="identifier">L</span>     <span class="special">=</span> <span class="number">1</span> <span class="special">+</span> <span class="number">0</span> <span class="identifier">i</span> <span class="identifier">dimensionless</span>
+<span class="identifier">L</span><span class="special">^</span><span class="number">3</span>     <span class="special">=</span> <span class="number">2</span> <span class="special">+</span> <span class="number">11</span> <span class="identifier">i</span> <span class="identifier">m</span><span class="special">^</span><span class="number">3</span>
+<span class="identifier">L</span><span class="special">^(</span><span class="number">3</span><span class="special">/</span><span class="number">2</span><span class="special">)</span> <span class="special">=</span> <span class="number">2.56713</span> <span class="special">+</span> <span class="number">2.14247</span> <span class="identifier">i</span> <span class="identifier">m</span><span class="special">^(</span><span class="number">3</span><span class="special">/</span><span class="number">2</span><span class="special">)</span>
+<span class="number">3</span><span class="identifier">vL</span>     <span class="special">=</span> <span class="number">1.29207</span> <span class="special">+</span> <span class="number">0.201294</span> <span class="identifier">i</span> <span class="identifier">m</span><span class="special">^(</span><span class="number">1</span><span class="special">/</span><span class="number">3</span><span class="special">)</span>
+<span class="special">(</span><span class="number">3</span><span class="special">/</span><span class="number">2</span><span class="special">)</span><span class="identifier">vL</span> <span class="special">=</span> <span class="number">1.62894</span> <span class="special">+</span> <span class="number">0.520175</span> <span class="identifier">i</span> <span class="identifier">m</span><span class="special">^(</span><span class="number">2</span><span class="special">/</span><span class="number">3</span><span class="special">)</span>
+</pre>
+<p>
+      </p>
+<p>
+        and, similarly, <code class="computeroutput"><span class="identifier">complex</span></code> with
+        a <span class="underline"><code class="computeroutput"><a class="link" href="../../boost/units/quantity.html" title="Class template quantity">quantity</a></code></span>
+        value type
+      </p>
+<p>
+</p>
+<pre class="programlisting"><span class="keyword">typedef</span> <span class="identifier">complex</span><span class="special">&lt;</span><span class="identifier">quantity</span><span class="special">&lt;</span><span class="identifier">length</span><span class="special">&gt;</span> <span class="special">&gt;</span>     <span class="identifier">length_dimension</span><span class="special">;</span>
+
+<span class="identifier">length_dimension</span>    <span class="identifier">L</span><span class="special">(</span><span class="number">2.0</span><span class="special">*</span><span class="identifier">meters</span><span class="special">,</span><span class="number">1.0</span><span class="special">*</span><span class="identifier">meters</span><span class="special">);</span>
+</pre>
+<p>
+      </p>
+<p>
+        gives
+      </p>
+<p>
+</p>
+<pre class="programlisting"><span class="special">+</span><span class="identifier">L</span>      <span class="special">=</span> <span class="number">2</span> <span class="identifier">m</span> <span class="special">+</span> <span class="number">1</span> <span class="identifier">m</span> <span class="identifier">i</span>
+<span class="special">-</span><span class="identifier">L</span>      <span class="special">=</span> <span class="special">-</span><span class="number">2</span> <span class="identifier">m</span> <span class="special">+</span> <span class="special">-</span><span class="number">1</span> <span class="identifier">m</span> <span class="identifier">i</span>
+<span class="identifier">L</span><span class="special">+</span><span class="identifier">L</span>     <span class="special">=</span> <span class="number">4</span> <span class="identifier">m</span> <span class="special">+</span> <span class="number">2</span> <span class="identifier">m</span> <span class="identifier">i</span>
+<span class="identifier">L</span><span class="special">-</span><span class="identifier">L</span>     <span class="special">=</span> <span class="number">0</span> <span class="identifier">m</span> <span class="special">+</span> <span class="number">0</span> <span class="identifier">m</span> <span class="identifier">i</span>
+<span class="identifier">L</span><span class="special">*</span><span class="identifier">L</span>     <span class="special">=</span> <span class="number">3</span> <span class="identifier">m</span><span class="special">^</span><span class="number">2</span> <span class="special">+</span> <span class="number">4</span> <span class="identifier">m</span><span class="special">^</span><span class="number">2</span> <span class="identifier">i</span>
+<span class="identifier">L</span><span class="special">/</span><span class="identifier">L</span>     <span class="special">=</span> <span class="number">1</span> <span class="identifier">dimensionless</span> <span class="special">+</span> <span class="number">0</span> <span class="identifier">dimensionless</span> <span class="identifier">i</span>
+<span class="identifier">L</span><span class="special">^</span><span class="number">3</span>     <span class="special">=</span> <span class="number">2</span> <span class="identifier">m</span><span class="special">^</span><span class="number">3</span> <span class="special">+</span> <span class="number">11</span> <span class="identifier">m</span><span class="special">^</span><span class="number">3</span> <span class="identifier">i</span>
+<span class="identifier">L</span><span class="special">^(</span><span class="number">3</span><span class="special">/</span><span class="number">2</span><span class="special">)</span> <span class="special">=</span> <span class="number">2.56713</span> <span class="identifier">m</span><span class="special">^(</span><span class="number">3</span><span class="special">/</span><span class="number">2</span><span class="special">)</span> <span class="special">+</span> <span class="number">2.14247</span> <span class="identifier">m</span><span class="special">^(</span><span class="number">3</span><span class="special">/</span><span class="number">2</span><span class="special">)</span> <span class="identifier">i</span>
+<span class="number">3</span><span class="identifier">vL</span>     <span class="special">=</span> <span class="number">1.29207</span> <span class="identifier">m</span><span class="special">^(</span><span class="number">1</span><span class="special">/</span><span class="number">3</span><span class="special">)</span> <span class="special">+</span> <span class="number">0.201294</span> <span class="identifier">m</span><span class="special">^(</span><span class="number">1</span><span class="special">/</span><span class="number">3</span><span class="special">)</span> <span class="identifier">i</span>
+<span class="special">(</span><span class="number">3</span><span class="special">/</span><span class="number">2</span><span class="special">)</span><span class="identifier">vL</span> <span class="special">=</span> <span class="number">1.62894</span> <span class="identifier">m</span><span class="special">^(</span><span class="number">2</span><span class="special">/</span><span class="number">3</span><span class="special">)</span> <span class="special">+</span> <span class="number">0.520175</span> <span class="identifier">m</span><span class="special">^(</span><span class="number">2</span><span class="special">/</span><span class="number">3</span><span class="special">)</span> <span class="identifier">i</span>
+</pre>
+<p>
+      </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2008 Matthias Christian Schabel<br>Copyright &#169; 2007-2010 Steven
+      Watanabe<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="UDTExample.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../Examples.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="PerformanceExample.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

@@ -1,0 +1,108 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="structboost_1_1geometry_1_1strategy_1_1within_1_1services_1_1default__strategy" kind="struct" prot="public">
+    <compoundname>boost::geometry::strategy::within::services::default_strategy</compoundname>
+    <includes local="no">within.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename TagContained</type>
+      </param>
+      <param>
+        <type>typename TagContaining</type>
+      </param>
+      <param>
+        <type>typename CastedTagContained</type>
+      </param>
+      <param>
+        <type>typename CastedTagContaining</type>
+      </param>
+      <param>
+        <type>typename CsTagContained</type>
+      </param>
+      <param>
+        <type>typename CsTagContaining</type>
+      </param>
+      <param>
+        <type>typename GeometryContained</type>
+      </param>
+      <param>
+        <type>typename GeometryContaining</type>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="structboost_1_1geometry_1_1strategy_1_1within_1_1services_1_1default__strategy_1a64b896fea2e9062e796bdcc0d7a2f4a6" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type></type>
+        <definition>boost::geometry::strategy::within::services::default_strategy&lt; TagContained, TagContaining, CastedTagContained, CastedTagContaining, CsTagContained, CsTagContaining, GeometryContained, GeometryContaining &gt;::BOOST_MPL_ASSERT_MSG</definition>
+        <argsstring>(false, NOT_IMPLEMENTED_FOR_THESE_TYPES,(types&lt; GeometryContained, GeometryContaining &gt;))</argsstring>
+        <name>BOOST_MPL_ASSERT_MSG</name>
+        <param>
+          <type>false</type>
+        </param>
+        <param>
+          <type>NOT_IMPLEMENTED_FOR_THESE_TYPES</type>
+        </param>
+        <param>
+          <type>(types&lt; GeometryContained, GeometryContaining &gt;)</type>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/within.hpp" line="57"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+<para>Traits class binding a within determination strategy to a coordinate system. </para>    </briefdescription>
+    <detaileddescription>
+<para><parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>TagContained</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>tag (possibly casted) of point-type </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>TagContained</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>tag (possibly casted) of (possibly) containing type </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>CsTagContained</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>tag of coordinate system of point-type </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>CsTagContaining</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>tag of coordinate system of (possibly) containing type </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Geometry</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>geometry-type of input (often point, or box) </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>GeometryContaining</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>geometry-type of input (possibly) containing type </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/within.hpp" line="52" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/within.hpp" bodystart="51" bodyend="58"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1strategy_1_1within_1_1services_1_1default__strategy_1a64b896fea2e9062e796bdcc0d7a2f4a6" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::within::services::default_strategy</scope><name>BOOST_MPL_ASSERT_MSG</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

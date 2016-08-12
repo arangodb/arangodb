@@ -1,0 +1,187 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="classboost_1_1geometry_1_1strategy_1_1distance_1_1haversine" kind="class" prot="public">
+    <compoundname>boost::geometry::strategy::distance::haversine</compoundname>
+    <includes local="no">distance_haversine.hpp</includes>
+    <innerclass refid="structboost_1_1geometry_1_1strategy_1_1distance_1_1haversine_1_1calculation__type" prot="public">boost::geometry::strategy::distance::haversine::calculation_type</innerclass>
+    <templateparamlist>
+      <param>
+        <type>typename</type>
+        <declname>RadiusType</declname>
+        <defname>RadiusType</defname>
+      </param>
+      <param>
+        <type>typename</type>
+        <declname>CalculationType</declname>
+        <defname>CalculationType</defname>
+        <defval>void</defval>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="private-type">
+      <memberdef kind="typedef" id="classboost_1_1geometry_1_1strategy_1_1distance_1_1haversine_1a5e6cca09efcc7bd61337581360fd3236" prot="private" static="no">
+        <type><ref refid="classboost_1_1geometry_1_1strategy_1_1distance_1_1comparable_1_1haversine" kindref="compound">comparable::haversine</ref>&lt; RadiusType, CalculationType &gt;</type>
+        <definition>typedef comparable::haversine&lt;RadiusType, CalculationType&gt; boost::geometry::strategy::distance::haversine&lt; RadiusType, CalculationType &gt;::comparable_type</definition>
+        <argsstring></argsstring>
+        <name>comparable_type</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/distance_haversine.hpp" line="130" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/distance_haversine.hpp" bodystart="130" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-type">
+      <memberdef kind="typedef" id="classboost_1_1geometry_1_1strategy_1_1distance_1_1haversine_1a8ac07dd35e737f53156eec8234f36f3a" prot="public" static="no">
+        <type>RadiusType</type>
+        <definition>typedef RadiusType boost::geometry::strategy::distance::haversine&lt; RadiusType, CalculationType &gt;::radius_type</definition>
+        <argsstring></argsstring>
+        <name>radius_type</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/distance_haversine.hpp" line="138" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/distance_haversine.hpp" bodystart="138" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="private-attrib">
+      <memberdef kind="variable" id="classboost_1_1geometry_1_1strategy_1_1distance_1_1haversine_1a81e80f52bd9afc522551f884b8397714" prot="private" static="no" mutable="no">
+        <type>RadiusType</type>
+        <definition>RadiusType boost::geometry::strategy::distance::haversine&lt; RadiusType, CalculationType &gt;::m_radius</definition>
+        <argsstring></argsstring>
+        <name>m_radius</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/distance_haversine.hpp" line="174" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/distance_haversine.hpp" bodystart="174" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="classboost_1_1geometry_1_1strategy_1_1distance_1_1haversine_1aad71e6eac82c6fd2a1ee308c4bb3e33a" prot="public" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Point1</type>
+          </param>
+          <param>
+            <type>typename Point2</type>
+          </param>
+        </templateparamlist>
+        <type><ref refid="structboost_1_1geometry_1_1strategy_1_1distance_1_1haversine_1_1calculation__type" kindref="compound">calculation_type</ref>&lt; Point1, Point2 &gt;::type</type>
+        <definition>calculation_type&lt;Point1, Point2&gt;::type boost::geometry::strategy::distance::haversine&lt; RadiusType, CalculationType &gt;::apply</definition>
+        <argsstring>(Point1 const &amp;p1, Point2 const &amp;p2) const </argsstring>
+        <name>apply</name>
+        <param>
+          <type>Point1 const &amp;</type>
+          <declname>p1</declname>
+        </param>
+        <param>
+          <type>Point2 const &amp;</type>
+          <declname>p2</declname>
+        </param>
+        <briefdescription>
+<para>applies the distance calculation </para>        </briefdescription>
+        <detaileddescription>
+<para><simplesect kind="return"><para>the calculated distance (including multiplying with radius) </para></simplesect>
+<parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>p1</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>first point </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>p2</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>second point </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/distance_haversine.hpp" line="157" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/distance_haversine.hpp" bodystart="156" bodyend="162"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1strategy_1_1distance_1_1haversine_1a9fb4f56a1a94e4432c06cc91a3f996ef" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type></type>
+        <definition>boost::geometry::strategy::distance::haversine&lt; RadiusType, CalculationType &gt;::haversine</definition>
+        <argsstring>(RadiusType const &amp;radius=1.0)</argsstring>
+        <name>haversine</name>
+        <param>
+          <type>RadiusType const &amp;</type>
+          <declname>radius</declname>
+          <defval>1.0</defval>
+        </param>
+        <briefdescription>
+<para>Constructor. </para>        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>radius</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>radius of the sphere, defaults to 1.0 for the unit sphere </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/distance_haversine.hpp" line="146" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/distance_haversine.hpp" bodystart="144" bodyend="146"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1strategy_1_1distance_1_1haversine_1a13e805220265954d343963abb3cdaf7b" prot="public" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <type>RadiusType</type>
+        <definition>RadiusType boost::geometry::strategy::distance::haversine&lt; RadiusType, CalculationType &gt;::radius</definition>
+        <argsstring>() const </argsstring>
+        <name>radius</name>
+        <briefdescription>
+<para>access to radius value </para>        </briefdescription>
+        <detaileddescription>
+<para><simplesect kind="return"><para>the radius </para></simplesect>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/distance_haversine.hpp" line="169" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/distance_haversine.hpp" bodystart="168" bodyend="171"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+<para>Distance calculation for spherical coordinates on a perfect sphere using haversine. </para>    </briefdescription>
+    <detaileddescription>
+<para><parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>RadiusType</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>numeric type for radius (of sphere, earth) </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>CalculationType</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>numeric type for calculation (e.g. high precision); if [*void] then it is extracted automatically from the coordinate type and (if necessary) promoted to floating point </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="author"><para>Adapted from: <ulink url="http://williams.best.vwh.net/avform.htm">http://williams.best.vwh.net/avform.htm</ulink> </para></simplesect>
+<simplesect kind="see"><para><ulink url="http://en.wikipedia.org/wiki/Great-circle_distance">http://en.wikipedia.org/wiki/Great-circle_distance</ulink> </para></simplesect>
+<simplesect kind="note"><para>(from Wiki:) The great circle distance d between two points with coordinates {lat1,lon1} and {lat2,lon2} is given by: d=acos(sin(lat1)*sin(lat2)+cos(lat1)*cos(lat2)*cos(lon1-lon2)) A mathematically equivalent formula, which is less subject to rounding error for short distances is: d=2*asin(sqrt((sin((lat1-lat2) / 2))^2 + cos(lat1)*cos(lat2)*(sin((lon1-lon2) / 2))^2))</para></simplesect>
+ <qbk>
+[heading See also]
+[link geometry.reference.algorithms.distance.distance_3_with_strategy distance (with strategy)]
+</qbk>  </para>    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/distance_haversine.hpp" line="129" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/distance_haversine.hpp" bodystart="128" bodyend="175"/>
+    <listofallmembers>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1distance_1_1haversine_1aad71e6eac82c6fd2a1ee308c4bb3e33a" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::distance::haversine</scope><name>apply</name></member>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1distance_1_1haversine_1a5e6cca09efcc7bd61337581360fd3236" prot="private" virt="non-virtual"><scope>boost::geometry::strategy::distance::haversine</scope><name>comparable_type</name></member>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1distance_1_1haversine_1a9fb4f56a1a94e4432c06cc91a3f996ef" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::distance::haversine</scope><name>haversine</name></member>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1distance_1_1haversine_1a81e80f52bd9afc522551f884b8397714" prot="private" virt="non-virtual"><scope>boost::geometry::strategy::distance::haversine</scope><name>m_radius</name></member>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1distance_1_1haversine_1a13e805220265954d343963abb3cdaf7b" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::distance::haversine</scope><name>radius</name></member>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1distance_1_1haversine_1a8ac07dd35e737f53156eec8234f36f3a" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::distance::haversine</scope><name>radius_type</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

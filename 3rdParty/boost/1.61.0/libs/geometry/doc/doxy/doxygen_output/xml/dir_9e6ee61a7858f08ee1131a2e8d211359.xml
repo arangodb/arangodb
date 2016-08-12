@@ -1,0 +1,15 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="dir_9e6ee61a7858f08ee1131a2e8d211359" kind="dir">
+    <compoundname>/home/travis/build/boostorg/boost/boost/geometry/io/wkt/</compoundname>
+    <innerfile refid="read_8hpp">read.hpp</innerfile>
+    <innerfile refid="stream_8hpp">stream.hpp</innerfile>
+    <innerfile refid="wkt_8hpp">wkt.hpp</innerfile>
+    <innerfile refid="write_8hpp">write.hpp</innerfile>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/io/wkt/"/>
+  </compounddef>
+</doxygen>

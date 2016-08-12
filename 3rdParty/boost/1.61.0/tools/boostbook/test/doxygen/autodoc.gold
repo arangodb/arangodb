@@ -1,0 +1,113 @@
+<?xml version="1.0" standalone="yes"?>
+<library-reference id="example_reference"><title>Example Reference</title><header name="boost/example.hpp">
+<namespace name="example">
+<class name="example"><purpose>Documentation for class example. </purpose><description><para>Detailed documentation</para><para><programlisting language="c++">void class_code_sample();
+</programlisting> </para></description><class name="inner_class"><data-member name="x"><type>int</type></data-member>
+</class><enum name="class_enum"><enumvalue name="enumerator"/></enum>
+<typedef name="documented_type1"><description><para>This type has documentation. </para></description><type>int</type></typedef>
+<typedef name="documented_type2"><purpose>This type has documentation. </purpose><type>long</type></typedef>
+<typedef name="documented_type3"><description><para>This type has documentation. </para></description><type>long double</type></typedef>
+<typedef name="undocumented_type1"><type>short</type></typedef>
+<typedef name="undocumented_type2"><type>double</type></typedef>
+<data-member name="integer"><type>int</type></data-member>
+<data-member name="mutable_integer" specifiers="mutable"><type>int</type></data-member>
+<data-member name="const_integer"><type>const int</type></data-member>
+<data-member name="static_integer" specifiers="static"><type>int</type></data-member>
+<data-member name="static_const_integer" specifiers="static"><type>const int</type></data-member>
+<method-group name="public member functions">
+<method name="virtual_method" specifiers="virtual"><type>int</type></method>
+<method name="virtual_abstract_method" cv="= 0" specifiers="virtual"><type>int</type></method>
+<method name="virtual_const_method" cv="const" specifiers="virtual"><type>int</type></method>
+<method name="method_with_default_value"><type>int</type><parameter name=""><paramtype>int</paramtype><default>default_value</default></parameter></method>
+<method name="method_with_fp"><type>int</type><parameter name="fp"><paramtype>int(*)()</paramtype></parameter><parameter name=""><paramtype>volatile char</paramtype></parameter></method>
+<method name="method_with_string_default1"><type>int</type><parameter name=""><paramtype>char *</paramtype><default>")"</default></parameter><parameter name=""><paramtype>volatile char</paramtype></parameter></method>
+<method name="method_with_string_default2"><type>int</type><parameter name=""><paramtype>char *</paramtype><default>"("</default></parameter><parameter name=""><paramtype>volatile char</paramtype></parameter></method>
+<method name="method_with_char_default1"><type>int</type><parameter name=""><paramtype>char</paramtype><default>'('</default></parameter><parameter name=""><paramtype>volatile char</paramtype></parameter></method>
+<method name="method_with_char_default2"><type>int</type><parameter name=""><paramtype>char</paramtype><default>')'</default></parameter><parameter name=""><paramtype>volatile char</paramtype></parameter></method>
+<method name="volatile_method_with_fp" cv="volatile"><type>int</type><parameter name="fp"><paramtype>int(*)()</paramtype></parameter><parameter name=""><paramtype>volatile char</paramtype></parameter></method>
+<method name="volatile_method_with_string_default1" cv="volatile"><type>int</type><parameter name=""><paramtype>char *</paramtype><default>")"</default></parameter><parameter name=""><paramtype>volatile char</paramtype></parameter></method>
+<method name="volatile_method_with_string_default2" cv="volatile"><type>int</type><parameter name=""><paramtype>char *</paramtype><default>"("</default></parameter><parameter name=""><paramtype>volatile char</paramtype></parameter></method>
+<method name="volatile_method_with_char_default1" cv="volatile"><type>int</type><parameter name=""><paramtype>char</paramtype><default>'('</default></parameter><parameter name=""><paramtype>volatile char</paramtype></parameter></method>
+<method name="volatile_method_with_char_default2" cv="volatile"><type>int</type><parameter name=""><paramtype>char</paramtype><default>')'</default></parameter><parameter name=""><paramtype>volatile char</paramtype></parameter></method>
+<method name="const_method" cv="const"><type>void</type></method>
+<method name="volatile_method" cv="volatile"><type>void</type></method>
+<method name="trad_noexcept" cv="noexcept"><type>void</type></method>
+<method name="trad_noexcept_if" cv="noexcept(a==b &amp;&amp;(c||d)))"><type>void</type></method>
+<method name="boost_noexcept" cv="noexcept"><type>void</type></method>
+<method name="boost_noexcept_if" cv="noexcept(condition)"><type>void</type></method>
+<method name="trad_constexpr" cv="constexpr"><type>void</type></method>
+<method name="boost_constexpr" cv="constexpr"><type>void</type></method>
+<method name="boost_constexpr_or_const" cv="constexpr"><type>void</type></method>
+<method name="constexpr_noexcept" cv="constexpr noexcept"><type>void</type></method>
+<method name="conversion-operator" specifiers="explicit"><type>int</type></method>
+</method-group>
+<constructor cv="= default"><parameter name=""><paramtype><classname>example</classname> const &amp;</paramtype></parameter></constructor>
+<copy-assignment cv="= delete"><type><classname>example</classname> &amp;</type><parameter name=""><paramtype><classname>example</classname> const &amp;</paramtype></parameter></copy-assignment>
+<method-group name="public static functions">
+<method name="static_method" specifiers="static"><type>int</type></method>
+<method name="static_constexpr" cv="constexpr" specifiers="static"><type>int</type></method>
+</method-group>
+</class><struct name="example_template"><template>
+      <template-type-parameter name="TypeParameter"><purpose><para>A template parameter </para></purpose></template-type-parameter>
+      <template-nontype-parameter name="NonTypeParameter"><type>int</type><purpose><para>This is a non-type template parameter </para></purpose></template-nontype-parameter>
+      <template-type-parameter name="TypeParameterWithDefault"><default>int</default><purpose><para>This is a template parameter with a default argument </para></purpose></template-type-parameter>
+    </template><description><para>Test some doxygen markup</para><para><warning><para>This is just an example.</para></warning>
+Embedded docbook list:</para><para> 
+<orderedlist><listitem><simpara>1</simpara></listitem><listitem><simpara>2</simpara></listitem></orderedlist>
+</para><para><emphasis>Special</emphasis> <emphasis role="bold">Bold</emphasis> <computeroutput>Typewriter</computeroutput> <emphasis>Italics</emphasis> <emphasis>emphasis</emphasis> <computeroutput>parameter</computeroutput> </para><para><itemizedlist>
+<listitem><para>Arg1 first argument. </para></listitem>
+<listitem><para>Arg2 second argument.</para></listitem>
+</itemizedlist>
+<itemizedlist>
+<listitem><para>First list item. </para></listitem>
+<listitem><para>Second list item</para></listitem>
+</itemizedlist>
+Line 1<sbr/>
+Line 2</para><para><programlisting language="c++">void foo() {}
+void foo2() {}
+</programlisting></para><para><programlisting language="c++">void bar() {}
+
+void bar2() {}
+</programlisting></para><para>Alternative way of writing code, has a complicated workaround because doxygen treats the empty line as a paragraph separator:</para><programlisting>
+int bar();
+
+int bar2();
+</programlisting><para>Unfortunately the workaround will merge consecutive blocks, like this:</para><programlisting>
+int foo();
+
+
+
+int foo2();
+</programlisting><para>
+</para></description></struct><struct name="specialization_test"><template>
+      <template-type-parameter name="T"/>
+    </template></struct><struct-specialization name="specialization_test"><template>
+      <template-type-parameter name="T"/>
+    </template><specialization><template-arg>T *</template-arg></specialization><method-group name="public member functions">
+</method-group>
+<constructor><description><para>A constructor. </para></description></constructor>
+<destructor><description><para>A destructor. </para></description></destructor>
+<copy-assignment><type><emphasis>unspecified</emphasis></type><parameter name=""><paramtype>const <classname>specialization_test</classname> &amp;</paramtype></parameter><description><para>An assignment operator. </para></description></copy-assignment>
+</struct-specialization><enum name="namespace_enum"><enumvalue name="enumerator"/></enum>
+<data-member name="namespace_integer"><type>int</type></data-member>
+<data-member name="namespace_static_integer" specifiers="static"><type>int</type></data-member>
+<data-member name="namespace_const_integer"><type>const int</type></data-member>
+<data-member name="namespace_static_const_integer" specifiers="static"><type>const int</type></data-member>
+<function name="free_function"><type>void</type><parameter name="x"><paramtype>int</paramtype><description><para>Parameter description.</para></description></parameter><description><para>
+<programlisting language="c++">void function_code_sample();
+</programlisting> </para></description></function>
+<function name="namespace_func"><type>int</type><parameter name="i"><paramtype>int</paramtype><description><para>A function parameter </para></description></parameter><parameter name="j"><paramtype>int</paramtype><description><para>Another </para></description></parameter><description><para>
+
+
+This is a test function. <classname alt="example::example">Link to class</classname> <classname alt="example::example_template">Link to class template</classname> <note><para>This is a note.</para></note>
+<para><emphasis role="bold">See Also:</emphasis><para><classname alt="example::example">example::example</classname> and <classname alt="example::example_template">example_template</classname> </para></para>
+</para></description><requires><para>i &gt; j</para></requires><returns><para>The answer </para></returns></function>
+<function name="namespace_func_template"><type>void</type><template>
+          <template-type-parameter name="TypeParameter"><purpose><para>A template parameter </para></purpose></template-type-parameter>
+          <template-nontype-parameter name="NonTypeParameter"><type>int</type><purpose><para>This is a non-type template parameter </para></purpose></template-nontype-parameter>
+        </template><description><para>Testing a function template. 
+</para></description></function>
+</namespace>
+<macro name="EXAMPLE" kind="functionlike"><macro-parameter name="m"/><purpose>Documentation for macro example. </purpose></macro>
+</header>
+</library-reference>

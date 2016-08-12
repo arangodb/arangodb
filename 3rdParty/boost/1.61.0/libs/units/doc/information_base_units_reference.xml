@@ -1,0 +1,66 @@
+<?xml version="1.0" standalone="yes"?>
+<library-reference id="information_base_units_reference"><title>Information Base Units Reference</title><header name="boost/units/base_units/information/bit.hpp">
+<namespace name="boost">
+<namespace name="units">
+<namespace name="information">
+<struct name="bit_base_unit"><method-group name="public static functions">
+<method name="name" specifiers="static"><type>std::string</type></method>
+<method name="symbol" specifiers="static"><type>std::string</type></method>
+</method-group>
+</struct></namespace>
+</namespace>
+</namespace>
+</header>
+<header name="boost/units/base_units/information/byte.hpp">
+<namespace name="boost">
+<namespace name="units">
+<struct-specialization name="base_unit_info"><template>
+    </template><specialization><template-arg>information::byte_base_unit</template-arg></specialization><method-group name="public static functions">
+<method name="name" specifiers="static"><type>const char *</type></method>
+<method name="symbol" specifiers="static"><type>const char *</type></method>
+</method-group>
+</struct-specialization><namespace name="information">
+<typedef name="byte_base_unit"><type>scaled_base_unit&lt; <classname>boost::units::information::bit_base_unit</classname>, scale&lt; 2, static_rational&lt; 3 &gt; &gt; &gt;</type></typedef>
+</namespace>
+</namespace>
+</namespace>
+</header>
+<header name="boost/units/base_units/information/hartley.hpp">
+<namespace name="boost">
+<namespace name="units">
+<namespace name="information">
+<struct name="hartley_base_unit"><method-group name="public static functions">
+<method name="name" specifiers="static"><type>const char *</type></method>
+<method name="symbol" specifiers="static"><type>const char *</type></method>
+</method-group>
+</struct></namespace>
+</namespace>
+</namespace>
+</header>
+<header name="boost/units/base_units/information/nat.hpp">
+<namespace name="boost">
+<namespace name="units">
+<namespace name="information">
+<struct name="nat_base_unit"><method-group name="public static functions">
+<method name="name" specifiers="static"><type>const char *</type></method>
+<method name="symbol" specifiers="static"><type>const char *</type></method>
+</method-group>
+</struct></namespace>
+</namespace>
+</namespace>
+</header>
+<header name="boost/units/base_units/information/shannon.hpp">
+<namespace name="boost">
+<namespace name="units">
+<struct-specialization name="base_unit_info"><template>
+    </template><specialization><template-arg>information::shannon_base_unit</template-arg></specialization><method-group name="public static functions">
+<method name="name" specifiers="static"><type>const char *</type></method>
+<method name="symbol" specifiers="static"><type>const char *</type></method>
+</method-group>
+</struct-specialization><namespace name="information">
+<typedef name="shannon_base_unit"><type>scaled_base_unit&lt; <classname>boost::units::information::bit_base_unit</classname>, scale&lt; 1, static_rational&lt; 1 &gt; &gt; &gt;</type></typedef>
+</namespace>
+</namespace>
+</namespace>
+</header>
+</library-reference>

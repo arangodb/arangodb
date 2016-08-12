@@ -1,0 +1,192 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="classboost_1_1geometry_1_1index_1_1dynamic__rstar" kind="class" prot="public">
+    <compoundname>boost::geometry::index::dynamic_rstar</compoundname>
+    <includes refid="parameters_8hpp" local="no">parameters.hpp</includes>
+      <sectiondef kind="private-attrib">
+      <memberdef kind="variable" id="classboost_1_1geometry_1_1index_1_1dynamic__rstar_1af1522ca426e8d0f972d80e45f536c40f" prot="private" static="no" mutable="no">
+        <type>size_t</type>
+        <definition>size_t boost::geometry::index::dynamic_rstar::m_max_elements</definition>
+        <argsstring></argsstring>
+        <name>m_max_elements</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/parameters.hpp" line="244" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/parameters.hpp" bodystart="244" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classboost_1_1geometry_1_1index_1_1dynamic__rstar_1a84c8aa4b320d6d07e4cbb07099ed6d0f" prot="private" static="no" mutable="no">
+        <type>size_t</type>
+        <definition>size_t boost::geometry::index::dynamic_rstar::m_min_elements</definition>
+        <argsstring></argsstring>
+        <name>m_min_elements</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/parameters.hpp" line="245" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/parameters.hpp" bodystart="245" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classboost_1_1geometry_1_1index_1_1dynamic__rstar_1a60a979c3cfc285753ba87b3d363eea2f" prot="private" static="no" mutable="no">
+        <type>size_t</type>
+        <definition>size_t boost::geometry::index::dynamic_rstar::m_reinserted_elements</definition>
+        <argsstring></argsstring>
+        <name>m_reinserted_elements</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/parameters.hpp" line="246" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/parameters.hpp" bodystart="246" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classboost_1_1geometry_1_1index_1_1dynamic__rstar_1ada2c471547b8d768b9d6072ac3a25a05" prot="private" static="no" mutable="no">
+        <type>size_t</type>
+        <definition>size_t boost::geometry::index::dynamic_rstar::m_overlap_cost_threshold</definition>
+        <argsstring></argsstring>
+        <name>m_overlap_cost_threshold</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/parameters.hpp" line="247" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/parameters.hpp" bodystart="247" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="classboost_1_1geometry_1_1index_1_1dynamic__rstar_1ad5115c769752603a179bf158f02fdb1c" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type></type>
+        <definition>boost::geometry::index::dynamic_rstar::dynamic_rstar</definition>
+        <argsstring>(size_t max_elements, size_t min_elements=detail::default_min_elements_d(), size_t reinserted_elements=detail::default_rstar_reinserted_elements_d(), size_t overlap_cost_threshold=32)</argsstring>
+        <name>dynamic_rstar</name>
+        <param>
+          <type>size_t</type>
+          <declname>max_elements</declname>
+        </param>
+        <param>
+          <type>size_t</type>
+          <declname>min_elements</declname>
+          <defval>detail::default_min_elements_d()</defval>
+        </param>
+        <param>
+          <type>size_t</type>
+          <declname>reinserted_elements</declname>
+          <defval>detail::default_rstar_reinserted_elements_d()</defval>
+        </param>
+        <param>
+          <type>size_t</type>
+          <declname>overlap_cost_threshold</declname>
+          <defval>32</defval>
+        </param>
+        <briefdescription>
+<para>The constructor. </para>        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>max_elements</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Maximum number of elements in nodes. </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>min_elements</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Minimum number of elements in nodes. Default: 0.3*Max. </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>reinserted_elements</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>The number of elements reinserted by forced reinsertions algorithm. If 0 forced reinsertions are disabled. Maximum value is Max-Min+1. Greater values are truncated. Default: 0.3*Max. </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>overlap_cost_threshold</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>The number of most suitable leafs taken into account while choosing the leaf node to which currently inserted value will be added. If value is in range (0, MaxElements) - the algorithm calculates nearly minimum overlap cost, otherwise all leafs are analyzed and true minimum overlap cost is calculated. Default: 32. </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/parameters.hpp" line="233" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/parameters.hpp" bodystart="225" bodyend="236"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1index_1_1dynamic__rstar_1a234974b799dbcc4c7a58946acc341722" prot="public" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <type>size_t</type>
+        <definition>size_t boost::geometry::index::dynamic_rstar::get_max_elements</definition>
+        <argsstring>() const </argsstring>
+        <name>get_max_elements</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/parameters.hpp" line="238" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/parameters.hpp" bodystart="238" bodyend="238"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1index_1_1dynamic__rstar_1ab904ec3ca5cd56e2214fda5b654d450c" prot="public" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <type>size_t</type>
+        <definition>size_t boost::geometry::index::dynamic_rstar::get_min_elements</definition>
+        <argsstring>() const </argsstring>
+        <name>get_min_elements</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/parameters.hpp" line="239" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/parameters.hpp" bodystart="239" bodyend="239"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1index_1_1dynamic__rstar_1a728b89e0f26d1fa7c33bf7a286bd529c" prot="public" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <type>size_t</type>
+        <definition>size_t boost::geometry::index::dynamic_rstar::get_reinserted_elements</definition>
+        <argsstring>() const </argsstring>
+        <name>get_reinserted_elements</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/parameters.hpp" line="240" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/parameters.hpp" bodystart="240" bodyend="240"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1index_1_1dynamic__rstar_1a57ece2090dcb3733a56af29165b56b13" prot="public" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <type>size_t</type>
+        <definition>size_t boost::geometry::index::dynamic_rstar::get_overlap_cost_threshold</definition>
+        <argsstring>() const </argsstring>
+        <name>get_overlap_cost_threshold</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/parameters.hpp" line="241" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/parameters.hpp" bodystart="241" bodyend="241"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+<para>R*-tree creation algorithm parameters - run-time version. </para>    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/index/parameters.hpp" line="209" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/parameters.hpp" bodystart="208" bodyend="248"/>
+    <listofallmembers>
+      <member refid="classboost_1_1geometry_1_1index_1_1dynamic__rstar_1ad5115c769752603a179bf158f02fdb1c" prot="public" virt="non-virtual"><scope>boost::geometry::index::dynamic_rstar</scope><name>dynamic_rstar</name></member>
+      <member refid="classboost_1_1geometry_1_1index_1_1dynamic__rstar_1a234974b799dbcc4c7a58946acc341722" prot="public" virt="non-virtual"><scope>boost::geometry::index::dynamic_rstar</scope><name>get_max_elements</name></member>
+      <member refid="classboost_1_1geometry_1_1index_1_1dynamic__rstar_1ab904ec3ca5cd56e2214fda5b654d450c" prot="public" virt="non-virtual"><scope>boost::geometry::index::dynamic_rstar</scope><name>get_min_elements</name></member>
+      <member refid="classboost_1_1geometry_1_1index_1_1dynamic__rstar_1a57ece2090dcb3733a56af29165b56b13" prot="public" virt="non-virtual"><scope>boost::geometry::index::dynamic_rstar</scope><name>get_overlap_cost_threshold</name></member>
+      <member refid="classboost_1_1geometry_1_1index_1_1dynamic__rstar_1a728b89e0f26d1fa7c33bf7a286bd529c" prot="public" virt="non-virtual"><scope>boost::geometry::index::dynamic_rstar</scope><name>get_reinserted_elements</name></member>
+      <member refid="classboost_1_1geometry_1_1index_1_1dynamic__rstar_1af1522ca426e8d0f972d80e45f536c40f" prot="private" virt="non-virtual"><scope>boost::geometry::index::dynamic_rstar</scope><name>m_max_elements</name></member>
+      <member refid="classboost_1_1geometry_1_1index_1_1dynamic__rstar_1a84c8aa4b320d6d07e4cbb07099ed6d0f" prot="private" virt="non-virtual"><scope>boost::geometry::index::dynamic_rstar</scope><name>m_min_elements</name></member>
+      <member refid="classboost_1_1geometry_1_1index_1_1dynamic__rstar_1ada2c471547b8d768b9d6072ac3a25a05" prot="private" virt="non-virtual"><scope>boost::geometry::index::dynamic_rstar</scope><name>m_overlap_cost_threshold</name></member>
+      <member refid="classboost_1_1geometry_1_1index_1_1dynamic__rstar_1a60a979c3cfc285753ba87b3d363eea2f" prot="private" virt="non-virtual"><scope>boost::geometry::index::dynamic_rstar</scope><name>m_reinserted_elements</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

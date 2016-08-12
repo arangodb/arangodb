@@ -1,0 +1,45 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="structboost_1_1geometry_1_1point__type_3_01boost_1_1variant_3_01_b_o_o_s_t___v_a_r_i_a_n_t___e_ne779fef8428519fc7733ab4259a48372" kind="struct" prot="public">
+    <compoundname>boost::geometry::point_type&lt; boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; &gt;</compoundname>
+    <basecompoundref refid="structboost_1_1geometry_1_1point__type" prot="public" virt="non-virtual">boost::geometry::point_type&lt; boost::mpl::front&lt; boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt;::types &gt;::type &gt;</basecompoundref>
+    <includes local="no">variant.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>BOOST_VARIANT_ENUM_PARAMS(typename T)</type>
+      </param>
+    </templateparamlist>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <inheritancegraph>
+      <node id="559">
+        <label>boost::geometry::point_type&lt; boost::mpl::front&lt; boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt;::types &gt;::type &gt;</label>
+        <link refid="structboost_1_1geometry_1_1point__type"/>
+      </node>
+      <node id="558">
+        <label>boost::geometry::point_type&lt; boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; &gt;</label>
+        <link refid="structboost_1_1geometry_1_1point__type_3_01boost_1_1variant_3_01_b_o_o_s_t___v_a_r_i_a_n_t___e_ne779fef8428519fc7733ab4259a48372"/>
+        <childnode refid="559" relation="public-inheritance">
+        </childnode>
+      </node>
+    </inheritancegraph>
+    <collaborationgraph>
+      <node id="561">
+        <label>boost::geometry::point_type&lt; boost::mpl::front&lt; boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt;::types &gt;::type &gt;</label>
+        <link refid="structboost_1_1geometry_1_1point__type"/>
+      </node>
+      <node id="560">
+        <label>boost::geometry::point_type&lt; boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; &gt;</label>
+        <link refid="structboost_1_1geometry_1_1point__type_3_01boost_1_1variant_3_01_b_o_o_s_t___v_a_r_i_a_n_t___e_ne779fef8428519fc7733ab4259a48372"/>
+        <childnode refid="561" relation="public-inheritance">
+        </childnode>
+      </node>
+    </collaborationgraph>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/variant.hpp" line="32" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/variant.hpp" bodystart="26" bodyend="32"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1point__type_1a635cedcf4f42c069f3c6f0808172af32" prot="public" virt="non-virtual"><scope>boost::geometry::point_type&lt; boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; &gt;</scope><name>type</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

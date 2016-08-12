@@ -1,0 +1,261 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Identifiers</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../../index.html" title="Chapter&#160;1.&#160;The Variadic Macro Data Library 1.9">
+<link rel="up" href="../vmd_specific.html" title="Specific macros for working with data types">
+<link rel="prev" href="vmd_constraints.html" title="Macro constraints">
+<link rel="next" href="vmd_number.html" title="Numbers">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="vmd_constraints.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../vmd_specific.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="vmd_number.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="variadic_macro_data.vmd_specific.vmd_identifier"></a><a class="link" href="vmd_identifier.html" title="Identifiers">Identifiers</a>
+</h3></div></div></div>
+<p>
+        An identifier in VMD is either of two lower-level preprocessor possibilities:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" type="disc">
+<li class="listitem">
+            a preprocessing token 'identifier', which is essentially a sequence of
+            alphanumeric characters and the underscore character with the first character
+            not being a numeric character.
+          </li>
+<li class="listitem">
+            a preprocessing token 'pp-number' that is an integral literal token.
+          </li>
+</ul></div>
+<p>
+        Here are some examples:
+      </p>
+<pre class="programlisting"><span class="identifier">SOME_NAME</span>
+<span class="identifier">_SOME_NAME</span>
+<span class="identifier">SOME_123_NAME</span>
+<span class="identifier">some_123_name</span>
+<span class="identifier">sOMe_123_NAmE</span>
+<span class="number">2367</span>
+<span class="number">43e11</span>
+<span class="number">0</span>
+<span class="number">22</span>
+<span class="number">654792</span>
+<span class="number">0x1256</span>
+</pre>
+<h5>
+<a name="variadic_macro_data.vmd_specific.vmd_identifier.h0"></a>
+        <span><a name="variadic_macro_data.vmd_specific.vmd_identifier.problem_testing_any_identifier"></a></span><a class="link" href="vmd_identifier.html#variadic_macro_data.vmd_specific.vmd_identifier.problem_testing_any_identifier">Problem
+        testing any identifier</a>
+      </h5>
+<p>
+        One of the difficulties with identifiers in preprocessor metaprogramming
+        is safely testing for a particular one. VMD has a means of doing this within
+        a particular constraint for the characters that serve as the input.
+      </p>
+<p>
+        The constraint is that the beginning input character, ignoring any whitespace,
+        passed as the input to test must be either:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" type="disc">
+<li class="listitem">
+            an identifier character, ie. an alphanumeric or an underscore
+          </li>
+<li class="listitem">
+            the left parenthesis of a tuple
+          </li>
+</ul></div>
+<p>
+        and if the first character is not the left parenthesis of a tuple the remaining
+        characters must be alphanumeric or an underscore until a space character
+        or end of input occurs.
+      </p>
+<p>
+        If this is not the case the behavior is undefined, and most likely a preprocessing
+        error will occur.
+      </p>
+<p>
+        Given the input:
+      </p>
+<pre class="programlisting"><span class="char">'s_anything'</span> <span class="special">:</span> <span class="identifier">can</span> <span class="identifier">be</span> <span class="identifier">tested</span>
+<span class="char">'S_anything'</span> <span class="special">:</span> <span class="identifier">can</span> <span class="identifier">be</span> <span class="identifier">tested</span>
+<span class="char">'s_anYthiNg'</span> <span class="special">:</span> <span class="identifier">can</span> <span class="identifier">be</span> <span class="identifier">tested</span>
+<span class="char">'_anything'</span> <span class="special">:</span> <span class="identifier">can</span> <span class="identifier">be</span> <span class="identifier">tested</span>
+<span class="char">'_Anything'</span> <span class="special">:</span> <span class="identifier">can</span> <span class="identifier">be</span> <span class="identifier">tested</span>
+<span class="char">'_anytHIng'</span> <span class="special">:</span> <span class="identifier">can</span> <span class="identifier">be</span> <span class="identifier">tested</span>
+<span class="char">'24'</span> <span class="special">:</span> <span class="identifier">can</span> <span class="identifier">be</span> <span class="identifier">tested</span>
+<span class="char">'245e2'</span> <span class="special">:</span> <span class="identifier">can</span> <span class="identifier">be</span> <span class="identifier">tested</span>
+<span class="char">'(anything)'</span> <span class="special">:</span> <span class="identifier">can</span> <span class="identifier">be</span> <span class="identifier">tested</span><span class="special">,</span> <span class="identifier">tuple</span>
+<span class="char">'(anything) anything'</span> <span class="special">:</span> <span class="identifier">can</span> <span class="identifier">be</span> <span class="identifier">tested</span><span class="special">,</span> <span class="identifier">tuple</span> <span class="keyword">and</span> <span class="identifier">further</span> <span class="identifier">input</span>
+<span class="char">'anything anything'</span> <span class="special">:</span> <span class="identifier">can</span> <span class="identifier">be</span> <span class="identifier">tested</span><span class="special">,</span> <span class="identifier">identifier</span> <span class="identifier">followed</span> <span class="identifier">by</span> <span class="identifier">space</span> <span class="identifier">character</span>
+
+<span class="char">'%_anything'</span> <span class="special">:</span> <span class="identifier">undefined</span> <span class="identifier">behavior</span> <span class="keyword">and</span> <span class="identifier">most</span> <span class="identifier">likely</span> <span class="identifier">a</span> <span class="identifier">preprocessing</span> <span class="identifier">error</span> <span class="identifier">due</span> <span class="identifier">to</span> <span class="identifier">the</span> <span class="identifier">constraint</span>
+<span class="char">'(_anything'</span> <span class="special">:</span> <span class="identifier">undefined</span> <span class="identifier">behavior</span> <span class="keyword">and</span> <span class="identifier">most</span> <span class="identifier">likely</span> <span class="identifier">a</span> <span class="identifier">preprocessing</span> <span class="identifier">error</span> <span class="identifier">due</span> <span class="identifier">to</span> <span class="identifier">the</span> <span class="identifier">constraint</span><span class="special">,</span> <span class="identifier">since</span> <span class="identifier">a</span> <span class="identifier">single</span> <span class="char">'('</span> <span class="identifier">does</span> <span class="keyword">not</span> <span class="identifier">form</span> <span class="identifier">a</span> <span class="identifier">tuple</span>
+<span class="char">'44.3'</span> <span class="special">:</span> <span class="identifier">undefined</span> <span class="identifier">behavior</span> <span class="keyword">and</span> <span class="identifier">most</span> <span class="identifier">likely</span> <span class="identifier">a</span> <span class="identifier">preprocessing</span> <span class="identifier">error</span> <span class="identifier">due</span> <span class="identifier">to</span> <span class="identifier">the</span> <span class="identifier">constraint</span> <span class="identifier">since</span> <span class="char">'.'</span> <span class="identifier">is</span> <span class="keyword">not</span> <span class="identifier">alphanumeric</span>
+</pre>
+<h5>
+<a name="variadic_macro_data.vmd_specific.vmd_identifier.h1"></a>
+        <span><a name="variadic_macro_data.vmd_specific.vmd_identifier.identifying_an_identifier"></a></span><a class="link" href="vmd_identifier.html#variadic_macro_data.vmd_specific.vmd_identifier.identifying_an_identifier">Identifying
+        an identifier</a>
+      </h5>
+<p>
+        In VMD the only way an identifier can be identified in preprocessor input
+        is by a process called registration. In order to 'register' an identifier
+        to be recognized by VMD the end-user must create, for every identifier to
+        be recognized, an object-like macro whose form is:
+      </p>
+<pre class="programlisting"><span class="preprocessor">#define</span> <span class="identifier">BOOST_VMD_REGISTER_identifier</span> <span class="special">(</span><span class="identifier">identifier</span><span class="special">)</span>
+</pre>
+<p>
+        where 'identifier' is a particular identifier we wish to identify. This is
+        called in VMD a registration macro.
+      </p>
+<p>
+        It is recommended that such registration macros be created in a header file
+        which can be included before the end-user uses the identifier macros of VMD.
+      </p>
+<p>
+        If a particular registration macro occurs more than once it is not a preprocessing
+        error, so duplicating a registration macro will not lead to any problems
+        since each registration macro of the same name will have the exact same object-like
+        macro expansion.
+      </p>
+<p>
+        Within a given translation unit it could potentially happen that registration
+        macros have been included by header files which a particular end-user of
+        VMD has not created. This should also not lead to particular problems since
+        registration is a process for adding identifiers for any particular translation
+        unit. As we shall see VMD has macros for not only finding any identifier
+        in preprocessor input but for also finding any particular identifier in preprocessor
+        input.
+      </p>
+<h5>
+<a name="variadic_macro_data.vmd_specific.vmd_identifier.h2"></a>
+        <span><a name="variadic_macro_data.vmd_specific.vmd_identifier.testing_for_an_identifier_macro"></a></span><a class="link" href="vmd_identifier.html#variadic_macro_data.vmd_specific.vmd_identifier.testing_for_an_identifier_macro">Testing
+        for an identifier macro</a>
+      </h5>
+<p>
+        The specific macro used to test for an identifier in VMD is called BOOST_VMD_IS_IDENTIFIER.
+        The macro takes one required parameter which is the input against which to
+        test.
+      </p>
+<p>
+        When we invoke BOOST_VMD_IS_IDENTIFIER it returns 1 if the input represents
+        any registered identifier, otherwise it returns 0.
+      </p>
+<p>
+        As an example:
+      </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">vmd</span><span class="special">/</span><span class="identifier">is_identifier</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="preprocessor">#define</span> <span class="identifier">BOOST_VMD_REGISTER_yellow</span> <span class="special">(</span><span class="identifier">yellow</span><span class="special">)</span>
+<span class="preprocessor">#define</span> <span class="identifier">BOOST_VMD_REGISTER_green</span>  <span class="special">(</span><span class="identifier">green</span><span class="special">)</span>
+<span class="preprocessor">#define</span> <span class="identifier">BOOST_VMD_REGISTER_blue</span>   <span class="special">(</span><span class="identifier">blue</span><span class="special">)</span>
+
+<span class="identifier">BOOST_VMD_IS_IDENTIFIER</span><span class="special">(</span><span class="identifier">some_input</span><span class="special">)</span> <span class="comment">// returns 1 if 'some_input' is 'yellow','green', or 'blue'</span>
+<span class="identifier">BOOST_VMD_IS_IDENTIFIER</span><span class="special">(</span><span class="identifier">some_input</span><span class="special">)</span> <span class="comment">// returns 0 if 'some_input' is 'purple'</span>
+</pre>
+<p>
+        Essentially only registered identifiers can be found in VMD as identifiers.
+      </p>
+<h5>
+<a name="variadic_macro_data.vmd_specific.vmd_identifier.h3"></a>
+        <span><a name="variadic_macro_data.vmd_specific.vmd_identifier.detecting_a_particular_identifie"></a></span><a class="link" href="vmd_identifier.html#variadic_macro_data.vmd_specific.vmd_identifier.detecting_a_particular_identifie">Detecting
+        a particular identifier</a>
+      </h5>
+<p>
+        Although registering an identifier allows VMD to recognize the string of
+        characters as a VMD identifier, the ability to detect a particular identifier
+        needs the end-user to define another macro:
+      </p>
+<pre class="programlisting"><span class="preprocessor">#define</span> <span class="identifier">BOOST_VMD_DETECT_identifier_identifier</span>
+</pre>
+<p>
+        where 'identifier' is a particular identifier we wish to detect. This object-like
+        macro expands to no output.
+      </p>
+<p>
+        Like the registration macro multiple detection macros of the same identifier
+        in a translation unit does not cause a compiler problem since the exact same
+        object-like macro occurs.
+      </p>
+<p>
+        The term for creating this macro is that we have potentially 'pre-detected'
+        the identifier and I will use the term pre-detected as the process of creating
+        the BOOST_VMD_DETECT macro.
+      </p>
+<p>
+        The ability to detect that a VMD identifier is a particular identifier is
+        used in VMD macros when data is compared for equality/inequality as well
+        as when we want to match an identifier against a set of other identifiers.
+        These situations will be explained later in the documentation when the particular
+        macro functionality is discussed. If the programmer never uses the functionality
+        which these situations encompass there is no need to use pre-detection for
+        a registered identifier.
+      </p>
+<h5>
+<a name="variadic_macro_data.vmd_specific.vmd_identifier.h4"></a>
+        <span><a name="variadic_macro_data.vmd_specific.vmd_identifier.parsing_identifiers_and_undefine"></a></span><a class="link" href="vmd_identifier.html#variadic_macro_data.vmd_specific.vmd_identifier.parsing_identifiers_and_undefine">Parsing
+        identifiers and undefined behavior</a>
+      </h5>
+<p>
+        The technique for parsing identifiers, once it is determined that the input
+        being parsed does not begin with a set of parentheses, uses preprocessor
+        concatenation in its parsing. This technique involves the preprocessor '##'
+        operator to concatenate input, and examine the results of that concatenation.
+      </p>
+<p>
+        When preprocessor concatenation is used the result of the concatenation must
+        be a valid preprocessing token, else the behavior of the preprocessor is
+        undefined. In C++ 'undefined behavior' in general means that anything can
+        happen. In practical use when preprocessor concatenation does not produce
+        a valid preprocessing token, a compiler is most likely to generate a preprocessing
+        error. If the compiler chooses not to issue a preprocessing error the outcome
+        will always mean that parsing an identifier will fail. But because the outcome
+        is undefined behavior there is no absolute way that the programmer can determine
+        what the outcome will be when preprocessor concatenation is used and the
+        input being parsed contains preprocessor input which does not meet the constraints
+        for parsing an identifier mentioned at the beginning of this topic.
+      </p>
+<p>
+        In this documentation I will be using the abbreviation 'UB' as the shortened
+        form of 'undefined behavior' to denote the particular occurrence where VMD
+        attempts to parse preprocessor input using preprocessor concatenation and
+        undefined behavior will occur.
+      </p>
+<h5>
+<a name="variadic_macro_data.vmd_specific.vmd_identifier.h5"></a>
+        <span><a name="variadic_macro_data.vmd_specific.vmd_identifier.usage"></a></span><a class="link" href="vmd_identifier.html#variadic_macro_data.vmd_specific.vmd_identifier.usage">Usage</a>
+      </h5>
+<p>
+        To use the BOOST_VMD_IS_IDENTIFIER macro either include the general header:
+      </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">vmd</span><span class="special">/</span><span class="identifier">vmd</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+</pre>
+<p>
+        or include the specific header:
+      </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">vmd</span><span class="special">/</span><span class="identifier">is_identifier</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+</pre>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2010-2015 Tropic Software East Inc</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="vmd_constraints.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../vmd_specific.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="vmd_number.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

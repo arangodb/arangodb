@@ -1,0 +1,106 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="classboost_1_1geometry_1_1strategy_1_1buffer_1_1point__square" kind="class" prot="public">
+    <compoundname>boost::geometry::strategy::buffer::point_square</compoundname>
+    <includes local="no">buffer_point_square.hpp</includes>
+      <sectiondef kind="private-func">
+      <memberdef kind="function" id="classboost_1_1geometry_1_1strategy_1_1buffer_1_1point__square_1a589d6c667c37b6514a30c3890e4a293d" prot="private" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Point</type>
+          </param>
+          <param>
+            <type>typename DistanceType</type>
+          </param>
+          <param>
+            <type>typename OutputRange</type>
+          </param>
+        </templateparamlist>
+        <type>void</type>
+        <definition>void boost::geometry::strategy::buffer::point_square::add_point</definition>
+        <argsstring>(Point const &amp;point, DistanceType const &amp;distance, DistanceType const &amp;x, DistanceType const &amp;y, OutputRange &amp;output_range) const </argsstring>
+        <name>add_point</name>
+        <param>
+          <type>Point const &amp;</type>
+          <declname>point</declname>
+        </param>
+        <param>
+          <type>DistanceType const &amp;</type>
+          <declname>distance</declname>
+        </param>
+        <param>
+          <type>DistanceType const &amp;</type>
+          <declname>x</declname>
+        </param>
+        <param>
+          <type>DistanceType const &amp;</type>
+          <declname>y</declname>
+        </param>
+        <param>
+          <type>OutputRange &amp;</type>
+          <declname>output_range</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/buffer_point_square.hpp" line="57" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/buffer_point_square.hpp" bodystart="52" bodyend="62"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1strategy_1_1buffer_1_1point__square_1ab370afeedf7b8af951937cc1d2d4d508" prot="private" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Point</type>
+          </param>
+          <param>
+            <type>typename DistanceType</type>
+          </param>
+          <param>
+            <type>typename OutputRange</type>
+          </param>
+        </templateparamlist>
+        <type>void</type>
+        <definition>void boost::geometry::strategy::buffer::point_square::add_points</definition>
+        <argsstring>(Point const &amp;point, DistanceType const &amp;distance, OutputRange &amp;output_range) const </argsstring>
+        <name>add_points</name>
+        <param>
+          <type>Point const &amp;</type>
+          <declname>point</declname>
+        </param>
+        <param>
+          <type>DistanceType const &amp;</type>
+          <declname>distance</declname>
+        </param>
+        <param>
+          <type>OutputRange &amp;</type>
+          <declname>output_range</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/buffer_point_square.hpp" line="73" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/buffer_point_square.hpp" bodystart="70" bodyend="81"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+<para>Create a squared form buffer around a point. </para>    </briefdescription>
+    <detaileddescription>
+<para>This strategy can be used as PointStrategy for the buffer algorithm. It creates a square from each point, where the point lies in the center. It can be applied for points and multi_points, but also for a linestring (if it is degenerate, so consisting of only one point) and for polygons (if it is degenerate). This strategy is only applicable for Cartesian coordinate systems.</para><para> <qbk>
+[heading Example]
+[buffer_point_square]
+[heading Output]
+[$img/strategies/buffer_point_square.png]
+[heading See also]
+\* [link geometry.reference.algorithms.buffer.buffer_7_with_strategies buffer (with strategies)]
+\* [link geometry.reference.strategies.strategy_buffer_point_circle point_circle]
+</qbk>  </para>    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/buffer_point_square.hpp" line="45" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/buffer_point_square.hpp" bodystart="44" bodyend="102"/>
+    <listofallmembers>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1buffer_1_1point__square_1a589d6c667c37b6514a30c3890e4a293d" prot="private" virt="non-virtual"><scope>boost::geometry::strategy::buffer::point_square</scope><name>add_point</name></member>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1buffer_1_1point__square_1ab370afeedf7b8af951937cc1d2d4d508" prot="private" virt="non-virtual"><scope>boost::geometry::strategy::buffer::point_square</scope><name>add_points</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

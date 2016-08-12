@@ -1,0 +1,837 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="group__register" kind="group">
+    <compoundname>register</compoundname>
+    <title>register: Macros for registration</title>
+      <sectiondef kind="define">
+      <memberdef kind="define" id="group__register_1gae42c838a1a14a9c026814524e7a05138" prot="public" static="no">
+        <name>BOOST_GEOMETRY_REGISTER_BOX</name>
+        <param><defname>Box</defname></param>
+        <param><defname>Point</defname></param>
+        <param><defname>MinCorner</defname></param>
+        <param><defname>MaxCorner</defname></param>
+        <initializer>namespace boost { namespace geometry { namespace traits {  \
+    BOOST_GEOMETRY_DETAIL_SPECIALIZE_BOX_TRAITS(Box, Point) \
+    BOOST_GEOMETRY_DETAIL_SPECIALIZE_BOX_ACCESS(Box, Point, MinCorner, MaxCorner) \
+}}}</initializer>
+        <briefdescription>
+<para>Macro to register a \1. </para>        </briefdescription>
+        <detaileddescription>
+<para>The macro BOOST_GEOMETRY_REGISTER_BOX registers a box such that it is recognized by Boost.Geometry and that Boost.Geometry functionality can used with the specified type. The box may contain template parameters, which must be specified then. <parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>Box</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Box type to be registered </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Point</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Point type on which box is based. Might be two or three-dimensional </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>MinCorner</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>minimum corner (should be public member or method) </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>MaxCorner</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>maximum corner (should be public member or method)</para></parameterdescription>
+</parameteritem>
+</parameterlist>
+ <qbk>
+[heading Example]
+[register_box]
+[register_box_output]
+</qbk>  </para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/register/box.hpp" line="125" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/register/box.hpp" bodystart="121" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="define" id="group__register_1ga09c073aef353112e056b096d9630a890" prot="public" static="no">
+        <name>BOOST_GEOMETRY_REGISTER_BOX_2D_4VALUES</name>
+        <param><defname>Box</defname></param>
+        <param><defname>Point</defname></param>
+        <param><defname>Left</defname></param>
+        <param><defname>Bottom</defname></param>
+        <param><defname>Right</defname></param>
+        <param><defname>Top</defname></param>
+        <initializer>namespace boost { namespace geometry { namespace traits {  \
+    BOOST_GEOMETRY_DETAIL_SPECIALIZE_BOX_TRAITS(Box, Point) \
+    BOOST_GEOMETRY_DETAIL_SPECIALIZE_BOX_ACCESS_4VALUES(Box, Point, Left, Bottom, Right, Top) \
+}}}</initializer>
+        <briefdescription>
+<para>Macro to register a \1. </para>        </briefdescription>
+        <detaileddescription>
+<para>The macro BOOST_GEOMETRY_REGISTER_BOX_2D_4VALUES registers a box such that it is recognized by Boost.Geometry and that Boost.Geometry functionality can used with the specified type. <parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>Box</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Box type to be registered </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Point</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Point type reported as point_type by box. Must be two dimensional. Note that these box tyeps do not contain points, but they must have a related point_type </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Left</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Left side (must be public member or method) </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Bottom</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Bottom side (must be public member or method) </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Right</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Right side (must be public member or method) </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Top</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Top side (must be public member or method)</para></parameterdescription>
+</parameteritem>
+</parameterlist>
+ <qbk>
+[heading Example]
+[register_box_2d_4values]
+[register_box_2d_4values_output]
+</qbk>  </para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/register/box.hpp" line="172" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/register/box.hpp" bodystart="168" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="define" id="group__register_1gab504e31e32ba0ca3a2b9fe323716acbe" prot="public" static="no">
+        <name>BOOST_GEOMETRY_REGISTER_BOX_TEMPLATED</name>
+        <param><defname>Box</defname></param>
+        <param><defname>MinCorner</defname></param>
+        <param><defname>MaxCorner</defname></param>
+        <initializer>namespace boost { namespace geometry { namespace traits {  \
+    BOOST_GEOMETRY_DETAIL_SPECIALIZE_BOX_TRAITS_TEMPLATED(Box) \
+    BOOST_GEOMETRY_DETAIL_SPECIALIZE_BOX_ACCESS_TEMPLATED(Box, MinCorner, MaxCorner) \
+}}}</initializer>
+        <briefdescription>
+<para>Macro to register a \1. </para>        </briefdescription>
+        <detaileddescription>
+<para>The macro BOOST_GEOMETRY_REGISTER_BOX_TEMPLATED registers a box such that it is recognized by Boost.Geometry and that Boost.Geometry functionality can used with the specified type. The type must have one template parameter, which should be a point type, and should not be specified. Boost.Geometry takes care of inserting the template parameter. Hence all types of this templated box are registered, regardless of their point type. <parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>Box</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Box type to be registered </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>MinCorner</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>minimum corner (should be public member or method) </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>MaxCorner</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>maximum corner (should be public member or method)</para></parameterdescription>
+</parameteritem>
+</parameterlist>
+ <qbk>
+[heading Example]
+[register_box_templated]
+[register_box_templated_output]
+</qbk>  </para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/register/box.hpp" line="147" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/register/box.hpp" bodystart="143" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="define" id="group__register_1ga1d26e8196d719505669ecdb89e11bd2b" prot="public" static="no">
+        <name>BOOST_GEOMETRY_REGISTER_LINESTRING</name>
+        <param><defname>Linestring</defname></param>
+        <initializer>namespace boost { namespace geometry { namespace traits {  \
+    template&lt;&gt; struct tag&lt;Linestring&gt; { typedef linestring_tag type; }; \
+}}}</initializer>
+        <briefdescription>
+<para>Macro to register a \1. </para>        </briefdescription>
+        <detaileddescription>
+<para>The macro BOOST_GEOMETRY_REGISTER_LINESTRING registers a linestring such that it is recognized by Boost.Geometry and that Boost.Geometry functionality can used with the specified type. The linestring may contain template parameters, which must be specified then. <parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>Linestring</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>linestring type to be registered</para></parameterdescription>
+</parameteritem>
+</parameterlist>
+ <qbk>
+[heading Example]
+[register_linestring]
+[register_linestring_output]
+</qbk>  </para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/register/linestring.hpp" line="38" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/register/linestring.hpp" bodystart="35" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="define" id="group__register_1ga56729e5117bdd1ef2f5df70e113135d1" prot="public" static="no">
+        <name>BOOST_GEOMETRY_REGISTER_LINESTRING_TEMPLATED</name>
+        <param><defname>Linestring</defname></param>
+        <initializer>namespace boost { namespace geometry { namespace traits {  \
+    template&lt;typename P&gt; struct tag&lt; Linestring&lt;P&gt; &gt; { typedef linestring_tag type; }; \
+}}}</initializer>
+        <briefdescription>
+<para>Macro to register a \1. </para>        </briefdescription>
+        <detaileddescription>
+<para>The macro BOOST_GEOMETRY_REGISTER_LINESTRING_TEMPLATED registers a templated linestring such that it is recognized by Boost.Geometry and that Boost.Geometry functionality can used with the specified type. The type must have one template parameter, which should be a point type, and should not be specified. Boost.Geometry takes care of inserting the template parameter. Hence all types of this templated linestring are registered, regardless of their point type. <parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>Linestring</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>linestring (without template parameters) type to be registered</para></parameterdescription>
+</parameteritem>
+</parameterlist>
+ <qbk>
+[heading Example]
+[register_linestring_templated]
+[register_linestring_templated_output]
+</qbk>  </para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/register/linestring.hpp" line="57" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/register/linestring.hpp" bodystart="54" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="define" id="group__register_1ga9023e4db92faf3052f86697d6efa21a2" prot="public" static="no">
+        <name>BOOST_GEOMETRY_REGISTER_MULTI_LINESTRING</name>
+        <param><defname>MultiLineString</defname></param>
+        <initializer>namespace boost { namespace geometry { namespace traits {  \
+    template&lt;&gt; struct tag&lt;MultiLineString&gt; { typedef multi_linestring_tag type; }; \
+}}}</initializer>
+        <briefdescription>
+<para>Macro to register a \1. </para>        </briefdescription>
+        <detaileddescription>
+<para>The macro BOOST_GEOMETRY_REGISTER_MULTI_LINESTRING registers a multi_linestring such that it is recognized by Boost.Geometry and that Boost.Geometry functionality can used with the specified type. The multi_linestring may contain template parameters, which must be specified then. <parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>MultiLineString</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>multi_linestring type to be registered</para></parameterdescription>
+</parameteritem>
+</parameterlist>
+ <qbk>
+[heading Example]
+[register_multi_linestring]
+[register_multi_linestring_output]
+</qbk>  </para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/register/multi_linestring.hpp" line="37" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/register/multi_linestring.hpp" bodystart="34" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="define" id="group__register_1ga8173f4872543ac051ef41f638de05786" prot="public" static="no">
+        <name>BOOST_GEOMETRY_REGISTER_MULTI_LINESTRING_TEMPLATED</name>
+        <param><defname>MultiLineString</defname></param>
+        <initializer>namespace boost { namespace geometry { namespace traits {  \
+    template&lt;typename LineString&gt; struct tag&lt; MultiLineString&lt;LineString&gt; &gt; { typedef multi_linestring_tag type; }; \
+}}}</initializer>
+        <briefdescription>
+<para>Macro to register a \1. </para>        </briefdescription>
+        <detaileddescription>
+<para>The macro BOOST_GEOMETRY_REGISTER_MULTI_LINESTRING_TEMPLATED registers a templated multi_linestring such that it is recognized by Boost.Geometry and that Boost.Geometry functionality can used with the specified type. The type must have one template parameter, which should be a linestring type, and should not be specified. Boost.Geometry takes care of inserting the template parameter. Hence all types of this templated multi_linestring are registered, regardless of their point type. <parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>MultiLineString</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>multi_linestring (without template parameters) type to be registered</para></parameterdescription>
+</parameteritem>
+</parameterlist>
+ <qbk>
+[heading Example]
+[register_multi_linestring_templated]
+[register_multi_linestring_templated_output]
+</qbk>  </para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/register/multi_linestring.hpp" line="56" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/register/multi_linestring.hpp" bodystart="53" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="define" id="group__register_1ga7eab973eb9098bad1869f35ba96953cb" prot="public" static="no">
+        <name>BOOST_GEOMETRY_REGISTER_MULTI_POINT</name>
+        <param><defname>MultiPoint</defname></param>
+        <initializer>namespace boost { namespace geometry { namespace traits {  \
+    template&lt;&gt; struct tag&lt;MultiPoint&gt; { typedef multi_point_tag type; }; \
+}}}</initializer>
+        <briefdescription>
+<para>Macro to register a \1. </para>        </briefdescription>
+        <detaileddescription>
+<para>The macro BOOST_GEOMETRY_REGISTER_MULTI_POINT registers a multi_point such that it is recognized by Boost.Geometry and that Boost.Geometry functionality can used with the specified type. The multi_point may contain template parameters, which must be specified then. <parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>MultiPoint</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>multi_point type to be registered</para></parameterdescription>
+</parameteritem>
+</parameterlist>
+ <qbk>
+[heading Example]
+[register_multi_point]
+[register_multi_point_output]
+</qbk>  </para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/register/multi_point.hpp" line="37" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/register/multi_point.hpp" bodystart="34" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="define" id="group__register_1gae027e92ee7534cea91c749b1d371a907" prot="public" static="no">
+        <name>BOOST_GEOMETRY_REGISTER_MULTI_POINT_TEMPLATED</name>
+        <param><defname>MultiPoint</defname></param>
+        <initializer>namespace boost { namespace geometry { namespace traits {  \
+    template&lt;typename Point&gt; struct tag&lt; MultiPoint&lt;Point&gt; &gt; { typedef multi_point_tag type; }; \
+}}}</initializer>
+        <briefdescription>
+<para>Macro to register a \1. </para>        </briefdescription>
+        <detaileddescription>
+<para>The macro BOOST_GEOMETRY_REGISTER_MULTI_POINT_TEMPLATED registers a templated multi_point such that it is recognized by Boost.Geometry and that Boost.Geometry functionality can used with the specified type. The type must have one template parameter, which should be a point type, and should not be specified. Boost.Geometry takes care of inserting the template parameter. Hence all types of this templated multi_point are registered, regardless of their point type. <parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>MultiPoint</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>multi_point (without template parameters) type to be registered</para></parameterdescription>
+</parameteritem>
+</parameterlist>
+ <qbk>
+[heading Example]
+[register_multi_point_templated]
+[register_multi_point_templated_output]
+</qbk>  </para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/register/multi_point.hpp" line="56" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/register/multi_point.hpp" bodystart="53" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="define" id="group__register_1gac464d3e7b8f908820b9e8fc2a3e7ec1a" prot="public" static="no">
+        <name>BOOST_GEOMETRY_REGISTER_MULTI_POLYGON</name>
+        <param><defname>MultiPolygon</defname></param>
+        <initializer>namespace boost { namespace geometry { namespace traits {  \
+    template&lt;&gt; struct tag&lt;MultiPolygon&gt; { typedef multi_polygon_tag type; }; \
+}}}</initializer>
+        <briefdescription>
+<para>Macro to register a \1. </para>        </briefdescription>
+        <detaileddescription>
+<para>The macro BOOST_GEOMETRY_REGISTER_MULTI_POLYGON registers a multi_polygon such that it is recognized by Boost.Geometry and that Boost.Geometry functionality can used with the specified type. The multi_polygon may contain template parameters, which must be specified then. <parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>MultiPolygon</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>multi_polygon type to be registered</para></parameterdescription>
+</parameteritem>
+</parameterlist>
+ <qbk>
+[heading Example]
+[register_multi_polygon]
+[register_multi_polygon_output]
+</qbk>  </para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/register/multi_polygon.hpp" line="37" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/register/multi_polygon.hpp" bodystart="34" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="define" id="group__register_1gad9d2c263a4b8d43db7d2894041cbd6a0" prot="public" static="no">
+        <name>BOOST_GEOMETRY_REGISTER_MULTI_POLYGON_TEMPLATED</name>
+        <param><defname>MultiPolygon</defname></param>
+        <initializer>namespace boost { namespace geometry { namespace traits {  \
+    template&lt;typename Polygon&gt; struct tag&lt; MultiPolygon&lt;Polygon&gt; &gt; { typedef multi_polygon_tag type; }; \
+}}}</initializer>
+        <briefdescription>
+<para>Macro to register a \1. </para>        </briefdescription>
+        <detaileddescription>
+<para>The macro BOOST_GEOMETRY_REGISTER_MULTI_POLYGON_TEMPLATED registers a templated multi_polygon such that it is recognized by Boost.Geometry and that Boost.Geometry functionality can used with the specified type. The type must have one template parameter, which should be a polygon type, and should not be specified. Boost.Geometry takes care of inserting the template parameter. Hence all types of this templated multi_polygon are registered, regardless of their point type. <parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>MultiPolygon</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>multi_polygon (without template parameters) type to be registered</para></parameterdescription>
+</parameteritem>
+</parameterlist>
+ <qbk>
+[heading Example]
+[register_multi_polygon_templated]
+[register_multi_polygon_templated_output]
+</qbk>  </para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/register/multi_polygon.hpp" line="56" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/register/multi_polygon.hpp" bodystart="53" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="define" id="group__register_1ga040a8280aaf06372fc637e1a436019d8" prot="public" static="no">
+        <name>BOOST_GEOMETRY_REGISTER_POINT_2D</name>
+        <param><defname>Point</defname></param>
+        <param><defname>CoordinateType</defname></param>
+        <param><defname>CoordinateSystem</defname></param>
+        <param><defname>Field0</defname></param>
+        <param><defname>Field1</defname></param>
+        <initializer>namespace boost { namespace geometry { namespace traits {  \
+    BOOST_GEOMETRY_DETAIL_SPECIALIZE_POINT_TRAITS(Point, 2, CoordinateType, CoordinateSystem) \
+    BOOST_GEOMETRY_DETAIL_SPECIALIZE_POINT_ACCESS(Point, 0, CoordinateType, Field0, Field0) \
+    BOOST_GEOMETRY_DETAIL_SPECIALIZE_POINT_ACCESS(Point, 1, CoordinateType, Field1, Field1) \
+}}}</initializer>
+        <briefdescription>
+<para>Macro to register a \1. </para>        </briefdescription>
+        <detaileddescription>
+<para>The macro BOOST_GEOMETRY_REGISTER_POINT_2D registers a two-dimensional point type such that it is recognized by Boost.Geometry and that Boost.Geometry functionality can used with the specified type. <parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>Point</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Point type to be registered </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>CoordinateType</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Type of the coordinates of the point (e.g. double) </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>CoordinateSystem</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Coordinate system (e.g. cs::cartesian) </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Field0</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Member containing first (usually x) coordinate </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Field1</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Member containing second (usually y) coordinate</para></parameterdescription>
+</parameteritem>
+</parameterlist>
+ <qbk>[include reference/geometries/register/point.qbk]</qbk>  </para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/register/point.hpp" line="75" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/register/point.hpp" bodystart="70" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="define" id="group__register_1ga3a3e97175ef92eed648707933c3fbeaa" prot="public" static="no">
+        <name>BOOST_GEOMETRY_REGISTER_POINT_2D_CONST</name>
+        <param><defname>Point</defname></param>
+        <param><defname>CoordinateType</defname></param>
+        <param><defname>CoordinateSystem</defname></param>
+        <param><defname>Field0</defname></param>
+        <param><defname>Field1</defname></param>
+        <initializer>namespace boost { namespace geometry { namespace traits {  \
+    BOOST_GEOMETRY_DETAIL_SPECIALIZE_POINT_TRAITS(Point, 2, CoordinateType, CoordinateSystem) \
+    BOOST_GEOMETRY_DETAIL_SPECIALIZE_POINT_ACCESS_CONST(Point, 0, CoordinateType, Field0) \
+    BOOST_GEOMETRY_DETAIL_SPECIALIZE_POINT_ACCESS_CONST(Point, 1, CoordinateType, Field1) \
+}}}</initializer>
+        <briefdescription>
+<para>Macro to register a \1 (const version) </para>        </briefdescription>
+        <detaileddescription>
+<para>The macro BOOST_GEOMETRY_REGISTER_POINT_2D_CONST registers a two-dimensional point type such that it is recognized by Boost.Geometry and that Boost.Geometry functionality can used with the specified type.. The const version registers only read access to the fields, the point type is therefore read-only <parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>Point</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Point type to be registered </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>CoordinateType</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Type of the coordinates of the point (e.g. double) </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>CoordinateSystem</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Coordinate system (e.g. cs::cartesian) </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Field0</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Member containing first (usually x) coordinate </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Field1</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Member containing second (usually y) coordinate </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/register/point.hpp" line="111" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/register/point.hpp" bodystart="106" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="define" id="group__register_1gaf174f265da534d30be10c2f5a4a2c75e" prot="public" static="no">
+        <name>BOOST_GEOMETRY_REGISTER_POINT_2D_GET_SET</name>
+        <param><defname>Point</defname></param>
+        <param><defname>CoordinateType</defname></param>
+        <param><defname>CoordinateSystem</defname></param>
+        <param><defname>Get0</defname></param>
+        <param><defname>Get1</defname></param>
+        <param><defname>Set0</defname></param>
+        <param><defname>Set1</defname></param>
+        <initializer>namespace boost { namespace geometry { namespace traits {  \
+    BOOST_GEOMETRY_DETAIL_SPECIALIZE_POINT_TRAITS(Point, 2, CoordinateType, CoordinateSystem) \
+    BOOST_GEOMETRY_DETAIL_SPECIALIZE_POINT_ACCESS_GET_SET(Point, 0, CoordinateType, Get0, Set0) \
+    BOOST_GEOMETRY_DETAIL_SPECIALIZE_POINT_ACCESS_GET_SET(Point, 1, CoordinateType, Get1, Set1) \
+}}}</initializer>
+        <briefdescription>
+<para>Macro to register a \1 (having separate get/set methods) </para>        </briefdescription>
+        <detaileddescription>
+<para>The macro BOOST_GEOMETRY_REGISTER_POINT_2D_GET_SET registers a two-dimensional point type such that it is recognized by Boost.Geometry and that Boost.Geometry functionality can used with the specified type.. The get/set version registers get and set methods separately and can be used for classes with protected member variables and get/set methods to change coordinates <parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>Point</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Point type to be registered </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>CoordinateType</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Type of the coordinates of the point (e.g. double) </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>CoordinateSystem</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Coordinate system (e.g. cs::cartesian) </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Get0</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Method to get the first (usually x) coordinate </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Get1</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Method to get the second (usually y) coordinate </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Set0</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Method to set the first (usually x) coordinate </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Set1</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Method to set the second (usually y) coordinate </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/register/point.hpp" line="149" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/register/point.hpp" bodystart="144" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="define" id="group__register_1ga98e9781be9019c6d92029507e49ef9a5" prot="public" static="no">
+        <name>BOOST_GEOMETRY_REGISTER_POINT_3D</name>
+        <param><defname>Point</defname></param>
+        <param><defname>CoordinateType</defname></param>
+        <param><defname>CoordinateSystem</defname></param>
+        <param><defname>Field0</defname></param>
+        <param><defname>Field1</defname></param>
+        <param><defname>Field2</defname></param>
+        <initializer>namespace boost { namespace geometry { namespace traits {  \
+    BOOST_GEOMETRY_DETAIL_SPECIALIZE_POINT_TRAITS(Point, 3, CoordinateType, CoordinateSystem) \
+    BOOST_GEOMETRY_DETAIL_SPECIALIZE_POINT_ACCESS(Point, 0, CoordinateType, Field0, Field0) \
+    BOOST_GEOMETRY_DETAIL_SPECIALIZE_POINT_ACCESS(Point, 1, CoordinateType, Field1, Field1) \
+    BOOST_GEOMETRY_DETAIL_SPECIALIZE_POINT_ACCESS(Point, 2, CoordinateType, Field2, Field2) \
+}}}</initializer>
+        <briefdescription>
+<para>Macro to register a \1. </para>        </briefdescription>
+        <detaileddescription>
+<para>The macro BOOST_GEOMETRY_REGISTER_POINT_3D registers a three-dimensional point type such that it is recognized by Boost.Geometry and that Boost.Geometry functionality can used with the specified type. <parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>Point</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Point type to be registered </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>CoordinateType</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Type of the coordinates of the point (e.g. double) </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>CoordinateSystem</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Coordinate system (e.g. cs::cartesian) </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Field0</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Member containing first (usually x) coordinate </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Field1</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Member containing second (usually y) coordinate </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Field2</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Member containing third (usually z) coordinate </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/register/point.hpp" line="94" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/register/point.hpp" bodystart="88" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="define" id="group__register_1ga86cf81c9036010faf69dfbd9b3c4d9a8" prot="public" static="no">
+        <name>BOOST_GEOMETRY_REGISTER_POINT_3D_CONST</name>
+        <param><defname>Point</defname></param>
+        <param><defname>CoordinateType</defname></param>
+        <param><defname>CoordinateSystem</defname></param>
+        <param><defname>Field0</defname></param>
+        <param><defname>Field1</defname></param>
+        <param><defname>Field2</defname></param>
+        <initializer>namespace boost { namespace geometry { namespace traits {  \
+    BOOST_GEOMETRY_DETAIL_SPECIALIZE_POINT_TRAITS(Point, 3, CoordinateType, CoordinateSystem) \
+    BOOST_GEOMETRY_DETAIL_SPECIALIZE_POINT_ACCESS_CONST(Point, 0, CoordinateType, Field0) \
+    BOOST_GEOMETRY_DETAIL_SPECIALIZE_POINT_ACCESS_CONST(Point, 1, CoordinateType, Field1) \
+    BOOST_GEOMETRY_DETAIL_SPECIALIZE_POINT_ACCESS_CONST(Point, 2, CoordinateType, Field2) \
+}}}</initializer>
+        <briefdescription>
+<para>Macro to register a \1 (const version) </para>        </briefdescription>
+        <detaileddescription>
+<para>The macro BOOST_GEOMETRY_REGISTER_POINT_3D_CONST registers a three-dimensional point type such that it is recognized by Boost.Geometry and that Boost.Geometry functionality can used with the specified type.. The const version registers only read access to the fields, the point type is therefore read-only <parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>Point</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Point type to be registered </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>CoordinateType</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Type of the coordinates of the point (e.g. double) </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>CoordinateSystem</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Coordinate system (e.g. cs::cartesian) </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Field0</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Member containing first (usually x) coordinate </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Field1</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Member containing second (usually y) coordinate </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Field2</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Member containing third (usually z) coordinate </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/register/point.hpp" line="130" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/register/point.hpp" bodystart="124" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="define" id="group__register_1ga6550bf4438d3b63ad83f5508900690cf" prot="public" static="no">
+        <name>BOOST_GEOMETRY_REGISTER_POINT_3D_GET_SET</name>
+        <param><defname>Point</defname></param>
+        <param><defname>CoordinateType</defname></param>
+        <param><defname>CoordinateSystem</defname></param>
+        <param><defname>Get0</defname></param>
+        <param><defname>Get1</defname></param>
+        <param><defname>Get2</defname></param>
+        <param><defname>Set0</defname></param>
+        <param><defname>Set1</defname></param>
+        <param><defname>Set2</defname></param>
+        <initializer>namespace boost { namespace geometry { namespace traits {  \
+    BOOST_GEOMETRY_DETAIL_SPECIALIZE_POINT_TRAITS(Point, 3, CoordinateType, CoordinateSystem) \
+    BOOST_GEOMETRY_DETAIL_SPECIALIZE_POINT_ACCESS_GET_SET(Point, 0, CoordinateType, Get0, Set0) \
+    BOOST_GEOMETRY_DETAIL_SPECIALIZE_POINT_ACCESS_GET_SET(Point, 1, CoordinateType, Get1, Set1) \
+    BOOST_GEOMETRY_DETAIL_SPECIALIZE_POINT_ACCESS_GET_SET(Point, 2, CoordinateType, Get2, Set2) \
+}}}</initializer>
+        <briefdescription>
+<para>Macro to register a \1 (having separate get/set methods) </para>        </briefdescription>
+        <detaileddescription>
+<para>The macro BOOST_GEOMETRY_REGISTER_POINT_3D_GET_SET registers a three-dimensional point type such that it is recognized by Boost.Geometry and that Boost.Geometry functionality can used with the specified type.. The get/set version registers get and set methods separately and can be used for classes with protected member variables and get/set methods to change coordinates <parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>Point</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Point type to be registered </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>CoordinateType</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Type of the coordinates of the point (e.g. double) </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>CoordinateSystem</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Coordinate system (e.g. cs::cartesian) </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Get0</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Method to get the first (usually x) coordinate </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Get1</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Method to get the second (usually y) coordinate </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Get2</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Method to get the third (usually z) coordinate </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Set0</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Method to set the first (usually x) coordinate </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Set1</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Method to set the second (usually y) coordinate </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Set2</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Method to set the third (usually z) coordinate </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/register/point.hpp" line="171" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/register/point.hpp" bodystart="165" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="define" id="group__register_1ga742491bcf6ece3b0c9d21d5f6a991ac1" prot="public" static="no">
+        <name>BOOST_GEOMETRY_REGISTER_RING</name>
+        <param><defname>Ring</defname></param>
+        <initializer>namespace boost { namespace geometry { namespace traits {  \
+    template&lt;&gt; struct tag&lt;Ring&gt; { typedef ring_tag type; }; \
+}}}</initializer>
+        <briefdescription>
+<para>Macro to register a \1. </para>        </briefdescription>
+        <detaileddescription>
+<para>The macro BOOST_GEOMETRY_REGISTER_RING registers a ring such that it is recognized by Boost.Geometry and that Boost.Geometry functionality can used with the specified type. The ring may contain template parameters, which must be specified then. <parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>Ring</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>ring type to be registered</para></parameterdescription>
+</parameteritem>
+</parameterlist>
+ <qbk>
+[heading Example]
+[register_ring]
+[register_ring_output]
+</qbk>  </para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/register/ring.hpp" line="38" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/register/ring.hpp" bodystart="35" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="define" id="group__register_1ga8a9071c3e9e9e0175250677a50e3fcc8" prot="public" static="no">
+        <name>BOOST_GEOMETRY_REGISTER_RING_TEMPLATED</name>
+        <param><defname>Ring</defname></param>
+        <initializer>namespace boost { namespace geometry { namespace traits {  \
+    template&lt;typename P&gt; struct tag&lt; Ring&lt;P&gt; &gt; { typedef ring_tag type; }; \
+}}}</initializer>
+        <briefdescription>
+<para>Macro to register a \1. </para>        </briefdescription>
+        <detaileddescription>
+<para>The macro BOOST_GEOMETRY_REGISTER_RING_TEMPLATED registers a templated ring such that it is recognized by Boost.Geometry and that Boost.Geometry functionality can used with the specified type. The type must have one template parameter, which should be a point type, and should not be specified. Boost.Geometry takes care of inserting the template parameter. Hence all types of this templated ring are registered, regardless of their point type. <parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>Ring</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>ring (without template parameters) type to be registered</para></parameterdescription>
+</parameteritem>
+</parameterlist>
+ <qbk>
+[heading Example]
+[register_ring_templated]
+[register_ring_templated_output]
+</qbk>  </para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/register/ring.hpp" line="57" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/register/ring.hpp" bodystart="54" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+  </compounddef>
+</doxygen>

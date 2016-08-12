@@ -1,0 +1,164 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Automatically Scaled Units</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../../index.html" title="Chapter&#160;1.&#160;Boost.Units 1.1.0">
+<link rel="up" href="../Examples.html" title="Examples">
+<link rel="prev" href="OutputForCompositeUnits.html" title="Output for Composite Units">
+<link rel="next" href="ConversionFactor.html" title="Conversion Factor">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="OutputForCompositeUnits.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../Examples.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="ConversionFactor.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_units.Examples.autoscale"></a><a class="link" href="autoscale.html" title="Automatically Scaled Units">Automatically Scaled
+      Units</a>
+</h3></div></div></div>
+<p>
+        It is often desirable to scale a <span class="underline"><code class="computeroutput"><a class="link" href="../../boost/units/unit.html" title="Class template unit">unit</a></code></span>
+        automatically, depending on its value, to keep the integral part in a limited
+        range, usually between 1 and 999.
+      </p>
+<p>
+        For example, using <a href="http://en.wikipedia.org/wiki/Engineering_notation" target="_top">engineering
+        notation prefixes</a>,
+      </p>
+<pre class="programlisting"><span class="string">"1234.5 m"</span> <span class="identifier">is</span> <span class="identifier">more</span> <span class="identifier">helpfully</span> <span class="identifier">displayed</span> <span class="identifier">as</span> <span class="string">"1.234 km"</span>
+<span class="string">"0.000000001234 m"</span> <span class="identifier">is</span> <span class="identifier">more</span> <span class="identifier">clearly</span> <span class="identifier">displayed</span> <span class="identifier">as</span> <span class="string">"1.2345 nanometer"</span><span class="special">.</span>
+</pre>
+<p>
+        The iostream manipulators <code class="computeroutput"><span class="identifier">engineering_prefixes</span></code>
+        or <code class="computeroutput"><span class="identifier">binary_prefixes</span></code> make this
+        easy.
+      </p>
+<p>
+</p>
+<pre class="programlisting"><span class="keyword">using</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">units</span><span class="special">::</span><span class="identifier">binary_prefix</span><span class="special">;</span>
+<span class="keyword">using</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">units</span><span class="special">::</span><span class="identifier">engineering_prefix</span><span class="special">;</span>
+<span class="keyword">using</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">units</span><span class="special">::</span><span class="identifier">no_prefix</span><span class="special">;</span>
+
+<span class="identifier">quantity</span><span class="special">&lt;</span><span class="identifier">length</span><span class="special">&gt;</span> <span class="identifier">l</span> <span class="special">=</span> <span class="number">2.345</span> <span class="special">*</span> <span class="identifier">meters</span><span class="special">;</span>   <span class="comment">// A quantity of length, in units of meters.</span>
+<span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">engineering_prefix</span> <span class="special">&lt;&lt;</span> <span class="identifier">l</span> <span class="special">&lt;&lt;</span> <span class="identifier">endl</span><span class="special">;</span> <span class="comment">// Outputs "2.345 m".</span>
+<span class="identifier">l</span> <span class="special">=</span>  <span class="number">1000.0</span> <span class="special">*</span> <span class="identifier">l</span><span class="special">;</span> <span class="comment">// Increase it by 1000, so expect a k prefix.</span>
+<span class="comment">// Note that a double 1000.0 is required - an integer will fail to compile.</span>
+<span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">engineering_prefix</span> <span class="special">&lt;&lt;</span> <span class="identifier">l</span> <span class="special">&lt;&lt;</span> <span class="identifier">endl</span><span class="special">;</span> <span class="comment">// Output autoprefixed with k to "2.345 km".</span>
+
+<span class="identifier">quantity</span><span class="special">&lt;</span><span class="identifier">energy</span><span class="special">&gt;</span> <span class="identifier">e</span> <span class="special">=</span> <span class="identifier">kilograms</span> <span class="special">*</span> <span class="identifier">pow</span><span class="special">&lt;</span><span class="number">2</span><span class="special">&gt;(</span><span class="identifier">l</span> <span class="special">/</span> <span class="identifier">seconds</span><span class="special">);</span> <span class="comment">// A quantity of energy.</span>
+<span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">engineering_prefix</span> <span class="special">&lt;&lt;</span> <span class="identifier">e</span> <span class="special">&lt;&lt;</span> <span class="identifier">endl</span><span class="special">;</span> <span class="comment">// 5.49902 MJ</span>
+<span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">name_format</span> <span class="special">&lt;&lt;</span> <span class="identifier">engineering_prefix</span> <span class="special">&lt;&lt;</span> <span class="identifier">e</span> <span class="special">&lt;&lt;</span> <span class="identifier">endl</span><span class="special">;</span> <span class="comment">// 5.49902 megaJoule</span>
+</pre>
+<p>
+      </p>
+<p>
+        (The complete set of <a href="http://physics.nist.gov/cuu/Units/prefixes.html" target="_top">engineering
+        and scientific multiples</a> is not used (not centi or deci for example),
+        but only powers of ten that are multiples of three, 10^3).
+      </p>
+<p>
+        Similarly, the equivalent <a href="http://en.wikipedia.org/wiki/Binary_prefixes" target="_top">binary
+        prefixes</a> used for displaying computing kilobytes, megabytes, gigabytes...
+      </p>
+<p>
+        These are the 2^10 = 1024, 2^20 = 1 048 576, 2^30 ... multiples.
+      </p>
+<p>
+        (See also <a href="http://physics.nist.gov/cuu/Units/binary.html" target="_top">Prefixes
+        for binary multiples</a>
+      </p>
+<p>
+        This scale is specified in IEC 60027-2, Second edition, 2000-11, Letter symbols
+        to be used in electrical technology - Part 2: Telecommunications and electronics).
+      </p>
+<p>
+</p>
+<pre class="programlisting"><span class="comment">// Don't forget that the units name or symbol format specification is persistent.</span>
+<span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">symbol_format</span> <span class="special">&lt;&lt;</span> <span class="identifier">endl</span><span class="special">;</span> <span class="comment">// Resets the format to the default symbol format.</span>
+
+<span class="identifier">quantity</span><span class="special">&lt;</span><span class="identifier">byte_base_unit</span><span class="special">::</span><span class="identifier">unit_type</span><span class="special">&gt;</span> <span class="identifier">b</span> <span class="special">=</span> <span class="number">2048.</span> <span class="special">*</span> <span class="identifier">byte_base_unit</span><span class="special">::</span><span class="identifier">unit_type</span><span class="special">();</span>
+<span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">engineering_prefix</span> <span class="special">&lt;&lt;</span> <span class="identifier">b</span> <span class="special">&lt;&lt;</span> <span class="identifier">endl</span><span class="special">;</span>  <span class="comment">// 2.048 kb</span>
+<span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">symbol_format</span> <span class="special">&lt;&lt;</span> <span class="identifier">binary_prefix</span> <span class="special">&lt;&lt;</span> <span class="identifier">b</span> <span class="special">&lt;&lt;</span> <span class="identifier">endl</span><span class="special">;</span> <span class="comment">//  "2 Kib"</span>
+</pre>
+<p>
+      </p>
+<p>
+        But note that scalar dimensionless values, like int, float and double, are
+        <span class="bold"><strong>not</strong></span> prefixed automatically by the engineering_prefix
+        or binary_prefix iostream manipulators.
+      </p>
+<p>
+</p>
+<pre class="programlisting"><span class="keyword">const</span> <span class="keyword">double</span> <span class="identifier">s1</span> <span class="special">=</span> <span class="number">2345.6</span><span class="special">;</span>
+<span class="keyword">const</span> <span class="keyword">long</span> <span class="identifier">x1</span> <span class="special">=</span> <span class="number">23456</span><span class="special">;</span>
+<span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">engineering_prefix</span> <span class="special">&lt;&lt;</span> <span class="identifier">s1</span> <span class="special">&lt;&lt;</span> <span class="identifier">endl</span><span class="special">;</span> <span class="comment">// 2345.6</span>
+<span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">engineering_prefix</span> <span class="special">&lt;&lt;</span> <span class="identifier">x1</span> <span class="special">&lt;&lt;</span> <span class="identifier">endl</span><span class="special">;</span> <span class="comment">// 23456</span>
+
+<span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">binary_prefix</span> <span class="special">&lt;&lt;</span> <span class="identifier">s1</span> <span class="special">&lt;&lt;</span> <span class="identifier">endl</span><span class="special">;</span> <span class="comment">// 2345.6</span>
+<span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">binary_prefix</span> <span class="special">&lt;&lt;</span> <span class="identifier">x1</span> <span class="special">&lt;&lt;</span> <span class="identifier">endl</span><span class="special">;</span> <span class="comment">// 23456</span>
+</pre>
+<p>
+      </p>
+<p>
+        You can output the name or symbol of a unit (rather than the most common
+        quantity of a unit).
+      </p>
+<p>
+</p>
+<pre class="programlisting"><span class="keyword">const</span> <span class="identifier">length</span> <span class="identifier">L</span><span class="special">;</span> <span class="comment">// A unit of length (but not a quantity of length).</span>
+<span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">L</span> <span class="special">&lt;&lt;</span> <span class="identifier">endl</span><span class="special">;</span> <span class="comment">// Default length unit is meter,</span>
+<span class="comment">// but default is symbol format so output is just "m".</span>
+<span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">name_format</span> <span class="special">&lt;&lt;</span> <span class="identifier">L</span> <span class="special">&lt;&lt;</span> <span class="identifier">endl</span><span class="special">;</span> <span class="comment">// default length name is "meter".</span>
+</pre>
+<p>
+      </p>
+<p>
+        Note too that all the formatting flags are persistent, so that if you set
+        engineering_prefix, then it applies to all future outputs, until you select
+        binary_prefix, or explicitly switch autoprefix off. You can specify no prefix
+        (the default of course) in two ways:
+      </p>
+<p>
+</p>
+<pre class="programlisting"><span class="identifier">no_prefix</span><span class="special">(</span><span class="identifier">cout</span><span class="special">);</span> <span class="comment">// Clear any prefix flag.</span>
+<span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">no_prefix</span> <span class="special">&lt;&lt;</span> <span class="identifier">endl</span><span class="special">;</span> <span class="comment">// Clear any prefix flag using `no_prefix` manipulator.</span>
+</pre>
+<p>
+      </p>
+<p>
+        And you can get the format flags for diagnosing problems.
+      </p>
+<p>
+</p>
+<pre class="programlisting"><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">units</span><span class="special">::</span><span class="identifier">get_autoprefix</span><span class="special">(</span><span class="identifier">cout</span><span class="special">)</span> <span class="special">&lt;&lt;</span> <span class="identifier">endl</span><span class="special">;</span> <span class="comment">// 8 is `autoprefix_binary` from `enum autoprefix_mode`.</span>
+<span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">units</span><span class="special">::</span><span class="identifier">get_format</span><span class="special">(</span><span class="identifier">cout</span><span class="special">)</span> <span class="special">&lt;&lt;</span> <span class="identifier">endl</span><span class="special">;</span> <span class="comment">// 1 is `name_fmt` from `enum format_mode`.</span>
+</pre>
+<p>
+      </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2008 Matthias Christian Schabel<br>Copyright &#169; 2007-2010 Steven
+      Watanabe<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="OutputForCompositeUnits.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../Examples.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="ConversionFactor.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

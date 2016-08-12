@@ -1,0 +1,229 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Class synchronized_pool_resource</title>
+<link rel="stylesheet" href="../../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../../../index.html" title="Chapter&#160;1.&#160;Boost.Container">
+<link rel="up" href="../../../boost_container_header_reference.html#header.boost.container.pmr.synchronized_pool_resource_hpp" title="Header &lt;boost/container/pmr/synchronized_pool_resource.hpp&gt;">
+<link rel="prev" href="resource_adaptor_imp.html" title="Class template resource_adaptor_imp">
+<link rel="next" href="unsynchronized_idp18417776.html" title="Class unsynchronized_pool_resource">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="resource_adaptor_imp.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../../boost_container_header_reference.html#header.boost.container.pmr.synchronized_pool_resource_hpp"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="unsynchronized_idp18417776.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="refentry">
+<a name="boost.container.pmr.synchronized_pool_resource"></a><div class="titlepage"></div>
+<div class="refnamediv">
+<h2><span class="refentrytitle">Class synchronized_pool_resource</span></h2>
+<p>boost::container::pmr::synchronized_pool_resource</p>
+</div>
+<h2 xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv-title">Synopsis</h2>
+<div xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv"><pre class="synopsis"><span class="comment">// In header: &lt;<a class="link" href="../../../boost_container_header_reference.html#header.boost.container.pmr.synchronized_pool_resource_hpp" title="Header &lt;boost/container/pmr/synchronized_pool_resource.hpp&gt;">boost/container/pmr/synchronized_pool_resource.hpp</a>&gt;
+
+</span>
+<span class="keyword">class</span> <a class="link" href="synchronized_pool_resource.html" title="Class synchronized_pool_resource">synchronized_pool_resource</a> <span class="special">:</span>
+  <span class="keyword">public</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">container</span><span class="special">::</span><span class="identifier">pmr</span><span class="special">::</span><span class="identifier">memory_resource</span>
+<span class="special">{</span>
+<span class="keyword">public</span><span class="special">:</span>
+  <span class="comment">// <a class="link" href="synchronized_pool_resource.html#boost.container.pmr.synchronized_pool_resourceconstruct-copy-destruct">construct/copy/destruct</a></span>
+  <a class="link" href="synchronized_pool_resource.html#idp18379168-bb"><span class="identifier">synchronized_pool_resource</span></a><span class="special">(</span><span class="keyword">const</span> <a class="link" href="pool_options.html" title="Struct pool_options">pool_options</a> <span class="special">&amp;</span><span class="special">,</span> <a class="link" href="memory_resource.html" title="Class memory_resource">memory_resource</a> <span class="special">*</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <a class="link" href="synchronized_pool_resource.html#idp18385472-bb"><span class="identifier">synchronized_pool_resource</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="keyword">explicit</span> <a class="link" href="synchronized_pool_resource.html#idp18387360-bb"><span class="identifier">synchronized_pool_resource</span></a><span class="special">(</span><a class="link" href="memory_resource.html" title="Class memory_resource">memory_resource</a> <span class="special">*</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="keyword">explicit</span> <a class="link" href="synchronized_pool_resource.html#idp18390480-bb"><span class="identifier">synchronized_pool_resource</span></a><span class="special">(</span><span class="keyword">const</span> <a class="link" href="pool_options.html" title="Struct pool_options">pool_options</a> <span class="special">&amp;</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <a class="link" href="synchronized_pool_resource.html#idp18393776-bb"><span class="identifier">synchronized_pool_resource</span></a><span class="special">(</span><span class="keyword">const</span> <a class="link" href="synchronized_pool_resource.html" title="Class synchronized_pool_resource">synchronized_pool_resource</a> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <a class="link" href="synchronized_pool_resource.html" title="Class synchronized_pool_resource">synchronized_pool_resource</a> <a class="link" href="synchronized_pool_resource.html#idp18395216-bb"><span class="keyword">operator</span><span class="special">=</span></a><span class="special">(</span><span class="keyword">const</span> <a class="link" href="synchronized_pool_resource.html" title="Class synchronized_pool_resource">synchronized_pool_resource</a> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <a class="link" href="synchronized_pool_resource.html#idp18397088-bb"><span class="special">~</span><span class="identifier">synchronized_pool_resource</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+
+  <span class="comment">// <a class="link" href="synchronized_pool_resource.html#idp18348496-bb">public member functions</a></span>
+  <span class="keyword">void</span> <a class="link" href="synchronized_pool_resource.html#idp18349056-bb"><span class="identifier">release</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+  <a class="link" href="memory_resource.html" title="Class memory_resource">memory_resource</a> <span class="special">*</span> <a class="link" href="synchronized_pool_resource.html#idp18351392-bb"><span class="identifier">upstream_resource</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <a class="link" href="pool_options.html" title="Struct pool_options">pool_options</a> <a class="link" href="synchronized_pool_resource.html#idp18354128-bb"><span class="identifier">options</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a class="link" href="synchronized_pool_resource.html#idp18356912-bb"><span class="identifier">pool_count</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a class="link" href="synchronized_pool_resource.html#idp18360208-bb"><span class="identifier">pool_index</span></a><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a class="link" href="synchronized_pool_resource.html#idp18364336-bb"><span class="identifier">pool_next_blocks_per_chunk</span></a><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a class="link" href="synchronized_pool_resource.html#idp18369232-bb"><span class="identifier">pool_block</span></a><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a class="link" href="synchronized_pool_resource.html#idp18374096-bb"><span class="identifier">pool_cached_blocks</span></a><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+
+  <span class="comment">// <a class="link" href="synchronized_pool_resource.html#idp18398656-bb">protected member functions</a></span>
+  <span class="keyword">virtual</span> <span class="keyword">void</span> <span class="special">*</span> <a class="link" href="synchronized_pool_resource.html#idp18399232-bb"><span class="identifier">do_allocate</span></a><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">virtual</span> <span class="keyword">void</span> <a class="link" href="synchronized_pool_resource.html#idp18405232-bb"><span class="identifier">do_deallocate</span></a><span class="special">(</span><span class="keyword">void</span> <span class="special">*</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">virtual</span> <span class="keyword">bool</span> <a class="link" href="synchronized_pool_resource.html#idp18410672-bb"><span class="identifier">do_is_equal</span></a><span class="special">(</span><span class="keyword">const</span> <a class="link" href="memory_resource.html" title="Class memory_resource">memory_resource</a> <span class="special">&amp;</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+<span class="special">}</span><span class="special">;</span></pre></div>
+<div class="refsect1">
+<a name="idp24478080"></a><h2>Description</h2>
+<p>A <a class="link" href="synchronized_pool_resource.html" title="Class synchronized_pool_resource">synchronized_pool_resource</a> is a general-purpose memory resources having the following qualities:</p>
+<div class="itemizedlist"><ul class="itemizedlist" type="disc"><li class="listitem"><p>Each resource owns the allocated memory, and frees it on destruction, even if deallocate has not been called for some of the allocated blocks.</p></li></ul></div>
+<p>
+</p>
+<div class="itemizedlist"><ul class="itemizedlist" type="disc"><li class="listitem"><p>A pool resource consists of a collection of pools, serving requests for different block sizes. Each individual pool manages a collection of chunks that are in turn divided into blocks of uniform size, returned via calls to do_allocate. Each call to do_allocate(size, alignment) is dispatched to the pool serving the smallest blocks accommodating at least size bytes.</p></li></ul></div>
+<p>
+</p>
+<div class="itemizedlist"><ul class="itemizedlist" type="disc"><li class="listitem"><p>When a particular pool is exhausted, allocating a block from that pool results in the allocation of an additional chunk of memory from the upstream allocator (supplied at construction), thus replenishing the pool. With each successive replenishment, the chunk size obtained increases geometrically. [ Note: By allocating memory in chunks, the pooling strategy increases the chance that consecutive allocations will be close together in memory. - end note ]</p></li></ul></div>
+<p>
+</p>
+<div class="itemizedlist"><ul class="itemizedlist" type="disc"><li class="listitem"><p>Allocation requests that exceed the largest block size of any pool are fulfilled directly from the upstream allocator.</p></li></ul></div>
+<p>
+</p>
+<div class="itemizedlist"><ul class="itemizedlist" type="disc"><li class="listitem"><p>A <a class="link" href="pool_options.html" title="Struct pool_options">pool_options</a> struct may be passed to the pool resource constructors to tune the largest block size and the maximum chunk size.</p></li></ul></div>
+<p>
+</p>
+<p>A <a class="link" href="synchronized_pool_resource.html" title="Class synchronized_pool_resource">synchronized_pool_resource</a> may be accessed from multiple threads without external synchronization and may have thread-specific pools to reduce synchronization costs. </p>
+<div class="refsect2">
+<a name="idp24486768"></a><h3>
+<a name="boost.container.pmr.synchronized_pool_resourceconstruct-copy-destruct"></a><code class="computeroutput">synchronized_pool_resource</code> 
+        public
+       construct/copy/destruct</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+<pre class="literallayout"><a name="idp18379168-bb"></a><span class="identifier">synchronized_pool_resource</span><span class="special">(</span><span class="keyword">const</span> <a class="link" href="pool_options.html" title="Struct pool_options">pool_options</a> <span class="special">&amp;</span> opts<span class="special">,</span> 
+                           <a class="link" href="memory_resource.html" title="Class memory_resource">memory_resource</a> <span class="special">*</span> upstream<span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Requires</strong></span>: `upstream` is the address of a valid memory resource.</p>
+<p><span class="bold"><strong>Effects</strong></span>: Constructs a pool resource object that will obtain memory from upstream whenever the pool resource is unable to satisfy a memory request from its own internal data structures. The resulting object will hold a copy of upstream, but will not own the resource to which upstream points. [ Note: The intention is that calls to upstream-&gt;allocate() will be substantially fewer than calls to this-&gt;allocate() in most cases. - end note The behavior of the pooling mechanism is tuned according to the value of the opts argument.</p>
+<p><span class="bold"><strong>Throws</strong></span>: Nothing unless upstream-&gt;allocate() throws. It is unspecified if or under what conditions this constructor calls upstream-&gt;allocate(). </p>
+<p>
+ </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><a name="idp18385472-bb"></a><span class="identifier">synchronized_pool_resource</span><span class="special">(</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Effects</strong></span>: Same as `unsynchronized_pool_resource(pool_options(), get_default_resource())`. </p>
+<p>
+ </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">explicit</span> <a name="idp18387360-bb"></a><span class="identifier">synchronized_pool_resource</span><span class="special">(</span><a class="link" href="memory_resource.html" title="Class memory_resource">memory_resource</a> <span class="special">*</span> upstream<span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Effects</strong></span>: Same as `unsynchronized_pool_resource(pool_options(), upstream)`. </p>
+<p>
+ </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">explicit</span> <a name="idp18390480-bb"></a><span class="identifier">synchronized_pool_resource</span><span class="special">(</span><span class="keyword">const</span> <a class="link" href="pool_options.html" title="Struct pool_options">pool_options</a> <span class="special">&amp;</span> opts<span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Effects</strong></span>: Same as `unsynchronized_pool_resource(opts, get_default_resource())`. </p>
+<p>
+ </p>
+</li>
+<li class="listitem"><pre class="literallayout"><a name="idp18393776-bb"></a><span class="identifier">synchronized_pool_resource</span><span class="special">(</span><span class="keyword">const</span> <a class="link" href="synchronized_pool_resource.html" title="Class synchronized_pool_resource">synchronized_pool_resource</a> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span></pre></li>
+<li class="listitem"><pre class="literallayout"><a class="link" href="synchronized_pool_resource.html" title="Class synchronized_pool_resource">synchronized_pool_resource</a> <a name="idp18395216-bb"></a><span class="keyword">operator</span><span class="special">=</span><span class="special">(</span><span class="keyword">const</span> <a class="link" href="synchronized_pool_resource.html" title="Class synchronized_pool_resource">synchronized_pool_resource</a> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span></pre></li>
+<li class="listitem">
+<pre class="literallayout"><a name="idp18397088-bb"></a><span class="special">~</span><span class="identifier">synchronized_pool_resource</span><span class="special">(</span><span class="special">)</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Effects</strong></span>: Calls `this-&gt;release()`. </p>
+<p>
+ </p>
+</li>
+</ol></div>
+</div>
+<div class="refsect2">
+<a name="idp24534752"></a><h3>
+<a name="idp18348496-bb"></a><code class="computeroutput">synchronized_pool_resource</code> public member functions</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">void</span> <a name="idp18349056-bb"></a><span class="identifier">release</span><span class="special">(</span><span class="special">)</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Effects</strong></span>: Calls Calls `upstream_resource()-&gt;deallocate()` as necessary to release all allocated memory. [ Note: memory is released back to `upstream_resource()` even if deallocate has not been called for some of the allocated blocks. - end note ] </p>
+<p>
+ </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><a class="link" href="memory_resource.html" title="Class memory_resource">memory_resource</a> <span class="special">*</span> <a name="idp18351392-bb"></a><span class="identifier">upstream_resource</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Returns</strong></span>: The value of the upstream argument provided to the constructor of this object. </p>
+<p>
+ </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><a class="link" href="pool_options.html" title="Struct pool_options">pool_options</a> <a name="idp18354128-bb"></a><span class="identifier">options</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Returns</strong></span>: The options that control the pooling behavior of this resource. The values in the returned struct may differ from those supplied to the pool resource constructor in that values of zero will be replaced with implementation-defined defaults and sizes may be rounded to unspecified granularity. </p>
+<p>
+ </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a name="idp18356912-bb"></a><span class="identifier">pool_count</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Returns</strong></span>: The number of pools that will be used in the pool resource.</p>
+<p><span class="bold"><strong>Note</strong></span>: Non-standard extension. </p>
+<p>
+ </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a name="idp18360208-bb"></a><span class="identifier">pool_index</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> bytes<span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Returns</strong></span>: The index of the pool that will be used to serve the allocation of `bytes`. Returns `pool_count()` if `bytes` is bigger than `options().largest_required_pool_block` (no pool will be used to serve this).</p>
+<p><span class="bold"><strong>Note</strong></span>: Non-standard extension. </p>
+<p>
+ </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a name="idp18364336-bb"></a><span class="identifier">pool_next_blocks_per_chunk</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> pool_idx<span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Requires</strong></span>: `pool_idx &lt; pool_index()`</p>
+<p><span class="bold"><strong>Returns</strong></span>: The number blocks that will be allocated in the next chunk from the pool specified by `pool_idx`.</p>
+<p><span class="bold"><strong>Note</strong></span>: Non-standard extension. </p>
+<p>
+ </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a name="idp18369232-bb"></a><span class="identifier">pool_block</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> pool_idx<span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Requires</strong></span>: `pool_idx &lt; pool_index()`</p>
+<p><span class="bold"><strong>Returns</strong></span>: The number of bytes of the block that the specified `pool_idx` pool manages.</p>
+<p><span class="bold"><strong>Note</strong></span>: Non-standard extension. </p>
+<p>
+ </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a name="idp18374096-bb"></a><span class="identifier">pool_cached_blocks</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> pool_idx<span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Requires</strong></span>: `pool_idx &lt; pool_index()`</p>
+<p><span class="bold"><strong>Returns</strong></span>: The number of blocks that the specified `pool_idx` pool has cached and will be served without calling the upstream_allocator.</p>
+<p><span class="bold"><strong>Note</strong></span>: Non-standard extension. </p>
+<p>
+ </p>
+</li>
+</ol></div>
+</div>
+<div class="refsect2">
+<a name="idp24599456"></a><h3>
+<a name="idp18398656-bb"></a><code class="computeroutput">synchronized_pool_resource</code> protected member functions</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">virtual</span> <span class="keyword">void</span> <span class="special">*</span> <a name="idp18399232-bb"></a><span class="identifier">do_allocate</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> bytes<span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> alignment<span class="special">)</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Returns</strong></span>: A pointer to allocated storage with a size of at least `bytes`. The size and alignment of the allocated memory shall meet the requirements for a class derived from `memory_resource`.</p>
+<p><span class="bold"><strong>Effects</strong></span>: If the pool selected for a block of size bytes is unable to satisfy the memory request from its own internal data structures, it will call `upstream_resource()-&gt;allocate()` to obtain more memory. If `bytes` is larger than that which the largest pool can handle, then memory will be allocated using `upstream_resource()-&gt;allocate()`.</p>
+<p><span class="bold"><strong>Throws</strong></span>: Nothing unless `upstream_resource()-&gt;allocate()` throws. </p>
+<p>
+ </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">virtual</span> <span class="keyword">void</span> <a name="idp18405232-bb"></a><span class="identifier">do_deallocate</span><span class="special">(</span><span class="keyword">void</span> <span class="special">*</span> p<span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> bytes<span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> alignment<span class="special">)</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Effects</strong></span>: Return the memory at p to the pool. It is unspecified if or under what circumstances this operation will result in a call to `upstream_resource()-&gt;deallocate()`.</p>
+<p><span class="bold"><strong>Throws</strong></span>: Nothing. </p>
+<p>
+ </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">virtual</span> <span class="keyword">bool</span> <a name="idp18410672-bb"></a><span class="identifier">do_is_equal</span><span class="special">(</span><span class="keyword">const</span> <a class="link" href="memory_resource.html" title="Class memory_resource">memory_resource</a> <span class="special">&amp;</span> other<span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Returns</strong></span>: `this == dynamic_cast&lt;const unsynchronized_pool_resource*&gt;(&amp;other)`. </p>
+<p>
+ </p>
+</li>
+</ol></div>
+</div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2009-2015 Ion Gaztanaga<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="resource_adaptor_imp.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../../boost_container_header_reference.html#header.boost.container.pmr.synchronized_pool_resource_hpp"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="unsynchronized_idp18417776.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

@@ -1,0 +1,449 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Advanced lookup and insertion functions for associative containers</title>
+<link rel="stylesheet" href="../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../index.html" title="The Boost C++ Libraries BoostBook Documentation Subset">
+<link rel="up" href="../intrusive.html" title="Chapter&#160;16.&#160;Boost.Intrusive">
+<link rel="prev" href="bst_hooks.html" title="Binary search tree hooks: bs_set_base_hook and bs_set_member_hook">
+<link rel="next" href="erasing_and_disposing.html" title="Erasing and disposing values from Boost.Intrusive containers">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../boost.png"></td>
+<td align="center"><a href="../../../index.html">Home</a></td>
+<td align="center"><a href="../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="bst_hooks.html"><img src="../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../intrusive.html"><img src="../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="erasing_and_disposing.html"><img src="../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="intrusive.advanced_lookups_insertions"></a><a class="link" href="advanced_lookups_insertions.html" title="Advanced lookup and insertion functions for associative containers">Advanced lookup
+    and insertion functions for associative containers</a>
+</h2></div></div></div>
+<div class="toc"><dl>
+<dt><span class="section"><a href="advanced_lookups_insertions.html#intrusive.advanced_lookups_insertions.advanced_lookups">Advanced
+      lookups</a></span></dt>
+<dt><span class="section"><a href="advanced_lookups_insertions.html#intrusive.advanced_lookups_insertions.advanced_insertions">Advanced
+      insertions</a></span></dt>
+<dt><span class="section"><a href="advanced_lookups_insertions.html#intrusive.advanced_lookups_insertions.positional_insertions">Positional
+      insertions</a></span></dt>
+</dl></div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="intrusive.advanced_lookups_insertions.advanced_lookups"></a><a class="link" href="advanced_lookups_insertions.html#intrusive.advanced_lookups_insertions.advanced_lookups" title="Advanced lookups">Advanced
+      lookups</a>
+</h3></div></div></div>
+<div class="toc"><dl><dt><span class="section"><a href="advanced_lookups_insertions.html#intrusive.advanced_lookups_insertions.advanced_lookups.advanced_lookups_example">Example</a></span></dt></dl></div>
+<p>
+        <span class="bold"><strong>Boost.Intrusive</strong></span> associative containers offer
+        an interface similar to STL associative containers. However, STL's ordered
+        and unordered simple associative containers (<code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">set</span></code>,
+        <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">multiset</span></code>, <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">unordered_set</span></code>
+        and <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">unordered_multiset</span></code>) have some inefficiencies
+        caused by the interface in several search, insertion or erasure functions
+        (<code class="computeroutput"><span class="identifier">equal_range</span></code>, <code class="computeroutput"><span class="identifier">lower_bound</span></code>, <code class="computeroutput"><span class="identifier">upper_bound</span></code>,
+        <code class="computeroutput"><span class="identifier">find</span></code>, <code class="computeroutput"><span class="identifier">insert</span></code>,
+        <code class="computeroutput"><span class="identifier">erase</span></code>...): the user can only
+        operate with <code class="computeroutput"><span class="identifier">value_type</span></code> objects
+        or (starting from C++11), <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2013/n3657.htm" target="_top">heterogeneous
+        comparison lookups</a> which are not flexible enough as <code class="computeroutput"><span class="identifier">key_compare</span></code> shall support the comparison
+        between the provided key and <code class="computeroutput"><span class="identifier">value_type</span></code>,
+        which precludes the use of user-defined comparison objects that can partition
+        the search in a compatible but advanced way.
+      </p>
+<p>
+        To solve these problems, <span class="bold"><strong>Boost.Intrusive</strong></span>
+        containers offers functions where a key type different from <code class="computeroutput"><span class="identifier">key_type</span></code> and a comparison object are provided
+        by the user. This applies to: * equal_range * lower_bound * upper_bound *
+        count * find * erase
+      </p>
+<p>
+        Requirements for such functions are:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" type="disc">
+<li class="listitem">
+            For unordered container the provided comparison and hashing function
+            with the given key shall induce the same hash and equivalence as <code class="computeroutput"><span class="identifier">key_compare</span></code> and <code class="computeroutput"><span class="identifier">hasher</span></code>.
+          </li>
+<li class="listitem">
+            For ordered associative containers, lookup and erasure functions, the
+            container to be searched shall be partitioned in regards to the supplied
+            comparison object and key.
+          </li>
+</ul></div>
+<p>
+        For more details, see <span class="bold"><strong>Requires</strong></span> clauses of
+        such functions in the reference.
+      </p>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="intrusive.advanced_lookups_insertions.advanced_lookups.advanced_lookups_example"></a><a class="link" href="advanced_lookups_insertions.html#intrusive.advanced_lookups_insertions.advanced_lookups.advanced_lookups_example" title="Example">Example</a>
+</h4></div></div></div>
+<p>
+          Imagine that the object to be searched is quite expensive to construct
+          (called <code class="computeroutput"><span class="identifier">Expensive</span></code> in the
+          example):
+        </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">intrusive</span><span class="special">/</span><span class="identifier">set</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">intrusive</span><span class="special">/</span><span class="identifier">unordered_set</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">cstring</span><span class="special">&gt;</span>
+
+<span class="keyword">using</span> <span class="keyword">namespace</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">intrusive</span><span class="special">;</span>
+
+<span class="comment">// Hash function for strings</span>
+<span class="keyword">struct</span> <span class="identifier">StrHasher</span>
+<span class="special">{</span>
+   <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="keyword">operator</span><span class="special">()(</span><span class="keyword">const</span> <span class="keyword">char</span> <span class="special">*</span><span class="identifier">str</span><span class="special">)</span> <span class="keyword">const</span>
+   <span class="special">{</span>
+      <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">seed</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span>
+      <span class="keyword">for</span><span class="special">(;</span> <span class="special">*</span><span class="identifier">str</span><span class="special">;</span> <span class="special">++</span><span class="identifier">str</span><span class="special">)</span>   <span class="identifier">boost</span><span class="special">::</span><span class="identifier">hash_combine</span><span class="special">(</span><span class="identifier">seed</span><span class="special">,</span> <span class="special">*</span><span class="identifier">str</span><span class="special">);</span>
+      <span class="keyword">return</span> <span class="identifier">seed</span><span class="special">;</span>
+   <span class="special">}</span>
+<span class="special">};</span>
+
+<span class="keyword">class</span> <span class="identifier">Expensive</span> <span class="special">:</span> <span class="keyword">public</span> <span class="identifier">set_base_hook</span><span class="special">&lt;&gt;,</span> <span class="keyword">public</span> <span class="identifier">unordered_set_base_hook</span><span class="special">&lt;&gt;</span>
+<span class="special">{</span>
+   <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="identifier">key_</span><span class="special">;</span>
+   <span class="comment">// Other members...</span>
+
+   <span class="keyword">public</span><span class="special">:</span>
+   <span class="identifier">Expensive</span><span class="special">(</span><span class="keyword">const</span> <span class="keyword">char</span> <span class="special">*</span><span class="identifier">key</span><span class="special">)</span>
+      <span class="special">:</span>  <span class="identifier">key_</span><span class="special">(</span><span class="identifier">key</span><span class="special">)</span>
+      <span class="special">{}</span>  <span class="comment">//other expensive initializations...</span>
+
+   <span class="keyword">const</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="special">&amp;</span> <span class="identifier">get_key</span><span class="special">()</span> <span class="keyword">const</span>
+      <span class="special">{</span>  <span class="keyword">return</span> <span class="identifier">key_</span><span class="special">;</span>   <span class="special">}</span>
+
+   <span class="keyword">friend</span> <span class="keyword">bool</span> <span class="keyword">operator</span> <span class="special">&lt;</span>  <span class="special">(</span><span class="keyword">const</span> <span class="identifier">Expensive</span> <span class="special">&amp;</span><span class="identifier">a</span><span class="special">,</span> <span class="keyword">const</span> <span class="identifier">Expensive</span> <span class="special">&amp;</span><span class="identifier">b</span><span class="special">)</span>
+      <span class="special">{</span>  <span class="keyword">return</span> <span class="identifier">a</span><span class="special">.</span><span class="identifier">key_</span> <span class="special">&lt;</span> <span class="identifier">b</span><span class="special">.</span><span class="identifier">key_</span><span class="special">;</span>  <span class="special">}</span>
+
+   <span class="keyword">friend</span> <span class="keyword">bool</span> <span class="keyword">operator</span> <span class="special">==</span> <span class="special">(</span><span class="keyword">const</span> <span class="identifier">Expensive</span> <span class="special">&amp;</span><span class="identifier">a</span><span class="special">,</span> <span class="keyword">const</span> <span class="identifier">Expensive</span> <span class="special">&amp;</span><span class="identifier">b</span><span class="special">)</span>
+      <span class="special">{</span>  <span class="keyword">return</span> <span class="identifier">a</span><span class="special">.</span><span class="identifier">key_</span> <span class="special">==</span> <span class="identifier">b</span><span class="special">.</span><span class="identifier">key_</span><span class="special">;</span>  <span class="special">}</span>
+
+   <span class="keyword">friend</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">hash_value</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">Expensive</span> <span class="special">&amp;</span><span class="identifier">object</span><span class="special">)</span>
+      <span class="special">{</span>  <span class="keyword">return</span> <span class="identifier">StrHasher</span><span class="special">()(</span><span class="identifier">object</span><span class="special">.</span><span class="identifier">get_key</span><span class="special">().</span><span class="identifier">c_str</span><span class="special">());</span>  <span class="special">}</span>
+<span class="special">};</span>
+
+<span class="comment">// A set and unordered_set that store Expensive objects</span>
+<span class="keyword">typedef</span> <span class="identifier">set</span><span class="special">&lt;</span><span class="identifier">Expensive</span><span class="special">&gt;</span>           <span class="identifier">Set</span><span class="special">;</span>
+<span class="keyword">typedef</span> <span class="identifier">unordered_set</span><span class="special">&lt;</span><span class="identifier">Expensive</span><span class="special">&gt;</span> <span class="identifier">UnorderedSet</span><span class="special">;</span>
+
+<span class="comment">// Search functions</span>
+<span class="identifier">Expensive</span> <span class="special">*</span><span class="identifier">get_from_set</span><span class="special">(</span><span class="keyword">const</span> <span class="keyword">char</span><span class="special">*</span> <span class="identifier">key</span><span class="special">,</span> <span class="identifier">Set</span> <span class="special">&amp;</span><span class="identifier">set_object</span><span class="special">)</span>
+<span class="special">{</span>
+   <span class="identifier">Set</span><span class="special">::</span><span class="identifier">iterator</span> <span class="identifier">it</span> <span class="special">=</span> <span class="identifier">set_object</span><span class="special">.</span><span class="identifier">find</span><span class="special">(</span><span class="identifier">Expensive</span><span class="special">(</span><span class="identifier">key</span><span class="special">));</span>
+   <span class="keyword">if</span><span class="special">(</span> <span class="identifier">it</span> <span class="special">==</span> <span class="identifier">set_object</span><span class="special">.</span><span class="identifier">end</span><span class="special">()</span> <span class="special">)</span>     <span class="keyword">return</span> <span class="number">0</span><span class="special">;</span>
+   <span class="keyword">return</span> <span class="special">&amp;*</span><span class="identifier">it</span><span class="special">;</span>
+<span class="special">}</span>
+
+<span class="identifier">Expensive</span> <span class="special">*</span><span class="identifier">get_from_uset</span><span class="special">(</span><span class="keyword">const</span> <span class="keyword">char</span><span class="special">*</span> <span class="identifier">key</span><span class="special">,</span> <span class="identifier">UnorderedSet</span> <span class="special">&amp;</span><span class="identifier">uset_object</span><span class="special">)</span>
+<span class="special">{</span>
+   <span class="identifier">UnorderedSet</span><span class="special">::</span><span class="identifier">iterator</span> <span class="identifier">it</span> <span class="special">=</span> <span class="identifier">uset_object</span><span class="special">.</span><span class="identifier">find</span><span class="special">(</span><span class="identifier">Expensive</span> <span class="special">(</span><span class="identifier">key</span><span class="special">));</span>
+   <span class="keyword">if</span><span class="special">(</span> <span class="identifier">it</span> <span class="special">==</span> <span class="identifier">uset_object</span><span class="special">.</span><span class="identifier">end</span><span class="special">()</span> <span class="special">)</span>  <span class="keyword">return</span> <span class="number">0</span><span class="special">;</span>
+   <span class="keyword">return</span> <span class="special">&amp;*</span><span class="identifier">it</span><span class="special">;</span>
+<span class="special">}</span>
+</pre>
+<p>
+          If "key" c-string is quite long <code class="computeroutput"><span class="identifier">Expensive</span></code>
+          has to construct a <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span></code>
+          using heap memory. Like <code class="computeroutput"><span class="identifier">Expensive</span></code>,
+          many times the only member taking part in ordering issues is just a small
+          part of the class. E.g.: with <code class="computeroutput"><span class="identifier">Expensive</span></code>,
+          only the internal <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span></code> is needed to compare the object.
+        </p>
+<p>
+          In both containers, if we call <code class="computeroutput"><span class="identifier">get_from_set</span><span class="special">/</span><span class="identifier">get_from_unordered_set</span></code>
+          in a loop, we might get a performance penalty, because we are forced to
+          create a whole <code class="computeroutput"><span class="identifier">Expensive</span></code>
+          object to be able to find an equivalent one.
+        </p>
+<p>
+          Sometimes the problem is not only performance-related, as we <span class="bold"><strong>might not have enough information to construct the object</strong></span>
+          but we might <span class="bold"><strong>have enough information to find the
+          object</strong></span>. In this case, a name is enough to search <code class="computeroutput"><span class="identifier">Expensive</span></code> objects in the container but
+          constructing an <code class="computeroutput"><span class="identifier">Expensive</span></code>
+          object might require more information that the searcher might not have.
+        </p>
+<p>
+          To solve this, we can use the functions that take any type comparable with
+          the value and a the 'compatible' comparison object (and hash, when the
+          associative container is unordered) Let's see optimized search function:
+        </p>
+<pre class="programlisting"><span class="comment">// These compare Expensive and a c-string</span>
+<span class="keyword">struct</span> <span class="identifier">StrExpComp</span>
+<span class="special">{</span>
+   <span class="keyword">bool</span> <span class="keyword">operator</span><span class="special">()(</span><span class="keyword">const</span> <span class="keyword">char</span> <span class="special">*</span><span class="identifier">str</span><span class="special">,</span> <span class="keyword">const</span> <span class="identifier">Expensive</span> <span class="special">&amp;</span><span class="identifier">c</span><span class="special">)</span> <span class="keyword">const</span>
+   <span class="special">{</span>  <span class="keyword">return</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">strcmp</span><span class="special">(</span><span class="identifier">str</span><span class="special">,</span> <span class="identifier">c</span><span class="special">.</span><span class="identifier">get_key</span><span class="special">().</span><span class="identifier">c_str</span><span class="special">())</span> <span class="special">&lt;</span> <span class="number">0</span><span class="special">;</span>  <span class="special">}</span>
+
+   <span class="keyword">bool</span> <span class="keyword">operator</span><span class="special">()(</span><span class="keyword">const</span> <span class="identifier">Expensive</span> <span class="special">&amp;</span><span class="identifier">c</span><span class="special">,</span> <span class="keyword">const</span> <span class="keyword">char</span> <span class="special">*</span><span class="identifier">str</span><span class="special">)</span> <span class="keyword">const</span>
+   <span class="special">{</span>  <span class="keyword">return</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">strcmp</span><span class="special">(</span><span class="identifier">c</span><span class="special">.</span><span class="identifier">get_key</span><span class="special">().</span><span class="identifier">c_str</span><span class="special">(),</span> <span class="identifier">str</span><span class="special">)</span> <span class="special">&lt;</span> <span class="number">0</span><span class="special">;</span>  <span class="special">}</span>
+<span class="special">};</span>
+
+<span class="keyword">struct</span> <span class="identifier">StrExpEqual</span>
+<span class="special">{</span>
+   <span class="keyword">bool</span> <span class="keyword">operator</span><span class="special">()(</span><span class="keyword">const</span> <span class="keyword">char</span> <span class="special">*</span><span class="identifier">str</span><span class="special">,</span> <span class="keyword">const</span> <span class="identifier">Expensive</span> <span class="special">&amp;</span><span class="identifier">c</span><span class="special">)</span> <span class="keyword">const</span>
+   <span class="special">{</span>  <span class="keyword">return</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">strcmp</span><span class="special">(</span><span class="identifier">str</span><span class="special">,</span> <span class="identifier">c</span><span class="special">.</span><span class="identifier">get_key</span><span class="special">().</span><span class="identifier">c_str</span><span class="special">())</span> <span class="special">==</span> <span class="number">0</span><span class="special">;</span>  <span class="special">}</span>
+
+   <span class="keyword">bool</span> <span class="keyword">operator</span><span class="special">()(</span><span class="keyword">const</span> <span class="identifier">Expensive</span> <span class="special">&amp;</span><span class="identifier">c</span><span class="special">,</span> <span class="keyword">const</span> <span class="keyword">char</span> <span class="special">*</span><span class="identifier">str</span><span class="special">)</span> <span class="keyword">const</span>
+   <span class="special">{</span>  <span class="keyword">return</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">strcmp</span><span class="special">(</span><span class="identifier">c</span><span class="special">.</span><span class="identifier">get_key</span><span class="special">().</span><span class="identifier">c_str</span><span class="special">(),</span> <span class="identifier">str</span><span class="special">)</span> <span class="special">==</span> <span class="number">0</span><span class="special">;</span>  <span class="special">}</span>
+<span class="special">};</span>
+
+<span class="comment">// Optimized search functions</span>
+<span class="identifier">Expensive</span> <span class="special">*</span><span class="identifier">get_from_set_optimized</span><span class="special">(</span><span class="keyword">const</span> <span class="keyword">char</span><span class="special">*</span> <span class="identifier">key</span><span class="special">,</span> <span class="identifier">Set</span> <span class="special">&amp;</span><span class="identifier">set_object</span><span class="special">)</span>
+<span class="special">{</span>
+   <span class="identifier">Set</span><span class="special">::</span><span class="identifier">iterator</span> <span class="identifier">it</span> <span class="special">=</span> <span class="identifier">set_object</span><span class="special">.</span><span class="identifier">find</span><span class="special">(</span><span class="identifier">key</span><span class="special">,</span> <span class="identifier">StrExpComp</span><span class="special">());</span>
+   <span class="keyword">if</span><span class="special">(</span> <span class="identifier">it</span> <span class="special">==</span> <span class="identifier">set_object</span><span class="special">.</span><span class="identifier">end</span><span class="special">()</span> <span class="special">)</span>   <span class="keyword">return</span> <span class="number">0</span><span class="special">;</span>
+   <span class="keyword">return</span> <span class="special">&amp;*</span><span class="identifier">it</span><span class="special">;</span>
+<span class="special">}</span>
+
+<span class="identifier">Expensive</span> <span class="special">*</span><span class="identifier">get_from_uset_optimized</span><span class="special">(</span><span class="keyword">const</span> <span class="keyword">char</span><span class="special">*</span> <span class="identifier">key</span><span class="special">,</span> <span class="identifier">UnorderedSet</span> <span class="special">&amp;</span><span class="identifier">uset_object</span><span class="special">)</span>
+<span class="special">{</span>
+   <span class="identifier">UnorderedSet</span><span class="special">::</span><span class="identifier">iterator</span> <span class="identifier">it</span> <span class="special">=</span> <span class="identifier">uset_object</span><span class="special">.</span><span class="identifier">find</span><span class="special">(</span><span class="identifier">key</span><span class="special">,</span> <span class="identifier">StrHasher</span><span class="special">(),</span> <span class="identifier">StrExpEqual</span><span class="special">());</span>
+   <span class="keyword">if</span><span class="special">(</span> <span class="identifier">it</span> <span class="special">==</span> <span class="identifier">uset_object</span><span class="special">.</span><span class="identifier">end</span><span class="special">()</span> <span class="special">)</span>  <span class="keyword">return</span> <span class="number">0</span><span class="special">;</span>
+   <span class="keyword">return</span> <span class="special">&amp;*</span><span class="identifier">it</span><span class="special">;</span>
+<span class="special">}</span>
+</pre>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="intrusive.advanced_lookups_insertions.advanced_insertions"></a><a class="link" href="advanced_lookups_insertions.html#intrusive.advanced_lookups_insertions.advanced_insertions" title="Advanced insertions">Advanced
+      insertions</a>
+</h3></div></div></div>
+<div class="toc"><dl><dt><span class="section"><a href="advanced_lookups_insertions.html#intrusive.advanced_lookups_insertions.advanced_insertions.advanced_insertions_example">Example</a></span></dt></dl></div>
+<p>
+        A similar issue happens with insertions in simple ordered and unordered associative
+        containers with unique keys (<code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">set</span></code> and
+        <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">unordered_set</span></code>). In these containers, if
+        a value is already present, the value to be inserted is discarded. With expensive
+        values, if the value is already present, we can suffer efficiency problems.
+      </p>
+<p>
+        <code class="computeroutput"><a class="link" href="../boost/intrusive/set.html" title="Class template set">set</a></code> and <code class="computeroutput"><a class="link" href="../boost/intrusive/unordered_set.html" title="Class template unordered_set">unordered_set</a></code>-like
+        containers have insertion functions (<code class="computeroutput"><span class="identifier">insert_check</span></code>,
+        <code class="computeroutput"><span class="identifier">insert_unique_check</span></code>,...)
+        to check efficiently, without constructing the value, if a value is present
+        or not and if it's not present, a function to insert it immediately (<code class="computeroutput"><span class="identifier">insert_commit</span></code>) without any further lookup.
+        Requirements for functions that check the existence of such value are:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" type="disc">
+<li class="listitem">
+            For unordered container the provided comparison and hashing function
+            with the given key shall induce the same hash and equivalence as <code class="computeroutput"><span class="identifier">key_compare</span></code> and <code class="computeroutput"><span class="identifier">hasher</span></code>.
+          </li>
+<li class="listitem">
+            For ordered associative containers, the provided comparison function
+            with the given key, shall induce the same strict weak order as <code class="computeroutput"><span class="identifier">key_compare</span></code>.
+          </li>
+</ul></div>
+<p>
+        To sum up, <code class="computeroutput"><span class="identifier">insert_check</span></code> is
+        similar to a normal <code class="computeroutput"><span class="identifier">insert</span></code>
+        but:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" type="disc">
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">insert_check</span></code> can be used
+            with arbitrary keys
+          </li>
+<li class="listitem">
+            if the insertion is possible (there is no equivalent value) <code class="computeroutput"><span class="identifier">insert_check</span></code> collects all the needed
+            information in an <code class="computeroutput"><span class="identifier">insert_commit_data</span></code>
+            structure, so that <code class="computeroutput"><span class="identifier">insert_commit</span></code>:
+            <div class="itemizedlist"><ul class="itemizedlist" type="circle">
+<li class="listitem">
+                  <span class="bold"><strong>does not execute</strong></span> further comparisons
+                </li>
+<li class="listitem">
+                  can be executed with <span class="bold"><strong>constant-time complexity</strong></span>
+                </li>
+<li class="listitem">
+                  has <span class="bold"><strong>no-throw guarantee</strong></span>.
+                </li>
+</ul></div>
+          </li>
+</ul></div>
+<p>
+        These functions must be used with care, no other insertion or erasure must
+        be executed between an <code class="computeroutput"><span class="identifier">insert_check</span></code>
+        and an <code class="computeroutput"><span class="identifier">insert_commit</span></code> pair.
+        Otherwise, the behaviour is undefined.
+      </p>
+<p>
+        See <code class="computeroutput"><a class="link" href="../boost/intrusive/set.html" title="Class template set">set</a></code> and <code class="computeroutput"><a class="link" href="../boost/intrusive/unordered_set.html" title="Class template unordered_set">unordered_set</a></code>-like containers'
+        reference for more information about <code class="computeroutput"><span class="identifier">insert_check</span></code>
+        and <code class="computeroutput"><span class="identifier">insert_commit</span></code>.
+      </p>
+<p>
+        With multiple ordered and unordered associative containers (<code class="computeroutput"><a class="link" href="../boost/intrusive/multiset.html" title="Class template multiset">multiset</a></code>
+        and <code class="computeroutput"><a class="link" href="../boost/intrusive/unordered_multiset.html" title="Class template unordered_multiset">unordered_multiset</a></code>)
+        there is no need for these advanced insertion functions, since insertions
+        are always successful.
+      </p>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="intrusive.advanced_lookups_insertions.advanced_insertions.advanced_insertions_example"></a><a class="link" href="advanced_lookups_insertions.html#intrusive.advanced_lookups_insertions.advanced_insertions.advanced_insertions_example" title="Example">Example</a>
+</h4></div></div></div>
+<p>
+          For example, using the same <code class="computeroutput"><span class="identifier">Expensive</span></code>
+          class, this function can be inefficient:
+        </p>
+<pre class="programlisting"><span class="comment">// Insertion functions</span>
+<span class="keyword">bool</span> <span class="identifier">insert_to_set</span><span class="special">(</span><span class="keyword">const</span> <span class="keyword">char</span><span class="special">*</span> <span class="identifier">key</span><span class="special">,</span> <span class="identifier">Set</span> <span class="special">&amp;</span><span class="identifier">set_object</span><span class="special">)</span>
+<span class="special">{</span>
+   <span class="identifier">Expensive</span> <span class="special">*</span><span class="identifier">pobject</span> <span class="special">=</span> <span class="keyword">new</span> <span class="identifier">Expensive</span><span class="special">(</span><span class="identifier">key</span><span class="special">);</span>
+   <span class="keyword">bool</span> <span class="identifier">success</span> <span class="special">=</span> <span class="identifier">set_object</span><span class="special">.</span><span class="identifier">insert</span><span class="special">(*</span><span class="identifier">pobject</span><span class="special">).</span><span class="identifier">second</span><span class="special">;</span>
+   <span class="keyword">if</span><span class="special">(!</span><span class="identifier">success</span><span class="special">)</span>   <span class="keyword">delete</span> <span class="identifier">pobject</span><span class="special">;</span>
+   <span class="keyword">return</span> <span class="identifier">success</span><span class="special">;</span>
+<span class="special">}</span>
+
+<span class="keyword">bool</span> <span class="identifier">insert_to_uset</span><span class="special">(</span><span class="keyword">const</span> <span class="keyword">char</span><span class="special">*</span> <span class="identifier">key</span><span class="special">,</span> <span class="identifier">UnorderedSet</span> <span class="special">&amp;</span><span class="identifier">uset_object</span><span class="special">)</span>
+<span class="special">{</span>
+   <span class="identifier">Expensive</span> <span class="special">*</span><span class="identifier">pobject</span> <span class="special">=</span> <span class="keyword">new</span> <span class="identifier">Expensive</span><span class="special">(</span><span class="identifier">key</span><span class="special">);</span>
+   <span class="keyword">bool</span> <span class="identifier">success</span> <span class="special">=</span> <span class="identifier">uset_object</span><span class="special">.</span><span class="identifier">insert</span><span class="special">(*</span><span class="identifier">pobject</span><span class="special">).</span><span class="identifier">second</span><span class="special">;</span>
+   <span class="keyword">if</span><span class="special">(!</span><span class="identifier">success</span><span class="special">)</span>   <span class="keyword">delete</span> <span class="identifier">pobject</span><span class="special">;</span>
+   <span class="keyword">return</span> <span class="identifier">success</span><span class="special">;</span>
+<span class="special">}</span>
+</pre>
+<p>
+          If the object is already present, we are constructing an <code class="computeroutput"><span class="identifier">Expensive</span></code> that will be discarded, and
+          this is a waste of resources. Instead of that, let's use <code class="computeroutput"><span class="identifier">insert_check</span></code> and <code class="computeroutput"><span class="identifier">insert_commit</span></code>
+          functions:
+        </p>
+<pre class="programlisting"><span class="comment">// Optimized insertion functions</span>
+<span class="keyword">bool</span> <span class="identifier">insert_to_set_optimized</span><span class="special">(</span><span class="keyword">const</span> <span class="keyword">char</span><span class="special">*</span> <span class="identifier">key</span><span class="special">,</span> <span class="identifier">Set</span> <span class="special">&amp;</span><span class="identifier">set_object</span><span class="special">)</span>
+<span class="special">{</span>
+   <span class="identifier">Set</span><span class="special">::</span><span class="identifier">insert_commit_data</span> <span class="identifier">insert_data</span><span class="special">;</span>
+   <span class="keyword">bool</span> <span class="identifier">success</span> <span class="special">=</span> <span class="identifier">set_object</span><span class="special">.</span><span class="identifier">insert_check</span><span class="special">(</span><span class="identifier">key</span><span class="special">,</span> <span class="identifier">StrExpComp</span><span class="special">(),</span> <span class="identifier">insert_data</span><span class="special">).</span><span class="identifier">second</span><span class="special">;</span>
+   <span class="keyword">if</span><span class="special">(</span><span class="identifier">success</span><span class="special">)</span> <span class="identifier">set_object</span><span class="special">.</span><span class="identifier">insert_commit</span><span class="special">(*</span><span class="keyword">new</span> <span class="identifier">Expensive</span><span class="special">(</span><span class="identifier">key</span><span class="special">),</span> <span class="identifier">insert_data</span><span class="special">);</span>
+   <span class="keyword">return</span> <span class="identifier">success</span><span class="special">;</span>
+<span class="special">}</span>
+
+<span class="keyword">bool</span> <span class="identifier">insert_to_uset_optimized</span><span class="special">(</span><span class="keyword">const</span> <span class="keyword">char</span><span class="special">*</span> <span class="identifier">key</span><span class="special">,</span> <span class="identifier">UnorderedSet</span> <span class="special">&amp;</span><span class="identifier">uset_object</span><span class="special">)</span>
+<span class="special">{</span>
+   <span class="identifier">UnorderedSet</span><span class="special">::</span><span class="identifier">insert_commit_data</span> <span class="identifier">insert_data</span><span class="special">;</span>
+   <span class="keyword">bool</span> <span class="identifier">success</span> <span class="special">=</span> <span class="identifier">uset_object</span><span class="special">.</span><span class="identifier">insert_check</span>
+      <span class="special">(</span><span class="identifier">key</span><span class="special">,</span> <span class="identifier">StrHasher</span><span class="special">(),</span> <span class="identifier">StrExpEqual</span><span class="special">(),</span> <span class="identifier">insert_data</span><span class="special">).</span><span class="identifier">second</span><span class="special">;</span>
+   <span class="keyword">if</span><span class="special">(</span><span class="identifier">success</span><span class="special">)</span> <span class="identifier">uset_object</span><span class="special">.</span><span class="identifier">insert_commit</span><span class="special">(*</span><span class="keyword">new</span> <span class="identifier">Expensive</span><span class="special">(</span><span class="identifier">key</span><span class="special">),</span> <span class="identifier">insert_data</span><span class="special">);</span>
+   <span class="keyword">return</span> <span class="identifier">success</span><span class="special">;</span>
+<span class="special">}</span>
+</pre>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="intrusive.advanced_lookups_insertions.positional_insertions"></a><a class="link" href="advanced_lookups_insertions.html#intrusive.advanced_lookups_insertions.positional_insertions" title="Positional insertions">Positional
+      insertions</a>
+</h3></div></div></div>
+<p>
+        Some ordered associative containers offer low-level functions to bypass ordering
+        checks and insert nodes directly in desired tree positions. These functions
+        are provided for performance reasons when values to be inserted in the container
+        are known to fulfill order (sets and multisets) and uniqueness (sets) invariants.
+        A typical usage of these functions is when intrusive associative containers
+        are used to build non-intrusive containers and the programmer wants to speed
+        up assignments from other associative containers: if the ordering and uniqueness
+        properties are the same, there is no need to waste time checking the position
+        of each source value, because values are already ordered: back insertions
+        will be much more efficient.
+      </p>
+<p>
+        <span class="bold"><strong>Note:</strong></span> These functions <span class="bold"><strong>don't
+        check preconditions</strong></span> so they must used with care. They are low-level
+        operations that <span class="bold"><strong>will break container invariants if
+        ordering and uniqueness preconditions are not assured by the caller.</strong></span>
+      </p>
+<p>
+        Let's see an example:
+      </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">intrusive</span><span class="special">/</span><span class="identifier">set</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">vector</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">functional</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">cassert</span><span class="special">&gt;</span>
+
+<span class="keyword">using</span> <span class="keyword">namespace</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">intrusive</span><span class="special">;</span>
+
+<span class="comment">//A simple class with a set hook</span>
+<span class="keyword">class</span> <span class="identifier">MyClass</span> <span class="special">:</span> <span class="keyword">public</span> <span class="identifier">set_base_hook</span><span class="special">&lt;&gt;</span>
+<span class="special">{</span>
+   <span class="keyword">public</span><span class="special">:</span>
+   <span class="keyword">int</span> <span class="identifier">int_</span><span class="special">;</span>
+
+   <span class="identifier">MyClass</span><span class="special">(</span><span class="keyword">int</span> <span class="identifier">i</span><span class="special">)</span> <span class="special">:</span>  <span class="identifier">int_</span><span class="special">(</span><span class="identifier">i</span><span class="special">)</span> <span class="special">{}</span>
+   <span class="keyword">friend</span> <span class="keyword">bool</span> <span class="keyword">operator</span><span class="special">&lt;</span> <span class="special">(</span><span class="keyword">const</span> <span class="identifier">MyClass</span> <span class="special">&amp;</span><span class="identifier">a</span><span class="special">,</span> <span class="keyword">const</span> <span class="identifier">MyClass</span> <span class="special">&amp;</span><span class="identifier">b</span><span class="special">)</span>
+      <span class="special">{</span>  <span class="keyword">return</span> <span class="identifier">a</span><span class="special">.</span><span class="identifier">int_</span> <span class="special">&lt;</span> <span class="identifier">b</span><span class="special">.</span><span class="identifier">int_</span><span class="special">;</span>  <span class="special">}</span>
+   <span class="keyword">friend</span> <span class="keyword">bool</span> <span class="keyword">operator</span><span class="special">&gt;</span> <span class="special">(</span><span class="keyword">const</span> <span class="identifier">MyClass</span> <span class="special">&amp;</span><span class="identifier">a</span><span class="special">,</span> <span class="keyword">const</span> <span class="identifier">MyClass</span> <span class="special">&amp;</span><span class="identifier">b</span><span class="special">)</span>
+      <span class="special">{</span>  <span class="keyword">return</span> <span class="identifier">a</span><span class="special">.</span><span class="identifier">int_</span> <span class="special">&gt;</span> <span class="identifier">b</span><span class="special">.</span><span class="identifier">int_</span><span class="special">;</span>  <span class="special">}</span>
+<span class="special">};</span>
+
+<span class="keyword">int</span> <span class="identifier">main</span><span class="special">()</span>
+<span class="special">{</span>
+   <span class="comment">//Create some ORDERED elements</span>
+   <span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span><span class="identifier">MyClass</span><span class="special">&gt;</span> <span class="identifier">values</span><span class="special">;</span>
+   <span class="keyword">for</span><span class="special">(</span><span class="keyword">int</span> <span class="identifier">i</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span> <span class="identifier">i</span> <span class="special">&lt;</span> <span class="number">100</span><span class="special">;</span> <span class="special">++</span><span class="identifier">i</span><span class="special">)</span>  <span class="identifier">values</span><span class="special">.</span><span class="identifier">push_back</span><span class="special">(</span><span class="identifier">MyClass</span><span class="special">(</span><span class="identifier">i</span><span class="special">));</span>
+
+   <span class="special">{</span>  <span class="comment">//Data is naturally ordered in the vector with the same criteria</span>
+      <span class="comment">//as multiset's comparison predicate, so we can just push back</span>
+      <span class="comment">//all elements, which is more efficient than normal insertion</span>
+      <span class="identifier">multiset</span><span class="special">&lt;</span><span class="identifier">MyClass</span><span class="special">&gt;</span> <span class="identifier">mset</span><span class="special">;</span>
+      <span class="keyword">for</span><span class="special">(</span><span class="keyword">int</span> <span class="identifier">i</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span> <span class="identifier">i</span> <span class="special">&lt;</span> <span class="number">100</span><span class="special">;</span> <span class="special">++</span><span class="identifier">i</span><span class="special">)</span>  <span class="identifier">mset</span><span class="special">.</span><span class="identifier">push_back</span><span class="special">(</span><span class="identifier">values</span><span class="special">[</span><span class="identifier">i</span><span class="special">]);</span>
+
+      <span class="comment">//Now check orderd invariant</span>
+      <span class="identifier">multiset</span><span class="special">&lt;</span><span class="identifier">MyClass</span><span class="special">&gt;::</span><span class="identifier">const_iterator</span> <span class="identifier">next</span><span class="special">(</span><span class="identifier">mset</span><span class="special">.</span><span class="identifier">cbegin</span><span class="special">()),</span> <span class="identifier">it</span><span class="special">(</span><span class="identifier">next</span><span class="special">++);</span>
+      <span class="keyword">for</span><span class="special">(</span><span class="keyword">int</span> <span class="identifier">i</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span> <span class="identifier">i</span> <span class="special">&lt;</span> <span class="number">99</span><span class="special">;</span> <span class="special">++</span><span class="identifier">i</span><span class="special">,</span> <span class="special">++</span><span class="identifier">it</span><span class="special">,</span> <span class="special">++</span><span class="identifier">next</span><span class="special">)</span> <span class="identifier">assert</span><span class="special">(*</span><span class="identifier">it</span> <span class="special">&lt;</span> <span class="special">*</span><span class="identifier">next</span><span class="special">);</span>
+   <span class="special">}</span>
+   <span class="special">{</span>  <span class="comment">//Now the correct order for the set is the reverse order</span>
+      <span class="comment">//so let's push front all elements</span>
+      <span class="identifier">multiset</span><span class="special">&lt;</span><span class="identifier">MyClass</span><span class="special">,</span> <span class="identifier">compare</span><span class="special">&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">greater</span><span class="special">&lt;</span><span class="identifier">MyClass</span><span class="special">&gt;</span> <span class="special">&gt;</span> <span class="special">&gt;</span> <span class="identifier">mset</span><span class="special">;</span>
+      <span class="keyword">for</span><span class="special">(</span><span class="keyword">int</span> <span class="identifier">i</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span> <span class="identifier">i</span> <span class="special">&lt;</span> <span class="number">100</span><span class="special">;</span> <span class="special">++</span><span class="identifier">i</span><span class="special">)</span>  <span class="identifier">mset</span><span class="special">.</span><span class="identifier">push_front</span><span class="special">(</span><span class="identifier">values</span><span class="special">[</span><span class="identifier">i</span><span class="special">]);</span>
+
+      <span class="comment">//Now check orderd invariant</span>
+      <span class="identifier">multiset</span><span class="special">&lt;</span><span class="identifier">MyClass</span><span class="special">,</span> <span class="identifier">compare</span><span class="special">&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">greater</span><span class="special">&lt;</span><span class="identifier">MyClass</span><span class="special">&gt;</span> <span class="special">&gt;</span> <span class="special">&gt;::</span>
+         <span class="identifier">const_iterator</span> <span class="identifier">next</span><span class="special">(</span><span class="identifier">mset</span><span class="special">.</span><span class="identifier">cbegin</span><span class="special">()),</span> <span class="identifier">it</span><span class="special">(</span><span class="identifier">next</span><span class="special">++);</span>
+      <span class="keyword">for</span><span class="special">(</span><span class="keyword">int</span> <span class="identifier">i</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span> <span class="identifier">i</span> <span class="special">&lt;</span> <span class="number">99</span><span class="special">;</span> <span class="special">++</span><span class="identifier">i</span><span class="special">,</span> <span class="special">++</span><span class="identifier">it</span><span class="special">,</span> <span class="special">++</span><span class="identifier">next</span><span class="special">)</span> <span class="identifier">assert</span><span class="special">(*</span><span class="identifier">it</span> <span class="special">&gt;</span> <span class="special">*</span><span class="identifier">next</span><span class="special">);</span>
+   <span class="special">}</span>
+   <span class="special">{</span>  <span class="comment">//Now push the first and the last and insert the rest</span>
+      <span class="comment">//before the last position using "insert_before"</span>
+      <span class="identifier">multiset</span><span class="special">&lt;</span><span class="identifier">MyClass</span><span class="special">&gt;</span> <span class="identifier">mset</span><span class="special">;</span>
+      <span class="identifier">mset</span><span class="special">.</span><span class="identifier">insert_before</span><span class="special">(</span><span class="identifier">mset</span><span class="special">.</span><span class="identifier">begin</span><span class="special">(),</span> <span class="identifier">values</span><span class="special">[</span><span class="number">0</span><span class="special">]);</span>
+      <span class="identifier">multiset</span><span class="special">&lt;</span><span class="identifier">MyClass</span><span class="special">&gt;::</span><span class="identifier">const_iterator</span> <span class="identifier">pos</span> <span class="special">=</span>
+         <span class="identifier">mset</span><span class="special">.</span><span class="identifier">insert_before</span><span class="special">(</span><span class="identifier">mset</span><span class="special">.</span><span class="identifier">end</span><span class="special">(),</span> <span class="identifier">values</span><span class="special">[</span><span class="number">99</span><span class="special">]);</span>
+      <span class="keyword">for</span><span class="special">(</span><span class="keyword">int</span> <span class="identifier">i</span> <span class="special">=</span> <span class="number">1</span><span class="special">;</span> <span class="identifier">i</span> <span class="special">&lt;</span> <span class="number">99</span><span class="special">;</span> <span class="special">++</span><span class="identifier">i</span><span class="special">)</span>  <span class="identifier">mset</span><span class="special">.</span><span class="identifier">insert_before</span><span class="special">(</span><span class="identifier">pos</span><span class="special">,</span> <span class="identifier">values</span><span class="special">[</span><span class="identifier">i</span><span class="special">]);</span>
+
+      <span class="comment">//Now check orderd invariant</span>
+      <span class="identifier">multiset</span><span class="special">&lt;</span><span class="identifier">MyClass</span><span class="special">&gt;::</span><span class="identifier">const_iterator</span> <span class="identifier">next</span><span class="special">(</span><span class="identifier">mset</span><span class="special">.</span><span class="identifier">cbegin</span><span class="special">()),</span> <span class="identifier">it</span><span class="special">(</span><span class="identifier">next</span><span class="special">++);</span>
+      <span class="keyword">for</span><span class="special">(</span><span class="keyword">int</span> <span class="identifier">i</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span> <span class="identifier">i</span> <span class="special">&lt;</span> <span class="number">99</span><span class="special">;</span> <span class="special">++</span><span class="identifier">i</span><span class="special">,</span> <span class="special">++</span><span class="identifier">it</span><span class="special">,</span> <span class="special">++</span><span class="identifier">next</span><span class="special">)</span> <span class="identifier">assert</span><span class="special">(*</span><span class="identifier">it</span> <span class="special">&lt;</span> <span class="special">*</span><span class="identifier">next</span><span class="special">);</span>
+   <span class="special">}</span>
+
+   <span class="keyword">return</span> <span class="number">0</span><span class="special">;</span>
+<span class="special">}</span>
+</pre>
+</div>
+<p>
+      For more information about advanced lookup and insertion functions see associative
+      containers' documentation (e.g. <code class="computeroutput"><a class="link" href="../boost/intrusive/set.html" title="Class template set">set</a></code>,
+      <code class="computeroutput"><a class="link" href="../boost/intrusive/multiset.html" title="Class template multiset">multiset</a></code>, <code class="computeroutput"><a class="link" href="../boost/intrusive/unordered_set.html" title="Class template unordered_set">unordered_set</a></code> and <code class="computeroutput"><a class="link" href="../boost/intrusive/unordered_multiset.html" title="Class template unordered_multiset">unordered_multiset</a></code> references).
+    </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2005 Olaf Krzikalla<br>Copyright &#169; 2006-2015 Ion Gaztanaga<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="bst_hooks.html"><img src="../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../intrusive.html"><img src="../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="erasing_and_disposing.html"><img src="../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

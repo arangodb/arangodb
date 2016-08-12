@@ -1,0 +1,21 @@
+[book Boost.Python Reference Manual
+    [quickbook 1.7]
+    [authors [Abrahams, David], [Seefeld, Stefan]]
+    [copyright 2002 2003 2004 2005 2015 David Abrahams, Stefan Seefeld]
+    [id reference]
+    [license
+        Distributed under the Boost Software License, Version 1.0.
+        (See accompanying file LICENSE_1_0.txt or copy at
+        [@http://www.boost.org/LICENSE_1_0.txt]
+    ]
+]
+
+[include reference/concepts.qbk]
+[include reference/components.qbk]
+[include reference/objects.qbk]
+[include reference/functions.qbk]
+[include reference/conversion.qbk]
+[include reference/embedding.qbk]
+[include reference/utility.qbk]
+[include reference/topics.qbk]
+[include glossary.qbk]

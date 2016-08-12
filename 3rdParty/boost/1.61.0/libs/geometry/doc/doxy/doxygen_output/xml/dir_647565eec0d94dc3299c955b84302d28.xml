@@ -1,0 +1,13 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="dir_647565eec0d94dc3299c955b84302d28" kind="dir">
+    <compoundname>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/relation/</compoundname>
+    <innerfile refid="relation_2implementation_8hpp">implementation.hpp</innerfile>
+    <innerfile refid="relation_2interface_8hpp">interface.hpp</innerfile>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/relation/"/>
+  </compounddef>
+</doxygen>

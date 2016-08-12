@@ -1,0 +1,247 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>User's Guide</title>
+<link rel="stylesheet" href="../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../index.html" title="Chapter&#160;1.&#160;Boost.Xpressive">
+<link rel="up" href="../index.html" title="Chapter&#160;1.&#160;Boost.Xpressive">
+<link rel="prev" href="../index.html" title="Chapter&#160;1.&#160;Boost.Xpressive">
+<link rel="next" href="../boost_xpressive/user_s_guide/installing_xpressive.html" title="Installing xpressive">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../index.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../boost_xpressive/user_s_guide/installing_xpressive.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="xpressive.user_s_guide"></a><a class="link" href="user_s_guide.html" title="User's Guide">User's Guide</a>
+</h2></div></div></div>
+<div class="toc"><dl>
+<dt><span class="section"><a href="user_s_guide.html#boost_xpressive.user_s_guide.introduction">Introduction</a></span></dt>
+<dt><span class="section"><a href="../boost_xpressive/user_s_guide/installing_xpressive.html">Installing
+      xpressive</a></span></dt>
+<dt><span class="section"><a href="../boost_xpressive/user_s_guide/quick_start.html">Quick Start</a></span></dt>
+<dt><span class="section"><a href="user_s_guide/creating_a_regex_object.html">Creating
+      a Regex Object</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="user_s_guide/creating_a_regex_object.html#boost_xpressive.user_s_guide.creating_a_regex_object.static_regexes">Static
+        Regexes</a></span></dt>
+<dt><span class="section"><a href="../boost_xpressive/user_s_guide/creating_a_regex_object/dynamic_regexes.html">Dynamic
+        Regexes</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="../boost_xpressive/user_s_guide/matching_and_searching.html">Matching
+      and Searching</a></span></dt>
+<dt><span class="section"><a href="../boost_xpressive/user_s_guide/accessing_results.html">Accessing
+      Results</a></span></dt>
+<dt><span class="section"><a href="../boost_xpressive/user_s_guide/string_substitutions.html">String
+      Substitutions</a></span></dt>
+<dt><span class="section"><a href="../boost_xpressive/user_s_guide/string_splitting_and_tokenization.html">String
+      Splitting and Tokenization</a></span></dt>
+<dt><span class="section"><a href="../boost_xpressive/user_s_guide/named_captures.html">Named Captures</a></span></dt>
+<dt><span class="section"><a href="../boost_xpressive/user_s_guide/grammars_and_nested_matches.html">Grammars
+      and Nested Matches</a></span></dt>
+<dt><span class="section"><a href="../boost_xpressive/user_s_guide/semantic_actions_and_user_defined_assertions.html">Semantic
+      Actions and User-Defined Assertions</a></span></dt>
+<dt><span class="section"><a href="../boost_xpressive/user_s_guide/symbol_tables_and_attributes.html">Symbol
+      Tables and Attributes</a></span></dt>
+<dt><span class="section"><a href="../boost_xpressive/user_s_guide/localization_and_regex_traits.html">Localization
+      and Regex Traits</a></span></dt>
+<dt><span class="section"><a href="../boost_xpressive/user_s_guide/tips_n_tricks.html">Tips 'N Tricks</a></span></dt>
+<dt><span class="section"><a href="../boost_xpressive/user_s_guide/concepts.html">Concepts</a></span></dt>
+<dt><span class="section"><a href="../boost_xpressive/user_s_guide/examples.html">Examples</a></span></dt>
+</dl></div>
+<p>
+      This section describes how to use xpressive to accomplish text manipulation
+      and parsing tasks. If you are looking for detailed information regarding specific
+      components in xpressive, check the <a class="link" href="reference.html" title="Reference">Reference</a>
+      section.
+    </p>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_xpressive.user_s_guide.introduction"></a><a class="link" href="user_s_guide.html#boost_xpressive.user_s_guide.introduction" title="Introduction">Introduction</a>
+</h3></div></div></div>
+<h3>
+<a name="boost_xpressive.user_s_guide.introduction.h0"></a>
+        <span><a name="boost_xpressive.user_s_guide.introduction.what_is_xpressive_"></a></span><a class="link" href="user_s_guide.html#boost_xpressive.user_s_guide.introduction.what_is_xpressive_">What
+        is xpressive?</a>
+      </h3>
+<p>
+        xpressive is a regular expression template library. Regular expressions (regexes)
+        can be written as strings that are parsed dynamically at runtime (dynamic
+        regexes), or as <span class="emphasis"><em>expression templates</em></span><sup>[<a name="boost_xpressive.user_s_guide.introduction.f0" href="#ftn.boost_xpressive.user_s_guide.introduction.f0" class="footnote">1</a>]</sup> that are parsed at compile-time (static regexes). Dynamic regexes
+        have the advantage that they can be accepted from the user as input at runtime
+        or read from an initialization file. Static regexes have several advantages.
+        Since they are C++ expressions instead of strings, they can be syntax-checked
+        at compile-time. Also, they can naturally refer to code and data elsewhere
+        in your program, giving you the ability to call back into your code from
+        within a regex match. Finally, since they are statically bound, the compiler
+        can generate faster code for static regexes.
+      </p>
+<p>
+        xpressive's dual nature is unique and powerful. Static xpressive is a bit
+        like the <a href="http://spirit.sourceforge.net" target="_top">Spirit Parser Framework</a>.
+        Like <a href="http://spirit.sourceforge.net" target="_top">Spirit</a>, you can build
+        grammars with static regexes using expression templates. (Unlike <a href="http://spirit.sourceforge.net" target="_top">Spirit</a>,
+        xpressive does exhaustive backtracking, trying every possibility to find
+        a match for your pattern.) Dynamic xpressive is a bit like <a href="../../../libs/regex" target="_top">Boost.Regex</a>.
+        In fact, xpressive's interface should be familiar to anyone who has used
+        <a href="../../../libs/regex" target="_top">Boost.Regex</a>. xpressive's innovation
+        comes from allowing you to mix and match static and dynamic regexes in the
+        same program, and even in the same expression! You can embed a dynamic regex
+        in a static regex, or <span class="emphasis"><em>vice versa</em></span>, and the embedded regex
+        will participate fully in the search, back-tracking as needed to make the
+        match succeed.
+      </p>
+<h3>
+<a name="boost_xpressive.user_s_guide.introduction.h1"></a>
+        <span><a name="boost_xpressive.user_s_guide.introduction.hello__world_"></a></span><a class="link" href="user_s_guide.html#boost_xpressive.user_s_guide.introduction.hello__world_">Hello,
+        world!</a>
+      </h3>
+<p>
+        Enough theory. Let's have a look at <span class="emphasis"><em>Hello World</em></span>, xpressive
+        style:
+      </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">iostream</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">xpressive</span><span class="special">/</span><span class="identifier">xpressive</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="keyword">using</span> <span class="keyword">namespace</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">xpressive</span><span class="special">;</span>
+
+<span class="keyword">int</span> <span class="identifier">main</span><span class="special">()</span>
+<span class="special">{</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="identifier">hello</span><span class="special">(</span> <span class="string">"hello world!"</span> <span class="special">);</span>
+
+    <span class="identifier">sregex</span> <span class="identifier">rex</span> <span class="special">=</span> <span class="identifier">sregex</span><span class="special">::</span><span class="identifier">compile</span><span class="special">(</span> <span class="string">"(\\w+) (\\w+)!"</span> <span class="special">);</span>
+    <span class="identifier">smatch</span> <span class="identifier">what</span><span class="special">;</span>
+
+    <span class="keyword">if</span><span class="special">(</span> <span class="identifier">regex_match</span><span class="special">(</span> <span class="identifier">hello</span><span class="special">,</span> <span class="identifier">what</span><span class="special">,</span> <span class="identifier">rex</span> <span class="special">)</span> <span class="special">)</span>
+    <span class="special">{</span>
+        <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">what</span><span class="special">[</span><span class="number">0</span><span class="special">]</span> <span class="special">&lt;&lt;</span> <span class="char">'\n'</span><span class="special">;</span> <span class="comment">// whole match</span>
+        <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">what</span><span class="special">[</span><span class="number">1</span><span class="special">]</span> <span class="special">&lt;&lt;</span> <span class="char">'\n'</span><span class="special">;</span> <span class="comment">// first capture</span>
+        <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">what</span><span class="special">[</span><span class="number">2</span><span class="special">]</span> <span class="special">&lt;&lt;</span> <span class="char">'\n'</span><span class="special">;</span> <span class="comment">// second capture</span>
+    <span class="special">}</span>
+
+    <span class="keyword">return</span> <span class="number">0</span><span class="special">;</span>
+<span class="special">}</span>
+</pre>
+<p>
+        This program outputs the following:
+      </p>
+<pre class="programlisting">hello world!
+hello
+world
+</pre>
+<p>
+        The first thing you'll notice about the code is that all the types in xpressive
+        live in the <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">xpressive</span></code> namespace.
+      </p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+          Most of the rest of the examples in this document will leave off the <code class="computeroutput"><span class="keyword">using</span> <span class="keyword">namespace</span>
+          <span class="identifier">boost</span><span class="special">::</span><span class="identifier">xpressive</span><span class="special">;</span></code>
+          directive. Just pretend it's there.
+        </p></td></tr>
+</table></div>
+<p>
+        Next, you'll notice the type of the regular expression object is <code class="computeroutput"><span class="identifier">sregex</span></code>. If you are familiar with <a href="../../../libs/regex" target="_top">Boost.Regex</a>, this is different than what you
+        are used to. The "<code class="computeroutput"><span class="identifier">s</span></code>"
+        in "<code class="computeroutput"><span class="identifier">sregex</span></code>" stands
+        for "<code class="computeroutput"><span class="identifier">string</span></code>", indicating
+        that this regex can be used to find patterns in <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span></code>
+        objects. I'll discuss this difference and its implications in detail later.
+      </p>
+<p>
+        Notice how the regex object is initialized:
+      </p>
+<pre class="programlisting"><span class="identifier">sregex</span> <span class="identifier">rex</span> <span class="special">=</span> <span class="identifier">sregex</span><span class="special">::</span><span class="identifier">compile</span><span class="special">(</span> <span class="string">"(\\w+) (\\w+)!"</span> <span class="special">);</span>
+</pre>
+<p>
+        To create a regular expression object from a string, you must call a factory
+        method such as <code class="literal"><code class="computeroutput"><a class="link" href="../boost/xpressive/basic_regex.html#idp12442608-bb">basic_regex&lt;&gt;::compile()</a></code></code>.
+        This is another area in which xpressive differs from other object-oriented
+        regular expression libraries. Other libraries encourage you to think of a
+        regular expression as a kind of string on steroids. In xpressive, regular
+        expressions are not strings; they are little programs in a domain-specific
+        language. Strings are only one <span class="emphasis"><em>representation</em></span> of that
+        language. Another representation is an expression template. For example,
+        the above line of code is equivalent to the following:
+      </p>
+<pre class="programlisting"><span class="identifier">sregex</span> <span class="identifier">rex</span> <span class="special">=</span> <span class="special">(</span><span class="identifier">s1</span><span class="special">=</span> <span class="special">+</span><span class="identifier">_w</span><span class="special">)</span> <span class="special">&gt;&gt;</span> <span class="char">' '</span> <span class="special">&gt;&gt;</span> <span class="special">(</span><span class="identifier">s2</span><span class="special">=</span> <span class="special">+</span><span class="identifier">_w</span><span class="special">)</span> <span class="special">&gt;&gt;</span> <span class="char">'!'</span><span class="special">;</span>
+</pre>
+<p>
+        This describes the same regular expression, except it uses the domain-specific
+        embedded language defined by static xpressive.
+      </p>
+<p>
+        As you can see, static regexes have a syntax that is noticeably different
+        than standard Perl syntax. That is because we are constrained by C++'s syntax.
+        The biggest difference is the use of <code class="computeroutput"><span class="special">&gt;&gt;</span></code>
+        to mean "followed by". For instance, in Perl you can just put sub-expressions
+        next to each other:
+      </p>
+<pre class="programlisting"><span class="identifier">abc</span>
+</pre>
+<p>
+        But in C++, there must be an operator separating sub-expressions:
+      </p>
+<pre class="programlisting"><span class="identifier">a</span> <span class="special">&gt;&gt;</span> <span class="identifier">b</span> <span class="special">&gt;&gt;</span> <span class="identifier">c</span>
+</pre>
+<p>
+        In Perl, parentheses <code class="computeroutput"><span class="special">()</span></code> have
+        special meaning. They group, but as a side-effect they also create back-references
+        like <code class="literal">$1</code> and <code class="literal">$2</code>. In C++, there is no
+        way to overload parentheses to give them side-effects. To get the same effect,
+        we use the special <code class="computeroutput"><span class="identifier">s1</span></code>, <code class="computeroutput"><span class="identifier">s2</span></code>, etc. tokens. Assign to one to create
+        a back-reference (known as a sub-match in xpressive).
+      </p>
+<p>
+        You'll also notice that the one-or-more repetition operator <code class="computeroutput"><span class="special">+</span></code> has moved from postfix to prefix position.
+        That's because C++ doesn't have a postfix <code class="computeroutput"><span class="special">+</span></code>
+        operator. So:
+      </p>
+<pre class="programlisting"><span class="string">"\\w+"</span>
+</pre>
+<p>
+        is the same as:
+      </p>
+<pre class="programlisting"><span class="special">+</span><span class="identifier">_w</span>
+</pre>
+<p>
+        We'll cover all the other differences <a class="link" href="user_s_guide/creating_a_regex_object.html#boost_xpressive.user_s_guide.creating_a_regex_object.static_regexes" title="Static Regexes">later</a>.
+      </p>
+</div>
+<div class="footnotes">
+<br><hr width="100" align="left">
+<div class="footnote"><p><sup>[<a id="ftn.boost_xpressive.user_s_guide.introduction.f0" href="#boost_xpressive.user_s_guide.introduction.f0" class="para">1</a>] </sup>
+          See <a href="http://www.osl.iu.edu/~tveldhui/papers/Expression-Templates/exprtmpl.html" target="_top">Expression
+          Templates</a>
+        </p></div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2007 Eric Niebler<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../index.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../boost_xpressive/user_s_guide/installing_xpressive.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

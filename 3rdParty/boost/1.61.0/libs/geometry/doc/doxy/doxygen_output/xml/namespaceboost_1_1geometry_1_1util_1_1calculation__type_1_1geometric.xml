@@ -1,0 +1,14 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="namespaceboost_1_1geometry_1_1util_1_1calculation__type_1_1geometric" kind="namespace">
+    <compoundname>boost::geometry::util::calculation_type::geometric</compoundname>
+    <innerclass refid="structboost_1_1geometry_1_1util_1_1calculation__type_1_1geometric_1_1binary" prot="public">boost::geometry::util::calculation_type::geometric::binary</innerclass>
+    <innerclass refid="structboost_1_1geometry_1_1util_1_1calculation__type_1_1geometric_1_1ternary" prot="public">boost::geometry::util::calculation_type::geometric::ternary</innerclass>
+    <innerclass refid="structboost_1_1geometry_1_1util_1_1calculation__type_1_1geometric_1_1unary" prot="public">boost::geometry::util::calculation_type::geometric::unary</innerclass>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/util/calculation_type.hpp" line="100"/>
+  </compounddef>
+</doxygen>

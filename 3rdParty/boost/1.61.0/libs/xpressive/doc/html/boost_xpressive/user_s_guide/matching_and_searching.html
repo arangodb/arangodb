@@ -1,0 +1,169 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Matching and Searching</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../../index.html" title="Chapter&#160;1.&#160;Boost.Xpressive">
+<link rel="up" href="../../xpressive/user_s_guide.html" title="User's Guide">
+<link rel="prev" href="creating_a_regex_object/dynamic_regexes.html" title="Dynamic Regexes">
+<link rel="next" href="accessing_results.html" title="Accessing Results">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="creating_a_regex_object/dynamic_regexes.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../xpressive/user_s_guide.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="accessing_results.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_xpressive.user_s_guide.matching_and_searching"></a><a class="link" href="matching_and_searching.html" title="Matching and Searching">Matching
+      and Searching</a>
+</h3></div></div></div>
+<h3>
+<a name="boost_xpressive.user_s_guide.matching_and_searching.h0"></a>
+        <span><a name="boost_xpressive.user_s_guide.matching_and_searching.overview"></a></span><a class="link" href="matching_and_searching.html#boost_xpressive.user_s_guide.matching_and_searching.overview">Overview</a>
+      </h3>
+<p>
+        Once you have created a regex object, you can use the <code class="literal"><code class="computeroutput"><a class="link" href="../../boost/xpressive/regex_match.html" title="Function regex_match">regex_match()</a></code></code>
+        and <code class="literal"><code class="computeroutput"><a class="link" href="../../boost/xpressive/regex_search.html" title="Function regex_search">regex_search()</a></code></code>
+        algorithms to find patterns in strings. This page covers the basics of regex
+        matching and searching. In all cases, if you are familiar with how <code class="literal"><code class="computeroutput"><a class="link" href="../../boost/xpressive/regex_match.html" title="Function regex_match">regex_match()</a></code></code>
+        and <code class="literal"><code class="computeroutput"><a class="link" href="../../boost/xpressive/regex_search.html" title="Function regex_search">regex_search()</a></code></code>
+        in the <a href="../../../../libs/regex" target="_top">Boost.Regex</a> library work, xpressive's
+        versions work the same way.
+      </p>
+<h3>
+<a name="boost_xpressive.user_s_guide.matching_and_searching.h1"></a>
+        <span><a name="boost_xpressive.user_s_guide.matching_and_searching.seeing_if_a_string_matches_a_regex"></a></span><a class="link" href="matching_and_searching.html#boost_xpressive.user_s_guide.matching_and_searching.seeing_if_a_string_matches_a_regex">Seeing
+        if a String Matches a Regex</a>
+      </h3>
+<p>
+        The <code class="literal"><code class="computeroutput"><a class="link" href="../../boost/xpressive/regex_match.html" title="Function regex_match">regex_match()</a></code></code>
+        algorithm checks to see if a regex matches a given input.
+      </p>
+<div class="warning"><table border="0" summary="Warning">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Warning]" src="../../../../../../doc/src/images/warning.png"></td>
+<th align="left">Warning</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+          The <code class="literal"><code class="computeroutput"><a class="link" href="../../boost/xpressive/regex_match.html" title="Function regex_match">regex_match()</a></code></code>
+          algorithm will only report success if the regex matches the <span class="emphasis"><em>whole
+          input</em></span>, from beginning to end. If the regex matches only a part
+          of the input, <code class="literal"><code class="computeroutput"><a class="link" href="../../boost/xpressive/regex_match.html" title="Function regex_match">regex_match()</a></code></code>
+          will return false. If you want to search through the string looking for
+          sub-strings that the regex matches, use the <code class="literal"><code class="computeroutput"><a class="link" href="../../boost/xpressive/regex_search.html" title="Function regex_search">regex_search()</a></code></code>
+          algorithm.
+        </p></td></tr>
+</table></div>
+<p>
+        The input can be a bidirectional range such as <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span></code>,
+        a C-style null-terminated string or a pair of iterators. In all cases, the
+        type of the iterator used to traverse the input sequence must match the iterator
+        type used to declare the regex object. (You can use the table in the <a class="link" href="quick_start.html#boost_xpressive.user_s_guide.quick_start.know_your_iterator_type">Quick
+        Start</a> to find the correct regex type for your iterator.)
+      </p>
+<pre class="programlisting"><span class="identifier">cregex</span> <span class="identifier">cre</span> <span class="special">=</span> <span class="special">+</span><span class="identifier">_w</span><span class="special">;</span>  <span class="comment">// this regex can match C-style strings</span>
+<span class="identifier">sregex</span> <span class="identifier">sre</span> <span class="special">=</span> <span class="special">+</span><span class="identifier">_w</span><span class="special">;</span>  <span class="comment">// this regex can match std::strings</span>
+
+<span class="keyword">if</span><span class="special">(</span> <span class="identifier">regex_match</span><span class="special">(</span> <span class="string">"hello"</span><span class="special">,</span> <span class="identifier">cre</span> <span class="special">)</span> <span class="special">)</span>              <span class="comment">// OK</span>
+    <span class="special">{</span> <span class="comment">/*...*/</span> <span class="special">}</span>
+
+<span class="keyword">if</span><span class="special">(</span> <span class="identifier">regex_match</span><span class="special">(</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span><span class="special">(</span><span class="string">"hello"</span><span class="special">),</span> <span class="identifier">sre</span> <span class="special">)</span> <span class="special">)</span> <span class="comment">// OK</span>
+    <span class="special">{</span> <span class="comment">/*...*/</span> <span class="special">}</span>
+
+<span class="keyword">if</span><span class="special">(</span> <span class="identifier">regex_match</span><span class="special">(</span> <span class="string">"hello"</span><span class="special">,</span> <span class="identifier">sre</span> <span class="special">)</span> <span class="special">)</span>              <span class="comment">// ERROR! iterator mis-match!</span>
+    <span class="special">{</span> <span class="comment">/*...*/</span> <span class="special">}</span>
+</pre>
+<p>
+        The <code class="literal"><code class="computeroutput"><a class="link" href="../../boost/xpressive/regex_match.html" title="Function regex_match">regex_match()</a></code></code>
+        algorithm optionally accepts a <code class="literal"><code class="computeroutput"><a class="link" href="../../boost/xpressive/match_results.html" title="Struct template match_results">match_results&lt;&gt;</a></code></code>
+        struct as an out parameter. If given, the <code class="literal"><code class="computeroutput"><a class="link" href="../../boost/xpressive/regex_match.html" title="Function regex_match">regex_match()</a></code></code>
+        algorithm fills in the <code class="literal"><code class="computeroutput"><a class="link" href="../../boost/xpressive/match_results.html" title="Struct template match_results">match_results&lt;&gt;</a></code></code>
+        struct with information about which parts of the regex matched which parts
+        of the input.
+      </p>
+<pre class="programlisting"><span class="identifier">cmatch</span> <span class="identifier">what</span><span class="special">;</span>
+<span class="identifier">cregex</span> <span class="identifier">cre</span> <span class="special">=</span> <span class="special">+(</span><span class="identifier">s1</span><span class="special">=</span> <span class="identifier">_w</span><span class="special">);</span>
+
+<span class="comment">// store the results of the regex_match in "what"</span>
+<span class="keyword">if</span><span class="special">(</span> <span class="identifier">regex_match</span><span class="special">(</span> <span class="string">"hello"</span><span class="special">,</span> <span class="identifier">what</span><span class="special">,</span> <span class="identifier">cre</span> <span class="special">)</span> <span class="special">)</span>
+<span class="special">{</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">what</span><span class="special">[</span><span class="number">1</span><span class="special">]</span> <span class="special">&lt;&lt;</span> <span class="char">'\n'</span><span class="special">;</span> <span class="comment">// prints "o"</span>
+<span class="special">}</span>
+</pre>
+<p>
+        The <code class="literal"><code class="computeroutput"><a class="link" href="../../boost/xpressive/regex_match.html" title="Function regex_match">regex_match()</a></code></code>
+        algorithm also optionally accepts a <code class="literal"><code class="computeroutput"><a class="link" href="../../boost/xpressive/regex_constants/match_flag_type.html" title="Type match_flag_type">match_flag_type</a></code></code>
+        bitmask. With <code class="literal"><code class="computeroutput"><a class="link" href="../../boost/xpressive/regex_constants/match_flag_type.html" title="Type match_flag_type">match_flag_type</a></code></code>,
+        you can control certain aspects of how the match is evaluated. See the <code class="literal"><code class="computeroutput"><a class="link" href="../../boost/xpressive/regex_constants/match_flag_type.html" title="Type match_flag_type">match_flag_type</a></code></code>
+        reference for a complete list of the flags and their meanings.
+      </p>
+<pre class="programlisting"><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="identifier">str</span><span class="special">(</span><span class="string">"hello"</span><span class="special">);</span>
+<span class="identifier">sregex</span> <span class="identifier">sre</span> <span class="special">=</span> <span class="identifier">bol</span> <span class="special">&gt;&gt;</span> <span class="special">+</span><span class="identifier">_w</span><span class="special">;</span>
+
+<span class="comment">// match_not_bol means that "bol" should not match at [begin,begin)</span>
+<span class="keyword">if</span><span class="special">(</span> <span class="identifier">regex_match</span><span class="special">(</span> <span class="identifier">str</span><span class="special">.</span><span class="identifier">begin</span><span class="special">(),</span> <span class="identifier">str</span><span class="special">.</span><span class="identifier">end</span><span class="special">(),</span> <span class="identifier">sre</span><span class="special">,</span> <span class="identifier">regex_constants</span><span class="special">::</span><span class="identifier">match_not_bol</span> <span class="special">)</span> <span class="special">)</span>
+<span class="special">{</span>
+    <span class="comment">// should never get here!!!</span>
+<span class="special">}</span>
+</pre>
+<p>
+        Click <a class="link" href="examples.html#boost_xpressive.user_s_guide.examples.see_if_a_whole_string_matches_a_regex">here</a>
+        to see a complete example program that shows how to use <code class="literal"><code class="computeroutput"><a class="link" href="../../boost/xpressive/regex_match.html" title="Function regex_match">regex_match()</a></code></code>.
+        And check the <code class="literal"><code class="computeroutput"><a class="link" href="../../boost/xpressive/regex_match.html" title="Function regex_match">regex_match()</a></code></code>
+        reference to see a complete list of the available overloads.
+      </p>
+<h3>
+<a name="boost_xpressive.user_s_guide.matching_and_searching.h2"></a>
+        <span><a name="boost_xpressive.user_s_guide.matching_and_searching.searching_for_matching_sub_strings"></a></span><a class="link" href="matching_and_searching.html#boost_xpressive.user_s_guide.matching_and_searching.searching_for_matching_sub_strings">Searching
+        for Matching Sub-Strings</a>
+      </h3>
+<p>
+        Use <code class="literal"><code class="computeroutput"><a class="link" href="../../boost/xpressive/regex_search.html" title="Function regex_search">regex_search()</a></code></code>
+        when you want to know if an input sequence contains a sub-sequence that a
+        regex matches. <code class="literal"><code class="computeroutput"><a class="link" href="../../boost/xpressive/regex_search.html" title="Function regex_search">regex_search()</a></code></code>
+        will try to match the regex at the beginning of the input sequence and scan
+        forward in the sequence until it either finds a match or exhausts the sequence.
+      </p>
+<p>
+        In all other regards, <code class="literal"><code class="computeroutput"><a class="link" href="../../boost/xpressive/regex_search.html" title="Function regex_search">regex_search()</a></code></code>
+        behaves like <code class="literal"><code class="computeroutput"><a class="link" href="../../boost/xpressive/regex_match.html" title="Function regex_match">regex_match()</a></code></code>
+        <span class="emphasis"><em>(see above)</em></span>. In particular, it can operate on a bidirectional
+        range such as <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span></code>, C-style null-terminated strings
+        or iterator ranges. The same care must be taken to ensure that the iterator
+        type of your regex matches the iterator type of your input sequence. As with
+        <code class="literal"><code class="computeroutput"><a class="link" href="../../boost/xpressive/regex_match.html" title="Function regex_match">regex_match()</a></code></code>,
+        you can optionally provide a <code class="literal"><code class="computeroutput"><a class="link" href="../../boost/xpressive/match_results.html" title="Struct template match_results">match_results&lt;&gt;</a></code></code>
+        struct to receive the results of the search, and a <code class="literal"><code class="computeroutput"><a class="link" href="../../boost/xpressive/regex_constants/match_flag_type.html" title="Type match_flag_type">match_flag_type</a></code></code>
+        bitmask to control how the match is evaluated.
+      </p>
+<p>
+        Click <a class="link" href="examples.html#boost_xpressive.user_s_guide.examples.see_if_a_string_contains_a_sub_string_that_matches_a_regex">here</a>
+        to see a complete example program that shows how to use <code class="literal"><code class="computeroutput"><a class="link" href="../../boost/xpressive/regex_search.html" title="Function regex_search">regex_search()</a></code></code>.
+        And check the <code class="literal"><code class="computeroutput"><a class="link" href="../../boost/xpressive/regex_search.html" title="Function regex_search">regex_search()</a></code></code>
+        reference to see a complete list of the available overloads.
+      </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2007 Eric Niebler<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="creating_a_regex_object/dynamic_regexes.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../xpressive/user_s_guide.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="accessing_results.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

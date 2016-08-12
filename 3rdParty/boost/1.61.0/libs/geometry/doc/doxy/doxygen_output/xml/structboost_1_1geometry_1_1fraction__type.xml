@@ -1,0 +1,124 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="structboost_1_1geometry_1_1fraction__type" kind="struct" prot="public">
+    <compoundname>boost::geometry::fraction_type</compoundname>
+    <includes local="no">intersection_result.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename SegmentRatio</type>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="structboost_1_1geometry_1_1fraction__type_1a48c684dcd262420bb3ee2d8f2d454581" prot="public" static="no" mutable="no">
+        <type>bool</type>
+        <definition>bool boost::geometry::fraction_type&lt; SegmentRatio &gt;::initialized</definition>
+        <argsstring></argsstring>
+        <name>initialized</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/intersection_result.hpp" line="34" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/intersection_result.hpp" bodystart="34" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structboost_1_1geometry_1_1fraction__type_1aab8a764dfb37172a2f259299a9fe7fbb" prot="public" static="no" mutable="no">
+        <type>SegmentRatio</type>
+        <definition>SegmentRatio boost::geometry::fraction_type&lt; SegmentRatio &gt;::robust_ra</definition>
+        <argsstring></argsstring>
+        <name>robust_ra</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/intersection_result.hpp" line="31" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/intersection_result.hpp" bodystart="31" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structboost_1_1geometry_1_1fraction__type_1ae2a8e556f8df870bb5f05f535b5463af" prot="public" static="no" mutable="no">
+        <type>SegmentRatio</type>
+        <definition>SegmentRatio boost::geometry::fraction_type&lt; SegmentRatio &gt;::robust_rb</definition>
+        <argsstring></argsstring>
+        <name>robust_rb</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/intersection_result.hpp" line="32" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/intersection_result.hpp" bodystart="32" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="structboost_1_1geometry_1_1fraction__type_1af56eea897c5d86d471cdbc88f01870cb" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Info</type>
+          </param>
+        </templateparamlist>
+        <type>void</type>
+        <definition>void boost::geometry::fraction_type&lt; SegmentRatio &gt;::assign</definition>
+        <argsstring>(Info const &amp;info)</argsstring>
+        <name>assign</name>
+        <param>
+          <type>Info const &amp;</type>
+          <declname>info</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/intersection_result.hpp" line="41" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/intersection_result.hpp" bodystart="40" bodyend="45"/>
+      </memberdef>
+      <memberdef kind="function" id="structboost_1_1geometry_1_1fraction__type_1a6468847090a7bacbd2a3eb6f88ef621f" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>void</type>
+        <definition>void boost::geometry::fraction_type&lt; SegmentRatio &gt;::assign</definition>
+        <argsstring>(SegmentRatio const &amp;a, SegmentRatio const &amp;b)</argsstring>
+        <name>assign</name>
+        <param>
+          <type>SegmentRatio const &amp;</type>
+          <declname>a</declname>
+        </param>
+        <param>
+          <type>SegmentRatio const &amp;</type>
+          <declname>b</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/intersection_result.hpp" line="48" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/intersection_result.hpp" bodystart="47" bodyend="52"/>
+      </memberdef>
+      <memberdef kind="function" id="structboost_1_1geometry_1_1fraction__type_1af71ca24f1bffc1c2290942c50319702b" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type></type>
+        <definition>boost::geometry::fraction_type&lt; SegmentRatio &gt;::fraction_type</definition>
+        <argsstring>()</argsstring>
+        <name>fraction_type</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/intersection_result.hpp" line="37" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/intersection_result.hpp" bodystart="35" bodyend="37"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/intersection_result.hpp" line="30" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/intersection_result.hpp" bodystart="29" bodyend="54"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1fraction__type_1af56eea897c5d86d471cdbc88f01870cb" prot="public" virt="non-virtual"><scope>boost::geometry::fraction_type</scope><name>assign</name></member>
+      <member refid="structboost_1_1geometry_1_1fraction__type_1a6468847090a7bacbd2a3eb6f88ef621f" prot="public" virt="non-virtual"><scope>boost::geometry::fraction_type</scope><name>assign</name></member>
+      <member refid="structboost_1_1geometry_1_1fraction__type_1af71ca24f1bffc1c2290942c50319702b" prot="public" virt="non-virtual"><scope>boost::geometry::fraction_type</scope><name>fraction_type</name></member>
+      <member refid="structboost_1_1geometry_1_1fraction__type_1a48c684dcd262420bb3ee2d8f2d454581" prot="public" virt="non-virtual"><scope>boost::geometry::fraction_type</scope><name>initialized</name></member>
+      <member refid="structboost_1_1geometry_1_1fraction__type_1aab8a764dfb37172a2f259299a9fe7fbb" prot="public" virt="non-virtual"><scope>boost::geometry::fraction_type</scope><name>robust_ra</name></member>
+      <member refid="structboost_1_1geometry_1_1fraction__type_1ae2a8e556f8df870bb5f05f535b5463af" prot="public" virt="non-virtual"><scope>boost::geometry::fraction_type</scope><name>robust_rb</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

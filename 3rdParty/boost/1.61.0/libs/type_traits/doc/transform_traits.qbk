@@ -1,0 +1,90 @@
+[/ 
+  Copyright 2007 John Maddock.
+  Distributed under the Boost Software License, Version 1.0.
+  (See accompanying file LICENSE_1_0.txt or copy at
+  http://www.boost.org/LICENSE_1_0.txt).
+]
+
+[section:transform Type Traits that Transform One Type to Another]
+
+The following templates transform one type to another, 
+based upon some well-defined rule. 
+Each template has a single member called `type` that is the 
+result of applying the transformation to the template argument `T`.
+
+[*Synopsis:]
+
+   template <class T>
+   struct __add_const;
+
+   template <class T>
+   struct __add_cv;
+
+   template <class T>
+   struct __add_lvalue_reference;
+   
+   template <class T>
+   struct __add_pointer;
+
+   template <class T>
+   struct __add_reference;
+
+   template <class T>
+   struct __add_rvalue_reference;
+   
+   template <class T>
+   struct __add_volatile;
+
+   template <bool B, class T, class U>
+   struct __conditional;
+
+   template <class... T>
+   struct __common_type;
+
+   template <class T, class U>
+   struct __copy_cv;
+
+   template <class T>
+   struct __decay;
+
+   template <class T>
+   struct __floating_point_promotion;
+
+   template <class T>
+   struct __integral_promotion;
+
+   template <class T>
+   struct __make_signed;
+
+   template <class T>
+   struct __make_unsigned;
+
+   template <class T>
+   struct __promote;
+
+   template <class T>
+   struct __remove_all_extents;
+
+   template <class T>
+   struct __remove_const;
+
+   template <class T>
+   struct __remove_cv;
+
+   template <class T>
+   struct __remove_extent;
+
+   template <class T>
+   struct __remove_pointer;
+
+   template <class T>
+   struct __remove_reference;
+
+   template <class T>
+   struct __remove_volatile;
+
+   template <class T>
+   struct __type_identity;
+
+[endsect]
+

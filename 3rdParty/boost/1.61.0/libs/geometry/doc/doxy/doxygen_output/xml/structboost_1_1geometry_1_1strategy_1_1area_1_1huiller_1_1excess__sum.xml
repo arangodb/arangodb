@@ -1,0 +1,91 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="structboost_1_1geometry_1_1strategy_1_1area_1_1huiller_1_1excess__sum" kind="struct" prot="protected">
+    <compoundname>boost::geometry::strategy::area::huiller::excess_sum</compoundname>
+    <includes local="no">area_huiller.hpp</includes>
+      <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="structboost_1_1geometry_1_1strategy_1_1area_1_1huiller_1_1excess__sum_1ad1cb0394f34ba6177f17aed765bd48a3" prot="public" static="no" mutable="no">
+        <type><ref refid="classboost_1_1geometry_1_1strategy_1_1distance_1_1haversine" kindref="compound">strategy::distance::haversine</ref>&lt; calculation_type &gt;</type>
+        <definition>strategy::distance::haversine&lt;calculation_type&gt; boost::geometry::strategy::area::huiller&lt; PointOfSegment, CalculationType &gt;::excess_sum::distance_over_unit_sphere</definition>
+        <argsstring></argsstring>
+        <name>distance_over_unit_sphere</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/area_huiller.hpp" line="95" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/area_huiller.hpp" bodystart="95" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structboost_1_1geometry_1_1strategy_1_1area_1_1huiller_1_1excess__sum_1af0633d858a5f37975be2b4e26c4e05eb" prot="public" static="no" mutable="no">
+        <type>calculation_type</type>
+        <definition>calculation_type boost::geometry::strategy::area::huiller&lt; PointOfSegment, CalculationType &gt;::excess_sum::sum</definition>
+        <argsstring></argsstring>
+        <name>sum</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/area_huiller.hpp" line="92" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/area_huiller.hpp" bodystart="92" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="structboost_1_1geometry_1_1strategy_1_1area_1_1huiller_1_1excess__sum_1a02f6a46f3a36802d927f38d8ec2cd196" prot="public" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <type>calculation_type</type>
+        <definition>calculation_type boost::geometry::strategy::area::huiller&lt; PointOfSegment, CalculationType &gt;::excess_sum::area</definition>
+        <argsstring>(calculation_type radius) const </argsstring>
+        <name>area</name>
+        <param>
+          <type>calculation_type</type>
+          <declname>radius</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/area_huiller.hpp" line="103" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/area_huiller.hpp" bodystart="102" bodyend="105"/>
+      </memberdef>
+      <memberdef kind="function" id="structboost_1_1geometry_1_1strategy_1_1area_1_1huiller_1_1excess__sum_1afefae0df85d201e71387cda13c745bc4" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type></type>
+        <definition>boost::geometry::strategy::area::huiller&lt; PointOfSegment, CalculationType &gt;::excess_sum::excess_sum</definition>
+        <argsstring>()</argsstring>
+        <name>excess_sum</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/area_huiller.hpp" line="101" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/area_huiller.hpp" bodystart="98" bodyend="101"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <collaborationgraph>
+      <node id="1146">
+        <label>boost::geometry::strategy::distance::haversine&lt; calculation_type &gt;</label>
+        <link refid="classboost_1_1geometry_1_1strategy_1_1distance_1_1haversine"/>
+      </node>
+      <node id="1145">
+        <label>boost::geometry::strategy::area::huiller&lt; PointOfSegment, CalculationType &gt;::excess_sum</label>
+        <link refid="structboost_1_1geometry_1_1strategy_1_1area_1_1huiller_1_1excess__sum"/>
+        <childnode refid="1146" relation="usage">
+          <edgelabel>distance_over_unit_sphere</edgelabel>
+        </childnode>
+      </node>
+    </collaborationgraph>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/area_huiller.hpp" line="91" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/area_huiller.hpp" bodystart="90" bodyend="106"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1strategy_1_1area_1_1huiller_1_1excess__sum_1a02f6a46f3a36802d927f38d8ec2cd196" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::area::huiller::excess_sum</scope><name>area</name></member>
+      <member refid="structboost_1_1geometry_1_1strategy_1_1area_1_1huiller_1_1excess__sum_1ad1cb0394f34ba6177f17aed765bd48a3" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::area::huiller::excess_sum</scope><name>distance_over_unit_sphere</name></member>
+      <member refid="structboost_1_1geometry_1_1strategy_1_1area_1_1huiller_1_1excess__sum_1afefae0df85d201e71387cda13c745bc4" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::area::huiller::excess_sum</scope><name>excess_sum</name></member>
+      <member refid="structboost_1_1geometry_1_1strategy_1_1area_1_1huiller_1_1excess__sum_1af0633d858a5f37975be2b4e26c4e05eb" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::area::huiller::excess_sum</scope><name>sum</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

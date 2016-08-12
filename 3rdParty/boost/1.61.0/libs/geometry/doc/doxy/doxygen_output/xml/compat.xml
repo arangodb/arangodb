@@ -1,0 +1,27 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="compat" kind="page">
+    <compoundname>compat</compoundname>
+    <title>Relation to Boost and std libraries</title>
+    <detaileddescription>
+<sect1 id="compat_1boost_compat">
+<title>Boost</title>
+<para>The GGL makes use of the following Boost Libraries:<itemizedlist>
+<listitem><para>Boost Range</para></listitem><listitem><para>Boost Type Traits (e.g. remove_const)</para></listitem><listitem><para>Boost Concept Check Library</para></listitem><listitem><para>Boost Numeric Conversion (cast, bounds)</para></listitem><listitem><para>Boost MPL</para></listitem><listitem><para>Boost Static Assert</para></listitem><listitem><para>Boost Iterator</para></listitem><listitem><para>Boost Smart Pointer (shared_ptr, in the extensions spatial index and projections)</para></listitem><listitem><para>Boost uBLAS</para></listitem><listitem><para>Adapted geometries:<itemizedlist>
+<listitem><para>Boost Array</para></listitem><listitem><para>Boost Tuple</para></listitem></itemizedlist>
+</para></listitem><listitem><para>IO and parsing<itemizedlist>
+<listitem><para>Boost Tokenizer</para></listitem><listitem><para>Boost Conversion (lexical cast)</para></listitem><listitem><para>Boost String Algo</para></listitem></itemizedlist>
+</para></listitem><listitem><para>Testing<itemizedlist>
+<listitem><para>Boost Test</para></listitem><listitem><para>Boost Timer</para></listitem></itemizedlist>
+</para></listitem><listitem><para>Examples<itemizedlist>
+<listitem><para>Boost Graph Library</para></listitem></itemizedlist>
+</para></listitem></itemizedlist>
+</para><para>Many of these are used a lot inside the library.</para><para>The <bold>Boost.Range</bold> library is used everywhere to declare iterators and to walk through standard containers or custom ranges.</para><para>The <bold>Boost</bold> <bold>Concept</bold> <bold>Check</bold> <bold>Library</bold> is used to check concepts, for geometries as well as for strategies.</para><para>Tranformations are implemented using <bold>Boost</bold> uBLAS</para><para><bold>MPL</bold> is used for a.o. reverse dispatching</para><para>Finally, the library can perfectly be used together with the <bold>Boost</bold> <bold>Graph</bold> <bold>Library</bold>, as shown in example 7.</para></sect1>
+<sect1 id="compat_1std_compat">
+<title>std:: library</title>
+<para>The GGL makes substantial use of the std library, and is designed to be compatible with it.<itemizedlist>
+<listitem><para>provided geometries (linestring, ring, polygon, multi-s) make default use of std::vector (but that is configurable)</para></listitem><listitem><para>std sorting, unique copies, maps can make use of provided functors in compare &quot;compare&quot;.</para></listitem><listitem><para>internally, there are vector&apos;s, deque&apos;s, there is sorting, many things are implemented using the std library </para></listitem></itemizedlist>
+</para></sect1>
+    </detaileddescription>
+  </compounddef>
+</doxygen>

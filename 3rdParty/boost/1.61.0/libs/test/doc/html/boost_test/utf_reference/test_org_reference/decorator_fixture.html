@@ -1,0 +1,142 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>fixture (decorator)</title>
+<link rel="stylesheet" href="../../../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../../../index.html" title="Boost.Test">
+<link rel="up" href="../test_org_reference.html" title="Tests declaration and organization">
+<link rel="prev" href="decorator_enable_if.html" title="enable_if (decorator)">
+<link rel="next" href="decorator_label.html" title="label (decorator)">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="decorator_enable_if.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../test_org_reference.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="decorator_label.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="boost_test.utf_reference.test_org_reference.decorator_fixture"></a><a class="link" href="decorator_fixture.html" title="fixture (decorator)">fixture
+        (decorator)</a>
+</h4></div></div></div>
+<pre class="programlisting"><span class="identifier">fixture</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">function</span><span class="special">&lt;</span><span class="keyword">void</span><span class="special">()&gt;&amp;</span> <span class="identifier">setup</span><span class="special">,</span> <span class="keyword">const</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">function</span><span class="special">&lt;</span><span class="keyword">void</span><span class="special">()&gt;&amp;</span> <span class="identifier">teardown</span> <span class="special">=</span> <span class="special">{});</span>
+
+<span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">Fx</span><span class="special">&gt;</span>
+  <span class="identifier">fixture</span><span class="special">&lt;</span><span class="identifier">Fx</span><span class="special">&gt;();</span>
+
+<span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">Fx</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">Arg</span><span class="special">&gt;</span>
+  <span class="identifier">fixture</span><span class="special">&lt;</span><span class="identifier">Fx</span><span class="special">&gt;(</span><span class="keyword">const</span> <span class="identifier">Arg</span><span class="special">&amp;</span> <span class="identifier">arg</span><span class="special">);</span>
+</pre>
+<p>
+          Decorator <code class="computeroutput"><span class="identifier">fixture</span></code> specifies
+          a pair of functions (like <code class="computeroutput"><span class="identifier">set_up</span></code>
+          and <code class="computeroutput"><span class="identifier">tear_down</span></code>) to be called
+          before and after the corresponding test unit. At the suite level the <code class="computeroutput"><span class="identifier">set_up</span></code> function is called once -- before
+          the suite execution starts and <code class="computeroutput"><span class="identifier">tear_down</span></code>
+          function is called once -- after the suite execution ends. It comes in
+          three forms. First expects two functions for set-up and tear-down (the
+          second one can be skipped). The second expects a <code class="computeroutput"><span class="identifier">DefaultConstructible</span></code>
+          class. Its default constructor will be used as set-up function and its
+          destructor as a tear-down function. Third requires a class with one-argument
+          public constructor. Argument <code class="computeroutput"><span class="identifier">arg</span></code>
+          is forwarded to the constructor and this is the set-up function, its destructor
+          is the tear-down function. There is no way to get access to the members
+          of these fixtures from within the test case or test suite.
+        </p>
+<h6>
+<a name="boost_test.utf_reference.test_org_reference.decorator_fixture.h0"></a>
+          <span><a name="boost_test.utf_reference.test_org_reference.decorator_fixture.example_descr"></a></span><a class="link" href="decorator_fixture.html#boost_test.utf_reference.test_org_reference.decorator_fixture.example_descr">Example:
+          decorator fixture</a>
+        </h6>
+<div class="informaltable"><table class="table">
+<colgroup><col></colgroup>
+<thead><tr><th>
+                  <p>
+                    Code
+                  </p>
+                </th></tr></thead>
+<tbody><tr><td>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="preprocessor">#define</span> <span class="identifier">BOOST_TEST_MODULE</span> <span class="identifier">decorator_12</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">test</span><span class="special">/</span><span class="identifier">included</span><span class="special">/</span><span class="identifier">unit_test</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="keyword">namespace</span> <span class="identifier">utf</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">unit_test</span><span class="special">;</span>
+
+<span class="keyword">struct</span> <span class="identifier">Fx</span>
+<span class="special">{</span>
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="identifier">s</span><span class="special">;</span>
+  <span class="identifier">Fx</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="identifier">s</span> <span class="special">=</span> <span class="string">""</span><span class="special">)</span> <span class="special">:</span> <span class="identifier">s</span><span class="special">(</span><span class="identifier">s</span><span class="special">)</span>
+        <span class="special">{</span> <span class="identifier">BOOST_TEST_MESSAGE</span><span class="special">(</span><span class="string">"set up "</span> <span class="special">&lt;&lt;</span> <span class="identifier">s</span><span class="special">);</span> <span class="special">}</span>
+  <span class="special">~</span><span class="identifier">Fx</span><span class="special">()</span> <span class="special">{</span> <span class="identifier">BOOST_TEST_MESSAGE</span><span class="special">(</span><span class="string">"tear down "</span> <span class="special">&lt;&lt;</span> <span class="identifier">s</span><span class="special">);</span> <span class="special">}</span>
+<span class="special">};</span>
+
+<span class="keyword">void</span> <span class="identifier">setup</span><span class="special">()</span> <span class="special">{</span> <span class="identifier">BOOST_TEST_MESSAGE</span><span class="special">(</span><span class="string">"set up fun"</span><span class="special">);</span> <span class="special">}</span>
+<span class="keyword">void</span> <span class="identifier">teardown</span><span class="special">()</span> <span class="special">{</span> <span class="identifier">BOOST_TEST_MESSAGE</span><span class="special">(</span><span class="string">"tear down fun"</span><span class="special">);</span> <span class="special">}</span>
+
+<span class="identifier">BOOST_AUTO_TEST_SUITE</span><span class="special">(</span><span class="identifier">suite1</span><span class="special">,</span>
+  <span class="special">*</span> <span class="identifier">utf</span><span class="special">::</span><span class="identifier">fixture</span><span class="special">&lt;</span><span class="identifier">Fx</span><span class="special">&gt;(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span><span class="special">(</span><span class="string">"FX"</span><span class="special">))</span>
+  <span class="special">*</span> <span class="identifier">utf</span><span class="special">::</span><span class="identifier">fixture</span><span class="special">&lt;</span><span class="identifier">Fx</span><span class="special">&gt;(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span><span class="special">(</span><span class="string">"FX2"</span><span class="special">)))</span>
+
+  <span class="identifier">BOOST_AUTO_TEST_CASE</span><span class="special">(</span><span class="identifier">test1</span><span class="special">,</span> <span class="special">*</span> <span class="identifier">utf</span><span class="special">::</span><span class="identifier">fixture</span><span class="special">(&amp;</span><span class="identifier">setup</span><span class="special">,</span> <span class="special">&amp;</span><span class="identifier">teardown</span><span class="special">))</span>
+  <span class="special">{</span>
+    <span class="identifier">BOOST_TEST_MESSAGE</span><span class="special">(</span><span class="string">"running test1"</span><span class="special">);</span>
+    <span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="keyword">true</span><span class="special">);</span>
+  <span class="special">}</span>
+
+  <span class="identifier">BOOST_AUTO_TEST_CASE</span><span class="special">(</span><span class="identifier">test2</span><span class="special">)</span>
+  <span class="special">{</span>
+    <span class="identifier">BOOST_TEST_MESSAGE</span><span class="special">(</span><span class="string">"running test2"</span><span class="special">);</span>
+    <span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="keyword">true</span><span class="special">);</span>
+  <span class="special">}</span>
+
+<span class="identifier">BOOST_AUTO_TEST_SUITE_END</span><span class="special">()</span>
+</pre>
+                </td></tr></tbody>
+</table></div>
+<div class="informaltable"><table class="table">
+<colgroup><col></colgroup>
+<thead><tr><th>
+                  <p>
+                    Output
+                  </p>
+                </th></tr></thead>
+<tbody><tr><td>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="special">&gt;</span> <span class="identifier">decorator_12</span> <span class="special">--</span><span class="identifier">log_level</span><span class="special">=</span><span class="identifier">message</span>
+<span class="identifier">Running</span> <span class="number">2</span> <span class="identifier">test</span> <span class="identifier">cases</span><span class="special">...</span>
+<span class="identifier">set</span> <span class="identifier">up</span> <span class="identifier">FX</span>
+<span class="identifier">set</span> <span class="identifier">up</span> <span class="identifier">FX2</span>
+<span class="identifier">set</span> <span class="identifier">up</span> <span class="identifier">fun</span>
+<span class="identifier">running</span> <span class="identifier">test1</span>
+<span class="identifier">tear</span> <span class="identifier">down</span> <span class="identifier">fun</span>
+<span class="identifier">running</span> <span class="identifier">test2</span>
+<span class="identifier">tear</span> <span class="identifier">down</span> <span class="identifier">FX2</span>
+<span class="identifier">tear</span> <span class="identifier">down</span> <span class="identifier">FX</span>
+
+<span class="special">***</span> <span class="identifier">No</span> <span class="identifier">errors</span> <span class="identifier">detected</span>
+</pre>
+                </td></tr></tbody>
+</table></div>
+<p>
+          For other ways of using fixtures, see <a class="link" href="../../tests_organization/fixtures.html" title="Fixtures">here</a>.
+        </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2001-2016 Boost.Test contributors<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="decorator_enable_if.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../test_org_reference.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="decorator_label.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

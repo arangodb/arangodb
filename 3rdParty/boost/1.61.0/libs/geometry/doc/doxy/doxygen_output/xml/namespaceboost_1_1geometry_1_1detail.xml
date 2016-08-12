@@ -1,0 +1,109 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="namespaceboost_1_1geometry_1_1detail" kind="namespace">
+    <compoundname>boost::geometry::detail</compoundname>
+    <innerclass refid="structboost_1_1geometry_1_1detail_1_1andoyer__inverse" prot="public">boost::geometry::detail::andoyer_inverse</innerclass>
+    <innerclass refid="structboost_1_1geometry_1_1detail_1_1coordinate__cast_3_01rational_3_01_t_01_4_01_4" prot="public">boost::geometry::detail::coordinate_cast&lt; rational&lt; T &gt; &gt;</innerclass>
+    <innerclass refid="structboost_1_1geometry_1_1detail_1_1result__direct" prot="public">boost::geometry::detail::result_direct</innerclass>
+    <innerclass refid="structboost_1_1geometry_1_1detail_1_1result__inverse" prot="public">boost::geometry::detail::result_inverse</innerclass>
+    <innerclass refid="structboost_1_1geometry_1_1detail_1_1thomas__inverse" prot="public">boost::geometry::detail::thomas_inverse</innerclass>
+    <innerclass refid="structboost_1_1geometry_1_1detail_1_1unique__types" prot="public">boost::geometry::detail::unique_types</innerclass>
+    <innerclass refid="structboost_1_1geometry_1_1detail_1_1variant__or__single" prot="public">boost::geometry::detail::variant_or_single</innerclass>
+    <innerclass refid="structboost_1_1geometry_1_1detail_1_1vincenty__direct" prot="public">boost::geometry::detail::vincenty_direct</innerclass>
+    <innerclass refid="structboost_1_1geometry_1_1detail_1_1vincenty__inverse" prot="public">boost::geometry::detail::vincenty_inverse</innerclass>
+    <innernamespace refid="namespaceboost_1_1geometry_1_1detail_1_1partition">boost::geometry::detail::partition</innernamespace>
+    <innernamespace refid="namespaceboost_1_1geometry_1_1detail_1_1overlay">boost::geometry::detail::overlay</innernamespace>
+    <innernamespace refid="namespaceboost_1_1geometry_1_1detail_1_1envelope">boost::geometry::detail::envelope</innernamespace>
+    <innernamespace refid="namespaceboost_1_1geometry_1_1detail_1_1is__simple">boost::geometry::detail::is_simple</innernamespace>
+    <innernamespace refid="namespaceboost_1_1geometry_1_1detail_1_1is__valid">boost::geometry::detail::is_valid</innernamespace>
+    <innernamespace refid="namespaceboost_1_1geometry_1_1detail_1_1de9im">boost::geometry::detail::de9im</innernamespace>
+    <innernamespace refid="namespaceboost_1_1geometry_1_1detail_1_1turns">boost::geometry::detail::turns</innernamespace>
+    <innernamespace refid="namespaceboost_1_1geometry_1_1detail_1_1helper__geometries">boost::geometry::detail::helper_geometries</innernamespace>
+      <sectiondef kind="func">
+      <memberdef kind="function" id="namespaceboost_1_1geometry_1_1detail_1ad0444aa74942126c871dfc9fe797514f" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Range</type>
+          </param>
+          <param>
+            <type>typename Geometry</type>
+          </param>
+        </templateparamlist>
+        <type>Range &amp;</type>
+        <definition>Range&amp; boost::geometry::detail::as_range</definition>
+        <argsstring>(Geometry &amp;input)</argsstring>
+        <name>as_range</name>
+        <param>
+          <type>Geometry &amp;</type>
+          <declname>input</declname>
+        </param>
+        <briefdescription>
+<para>Function getting either the range (ring, linestring) itself or the outer ring (polygon) </para>        </briefdescription>
+        <detaileddescription>
+<para>Utility to handle polygon&apos;s outer ring as a range </para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/as_range.hpp" line="71" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/as_range.hpp" bodystart="70" bodyend="79"/>
+      </memberdef>
+      <memberdef kind="function" id="namespaceboost_1_1geometry_1_1detail_1a4aa299422f3d590936b071d07223984e" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Range</type>
+          </param>
+          <param>
+            <type>typename Geometry</type>
+          </param>
+        </templateparamlist>
+        <type>Range const &amp;</type>
+        <definition>Range const&amp; boost::geometry::detail::as_range</definition>
+        <argsstring>(Geometry const &amp;input)</argsstring>
+        <name>as_range</name>
+        <param>
+          <type>Geometry const &amp;</type>
+          <declname>input</declname>
+        </param>
+        <briefdescription>
+<para>Function getting either the range (ring, linestring) itself or the outer ring (polygon), const version. </para>        </briefdescription>
+        <detaileddescription>
+<para>Utility to handle polygon&apos;s outer ring as a range </para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/as_range.hpp" line="90" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/as_range.hpp" bodystart="89" bodyend="98"/>
+      </memberdef>
+      <memberdef kind="function" id="namespaceboost_1_1geometry_1_1detail_1abd777e544b2f99a32eaf894c2f7604a9" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Geometry</type>
+          </param>
+          <param>
+            <type>typename Actor</type>
+          </param>
+        </templateparamlist>
+        <type>void</type>
+        <definition>void boost::geometry::detail::for_each_range</definition>
+        <argsstring>(Geometry const &amp;geometry, Actor &amp;actor)</argsstring>
+        <name>for_each_range</name>
+        <param>
+          <type>Geometry const &amp;</type>
+          <declname>geometry</declname>
+        </param>
+        <param>
+          <type>Actor &amp;</type>
+          <declname>actor</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/for_each_range.hpp" line="186" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/for_each_range.hpp" bodystart="185" bodyend="192"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/andoyer_inverse.hpp" line="28"/>
+  </compounddef>
+</doxygen>

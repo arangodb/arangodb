@@ -1,0 +1,78 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="structboost_1_1geometry_1_1resolve__variant_1_1area_3_01boost_1_1variant_3_01_b_o_o_s_t___v_a_r_472b88d9a903f17353bc2e3a4957d70f" kind="struct" prot="public">
+    <compoundname>boost::geometry::resolve_variant::area&lt; boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; &gt;::visitor</compoundname>
+    <includes local="no">area.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename Strategy</type>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="structboost_1_1geometry_1_1resolve__variant_1_1area_3_01boost_1_1variant_3_01_b_o_o_s_t___v_a_r_472b88d9a903f17353bc2e3a4957d70f_1a49e87f1d4475fcc712e8bea2c745c53b" prot="public" static="no" mutable="no">
+        <type>Strategy const &amp;</type>
+        <definition>Strategy const&amp; boost::geometry::resolve_variant::area&lt; boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; &gt;::visitor&lt; Strategy &gt;::m_strategy</definition>
+        <argsstring></argsstring>
+        <name>m_strategy</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/area.hpp" line="222" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/area.hpp" bodystart="222" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="structboost_1_1geometry_1_1resolve__variant_1_1area_3_01boost_1_1variant_3_01_b_o_o_s_t___v_a_r_472b88d9a903f17353bc2e3a4957d70f_1aee34dcb42d34fab59bbe7a5aa5a646a9" prot="public" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Geometry</type>
+          </param>
+        </templateparamlist>
+        <type>Strategy::return_type</type>
+        <definition>Strategy::return_type boost::geometry::resolve_variant::area&lt; boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; &gt;::visitor&lt; Strategy &gt;::operator()</definition>
+        <argsstring>(Geometry const &amp;geometry) const </argsstring>
+        <name>operator()</name>
+        <param>
+          <type>Geometry const &amp;</type>
+          <declname>geometry</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/area.hpp" line="228" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/area.hpp" bodystart="227" bodyend="230"/>
+      </memberdef>
+      <memberdef kind="function" id="structboost_1_1geometry_1_1resolve__variant_1_1area_3_01boost_1_1variant_3_01_b_o_o_s_t___v_a_r_472b88d9a903f17353bc2e3a4957d70f_1a58bf001b24a0e150eaeb763abdbf8f31" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type></type>
+        <definition>boost::geometry::resolve_variant::area&lt; boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; &gt;::visitor&lt; Strategy &gt;::visitor</definition>
+        <argsstring>(Strategy const &amp;strategy)</argsstring>
+        <name>visitor</name>
+        <param>
+          <type>Strategy const &amp;</type>
+          <declname>strategy</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/area.hpp" line="224" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/area.hpp" bodystart="224" bodyend="224"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/area.hpp" line="221" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/area.hpp" bodystart="220" bodyend="231"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1resolve__variant_1_1area_3_01boost_1_1variant_3_01_b_o_o_s_t___v_a_r_472b88d9a903f17353bc2e3a4957d70f_1a49e87f1d4475fcc712e8bea2c745c53b" prot="public" virt="non-virtual"><scope>boost::geometry::resolve_variant::area&lt; boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; &gt;::visitor</scope><name>m_strategy</name></member>
+      <member refid="structboost_1_1geometry_1_1resolve__variant_1_1area_3_01boost_1_1variant_3_01_b_o_o_s_t___v_a_r_472b88d9a903f17353bc2e3a4957d70f_1aee34dcb42d34fab59bbe7a5aa5a646a9" prot="public" virt="non-virtual"><scope>boost::geometry::resolve_variant::area&lt; boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; &gt;::visitor</scope><name>operator()</name></member>
+      <member refid="structboost_1_1geometry_1_1resolve__variant_1_1area_3_01boost_1_1variant_3_01_b_o_o_s_t___v_a_r_472b88d9a903f17353bc2e3a4957d70f_1a58bf001b24a0e150eaeb763abdbf8f31" prot="public" virt="non-virtual"><scope>boost::geometry::resolve_variant::area&lt; boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; &gt;::visitor</scope><name>visitor</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

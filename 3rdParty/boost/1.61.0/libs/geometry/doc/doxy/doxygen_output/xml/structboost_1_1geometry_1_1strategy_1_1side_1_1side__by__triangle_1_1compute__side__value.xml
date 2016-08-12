@@ -1,0 +1,73 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="structboost_1_1geometry_1_1strategy_1_1side_1_1side__by__triangle_1_1compute__side__value" kind="struct" prot="public">
+    <compoundname>boost::geometry::strategy::side::side_by_triangle::compute_side_value</compoundname>
+    <includes local="no">side_by_triangle.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename CoordinateType</type>
+      </param>
+      <param>
+        <type>typename PromotedType</type>
+      </param>
+      <param>
+        <type>bool</type>
+        <declname>AreAllIntegralCoordinates</declname>
+        <defname>AreAllIntegralCoordinates</defname>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-static-func">
+      <memberdef kind="function" id="structboost_1_1geometry_1_1strategy_1_1side_1_1side__by__triangle_1_1compute__side__value_1ac9b31be852466cc141ffc1f56847b248" prot="public" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename P1</type>
+          </param>
+          <param>
+            <type>typename P2</type>
+          </param>
+          <param>
+            <type>typename P</type>
+          </param>
+          <param>
+            <type>typename EpsPolicy</type>
+          </param>
+        </templateparamlist>
+        <type>PromotedType</type>
+        <definition>static PromotedType boost::geometry::strategy::side::side_by_triangle&lt; CalculationType &gt;::compute_side_value&lt; CoordinateType, PromotedType, AreAllIntegralCoordinates &gt;::apply</definition>
+        <argsstring>(P1 const &amp;p1, P2 const &amp;p2, P const &amp;p, EpsPolicy &amp;epsp)</argsstring>
+        <name>apply</name>
+        <param>
+          <type>P1 const &amp;</type>
+          <declname>p1</declname>
+        </param>
+        <param>
+          <type>P2 const &amp;</type>
+          <declname>p2</declname>
+        </param>
+        <param>
+          <type>P const &amp;</type>
+          <declname>p</declname>
+        </param>
+        <param>
+          <type>EpsPolicy &amp;</type>
+          <declname>epsp</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/side_by_triangle.hpp" line="138" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/side_by_triangle.hpp" bodystart="137" bodyend="140"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/side_by_triangle.hpp" line="135" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/side_by_triangle.hpp" bodystart="134" bodyend="141"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1strategy_1_1side_1_1side__by__triangle_1_1compute__side__value_1ac9b31be852466cc141ffc1f56847b248" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::side::side_by_triangle::compute_side_value</scope><name>apply</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

@@ -1,0 +1,11 @@
+//[example_output
+> ./boost_test_macro_container_c_array --log_level=all
+Running 1 test case...
+Entering test module "boost_test_container_c"
+test.cpp(15): Entering test case "test_collections_not_on_c_arrays"
+test.cpp(19): error: in "test_collections_not_on_c_arrays": check a == b has failed [0x7fff526e5bc4 != 0x7fff526e5bb0]
+test.cpp(15): Leaving test case "test_collections_not_on_c_arrays"; testing time: 323us
+Leaving test module "boost_test_container_c"; testing time: 526us
+
+*** 1 failure is detected in the test module "boost_test_container_c"
+//]

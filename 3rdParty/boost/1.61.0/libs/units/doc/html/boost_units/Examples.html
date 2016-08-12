@@ -1,0 +1,114 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Examples</title>
+<link rel="stylesheet" href="../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../index.html" title="Chapter&#160;1.&#160;Boost.Units 1.1.0">
+<link rel="up" href="../index.html" title="Chapter&#160;1.&#160;Boost.Units 1.1.0">
+<link rel="prev" href="Quantities/Quantity_Construction_and_Conversion.html" title="Construction and Conversion of Quantities">
+<link rel="next" href="Examples/UnitExample.html" title="Unit Example">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="Quantities/Quantity_Construction_and_Conversion.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="Examples/UnitExample.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="boost_units.Examples"></a><a class="link" href="Examples.html" title="Examples">Examples</a>
+</h2></div></div></div>
+<div class="toc"><dl>
+<dt><span class="section"><a href="Examples.html#boost_units.Examples.DimensionExample">Dimension Example</a></span></dt>
+<dt><span class="section"><a href="Examples/UnitExample.html">Unit Example</a></span></dt>
+<dt><span class="section"><a href="Examples/QuantityExample.html">Quantity Example</a></span></dt>
+<dt><span class="section"><a href="Examples/KitchenSinkExample.html">Kitchen Sink
+      Example using SI units</a></span></dt>
+<dt><span class="section"><a href="Examples/ConversionExample.html">Conversion Example</a></span></dt>
+<dt><span class="section"><a href="Examples/UDTExample.html">User Defined Types</a></span></dt>
+<dt><span class="section"><a href="Examples/ComplexExample.html">Complex Example</a></span></dt>
+<dt><span class="section"><a href="Examples/PerformanceExample.html">Performance
+      Example</a></span></dt>
+<dt><span class="section"><a href="Examples/RadarBeamHeightExample.html">Radar Beam
+      Height</a></span></dt>
+<dt><span class="section"><a href="Examples/HeterogeneousUnitExample.html">Heterogeneous
+      Unit Example</a></span></dt>
+<dt><span class="section"><a href="Examples/AbsoluteRelativeTemperatureExample.html">Absolute
+      and Relative Temperature Example</a></span></dt>
+<dt><span class="section"><a href="Examples/RuntimeConversionFactorExample.html">Runtime
+      Conversion Factor Example</a></span></dt>
+<dt><span class="section"><a href="Examples/UnitsWithNonbaseDimensions.html">Units
+      with Non-base Dimensions</a></span></dt>
+<dt><span class="section"><a href="Examples/OutputForCompositeUnits.html">Output
+      for Composite Units</a></span></dt>
+<dt><span class="section"><a href="Examples/autoscale.html">Automatically Scaled
+      Units</a></span></dt>
+<dt><span class="section"><a href="Examples/ConversionFactor.html">Conversion Factor</a></span></dt>
+<dt><span class="section"><a href="Examples/RuntimeUnits.html">Runtime Units</a></span></dt>
+<dt><span class="section"><a href="Examples/lambda.html">Interoperability with Boost.Lambda</a></span></dt>
+</dl></div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_units.Examples.DimensionExample"></a><a class="link" href="Examples.html#boost_units.Examples.DimensionExample" title="Dimension Example">Dimension Example</a>
+</h3></div></div></div>
+<p>
+        (<a href="../../../libs/units/example/dimension.cpp" target="_top">dimension.cpp</a>)
+      </p>
+<p>
+        By using MPL metafunctions and the template specializations for operations
+        on composite dimensions (defined in <code class="computeroutput"><a class="link" href="Reference.html#header.boost.units.dimension_hpp" title="Header &lt;boost/units/dimension.hpp&gt;">boost/units/dimension.hpp</a></code>)
+        it is possible to perform compile time arithmetic according to the dimensional
+        analysis rules described <a class="link" href="Dimensional_Analysis.html" title="Dimensional Analysis">above</a>
+        to produce new composite dimensions :
+      </p>
+<p>
+</p>
+<pre class="programlisting"><span class="keyword">typedef</span> <span class="identifier">mpl</span><span class="special">::</span><span class="identifier">times</span><span class="special">&lt;</span><span class="identifier">length_dimension</span><span class="special">,</span><span class="identifier">mass_dimension</span><span class="special">&gt;::</span><span class="identifier">type</span>   <span class="identifier">LM_type</span><span class="special">;</span>
+<span class="keyword">typedef</span> <span class="identifier">mpl</span><span class="special">::</span><span class="identifier">divides</span><span class="special">&lt;</span><span class="identifier">length_dimension</span><span class="special">,</span><span class="identifier">time_dimension</span><span class="special">&gt;::</span><span class="identifier">type</span> <span class="identifier">L_T_type</span><span class="special">;</span>
+<span class="keyword">typedef</span> <span class="identifier">static_root</span><span class="special">&lt;</span>
+    <span class="identifier">mpl</span><span class="special">::</span><span class="identifier">divides</span><span class="special">&lt;</span><span class="identifier">energy_dimension</span><span class="special">,</span><span class="identifier">mass_dimension</span><span class="special">&gt;::</span><span class="identifier">type</span><span class="special">,</span>
+    <span class="identifier">static_rational</span><span class="special">&lt;</span><span class="number">2</span><span class="special">&gt;</span>
+<span class="special">&gt;::</span><span class="identifier">type</span>    <span class="identifier">V_type</span><span class="special">;</span>
+</pre>
+<p>
+      </p>
+<p>
+        outputting (with symbol demangling, implemented in <a href="../../../../../boost/units/detail/utility.hpp" target="_top">utility.hpp</a>)
+      </p>
+<p>
+</p>
+<pre class="programlisting"><span class="identifier">length_dimension</span>  <span class="special">=</span> <span class="identifier">list</span><span class="special">&lt;</span><span class="identifier">dim</span><span class="special">&lt;</span><span class="identifier">length_base_dimension</span><span class="special">,</span> <span class="identifier">static_rational</span><span class="special">&lt;</span><span class="number">1l</span><span class="special">,</span> <span class="number">1l</span><span class="special">&gt;</span> <span class="special">&gt;,</span> <span class="identifier">dimensionless_type</span><span class="special">&gt;</span>
+<span class="identifier">mass_dimension</span>    <span class="special">=</span> <span class="identifier">list</span><span class="special">&lt;</span><span class="identifier">dim</span><span class="special">&lt;</span><span class="identifier">mass_base_dimension</span><span class="special">,</span> <span class="identifier">static_rational</span><span class="special">&lt;</span><span class="number">1l</span><span class="special">,</span> <span class="number">1l</span><span class="special">&gt;</span> <span class="special">&gt;,</span> <span class="identifier">dimensionless_type</span><span class="special">&gt;</span>
+<span class="identifier">time_dimension</span>    <span class="special">=</span> <span class="identifier">list</span><span class="special">&lt;</span><span class="identifier">dim</span><span class="special">&lt;</span><span class="identifier">time_base_dimension</span><span class="special">,</span> <span class="identifier">static_rational</span><span class="special">&lt;</span><span class="number">1l</span><span class="special">,</span> <span class="number">1l</span><span class="special">&gt;</span> <span class="special">&gt;,</span> <span class="identifier">dimensionless_type</span><span class="special">&gt;</span>
+<span class="identifier">energy_dimension</span>  <span class="special">=</span> <span class="identifier">list</span><span class="special">&lt;</span><span class="identifier">dim</span><span class="special">&lt;</span><span class="identifier">length_base_dimension</span><span class="special">,</span> <span class="identifier">static_rational</span><span class="special">&lt;</span><span class="number">2l</span><span class="special">,</span> <span class="number">1l</span><span class="special">&gt;</span> <span class="special">&gt;,</span> <span class="identifier">list</span><span class="special">&lt;</span><span class="identifier">dim</span><span class="special">&lt;</span><span class="identifier">mass_base_dimension</span><span class="special">,</span> <span class="identifier">static_rational</span><span class="special">&lt;</span><span class="number">1l</span><span class="special">,</span> <span class="number">1l</span><span class="special">&gt;</span> <span class="special">&gt;,</span> <span class="identifier">list</span><span class="special">&lt;</span><span class="identifier">dim</span><span class="special">&lt;</span><span class="identifier">time_base_dimension</span><span class="special">,</span> <span class="identifier">static_rational</span><span class="special">&lt;-</span><span class="number">2l</span><span class="special">,</span> <span class="number">1l</span><span class="special">&gt;</span> <span class="special">&gt;,</span> <span class="identifier">dimensionless_type</span><span class="special">&gt;</span> <span class="special">&gt;</span> <span class="special">&gt;</span>
+<span class="identifier">LM_type</span>      <span class="special">=</span> <span class="identifier">list</span><span class="special">&lt;</span><span class="identifier">dim</span><span class="special">&lt;</span><span class="identifier">length_base_dimension</span><span class="special">,</span> <span class="identifier">static_rational</span><span class="special">&lt;</span><span class="number">1l</span><span class="special">,</span> <span class="number">1l</span><span class="special">&gt;</span> <span class="special">&gt;,</span> <span class="identifier">list</span><span class="special">&lt;</span><span class="identifier">dim</span><span class="special">&lt;</span><span class="identifier">mass_base_dimension</span><span class="special">,</span> <span class="identifier">static_rational</span><span class="special">&lt;</span><span class="number">1l</span><span class="special">,</span> <span class="number">1l</span><span class="special">&gt;</span> <span class="special">&gt;,</span> <span class="identifier">dimensionless_type</span><span class="special">&gt;</span> <span class="special">&gt;</span>
+<span class="identifier">L_T_type</span>     <span class="special">=</span> <span class="identifier">list</span><span class="special">&lt;</span><span class="identifier">dim</span><span class="special">&lt;</span><span class="identifier">length_base_dimension</span><span class="special">,</span> <span class="identifier">static_rational</span><span class="special">&lt;</span><span class="number">1l</span><span class="special">,</span> <span class="number">1l</span><span class="special">&gt;</span> <span class="special">&gt;,</span> <span class="identifier">list</span><span class="special">&lt;</span><span class="identifier">dim</span><span class="special">&lt;</span><span class="identifier">time_base_dimension</span><span class="special">,</span> <span class="identifier">static_rational</span><span class="special">&lt;-</span><span class="number">1l</span><span class="special">,</span> <span class="number">1l</span><span class="special">&gt;</span> <span class="special">&gt;,</span> <span class="identifier">dimensionless_type</span><span class="special">&gt;</span> <span class="special">&gt;</span>
+<span class="identifier">V_type</span>       <span class="special">=</span> <span class="identifier">list</span><span class="special">&lt;</span><span class="identifier">dim</span><span class="special">&lt;</span><span class="identifier">length_base_dimension</span><span class="special">,</span> <span class="identifier">static_rational</span><span class="special">&lt;</span><span class="number">1l</span><span class="special">,</span> <span class="number">1l</span><span class="special">&gt;</span> <span class="special">&gt;,</span> <span class="identifier">list</span><span class="special">&lt;</span><span class="identifier">dim</span><span class="special">&lt;</span><span class="identifier">time_base_dimension</span><span class="special">,</span> <span class="identifier">static_rational</span><span class="special">&lt;-</span><span class="number">1l</span><span class="special">,</span> <span class="number">1l</span><span class="special">&gt;</span> <span class="special">&gt;,</span> <span class="identifier">dimensionless_type</span><span class="special">&gt;</span> <span class="special">&gt;</span>
+</pre>
+<p>
+      </p>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2008 Matthias Christian Schabel<br>Copyright &#169; 2007-2010 Steven
+      Watanabe<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="Quantities/Quantity_Construction_and_Conversion.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="Examples/UnitExample.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

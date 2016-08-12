@@ -1,0 +1,509 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Generic macros for working with data types</title>
+<link rel="stylesheet" href="../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../index.html" title="Chapter&#160;1.&#160;The Variadic Macro Data Library 1.9">
+<link rel="up" href="../index.html" title="Chapter&#160;1.&#160;The Variadic Macro Data Library 1.9">
+<link rel="prev" href="vmd_specific/vmd_identifying.html" title="Identifying data types">
+<link rel="next" href="vmd_generic/vmd_convert_sequence.html" title="Getting the type of data">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="vmd_specific/vmd_identifying.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="vmd_generic/vmd_convert_sequence.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="variadic_macro_data.vmd_generic"></a><a class="link" href="vmd_generic.html" title="Generic macros for working with data types">Generic macros for working
+    with data types</a>
+</h2></div></div></div>
+<div class="toc"><dl>
+<dt><span class="section"><a href="vmd_generic.html#variadic_macro_data.vmd_generic.vmd_sequence">Parsing
+      sequences</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="vmd_generic.html#variadic_macro_data.vmd_generic.vmd_sequence.vmd_sequence_convert">Converting
+        sequences</a></span></dt>
+<dt><span class="section"><a href="vmd_generic.html#variadic_macro_data.vmd_generic.vmd_sequence.vmd_sequence_access">Accessing
+        a sequence element</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="vmd_generic/vmd_convert_sequence.html">Getting
+      the type of data</a></span></dt>
+<dt><span class="section"><a href="vmd_generic/vmd_assert.html">Testing for
+      equality and inequality</a></span></dt>
+</dl></div>
+<p>
+      Besides the specific macros for working with data types VMD has a number of
+      generic macros for parsing sequences.
+    </p>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="variadic_macro_data.vmd_generic.vmd_sequence"></a><a class="link" href="vmd_generic.html#variadic_macro_data.vmd_generic.vmd_sequence" title="Parsing sequences">Parsing
+      sequences</a>
+</h3></div></div></div>
+<div class="toc"><dl>
+<dt><span class="section"><a href="vmd_generic.html#variadic_macro_data.vmd_generic.vmd_sequence.vmd_sequence_convert">Converting
+        sequences</a></span></dt>
+<dt><span class="section"><a href="vmd_generic.html#variadic_macro_data.vmd_generic.vmd_sequence.vmd_sequence_access">Accessing
+        a sequence element</a></span></dt>
+</dl></div>
+<p>
+        In the normal use of Boost PP data is passed as arguments to a macro in discrete
+        units so that each parameter expects a single data type. A typical macro
+        might be:
+      </p>
+<pre class="programlisting"><span class="preprocessor">#define</span> <span class="identifier">AMACRO</span><span class="special">(</span><span class="identifier">anumber</span><span class="special">,</span><span class="identifier">atuple</span><span class="special">,</span><span class="identifier">anidentifier</span><span class="special">)</span> <span class="identifier">someoutput</span>
+</pre>
+<p>
+        where the 'atuple', having the form of ( data1, data2, data3 ), itself may
+        contain different data types of elements.
+      </p>
+<p>
+        This is the standard macro design and internally it is the easiest way to
+        pass macro data back and forth. The Boost PP library has a rich set of functionality
+        to deal with all of its high-level data types, and variadic data, with its
+        own simpler functionality, also offers another alternative to representing
+        data.
+      </p>
+<p>
+        Occasionally designers of macros, especially for the use of others programmers
+        within a particular library, have expressed the need for a macro parameter
+        to allow a more C/C++ like syntax where a single parameter might mimic a
+        C++ function-call or a C-like type modification syntax, or some other more
+        complicated construct. Something along the lines of:
+      </p>
+<pre class="programlisting"><span class="identifier">areturn</span> <span class="identifier">afunction</span> <span class="special">(</span> <span class="identifier">aparameter1</span><span class="special">,</span> <span class="identifier">aparameter2</span><span class="special">,</span> <span class="identifier">aparameter3</span> <span class="special">)</span>
+</pre>
+<p>
+        or
+      </p>
+<pre class="programlisting"><span class="special">(</span> <span class="identifier">type</span> <span class="special">)</span> <span class="identifier">data</span>
+</pre>
+<p>
+        etc. etc.
+      </p>
+<p>
+        In other words, from a syntactical level when designing possible macro input,
+        is it possible to design parameter data to look more like C/C++ when macros
+        are used in a library and still do a certain amount of preprocessor metaprogramming
+        with such mixed token input ?
+      </p>
+<p>
+        VMD has functionality which allows more than one type of preprocessing token,
+        excluding an 'empty' token which always refers to some entire input, to be
+        part of a single parameter of input data. These preprocessing tokens as a
+        single parameter are syntactically a consecutive series of data. The single
+        limitation of this consecutive series of data is that each top-level part
+        of the data of this series is of some VMD data type. What this means is that
+        if some input consists of a series of data types it is possible to extract
+        the data for each data type in that series.
+      </p>
+<p>
+        In practicality what this means is that, given the examples just above, if
+        'areturn', 'afunction', and 'data' are identifiers it would be possible to
+        parse either of the two inputs above so that one could identify the different
+        data types involved and do preprocessor metaprogramming based on those results.
+      </p>
+<h5>
+<a name="variadic_macro_data.vmd_generic.vmd_sequence.h0"></a>
+        <span><a name="variadic_macro_data.vmd_generic.vmd_sequence.sequence_definition"></a></span><a class="link" href="vmd_generic.html#variadic_macro_data.vmd_generic.vmd_sequence.sequence_definition">Sequence
+        definition</a>
+      </h5>
+<p>
+        I will be calling such input data, which consists of all top-level data types
+        in a series, by the term of a 'sequence'. Each separate data type in the
+        sequence is called an 'element'. In this definition of a 'sequence' we can
+        have 0 or more elements, so that a sequence is a general name for any VMD
+        input. A sequence is therefore any input VMD can parse, whether it is emptiness,
+        a single element, or more than one element in a series. Therefore when we
+        speak of VMD macros parsing input data we are really speaking of VMD macros
+        parsing a sequence. A sequence can therefore also be part of a Boost PP composite
+        data type, or variadic data, and VMD can still parse such an embedded sequence
+        if asked to do so.
+      </p>
+<h5>
+<a name="variadic_macro_data.vmd_generic.vmd_sequence.h1"></a>
+        <span><a name="variadic_macro_data.vmd_generic.vmd_sequence.sequence_parsing"></a></span><a class="link" href="vmd_generic.html#variadic_macro_data.vmd_generic.vmd_sequence.sequence_parsing">Sequence
+        parsing</a>
+      </h5>
+<p>
+        Parsing a sequence means that VMD can step through each element of a sequence
+        sequentially, determine the type and data of each element, then move on to
+        the next element. Parsing is sequential and can only be done in a forward
+        direction, but it can be done any number of times. In C++ iterator terms
+        parsing of a sequence is a forward iterator.
+      </p>
+<p>
+        Working with a sequence is equivalent to using VMD macros 'generically'.
+      </p>
+<p>
+        Before I give an explanation of how to use a sequence using VMD generic functionality
+        I would like to make two points:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" type="disc">
+<li class="listitem">
+            The possibility of working with a sequence which contains more than one
+            data type can be easily abused. In general keeping things simple is usually
+            better than making things overly complicated when it comes to the syntactical
+            side of things in a computer language. A macro parameter syntactical
+            possibility has to be understandable to be used.
+          </li>
+<li class="listitem">
+            Using VMD to parse the individual data types of a sequence takes more
+            preprocessing time than functionality offered with Boost PP data types,
+            because it is based on forward access through each top-level type of
+            the sequence.
+          </li>
+</ul></div>
+<p>
+        The one constraint in a sequence is that the top-level must consist of VMD
+        data types, in other words preprocessor tokens which VMD understands. By
+        top-level it is meant that a Boost PP composite data may have elements which
+        VMD cannot parse but as long as the input consists of the composite data
+        types and not the inner unparsable elements, VMD can parse the input. Therefore
+        if preprocessor data is one of the examples above, you will be successful
+        in using VMD. However if your preprocessor data takes the form of:
+      </p>
+<pre class="programlisting"><span class="special">&amp;</span><span class="identifier">name</span> <span class="identifier">identifier</span> <span class="special">(</span> <span class="identifier">param</span> <span class="special">)</span>
+</pre>
+<p>
+        or
+      </p>
+<pre class="programlisting"><span class="identifier">identifier</span> <span class="string">"string literal"</span>
+</pre>
+<p>
+        or
+      </p>
+<pre class="programlisting"><span class="identifier">identifier</span> <span class="special">+</span> <span class="identifier">number</span>
+</pre>
+<p>
+        or
+      </p>
+<pre class="programlisting"><span class="identifier">identifier</span> <span class="special">+=</span> <span class="number">4.3</span>
+</pre>
+<p>
+        etc. etc.
+      </p>
+<p>
+        you will not be able to parse the data using VMD since '&amp;', "string
+        literal", '+', '+=', and "4.3" are preprocessor tokens which
+        are not VMD top-level data types and therefore VMD cannot handle them at
+        the parsing level. You can still of course pass such data as preprocessing
+        input to macros but you cannot use VMD to recognize the parts of such data.
+      </p>
+<p>
+        This is similar to the fact that VMD cannot tell you what type preprocessor
+        data is as a whole, using any of the VMD identifying macros already discussed,
+        if the type is not one that VMD can handle.
+      </p>
+<p>
+        On the other hand you can still use VMD to parse such tokens in the input
+        if you use Boost PP data types as top-level data types to do so. Such as:
+      </p>
+<pre class="programlisting"><span class="special">(</span> <span class="special">&amp;</span><span class="identifier">name</span> <span class="special">)</span> <span class="identifier">identifier</span> <span class="special">(</span> <span class="identifier">param</span> <span class="special">)</span>
+</pre>
+<p>
+        or
+      </p>
+<pre class="programlisting"><span class="identifier">identifier</span> <span class="special">(</span> <span class="string">"string literal"</span> <span class="special">)</span>
+</pre>
+<p>
+        or
+      </p>
+<pre class="programlisting"><span class="identifier">identifier</span> <span class="special">(</span> <span class="special">+</span> <span class="special">)</span> <span class="identifier">number</span>
+</pre>
+<p>
+        or
+      </p>
+<pre class="programlisting"><span class="identifier">identifier</span> <span class="special">(</span> <span class="special">+=</span> <span class="special">)</span> <span class="number">4</span> <span class="special">(</span> <span class="special">.</span> <span class="special">)</span> <span class="number">3</span>
+</pre>
+<p>
+        The succeeding topics explain the VMD functionality for parsing a sequence
+        for each individual VMD data type in that sequence.
+      </p>
+<h5>
+<a name="variadic_macro_data.vmd_generic.vmd_sequence.h2"></a>
+        <span><a name="variadic_macro_data.vmd_generic.vmd_sequence.sequence_types"></a></span><a class="link" href="vmd_generic.html#variadic_macro_data.vmd_generic.vmd_sequence.sequence_types">Sequence
+        types</a>
+      </h5>
+<p>
+        A VMD sequence can be seen as one of either three general types:
+      </p>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+            An empty sequence
+          </li>
+<li class="listitem">
+            A single element sequence
+          </li>
+<li class="listitem">
+            A multi-element sequence
+          </li>
+</ol></div>
+<p>
+        An empty sequence is merely input that is empty, what VMD calls "emptiness".
+        Use the previously explained BOOST_VMD_IS_EMPTY macro to test for an empty
+        sequence.
+      </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">vmd</span><span class="special">/</span><span class="identifier">is_empty</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="preprocessor">#define</span> <span class="identifier">AN_EMPTY_SEQUENCE</span>
+
+<span class="identifier">BOOST_VMD_IS_EMPTY</span><span class="special">(</span><span class="identifier">AN_EMPTY_SEQUENCE</span><span class="special">)</span> <span class="identifier">will</span> <span class="keyword">return</span> <span class="number">1</span>
+</pre>
+<p>
+        The type of an empty sequence is BOOST_VMD_TYPE_EMPTY.
+      </p>
+<p>
+        A single element sequence is a single VMD data type. This is what we have
+        been previously discussing as data which VMD can parse in this documentation
+        with our identifying macros. You can use the BOOST_VMD_IS_UNARY macro to
+        test for a single element sequence.
+      </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">vmd</span><span class="special">/</span><span class="identifier">is_unary</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="preprocessor">#define</span> <span class="identifier">A_SINGLE_ELEMENT_SEQUENCE</span> <span class="special">(</span><span class="number">1</span><span class="special">,</span><span class="number">2</span><span class="special">)</span>
+
+<span class="identifier">BOOST_VMD_IS_UNARY</span><span class="special">(</span><span class="identifier">A_SINGLE_ELEMENT_SEQUENCE</span><span class="special">)</span> <span class="identifier">will</span> <span class="keyword">return</span> <span class="number">1</span>
+</pre>
+<p>
+        The type of a single element sequence is the type of the individual data
+        type. In our example above the type of A_SINGLE_ELEMENT_SEQUENCE is BOOST_VMD_TYPE_TUPLE.
+      </p>
+<p>
+        A multi-element sequence consists of more than one data type. This is the
+        "new" type which VMD can parse. You can use the BOOST_VMD_IS_MULTI
+        macro to test for a multi-element sequence.
+      </p>
+<pre class="programlisting"><span class="preprocessor">#define</span> <span class="identifier">A_MULTI_ELEMENT_SEQUENCE</span> <span class="special">(</span><span class="number">1</span><span class="special">,</span><span class="number">2</span><span class="special">)</span> <span class="special">(</span><span class="number">1</span><span class="special">)(</span><span class="number">2</span><span class="special">)</span> <span class="number">45</span>
+</pre>
+<p>
+        The A_MULTI_ELEMENT_SEQUENCE consists of a tuple followed by a seq followed
+        by a number.
+      </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">vmd</span><span class="special">/</span><span class="identifier">is_multi</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="identifier">BOOST_VMD_IS_MULTI</span><span class="special">(</span><span class="identifier">A_MULTI_ELEMENT_SEQUENCE</span><span class="special">)</span> <span class="identifier">will</span> <span class="keyword">return</span> <span class="number">1</span>
+</pre>
+<p>
+        The type of a multi-element sequence is always BOOST_VMD_TYPE_SEQUENCE.
+      </p>
+<p>
+        The type of a sequence can be obtained generically with the BOOST_VMD_GET_TYPE
+        macro. We will be explaining this further in the documentation.
+      </p>
+<h5>
+<a name="variadic_macro_data.vmd_generic.vmd_sequence.h3"></a>
+        <span><a name="variadic_macro_data.vmd_generic.vmd_sequence.sequence_size"></a></span><a class="link" href="vmd_generic.html#variadic_macro_data.vmd_generic.vmd_sequence.sequence_size">Sequence
+        size</a>
+      </h5>
+<p>
+        The size of any sequence can be accessed using the BOOST_VMD_SIZE macro.
+        For an empty sequence the size is always 0. For a single element sequence
+        the size is always 1. For a multi-element sequence the size is the number
+        of individual top-level data types in the sequence.
+      </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">vmd</span><span class="special">/</span><span class="identifier">size</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="identifier">BOOST_VMD_SIZE</span><span class="special">(</span><span class="identifier">AN_EMPTY_SEQUENCE</span><span class="special">)</span> <span class="identifier">will</span> <span class="keyword">return</span> <span class="number">0</span>
+<span class="identifier">BOOST_VMD_SIZE</span><span class="special">(</span><span class="identifier">A_SINGLE_ELEMENT_SEQUENCE</span><span class="special">)</span> <span class="identifier">will</span> <span class="keyword">return</span> <span class="number">1</span>
+<span class="identifier">BOOST_VMD_SIZE</span><span class="special">(</span><span class="identifier">A_MULTI_ELEMENT_SEQUENCE</span><span class="special">)</span> <span class="identifier">will</span> <span class="keyword">return</span> <span class="number">3</span>
+</pre>
+<h5>
+<a name="variadic_macro_data.vmd_generic.vmd_sequence.h4"></a>
+        <span><a name="variadic_macro_data.vmd_generic.vmd_sequence.using_vmd_to_parse_sequence_inpu"></a></span><a class="link" href="vmd_generic.html#variadic_macro_data.vmd_generic.vmd_sequence.using_vmd_to_parse_sequence_inpu">Using
+        VMD to parse sequence input</a>
+      </h5>
+<p>
+        For a VMD sequence essentially two ways of parsing into individual data types
+        are offered by the VMD library:
+      </p>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+            The sequence can be converted to any of the Boost PP data types, or to
+            variadic data, where each individual data type in the sequence becomes
+            a separate element of the particular composite data type chosen. The
+            conversion to a particular Boost PP data type or variadic data is slow,
+            because it is based on forward access through each top-level type of
+            the sequence, but afterwards accessing any individual element is as fast
+            as accessing any element in the Boost PP data type or among variadic
+            data.
+          </li>
+<li class="listitem">
+            The sequence can be accessed directly through its individual elements.
+            This is slower than accessing an element of a Boost PP data type or variadic
+            data but offers conceptual access to the original sequence as a series
+            of elements.
+          </li>
+</ol></div>
+<p>
+        These two techniques will be discussed in succeeding topics.
+      </p>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="variadic_macro_data.vmd_generic.vmd_sequence.vmd_sequence_convert"></a><a class="link" href="vmd_generic.html#variadic_macro_data.vmd_generic.vmd_sequence.vmd_sequence_convert" title="Converting sequences">Converting
+        sequences</a>
+</h4></div></div></div>
+<p>
+          The easiest way to work with a sequence is to convert it to a Boost PP
+          data type. Likewise you can also convert a sequence to variadic data even
+          though the Boost PP data types have much greater functionality than variadic
+          data in Boost PP.
+        </p>
+<p>
+          To convert a sequence to a Boost PP data type or variadic data the macros
+          to be used are:
+        </p>
+<div class="itemizedlist"><ul class="itemizedlist" type="disc">
+<li class="listitem">
+              BOOST_VMD_TO_ARRAY(sequence) to convert the sequence to an array
+            </li>
+<li class="listitem">
+              BOOST_VMD_TO_LIST(sequence) to convert the sequence to a list
+            </li>
+<li class="listitem">
+              BOOST_VMD_TO_SEQ(sequence) to convert the sequence to a seq
+            </li>
+<li class="listitem">
+              BOOST_VMD_TO_TUPLE(sequence) to convert the sequence to a tuple
+            </li>
+<li class="listitem">
+              BOOST_VMD_ENUM(sequence) to convert the sequence to variadic data
+            </li>
+</ul></div>
+<p>
+          After the conversion the elements of a sequence become the elements of
+          the corresponding composite data type.
+        </p>
+<p>
+          Once the elements of the sequence have been converted to the elements of
+          the composite data type the full power of that composite data type can
+          be used to process each element. Furthermore the programmer can use VMD
+          to discover the type of an individual element for further processing.
+        </p>
+<p>
+          For single element sequences the result is always a single element composite
+          data type. For multi-element sequences the result is always a composite
+          data type of more than one element.
+        </p>
+<p>
+          For a sequence that is empty the result is emptiness when converting to
+          a seq, tuple, or variadic data; the result is an empty array or list when
+          converting to each of those composite data types respectively.
+        </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">vmd</span><span class="special">/</span><span class="keyword">enum</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">vmd</span><span class="special">/</span><span class="identifier">to_array</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">vmd</span><span class="special">/</span><span class="identifier">to_list</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">vmd</span><span class="special">/</span><span class="identifier">to_seq</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">vmd</span><span class="special">/</span><span class="identifier">to_tuple</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="preprocessor">#define</span> <span class="identifier">BOOST_VMD_REGISTER_ANID</span> <span class="special">(</span><span class="identifier">ANID</span><span class="special">)</span>
+
+<span class="preprocessor">#define</span> <span class="identifier">SEQUENCE_EMPTY</span>
+<span class="preprocessor">#define</span> <span class="identifier">SEQUENCE_SINGLE</span> <span class="number">35</span>
+<span class="preprocessor">#define</span> <span class="identifier">SEQUENCE_SINGLE_2</span> <span class="identifier">ANID</span>
+<span class="preprocessor">#define</span> <span class="identifier">SEQUENCE_MULTI</span> <span class="special">(</span><span class="number">0</span><span class="special">,</span><span class="number">1</span><span class="special">)</span> <span class="special">(</span><span class="number">2</span><span class="special">)(</span><span class="number">3</span><span class="special">)(</span><span class="number">4</span><span class="special">)</span>
+<span class="preprocessor">#define</span> <span class="identifier">SEQUENCE_MULTI_2</span> <span class="identifier">BOOST_VMD_TYPE_SEQ</span> <span class="special">(</span><span class="number">2</span><span class="special">,(</span><span class="number">5</span><span class="special">,</span><span class="number">6</span><span class="special">))</span>
+
+<span class="identifier">BOOST_VMD_TO_ARRAY</span><span class="special">(</span><span class="identifier">SEQUENCE_EMPTY</span><span class="special">)</span> <span class="identifier">will</span> <span class="keyword">return</span> <span class="identifier">an</span> <span class="identifier">empty</span> <span class="identifier">array</span> <span class="char">'(0,())'</span>
+<span class="identifier">BOOST_VMD_TO_LIST</span><span class="special">(</span><span class="identifier">SEQUENCE_SINGLE</span><span class="special">)</span> <span class="identifier">will</span> <span class="keyword">return</span> <span class="identifier">a</span> <span class="identifier">one</span><span class="special">-</span><span class="identifier">element</span> <span class="identifier">list</span> <span class="char">'(35,BOOST_PP_NIL)'</span>
+<span class="identifier">BOOST_VMD_TO_SEQ</span><span class="special">(</span><span class="identifier">SEQUENCE_SINGLE_2</span><span class="special">)</span> <span class="identifier">will</span> <span class="keyword">return</span> <span class="identifier">a</span> <span class="identifier">one</span><span class="special">-</span><span class="identifier">element</span> <span class="identifier">seq</span> <span class="char">'(ANID)'</span>
+<span class="identifier">BOOST_VMD_TO_TUPLE</span><span class="special">(</span><span class="identifier">SEQUENCE_MULTI</span><span class="special">)</span> <span class="identifier">will</span> <span class="keyword">return</span> <span class="identifier">a</span> <span class="identifier">multi</span><span class="special">-</span><span class="identifier">element</span> <span class="identifier">tuple</span> <span class="char">'((0,1),(2)(3)(4))'</span>
+<span class="identifier">BOOST_VMD_ENUM</span><span class="special">(</span><span class="identifier">SEQUENCE_MULTI_2</span><span class="special">)</span> <span class="identifier">will</span> <span class="keyword">return</span> <span class="identifier">multi</span><span class="special">-</span><span class="identifier">element</span> <span class="identifier">variadic</span> <span class="identifier">data</span> <span class="char">'BOOST_VMD_TYPE_SEQ,(2,(5,6))'</span>
+</pre>
+<h6>
+<a name="variadic_macro_data.vmd_generic.vmd_sequence.vmd_sequence_convert.h0"></a>
+          <span><a name="variadic_macro_data.vmd_generic.vmd_sequence.vmd_sequence_convert.usage"></a></span><a class="link" href="vmd_generic.html#variadic_macro_data.vmd_generic.vmd_sequence.vmd_sequence_convert.usage">Usage</a>
+        </h6>
+<p>
+          You can use the general header file:
+        </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">vmd</span><span class="special">/</span><span class="identifier">vmd</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+</pre>
+<p>
+          or you can use individual header files for each of these macros. The individual
+          header files are:
+        </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">vmd</span><span class="special">/</span><span class="identifier">to_array</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span> <span class="comment">//  for the BOOST_VMD_TO_ARRAY macro</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">vmd</span><span class="special">/</span><span class="identifier">to_list</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span> <span class="comment">//  for the BOOST_VMD_TO_LIST macro</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">vmd</span><span class="special">/</span><span class="identifier">to_seq</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span> <span class="comment">//  for the BOOST_VMD_TO_SEQ macro</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">vmd</span><span class="special">/</span><span class="identifier">to_tuple</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span> <span class="comment">// for the BOOST_VMD_TO_TUPLE macro.</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">vmd</span><span class="special">/</span><span class="keyword">enum</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span> <span class="comment">// for the BOOST_VMD_ENUM macro.</span>
+</pre>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="variadic_macro_data.vmd_generic.vmd_sequence.vmd_sequence_access"></a><a class="link" href="vmd_generic.html#variadic_macro_data.vmd_generic.vmd_sequence.vmd_sequence_access" title="Accessing a sequence element">Accessing
+        a sequence element</a>
+</h4></div></div></div>
+<p>
+          It is possible to access an individual element of a sequence. The macro
+          to do this is called BOOST_VMD_ELEM. The macro takes two required parameters.
+          The required parameters are the element number to access and the sequence,
+          in that order. The element number is a 0-based number and its maximum value
+          should be one less than the size of the sequence.
+        </p>
+<p>
+          The BOOST_VMD_ELEM macro returns the actual sequence element. If the first
+          required parameter is greater or equal to the size of the sequence the
+          macro returns emptiness. Because of this using BOOST_VMD_ELEM on an empty
+          sequence, whose size is 0, always returns emptiness.
+        </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">vmd</span><span class="special">/</span><span class="identifier">elem</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="preprocessor">#define</span> <span class="identifier">BOOST_VMD_REGISTER_ANAME</span> <span class="special">(</span><span class="identifier">ANAME</span><span class="special">)</span>
+<span class="preprocessor">#define</span> <span class="identifier">A_SEQUENCE</span> <span class="special">(</span><span class="number">1</span><span class="special">,</span><span class="number">2</span><span class="special">,</span><span class="number">3</span><span class="special">)</span> <span class="number">46</span> <span class="special">(</span><span class="identifier">list_data1</span><span class="special">,(</span><span class="identifier">list_data2</span><span class="special">,</span><span class="identifier">BOOST_PP_NIL</span><span class="special">))</span> <span class="identifier">BOOST_VMD_TYPE_SEQ</span> <span class="identifier">ANAME</span>
+<span class="preprocessor">#define</span> <span class="identifier">AN_EMPTY_SEQUENCE</span>
+
+<span class="identifier">BOOST_VMD_ELEM</span><span class="special">(</span><span class="number">0</span><span class="special">,</span><span class="identifier">A_SEQUENCE</span><span class="special">)</span> <span class="identifier">will</span> <span class="keyword">return</span> <span class="special">(</span><span class="number">1</span><span class="special">,</span><span class="number">2</span><span class="special">,</span><span class="number">3</span><span class="special">)</span>
+<span class="identifier">BOOST_VMD_ELEM</span><span class="special">(</span><span class="number">1</span><span class="special">,</span><span class="identifier">A_SEQUENCE</span><span class="special">)</span> <span class="identifier">will</span> <span class="keyword">return</span> <span class="number">46</span>
+<span class="identifier">BOOST_VMD_ELEM</span><span class="special">(</span><span class="number">2</span><span class="special">,</span><span class="identifier">A_SEQUENCE</span><span class="special">)</span> <span class="identifier">will</span> <span class="keyword">return</span> <span class="special">(</span><span class="identifier">list_data1</span><span class="special">,(</span><span class="identifier">list_data2</span><span class="special">,</span><span class="identifier">BOOST_PP_NIL</span><span class="special">))</span>
+<span class="identifier">BOOST_VMD_ELEM</span><span class="special">(</span><span class="number">3</span><span class="special">,</span><span class="identifier">A_SEQUENCE</span><span class="special">)</span> <span class="identifier">will</span> <span class="keyword">return</span> <span class="identifier">BOOST_VMD_TYPE_SEQ</span>
+<span class="identifier">BOOST_VMD_ELEM</span><span class="special">(</span><span class="number">4</span><span class="special">,</span><span class="identifier">A_SEQUENCE</span><span class="special">)</span> <span class="identifier">will</span> <span class="keyword">return</span> <span class="identifier">ANAME</span>
+
+<span class="identifier">BOOST_VMD_ELEM</span><span class="special">(</span><span class="number">5</span><span class="special">,</span><span class="identifier">A_SEQUENCE</span><span class="special">)</span> <span class="identifier">will</span> <span class="keyword">return</span> <span class="identifier">emptiness</span>
+<span class="identifier">BOOST_VMD_ELEM</span><span class="special">(</span><span class="number">0</span><span class="special">,</span><span class="identifier">AN_EMPTY_SEQUENCE</span><span class="special">)</span> <span class="identifier">will</span> <span class="keyword">return</span> <span class="identifier">emptiness</span>
+</pre>
+<p>
+          Accessing an element of a sequence directly is slower than accessing an
+          element of a Boost PP data type or even variadic data, since each access
+          has to directly cycle through each element of the sequence to get to the
+          one being accessed. The process of sequentially parsing each element again
+          each time is slower than accessing a Boost PP data type element.
+        </p>
+<h6>
+<a name="variadic_macro_data.vmd_generic.vmd_sequence.vmd_sequence_access.h0"></a>
+          <span><a name="variadic_macro_data.vmd_generic.vmd_sequence.vmd_sequence_access.usage"></a></span><a class="link" href="vmd_generic.html#variadic_macro_data.vmd_generic.vmd_sequence.vmd_sequence_access.usage">Usage</a>
+        </h6>
+<p>
+          You can use the general header file:
+        </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">vmd</span><span class="special">/</span><span class="identifier">vmd</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+</pre>
+<p>
+          or you can use the individual header file:
+        </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">vmd</span><span class="special">/</span><span class="identifier">elem</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+</pre>
+</div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2010-2015 Tropic Software East Inc</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="vmd_specific/vmd_identifying.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="vmd_generic/vmd_convert_sequence.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

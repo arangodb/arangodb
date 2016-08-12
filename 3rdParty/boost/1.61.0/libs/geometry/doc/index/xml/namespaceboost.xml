@@ -1,0 +1,13 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="namespaceboost" kind="namespace">
+    <compoundname>boost</compoundname>
+    <innerclass refid="structboost_1_1range__mutable__iterator_3_01boost_1_1geometry_1_1index_1_1rtree_3_01_value_00_01377110862522c8f6142f1a65b06f20fa" prot="public">boost::range_mutable_iterator&lt; boost::geometry::index::rtree&lt; Value, Parameters, IndexableGetter, EqualTo, Allocator &gt; &gt;</innerclass>
+    <innernamespace refid="namespaceboost_1_1geometry">boost::geometry</innernamespace>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/index/distance_predicates.hpp" line="20"/>
+  </compounddef>
+</doxygen>

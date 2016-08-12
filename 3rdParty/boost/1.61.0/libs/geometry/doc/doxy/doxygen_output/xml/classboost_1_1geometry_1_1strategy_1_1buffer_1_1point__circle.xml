@@ -1,0 +1,67 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="classboost_1_1geometry_1_1strategy_1_1buffer_1_1point__circle" kind="class" prot="public">
+    <compoundname>boost::geometry::strategy::buffer::point_circle</compoundname>
+    <includes local="no">buffer_point_circle.hpp</includes>
+      <sectiondef kind="private-attrib">
+      <memberdef kind="variable" id="classboost_1_1geometry_1_1strategy_1_1buffer_1_1point__circle_1aad6dae05103a6c4537536842b1583e44" prot="private" static="no" mutable="no">
+        <type>std::size_t</type>
+        <definition>std::size_t boost::geometry::strategy::buffer::point_circle::m_count</definition>
+        <argsstring></argsstring>
+        <name>m_count</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/buffer_point_circle.hpp" line="107" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/buffer_point_circle.hpp" bodystart="107" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="classboost_1_1geometry_1_1strategy_1_1buffer_1_1point__circle_1aed8cd9ae5cf4f60122c8ef5132de9f08" prot="public" static="no" const="no" explicit="yes" inline="yes" virt="non-virtual">
+        <type></type>
+        <definition>boost::geometry::strategy::buffer::point_circle::point_circle</definition>
+        <argsstring>(std::size_t count=90)</argsstring>
+        <name>point_circle</name>
+        <param>
+          <type>std::size_t</type>
+          <declname>count</declname>
+          <defval>90</defval>
+        </param>
+        <briefdescription>
+<para>Constructs the strategy. </para>        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>count</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>number of points for the created circle (if count is smaller than 3, count is internally set to 3) </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/buffer_point_circle.hpp" line="59" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/buffer_point_circle.hpp" bodystart="57" bodyend="59"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+<para>Create a circular buffer around a point. </para>    </briefdescription>
+    <detaileddescription>
+<para>This strategy can be used as PointStrategy for the buffer algorithm. It creates a circular buffer around a point. It can be applied for points and multi_points, but also for a linestring (if it is degenerate, so consisting of only one point) and for polygons (if it is degenerate). This strategy is only applicable for Cartesian coordinate systems.</para><para> <qbk>
+[heading Example]
+[buffer_point_circle]
+[heading Output]
+[$img/strategies/buffer_point_circle.png]
+[heading See also]
+\* [link geometry.reference.algorithms.buffer.buffer_7_with_strategies buffer (with strategies)]
+\* [link geometry.reference.strategies.strategy_buffer_point_square point_square]
+</qbk>  </para>    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/buffer_point_circle.hpp" line="52" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/buffer_point_circle.hpp" bodystart="51" bodyend="108"/>
+    <listofallmembers>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1buffer_1_1point__circle_1aad6dae05103a6c4537536842b1583e44" prot="private" virt="non-virtual"><scope>boost::geometry::strategy::buffer::point_circle</scope><name>m_count</name></member>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1buffer_1_1point__circle_1aed8cd9ae5cf4f60122c8ef5132de9f08" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::buffer::point_circle</scope><name>point_circle</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

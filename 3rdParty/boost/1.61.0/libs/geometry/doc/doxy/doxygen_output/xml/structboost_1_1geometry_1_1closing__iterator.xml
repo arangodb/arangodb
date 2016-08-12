@@ -1,0 +1,299 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="structboost_1_1geometry_1_1closing__iterator" kind="struct" prot="public">
+    <compoundname>boost::geometry::closing_iterator</compoundname>
+    <includes local="no">closing_iterator.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename Range</type>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-type">
+      <memberdef kind="typedef" id="structboost_1_1geometry_1_1closing__iterator_1af743c3062e4788620804157c337e0587" prot="public" static="no">
+        <type>boost::range_difference&lt; Range &gt;::type</type>
+        <definition>typedef boost::range_difference&lt;Range&gt;::type boost::geometry::closing_iterator&lt; Range &gt;::difference_type</definition>
+        <argsstring></argsstring>
+        <name>difference_type</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/iterators/closing_iterator.hpp" line="45" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/iterators/closing_iterator.hpp" bodystart="45" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="friend">
+      <memberdef kind="friend" id="structboost_1_1geometry_1_1closing__iterator_1ac09f73e325921cc50ebcd96bed0f8096" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>friend class</type>
+        <definition>friend class boost::iterator_core_access</definition>
+        <argsstring></argsstring>
+        <name>boost::iterator_core_access</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/iterators/closing_iterator.hpp" line="73" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/iterators/closing_iterator.hpp" bodystart="73" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="private-attrib">
+      <memberdef kind="variable" id="structboost_1_1geometry_1_1closing__iterator_1a2934134aa3712b4f6fc1035d50fa1ab8" prot="private" static="no" mutable="no">
+        <type>boost::range_iterator&lt; Range &gt;::type</type>
+        <definition>boost::range_iterator&lt;Range&gt;::type boost::geometry::closing_iterator&lt; Range &gt;::m_end</definition>
+        <argsstring></argsstring>
+        <name>m_end</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/iterators/closing_iterator.hpp" line="139" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/iterators/closing_iterator.hpp" bodystart="139" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structboost_1_1geometry_1_1closing__iterator_1a34a65a7f4f386fb659ea790d7be11d0c" prot="private" static="no" mutable="no">
+        <type><ref refid="structboost_1_1geometry_1_1closing__iterator_1af743c3062e4788620804157c337e0587" kindref="member">difference_type</ref></type>
+        <definition>difference_type boost::geometry::closing_iterator&lt; Range &gt;::m_index</definition>
+        <argsstring></argsstring>
+        <name>m_index</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/iterators/closing_iterator.hpp" line="141" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/iterators/closing_iterator.hpp" bodystart="141" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structboost_1_1geometry_1_1closing__iterator_1aa752e9d9661db5432d2ecb19cf5169c8" prot="private" static="no" mutable="no">
+        <type>boost::range_iterator&lt; Range &gt;::type</type>
+        <definition>boost::range_iterator&lt;Range&gt;::type boost::geometry::closing_iterator&lt; Range &gt;::m_iterator</definition>
+        <argsstring></argsstring>
+        <name>m_iterator</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/iterators/closing_iterator.hpp" line="138" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/iterators/closing_iterator.hpp" bodystart="138" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structboost_1_1geometry_1_1closing__iterator_1a551bcdf7dbaaa610407663eff174450c" prot="private" static="no" mutable="no">
+        <type>Range *</type>
+        <definition>Range* boost::geometry::closing_iterator&lt; Range &gt;::m_range</definition>
+        <argsstring></argsstring>
+        <name>m_range</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/iterators/closing_iterator.hpp" line="137" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/iterators/closing_iterator.hpp" bodystart="137" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structboost_1_1geometry_1_1closing__iterator_1a251a6032c0bf291de13a7507efe21ce0" prot="private" static="no" mutable="no">
+        <type><ref refid="structboost_1_1geometry_1_1closing__iterator_1af743c3062e4788620804157c337e0587" kindref="member">difference_type</ref></type>
+        <definition>difference_type boost::geometry::closing_iterator&lt; Range &gt;::m_size</definition>
+        <argsstring></argsstring>
+        <name>m_size</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/iterators/closing_iterator.hpp" line="140" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/iterators/closing_iterator.hpp" bodystart="140" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="structboost_1_1geometry_1_1closing__iterator_1ac0bd918232f6690e0f082a66d94af174" prot="public" static="no" const="no" explicit="yes" inline="yes" virt="non-virtual">
+        <type></type>
+        <definition>boost::geometry::closing_iterator&lt; Range &gt;::closing_iterator</definition>
+        <argsstring>(Range &amp;range)</argsstring>
+        <name>closing_iterator</name>
+        <param>
+          <type>Range &amp;</type>
+          <declname>range</declname>
+        </param>
+        <briefdescription>
+<para>Constructor including the range it is based on. </para>        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/iterators/closing_iterator.hpp" line="54" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/iterators/closing_iterator.hpp" bodystart="48" bodyend="54"/>
+      </memberdef>
+      <memberdef kind="function" id="structboost_1_1geometry_1_1closing__iterator_1a61cf2cef021c2819835ebcfacbbb7c08" prot="public" static="no" const="no" explicit="yes" inline="yes" virt="non-virtual">
+        <type></type>
+        <definition>boost::geometry::closing_iterator&lt; Range &gt;::closing_iterator</definition>
+        <argsstring>(Range &amp;range, bool)</argsstring>
+        <name>closing_iterator</name>
+        <param>
+          <type>Range &amp;</type>
+          <declname>range</declname>
+        </param>
+        <param>
+          <type>bool</type>
+        </param>
+        <briefdescription>
+<para>Constructor to indicate the end of a range. </para>        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/iterators/closing_iterator.hpp" line="63" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/iterators/closing_iterator.hpp" bodystart="57" bodyend="63"/>
+      </memberdef>
+      <memberdef kind="function" id="structboost_1_1geometry_1_1closing__iterator_1a2b7911423a677e81b20845aa9d7c8765" prot="public" static="no" const="no" explicit="yes" inline="yes" virt="non-virtual">
+        <type></type>
+        <definition>boost::geometry::closing_iterator&lt; Range &gt;::closing_iterator</definition>
+        <argsstring>()</argsstring>
+        <name>closing_iterator</name>
+        <briefdescription>
+<para>Default constructor. </para>        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/iterators/closing_iterator.hpp" line="70" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/iterators/closing_iterator.hpp" bodystart="66" bodyend="70"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="private-func">
+      <memberdef kind="function" id="structboost_1_1geometry_1_1closing__iterator_1a151e29dadb41189ea0fd5b7e960f68f8" prot="private" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>void</type>
+        <definition>void boost::geometry::closing_iterator&lt; Range &gt;::advance</definition>
+        <argsstring>(difference_type n)</argsstring>
+        <name>advance</name>
+        <param>
+          <type><ref refid="structboost_1_1geometry_1_1closing__iterator_1af743c3062e4788620804157c337e0587" kindref="member">difference_type</ref></type>
+          <declname>n</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/iterators/closing_iterator.hpp" line="116" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/iterators/closing_iterator.hpp" bodystart="115" bodyend="127"/>
+      </memberdef>
+      <memberdef kind="function" id="structboost_1_1geometry_1_1closing__iterator_1a7ba49e3823999d2058e0b089e55e51df" prot="private" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>void</type>
+        <definition>void boost::geometry::closing_iterator&lt; Range &gt;::decrement</definition>
+        <argsstring>()</argsstring>
+        <name>decrement</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/iterators/closing_iterator.hpp" line="104" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/iterators/closing_iterator.hpp" bodystart="103" bodyend="113"/>
+      </memberdef>
+      <memberdef kind="function" id="structboost_1_1geometry_1_1closing__iterator_1a307456e88c8a237831e7395a08c0f758" prot="private" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <type>boost::range_value&lt; Range &gt;::type const &amp;</type>
+        <definition>boost::range_value&lt;Range&gt;::type const&amp; boost::geometry::closing_iterator&lt; Range &gt;::dereference</definition>
+        <argsstring>() const </argsstring>
+        <name>dereference</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/iterators/closing_iterator.hpp" line="76" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/iterators/closing_iterator.hpp" bodystart="75" bodyend="78"/>
+      </memberdef>
+      <memberdef kind="function" id="structboost_1_1geometry_1_1closing__iterator_1ad421d081eafc84302ec8b38ac2fc70fa" prot="private" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <type><ref refid="structboost_1_1geometry_1_1closing__iterator_1af743c3062e4788620804157c337e0587" kindref="member">difference_type</ref></type>
+        <definition>difference_type boost::geometry::closing_iterator&lt; Range &gt;::distance_to</definition>
+        <argsstring>(closing_iterator&lt; Range &gt; const &amp;other) const </argsstring>
+        <name>distance_to</name>
+        <param>
+          <type><ref refid="structboost_1_1geometry_1_1closing__iterator" kindref="compound">closing_iterator</ref>&lt; Range &gt; const &amp;</type>
+          <declname>other</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/iterators/closing_iterator.hpp" line="81" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/iterators/closing_iterator.hpp" bodystart="80" bodyend="83"/>
+      </memberdef>
+      <memberdef kind="function" id="structboost_1_1geometry_1_1closing__iterator_1a8745bc667b7534c1453ed96c725f8d0a" prot="private" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <type>bool</type>
+        <definition>bool boost::geometry::closing_iterator&lt; Range &gt;::equal</definition>
+        <argsstring>(closing_iterator&lt; Range &gt; const &amp;other) const </argsstring>
+        <name>equal</name>
+        <param>
+          <type><ref refid="structboost_1_1geometry_1_1closing__iterator" kindref="compound">closing_iterator</ref>&lt; Range &gt; const &amp;</type>
+          <declname>other</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/iterators/closing_iterator.hpp" line="86" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/iterators/closing_iterator.hpp" bodystart="85" bodyend="89"/>
+      </memberdef>
+      <memberdef kind="function" id="structboost_1_1geometry_1_1closing__iterator_1a6fb146550f37dfc1efa8d105b05fdb58" prot="private" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>void</type>
+        <definition>void boost::geometry::closing_iterator&lt; Range &gt;::increment</definition>
+        <argsstring>()</argsstring>
+        <name>increment</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/iterators/closing_iterator.hpp" line="92" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/iterators/closing_iterator.hpp" bodystart="91" bodyend="101"/>
+      </memberdef>
+      <memberdef kind="function" id="structboost_1_1geometry_1_1closing__iterator_1a264a66e2530715568de6e412f45fff18" prot="private" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>void</type>
+        <definition>void boost::geometry::closing_iterator&lt; Range &gt;::update_iterator</definition>
+        <argsstring>()</argsstring>
+        <name>update_iterator</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/iterators/closing_iterator.hpp" line="130" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/iterators/closing_iterator.hpp" bodystart="129" bodyend="135"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+<para>Iterator which iterates through a range, but adds first element at end of the range. </para>    </briefdescription>
+    <detaileddescription>
+<para><parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>Range</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>range on which this class is based on</para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="note"><para>It&apos;s const iterator treating the Range as one containing non-mutable elements. For both &quot;closing_iterator&lt;Range&gt; and &quot;closing_iterator&lt;Range const&gt; const reference is always returned when dereferenced. </para><simplesectsep/><para>This class is normally used from &quot;closeable_view&quot; if Close==true </para></simplesect>
+</para>    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/iterators/closing_iterator.hpp" line="44" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/iterators/closing_iterator.hpp" bodystart="37" bodyend="142"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1closing__iterator_1a151e29dadb41189ea0fd5b7e960f68f8" prot="private" virt="non-virtual"><scope>boost::geometry::closing_iterator</scope><name>advance</name></member>
+      <member refid="structboost_1_1geometry_1_1closing__iterator_1ac09f73e325921cc50ebcd96bed0f8096" prot="public" virt="non-virtual"><scope>boost::geometry::closing_iterator</scope><name>boost::iterator_core_access</name></member>
+      <member refid="structboost_1_1geometry_1_1closing__iterator_1ac0bd918232f6690e0f082a66d94af174" prot="public" virt="non-virtual"><scope>boost::geometry::closing_iterator</scope><name>closing_iterator</name></member>
+      <member refid="structboost_1_1geometry_1_1closing__iterator_1a61cf2cef021c2819835ebcfacbbb7c08" prot="public" virt="non-virtual"><scope>boost::geometry::closing_iterator</scope><name>closing_iterator</name></member>
+      <member refid="structboost_1_1geometry_1_1closing__iterator_1a2b7911423a677e81b20845aa9d7c8765" prot="public" virt="non-virtual"><scope>boost::geometry::closing_iterator</scope><name>closing_iterator</name></member>
+      <member refid="structboost_1_1geometry_1_1closing__iterator_1a7ba49e3823999d2058e0b089e55e51df" prot="private" virt="non-virtual"><scope>boost::geometry::closing_iterator</scope><name>decrement</name></member>
+      <member refid="structboost_1_1geometry_1_1closing__iterator_1a307456e88c8a237831e7395a08c0f758" prot="private" virt="non-virtual"><scope>boost::geometry::closing_iterator</scope><name>dereference</name></member>
+      <member refid="structboost_1_1geometry_1_1closing__iterator_1af743c3062e4788620804157c337e0587" prot="public" virt="non-virtual"><scope>boost::geometry::closing_iterator</scope><name>difference_type</name></member>
+      <member refid="structboost_1_1geometry_1_1closing__iterator_1ad421d081eafc84302ec8b38ac2fc70fa" prot="private" virt="non-virtual"><scope>boost::geometry::closing_iterator</scope><name>distance_to</name></member>
+      <member refid="structboost_1_1geometry_1_1closing__iterator_1a8745bc667b7534c1453ed96c725f8d0a" prot="private" virt="non-virtual"><scope>boost::geometry::closing_iterator</scope><name>equal</name></member>
+      <member refid="structboost_1_1geometry_1_1closing__iterator_1a6fb146550f37dfc1efa8d105b05fdb58" prot="private" virt="non-virtual"><scope>boost::geometry::closing_iterator</scope><name>increment</name></member>
+      <member refid="structboost_1_1geometry_1_1closing__iterator_1a2934134aa3712b4f6fc1035d50fa1ab8" prot="private" virt="non-virtual"><scope>boost::geometry::closing_iterator</scope><name>m_end</name></member>
+      <member refid="structboost_1_1geometry_1_1closing__iterator_1a34a65a7f4f386fb659ea790d7be11d0c" prot="private" virt="non-virtual"><scope>boost::geometry::closing_iterator</scope><name>m_index</name></member>
+      <member refid="structboost_1_1geometry_1_1closing__iterator_1aa752e9d9661db5432d2ecb19cf5169c8" prot="private" virt="non-virtual"><scope>boost::geometry::closing_iterator</scope><name>m_iterator</name></member>
+      <member refid="structboost_1_1geometry_1_1closing__iterator_1a551bcdf7dbaaa610407663eff174450c" prot="private" virt="non-virtual"><scope>boost::geometry::closing_iterator</scope><name>m_range</name></member>
+      <member refid="structboost_1_1geometry_1_1closing__iterator_1a251a6032c0bf291de13a7507efe21ce0" prot="private" virt="non-virtual"><scope>boost::geometry::closing_iterator</scope><name>m_size</name></member>
+      <member refid="structboost_1_1geometry_1_1closing__iterator_1a264a66e2530715568de6e412f45fff18" prot="private" virt="non-virtual"><scope>boost::geometry::closing_iterator</scope><name>update_iterator</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

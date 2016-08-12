@@ -1,0 +1,4 @@
+[#getting_started_13]
+
+  using exp_parser10 = build_parser< transform< sequence< int_token, foldl< sequence<plus_token, int_token>, boost::mpl::int_<0>, boost::mpl::quote2<sum_items> > >, boost::mpl::quote1<sum_vector>> >;
+

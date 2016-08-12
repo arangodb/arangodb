@@ -1,0 +1,44 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="structboost_1_1geometry_1_1traits_1_1point__order" kind="struct" prot="public">
+    <compoundname>boost::geometry::traits::point_order</compoundname>
+    <includes local="no">point_order.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename Ring</type>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-static-attrib">
+      <memberdef kind="variable" id="structboost_1_1geometry_1_1traits_1_1point__order_1afd9630e41c61da65818841071035fb8f" prot="public" static="yes" mutable="no">
+        <type>const <ref refid="group__enum_1ga0af1c124acb76f0892024d6d4ab2bc8c" kindref="member">order_selector</ref></type>
+        <definition>const order_selector boost::geometry::traits::point_order&lt; Ring &gt;::value</definition>
+        <argsstring></argsstring>
+        <name>value</name>
+        <initializer> <ref refid="group__enum_1gga0af1c124acb76f0892024d6d4ab2bc8ca29458b1c5c6f01e41bc529cff7cdbec2" kindref="member">clockwise</ref></initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/core/point_order.hpp" line="71" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/core/point_order.hpp" bodystart="71" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+<para>Traits class indicating the order of contained points within a ring or (multi)polygon, clockwise, counter clockwise or not known. </para>    </briefdescription>
+    <detaileddescription>
+<para><parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>Ring</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>ring </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/core/point_order.hpp" line="70" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/core/point_order.hpp" bodystart="69" bodyend="72"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1traits_1_1point__order_1afd9630e41c61da65818841071035fb8f" prot="public" virt="non-virtual"><scope>boost::geometry::traits::point_order</scope><name>value</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

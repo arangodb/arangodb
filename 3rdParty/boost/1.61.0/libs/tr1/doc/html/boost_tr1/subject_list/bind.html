@@ -1,0 +1,109 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Function Object Binders.</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../../index.html" title="Chapter&#160;1.&#160;Boost.TR1">
+<link rel="up" href="../subject_list.html" title="TR1 By Subject">
+<link rel="prev" href="mem_fn.html" title="Function template mem_fn.">
+<link rel="next" href="function.html" title="Polymorphic function wrappers.">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="mem_fn.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../subject_list.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="function.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_tr1.subject_list.bind"></a><a class="link" href="bind.html" title="Function Object Binders.">Function Object Binders.</a>
+</h3></div></div></div>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">tr1</span><span class="special">/</span><span class="identifier">functional</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+</pre>
+<p>
+        or
+      </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">functional</span><span class="special">&gt;</span>
+</pre>
+<p>
+        <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">tr1</span><span class="special">::</span><span class="identifier">bind</span></code>
+        is a generalization of the standard functions <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">bind1st</span></code>
+        and <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">bind2nd</span></code>. It supports arbitrary function
+        objects, functions, function pointers, and member function pointers, and
+        is able to bind any argument to a specific value or route input arguments
+        into arbitrary positions. <code class="computeroutput"><span class="identifier">bind</span></code>
+        does not place any requirements on the function object; in particular, it
+        does not need the <code class="computeroutput"><span class="identifier">result_type</span></code>,
+        <code class="computeroutput"><span class="identifier">first_argument_type</span></code> and
+        <code class="computeroutput"><span class="identifier">second_argument_type</span></code> standard
+        typedefs. For more information refer to the <a href="../../../../libs/bind/bind.html" target="_top">Boost.Bind
+        documentation</a>.
+      </p>
+<pre class="programlisting"><span class="keyword">namespace</span> <span class="identifier">std</span> <span class="special">{</span>
+<span class="keyword">namespace</span> <span class="identifier">tr1</span> <span class="special">{</span>
+
+<span class="comment">// [3.6] Function object binders</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">&gt;</span> <span class="keyword">struct</span> <span class="identifier">is_bind_expression</span><span class="special">;</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">&gt;</span> <span class="keyword">struct</span> <span class="identifier">is_placeholder</span><span class="special">;</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">F</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">T1</span><span class="special">,</span> <span class="special">...,</span> <span class="keyword">class</span> <span class="identifier">Tn</span> <span class="special">&gt;</span> <span class="identifier">unspecified</span> <span class="identifier">bind</span><span class="special">(</span><span class="identifier">F</span> <span class="identifier">f</span><span class="special">,</span> <span class="identifier">T1</span> <span class="identifier">t1</span><span class="special">,</span> <span class="special">...,</span> <span class="identifier">Tn</span> <span class="identifier">tn</span> <span class="special">);</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">R</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">F</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">T1</span><span class="special">,</span> <span class="special">...,</span> <span class="keyword">class</span> <span class="identifier">Tn</span> <span class="special">&gt;</span> <span class="identifier">unspecified</span> <span class="identifier">bind</span><span class="special">(</span><span class="identifier">F</span> <span class="identifier">f</span><span class="special">,</span> <span class="identifier">T1</span> <span class="identifier">t1</span><span class="special">,</span> <span class="special">...,</span> <span class="identifier">Tn</span> <span class="identifier">tn</span> <span class="special">);</span>
+
+<span class="keyword">namespace</span> <span class="identifier">placeholders</span> <span class="special">{</span>
+   <span class="comment">// M is the implementation-defined number of placeholders</span>
+   <span class="keyword">extern</span> <span class="identifier">unspecified</span> <span class="identifier">_1</span><span class="special">;</span>
+   <span class="keyword">extern</span> <span class="identifier">unspecified</span> <span class="identifier">_2</span><span class="special">;</span>
+   <span class="special">.</span>
+   <span class="special">.</span>
+   <span class="special">.</span>
+   <span class="keyword">extern</span> <span class="identifier">unspecified</span> <span class="identifier">_M</span><span class="special">;</span>
+<span class="special">}</span>
+
+<span class="special">}</span> <span class="comment">// namespace tr1</span>
+<span class="special">}</span> <span class="comment">// namespace std</span>
+</pre>
+<p>
+        <span class="bold"><strong>Configuration:</strong></span> <a href="../../../../libs/config/index.html" target="_top">Boost.Config</a>
+        should (automatically) define the macro BOOST_HAS_TR1_BIND if your standard
+        library implements this part of TR1.
+      </p>
+<p>
+        <span class="bold"><strong>Standard Conformity:</strong></span> The traits classes
+        <code class="computeroutput"><span class="identifier">is_placeholder</span></code> and <code class="computeroutput"><span class="identifier">is_bind_expression</span></code> are not supported by
+        the Boost implementation.
+      </p>
+<p>
+        The named return value syntax isn't supported if the object being bound is
+        a function pointer, for example:
+      </p>
+<pre class="programlisting"><span class="identifier">std</span><span class="special">::</span><span class="identifier">tr1</span><span class="special">::</span><span class="identifier">bind</span><span class="special">(&amp;</span><span class="identifier">my_proc</span><span class="special">,</span> <span class="identifier">arg1</span><span class="special">,</span> <span class="identifier">arg2</span> <span class="comment">/* etc */</span><span class="special">);</span> <span class="comment">// works OK.</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">tr1</span><span class="special">::</span><span class="identifier">bind</span><span class="special">&lt;</span><span class="keyword">double</span><span class="special">&gt;(&amp;</span><span class="identifier">my_proc</span><span class="special">,</span> <span class="identifier">arg1</span><span class="special">,</span> <span class="identifier">arg2</span> <span class="comment">/* etc */</span><span class="special">);</span> <span class="comment">// causes compiler error.</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">tr1</span><span class="special">::</span><span class="identifier">bind</span><span class="special">&lt;</span><span class="keyword">double</span><span class="special">&gt;(</span><span class="identifier">my_function_object</span><span class="special">,</span> <span class="identifier">arg1</span><span class="special">,</span> <span class="identifier">arg2</span> <span class="comment">/* etc */</span><span class="special">);</span> <span class="comment">// works OK.</span>
+</pre>
+<p>
+        On the other hand, the Boost implementation does work with pointers to overloaded
+        functions, and optionally with function pointers with non-standard calling
+        conventions.
+      </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2005 John Maddock<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="mem_fn.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../subject_list.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="function.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

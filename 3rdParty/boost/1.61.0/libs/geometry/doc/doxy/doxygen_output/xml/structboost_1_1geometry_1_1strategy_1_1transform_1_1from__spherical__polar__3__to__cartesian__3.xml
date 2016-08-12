@@ -1,0 +1,61 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="structboost_1_1geometry_1_1strategy_1_1transform_1_1from__spherical__polar__3__to__cartesian__3" kind="struct" prot="public">
+    <compoundname>boost::geometry::strategy::transform::from_spherical_polar_3_to_cartesian_3</compoundname>
+    <includes local="no">strategy_transform.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename P1</type>
+      </param>
+      <param>
+        <type>typename P2</type>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="structboost_1_1geometry_1_1strategy_1_1transform_1_1from__spherical__polar__3__to__cartesian__3_1a3db1306a438b106c531a7b6907711e38" prot="public" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <type>bool</type>
+        <definition>bool boost::geometry::strategy::transform::from_spherical_polar_3_to_cartesian_3&lt; P1, P2 &gt;::apply</definition>
+        <argsstring>(P1 const &amp;p1, P2 &amp;p2) const </argsstring>
+        <name>apply</name>
+        <param>
+          <type>P1 const &amp;</type>
+          <declname>p1</declname>
+        </param>
+        <param>
+          <type>P2 &amp;</type>
+          <declname>p2</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/strategy_transform.hpp" line="340" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/strategy_transform.hpp" bodystart="339" bodyend="345"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+<para>Transformation strategy for 3D spherical (phi,theta,r) to 3D cartesian (x,y,z) </para>    </briefdescription>
+    <detaileddescription>
+<para><parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>P1</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>first point type </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>P2</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>second point type </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/strategy_transform.hpp" line="338" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/strategy_transform.hpp" bodystart="337" bodyend="346"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1strategy_1_1transform_1_1from__spherical__polar__3__to__cartesian__3_1a3db1306a438b106c531a7b6907711e38" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::transform::from_spherical_polar_3_to_cartesian_3</scope><name>apply</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

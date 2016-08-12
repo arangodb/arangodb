@@ -1,0 +1,246 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="classboost_1_1geometry_1_1segment__iterator" kind="class" prot="public">
+    <compoundname>boost::geometry::segment_iterator</compoundname>
+    <includes local="no">segment_iterator.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename Geometry</type>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="private-type">
+      <memberdef kind="typedef" id="classboost_1_1geometry_1_1segment__iterator_1adb7140f93d63783a81c00f5df0d92bca" prot="private" static="no">
+        <type>detail::segment_iterator::iterator_type&lt; Geometry &gt;::type</type>
+        <definition>typedef detail::segment_iterator::iterator_type&lt; Geometry &gt;::type boost::geometry::segment_iterator&lt; Geometry &gt;::base</definition>
+        <argsstring></argsstring>
+        <name>base</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/iterators/segment_iterator.hpp" line="257" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/iterators/segment_iterator.hpp" bodystart="257" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-type">
+      <memberdef kind="typedef" id="classboost_1_1geometry_1_1segment__iterator_1aef7647c5b989361cd047499331b60a45" prot="public" static="no">
+        <type>std::bidirectional_iterator_tag</type>
+        <definition>typedef std::bidirectional_iterator_tag boost::geometry::segment_iterator&lt; Geometry &gt;::iterator_category</definition>
+        <argsstring></argsstring>
+        <name>iterator_category</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/iterators/segment_iterator.hpp" line="283" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/iterators/segment_iterator.hpp" bodystart="283" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="friend">
+      <memberdef kind="friend" id="classboost_1_1geometry_1_1segment__iterator_1ad2b2c28f715a9ff056c4e14ff3b4523a" prot="private" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>friend class</type>
+        <definition>friend class segment_iterator</definition>
+        <argsstring></argsstring>
+        <name>segment_iterator</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/iterators/segment_iterator.hpp" line="264" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/iterators/segment_iterator.hpp" bodystart="264" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="friend" id="classboost_1_1geometry_1_1segment__iterator_1ac6a4722b1d18044752d3f72589a717b2" prot="private" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename G</type>
+          </param>
+        </templateparamlist>
+        <type>friend <ref refid="classboost_1_1geometry_1_1segment__iterator" kindref="compound">segment_iterator</ref>&lt; G const  &gt;</type>
+        <definition>segment_iterator&lt;G const&gt; segments_begin</definition>
+        <argsstring>(G const &amp;)</argsstring>
+        <name>segments_begin</name>
+        <param>
+          <type>G const &amp;</type>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/iterators/segment_iterator.hpp" line="267"/>
+      </memberdef>
+      <memberdef kind="friend" id="classboost_1_1geometry_1_1segment__iterator_1a1747951ef36f7b208f8fb86c40bb76fc" prot="private" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename G</type>
+          </param>
+        </templateparamlist>
+        <type>friend <ref refid="classboost_1_1geometry_1_1segment__iterator" kindref="compound">segment_iterator</ref>&lt; G const  &gt;</type>
+        <definition>segment_iterator&lt;G const&gt; segments_end</definition>
+        <argsstring>(G const &amp;)</argsstring>
+        <name>segments_end</name>
+        <param>
+          <type>G const &amp;</type>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/iterators/segment_iterator.hpp" line="270"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="private-func">
+      <memberdef kind="function" id="classboost_1_1geometry_1_1segment__iterator_1acd76ba6de506a08aca1d4ec45558b4b0" prot="private" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <type>base const *</type>
+        <definition>base const* boost::geometry::segment_iterator&lt; Geometry &gt;::base_ptr</definition>
+        <argsstring>() const </argsstring>
+        <name>base_ptr</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/iterators/segment_iterator.hpp" line="260" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/iterators/segment_iterator.hpp" bodystart="259" bodyend="262"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1segment__iterator_1a2c99f289ccd921aa74022735f03097a6" prot="private" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type></type>
+        <definition>boost::geometry::segment_iterator&lt; Geometry &gt;::segment_iterator</definition>
+        <argsstring>(base const &amp;base_it)</argsstring>
+        <name>segment_iterator</name>
+        <param>
+          <type>base const &amp;</type>
+          <declname>base_it</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/iterators/segment_iterator.hpp" line="272" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/iterators/segment_iterator.hpp" bodystart="272" bodyend="272"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="classboost_1_1geometry_1_1segment__iterator_1a4cf5df1545a2dff090b538146c06e4f7" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type><ref refid="classboost_1_1geometry_1_1segment__iterator" kindref="compound">segment_iterator</ref> &amp;</type>
+        <definition>segment_iterator&amp; boost::geometry::segment_iterator&lt; Geometry &gt;::operator++</definition>
+        <argsstring>()</argsstring>
+        <name>operator++</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/iterators/segment_iterator.hpp" line="306" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/iterators/segment_iterator.hpp" bodystart="305" bodyend="309"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1segment__iterator_1abcc052cc09f1c1a30591117e89db1fcf" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type><ref refid="classboost_1_1geometry_1_1segment__iterator" kindref="compound">segment_iterator</ref></type>
+        <definition>segment_iterator boost::geometry::segment_iterator&lt; Geometry &gt;::operator++</definition>
+        <argsstring>(int)</argsstring>
+        <name>operator++</name>
+        <param>
+          <type>int</type>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/iterators/segment_iterator.hpp" line="318" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/iterators/segment_iterator.hpp" bodystart="317" bodyend="322"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1segment__iterator_1a5a1175b8d0a80c4c6eb3f937981006f0" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type><ref refid="classboost_1_1geometry_1_1segment__iterator" kindref="compound">segment_iterator</ref> &amp;</type>
+        <definition>segment_iterator&amp; boost::geometry::segment_iterator&lt; Geometry &gt;::operator--</definition>
+        <argsstring>()</argsstring>
+        <name>operator--</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/iterators/segment_iterator.hpp" line="312" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/iterators/segment_iterator.hpp" bodystart="311" bodyend="315"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1segment__iterator_1a8f900574dab7c022f9e4e26337b27eda" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type><ref refid="classboost_1_1geometry_1_1segment__iterator" kindref="compound">segment_iterator</ref></type>
+        <definition>segment_iterator boost::geometry::segment_iterator&lt; Geometry &gt;::operator--</definition>
+        <argsstring>(int)</argsstring>
+        <name>operator--</name>
+        <param>
+          <type>int</type>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/iterators/segment_iterator.hpp" line="325" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/iterators/segment_iterator.hpp" bodystart="324" bodyend="329"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1segment__iterator_1a06681676a82bd4ebbbf35065239b5c71" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type></type>
+        <definition>boost::geometry::segment_iterator&lt; Geometry &gt;::segment_iterator</definition>
+        <argsstring>()</argsstring>
+        <name>segment_iterator</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/iterators/segment_iterator.hpp" line="285" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/iterators/segment_iterator.hpp" bodystart="285" bodyend="285"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1segment__iterator_1a3246db7884a1cea1ade3d2423d86a754" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename OtherGeometry</type>
+          </param>
+        </templateparamlist>
+        <type></type>
+        <definition>boost::geometry::segment_iterator&lt; Geometry &gt;::segment_iterator</definition>
+        <argsstring>(segment_iterator&lt; OtherGeometry &gt; const &amp;other)</argsstring>
+        <name>segment_iterator</name>
+        <param>
+          <type><ref refid="classboost_1_1geometry_1_1segment__iterator" kindref="compound">segment_iterator</ref>&lt; OtherGeometry &gt; const &amp;</type>
+          <declname>other</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/iterators/segment_iterator.hpp" line="290" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/iterators/segment_iterator.hpp" bodystart="288" bodyend="303"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/iterators/segment_iterator.hpp" line="252" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/iterators/segment_iterator.hpp" bodystart="250" bodyend="330"/>
+    <listofallmembers>
+      <member refid="classboost_1_1geometry_1_1segment__iterator_1adb7140f93d63783a81c00f5df0d92bca" prot="private" virt="non-virtual"><scope>boost::geometry::segment_iterator</scope><name>base</name></member>
+      <member refid="classboost_1_1geometry_1_1segment__iterator_1acd76ba6de506a08aca1d4ec45558b4b0" prot="private" virt="non-virtual"><scope>boost::geometry::segment_iterator</scope><name>base_ptr</name></member>
+      <member refid="classboost_1_1geometry_1_1segment__iterator_1aef7647c5b989361cd047499331b60a45" prot="public" virt="non-virtual"><scope>boost::geometry::segment_iterator</scope><name>iterator_category</name></member>
+      <member refid="classboost_1_1geometry_1_1segment__iterator_1a4cf5df1545a2dff090b538146c06e4f7" prot="public" virt="non-virtual"><scope>boost::geometry::segment_iterator</scope><name>operator++</name></member>
+      <member refid="classboost_1_1geometry_1_1segment__iterator_1abcc052cc09f1c1a30591117e89db1fcf" prot="public" virt="non-virtual"><scope>boost::geometry::segment_iterator</scope><name>operator++</name></member>
+      <member refid="classboost_1_1geometry_1_1segment__iterator_1a5a1175b8d0a80c4c6eb3f937981006f0" prot="public" virt="non-virtual"><scope>boost::geometry::segment_iterator</scope><name>operator--</name></member>
+      <member refid="classboost_1_1geometry_1_1segment__iterator_1a8f900574dab7c022f9e4e26337b27eda" prot="public" virt="non-virtual"><scope>boost::geometry::segment_iterator</scope><name>operator--</name></member>
+      <member refid="classboost_1_1geometry_1_1segment__iterator_1ad2b2c28f715a9ff056c4e14ff3b4523a" prot="private" virt="non-virtual"><scope>boost::geometry::segment_iterator</scope><name>segment_iterator</name></member>
+      <member refid="classboost_1_1geometry_1_1segment__iterator_1a2c99f289ccd921aa74022735f03097a6" prot="private" virt="non-virtual"><scope>boost::geometry::segment_iterator</scope><name>segment_iterator</name></member>
+      <member refid="classboost_1_1geometry_1_1segment__iterator_1a06681676a82bd4ebbbf35065239b5c71" prot="public" virt="non-virtual"><scope>boost::geometry::segment_iterator</scope><name>segment_iterator</name></member>
+      <member refid="classboost_1_1geometry_1_1segment__iterator_1a3246db7884a1cea1ade3d2423d86a754" prot="public" virt="non-virtual"><scope>boost::geometry::segment_iterator</scope><name>segment_iterator</name></member>
+      <member refid="classboost_1_1geometry_1_1segment__iterator_1ac6a4722b1d18044752d3f72589a717b2" prot="private" virt="non-virtual"><scope>boost::geometry::segment_iterator</scope><name>segments_begin</name></member>
+      <member refid="classboost_1_1geometry_1_1segment__iterator_1a1747951ef36f7b208f8fb86c40bb76fc" prot="private" virt="non-virtual"><scope>boost::geometry::segment_iterator</scope><name>segments_end</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

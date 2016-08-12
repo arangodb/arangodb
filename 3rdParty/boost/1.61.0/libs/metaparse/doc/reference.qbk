@@ -1,0 +1,376 @@
+[#reference]
+[section Reference]
+
+[section Parsers and combinators provided by the library]
+
+[#parsers]
+[section Parsers]
+
+[section Character]
+
+* [link alphanum alphanum]
+* [link digit digit]
+* [link letter letter]
+* [link lit lit]
+* [link lit_c lit_c]
+* [link one_char one_char]
+* [link one_char_except one_char_except]
+* [link one_char_except_c one_char_except_c]
+* [link range range]
+* [link range_c range_c]
+* [link space space]
+
+[endsect]
+
+[section Numeric]
+
+* [link digit_val digit_val]
+* [link int_ int_]
+
+[endsect]
+
+[section Whitespace]
+
+* [link space space]
+* [link spaces spaces]
+
+[endsect]
+
+[section Validation and error reporting]
+
+* [link empty empty]
+* [link fail fail]
+
+[endsect]
+
+[section Miscellaneous]
+
+* [link keyword keyword]
+* [link return_ return_]
+
+[endsect]
+
+[endsect]
+
+[#combinators]
+[section Combinators]
+
+[section Validation and error reporting]
+
+* [link accept_when accept_when]
+* [link change_error_message change_error_message]
+* [link entire_input entire_input]
+* [link except except]
+* [link fail_at_first_char_expected fail_at_first_char_expected]
+* [link transform_error transform_error]
+* [link transform_error_message transform_error_message]
+
+[endsect]
+
+[section Repetition]
+
+See the [link repetition Repetition] section of the
+[link manual User Manual] for a detailed comparison of the most common
+repetition combinators.
+
+[link finding-the-right-folding-parser-combinator Cheat-sheet] for
+choosing among the `fold*` parsers.
+
+* [link foldl foldl]
+* [link foldl1 foldl1]
+* [link foldl_reject_incomplete foldl_reject_incomplete]
+* [link foldl_reject_incomplete1 foldl_reject_incomplete1]
+* [link foldl_reject_incomplete_start_with_parser foldl_reject_incomplete_start_with_parser]
+* [link foldl_start_with_parser foldl_start_with_parser]
+* [link foldr foldr]
+* [link foldr1 foldr1]
+* [link foldr_reject_incomplete foldr_reject_incomplete]
+* [link foldr_reject_incomplete1 foldr_reject_incomplete1]
+* [link foldr_start_with_parser foldr_start_with_parser]
+* [link iterate iterate]
+* [link iterate_c iterate_c]
+* [link repeated repeated]
+* [link repeated1 repeated1]
+* [link repeated_reject_incomplete repeated_reject_incomplete]
+* [link repeated_reject_incomplete1 repeated_reject_incomplete1]
+* [link repeated_one_of repeated_one_of]
+* [link repeated_one_of1 repeated_one_of1]
+
+[endsect]
+
+[section Selection]
+
+* [link if_ if_]
+* [link one_of one_of]
+* [link one_of_c one_of_c]
+* [link optional optional]
+* [link repeated_one_of repeated_one_of]
+* [link repeated_one_of1 repeated_one_of1]
+
+[endsect]
+
+[section Sequence]
+
+* [link first_of first_of]
+* [link last_of last_of]
+* [link middle_of middle_of]
+* [link nth_of nth_of]
+* [link nth_of_c nth_of_c]
+* [link sequence sequence]
+* [link sequence_apply sequence_apply]
+
+[endsect]
+
+[section Result transformation (semantic actions)]
+
+* [link always always]
+* [link always_c always_c]
+* [link transform transform]
+
+[endsect]
+
+[section Miscellaneous]
+
+* [link grammar grammar]
+* [link look_ahead look_ahead]
+* [link token token]
+
+[endsect]
+
+[endsect]
+
+[endsect]
+
+[section Compile-time data structures and values]
+
+[section Result of parsing]
+
+* [link accept accept]
+* [link get_message get_message]
+* [link get_position get_position]
+* [link get_remaining get_remaining]
+* [link get_result get_result]
+* [link is_error is_error]
+* [link reject reject]
+
+[endsect]
+
+[section Source position]
+
+* [link get_col get_col]
+* [link get_line get_line]
+* [link get_prev_char get_prev_char]
+* [link next_char next_char]
+* [link next_line next_line]
+* [link source_position source_position]
+* [link source_position_tag source_position_tag]
+* [link start start]
+
+[endsect]
+
+[endsect]
+
+[#ref-string]
+[section String]
+
+* [link string string]
+* [link string_tag string_tag]
+* [link BOOST_METAPARSE_STRING BOOST_METAPARSE_STRING]
+
+[endsect]
+
+[section Errors]
+
+* [link digit_expected digit_expected]
+* [link end_of_input_expected end_of_input_expected]
+* [link expected_to_fail expected_to_fail]
+* [link index_out_of_range index_out_of_range]
+* [link letter_expected letter_expected]
+* [link literal_expected literal_expected]
+* [link none_of_the_expected_cases_found none_of_the_expected_cases_found]
+* [link unexpected_character unexpected_character]
+* [link unexpected_end_of_input unexpected_end_of_input]
+* [link unpaired unpaired]
+* [link whitespace_expected whitespace_expected]
+
+[endsect]
+
+[section Tags]
+
+* [link accept_tag accept_tag]
+* [link fail_tag fail_tag]
+* [link source_position_tag source_position_tag]
+
+[endsect]
+
+[section Utilities]
+
+* [link build_parser build_parser]
+* [link debug_parsing_error debug_parsing_error]
+* [link BOOST_METAPARSE_DEFINE_ERROR BOOST_METAPARSE_DEFINE_ERROR]
+* [link BOOST_METAPARSE_VERSION BOOST_METAPARSE_VERSION]
+* [link unless_error unless_error]
+
+Metaparse uses a number of general purpose metafunctions and metafunction
+classes.
+
+* [link digit_to_int digit_to_int]
+* [link digit_to_int_c digit_to_int_c]
+* [link int_to_digit int_to_digit]
+* [link int_to_digit_c int_to_digit_c]
+* [link in_range in_range]
+* [link in_range_c in_range_c]
+* [link is_digit is_digit]
+* [link is_lcase_letter is_lcase_letter]
+* [link is_letter is_letter]
+* [link is_ucase_letter is_ucase_letter]
+* [link is_whitespace is_whitespace]
+* [link is_whitespace_c is_whitespace_c]
+
+[endsect]
+
+[section Terms used by the library]
+
+* [link boxed_value boxed value]
+* [link currying currying]
+* [link lazy_metafunction lazy template metafunction]
+* [link nullary_metafunction nullary template metafunction]
+* [link parser parser]
+* [link parser_combinator parser combinator]
+* [link parsing_error_message parsing error message]
+* [link predicate predicate]
+* [link tag tag]
+* [link metafunction template metafunction]
+* [link metafunction_class template metafunction class]
+* [link metaprogramming_value template metaprogramming value]
+
+[endsect]
+
+[section Alphabetical]
+
+[include accept.qbk]
+[include accept_tag.qbk]
+[include accept_when.qbk]
+[include alphanum.qbk]
+[include always_c.qbk]
+[include always.qbk]
+[include BOOST_METAPARSE_DEFINE_ERROR.qbk]
+[include BOOST_METAPARSE_STRING.qbk]
+[include BOOST_METAPARSE_VERSION.qbk]
+[include boxed_value.qbk]
+[include build_parser.qbk]
+[include change_error_message.qbk]
+[include currying.qbk]
+[include debug_parsing_error.qbk]
+[include digit_expected.qbk]
+[include digit.qbk]
+[include digit_to_int_c.qbk]
+[include digit_to_int.qbk]
+[include digit_val.qbk]
+[include empty.qbk]
+[include end_of_input_expected.qbk]
+[include entire_input.qbk]
+[include except.qbk]
+[include expected_to_fail.qbk]
+[include fail_at_first_char_expected.qbk]
+[include fail.qbk]
+[include fail_tag.qbk]
+[include first_of.qbk]
+[include foldl1.qbk]
+[include foldl_reject_incomplete.qbk]
+[include foldl_reject_incomplete1.qbk]
+[include foldl_reject_incomplete_start_with_parser.qbk]
+[include foldl_start_with_parser.qbk]
+[include foldl.qbk]
+[include foldr1.qbk]
+[include foldr_reject_incomplete.qbk]
+[include foldr_reject_incomplete1.qbk]
+[include foldr_start_with_parser.qbk]
+[include foldr.qbk]
+[include get_col.qbk]
+[include get_line.qbk]
+[include get_message.qbk]
+[include get_position.qbk]
+[include get_prev_char.qbk]
+[include get_remaining.qbk]
+[include get_result.qbk]
+[include grammar.qbk]
+[include if_.qbk]
+[include index_out_of_range.qbk]
+[include in_range_c.qbk]
+[include in_range.qbk]
+[include int_.qbk]
+[include int_to_digit_c.qbk]
+[include int_to_digit.qbk]
+[include is_digit.qbk]
+[include is_error.qbk]
+[include is_lcase_letter.qbk]
+[include is_letter.qbk]
+[include is_ucase_letter.qbk]
+[include is_whitespace_c.qbk]
+[include is_whitespace.qbk]
+[include iterate_c.qbk]
+[include iterate.qbk]
+[include keyword.qbk]
+[include last_of.qbk]
+[include lazy_metafunction.qbk]
+[include letter_expected.qbk]
+[include letter.qbk]
+[include lit_c.qbk]
+[include literal_expected.qbk]
+[include lit.qbk]
+[include look_ahead.qbk]
+[include metafunction_class.qbk]
+[include metafunction.qbk]
+[include metaprogramming_value.qbk]
+[include middle_of.qbk]
+[include next_char.qbk]
+[include next_line.qbk]
+[include none_of_the_expected_cases_found.qbk]
+[include nth_of_c.qbk]
+[include nth_of.qbk]
+[include nullary_metafunction.qbk]
+[include one_char_except_c.qbk]
+[include one_char_except.qbk]
+[include one_char.qbk]
+[include one_of_c.qbk]
+[include one_of.qbk]
+[include optional.qbk]
+[include parser_combinator.qbk]
+[include parser.qbk]
+[include parsing_error_message.qbk]
+[include predicate.qbk]
+[include range_c.qbk]
+[include range.qbk]
+[include reject.qbk]
+[include repeated1.qbk]
+[include repeated_reject_incomplete1.qbk]
+[include repeated_reject_incomplete.qbk]
+[include repeated_one_of1.qbk]
+[include repeated_one_of.qbk]
+[include repeated.qbk]
+[include return_.qbk]
+[include sequence.qbk]
+[include sequence_apply.qbk]
+[include source_position.qbk]
+[include source_position_tag.qbk]
+[include space.qbk]
+[include spaces.qbk]
+[include start.qbk]
+[include string.qbk]
+[include string_tag.qbk]
+[include tag.qbk]
+[include token.qbk]
+[include transform_error_message.qbk]
+[include transform_error.qbk]
+[include transform.qbk]
+[include unexpected_character.qbk]
+[include unexpected_end_of_input.qbk]
+[include unless_error.qbk]
+[include unpaired.qbk]
+[include whitespace_expected.qbk]
+
+[endsect]
+
+[endsect]
+

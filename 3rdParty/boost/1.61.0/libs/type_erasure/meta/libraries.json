@@ -1,0 +1,14 @@
+{
+    "key": "type_erasure",
+    "name": "Type Erasure",
+    "authors": [
+        "Steven Watanabe"
+    ],
+    "description": "Runtime polymorphism based on concepts.",
+    "category": [
+        "Data"
+    ],
+    "maintainers": [
+        "Steven Watanabe <steven -at- providere-consulting.com>"
+    ]
+}

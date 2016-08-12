@@ -1,0 +1,13 @@
+[article Quickbook Role Test
+[quickbook 1.7]
+]
+
+[role keyword Keyword] [role keyword]
+
+[template r red]
+[template r2 road]
+[r2]
+[role [r] Red] [role [r]]
+[role three-colours-[r] Three Colours Red]
+[role [r]-[r2] Red Road]
+

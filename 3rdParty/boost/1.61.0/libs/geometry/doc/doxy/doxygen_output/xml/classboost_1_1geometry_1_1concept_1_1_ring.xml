@@ -1,0 +1,23 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="classboost_1_1geometry_1_1concept_1_1_ring" kind="class" prot="public">
+    <compoundname>boost::geometry::concept::Ring</compoundname>
+    <includes local="no">ring_concept.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename Geometry</type>
+      </param>
+    </templateparamlist>
+    <briefdescription>
+<para>ring concept </para>    </briefdescription>
+    <detaileddescription>
+<para><simplesect kind="par"><title>Formal definition:</title><para>The ring concept is defined as following:<itemizedlist>
+<listitem><para>there must be a specialization of <ref refid="structboost_1_1geometry_1_1traits_1_1tag" kindref="compound">traits::tag</ref> defining <ref refid="structboost_1_1geometry_1_1ring__tag" kindref="compound">ring_tag</ref> as type</para></listitem><listitem><para>it must behave like a Boost.Range</para></listitem><listitem><para>there can optionally be a specialization of <ref refid="structboost_1_1geometry_1_1traits_1_1point__order" kindref="compound">traits::point_order</ref> defining the order or orientation of its points, clockwise or counterclockwise.</para></listitem><listitem><para>it must implement a std::back_insert_iterator (This is the same as the for the concept <ref refid="classboost_1_1geometry_1_1concept_1_1_linestring" kindref="compound">Linestring</ref>, and described there)</para></listitem></itemizedlist>
+</para></simplesect>
+<simplesect kind="note"><para>to fulfill the concepts, no traits class has to be specialized to define the point type. </para></simplesect>
+</para>    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/concepts/ring_concept.hpp" line="51" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/concepts/ring_concept.hpp" bodystart="50" bodyend="69"/>
+    <listofallmembers>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

@@ -1,0 +1,315 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Class thread_group EXTENSION</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../../index.html" title="Chapter&#160;1.&#160;Thread 4.7.0">
+<link rel="up" href="../thread_management.html" title="Thread Management">
+<link rel="prev" href="this_thread.html" title="Namespace this_thread">
+<link rel="next" href="../ScopedThreads.html" title="Scoped Threads">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="this_thread.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../thread_management.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../ScopedThreads.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="thread.thread_management.threadgroup"></a><a class="link" href="threadgroup.html" title="Class thread_group EXTENSION">Class <code class="computeroutput"><span class="identifier">thread_group</span></code> EXTENSION</a>
+</h3></div></div></div>
+<div class="toc"><dl>
+<dt><span class="section"><a href="threadgroup.html#thread.thread_management.threadgroup.constructor">Constructor</a></span></dt>
+<dt><span class="section"><a href="threadgroup.html#thread.thread_management.threadgroup.destructor">Destructor</a></span></dt>
+<dt><span class="section"><a href="threadgroup.html#thread.thread_management.threadgroup.create_thread">Member
+        function <code class="computeroutput"><span class="identifier">create_thread</span><span class="special">()</span></code></a></span></dt>
+<dt><span class="section"><a href="threadgroup.html#thread.thread_management.threadgroup.add_thread">Member
+        function <code class="computeroutput"><span class="identifier">add_thread</span><span class="special">()</span></code></a></span></dt>
+<dt><span class="section"><a href="threadgroup.html#thread.thread_management.threadgroup.remove_thread">Member
+        function <code class="computeroutput"><span class="identifier">remove_thread</span><span class="special">()</span></code></a></span></dt>
+<dt><span class="section"><a href="threadgroup.html#thread.thread_management.threadgroup.join_all">Member
+        function <code class="computeroutput"><span class="identifier">join_all</span><span class="special">()</span></code></a></span></dt>
+<dt><span class="section"><a href="threadgroup.html#thread.thread_management.threadgroup.is_this_thread_in">Member
+        function <code class="computeroutput"><span class="identifier">is_this_thread_in</span><span class="special">()</span></code></a></span></dt>
+<dt><span class="section"><a href="threadgroup.html#thread.thread_management.threadgroup.is_thread_in">Member
+        function <code class="computeroutput"><span class="identifier">is_thread_in</span><span class="special">()</span></code></a></span></dt>
+<dt><span class="section"><a href="threadgroup.html#thread.thread_management.threadgroup.interrupt_all">Member
+        function <code class="computeroutput"><span class="identifier">interrupt_all</span><span class="special">()</span></code></a></span></dt>
+<dt><span class="section"><a href="threadgroup.html#thread.thread_management.threadgroup.size">Member function
+        <code class="computeroutput"><span class="identifier">size</span><span class="special">()</span></code></a></span></dt>
+</dl></div>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">thread</span><span class="special">/</span><span class="identifier">thread</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="keyword">class</span> <span class="identifier">thread_group</span>
+<span class="special">{</span>
+<span class="keyword">public</span><span class="special">:</span>
+    <span class="identifier">thread_group</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">thread_group</span><span class="special">&amp;)</span> <span class="special">=</span> <span class="keyword">delete</span><span class="special">;</span>
+    <span class="identifier">thread_group</span><span class="special">&amp;</span> <span class="keyword">operator</span><span class="special">=(</span><span class="keyword">const</span> <span class="identifier">thread_group</span><span class="special">&amp;)</span> <span class="special">=</span> <span class="keyword">delete</span><span class="special">;</span>
+
+    <span class="identifier">thread_group</span><span class="special">();</span>
+    <span class="special">~</span><span class="identifier">thread_group</span><span class="special">();</span>
+
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">F</span><span class="special">&gt;</span>
+    <span class="identifier">thread</span><span class="special">*</span> <span class="identifier">create_thread</span><span class="special">(</span><span class="identifier">F</span> <span class="identifier">threadfunc</span><span class="special">);</span>
+    <span class="keyword">void</span> <span class="identifier">add_thread</span><span class="special">(</span><span class="identifier">thread</span><span class="special">*</span> <span class="identifier">thrd</span><span class="special">);</span>
+    <span class="keyword">void</span> <span class="identifier">remove_thread</span><span class="special">(</span><span class="identifier">thread</span><span class="special">*</span> <span class="identifier">thrd</span><span class="special">);</span>
+    <span class="keyword">bool</span> <span class="identifier">is_this_thread_in</span><span class="special">();</span>
+    <span class="keyword">bool</span> <span class="identifier">is_thread_in</span><span class="special">(</span><span class="identifier">thread</span><span class="special">*</span> <span class="identifier">thrd</span><span class="special">);</span>
+    <span class="keyword">void</span> <span class="identifier">join_all</span><span class="special">();</span>
+    <span class="keyword">void</span> <span class="identifier">interrupt_all</span><span class="special">();</span>
+    <span class="keyword">int</span> <span class="identifier">size</span><span class="special">()</span> <span class="keyword">const</span><span class="special">;</span>
+<span class="special">};</span>
+</pre>
+<p>
+        <code class="computeroutput"><span class="identifier">thread_group</span></code> provides for
+        a collection of threads that are related in some fashion. New threads can
+        be added to the group with <code class="computeroutput"><span class="identifier">add_thread</span></code>
+        and <code class="computeroutput"><span class="identifier">create_thread</span></code> member
+        functions. <code class="computeroutput"><span class="identifier">thread_group</span></code> is
+        not copyable or movable.
+      </p>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="thread.thread_management.threadgroup.constructor"></a><a class="link" href="threadgroup.html#thread.thread_management.threadgroup.constructor" title="Constructor">Constructor</a>
+</h4></div></div></div>
+<pre class="programlisting"><span class="identifier">thread_group</span><span class="special">();</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl>
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+                Create a new thread group with no threads.
+              </p></dd>
+</dl>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="thread.thread_management.threadgroup.destructor"></a><a class="link" href="threadgroup.html#thread.thread_management.threadgroup.destructor" title="Destructor">Destructor</a>
+</h4></div></div></div>
+<pre class="programlisting"><span class="special">~</span><span class="identifier">thread_group</span><span class="special">();</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl>
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+                Destroy <code class="computeroutput"><span class="special">*</span><span class="keyword">this</span></code>
+                and <code class="computeroutput"><span class="keyword">delete</span></code> all <a class="link" href="thread.html" title="Class thread"><code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">thread</span></code></a>
+                objects in the group.
+              </p></dd>
+</dl>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="thread.thread_management.threadgroup.create_thread"></a><a class="link" href="threadgroup.html#thread.thread_management.threadgroup.create_thread" title="Member function create_thread()">Member
+        function <code class="computeroutput"><span class="identifier">create_thread</span><span class="special">()</span></code></a>
+</h4></div></div></div>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">F</span><span class="special">&gt;</span>
+<span class="identifier">thread</span><span class="special">*</span> <span class="identifier">create_thread</span><span class="special">(</span><span class="identifier">F</span> <span class="identifier">threadfunc</span><span class="special">);</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl>
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+                Create a new <a class="link" href="thread.html" title="Class thread"><code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">thread</span></code></a> object as-if by
+                <code class="computeroutput"><span class="keyword">new</span> <span class="identifier">thread</span><span class="special">(</span><span class="identifier">threadfunc</span><span class="special">)</span></code> and add it to the group.
+              </p></dd>
+<dt><span class="term">Postcondition:</span></dt>
+<dd><p>
+                <code class="computeroutput"><span class="keyword">this</span><span class="special">-&gt;</span><span class="identifier">size</span><span class="special">()</span></code>
+                is increased by one, the new thread is running.
+              </p></dd>
+<dt><span class="term">Returns:</span></dt>
+<dd><p>
+                A pointer to the new <a class="link" href="thread.html" title="Class thread"><code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">thread</span></code></a> object.
+              </p></dd>
+</dl>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="thread.thread_management.threadgroup.add_thread"></a><a class="link" href="threadgroup.html#thread.thread_management.threadgroup.add_thread" title="Member function add_thread()">Member
+        function <code class="computeroutput"><span class="identifier">add_thread</span><span class="special">()</span></code></a>
+</h4></div></div></div>
+<pre class="programlisting"><span class="keyword">void</span> <span class="identifier">add_thread</span><span class="special">(</span><span class="identifier">thread</span><span class="special">*</span> <span class="identifier">thrd</span><span class="special">);</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl>
+<dt><span class="term">Precondition:</span></dt>
+<dd><p>
+                The expression <code class="computeroutput"><span class="keyword">delete</span> <span class="identifier">thrd</span></code> is well-formed and will not
+                result in undefined behaviour and <code class="computeroutput"><span class="identifier">is_thread_in</span><span class="special">(</span><span class="identifier">thrd</span><span class="special">)</span> <span class="special">==</span> <span class="keyword">false</span></code>.
+              </p></dd>
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+                Take ownership of the <a class="link" href="thread.html" title="Class thread"><code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">thread</span></code></a> object pointed to
+                by <code class="computeroutput"><span class="identifier">thrd</span></code> and add it
+                to the group.
+              </p></dd>
+<dt><span class="term">Postcondition:</span></dt>
+<dd><p>
+                <code class="computeroutput"><span class="keyword">this</span><span class="special">-&gt;</span><span class="identifier">size</span><span class="special">()</span></code>
+                is increased by one.
+              </p></dd>
+</dl>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="thread.thread_management.threadgroup.remove_thread"></a><a class="link" href="threadgroup.html#thread.thread_management.threadgroup.remove_thread" title="Member function remove_thread()">Member
+        function <code class="computeroutput"><span class="identifier">remove_thread</span><span class="special">()</span></code></a>
+</h4></div></div></div>
+<pre class="programlisting"><span class="keyword">void</span> <span class="identifier">remove_thread</span><span class="special">(</span><span class="identifier">thread</span><span class="special">*</span> <span class="identifier">thrd</span><span class="special">);</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl>
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+                If <code class="computeroutput"><span class="identifier">thrd</span></code> is a member
+                of the group, remove it without calling <code class="computeroutput"><span class="keyword">delete</span></code>.
+              </p></dd>
+<dt><span class="term">Postcondition:</span></dt>
+<dd><p>
+                If <code class="computeroutput"><span class="identifier">thrd</span></code> was a member
+                of the group, <code class="computeroutput"><span class="keyword">this</span><span class="special">-&gt;</span><span class="identifier">size</span><span class="special">()</span></code>
+                is decreased by one.
+              </p></dd>
+</dl>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="thread.thread_management.threadgroup.join_all"></a><a class="link" href="threadgroup.html#thread.thread_management.threadgroup.join_all" title="Member function join_all()">Member
+        function <code class="computeroutput"><span class="identifier">join_all</span><span class="special">()</span></code></a>
+</h4></div></div></div>
+<pre class="programlisting"><span class="keyword">void</span> <span class="identifier">join_all</span><span class="special">();</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl>
+<dt><span class="term">Requires:</span></dt>
+<dd><p>
+                <code class="computeroutput"><span class="identifier">is_this_thread_in</span><span class="special">()</span> <span class="special">==</span> <span class="keyword">false</span></code>.
+              </p></dd>
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+                Call <code class="computeroutput"><span class="identifier">join</span><span class="special">()</span></code>
+                on each <a class="link" href="thread.html" title="Class thread"><code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">thread</span></code></a> object in the group.
+              </p></dd>
+<dt><span class="term">Postcondition:</span></dt>
+<dd><p>
+                Every thread in the group has terminated.
+              </p></dd>
+<dt><span class="term">Note:</span></dt>
+<dd><p>
+                Since <a class="link" href="thread.html#thread.thread_management.thread.join" title="Member function join()"><code class="computeroutput"><span class="identifier">join</span><span class="special">()</span></code></a>
+                is one of the predefined <a class="link" href="tutorial.html#interruption_points"><span class="emphasis"><em>interruption
+                points</em></span></a>, <code class="computeroutput"><span class="identifier">join_all</span><span class="special">()</span></code> is also an interruption point.
+              </p></dd>
+</dl>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="thread.thread_management.threadgroup.is_this_thread_in"></a><a class="link" href="threadgroup.html#thread.thread_management.threadgroup.is_this_thread_in" title="Member function is_this_thread_in()">Member
+        function <code class="computeroutput"><span class="identifier">is_this_thread_in</span><span class="special">()</span></code></a>
+</h4></div></div></div>
+<pre class="programlisting"><span class="keyword">bool</span> <span class="identifier">is_this_thread_in</span><span class="special">();</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl>
+<dt><span class="term">Returns:</span></dt>
+<dd><p>
+                true if there is a thread <code class="computeroutput"><span class="identifier">th</span></code>
+                in the group such that <code class="computeroutput"><span class="identifier">th</span><span class="special">.</span><span class="identifier">get_id</span><span class="special">()</span> <span class="special">==</span> <span class="identifier">this_thread</span><span class="special">::</span><span class="identifier">get_id</span><span class="special">()</span></code>.
+              </p></dd>
+</dl>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="thread.thread_management.threadgroup.is_thread_in"></a><a class="link" href="threadgroup.html#thread.thread_management.threadgroup.is_thread_in" title="Member function is_thread_in()">Member
+        function <code class="computeroutput"><span class="identifier">is_thread_in</span><span class="special">()</span></code></a>
+</h4></div></div></div>
+<pre class="programlisting"><span class="keyword">bool</span> <span class="identifier">is_thread_in</span><span class="special">(</span><span class="identifier">thread</span><span class="special">*</span> <span class="identifier">thrd</span><span class="special">);</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl>
+<dt><span class="term">Returns:</span></dt>
+<dd><p>
+                true if there is a thread <code class="computeroutput"><span class="identifier">th</span></code>
+                in the group such that <code class="computeroutput"><span class="identifier">th</span><span class="special">.</span><span class="identifier">get_id</span><span class="special">()</span> <span class="special">==</span> <span class="identifier">thrd</span><span class="special">-&gt;</span><span class="identifier">get_id</span><span class="special">()</span></code>.
+              </p></dd>
+</dl>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="thread.thread_management.threadgroup.interrupt_all"></a><a class="link" href="threadgroup.html#thread.thread_management.threadgroup.interrupt_all" title="Member function interrupt_all()">Member
+        function <code class="computeroutput"><span class="identifier">interrupt_all</span><span class="special">()</span></code></a>
+</h4></div></div></div>
+<pre class="programlisting"><span class="keyword">void</span> <span class="identifier">interrupt_all</span><span class="special">();</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl>
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+                Call <code class="computeroutput"><span class="identifier">interrupt</span><span class="special">()</span></code>
+                on each <a class="link" href="thread.html" title="Class thread"><code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">thread</span></code></a> object in the group.
+              </p></dd>
+</dl>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="thread.thread_management.threadgroup.size"></a><a class="link" href="threadgroup.html#thread.thread_management.threadgroup.size" title="Member function size()">Member function
+        <code class="computeroutput"><span class="identifier">size</span><span class="special">()</span></code></a>
+</h4></div></div></div>
+<pre class="programlisting"><span class="keyword">int</span> <span class="identifier">size</span><span class="special">();</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl>
+<dt><span class="term">Returns:</span></dt>
+<dd><p>
+                The number of threads in the group.
+              </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+                Nothing.
+              </p></dd>
+</dl>
+</div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2007 -11 Anthony Williams<br>Copyright &#169; 2011 -15 Vicente J. Botet Escriba<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="this_thread.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../thread_management.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../ScopedThreads.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

@@ -1,0 +1,226 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="buffer__point__circle_8hpp" kind="file">
+    <compoundname>buffer_point_circle.hpp</compoundname>
+    <includes local="no">cstddef</includes>
+    <includes local="no">boost/range.hpp</includes>
+    <includes refid="math_8hpp" local="no">boost/geometry/util/math.hpp</includes>
+    <includes refid="strategies_2buffer_8hpp" local="no">boost/geometry/strategies/buffer.hpp</includes>
+    <includedby refid="strategies_8hpp" local="no">/home/travis/build/boostorg/boost/boost/geometry/strategies/strategies.hpp</includedby>
+    <incdepgraph>
+      <node id="56781">
+        <label>boost/geometry/util/math.hpp</label>
+        <link refid="math_8hpp"/>
+        <childnode refid="56782" relation="include">
+        </childnode>
+        <childnode refid="56783" relation="include">
+        </childnode>
+        <childnode refid="56784" relation="include">
+        </childnode>
+        <childnode refid="56785" relation="include">
+        </childnode>
+        <childnode refid="56786" relation="include">
+        </childnode>
+        <childnode refid="56787" relation="include">
+        </childnode>
+        <childnode refid="56788" relation="include">
+        </childnode>
+        <childnode refid="56789" relation="include">
+        </childnode>
+        <childnode refid="56790" relation="include">
+        </childnode>
+        <childnode refid="56805" relation="include">
+        </childnode>
+      </node>
+      <node id="56796">
+        <label>boost/type_traits/remove_const.hpp</label>
+      </node>
+      <node id="56783">
+        <label>limits</label>
+      </node>
+      <node id="56785">
+        <label>boost/math/constants/constants.hpp</label>
+      </node>
+      <node id="56799">
+        <label>boost/type_traits/is_const.hpp</label>
+      </node>
+      <node id="56782">
+        <label>cmath</label>
+      </node>
+      <node id="56798">
+        <label>boost/mpl/if.hpp</label>
+      </node>
+      <node id="56786">
+        <label>boost/math/special_functions/fpclassify.hpp</label>
+      </node>
+      <node id="56791">
+        <label>boost/mpl/assert.hpp</label>
+      </node>
+      <node id="56778">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/buffer_point_circle.hpp</label>
+        <link refid="buffer_point_circle.hpp"/>
+        <childnode refid="56779" relation="include">
+        </childnode>
+        <childnode refid="56780" relation="include">
+        </childnode>
+        <childnode refid="56781" relation="include">
+        </childnode>
+        <childnode refid="56807" relation="include">
+        </childnode>
+      </node>
+      <node id="56800">
+        <label>boost/type_traits/remove_reference.hpp</label>
+      </node>
+      <node id="56793">
+        <label>boost/geometry/core/coordinate_system.hpp</label>
+        <link refid="coordinate__system_8hpp"/>
+        <childnode refid="56791" relation="include">
+        </childnode>
+        <childnode refid="56794" relation="include">
+        </childnode>
+        <childnode refid="56803" relation="include">
+        </childnode>
+      </node>
+      <node id="56784">
+        <label>boost/core/ignore_unused.hpp</label>
+      </node>
+      <node id="56802">
+        <label>boost/geometry/core/tags.hpp</label>
+        <link refid="core_2tags_8hpp"/>
+      </node>
+      <node id="56792">
+        <label>boost/type_traits/integral_constant.hpp</label>
+      </node>
+      <node id="56807">
+        <label>boost/geometry/strategies/buffer.hpp</label>
+        <link refid="strategies_2buffer_8hpp"/>
+      </node>
+      <node id="56780">
+        <label>boost/range.hpp</label>
+      </node>
+      <node id="56788">
+        <label>boost/type_traits/is_fundamental.hpp</label>
+      </node>
+      <node id="56794">
+        <label>boost/geometry/core/point_type.hpp</label>
+        <link refid="point__type_8hpp"/>
+        <childnode refid="56791" relation="include">
+        </childnode>
+        <childnode refid="56795" relation="include">
+        </childnode>
+        <childnode refid="56796" relation="include">
+        </childnode>
+        <childnode refid="56797" relation="include">
+        </childnode>
+        <childnode refid="56801" relation="include">
+        </childnode>
+        <childnode refid="56802" relation="include">
+        </childnode>
+        <childnode refid="56803" relation="include">
+        </childnode>
+      </node>
+      <node id="56795">
+        <label>boost/range/value_type.hpp</label>
+      </node>
+      <node id="56779">
+        <label>cstddef</label>
+      </node>
+      <node id="56797">
+        <label>boost/geometry/core/ring_type.hpp</label>
+        <link refid="ring__type_8hpp"/>
+        <childnode refid="56791" relation="include">
+        </childnode>
+        <childnode refid="56798" relation="include">
+        </childnode>
+        <childnode refid="56795" relation="include">
+        </childnode>
+        <childnode refid="56799" relation="include">
+        </childnode>
+        <childnode refid="56796" relation="include">
+        </childnode>
+        <childnode refid="56800" relation="include">
+        </childnode>
+        <childnode refid="56801" relation="include">
+        </childnode>
+        <childnode refid="56802" relation="include">
+        </childnode>
+      </node>
+      <node id="56789">
+        <label>boost/type_traits/is_integral.hpp</label>
+      </node>
+      <node id="56806">
+        <label>boost/type_traits/is_floating_point.hpp</label>
+      </node>
+      <node id="56801">
+        <label>boost/geometry/core/tag.hpp</label>
+        <link refid="tag_8hpp"/>
+        <childnode refid="56802" relation="include">
+        </childnode>
+        <childnode refid="56803" relation="include">
+        </childnode>
+      </node>
+      <node id="56790">
+        <label>boost/geometry/core/cs.hpp</label>
+        <link refid="cs_8hpp"/>
+        <childnode refid="56779" relation="include">
+        </childnode>
+        <childnode refid="56791" relation="include">
+        </childnode>
+        <childnode refid="56792" relation="include">
+        </childnode>
+        <childnode refid="56793" relation="include">
+        </childnode>
+        <childnode refid="56802" relation="include">
+        </childnode>
+      </node>
+      <node id="56803">
+        <label>boost/geometry/util/bare_type.hpp</label>
+        <link refid="bare__type_8hpp"/>
+        <childnode refid="56796" relation="include">
+        </childnode>
+        <childnode refid="56804" relation="include">
+        </childnode>
+        <childnode refid="56800" relation="include">
+        </childnode>
+      </node>
+      <node id="56804">
+        <label>boost/type_traits/remove_pointer.hpp</label>
+      </node>
+      <node id="56805">
+        <label>boost/geometry/util/select_most_precise.hpp</label>
+        <link refid="select__most__precise_8hpp"/>
+        <childnode refid="56798" relation="include">
+        </childnode>
+        <childnode refid="56806" relation="include">
+        </childnode>
+        <childnode refid="56788" relation="include">
+        </childnode>
+      </node>
+      <node id="56787">
+        <label>boost/numeric/conversion/cast.hpp</label>
+      </node>
+    </incdepgraph>
+    <invincdepgraph>
+      <node id="56809">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/strategies/strategies.hpp</label>
+        <link refid="strategies_8hpp"/>
+      </node>
+      <node id="56808">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/buffer_point_circle.hpp</label>
+        <link refid="buffer_point_circle.hpp"/>
+        <childnode refid="56809" relation="include">
+        </childnode>
+      </node>
+    </invincdepgraph>
+    <innerclass refid="classboost_1_1geometry_1_1strategy_1_1buffer_1_1point__circle" prot="public">boost::geometry::strategy::buffer::point_circle</innerclass>
+    <innernamespace refid="namespaceboost">boost</innernamespace>
+    <innernamespace refid="namespaceboost_1_1geometry">boost::geometry</innernamespace>
+    <innernamespace refid="namespaceboost_1_1geometry_1_1strategy">boost::geometry::strategy</innernamespace>
+    <innernamespace refid="namespaceboost_1_1geometry_1_1strategy_1_1buffer">boost::geometry::strategy::buffer</innernamespace>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/buffer_point_circle.hpp"/>
+  </compounddef>
+</doxygen>

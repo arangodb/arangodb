@@ -1,0 +1,40 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="centroid__concept_8hpp" kind="file">
+    <compoundname>centroid_concept.hpp</compoundname>
+    <includes local="no">boost/concept_check.hpp</includes>
+    <includedby refid="algorithms_2centroid_8hpp" local="no">/home/travis/build/boostorg/boost/boost/geometry/algorithms/centroid.hpp</includedby>
+    <incdepgraph>
+      <node id="58217">
+        <label>boost/concept_check.hpp</label>
+      </node>
+      <node id="58216">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/strategies/concepts/centroid_concept.hpp</label>
+        <link refid="centroid_concept.hpp"/>
+        <childnode refid="58217" relation="include">
+        </childnode>
+      </node>
+    </incdepgraph>
+    <invincdepgraph>
+      <node id="58219">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/centroid.hpp</label>
+        <link refid="algorithms_2centroid_8hpp"/>
+      </node>
+      <node id="58218">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/strategies/concepts/centroid_concept.hpp</label>
+        <link refid="centroid_concept.hpp"/>
+        <childnode refid="58219" relation="include">
+        </childnode>
+      </node>
+    </invincdepgraph>
+    <innerclass refid="classboost_1_1geometry_1_1concept_1_1_centroid_strategy" prot="public">boost::geometry::concept::CentroidStrategy</innerclass>
+    <innernamespace refid="namespaceboost">boost</innernamespace>
+    <innernamespace refid="namespaceboost_1_1geometry">boost::geometry</innernamespace>
+    <innernamespace refid="namespaceboost_1_1geometry_1_1concept">boost::geometry::concept</innernamespace>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/concepts/centroid_concept.hpp"/>
+  </compounddef>
+</doxygen>

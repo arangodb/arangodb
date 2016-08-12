@@ -1,0 +1,84 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="classboost_1_1geometry_1_1de9im_1_1mask" kind="class" prot="public">
+    <compoundname>boost::geometry::de9im::mask</compoundname>
+    <includes local="no">de9im.hpp</includes>
+      <sectiondef kind="private-type">
+      <memberdef kind="typedef" id="classboost_1_1geometry_1_1de9im_1_1mask_1ab49c328d076af284d7786457ee35e9b6" prot="private" static="no">
+        <type>detail::relate::mask&lt; 3, 3 &gt;</type>
+        <definition>typedef detail::relate::mask&lt;3, 3&gt; boost::geometry::de9im::mask::base_type</definition>
+        <argsstring></argsstring>
+        <name>base_type</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/relate/de9im.hpp" line="102" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/relate/de9im.hpp" bodystart="102" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="classboost_1_1geometry_1_1de9im_1_1mask_1ab8349dc3d5bd694c422eefe607124c84" prot="public" static="no" const="no" explicit="yes" inline="yes" virt="non-virtual">
+        <type></type>
+        <definition>boost::geometry::de9im::mask::mask</definition>
+        <argsstring>(const char *code)</argsstring>
+        <name>mask</name>
+        <param>
+          <type>const char *</type>
+          <declname>code</declname>
+        </param>
+        <briefdescription>
+<para>The constructor. </para>        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>code</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>The mask pattern. </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/relate/de9im.hpp" line="111" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/relate/de9im.hpp" bodystart="109" bodyend="111"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1de9im_1_1mask_1a2d84d3ec1e80b9fe4abb595bb3bebfd4" prot="public" static="no" const="no" explicit="yes" inline="yes" virt="non-virtual">
+        <type></type>
+        <definition>boost::geometry::de9im::mask::mask</definition>
+        <argsstring>(std::string const &amp;code)</argsstring>
+        <name>mask</name>
+        <param>
+          <type>std::string const &amp;</type>
+          <declname>code</declname>
+        </param>
+        <briefdescription>
+<para>The constructor. </para>        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>code</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>The mask pattern. </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/relate/de9im.hpp" line="119" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/relate/de9im.hpp" bodystart="117" bodyend="119"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+<para>DE-9IM model intersection mask. </para>    </briefdescription>
+    <detaileddescription>
+<para>This mask can be used to check spatial relations as defined in Dimensionally Extended 9-Intersection Model.</para><para> <qbk>[heading See also]</qbk>   <qbk>* [link geometry.reference.algorithms.relate relate]</qbk>  </para>    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/relate/de9im.hpp" line="101" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/relate/de9im.hpp" bodystart="99" bodyend="120"/>
+    <listofallmembers>
+      <member refid="classboost_1_1geometry_1_1de9im_1_1mask_1ab49c328d076af284d7786457ee35e9b6" prot="private" virt="non-virtual"><scope>boost::geometry::de9im::mask</scope><name>base_type</name></member>
+      <member refid="classboost_1_1geometry_1_1de9im_1_1mask_1ab8349dc3d5bd694c422eefe607124c84" prot="public" virt="non-virtual"><scope>boost::geometry::de9im::mask</scope><name>mask</name></member>
+      <member refid="classboost_1_1geometry_1_1de9im_1_1mask_1a2d84d3ec1e80b9fe4abb595bb3bebfd4" prot="public" virt="non-virtual"><scope>boost::geometry::de9im::mask</scope><name>mask</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

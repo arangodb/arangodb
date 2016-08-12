@@ -1,0 +1,42 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="structboost_1_1geometry_1_1index_1_1detail_1_1equals_3_01_t_00_01void_01_4" kind="struct" prot="public">
+    <compoundname>boost::geometry::index::detail::equals&lt; T, void &gt;</compoundname>
+    <templateparamlist>
+      <param>
+        <type>typename T</type>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-static-func">
+      <memberdef kind="function" id="structboost_1_1geometry_1_1index_1_1detail_1_1equals_3_01_t_00_01void_01_4_1a1032c90cf671bad1593dd3764ed0b0a7" prot="public" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>bool</type>
+        <definition>static bool boost::geometry::index::detail::equals&lt; T, void &gt;::apply</definition>
+        <argsstring>(T const &amp;v1, T const &amp;v2)</argsstring>
+        <name>apply</name>
+        <param>
+          <type>T const &amp;</type>
+          <declname>v1</declname>
+        </param>
+        <param>
+          <type>T const &amp;</type>
+          <declname>v2</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/equal_to.hpp" line="40" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/equal_to.hpp" bodystart="39" bodyend="42"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/index/equal_to.hpp" line="38" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/equal_to.hpp" bodystart="37" bodyend="43"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1index_1_1detail_1_1equals_3_01_t_00_01void_01_4_1a1032c90cf671bad1593dd3764ed0b0a7" prot="public" virt="non-virtual"><scope>boost::geometry::index::detail::equals&lt; T, void &gt;</scope><name>apply</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

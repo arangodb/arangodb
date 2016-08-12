@@ -1,0 +1,34 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="dir_ab9fe656c4f32f2c1e58c621c71ae626" kind="dir">
+    <compoundname>/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/</compoundname>
+    <innerfile refid="area__surveyor_8hpp">area_surveyor.hpp</innerfile>
+    <innerfile refid="box__in__box_8hpp">box_in_box.hpp</innerfile>
+    <innerfile refid="buffer__end__flat_8hpp">buffer_end_flat.hpp</innerfile>
+    <innerfile refid="buffer__end__round_8hpp">buffer_end_round.hpp</innerfile>
+    <innerfile refid="buffer__join__miter_8hpp">buffer_join_miter.hpp</innerfile>
+    <innerfile refid="buffer__join__round_8hpp">buffer_join_round.hpp</innerfile>
+    <innerfile refid="buffer__join__round__by__divide_8hpp">buffer_join_round_by_divide.hpp</innerfile>
+    <innerfile refid="buffer__point__circle_8hpp">buffer_point_circle.hpp</innerfile>
+    <innerfile refid="buffer__point__square_8hpp">buffer_point_square.hpp</innerfile>
+    <innerfile refid="buffer__side__straight_8hpp">buffer_side_straight.hpp</innerfile>
+    <innerfile refid="centroid__average_8hpp">centroid_average.hpp</innerfile>
+    <innerfile refid="centroid__bashein__detmer_8hpp">centroid_bashein_detmer.hpp</innerfile>
+    <innerfile refid="centroid__weighted__length_8hpp">centroid_weighted_length.hpp</innerfile>
+    <innerfile refid="distance__projected__point_8hpp">distance_projected_point.hpp</innerfile>
+    <innerfile refid="distance__projected__point__ax_8hpp">distance_projected_point_ax.hpp</innerfile>
+    <innerfile refid="distance__pythagoras_8hpp">distance_pythagoras.hpp</innerfile>
+    <innerfile refid="distance__pythagoras__box__box_8hpp">distance_pythagoras_box_box.hpp</innerfile>
+    <innerfile refid="distance__pythagoras__point__box_8hpp">distance_pythagoras_point_box.hpp</innerfile>
+    <innerfile refid="point__in__box_8hpp">point_in_box.hpp</innerfile>
+    <innerfile refid="point__in__poly__crossings__multiply_8hpp">point_in_poly_crossings_multiply.hpp</innerfile>
+    <innerfile refid="point__in__poly__franklin_8hpp">point_in_poly_franklin.hpp</innerfile>
+    <innerfile refid="side__by__triangle_8hpp">side_by_triangle.hpp</innerfile>
+    <innerfile refid="side__of__intersection_8hpp">side_of_intersection.hpp</innerfile>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/"/>
+  </compounddef>
+</doxygen>

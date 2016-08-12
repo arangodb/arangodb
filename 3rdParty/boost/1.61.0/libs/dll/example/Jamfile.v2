@@ -1,0 +1,43 @@
+#
+#          Copyright Renato Tegon Forti 2011 - 2013.
+# Distributed under the Boost Software License, Version 1.0.
+#    (See accompanying file LICENSE_1_0.txt or copy at
+#          http://www.boost.org/LICENSE_1_0.txt)
+#
+
+project
+   : source-location .
+   : requirements
+
+   # linux
+      <target-os>linux:<linkflags>"-ldl" 
+
+   # others
+      <link>shared:<define>BOOST_ALL_DLL
+      <library>/boost/system//boost_system
+      <library>/boost/filesystem//boost_filesystem
+      <threading>multi
+      ;
+	
+   # our example plugin lib
+   lib my_plugin_sum : tutorial1/my_plugin_sum.cpp ;
+   lib my_plugin_aggregator : tutorial2/my_plugin_aggregator.cpp ;
+   lib getting_started_library : getting_started_library.cpp ;
+   install install-bin 
+      : my_plugin_sum my_plugin_aggregator getting_started_library :
+      <target-os>windows:<location>"C:/test/boost/application" 
+      <target-os>linux:<location>/test/boost/application ; 
+	  
+	  
+# shared library sub-system
+exe shared_library_load_plugin  
+   : shared_library_load_plugin.cpp
+   ;
+
+exe getting_started  
+   : getting_started.cpp
+   ;
+
+exe load_self  
+   : tutorail3/load_self.cpp
+   ;

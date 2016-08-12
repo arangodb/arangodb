@@ -1,0 +1,32 @@
+# Copyright 2012 Karsten Ahnert
+# Copyright 2013 Mario Mulansky
+#
+# Distributed under the Boost Software License, Version 1.0.
+# (See accompanying file LICENSE_1_0.txt or
+# copy at http://www.boost.org/LICENSE_1_0.txt)
+
+
+import boost ;
+import os ;
+
+boost.use-project ;
+
+
+# change these lines to fit you configuration
+local HOME = [ os.environ HOME ] ;
+local VEXCL_INCLUDE = [ os.environ VEXCL_ROOT ] ;
+OPENCL_INCLUDE = /usr/local/cuda/include ;
+
+
+
+lib opencl : : <name>OpenCL ;
+
+project : requirements
+        <implicit-dependency>/boost//headers
+        <include>$(VEXCL_INCLUDE)
+        <include>$(OPENCL_INCLUDE)
+        <toolset>gcc:<cxxflags>-std=c++0x
+        <library>/boost//system/
+        ;
+
+exe lorenz_ensemble : lorenz_ensemble.cpp opencl ;

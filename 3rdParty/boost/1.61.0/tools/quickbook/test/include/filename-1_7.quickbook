@@ -1,0 +1,21 @@
+[article Filename Test
+[quickbook 1.7]
+]
+
+__FILENAME__
+
+[heading Test 1]
+
+[include sub/*.quickbook]
+
+[heading Test 2]
+
+[include filename_include?.quickbook]
+
+[heading Test 3]
+
+[include su\[b\]/filename\\_include1.quickbook]
+
+[heading Test 4]
+
+[include su\\b/*.quickbook]

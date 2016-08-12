@@ -1,0 +1,748 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Semantic Actions and User-Defined Assertions</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../../index.html" title="Chapter&#160;1.&#160;Boost.Xpressive">
+<link rel="up" href="../../xpressive/user_s_guide.html" title="User's Guide">
+<link rel="prev" href="grammars_and_nested_matches.html" title="Grammars and Nested Matches">
+<link rel="next" href="symbol_tables_and_attributes.html" title="Symbol Tables and Attributes">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="grammars_and_nested_matches.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../xpressive/user_s_guide.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="symbol_tables_and_attributes.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_xpressive.user_s_guide.semantic_actions_and_user_defined_assertions"></a><a class="link" href="semantic_actions_and_user_defined_assertions.html" title="Semantic Actions and User-Defined Assertions">Semantic
+      Actions and User-Defined Assertions</a>
+</h3></div></div></div>
+<h3>
+<a name="boost_xpressive.user_s_guide.semantic_actions_and_user_defined_assertions.h0"></a>
+        <span><a name="boost_xpressive.user_s_guide.semantic_actions_and_user_defined_assertions.overview"></a></span><a class="link" href="semantic_actions_and_user_defined_assertions.html#boost_xpressive.user_s_guide.semantic_actions_and_user_defined_assertions.overview">Overview</a>
+      </h3>
+<p>
+        Imagine you want to parse an input string and build a <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">map</span><span class="special">&lt;&gt;</span></code>
+        from it. For something like that, matching a regular expression isn't enough.
+        You want to <span class="emphasis"><em>do something</em></span> when parts of your regular
+        expression match. Xpressive lets you attach semantic actions to parts of
+        your static regular expressions. This section shows you how.
+      </p>
+<h3>
+<a name="boost_xpressive.user_s_guide.semantic_actions_and_user_defined_assertions.h1"></a>
+        <span><a name="boost_xpressive.user_s_guide.semantic_actions_and_user_defined_assertions.semantic_actions"></a></span><a class="link" href="semantic_actions_and_user_defined_assertions.html#boost_xpressive.user_s_guide.semantic_actions_and_user_defined_assertions.semantic_actions">Semantic
+        Actions</a>
+      </h3>
+<p>
+        Consider the following code, which uses xpressive's semantic actions to parse
+        a string of word/integer pairs and stuffs them into a <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">map</span><span class="special">&lt;&gt;</span></code>.
+        It is described below.
+      </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">string</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">iostream</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">xpressive</span><span class="special">/</span><span class="identifier">xpressive</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">xpressive</span><span class="special">/</span><span class="identifier">regex_actions</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="keyword">using</span> <span class="keyword">namespace</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">xpressive</span><span class="special">;</span>
+
+<span class="keyword">int</span> <span class="identifier">main</span><span class="special">()</span>
+<span class="special">{</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">map</span><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span><span class="special">,</span> <span class="keyword">int</span><span class="special">&gt;</span> <span class="identifier">result</span><span class="special">;</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="identifier">str</span><span class="special">(</span><span class="string">"aaa=&gt;1 bbb=&gt;23 ccc=&gt;456"</span><span class="special">);</span>
+
+    <span class="comment">// Match a word and an integer, separated by =&gt;,</span>
+    <span class="comment">// and then stuff the result into a std::map&lt;&gt;</span>
+    <span class="identifier">sregex</span> <span class="identifier">pair</span> <span class="special">=</span> <span class="special">(</span> <span class="special">(</span><span class="identifier">s1</span><span class="special">=</span> <span class="special">+</span><span class="identifier">_w</span><span class="special">)</span> <span class="special">&gt;&gt;</span> <span class="string">"=&gt;"</span> <span class="special">&gt;&gt;</span> <span class="special">(</span><span class="identifier">s2</span><span class="special">=</span> <span class="special">+</span><span class="identifier">_d</span><span class="special">)</span> <span class="special">)</span>
+        <span class="special">[</span> <span class="identifier">ref</span><span class="special">(</span><span class="identifier">result</span><span class="special">)[</span><span class="identifier">s1</span><span class="special">]</span> <span class="special">=</span> <span class="identifier">as</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;(</span><span class="identifier">s2</span><span class="special">)</span> <span class="special">];</span>
+
+    <span class="comment">// Match one or more word/integer pairs, separated</span>
+    <span class="comment">// by whitespace.</span>
+    <span class="identifier">sregex</span> <span class="identifier">rx</span> <span class="special">=</span> <span class="identifier">pair</span> <span class="special">&gt;&gt;</span> <span class="special">*(+</span><span class="identifier">_s</span> <span class="special">&gt;&gt;</span> <span class="identifier">pair</span><span class="special">);</span>
+
+    <span class="keyword">if</span><span class="special">(</span><span class="identifier">regex_match</span><span class="special">(</span><span class="identifier">str</span><span class="special">,</span> <span class="identifier">rx</span><span class="special">))</span>
+    <span class="special">{</span>
+        <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">result</span><span class="special">[</span><span class="string">"aaa"</span><span class="special">]</span> <span class="special">&lt;&lt;</span> <span class="char">'\n'</span><span class="special">;</span>
+        <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">result</span><span class="special">[</span><span class="string">"bbb"</span><span class="special">]</span> <span class="special">&lt;&lt;</span> <span class="char">'\n'</span><span class="special">;</span>
+        <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">result</span><span class="special">[</span><span class="string">"ccc"</span><span class="special">]</span> <span class="special">&lt;&lt;</span> <span class="char">'\n'</span><span class="special">;</span>
+    <span class="special">}</span>
+
+    <span class="keyword">return</span> <span class="number">0</span><span class="special">;</span>
+<span class="special">}</span>
+</pre>
+<p>
+        This program prints the following:
+      </p>
+<pre class="programlisting">1
+23
+456
+</pre>
+<p>
+        The regular expression <code class="computeroutput"><span class="identifier">pair</span></code>
+        has two parts: the pattern and the action. The pattern says to match a word,
+        capturing it in sub-match 1, and an integer, capturing it in sub-match 2,
+        separated by <code class="computeroutput"><span class="string">"=&gt;"</span></code>.
+        The action is the part in square brackets: <code class="computeroutput"><span class="special">[</span>
+        <span class="identifier">ref</span><span class="special">(</span><span class="identifier">result</span><span class="special">)[</span><span class="identifier">s1</span><span class="special">]</span> <span class="special">=</span>
+        <span class="identifier">as</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;(</span><span class="identifier">s2</span><span class="special">)</span> <span class="special">]</span></code>. It says
+        to take sub-match one and use it to index into the <code class="computeroutput"><span class="identifier">results</span></code>
+        map, and assign to it the result of converting sub-match 2 to an integer.
+      </p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+          To use semantic actions with your static regexes, you must <code class="computeroutput"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">xpressive</span><span class="special">/</span><span class="identifier">regex_actions</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span></code>
+        </p></td></tr>
+</table></div>
+<p>
+        How does this work? Just as the rest of the static regular expression, the
+        part between brackets is an expression template. It encodes the action and
+        executes it later. The expression <code class="computeroutput"><span class="identifier">ref</span><span class="special">(</span><span class="identifier">result</span><span class="special">)</span></code> creates a lazy reference to the <code class="computeroutput"><span class="identifier">result</span></code> object. The larger expression <code class="computeroutput"><span class="identifier">ref</span><span class="special">(</span><span class="identifier">result</span><span class="special">)[</span><span class="identifier">s1</span><span class="special">]</span></code>
+        is a lazy map index operation. Later, when this action is getting executed,
+        <code class="computeroutput"><span class="identifier">s1</span></code> gets replaced with the
+        first <code class="literal"><code class="computeroutput"><a class="link" href="../../boost/xpressive/sub_match.html" title="Struct template sub_match">sub_match&lt;&gt;</a></code></code>.
+        Likewise, when <code class="computeroutput"><span class="identifier">as</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;(</span><span class="identifier">s2</span><span class="special">)</span></code> gets executed, <code class="computeroutput"><span class="identifier">s2</span></code>
+        is replaced with the second <code class="literal"><code class="computeroutput"><a class="link" href="../../boost/xpressive/sub_match.html" title="Struct template sub_match">sub_match&lt;&gt;</a></code></code>.
+        The <code class="computeroutput"><span class="identifier">as</span><span class="special">&lt;&gt;</span></code>
+        action converts its argument to the requested type using Boost.Lexical_cast.
+        The effect of the whole action is to insert a new word/integer pair into
+        the map.
+      </p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+          There is an important difference between the function <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">ref</span><span class="special">()</span></code> in <code class="computeroutput"><span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">ref</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span></code>
+          and <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">xpressive</span><span class="special">::</span><span class="identifier">ref</span><span class="special">()</span></code>
+          in <code class="computeroutput"><span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">xpressive</span><span class="special">/</span><span class="identifier">regex_actions</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span></code>. The first returns a plain <code class="computeroutput"><span class="identifier">reference_wrapper</span><span class="special">&lt;&gt;</span></code>
+          which behaves in many respects like an ordinary reference. By contrast,
+          <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">xpressive</span><span class="special">::</span><span class="identifier">ref</span><span class="special">()</span></code>
+          returns a <span class="emphasis"><em>lazy</em></span> reference that you can use in expressions
+          that are executed lazily. That is why we can say <code class="computeroutput"><span class="identifier">ref</span><span class="special">(</span><span class="identifier">result</span><span class="special">)[</span><span class="identifier">s1</span><span class="special">]</span></code>, even though <code class="computeroutput"><span class="identifier">result</span></code>
+          doesn't have an <code class="computeroutput"><span class="keyword">operator</span><span class="special">[]</span></code>
+          that would accept <code class="computeroutput"><span class="identifier">s1</span></code>.
+        </p></td></tr>
+</table></div>
+<p>
+        In addition to the sub-match placeholders <code class="computeroutput"><span class="identifier">s1</span></code>,
+        <code class="computeroutput"><span class="identifier">s2</span></code>, etc., you can also use
+        the placeholder <code class="computeroutput"><span class="identifier">_</span></code> within
+        an action to refer back to the string matched by the sub-expression to which
+        the action is attached. For instance, you can use the following regex to
+        match a bunch of digits, interpret them as an integer and assign the result
+        to a local variable:
+      </p>
+<pre class="programlisting"><span class="keyword">int</span> <span class="identifier">i</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span>
+<span class="comment">// Here, _ refers back to all the</span>
+<span class="comment">// characters matched by (+_d)</span>
+<span class="identifier">sregex</span> <span class="identifier">rex</span> <span class="special">=</span> <span class="special">(+</span><span class="identifier">_d</span><span class="special">)[</span> <span class="identifier">ref</span><span class="special">(</span><span class="identifier">i</span><span class="special">)</span> <span class="special">=</span> <span class="identifier">as</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;(</span><span class="identifier">_</span><span class="special">)</span> <span class="special">];</span>
+</pre>
+<h4>
+<a name="boost_xpressive.user_s_guide.semantic_actions_and_user_defined_assertions.h2"></a>
+        <span><a name="boost_xpressive.user_s_guide.semantic_actions_and_user_defined_assertions.lazy_action_execution"></a></span><a class="link" href="semantic_actions_and_user_defined_assertions.html#boost_xpressive.user_s_guide.semantic_actions_and_user_defined_assertions.lazy_action_execution">Lazy
+        Action Execution</a>
+      </h4>
+<p>
+        What does it mean, exactly, to attach an action to part of a regular expression
+        and perform a match? When does the action execute? If the action is part
+        of a repeated sub-expression, does the action execute once or many times?
+        And if the sub-expression initially matches, but ultimately fails because
+        the rest of the regular expression fails to match, is the action executed
+        at all?
+      </p>
+<p>
+        The answer is that by default, actions are executed <span class="emphasis"><em>lazily</em></span>.
+        When a sub-expression matches a string, its action is placed on a queue,
+        along with the current values of any sub-matches to which the action refers.
+        If the match algorithm must backtrack, actions are popped off the queue as
+        necessary. Only after the entire regex has matched successfully are the actions
+        actually exeucted. They are executed all at once, in the order in which they
+        were added to the queue, as the last step before <code class="literal"><code class="computeroutput"><a class="link" href="../../boost/xpressive/regex_match.html" title="Function regex_match">regex_match()</a></code></code>
+        returns.
+      </p>
+<p>
+        For example, consider the following regex that increments a counter whenever
+        it finds a digit.
+      </p>
+<pre class="programlisting"><span class="keyword">int</span> <span class="identifier">i</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="identifier">str</span><span class="special">(</span><span class="string">"1!2!3?"</span><span class="special">);</span>
+<span class="comment">// count the exciting digits, but not the</span>
+<span class="comment">// questionable ones.</span>
+<span class="identifier">sregex</span> <span class="identifier">rex</span> <span class="special">=</span> <span class="special">+(</span> <span class="identifier">_d</span> <span class="special">[</span> <span class="special">++</span><span class="identifier">ref</span><span class="special">(</span><span class="identifier">i</span><span class="special">)</span> <span class="special">]</span> <span class="special">&gt;&gt;</span> <span class="char">'!'</span> <span class="special">);</span>
+<span class="identifier">regex_search</span><span class="special">(</span><span class="identifier">str</span><span class="special">,</span> <span class="identifier">rex</span><span class="special">);</span>
+<span class="identifier">assert</span><span class="special">(</span> <span class="identifier">i</span> <span class="special">==</span> <span class="number">2</span> <span class="special">);</span>
+</pre>
+<p>
+        The action <code class="computeroutput"><span class="special">++</span><span class="identifier">ref</span><span class="special">(</span><span class="identifier">i</span><span class="special">)</span></code>
+        is queued three times: once for each found digit. But it is only <span class="emphasis"><em>executed</em></span>
+        twice: once for each digit that precedes a <code class="computeroutput"><span class="char">'!'</span></code>
+        character. When the <code class="computeroutput"><span class="char">'?'</span></code> character
+        is encountered, the match algorithm backtracks, removing the final action
+        from the queue.
+      </p>
+<h4>
+<a name="boost_xpressive.user_s_guide.semantic_actions_and_user_defined_assertions.h3"></a>
+        <span><a name="boost_xpressive.user_s_guide.semantic_actions_and_user_defined_assertions.immediate_action_execution"></a></span><a class="link" href="semantic_actions_and_user_defined_assertions.html#boost_xpressive.user_s_guide.semantic_actions_and_user_defined_assertions.immediate_action_execution">Immediate
+        Action Execution</a>
+      </h4>
+<p>
+        When you want semantic actions to execute immediately, you can wrap the sub-expression
+        containing the action in a <code class="literal"><code class="computeroutput"><a class="link" href="../../boost/xpressive/keep.html" title="Function template keep">keep()</a></code></code>.
+        <code class="computeroutput"><span class="identifier">keep</span><span class="special">()</span></code>
+        turns off back-tracking for its sub-expression, but it also causes any actions
+        queued by the sub-expression to execute at the end of the <code class="computeroutput"><span class="identifier">keep</span><span class="special">()</span></code>. It is as if the sub-expression in the
+        <code class="computeroutput"><span class="identifier">keep</span><span class="special">()</span></code>
+        were compiled into an independent regex object, and matching the <code class="computeroutput"><span class="identifier">keep</span><span class="special">()</span></code>
+        is like a separate invocation of <code class="computeroutput"><span class="identifier">regex_search</span><span class="special">()</span></code>. It matches characters and executes actions
+        but never backtracks or unwinds. For example, imagine the above example had
+        been written as follows:
+      </p>
+<pre class="programlisting"><span class="keyword">int</span> <span class="identifier">i</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="identifier">str</span><span class="special">(</span><span class="string">"1!2!3?"</span><span class="special">);</span>
+<span class="comment">// count all the digits.</span>
+<span class="identifier">sregex</span> <span class="identifier">rex</span> <span class="special">=</span> <span class="special">+(</span> <span class="identifier">keep</span><span class="special">(</span> <span class="identifier">_d</span> <span class="special">[</span> <span class="special">++</span><span class="identifier">ref</span><span class="special">(</span><span class="identifier">i</span><span class="special">)</span> <span class="special">]</span> <span class="special">)</span> <span class="special">&gt;&gt;</span> <span class="char">'!'</span> <span class="special">);</span>
+<span class="identifier">regex_search</span><span class="special">(</span><span class="identifier">str</span><span class="special">,</span> <span class="identifier">rex</span><span class="special">);</span>
+<span class="identifier">assert</span><span class="special">(</span> <span class="identifier">i</span> <span class="special">==</span> <span class="number">3</span> <span class="special">);</span>
+</pre>
+<p>
+        We have wrapped the sub-expression <code class="computeroutput"><span class="identifier">_d</span>
+        <span class="special">[</span> <span class="special">++</span><span class="identifier">ref</span><span class="special">(</span><span class="identifier">i</span><span class="special">)</span> <span class="special">]</span></code> in <code class="computeroutput"><span class="identifier">keep</span><span class="special">()</span></code>.
+        Now, whenever this regex matches a digit, the action will be queued and then
+        immediately executed before we try to match a <code class="computeroutput"><span class="char">'!'</span></code>
+        character. In this case, the action executes three times.
+      </p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+          Like <code class="computeroutput"><span class="identifier">keep</span><span class="special">()</span></code>,
+          actions within <code class="literal"><code class="computeroutput"><a class="link" href="../../boost/xpressive/before.html" title="Function template before">before()</a></code></code>
+          and <code class="literal"><code class="computeroutput"><a class="link" href="../../boost/xpressive/after.html" title="Function template after">after()</a></code></code>
+          are also executed early when their sub-expressions have matched.
+        </p></td></tr>
+</table></div>
+<h4>
+<a name="boost_xpressive.user_s_guide.semantic_actions_and_user_defined_assertions.h4"></a>
+        <span><a name="boost_xpressive.user_s_guide.semantic_actions_and_user_defined_assertions.lazy_functions"></a></span><a class="link" href="semantic_actions_and_user_defined_assertions.html#boost_xpressive.user_s_guide.semantic_actions_and_user_defined_assertions.lazy_functions">Lazy
+        Functions</a>
+      </h4>
+<p>
+        So far, we've seen how to write semantic actions consisting of variables
+        and operators. But what if you want to be able to call a function from a
+        semantic action? Xpressive provides a mechanism to do this.
+      </p>
+<p>
+        The first step is to define a function object type. Here, for instance, is
+        a function object type that calls <code class="computeroutput"><span class="identifier">push</span><span class="special">()</span></code> on its argument:
+      </p>
+<pre class="programlisting"><span class="keyword">struct</span> <span class="identifier">push_impl</span>
+<span class="special">{</span>
+    <span class="comment">// Result type, needed for tr1::result_of</span>
+    <span class="keyword">typedef</span> <span class="keyword">void</span> <span class="identifier">result_type</span><span class="special">;</span>
+
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">Sequence</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">Value</span><span class="special">&gt;</span>
+    <span class="keyword">void</span> <span class="keyword">operator</span><span class="special">()(</span><span class="identifier">Sequence</span> <span class="special">&amp;</span><span class="identifier">seq</span><span class="special">,</span> <span class="identifier">Value</span> <span class="keyword">const</span> <span class="special">&amp;</span><span class="identifier">val</span><span class="special">)</span> <span class="keyword">const</span>
+    <span class="special">{</span>
+        <span class="identifier">seq</span><span class="special">.</span><span class="identifier">push</span><span class="special">(</span><span class="identifier">val</span><span class="special">);</span>
+    <span class="special">}</span>
+<span class="special">};</span>
+</pre>
+<p>
+        The next step is to use xpressive's <code class="computeroutput"><span class="identifier">function</span><span class="special">&lt;&gt;</span></code> template to define a function object
+        named <code class="computeroutput"><span class="identifier">push</span></code>:
+      </p>
+<pre class="programlisting"><span class="comment">// Global "push" function object.</span>
+<span class="identifier">function</span><span class="special">&lt;</span><span class="identifier">push_impl</span><span class="special">&gt;::</span><span class="identifier">type</span> <span class="keyword">const</span> <span class="identifier">push</span> <span class="special">=</span> <span class="special">{{}};</span>
+</pre>
+<p>
+        The initialization looks a bit odd, but this is because <code class="computeroutput"><span class="identifier">push</span></code>
+        is being statically initialized. That means it doesn't need to be constructed
+        at runtime. We can use <code class="computeroutput"><span class="identifier">push</span></code>
+        in semantic actions as follows:
+      </p>
+<pre class="programlisting"><span class="identifier">std</span><span class="special">::</span><span class="identifier">stack</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;</span> <span class="identifier">ints</span><span class="special">;</span>
+<span class="comment">// Match digits, cast them to an int</span>
+<span class="comment">// and push it on the stack.</span>
+<span class="identifier">sregex</span> <span class="identifier">rex</span> <span class="special">=</span> <span class="special">(+</span><span class="identifier">_d</span><span class="special">)[</span><span class="identifier">push</span><span class="special">(</span><span class="identifier">ref</span><span class="special">(</span><span class="identifier">ints</span><span class="special">),</span> <span class="identifier">as</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;(</span><span class="identifier">_</span><span class="special">))];</span>
+</pre>
+<p>
+        You'll notice that doing it this way causes member function invocations to
+        look like ordinary function invocations. You can choose to write your semantic
+        action in a different way that makes it look a bit more like a member function
+        call:
+      </p>
+<pre class="programlisting"><span class="identifier">sregex</span> <span class="identifier">rex</span> <span class="special">=</span> <span class="special">(+</span><span class="identifier">_d</span><span class="special">)[</span><span class="identifier">ref</span><span class="special">(</span><span class="identifier">ints</span><span class="special">)-&gt;*</span><span class="identifier">push</span><span class="special">(</span><span class="identifier">as</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;(</span><span class="identifier">_</span><span class="special">))];</span>
+</pre>
+<p>
+        Xpressive recognizes the use of the <code class="computeroutput"><span class="special">-&gt;*</span></code>
+        and treats this expression exactly the same as the one above.
+      </p>
+<p>
+        When your function object must return a type that depends on its arguments,
+        you can use a <code class="computeroutput"><span class="identifier">result</span><span class="special">&lt;&gt;</span></code>
+        member template instead of the <code class="computeroutput"><span class="identifier">result_type</span></code>
+        typedef. Here, for example, is a <code class="computeroutput"><span class="identifier">first</span></code>
+        function object that returns the <code class="computeroutput"><span class="identifier">first</span></code>
+        member of a <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">pair</span><span class="special">&lt;&gt;</span></code>
+        or <code class="literal"><code class="computeroutput"><a class="link" href="../../boost/xpressive/sub_match.html" title="Struct template sub_match">sub_match&lt;&gt;</a></code></code>:
+      </p>
+<pre class="programlisting"><span class="comment">// Function object that returns the</span>
+<span class="comment">// first element of a pair.</span>
+<span class="keyword">struct</span> <span class="identifier">first_impl</span>
+<span class="special">{</span>
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">Sig</span><span class="special">&gt;</span> <span class="keyword">struct</span> <span class="identifier">result</span> <span class="special">{};</span>
+
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">This</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">Pair</span><span class="special">&gt;</span>
+    <span class="keyword">struct</span> <span class="identifier">result</span><span class="special">&lt;</span><span class="identifier">This</span><span class="special">(</span><span class="identifier">Pair</span><span class="special">)&gt;</span>
+    <span class="special">{</span>
+        <span class="keyword">typedef</span> <span class="keyword">typename</span> <span class="identifier">remove_reference</span><span class="special">&lt;</span><span class="identifier">Pair</span><span class="special">&gt;</span>
+            <span class="special">::</span><span class="identifier">type</span><span class="special">::</span><span class="identifier">first_type</span> <span class="identifier">type</span><span class="special">;</span>
+    <span class="special">};</span>
+
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">Pair</span><span class="special">&gt;</span>
+    <span class="keyword">typename</span> <span class="identifier">Pair</span><span class="special">::</span><span class="identifier">first_type</span>
+    <span class="keyword">operator</span><span class="special">()(</span><span class="identifier">Pair</span> <span class="keyword">const</span> <span class="special">&amp;</span><span class="identifier">p</span><span class="special">)</span> <span class="keyword">const</span>
+    <span class="special">{</span>
+        <span class="keyword">return</span> <span class="identifier">p</span><span class="special">.</span><span class="identifier">first</span><span class="special">;</span>
+    <span class="special">}</span>
+<span class="special">};</span>
+
+<span class="comment">// OK, use as first(s1) to get the begin iterator</span>
+<span class="comment">// of the sub-match referred to by s1.</span>
+<span class="identifier">function</span><span class="special">&lt;</span><span class="identifier">first_impl</span><span class="special">&gt;::</span><span class="identifier">type</span> <span class="keyword">const</span> <span class="identifier">first</span> <span class="special">=</span> <span class="special">{{}};</span>
+</pre>
+<h4>
+<a name="boost_xpressive.user_s_guide.semantic_actions_and_user_defined_assertions.h5"></a>
+        <span><a name="boost_xpressive.user_s_guide.semantic_actions_and_user_defined_assertions.referring_to_local_variables"></a></span><a class="link" href="semantic_actions_and_user_defined_assertions.html#boost_xpressive.user_s_guide.semantic_actions_and_user_defined_assertions.referring_to_local_variables">Referring
+        to Local Variables</a>
+      </h4>
+<p>
+        As we've seen in the examples above, we can refer to local variables within
+        an actions using <code class="computeroutput"><span class="identifier">xpressive</span><span class="special">::</span><span class="identifier">ref</span><span class="special">()</span></code>.
+        Any such variables are held by reference by the regular expression, and care
+        should be taken to avoid letting those references dangle. For instance, in
+        the following code, the reference to <code class="computeroutput"><span class="identifier">i</span></code>
+        is left to dangle when <code class="computeroutput"><span class="identifier">bad_voodoo</span><span class="special">()</span></code> returns:
+      </p>
+<pre class="programlisting"><span class="identifier">sregex</span> <span class="identifier">bad_voodoo</span><span class="special">()</span>
+<span class="special">{</span>
+    <span class="keyword">int</span> <span class="identifier">i</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span>
+    <span class="identifier">sregex</span> <span class="identifier">rex</span> <span class="special">=</span> <span class="special">+(</span> <span class="identifier">_d</span> <span class="special">[</span> <span class="special">++</span><span class="identifier">ref</span><span class="special">(</span><span class="identifier">i</span><span class="special">)</span> <span class="special">]</span> <span class="special">&gt;&gt;</span> <span class="char">'!'</span> <span class="special">);</span>
+    <span class="comment">// ERROR! rex refers by reference to a local</span>
+    <span class="comment">// variable, which will dangle after bad_voodoo()</span>
+    <span class="comment">// returns.</span>
+    <span class="keyword">return</span> <span class="identifier">rex</span><span class="special">;</span>
+<span class="special">}</span>
+</pre>
+<p>
+        When writing semantic actions, it is your responsibility to make sure that
+        all the references do not dangle. One way to do that would be to make the
+        variables shared pointers that are held by the regex by value.
+      </p>
+<pre class="programlisting"><span class="identifier">sregex</span> <span class="identifier">good_voodoo</span><span class="special">(</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">shared_ptr</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;</span> <span class="identifier">pi</span><span class="special">)</span>
+<span class="special">{</span>
+    <span class="comment">// Use val() to hold the shared_ptr by value:</span>
+    <span class="identifier">sregex</span> <span class="identifier">rex</span> <span class="special">=</span> <span class="special">+(</span> <span class="identifier">_d</span> <span class="special">[</span> <span class="special">++*</span><span class="identifier">val</span><span class="special">(</span><span class="identifier">pi</span><span class="special">)</span> <span class="special">]</span> <span class="special">&gt;&gt;</span> <span class="char">'!'</span> <span class="special">);</span>
+    <span class="comment">// OK, rex holds a reference count to the integer.</span>
+    <span class="keyword">return</span> <span class="identifier">rex</span><span class="special">;</span>
+<span class="special">}</span>
+</pre>
+<p>
+        In the above code, we use <code class="computeroutput"><span class="identifier">xpressive</span><span class="special">::</span><span class="identifier">val</span><span class="special">()</span></code>
+        to hold the shared pointer by value. That's not normally necessary because
+        local variables appearing in actions are held by value by default, but in
+        this case, it is necessary. Had we written the action as <code class="computeroutput"><span class="special">++*</span><span class="identifier">pi</span></code>, it would have executed immediately.
+        That's because <code class="computeroutput"><span class="special">++*</span><span class="identifier">pi</span></code>
+        is not an expression template, but <code class="computeroutput"><span class="special">++*</span><span class="identifier">val</span><span class="special">(</span><span class="identifier">pi</span><span class="special">)</span></code> is.
+      </p>
+<p>
+        It can be tedious to wrap all your variables in <code class="computeroutput"><span class="identifier">ref</span><span class="special">()</span></code> and <code class="computeroutput"><span class="identifier">val</span><span class="special">()</span></code> in your semantic actions. Xpressive provides
+        the <code class="computeroutput"><span class="identifier">reference</span><span class="special">&lt;&gt;</span></code>
+        and <code class="computeroutput"><span class="identifier">value</span><span class="special">&lt;&gt;</span></code>
+        templates to make things easier. The following table shows the equivalencies:
+      </p>
+<div class="table">
+<a name="boost_xpressive.user_s_guide.semantic_actions_and_user_defined_assertions.t0"></a><p class="title"><b>Table&#160;1.12.&#160;reference&lt;&gt; and value&lt;&gt;</b></p>
+<div class="table-contents"><table class="table" summary="reference&lt;&gt; and value&lt;&gt;">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  This ...
+                </p>
+              </th>
+<th>
+                <p>
+                  ... is equivalent to this ...
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+</p>
+<pre class="programlisting"><span class="keyword">int</span> <span class="identifier">i</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span>
+
+<span class="identifier">sregex</span> <span class="identifier">rex</span> <span class="special">=</span> <span class="special">+(</span> <span class="identifier">_d</span> <span class="special">[</span> <span class="special">++</span><span class="identifier">ref</span><span class="special">(</span><span class="identifier">i</span><span class="special">)</span> <span class="special">]</span> <span class="special">&gt;&gt;</span> <span class="char">'!'</span> <span class="special">);</span></pre>
+<p>
+                </p>
+              </td>
+<td>
+                <p>
+</p>
+<pre class="programlisting"><span class="keyword">int</span> <span class="identifier">i</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span>
+<span class="identifier">reference</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;</span> <span class="identifier">ri</span><span class="special">(</span><span class="identifier">i</span><span class="special">);</span>
+<span class="identifier">sregex</span> <span class="identifier">rex</span> <span class="special">=</span> <span class="special">+(</span> <span class="identifier">_d</span> <span class="special">[</span> <span class="special">++</span><span class="identifier">ri</span> <span class="special">]</span> <span class="special">&gt;&gt;</span> <span class="char">'!'</span> <span class="special">);</span></pre>
+<p>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+</p>
+<pre class="programlisting"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">shared_ptr</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;</span> <span class="identifier">pi</span><span class="special">(</span><span class="keyword">new</span> <span class="keyword">int</span><span class="special">(</span><span class="number">0</span><span class="special">));</span>
+
+<span class="identifier">sregex</span> <span class="identifier">rex</span> <span class="special">=</span> <span class="special">+(</span> <span class="identifier">_d</span> <span class="special">[</span> <span class="special">++*</span><span class="identifier">val</span><span class="special">(</span><span class="identifier">pi</span><span class="special">)</span> <span class="special">]</span> <span class="special">&gt;&gt;</span> <span class="char">'!'</span> <span class="special">);</span></pre>
+<p>
+                </p>
+              </td>
+<td>
+                <p>
+</p>
+<pre class="programlisting"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">shared_ptr</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;</span> <span class="identifier">pi</span><span class="special">(</span><span class="keyword">new</span> <span class="keyword">int</span><span class="special">(</span><span class="number">0</span><span class="special">));</span>
+<span class="identifier">value</span><span class="special">&lt;</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">shared_ptr</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;</span> <span class="special">&gt;</span> <span class="identifier">vpi</span><span class="special">(</span><span class="identifier">pi</span><span class="special">);</span>
+<span class="identifier">sregex</span> <span class="identifier">rex</span> <span class="special">=</span> <span class="special">+(</span> <span class="identifier">_d</span> <span class="special">[</span> <span class="special">++*</span><span class="identifier">vpi</span> <span class="special">]</span> <span class="special">&gt;&gt;</span> <span class="char">'!'</span> <span class="special">);</span></pre>
+<p>
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<br class="table-break"><p>
+        As you can see, when using <code class="computeroutput"><span class="identifier">reference</span><span class="special">&lt;&gt;</span></code>, you need to first declare a local
+        variable and then declare a <code class="computeroutput"><span class="identifier">reference</span><span class="special">&lt;&gt;</span></code> to it. These two steps can be combined
+        into one using <code class="computeroutput"><span class="identifier">local</span><span class="special">&lt;&gt;</span></code>.
+      </p>
+<div class="table">
+<a name="boost_xpressive.user_s_guide.semantic_actions_and_user_defined_assertions.t1"></a><p class="title"><b>Table&#160;1.13.&#160;local&lt;&gt; vs. reference&lt;&gt;</b></p>
+<div class="table-contents"><table class="table" summary="local&lt;&gt; vs. reference&lt;&gt;">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  This ...
+                </p>
+              </th>
+<th>
+                <p>
+                  ... is equivalent to this ...
+                </p>
+              </th>
+</tr></thead>
+<tbody><tr>
+<td>
+                <p>
+</p>
+<pre class="programlisting"><span class="identifier">local</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;</span> <span class="identifier">i</span><span class="special">(</span><span class="number">0</span><span class="special">);</span>
+
+<span class="identifier">sregex</span> <span class="identifier">rex</span> <span class="special">=</span> <span class="special">+(</span> <span class="identifier">_d</span> <span class="special">[</span> <span class="special">++</span><span class="identifier">i</span> <span class="special">]</span> <span class="special">&gt;&gt;</span> <span class="char">'!'</span> <span class="special">);</span></pre>
+<p>
+                </p>
+              </td>
+<td>
+                <p>
+</p>
+<pre class="programlisting"><span class="keyword">int</span> <span class="identifier">i</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span>
+<span class="identifier">reference</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;</span> <span class="identifier">ri</span><span class="special">(</span><span class="identifier">i</span><span class="special">);</span>
+<span class="identifier">sregex</span> <span class="identifier">rex</span> <span class="special">=</span> <span class="special">+(</span> <span class="identifier">_d</span> <span class="special">[</span> <span class="special">++</span><span class="identifier">ri</span> <span class="special">]</span> <span class="special">&gt;&gt;</span> <span class="char">'!'</span> <span class="special">);</span></pre>
+<p>
+                </p>
+              </td>
+</tr></tbody>
+</table></div>
+</div>
+<br class="table-break"><p>
+        We can use <code class="computeroutput"><span class="identifier">local</span><span class="special">&lt;&gt;</span></code>
+        to rewrite the above example as follows:
+      </p>
+<pre class="programlisting"><span class="identifier">local</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;</span> <span class="identifier">i</span><span class="special">(</span><span class="number">0</span><span class="special">);</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="identifier">str</span><span class="special">(</span><span class="string">"1!2!3?"</span><span class="special">);</span>
+<span class="comment">// count the exciting digits, but not the</span>
+<span class="comment">// questionable ones.</span>
+<span class="identifier">sregex</span> <span class="identifier">rex</span> <span class="special">=</span> <span class="special">+(</span> <span class="identifier">_d</span> <span class="special">[</span> <span class="special">++</span><span class="identifier">i</span> <span class="special">]</span> <span class="special">&gt;&gt;</span> <span class="char">'!'</span> <span class="special">);</span>
+<span class="identifier">regex_search</span><span class="special">(</span><span class="identifier">str</span><span class="special">,</span> <span class="identifier">rex</span><span class="special">);</span>
+<span class="identifier">assert</span><span class="special">(</span> <span class="identifier">i</span><span class="special">.</span><span class="identifier">get</span><span class="special">()</span> <span class="special">==</span> <span class="number">2</span> <span class="special">);</span>
+</pre>
+<p>
+        Notice that we use <code class="computeroutput"><span class="identifier">local</span><span class="special">&lt;&gt;::</span><span class="identifier">get</span><span class="special">()</span></code> to access the value of the local variable.
+        Also, beware that <code class="computeroutput"><span class="identifier">local</span><span class="special">&lt;&gt;</span></code>
+        can be used to create a dangling reference, just as <code class="computeroutput"><span class="identifier">reference</span><span class="special">&lt;&gt;</span></code> can.
+      </p>
+<h4>
+<a name="boost_xpressive.user_s_guide.semantic_actions_and_user_defined_assertions.h6"></a>
+        <span><a name="boost_xpressive.user_s_guide.semantic_actions_and_user_defined_assertions.referring_to_non_local_variables"></a></span><a class="link" href="semantic_actions_and_user_defined_assertions.html#boost_xpressive.user_s_guide.semantic_actions_and_user_defined_assertions.referring_to_non_local_variables">Referring
+        to Non-Local Variables</a>
+      </h4>
+<p>
+        In the beginning of this section, we used a regex with a semantic action
+        to parse a string of word/integer pairs and stuff them into a <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">map</span><span class="special">&lt;&gt;</span></code>. That required that the map and the
+        regex be defined together and used before either could go out of scope. What
+        if we wanted to define the regex once and use it to fill lots of different
+        maps? We would rather pass the map into the <code class="literal"><code class="computeroutput"><a class="link" href="../../boost/xpressive/regex_match.html" title="Function regex_match">regex_match()</a></code></code>
+        algorithm rather than embed a reference to it directly in the regex object.
+        What we can do instead is define a placeholder and use that in the semantic
+        action instead of the map itself. Later, when we call one of the regex algorithms,
+        we can bind the reference to an actual map object. The following code shows
+        how.
+      </p>
+<pre class="programlisting"><span class="comment">// Define a placeholder for a map object:</span>
+<span class="identifier">placeholder</span><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">map</span><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span><span class="special">,</span> <span class="keyword">int</span><span class="special">&gt;</span> <span class="special">&gt;</span> <span class="identifier">_map</span><span class="special">;</span>
+
+<span class="comment">// Match a word and an integer, separated by =&gt;,</span>
+<span class="comment">// and then stuff the result into a std::map&lt;&gt;</span>
+<span class="identifier">sregex</span> <span class="identifier">pair</span> <span class="special">=</span> <span class="special">(</span> <span class="special">(</span><span class="identifier">s1</span><span class="special">=</span> <span class="special">+</span><span class="identifier">_w</span><span class="special">)</span> <span class="special">&gt;&gt;</span> <span class="string">"=&gt;"</span> <span class="special">&gt;&gt;</span> <span class="special">(</span><span class="identifier">s2</span><span class="special">=</span> <span class="special">+</span><span class="identifier">_d</span><span class="special">)</span> <span class="special">)</span>
+    <span class="special">[</span> <span class="identifier">_map</span><span class="special">[</span><span class="identifier">s1</span><span class="special">]</span> <span class="special">=</span> <span class="identifier">as</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;(</span><span class="identifier">s2</span><span class="special">)</span> <span class="special">];</span>
+
+<span class="comment">// Match one or more word/integer pairs, separated</span>
+<span class="comment">// by whitespace.</span>
+<span class="identifier">sregex</span> <span class="identifier">rx</span> <span class="special">=</span> <span class="identifier">pair</span> <span class="special">&gt;&gt;</span> <span class="special">*(+</span><span class="identifier">_s</span> <span class="special">&gt;&gt;</span> <span class="identifier">pair</span><span class="special">);</span>
+
+<span class="comment">// The string to parse</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="identifier">str</span><span class="special">(</span><span class="string">"aaa=&gt;1 bbb=&gt;23 ccc=&gt;456"</span><span class="special">);</span>
+
+<span class="comment">// Here is the actual map to fill in:</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">map</span><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span><span class="special">,</span> <span class="keyword">int</span><span class="special">&gt;</span> <span class="identifier">result</span><span class="special">;</span>
+
+<span class="comment">// Bind the _map placeholder to the actual map</span>
+<span class="identifier">smatch</span> <span class="identifier">what</span><span class="special">;</span>
+<span class="identifier">what</span><span class="special">.</span><span class="identifier">let</span><span class="special">(</span> <span class="identifier">_map</span> <span class="special">=</span> <span class="identifier">result</span> <span class="special">);</span>
+
+<span class="comment">// Execute the match and fill in result map</span>
+<span class="keyword">if</span><span class="special">(</span><span class="identifier">regex_match</span><span class="special">(</span><span class="identifier">str</span><span class="special">,</span> <span class="identifier">what</span><span class="special">,</span> <span class="identifier">rx</span><span class="special">))</span>
+<span class="special">{</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">result</span><span class="special">[</span><span class="string">"aaa"</span><span class="special">]</span> <span class="special">&lt;&lt;</span> <span class="char">'\n'</span><span class="special">;</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">result</span><span class="special">[</span><span class="string">"bbb"</span><span class="special">]</span> <span class="special">&lt;&lt;</span> <span class="char">'\n'</span><span class="special">;</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">result</span><span class="special">[</span><span class="string">"ccc"</span><span class="special">]</span> <span class="special">&lt;&lt;</span> <span class="char">'\n'</span><span class="special">;</span>
+<span class="special">}</span>
+</pre>
+<p>
+        This program displays:
+      </p>
+<pre class="programlisting">1
+23
+456
+</pre>
+<p>
+        We use <code class="computeroutput"><span class="identifier">placeholder</span><span class="special">&lt;&gt;</span></code>
+        here to define <code class="computeroutput"><span class="identifier">_map</span></code>, which
+        stands in for a <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">map</span><span class="special">&lt;&gt;</span></code>
+        variable. We can use the placeholder in the semantic action as if it were
+        a map. Then, we define a <code class="literal"><code class="computeroutput"><a class="link" href="../../boost/xpressive/match_results.html" title="Struct template match_results">match_results&lt;&gt;</a></code></code>
+        struct and bind an actual map to the placeholder with "<code class="computeroutput"><span class="identifier">what</span><span class="special">.</span><span class="identifier">let</span><span class="special">(</span> <span class="identifier">_map</span> <span class="special">=</span> <span class="identifier">result</span> <span class="special">);</span></code>". The <code class="literal"><code class="computeroutput"><a class="link" href="../../boost/xpressive/regex_match.html" title="Function regex_match">regex_match()</a></code></code>
+        call behaves as if the placeholder in the semantic action had been replaced
+        with a reference to <code class="computeroutput"><span class="identifier">result</span></code>.
+      </p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+          Placeholders in semantic actions are not <span class="emphasis"><em>actually</em></span>
+          replaced at runtime with references to variables. The regex object is never
+          mutated in any way during any of the regex algorithms, so they are safe
+          to use in multiple threads.
+        </p></td></tr>
+</table></div>
+<p>
+        The syntax for late-bound action arguments is a little different if you are
+        using <code class="literal"><code class="computeroutput"><a class="link" href="../../boost/xpressive/regex_iterator.html" title="Struct template regex_iterator">regex_iterator&lt;&gt;</a></code></code>
+        or <code class="literal"><code class="computeroutput"><a class="link" href="../../boost/xpressive/regex_token_iterator.html" title="Struct template regex_token_iterator">regex_token_iterator&lt;&gt;</a></code></code>.
+        The regex iterators accept an extra constructor parameter for specifying
+        the argument bindings. There is a <code class="computeroutput"><span class="identifier">let</span><span class="special">()</span></code> function that you can use to bind variables
+        to their placeholders. The following code demonstrates how.
+      </p>
+<pre class="programlisting"><span class="comment">// Define a placeholder for a map object:</span>
+<span class="identifier">placeholder</span><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">map</span><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span><span class="special">,</span> <span class="keyword">int</span><span class="special">&gt;</span> <span class="special">&gt;</span> <span class="identifier">_map</span><span class="special">;</span>
+
+<span class="comment">// Match a word and an integer, separated by =&gt;,</span>
+<span class="comment">// and then stuff the result into a std::map&lt;&gt;</span>
+<span class="identifier">sregex</span> <span class="identifier">pair</span> <span class="special">=</span> <span class="special">(</span> <span class="special">(</span><span class="identifier">s1</span><span class="special">=</span> <span class="special">+</span><span class="identifier">_w</span><span class="special">)</span> <span class="special">&gt;&gt;</span> <span class="string">"=&gt;"</span> <span class="special">&gt;&gt;</span> <span class="special">(</span><span class="identifier">s2</span><span class="special">=</span> <span class="special">+</span><span class="identifier">_d</span><span class="special">)</span> <span class="special">)</span>
+    <span class="special">[</span> <span class="identifier">_map</span><span class="special">[</span><span class="identifier">s1</span><span class="special">]</span> <span class="special">=</span> <span class="identifier">as</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;(</span><span class="identifier">s2</span><span class="special">)</span> <span class="special">];</span>
+
+<span class="comment">// The string to parse</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="identifier">str</span><span class="special">(</span><span class="string">"aaa=&gt;1 bbb=&gt;23 ccc=&gt;456"</span><span class="special">);</span>
+
+<span class="comment">// Here is the actual map to fill in:</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">map</span><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span><span class="special">,</span> <span class="keyword">int</span><span class="special">&gt;</span> <span class="identifier">result</span><span class="special">;</span>
+
+<span class="comment">// Create a regex_iterator to find all the matches</span>
+<span class="identifier">sregex_iterator</span> <span class="identifier">it</span><span class="special">(</span><span class="identifier">str</span><span class="special">.</span><span class="identifier">begin</span><span class="special">(),</span> <span class="identifier">str</span><span class="special">.</span><span class="identifier">end</span><span class="special">(),</span> <span class="identifier">pair</span><span class="special">,</span> <span class="identifier">let</span><span class="special">(</span><span class="identifier">_map</span><span class="special">=</span><span class="identifier">result</span><span class="special">));</span>
+<span class="identifier">sregex_iterator</span> <span class="identifier">end</span><span class="special">;</span>
+
+<span class="comment">// step through all the matches, and fill in</span>
+<span class="comment">// the result map</span>
+<span class="keyword">while</span><span class="special">(</span><span class="identifier">it</span> <span class="special">!=</span> <span class="identifier">end</span><span class="special">)</span>
+    <span class="special">++</span><span class="identifier">it</span><span class="special">;</span>
+
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">result</span><span class="special">[</span><span class="string">"aaa"</span><span class="special">]</span> <span class="special">&lt;&lt;</span> <span class="char">'\n'</span><span class="special">;</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">result</span><span class="special">[</span><span class="string">"bbb"</span><span class="special">]</span> <span class="special">&lt;&lt;</span> <span class="char">'\n'</span><span class="special">;</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">result</span><span class="special">[</span><span class="string">"ccc"</span><span class="special">]</span> <span class="special">&lt;&lt;</span> <span class="char">'\n'</span><span class="special">;</span>
+</pre>
+<p>
+        This program displays:
+      </p>
+<pre class="programlisting">1
+23
+456
+</pre>
+<h3>
+<a name="boost_xpressive.user_s_guide.semantic_actions_and_user_defined_assertions.h7"></a>
+        <span><a name="boost_xpressive.user_s_guide.semantic_actions_and_user_defined_assertions.user_defined_assertions"></a></span><a class="link" href="semantic_actions_and_user_defined_assertions.html#boost_xpressive.user_s_guide.semantic_actions_and_user_defined_assertions.user_defined_assertions">User-Defined
+        Assertions</a>
+      </h3>
+<p>
+        You are probably already familiar with regular expression <span class="emphasis"><em>assertions</em></span>.
+        In Perl, some examples are the <code class="literal">^</code> and <code class="literal">$</code>
+        assertions, which you can use to match the beginning and end of a string,
+        respectively. Xpressive lets you define your own assertions. A custom assertion
+        is a contition which must be true at a point in the match in order for the
+        match to succeed. You can check a custom assertion with xpressive's <code class="literal"><code class="computeroutput"><a class="link" href="../../boost/xpressive/check.html" title="Function template check">check()</a></code></code> function.
+      </p>
+<p>
+        There are a couple of ways to define a custom assertion. The simplest is
+        to use a function object. Let's say that you want to ensure that a sub-expression
+        matches a sub-string that is either 3 or 6 characters long. The following
+        struct defines such a predicate:
+      </p>
+<pre class="programlisting"><span class="comment">// A predicate that is true IFF a sub-match is</span>
+<span class="comment">// either 3 or 6 characters long.</span>
+<span class="keyword">struct</span> <span class="identifier">three_or_six</span>
+<span class="special">{</span>
+    <span class="keyword">bool</span> <span class="keyword">operator</span><span class="special">()(</span><span class="identifier">ssub_match</span> <span class="keyword">const</span> <span class="special">&amp;</span><span class="identifier">sub</span><span class="special">)</span> <span class="keyword">const</span>
+    <span class="special">{</span>
+        <span class="keyword">return</span> <span class="identifier">sub</span><span class="special">.</span><span class="identifier">length</span><span class="special">()</span> <span class="special">==</span> <span class="number">3</span> <span class="special">||</span> <span class="identifier">sub</span><span class="special">.</span><span class="identifier">length</span><span class="special">()</span> <span class="special">==</span> <span class="number">6</span><span class="special">;</span>
+    <span class="special">}</span>
+<span class="special">};</span>
+</pre>
+<p>
+        You can use this predicate within a regular expression as follows:
+      </p>
+<pre class="programlisting"><span class="comment">// match words of 3 characters or 6 characters.</span>
+<span class="identifier">sregex</span> <span class="identifier">rx</span> <span class="special">=</span> <span class="special">(</span><span class="identifier">bow</span> <span class="special">&gt;&gt;</span> <span class="special">+</span><span class="identifier">_w</span> <span class="special">&gt;&gt;</span> <span class="identifier">eow</span><span class="special">)[</span> <span class="identifier">check</span><span class="special">(</span><span class="identifier">three_or_six</span><span class="special">())</span> <span class="special">]</span> <span class="special">;</span>
+</pre>
+<p>
+        The above regular expression will find whole words that are either 3 or 6
+        characters long. The <code class="computeroutput"><span class="identifier">three_or_six</span></code>
+        predicate accepts a <code class="literal"><code class="computeroutput"><a class="link" href="../../boost/xpressive/sub_match.html" title="Struct template sub_match">sub_match&lt;&gt;</a></code></code>
+        that refers back to the part of the string matched by the sub-expression
+        to which the custom assertion is attached.
+      </p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+          The custom assertion participates in determining whether the match succeeds
+          or fails. Unlike actions, which execute lazily, custom assertions execute
+          immediately while the regex engine is searching for a match.
+        </p></td></tr>
+</table></div>
+<p>
+        Custom assertions can also be defined inline using the same syntax as for
+        semantic actions. Below is the same custom assertion written inline:
+      </p>
+<pre class="programlisting"><span class="comment">// match words of 3 characters or 6 characters.</span>
+<span class="identifier">sregex</span> <span class="identifier">rx</span> <span class="special">=</span> <span class="special">(</span><span class="identifier">bow</span> <span class="special">&gt;&gt;</span> <span class="special">+</span><span class="identifier">_w</span> <span class="special">&gt;&gt;</span> <span class="identifier">eow</span><span class="special">)[</span> <span class="identifier">check</span><span class="special">(</span><span class="identifier">length</span><span class="special">(</span><span class="identifier">_</span><span class="special">)==</span><span class="number">3</span> <span class="special">||</span> <span class="identifier">length</span><span class="special">(</span><span class="identifier">_</span><span class="special">)==</span><span class="number">6</span><span class="special">)</span> <span class="special">]</span> <span class="special">;</span>
+</pre>
+<p>
+        In the above, <code class="computeroutput"><span class="identifier">length</span><span class="special">()</span></code>
+        is a lazy function that calls the <code class="computeroutput"><span class="identifier">length</span><span class="special">()</span></code> member function of its argument, and <code class="computeroutput"><span class="identifier">_</span></code> is a placeholder that receives the <code class="computeroutput"><span class="identifier">sub_match</span></code>.
+      </p>
+<p>
+        Once you get the hang of writing custom assertions inline, they can be very
+        powerful. For example, you can write a regular expression that only matches
+        valid dates (for some suitably liberal definition of the term <span class="quote">&#8220;<span class="quote">valid</span>&#8221;</span>).
+      </p>
+<pre class="programlisting"><span class="keyword">int</span> <span class="keyword">const</span> <span class="identifier">days_per_month</span><span class="special">[]</span> <span class="special">=</span>
+    <span class="special">{</span><span class="number">31</span><span class="special">,</span> <span class="number">29</span><span class="special">,</span> <span class="number">31</span><span class="special">,</span> <span class="number">30</span><span class="special">,</span> <span class="number">31</span><span class="special">,</span> <span class="number">30</span><span class="special">,</span> <span class="number">31</span><span class="special">,</span> <span class="number">31</span><span class="special">,</span> <span class="number">30</span><span class="special">,</span> <span class="number">31</span><span class="special">,</span> <span class="number">31</span><span class="special">,</span> <span class="number">31</span><span class="special">};</span>
+
+<span class="identifier">mark_tag</span> <span class="identifier">month</span><span class="special">(</span><span class="number">1</span><span class="special">),</span> <span class="identifier">day</span><span class="special">(</span><span class="number">2</span><span class="special">);</span>
+<span class="comment">// find a valid date of the form month/day/year.</span>
+<span class="identifier">sregex</span> <span class="identifier">date</span> <span class="special">=</span>
+    <span class="special">(</span>
+        <span class="comment">// Month must be between 1 and 12 inclusive</span>
+        <span class="special">(</span><span class="identifier">month</span><span class="special">=</span> <span class="identifier">_d</span> <span class="special">&gt;&gt;</span> <span class="special">!</span><span class="identifier">_d</span><span class="special">)</span>     <span class="special">[</span> <span class="identifier">check</span><span class="special">(</span><span class="identifier">as</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;(</span><span class="identifier">_</span><span class="special">)</span> <span class="special">&gt;=</span> <span class="number">1</span>
+                                    <span class="special">&amp;&amp;</span> <span class="identifier">as</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;(</span><span class="identifier">_</span><span class="special">)</span> <span class="special">&lt;=</span> <span class="number">12</span><span class="special">)</span> <span class="special">]</span>
+    <span class="special">&gt;&gt;</span>  <span class="char">'/'</span>
+        <span class="comment">// Day must be between 1 and 31 inclusive</span>
+    <span class="special">&gt;&gt;</span>  <span class="special">(</span><span class="identifier">day</span><span class="special">=</span>   <span class="identifier">_d</span> <span class="special">&gt;&gt;</span> <span class="special">!</span><span class="identifier">_d</span><span class="special">)</span>     <span class="special">[</span> <span class="identifier">check</span><span class="special">(</span><span class="identifier">as</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;(</span><span class="identifier">_</span><span class="special">)</span> <span class="special">&gt;=</span> <span class="number">1</span>
+                                    <span class="special">&amp;&amp;</span> <span class="identifier">as</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;(</span><span class="identifier">_</span><span class="special">)</span> <span class="special">&lt;=</span> <span class="number">31</span><span class="special">)</span> <span class="special">]</span>
+    <span class="special">&gt;&gt;</span>  <span class="char">'/'</span>
+        <span class="comment">// Only consider years between 1970 and 2038</span>
+    <span class="special">&gt;&gt;</span>  <span class="special">(</span><span class="identifier">_d</span> <span class="special">&gt;&gt;</span> <span class="identifier">_d</span> <span class="special">&gt;&gt;</span> <span class="identifier">_d</span> <span class="special">&gt;&gt;</span> <span class="identifier">_d</span><span class="special">)</span> <span class="special">[</span> <span class="identifier">check</span><span class="special">(</span><span class="identifier">as</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;(</span><span class="identifier">_</span><span class="special">)</span> <span class="special">&gt;=</span> <span class="number">1970</span>
+                                    <span class="special">&amp;&amp;</span> <span class="identifier">as</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;(</span><span class="identifier">_</span><span class="special">)</span> <span class="special">&lt;=</span> <span class="number">2038</span><span class="special">)</span> <span class="special">]</span>
+    <span class="special">)</span>
+    <span class="comment">// Ensure the month actually has that many days!</span>
+    <span class="special">[</span> <span class="identifier">check</span><span class="special">(</span> <span class="identifier">ref</span><span class="special">(</span><span class="identifier">days_per_month</span><span class="special">)[</span><span class="identifier">as</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;(</span><span class="identifier">month</span><span class="special">)-</span><span class="number">1</span><span class="special">]</span> <span class="special">&gt;=</span> <span class="identifier">as</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;(</span><span class="identifier">day</span><span class="special">)</span> <span class="special">)</span> <span class="special">]</span>
+<span class="special">;</span>
+
+<span class="identifier">smatch</span> <span class="identifier">what</span><span class="special">;</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="identifier">str</span><span class="special">(</span><span class="string">"99/99/9999 2/30/2006 2/28/2006"</span><span class="special">);</span>
+
+<span class="keyword">if</span><span class="special">(</span><span class="identifier">regex_search</span><span class="special">(</span><span class="identifier">str</span><span class="special">,</span> <span class="identifier">what</span><span class="special">,</span> <span class="identifier">date</span><span class="special">))</span>
+<span class="special">{</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">what</span><span class="special">[</span><span class="number">0</span><span class="special">]</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+<span class="special">}</span>
+</pre>
+<p>
+        The above program prints out the following:
+      </p>
+<pre class="programlisting">2/28/2006
+</pre>
+<p>
+        Notice how the inline custom assertions are used to range-check the values
+        for the month, day and year. The regular expression doesn't match <code class="computeroutput"><span class="string">"99/99/9999"</span></code> or <code class="computeroutput"><span class="string">"2/30/2006"</span></code>
+        because they are not valid dates. (There is no 99th month, and February doesn't
+        have 30 days.)
+      </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2007 Eric Niebler<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="grammars_and_nested_matches.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../xpressive/user_s_guide.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="symbol_tables_and_attributes.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

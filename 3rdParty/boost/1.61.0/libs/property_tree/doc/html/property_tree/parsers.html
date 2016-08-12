@@ -1,0 +1,115 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>How to Populate a Property Tree</title>
+<link rel="stylesheet" href="../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../index.html" title="Chapter&#160;1.&#160;Boost.PropertyTree">
+<link rel="up" href="../index.html" title="Chapter&#160;1.&#160;Boost.PropertyTree">
+<link rel="prev" href="synopsis.html" title="Property Tree Synopsis">
+<link rel="next" href="parsers/json_parser.html" title="JSON Parser">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="synopsis.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="parsers/json_parser.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="property_tree.parsers"></a><a class="link" href="parsers.html" title="How to Populate a Property Tree">How to Populate a Property Tree</a>
+</h2></div></div></div>
+<div class="toc"><dl>
+<dt><span class="section"><a href="parsers.html#property_tree.parsers.xml_parser">XML Parser</a></span></dt>
+<dt><span class="section"><a href="parsers/json_parser.html">JSON Parser</a></span></dt>
+<dt><span class="section"><a href="parsers/ini_parser.html">INI Parser</a></span></dt>
+<dt><span class="section"><a href="parsers/info_parser.html">INFO Parser</a></span></dt>
+</dl></div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="property_tree.parsers.xml_parser"></a><a class="link" href="parsers.html#property_tree.parsers.xml_parser" title="XML Parser">XML Parser</a>
+</h3></div></div></div>
+<p>
+        The <a href="http://en.wikipedia.org/wiki/XML" target="_top">XML format</a> is an
+        industry standard for storing information in textual form. Unfortunately,
+        there is no XML parser in <a href="http://www.boost.org" target="_top">Boost</a>
+        as of the time of this writing. The library therefore contains the fast and
+        tiny <a href="http://rapidxml.sourceforge.net/" target="_top">RapidXML</a> parser
+        (currently in version 1.13) to provide XML parsing support. RapidXML does
+        not fully support the XML standard; it is not capable of parsing DTDs and
+        therefore cannot do full entity substitution.
+      </p>
+<p>
+        By default, the parser will preserve most whitespace, but remove element
+        content that consists only of whitespace. Encoded whitespaces (e.g. &amp;#32;)
+        does not count as whitespace in this regard. You can pass the trim_whitespace
+        flag if you want all leading and trailing whitespace trimmed and all continuous
+        whitespace collapsed into a single space.
+      </p>
+<p>
+        Please note that RapidXML does not understand the encoding specification.
+        If you pass it a character buffer, it assumes the data is already correctly
+        encoded; if you pass it a filename, it will read the file using the character
+        conversion of the locale you give it (or the global locale if you give it
+        none). This means that, in order to parse a UTF-8-encoded XML file into a
+        wptree, you have to supply an alternate locale, either directly or by replacing
+        the global one.
+      </p>
+<p>
+        XML / property tree conversion schema (<code class="computeroutput"><a class="link" href="../boost/property_tree/xml_parser/read_xml_idp6468080.html" title="Function template read_xml">read_xml</a></code>
+        and <code class="computeroutput"><a class="link" href="../boost/property_tree/xml_parser/write_xml_idp6489648.html" title="Function template write_xml">write_xml</a></code>):
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" type="disc">
+<li class="listitem">
+            Each XML element corresponds to a property tree node. The child elements
+            correspond to the children of the node.
+          </li>
+<li class="listitem">
+            The attributes of an XML element are stored in the subkey <code class="literal">&lt;xmlattr&gt;</code>.
+            There is one child node per attribute in the attribute node. Existence
+            of the <code class="literal">&lt;xmlattr&gt;</code> node is not guaranteed or necessary
+            when there are no attributes.
+          </li>
+<li class="listitem">
+            XML comments are stored in nodes named <code class="literal">&lt;xmlcomment&gt;</code>,
+            unless comment ignoring is enabled via the flags.
+          </li>
+<li class="listitem">
+            Text content is stored in one of two ways, depending on the flags. The
+            default way concatenates all text nodes and stores them as the data of
+            the element node. This way, the entire content can be conveniently read,
+            but the relative ordering of text and child elements is lost. The other
+            way stores each text content as a separate node, all called <code class="literal">&lt;xmltext&gt;</code>.
+          </li>
+</ul></div>
+<p>
+        The XML storage encoding does not round-trip perfectly. A read-write cycle
+        loses trimmed whitespace, low-level formatting information, and the distinction
+        between normal data and CDATA nodes. Comments are only preserved when enabled.
+        A write-read cycle loses trimmed whitespace; that is, if the origin tree
+        has string data that starts or ends with whitespace, that whitespace is lost.
+      </p>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2008-2010 Marcin Kalicinski<br>Copyright &#169; 2010-2013 Sebastian
+      Redl<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="synopsis.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="parsers/json_parser.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

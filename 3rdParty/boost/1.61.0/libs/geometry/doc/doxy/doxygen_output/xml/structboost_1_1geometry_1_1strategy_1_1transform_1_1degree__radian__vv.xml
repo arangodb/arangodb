@@ -1,0 +1,73 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="structboost_1_1geometry_1_1strategy_1_1transform_1_1degree__radian__vv" kind="struct" prot="public">
+    <compoundname>boost::geometry::strategy::transform::degree_radian_vv</compoundname>
+    <includes local="no">strategy_transform.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename P1</type>
+      </param>
+      <param>
+        <type>typename P2</type>
+      </param>
+      <param>
+        <type>template&lt; typename &gt; class</type>
+        <declname>F</declname>
+        <defname>F</defname>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="structboost_1_1geometry_1_1strategy_1_1transform_1_1degree__radian__vv_1a243b2d6ef17983dfc89d6a034a9fb156" prot="public" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <type>bool</type>
+        <definition>bool boost::geometry::strategy::transform::degree_radian_vv&lt; P1, P2, F &gt;::apply</definition>
+        <argsstring>(P1 const &amp;p1, P2 &amp;p2) const </argsstring>
+        <name>apply</name>
+        <param>
+          <type>P1 const &amp;</type>
+          <declname>p1</declname>
+        </param>
+        <param>
+          <type>P2 &amp;</type>
+          <declname>p2</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/strategy_transform.hpp" line="132" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/strategy_transform.hpp" bodystart="131" bodyend="149"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+<para>Transformation strategy to go from degree to radian and back. </para>    </briefdescription>
+    <detaileddescription>
+<para><parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>P1</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>first point type </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>P2</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>second point type </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>F</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>additional functor to divide or multiply with d2r </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/strategy_transform.hpp" line="130" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/strategy_transform.hpp" bodystart="129" bodyend="150"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1strategy_1_1transform_1_1degree__radian__vv_1a243b2d6ef17983dfc89d6a034a9fb156" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::transform::degree_radian_vv</scope><name>apply</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

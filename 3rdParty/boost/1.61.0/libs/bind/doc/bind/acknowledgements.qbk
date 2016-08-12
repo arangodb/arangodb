@@ -1,0 +1,48 @@
+﻿[/
+ /  Copyright (c) 2001, 2002 Peter Dimov and Multi Media Ltd.
+ /  Copyright (c) 2003-2008 Peter Dimov
+ /
+ / Distributed under the Boost Software License, Version 1.0. (See
+ / accompanying file LICENSE_1_0.txt or copy at
+ / http://www.boost.org/LICENSE_1_0.txt)
+ /]
+
+[section:acknowledgements Acknowledgements]
+
+Earlier efforts that have influenced the library design:
+
+* The [@http://staff.cs.utu.fi/BL/ Binder Library] by Jaakko J\u00E4rvi;
+
+* The [@boost:/libs/lambda/index.html Lambda Library] (now part of Boost) by
+  Jaakko J\u00E4rvi and Gary Powell (the successor to the Binder Library);
+
+* [@http://more.sourceforge.net/ Extensions to the STL] by Petter Urkedal.
+
+Doug Gregor suggested that a visitor mechanism would allow `bind` to
+interoperate with a signal/slot library.
+
+John Maddock fixed a MSVC-specific conflict between `bind` and the
+[@boost:/libs/type_traits/index.html type traits library].
+
+Numerous improvements were suggested during the formal review period by Ross
+Smith, Richard Crossley, Jens Maurer, Ed Brey, and others. Review manager was
+Darin Adler.
+
+The precise semantics of `bind` were refined in discussions with Jaakko
+J\u00E4rvi.
+
+Dave Abrahams fixed a MSVC-specific conflict between `bind` and the
+[@boost:/libs/utility/iterator_adaptors.htm iterator adaptors library].
+
+Dave Abrahams modified `bind` and `mem_fn` to support `void` returns on
+deficient compilers.
+
+Mac Murrett contributed the "pascal" support enabled by
+`BOOST_BIND_ENABLE_PASCAL`.
+
+The alternative `bind(type<R>(), f, ...)` syntax was inspired by a discussion
+with Dave Abrahams and Joel de Guzman.
+
+This documentation was ported to Quickbook by Agustín Bergé.
+
+[endsect]

@@ -1,0 +1,242 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>EDSL Interoperatability: Sub-Domains</title>
+<link rel="stylesheet" href="../../../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../../../../index.html" title="Chapter&#160;1.&#160;Boost.Proto">
+<link rel="up" href="../customizing_expressions_in_your_domain.html" title="Customizing Expressions in Your Domain">
+<link rel="prev" href="per_domain_as_child.html" title="Controlling How Child Expressions Are Captured">
+<link rel="next" href="../define_operators.html" title="Adapting Existing Types to Proto">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="per_domain_as_child.html"><img src="../../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../customizing_expressions_in_your_domain.html"><img src="../../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../../index.html"><img src="../../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../define_operators.html"><img src="../../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="boost_proto.users_guide.front_end.customizing_expressions_in_your_domain.subdomains"></a><a class="link" href="subdomains.html" title="EDSL Interoperatability: Sub-Domains">EDSL
+          Interoperatability: Sub-Domains</a>
+</h5></div></div></div>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+              This is an advanced topic. Feel free to skip this if you're just getting
+              started with Proto.
+            </p></td></tr>
+</table></div>
+<p>
+            The ability to <span class="emphasis"><em>compose</em></span> different EDSLs is one of
+            their most exciting features. Consider how you build a parser using yacc.
+            You write your grammar rules in yacc's domain-specific language. Then
+            you embed semantic actions written in C within your grammar. Boost's
+            Spirit parser generator gives you the same ability. You write grammar
+            rules using Spirit.Qi and embed semantic actions using the Phoenix library.
+            Phoenix and Spirit are both Proto-based domain-specific languages with
+            their own distinct syntax and semantics. But you can freely embed Phoenix
+            expressions within Spirit expressions. This section describes Proto's
+            <span class="emphasis"><em>sub-domain</em></span> feature that lets you define families
+            of interoperable domains.
+          </p>
+<h6>
+<a name="boost_proto.users_guide.front_end.customizing_expressions_in_your_domain.subdomains.h0"></a>
+            <span><a name="boost_proto.users_guide.front_end.customizing_expressions_in_your_domain.subdomains.dueling_domains"></a></span><a class="link" href="subdomains.html#boost_proto.users_guide.front_end.customizing_expressions_in_your_domain.subdomains.dueling_domains">Dueling
+            Domains</a>
+          </h6>
+<p>
+            When you try to create an expression from two sub-expressions in different
+            domains, what is the domain of the resulting expression? This is the
+            fundamental problem that is addressed by sub-domains. Consider the following
+            code:
+          </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">proto</span><span class="special">/</span><span class="identifier">proto</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="keyword">namespace</span> <span class="identifier">proto</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">proto</span><span class="special">;</span>
+
+<span class="comment">// Forward-declare two expression wrappers</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">E</span><span class="special">&gt;</span> <span class="keyword">struct</span> <span class="identifier">spirit_expr</span><span class="special">;</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">E</span><span class="special">&gt;</span> <span class="keyword">struct</span> <span class="identifier">phoenix_expr</span><span class="special">;</span>
+
+<span class="comment">// Define two domains</span>
+<span class="keyword">struct</span> <span class="identifier">spirit_domain</span>  <span class="special">:</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">domain</span><span class="special">&lt;</span><span class="identifier">proto</span><span class="special">::</span><span class="identifier">generator</span><span class="special">&lt;</span><span class="identifier">spirit_expr</span><span class="special">&gt;</span> <span class="special">&gt;</span> <span class="special">{};</span>
+<span class="keyword">struct</span> <span class="identifier">phoenix_domain</span> <span class="special">:</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">domain</span><span class="special">&lt;</span><span class="identifier">proto</span><span class="special">::</span><span class="identifier">generator</span><span class="special">&lt;</span><span class="identifier">phoenix_expr</span><span class="special">&gt;</span> <span class="special">&gt;</span> <span class="special">{};</span>
+
+<span class="comment">// Implement the two expression wrappers</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">E</span><span class="special">&gt;</span>
+<span class="keyword">struct</span> <span class="identifier">spirit_expr</span>
+  <span class="special">:</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">extends</span><span class="special">&lt;</span><span class="identifier">E</span><span class="special">,</span> <span class="identifier">spirit_expr</span><span class="special">&lt;</span><span class="identifier">E</span><span class="special">&gt;,</span> <span class="identifier">spirit_domain</span><span class="special">&gt;</span>
+<span class="special">{</span>
+    <span class="identifier">spirit_expr</span><span class="special">(</span><span class="identifier">E</span> <span class="keyword">const</span> <span class="special">&amp;</span><span class="identifier">e</span> <span class="special">=</span> <span class="identifier">E</span><span class="special">())</span> <span class="special">:</span> <span class="identifier">spirit_expr</span><span class="special">::</span><span class="identifier">proto_extends</span><span class="special">(</span><span class="identifier">e</span><span class="special">)</span> <span class="special">{}</span>
+<span class="special">};</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">E</span><span class="special">&gt;</span>
+<span class="keyword">struct</span> <span class="identifier">phoenix_expr</span>
+  <span class="special">:</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">extends</span><span class="special">&lt;</span><span class="identifier">E</span><span class="special">,</span> <span class="identifier">phoenix_expr</span><span class="special">&lt;</span><span class="identifier">E</span><span class="special">&gt;,</span> <span class="identifier">phoenix_domain</span><span class="special">&gt;</span>
+<span class="special">{</span>
+    <span class="identifier">phoenix_expr</span><span class="special">(</span><span class="identifier">E</span> <span class="keyword">const</span> <span class="special">&amp;</span><span class="identifier">e</span> <span class="special">=</span> <span class="identifier">E</span><span class="special">())</span> <span class="special">:</span> <span class="identifier">phoenix_expr</span><span class="special">::</span><span class="identifier">proto_extends</span><span class="special">(</span><span class="identifier">e</span><span class="special">)</span> <span class="special">{}</span>
+<span class="special">};</span>
+
+<span class="keyword">int</span> <span class="identifier">main</span><span class="special">()</span>
+<span class="special">{</span>
+    <span class="identifier">proto</span><span class="special">::</span><span class="identifier">literal</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">,</span> <span class="identifier">spirit_domain</span><span class="special">&gt;</span> <span class="identifier">sp</span><span class="special">(</span><span class="number">0</span><span class="special">);</span>
+    <span class="identifier">proto</span><span class="special">::</span><span class="identifier">literal</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">,</span> <span class="identifier">phoenix_domain</span><span class="special">&gt;</span> <span class="identifier">phx</span><span class="special">(</span><span class="number">0</span><span class="special">);</span>
+
+    <span class="comment">// Whoops! What does it mean to add two expressions in different domains?</span>
+    <span class="identifier">sp</span> <span class="special">+</span> <span class="identifier">phx</span><span class="special">;</span> <span class="comment">// ERROR</span>
+<span class="special">}</span>
+</pre>
+<p>
+            Above, we define two domains called <code class="computeroutput"><span class="identifier">spirit_domain</span></code>
+            and <code class="computeroutput"><span class="identifier">phoenix_domain</span></code> and
+            declare two int literals in each. Then we try to compose them into a
+            larger expression using Proto's binary plus operator, and it fails. Proto
+            can't figure out whether the resulting expression should be in the Spirit
+            domain or the Phoenix domain, and thus whether it should be an instance
+            of <code class="computeroutput"><span class="identifier">spirit_expr</span><span class="special">&lt;&gt;</span></code>
+            or <code class="computeroutput"><span class="identifier">phoenix_expr</span><span class="special">&lt;&gt;</span></code>.
+            We have to tell Proto how to resolve the conflict. We can do that by
+            declaring that Phoenix is a sub-domain of Spirit as in the following
+            definition of <code class="computeroutput"><span class="identifier">phoenix_domain</span></code>:
+          </p>
+<pre class="programlisting"><span class="comment">// Declare that phoenix_domain is a sub-domain of spirit_domain</span>
+<span class="keyword">struct</span> <span class="identifier">phoenix_domain</span>
+  <span class="special">:</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">domain</span><span class="special">&lt;</span><span class="identifier">proto</span><span class="special">::</span><span class="identifier">generator</span><span class="special">&lt;</span><span class="identifier">phoenix_expr</span><span class="special">&gt;,</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">_</span><span class="special">,</span> <span class="bold"><strong>spirit_domain</strong></span><span class="special">&gt;</span>
+<span class="special">{};</span>
+</pre>
+<p>
+            The third template parameter to <code class="computeroutput"><a class="link" href="../../../../boost/proto/domain.html" title="Struct template domain">proto::domain&lt;&gt;</a></code>
+            is the super-domain. By defining <code class="computeroutput"><span class="identifier">phoenix_domain</span></code>
+            as above, we are saying that Phoenix expressions can be combined with
+            Spirit expressions, and that when that happens, the resulting expression
+            should be a Spirit expression.
+          </p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+              If you are wondering what the purpose of <code class="computeroutput"><span class="identifier">proto</span><span class="special">::</span><span class="identifier">_</span></code>
+              is in the definition of <code class="computeroutput"><span class="identifier">phoenix_domain</span></code>
+              above, recall that the second template parameter to <code class="computeroutput"><a class="link" href="../../../../boost/proto/domain.html" title="Struct template domain">proto::domain&lt;&gt;</a></code>
+              is the domain's grammar. <span class="quote">&#8220;<span class="quote"><code class="computeroutput"><span class="identifier">proto</span><span class="special">::</span><span class="identifier">_</span></code></span>&#8221;</span>
+              is the default and signifies that the domain places no restrictions
+              on the expressions that are valid within it.
+            </p></td></tr>
+</table></div>
+<h6>
+<a name="boost_proto.users_guide.front_end.customizing_expressions_in_your_domain.subdomains.h1"></a>
+            <span><a name="boost_proto.users_guide.front_end.customizing_expressions_in_your_domain.subdomains.domain_resolution"></a></span><a class="link" href="subdomains.html#boost_proto.users_guide.front_end.customizing_expressions_in_your_domain.subdomains.domain_resolution">Domain
+            Resolution</a>
+          </h6>
+<p>
+            When there are multiple domains in play within a given expression, Proto
+            uses some rules to figure out which domain "wins". The rules
+            are loosely modeled on the rules for C++ inheritance. <code class="computeroutput"><span class="identifier">Phoenix_domain</span></code>
+            is a sub-domain of <code class="computeroutput"><span class="identifier">spirit_domain</span></code>.
+            You can liken that to a derived/base relationship that gives Phoenix
+            expressions a kind of implicit conversion to Spirit expressions. And
+            since Phoenix expressions can be "converted" to Spirit expressions,
+            they can be freely combined with Spirit expressions and the result is
+            a Spirit expression.
+          </p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+              Super- and sub-domains are not actually implemented using inheritance.
+              This is only a helpful mental model.
+            </p></td></tr>
+</table></div>
+<p>
+            The analogy with inheritance holds even in the case of three domains
+            when two are sub-domains of the third. Imagine another domain called
+            <code class="computeroutput"><span class="identifier">foobar_domain</span></code> that was
+            also a sub-domain of <code class="computeroutput"><span class="identifier">spirit_domain</span></code>.
+            Expressions in the <code class="computeroutput"><span class="identifier">foobar_domain</span></code>
+            could be combined with expressions in the <code class="computeroutput"><span class="identifier">phoenix_domain</span></code>
+            and the resulting expression would be in the <code class="computeroutput"><span class="identifier">spirit_domain</span></code>.
+            That's because expressions in the two sub-domains both have "conversions"
+            to the super-domain, so the operation is allowed and the super-domain
+            wins.
+          </p>
+<h6>
+<a name="boost_proto.users_guide.front_end.customizing_expressions_in_your_domain.subdomains.h2"></a>
+            <span><a name="boost_proto.users_guide.front_end.customizing_expressions_in_your_domain.subdomains.the_default_domain"></a></span><a class="link" href="subdomains.html#boost_proto.users_guide.front_end.customizing_expressions_in_your_domain.subdomains.the_default_domain">The
+            Default Domain</a>
+          </h6>
+<p>
+            When you don't assign a Proto expression to a particular domain, Proto
+            considers it a member of the so-called default domain, <code class="computeroutput"><span class="identifier">proto</span><span class="special">::</span><span class="identifier">default_domain</span></code>. Even non-Proto objects
+            are treated as terminals in the default domain. Consider:
+          </p>
+<pre class="programlisting"><span class="keyword">int</span> <span class="identifier">main</span><span class="special">()</span>
+<span class="special">{</span>
+    <span class="identifier">proto</span><span class="special">::</span><span class="identifier">literal</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">,</span> <span class="identifier">spirit_domain</span><span class="special">&gt;</span> <span class="identifier">sp</span><span class="special">(</span><span class="number">0</span><span class="special">);</span>
+
+    <span class="comment">// Add 1 to a spirit expression. Result is a spirit expression.</span>
+    <span class="identifier">sp</span> <span class="special">+</span> <span class="number">1</span><span class="special">;</span>
+<span class="special">}</span>
+</pre>
+<p>
+            Expressions in the default domain (or non-expressions like <code class="literal">1</code>)
+            have a kind of implicit conversion to expressions every other domain
+            type. What's more, you can define your domain to be a sub-domain of the
+            default domain. In so doing, you give expressions in your domain conversions
+            to expressions in every other domain. This is like a <span class="quote">&#8220;<span class="quote">free love</span>&#8221;</span>
+            domain, because it will freely mix with all other domains.
+          </p>
+<p>
+            Let's think again about the Phoenix EDSL. Since it provides generally
+            useful lambda functionality, it's reasonable to assume that lots of other
+            EDSLs besides Spirit might want the ability to embed Phoenix expressions.
+            In other words, <code class="computeroutput"><span class="identifier">phoenix_domain</span></code>
+            should be a sub-domain of <code class="computeroutput"><span class="identifier">proto</span><span class="special">::</span><span class="identifier">default_domain</span></code>,
+            not <code class="computeroutput"><span class="identifier">spirit_domain</span></code>:
+          </p>
+<pre class="programlisting"><span class="comment">// Declare that phoenix_domain is a sub-domain of proto::default_domain</span>
+<span class="keyword">struct</span> <span class="identifier">phoenix_domain</span>
+  <span class="special">:</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">domain</span><span class="special">&lt;</span><span class="identifier">proto</span><span class="special">::</span><span class="identifier">generator</span><span class="special">&lt;</span><span class="identifier">phoenix_expr</span><span class="special">&gt;,</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">_</span><span class="special">,</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">default_domain</span><span class="special">&gt;</span>
+<span class="special">{};</span>
+</pre>
+<p>
+            That's much better. Phoenix expressions can now be put anywhere.
+          </p>
+<h6>
+<a name="boost_proto.users_guide.front_end.customizing_expressions_in_your_domain.subdomains.h3"></a>
+            <span><a name="boost_proto.users_guide.front_end.customizing_expressions_in_your_domain.subdomains.sub_domain_summary"></a></span><a class="link" href="subdomains.html#boost_proto.users_guide.front_end.customizing_expressions_in_your_domain.subdomains.sub_domain_summary">Sub-Domain
+            Summary</a>
+          </h6>
+<p>
+            Use Proto sub-domains to make it possible to mix expressions from multiple
+            domains. And when you want expressions in your domain to freely combine
+            with <span class="emphasis"><em>all</em></span> expressions, make it a sub-domain of <code class="computeroutput"><span class="identifier">proto</span><span class="special">::</span><span class="identifier">default_domain</span></code>.
+          </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2008 Eric Niebler<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="per_domain_as_child.html"><img src="../../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../customizing_expressions_in_your_domain.html"><img src="../../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../../index.html"><img src="../../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../define_operators.html"><img src="../../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

@@ -1,0 +1,178 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="classboost_1_1geometry_1_1model_1_1d2_1_1point__xy" kind="class" prot="public">
+    <compoundname>boost::geometry::model::d2::point_xy</compoundname>
+    <basecompoundref refid="classboost_1_1geometry_1_1model_1_1point" prot="public" virt="non-virtual">boost::geometry::model::point&lt; CoordinateType, 2, CoordinateSystem &gt;</basecompoundref>
+    <includes local="no">point_xy.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename</type>
+        <declname>CoordinateType</declname>
+        <defname>CoordinateType</defname>
+      </param>
+      <param>
+        <type>typename</type>
+        <declname>CoordinateSystem</declname>
+        <defname>CoordinateSystem</defname>
+        <defval><ref refid="structboost_1_1geometry_1_1cs_1_1cartesian" kindref="compound">cs::cartesian</ref></defval>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="classboost_1_1geometry_1_1model_1_1d2_1_1point__xy_1a9feeb8e17d7ee287c177d50ed459ec7d" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type></type>
+        <definition>boost::geometry::model::d2::point_xy&lt; CoordinateType, CoordinateSystem &gt;::point_xy</definition>
+        <argsstring>()</argsstring>
+        <name>point_xy</name>
+        <briefdescription>
+<para>Default constructor, no initialization. </para>        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/point_xy.hpp" line="52"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1model_1_1d2_1_1point__xy_1afc05f085ae9675c83aadbd7026a1be0a" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type></type>
+        <definition>boost::geometry::model::d2::point_xy&lt; CoordinateType, CoordinateSystem &gt;::point_xy</definition>
+        <argsstring>(CoordinateType const &amp;x, CoordinateType const &amp;y)</argsstring>
+        <name>point_xy</name>
+        <param>
+          <type>CoordinateType const &amp;</type>
+          <declname>x</declname>
+        </param>
+        <param>
+          <type>CoordinateType const &amp;</type>
+          <declname>y</declname>
+        </param>
+        <briefdescription>
+<para>Constructor with x/y values. </para>        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/point_xy.hpp" line="62" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/point_xy.hpp" bodystart="60" bodyend="62"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1model_1_1d2_1_1point__xy_1aa023762716f30c1887fe062e06572238" prot="public" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <type>CoordinateType const &amp;</type>
+        <definition>CoordinateType const&amp; boost::geometry::model::d2::point_xy&lt; CoordinateType, CoordinateSystem &gt;::x</definition>
+        <argsstring>() const </argsstring>
+        <name>x</name>
+        <briefdescription>
+<para>Get x-value. </para>        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/point_xy.hpp" line="66" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/point_xy.hpp" bodystart="65" bodyend="66"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1model_1_1d2_1_1point__xy_1a89ca091e60b57bc097c0292763a52a59" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>void</type>
+        <definition>void boost::geometry::model::d2::point_xy&lt; CoordinateType, CoordinateSystem &gt;::x</definition>
+        <argsstring>(CoordinateType const &amp;v)</argsstring>
+        <name>x</name>
+        <param>
+          <type>CoordinateType const &amp;</type>
+          <declname>v</declname>
+        </param>
+        <briefdescription>
+<para>Set x-value. </para>        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/point_xy.hpp" line="74" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/point_xy.hpp" bodystart="73" bodyend="74"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1model_1_1d2_1_1point__xy_1a3799460788a157cbef0f690006e65744" prot="public" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <type>CoordinateType const &amp;</type>
+        <definition>CoordinateType const&amp; boost::geometry::model::d2::point_xy&lt; CoordinateType, CoordinateSystem &gt;::y</definition>
+        <argsstring>() const </argsstring>
+        <name>y</name>
+        <briefdescription>
+<para>Get y-value. </para>        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/point_xy.hpp" line="70" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/point_xy.hpp" bodystart="69" bodyend="70"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1model_1_1d2_1_1point__xy_1af0d8f7cc38a4bf2e385bf90a786a1057" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>void</type>
+        <definition>void boost::geometry::model::d2::point_xy&lt; CoordinateType, CoordinateSystem &gt;::y</definition>
+        <argsstring>(CoordinateType const &amp;v)</argsstring>
+        <name>y</name>
+        <param>
+          <type>CoordinateType const &amp;</type>
+          <declname>v</declname>
+        </param>
+        <briefdescription>
+<para>Set y-value. </para>        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/point_xy.hpp" line="78" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/point_xy.hpp" bodystart="77" bodyend="78"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+<para>2D point in Cartesian coordinate system </para>    </briefdescription>
+    <detaileddescription>
+<para><parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>CoordinateType</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>numeric type, for example, double, float, int </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>CoordinateSystem</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>coordinate system, defaults to <ref refid="structboost_1_1geometry_1_1cs_1_1cartesian" kindref="compound">cs::cartesian</ref></para></parameterdescription>
+</parameteritem>
+</parameterlist>
+ <qbk>[include reference/geometries/point_xy.qbk]</qbk>   <qbk.before.synopsis>
+[heading Model of]
+[link geometry.reference.concepts.concept_point Point Concept]
+</qbk.before.synopsis> </para><para> <qbk>[include reference/geometries/point_assign_warning.qbk]</qbk>  </para>    </detaileddescription>
+    <inheritancegraph>
+      <node id="432">
+        <label>boost::geometry::model::point&lt; CoordinateType, 2, CoordinateSystem &gt;</label>
+        <link refid="classboost_1_1geometry_1_1model_1_1point"/>
+      </node>
+      <node id="431">
+        <label>boost::geometry::model::d2::point_xy&lt; CoordinateType, CoordinateSystem &gt;</label>
+        <link refid="classboost_1_1geometry_1_1model_1_1d2_1_1point__xy"/>
+        <childnode refid="432" relation="public-inheritance">
+        </childnode>
+      </node>
+    </inheritancegraph>
+    <collaborationgraph>
+      <node id="434">
+        <label>boost::geometry::model::point&lt; CoordinateType, 2, CoordinateSystem &gt;</label>
+        <link refid="classboost_1_1geometry_1_1model_1_1point"/>
+      </node>
+      <node id="433">
+        <label>boost::geometry::model::d2::point_xy&lt; CoordinateType, CoordinateSystem &gt;</label>
+        <link refid="classboost_1_1geometry_1_1model_1_1d2_1_1point__xy"/>
+        <childnode refid="434" relation="public-inheritance">
+        </childnode>
+      </node>
+    </collaborationgraph>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/point_xy.hpp" line="47" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/point_xy.hpp" bodystart="46" bodyend="79"/>
+    <listofallmembers>
+      <member refid="classboost_1_1geometry_1_1model_1_1point_1a5042d74b21e525743168c56563ddf015" prot="public" virt="non-virtual"><scope>boost::geometry::model::d2::point_xy</scope><name>get</name></member>
+      <member refid="classboost_1_1geometry_1_1model_1_1point_1a071cc303b39a170bf875550844198eab" prot="public" virt="non-virtual"><scope>boost::geometry::model::d2::point_xy</scope><name>point</name></member>
+      <member refid="classboost_1_1geometry_1_1model_1_1point_1a0236fd6973659285b15292d9370e9136" prot="public" virt="non-virtual"><scope>boost::geometry::model::d2::point_xy</scope><name>point</name></member>
+      <member refid="classboost_1_1geometry_1_1model_1_1point_1abe00d79aa3ed9be100f1a34b7d09249b" prot="public" virt="non-virtual"><scope>boost::geometry::model::d2::point_xy</scope><name>point</name></member>
+      <member refid="classboost_1_1geometry_1_1model_1_1point_1a2d74ab12275dd09e47b50ab941f71e58" prot="public" virt="non-virtual"><scope>boost::geometry::model::d2::point_xy</scope><name>point</name></member>
+      <member refid="classboost_1_1geometry_1_1model_1_1d2_1_1point__xy_1a9feeb8e17d7ee287c177d50ed459ec7d" prot="public" virt="non-virtual"><scope>boost::geometry::model::d2::point_xy</scope><name>point_xy</name></member>
+      <member refid="classboost_1_1geometry_1_1model_1_1d2_1_1point__xy_1afc05f085ae9675c83aadbd7026a1be0a" prot="public" virt="non-virtual"><scope>boost::geometry::model::d2::point_xy</scope><name>point_xy</name></member>
+      <member refid="classboost_1_1geometry_1_1model_1_1point_1adc88778b0d7c9e70aeeed0981c003a67" prot="public" virt="non-virtual"><scope>boost::geometry::model::d2::point_xy</scope><name>set</name></member>
+      <member refid="classboost_1_1geometry_1_1model_1_1d2_1_1point__xy_1aa023762716f30c1887fe062e06572238" prot="public" virt="non-virtual"><scope>boost::geometry::model::d2::point_xy</scope><name>x</name></member>
+      <member refid="classboost_1_1geometry_1_1model_1_1d2_1_1point__xy_1a89ca091e60b57bc097c0292763a52a59" prot="public" virt="non-virtual"><scope>boost::geometry::model::d2::point_xy</scope><name>x</name></member>
+      <member refid="classboost_1_1geometry_1_1model_1_1d2_1_1point__xy_1a3799460788a157cbef0f690006e65744" prot="public" virt="non-virtual"><scope>boost::geometry::model::d2::point_xy</scope><name>y</name></member>
+      <member refid="classboost_1_1geometry_1_1model_1_1d2_1_1point__xy_1af0d8f7cc38a4bf2e385bf90a786a1057" prot="public" virt="non-virtual"><scope>boost::geometry::model::d2::point_xy</scope><name>y</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

@@ -1,0 +1,270 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Comparisons to Other Open Source Libraries</title>
+<link rel="stylesheet" href="../math.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../index.html" title="Math Toolkit 2.4.0">
+<link rel="up" href="../perf.html" title="Chapter&#160;16.&#160;Performance">
+<link rel="prev" href="comp_compilers.html" title="Comparing Different Compilers">
+<link rel="next" href="perf_test_app.html" title="The Performance Test Applications">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="comp_compilers.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../perf.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="perf_test_app.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="math_toolkit.comparisons"></a><a class="link" href="comparisons.html" title="Comparisons to Other Open Source Libraries">Comparisons to Other Open Source
+    Libraries</a>
+</h2></div></div></div>
+<p>
+      We've run our performance tests both for our own code, and against other open
+      source implementations of the same functions. The results are presented below
+      to give you a rough idea of how they all compare. In order to give a more-or-less
+      level playing field our test data was screened against all the libraries being
+      tested, and any unsupported domains removed, likewise for any test cases that
+      gave large errors or unexpected non-finite values.
+    </p>
+<div class="caution"><table border="0" summary="Caution">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Caution]" src="../../../../../doc/src/images/caution.png"></td>
+<th align="left">Caution</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+        You should exercise extreme caution when interpreting these results, relative
+        performance may vary by platform, the tests use data that gives good code
+        coverage of <span class="emphasis"><em>our</em></span> code, but which may skew the results
+        towards the corner cases. Finally, remember that different libraries make
+        different choices with regard to performance verses numerical stability.
+      </p></td></tr>
+</table></div>
+<p>
+      The first results compare standard library functions to Boost equivalents with
+      MSVC-14.0:
+    </p>
+<div class="table">
+<a name="math_toolkit.comparisons.table_Library_Comparison_with_Microsoft_Visual_C_version_14_0_on_Windows_x64"></a><p class="title"><b>Table&#160;16.6.&#160;Library Comparison with Microsoft Visual C++ version 14.0 on Windows
+      x64</b></p>
+<div class="table-contents"><table class="table" summary="Library Comparison with Microsoft Visual C++ version 14.0 on Windows
+      x64">
+<colgroup>
+<col>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+              <p>
+                Function
+              </p>
+            </th>
+<th>
+              <p>
+                boost 1.61
+              </p>
+            </th>
+<th>
+              <p>
+                math.h
+              </p>
+            </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+              <p>
+                cbrt<br> (85/85 tests selected)
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="green">1.00<br> (45ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="blue">1.42<br> (64ns)</span>
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                cyl_bessel_j (integer order)<br> (267/268 tests selected)
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="green">1.00<br> (98ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="red">2.35<br> (230ns)</span>
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                cyl_neumann (integer order)<br> (428/428 tests selected)
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="blue">1.41<br> (226ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="green">1.00<br> (160ns)</span>
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                erf<br> (950/950 tests selected)
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="green">1.00<br> (13ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="blue">1.46<br> (19ns)</span>
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                erfc<br> (950/950 tests selected)
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="green">1.00<br> (18ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="red">3.11<br> (56ns)</span>
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                expm1<br> (80/80 tests selected)
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="green">1.10<br> (11ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="green">1.00<br> (10ns)</span>
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                lgamma<br> (400/400 tests selected)
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="green">1.00<br> (93ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="blue">1.56<br> (145ns)</span>
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                log1p<br> (80/80 tests selected)
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="blue">1.29<br> (18ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="green">1.00<br> (14ns)</span>
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                tgamma<br> (400/400 tests selected)
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="green">1.00<br> (79ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="red">11.03<br> (871ns)</span>
+              </p>
+            </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<br class="table-break"><p>
+      On Linux with GCC, we can also compare to the TR1 functions, and to GSL and
+      RMath:
+    </p>
+<p>
+      [table_Library_Comparison_with_GNU_C_version_5_1_0_on_linux]
+    </p>
+<p>
+      And finally we can compare the statistical distributions to GSL, RMath and
+      DCDFLIB:
+    </p>
+<p>
+      [table_Distribution_performance_comparison_with_GNU_C_version_5_1_0_on_linux]
+    </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2006-2010, 2012-2014 Nikhar Agrawal,
+      Anton Bikineev, Paul A. Bristow, Marco Guazzone, Christopher Kormanyos, Hubert
+      Holin, Bruno Lalande, John Maddock, Jeremy Murphy, Johan R&#229;de, Gautam Sewani,
+      Benjamin Sobotta, Thijs van den Berg, Daryle Walker and Xiaogang Zhang<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="comp_compilers.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../perf.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="perf_test_app.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

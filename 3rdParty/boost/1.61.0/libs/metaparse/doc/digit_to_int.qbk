@@ -1,0 +1,72 @@
+[#digit_to_int]
+[section digit_to_int]
+
+[h1 Synopsis]
+
+  namespace util
+  {
+    template <class D>
+    struct digit_to_int;
+  }
+
+This is a [link lazy_metafunction lazy template metafunction] that supports
+[link currying currying].
+
+[table Arguments
+  [[Name] [Type]]
+  [[`D`]  [[link boxed_value boxed] character value]]
+]
+
+[h1 Description]
+
+Converts a boxed character containing a value in the range `['0'..'9']` to an
+integer.
+
+[h1 Return value]
+
+It returns a [link boxed_value boxed] integer value.
+
+[h1 Header]
+
+  #include <boost/metaparse/util/digit_to_int.hpp>
+
+[h1 Expression semantics]
+
+For any `C` boxed character value in the range `['0'..'9']` the following
+expressions are equivalent
+
+  digit_to_int<>::apply<C>::type
+  digit_to_int<C>::type
+  digit_to_int_c<C::type::value>::type
+
+[h1 Example]
+
+  #include <boost/metaparse/util/digit_to_int.hpp>
+  
+  #include <type_traits>
+  
+  using namespace boost::metaparse;
+  
+  struct nullary_metafunction_returning_4
+  {
+    using type = std::integral_constant<char, '4'>;
+  };
+  
+  static_assert(
+    util::digit_to_int<std::integral_constant<char, '0'>>::type::value == 0,
+    "it should convert a character to the corresponding integer value"
+  );
+  
+  static_assert(
+    util::digit_to_int<>::type
+      ::apply<std::integral_constant<char, '7'>>::type::value == 7,
+    "it should support currying"
+  );
+  
+  static_assert(
+    util::digit_to_int<nullary_metafunction_returning_4>::type::value == 4,
+    "it should support lazy evaluation"
+  );
+
+[endsect]
+

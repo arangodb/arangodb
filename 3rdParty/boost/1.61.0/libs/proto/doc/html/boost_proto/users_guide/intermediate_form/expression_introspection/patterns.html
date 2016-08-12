@@ -1,0 +1,228 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Finding Patterns in Expressions</title>
+<link rel="stylesheet" href="../../../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../../../../index.html" title="Chapter&#160;1.&#160;Boost.Proto">
+<link rel="up" href="../expression_introspection.html" title="Expression Introspection: Defining a Grammar">
+<link rel="prev" href="../expression_introspection.html" title="Expression Introspection: Defining a Grammar">
+<link rel="next" href="fuzzy_and_exact_matches_of_terminals.html" title="Fuzzy and Exact Matches of Terminals">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../expression_introspection.html"><img src="../../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../expression_introspection.html"><img src="../../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../../index.html"><img src="../../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="fuzzy_and_exact_matches_of_terminals.html"><img src="../../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="boost_proto.users_guide.intermediate_form.expression_introspection.patterns"></a><a class="link" href="patterns.html" title="Finding Patterns in Expressions">Finding
+          Patterns in Expressions</a>
+</h5></div></div></div>
+<p>
+            Imagine your EDSL is a miniature I/O facility, with iostream operations
+            that execute lazily. You might want expressions representing input operations
+            to be processed by one function, and output operations to be processed
+            by a different function. How would you do that?
+          </p>
+<p>
+            The answer is to write patterns (a.k.a, <span class="emphasis"><em>grammars</em></span>)
+            that match the structure of input and output expressions. Proto provides
+            utilities for defining the grammars, and the <code class="computeroutput"><a class="link" href="../../../../boost/proto/matches.html" title="Struct template matches">proto::matches&lt;&gt;</a></code>
+            template for checking whether a given expression type matches the grammar.
+          </p>
+<p>
+            First, let's define some terminals we can use in our lazy I/O expressions:
+          </p>
+<pre class="programlisting"><span class="identifier">proto</span><span class="special">::</span><span class="identifier">terminal</span><span class="special">&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">istream</span> <span class="special">&amp;</span> <span class="special">&gt;::</span><span class="identifier">type</span> <span class="identifier">cin_</span> <span class="special">=</span> <span class="special">{</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">cin</span> <span class="special">};</span>
+<span class="identifier">proto</span><span class="special">::</span><span class="identifier">terminal</span><span class="special">&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">ostream</span> <span class="special">&amp;</span> <span class="special">&gt;::</span><span class="identifier">type</span> <span class="identifier">cout_</span> <span class="special">=</span> <span class="special">{</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">};</span>
+</pre>
+<p>
+            Now, we can use <code class="computeroutput"><span class="identifier">cout_</span></code>
+            instead of <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span></code>, and get I/O expression trees
+            that we can execute later. To define grammars that match input and output
+            expressions of the form <code class="computeroutput"><span class="identifier">cin_</span>
+            <span class="special">&gt;&gt;</span> <span class="identifier">i</span></code>
+            and <code class="computeroutput"><span class="identifier">cout_</span> <span class="special">&lt;&lt;</span>
+            <span class="number">1</span></code> we do this:
+          </p>
+<pre class="programlisting"><span class="keyword">struct</span> <span class="identifier">Input</span>
+  <span class="special">:</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">shift_right</span><span class="special">&lt;</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">terminal</span><span class="special">&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">istream</span> <span class="special">&amp;</span> <span class="special">&gt;,</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">_</span> <span class="special">&gt;</span>
+<span class="special">{};</span>
+
+<span class="keyword">struct</span> <span class="identifier">Output</span>
+  <span class="special">:</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">shift_left</span><span class="special">&lt;</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">terminal</span><span class="special">&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">ostream</span> <span class="special">&amp;</span> <span class="special">&gt;,</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">_</span> <span class="special">&gt;</span>
+<span class="special">{};</span>
+</pre>
+<p>
+            We've seen the template <code class="computeroutput"><span class="identifier">proto</span><span class="special">::</span><span class="identifier">terminal</span><span class="special">&lt;&gt;</span></code> before, but here we're using
+            it without accessing the nested <code class="computeroutput"><span class="special">::</span><span class="identifier">type</span></code>. When used like this, it is a
+            very simple grammar, as are <code class="computeroutput"><span class="identifier">proto</span><span class="special">::</span><span class="identifier">shift_right</span><span class="special">&lt;&gt;</span></code> and <code class="computeroutput"><span class="identifier">proto</span><span class="special">::</span><span class="identifier">shift_left</span><span class="special">&lt;&gt;</span></code>. The newcomer here is <code class="computeroutput"><span class="identifier">_</span></code> in the <code class="computeroutput"><span class="identifier">proto</span></code>
+            namespace. It is a wildcard that matches anything. The <code class="computeroutput"><span class="identifier">Input</span></code> struct is a grammar that matches
+            any right-shift expression that has a <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">istream</span></code>
+            terminal as its left operand.
+          </p>
+<p>
+            We can use these grammars together with the <code class="computeroutput"><a class="link" href="../../../../boost/proto/matches.html" title="Struct template matches">proto::matches&lt;&gt;</a></code>
+            template to query at compile time whether a given I/O expression type
+            is an input or output operation. Consider the following:
+          </p>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span> <span class="keyword">typename</span> <span class="identifier">Expr</span> <span class="special">&gt;</span>
+<span class="keyword">void</span> <span class="identifier">input_output</span><span class="special">(</span> <span class="identifier">Expr</span> <span class="keyword">const</span> <span class="special">&amp;</span> <span class="identifier">expr</span> <span class="special">)</span>
+<span class="special">{</span>
+    <span class="keyword">if</span><span class="special">(</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">matches</span><span class="special">&lt;</span> <span class="identifier">Expr</span><span class="special">,</span> <span class="identifier">Input</span> <span class="special">&gt;::</span><span class="identifier">value</span> <span class="special">)</span>
+    <span class="special">{</span>
+        <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"Input!\n"</span><span class="special">;</span>
+    <span class="special">}</span>
+
+    <span class="keyword">if</span><span class="special">(</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">matches</span><span class="special">&lt;</span> <span class="identifier">Expr</span><span class="special">,</span> <span class="identifier">Output</span> <span class="special">&gt;::</span><span class="identifier">value</span> <span class="special">)</span>
+    <span class="special">{</span>
+        <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"Output!\n"</span><span class="special">;</span>
+    <span class="special">}</span>
+<span class="special">}</span>
+
+<span class="keyword">int</span> <span class="identifier">main</span><span class="special">()</span>
+<span class="special">{</span>
+    <span class="keyword">int</span> <span class="identifier">i</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span>
+    <span class="identifier">input_output</span><span class="special">(</span> <span class="identifier">cout_</span> <span class="special">&lt;&lt;</span> <span class="number">1</span> <span class="special">);</span>
+    <span class="identifier">input_output</span><span class="special">(</span> <span class="identifier">cin_</span> <span class="special">&gt;&gt;</span> <span class="identifier">i</span> <span class="special">);</span>
+
+    <span class="keyword">return</span> <span class="number">0</span><span class="special">;</span>
+<span class="special">}</span>
+</pre>
+<p>
+            This program prints the following:
+          </p>
+<pre class="programlisting">Output!
+Input!
+</pre>
+<p>
+            If we wanted to break the <code class="computeroutput"><span class="identifier">input_output</span><span class="special">()</span></code> function into two functions, one that
+            handles input expressions and one for output expressions, we can use
+            <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">enable_if</span><span class="special">&lt;&gt;</span></code>,
+            as follows:
+          </p>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span> <span class="keyword">typename</span> <span class="identifier">Expr</span> <span class="special">&gt;</span>
+<span class="keyword">typename</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">enable_if</span><span class="special">&lt;</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">matches</span><span class="special">&lt;</span> <span class="identifier">Expr</span><span class="special">,</span> <span class="identifier">Input</span> <span class="special">&gt;</span> <span class="special">&gt;::</span><span class="identifier">type</span>
+<span class="identifier">input_output</span><span class="special">(</span> <span class="identifier">Expr</span> <span class="keyword">const</span> <span class="special">&amp;</span> <span class="identifier">expr</span> <span class="special">)</span>
+<span class="special">{</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"Input!\n"</span><span class="special">;</span>
+<span class="special">}</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span> <span class="keyword">typename</span> <span class="identifier">Expr</span> <span class="special">&gt;</span>
+<span class="keyword">typename</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">enable_if</span><span class="special">&lt;</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">matches</span><span class="special">&lt;</span> <span class="identifier">Expr</span><span class="special">,</span> <span class="identifier">Output</span> <span class="special">&gt;</span> <span class="special">&gt;::</span><span class="identifier">type</span>
+<span class="identifier">input_output</span><span class="special">(</span> <span class="identifier">Expr</span> <span class="keyword">const</span> <span class="special">&amp;</span> <span class="identifier">expr</span> <span class="special">)</span>
+<span class="special">{</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"Output!\n"</span><span class="special">;</span>
+<span class="special">}</span>
+</pre>
+<p>
+            This works as the previous version did. However, the following does not
+            compile at all:
+          </p>
+<pre class="programlisting"><span class="identifier">input_output</span><span class="special">(</span> <span class="identifier">cout_</span> <span class="special">&lt;&lt;</span> <span class="number">1</span> <span class="special">&lt;&lt;</span> <span class="number">2</span> <span class="special">);</span> <span class="comment">// oops!</span>
+</pre>
+<p>
+            What's wrong? The problem is that this expression does not match our
+            grammar. The expression groups as if it were written like <code class="computeroutput"><span class="special">(</span><span class="identifier">cout_</span> <span class="special">&lt;&lt;</span> <span class="number">1</span><span class="special">)</span> <span class="special">&lt;&lt;</span> <span class="number">2</span></code>. It will not match the <code class="computeroutput"><span class="identifier">Output</span></code> grammar, which expects the left
+            operand to be a terminal, not another left-shift operation. We need to
+            fix the grammar.
+          </p>
+<p>
+            We notice that in order to verify an expression as input or output, we'll
+            need to recurse down to the bottom-left-most leaf and check that it is
+            a <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">istream</span></code> or <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">ostream</span></code>.
+            When we get to the terminal, we must stop recursing. We can express this
+            in our grammar using <code class="computeroutput"><a class="link" href="../../../../boost/proto/or_.html" title="Struct template or_">proto::or_&lt;&gt;</a></code>.
+            Here are the correct <code class="computeroutput"><span class="identifier">Input</span></code>
+            and <code class="computeroutput"><span class="identifier">Output</span></code> grammars:
+          </p>
+<pre class="programlisting"><span class="keyword">struct</span> <span class="identifier">Input</span>
+  <span class="special">:</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">or_</span><span class="special">&lt;</span>
+        <span class="identifier">proto</span><span class="special">::</span><span class="identifier">shift_right</span><span class="special">&lt;</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">terminal</span><span class="special">&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">istream</span> <span class="special">&amp;</span> <span class="special">&gt;,</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">_</span> <span class="special">&gt;</span>
+      <span class="special">,</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">shift_right</span><span class="special">&lt;</span> <span class="identifier">Input</span><span class="special">,</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">_</span> <span class="special">&gt;</span>
+    <span class="special">&gt;</span>
+<span class="special">{};</span>
+
+<span class="keyword">struct</span> <span class="identifier">Output</span>
+  <span class="special">:</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">or_</span><span class="special">&lt;</span>
+        <span class="identifier">proto</span><span class="special">::</span><span class="identifier">shift_left</span><span class="special">&lt;</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">terminal</span><span class="special">&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">ostream</span> <span class="special">&amp;</span> <span class="special">&gt;,</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">_</span> <span class="special">&gt;</span>
+      <span class="special">,</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">shift_left</span><span class="special">&lt;</span> <span class="identifier">Output</span><span class="special">,</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">_</span> <span class="special">&gt;</span>
+    <span class="special">&gt;</span>
+<span class="special">{};</span>
+</pre>
+<p>
+            This may look a little odd at first. We seem to be defining the <code class="computeroutput"><span class="identifier">Input</span></code> and <code class="computeroutput"><span class="identifier">Output</span></code>
+            types in terms of themselves. This is perfectly OK, actually. At the
+            point in the grammar that the <code class="computeroutput"><span class="identifier">Input</span></code>
+            and <code class="computeroutput"><span class="identifier">Output</span></code> types are
+            being used, they are <span class="emphasis"><em>incomplete</em></span>, but by the time
+            we actually evaluate the grammar with <code class="computeroutput"><a class="link" href="../../../../boost/proto/matches.html" title="Struct template matches">proto::matches&lt;&gt;</a></code>,
+            the types will be complete. These are recursive grammars, and rightly
+            so because they must match a recursive data structure!
+          </p>
+<p>
+            Matching an expression such as <code class="computeroutput"><span class="identifier">cout_</span>
+            <span class="special">&lt;&lt;</span> <span class="number">1</span>
+            <span class="special">&lt;&lt;</span> <span class="number">2</span></code>
+            against the <code class="computeroutput"><span class="identifier">Output</span></code> grammar
+            procedes as follows:
+          </p>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+                The first alternate of the <code class="computeroutput"><a class="link" href="../../../../boost/proto/or_.html" title="Struct template or_">proto::or_&lt;&gt;</a></code>
+                is tried first. It will fail, because the expression <code class="computeroutput"><span class="identifier">cout_</span> <span class="special">&lt;&lt;</span>
+                <span class="number">1</span> <span class="special">&lt;&lt;</span>
+                <span class="number">2</span></code> does not match the grammar
+                <code class="computeroutput"><span class="identifier">proto</span><span class="special">::</span><span class="identifier">shift_left</span><span class="special">&lt;</span>
+                <span class="identifier">proto</span><span class="special">::</span><span class="identifier">terminal</span><span class="special">&lt;</span>
+                <span class="identifier">std</span><span class="special">::</span><span class="identifier">ostream</span> <span class="special">&amp;</span>
+                <span class="special">&gt;,</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">_</span> <span class="special">&gt;</span></code>.
+              </li>
+<li class="listitem">
+                Then the second alternate is tried next. We match the expression
+                against <code class="computeroutput"><span class="identifier">proto</span><span class="special">::</span><span class="identifier">shift_left</span><span class="special">&lt;</span>
+                <span class="identifier">Output</span><span class="special">,</span>
+                <span class="identifier">proto</span><span class="special">::</span><span class="identifier">_</span> <span class="special">&gt;</span></code>.
+                The expression is a left-shift, so we next try to match the operands.
+              </li>
+<li class="listitem">
+                The right operand <code class="computeroutput"><span class="number">2</span></code> matches
+                <code class="computeroutput"><span class="identifier">proto</span><span class="special">::</span><span class="identifier">_</span></code> trivially.
+              </li>
+<li class="listitem">
+                To see if the left operand <code class="computeroutput"><span class="identifier">cout_</span>
+                <span class="special">&lt;&lt;</span> <span class="number">1</span></code>
+                matches <code class="computeroutput"><span class="identifier">Output</span></code>, we
+                must recursively evaluate the <code class="computeroutput"><span class="identifier">Output</span></code>
+                grammar. This time we succeed, because <code class="computeroutput"><span class="identifier">cout_</span>
+                <span class="special">&lt;&lt;</span> <span class="number">1</span></code>
+                will match the first alternate of the <code class="computeroutput"><a class="link" href="../../../../boost/proto/or_.html" title="Struct template or_">proto::or_&lt;&gt;</a></code>.
+              </li>
+</ol></div>
+<p>
+            We're done -- the grammar matches successfully.
+          </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2008 Eric Niebler<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../expression_introspection.html"><img src="../../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../expression_introspection.html"><img src="../../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../../index.html"><img src="../../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="fuzzy_and_exact_matches_of_terminals.html"><img src="../../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

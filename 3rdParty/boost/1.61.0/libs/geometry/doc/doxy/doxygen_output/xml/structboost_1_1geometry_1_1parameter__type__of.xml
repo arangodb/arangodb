@@ -1,0 +1,82 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="structboost_1_1geometry_1_1parameter__type__of" kind="struct" prot="public">
+    <compoundname>boost::geometry::parameter_type_of</compoundname>
+    <includes local="no">parameter_type_of.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename Method</type>
+      </param>
+      <param>
+        <type>std::size_t</type>
+        <declname>Index</declname>
+        <defname>Index</defname>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-type">
+      <memberdef kind="typedef" id="structboost_1_1geometry_1_1parameter__type__of_1a788856e00ea085cd20356ce1f28061da" prot="public" static="no">
+        <type>boost::mpl::if_&lt; boost::function_types::is_member_function_pointer&lt; Method &gt;, boost::mpl::int_&lt; 1 &gt;, boost::mpl::int_&lt; 0 &gt; &gt;::<ref refid="structboost_1_1geometry_1_1parameter__type__of_1a19003748253db74fa28961aa76d3d62b" kindref="member">type</ref></type>
+        <definition>typedef boost::mpl::if_&lt; boost::function_types::is_member_function_pointer&lt;Method&gt;, boost::mpl::int_&lt;1&gt;, boost::mpl::int_&lt;0&gt; &gt;::type boost::geometry::parameter_type_of&lt; Method, Index &gt;::base_index_type</definition>
+        <argsstring></argsstring>
+        <name>base_index_type</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/util/parameter_type_of.hpp" line="48" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/util/parameter_type_of.hpp" bodystart="48" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="typedef" id="structboost_1_1geometry_1_1parameter__type__of_1a9ad3fc57f889b54a4df5f6b99f3a0674" prot="public" static="no">
+        <type>boost::mpl::if_c&lt; Index==0, <ref refid="structboost_1_1geometry_1_1parameter__type__of_1a788856e00ea085cd20356ce1f28061da" kindref="member">base_index_type</ref>, typename boost::mpl::plus&lt; <ref refid="structboost_1_1geometry_1_1parameter__type__of_1a788856e00ea085cd20356ce1f28061da" kindref="member">base_index_type</ref>, boost::mpl::int_&lt; Index &gt; &gt;::<ref refid="structboost_1_1geometry_1_1parameter__type__of_1a19003748253db74fa28961aa76d3d62b" kindref="member">type</ref> &gt;::<ref refid="structboost_1_1geometry_1_1parameter__type__of_1a19003748253db74fa28961aa76d3d62b" kindref="member">type</ref></type>
+        <definition>typedef boost::mpl::if_c&lt; Index == 0, base_index_type, typename boost::mpl::plus &lt; base_index_type, boost::mpl::int_&lt;Index&gt; &gt;::type &gt;::type boost::geometry::parameter_type_of&lt; Method, Index &gt;::indexed_type</definition>
+        <argsstring></argsstring>
+        <name>indexed_type</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/util/parameter_type_of.hpp" line="59" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/util/parameter_type_of.hpp" bodystart="59" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="typedef" id="structboost_1_1geometry_1_1parameter__type__of_1ac4a307ccf2bc125fa52171ae5e3b8deb" prot="public" static="no">
+        <type>boost::function_types::parameter_types&lt; Method &gt;::<ref refid="structboost_1_1geometry_1_1parameter__type__of_1a19003748253db74fa28961aa76d3d62b" kindref="member">type</ref></type>
+        <definition>typedef boost::function_types::parameter_types&lt; Method &gt;::type boost::geometry::parameter_type_of&lt; Method, Index &gt;::parameter_types</definition>
+        <argsstring></argsstring>
+        <name>parameter_types</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/util/parameter_type_of.hpp" line="41" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/util/parameter_type_of.hpp" bodystart="41" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="typedef" id="structboost_1_1geometry_1_1parameter__type__of_1a19003748253db74fa28961aa76d3d62b" prot="public" static="no">
+        <type>boost::remove_reference&lt; typename boost::mpl::at&lt; <ref refid="structboost_1_1geometry_1_1parameter__type__of_1ac4a307ccf2bc125fa52171ae5e3b8deb" kindref="member">parameter_types</ref>, <ref refid="structboost_1_1geometry_1_1parameter__type__of_1a9ad3fc57f889b54a4df5f6b99f3a0674" kindref="member">indexed_type</ref> &gt;::<ref refid="structboost_1_1geometry_1_1parameter__type__of_1a19003748253db74fa28961aa76d3d62b" kindref="member">type</ref> &gt;::<ref refid="structboost_1_1geometry_1_1parameter__type__of_1a19003748253db74fa28961aa76d3d62b" kindref="member">type</ref></type>
+        <definition>typedef boost::remove_reference&lt; typename boost::mpl::at &lt; parameter_types, indexed_type &gt;::type &gt;::type boost::geometry::parameter_type_of&lt; Method, Index &gt;::type</definition>
+        <argsstring></argsstring>
+        <name>type</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/util/parameter_type_of.hpp" line="68" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/util/parameter_type_of.hpp" bodystart="68" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+<para>Meta-function selecting a parameter type of a (member) function, by index. </para>    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/util/parameter_type_of.hpp" line="37" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/util/parameter_type_of.hpp" bodystart="36" bodyend="69"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1parameter__type__of_1a788856e00ea085cd20356ce1f28061da" prot="public" virt="non-virtual"><scope>boost::geometry::parameter_type_of</scope><name>base_index_type</name></member>
+      <member refid="structboost_1_1geometry_1_1parameter__type__of_1a9ad3fc57f889b54a4df5f6b99f3a0674" prot="public" virt="non-virtual"><scope>boost::geometry::parameter_type_of</scope><name>indexed_type</name></member>
+      <member refid="structboost_1_1geometry_1_1parameter__type__of_1ac4a307ccf2bc125fa52171ae5e3b8deb" prot="public" virt="non-virtual"><scope>boost::geometry::parameter_type_of</scope><name>parameter_types</name></member>
+      <member refid="structboost_1_1geometry_1_1parameter__type__of_1a19003748253db74fa28961aa76d3d62b" prot="public" virt="non-virtual"><scope>boost::geometry::parameter_type_of</scope><name>type</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>
