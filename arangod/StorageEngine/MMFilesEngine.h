@@ -65,7 +65,7 @@ class MMFilesEngine final : public StorageEngine {
   void stop() override;
 
   // called when recovery is finished
-  void recoveryDone(TRI_vocbase_t* vocbase); 
+  void recoveryDone(TRI_vocbase_t* vocbase) override;
 
   // inventory functionality
   // -----------------------
