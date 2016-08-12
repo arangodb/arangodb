@@ -106,7 +106,7 @@ HttpHandler::status_t RestAgencyPrivHandler::execute() {
             readValue("prevLogIndex", prevLogIndex) &&
             readValue("prevLogTerm", prevLogTerm)) {
           priv_rpc_ret_t ret =
-              _agent->requestVote(term, id, prevLogIndex, prevLogTerm, nullptr);
+              _agent->requestVote(term, id, prevLogIndex, prevLogTerm);
           result.add("term", VPackValue(ret.term));
           result.add("voteGranted", VPackValue(ret.success));
         }
@@ -115,10 +115,7 @@ HttpHandler::status_t RestAgencyPrivHandler::execute() {
           return reportMethodNotAllowed();
         }
         if (readValue("term", term) && readValue("agencyId", id)) {
-          priv_rpc_ret_t ret = _agent->requestVote(
-              term, id, 0, 0, _request->toVelocyPack(&opts));
-          result.add("term", VPackValue(ret.term));
-          result.add("voteGranted", VPackValue(ret.success));
+          _agent->notifyEndpoints(_request->toVelocyPack(&opts));
         } else {
           return reportBadQuery();  // bad query
         }

@@ -19,11 +19,11 @@ if [[ $(( $NRAGENTS % 2 )) == 0 ]]; then
     exit 1
 fi
 
-MINP=0.25
+MINP=0.5
 MAXP=2.5
 SFRE=2.5
 COMP=1000
-BASE=4001
+BASE=5001
 
 #rm -rf agency
 mkdir -p agency

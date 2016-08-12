@@ -52,9 +52,11 @@ class Agent : public arangodb::Thread {
   arangodb::consensus::id_t id() const;
 
   /// @brief Vote request
-  priv_rpc_ret_t requestVote(term_t, arangodb::consensus::id_t, index_t,
-                             index_t, query_t const&);
-
+  priv_rpc_ret_t requestVote(term_t, arangodb::consensus::id_t, index_t, index_t);
+  
+  /// @brief Vote request
+  void notifyEndpoints(query_t const&);
+  
   /// @brief Provide configuration
   config_t const& config() const;
 

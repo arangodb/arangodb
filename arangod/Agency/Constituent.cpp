@@ -505,7 +505,8 @@ void Constituent::run() {
         _cast = false;  // New round set not cast vote
       }
 
-      int32_t left = static_cast<int32_t>(1000000.0 * config().minPing), right = static_cast<int32_t>(1000000.0 * config().maxPing);
+      int32_t left = static_cast<int32_t>(1000000.0 * config().minPing),
+        right = static_cast<int32_t>(1000000.0 * config().maxPing);
       long rand_wait = static_cast<long>(RandomGenerator::interval(left, right));
 
       {
@@ -525,7 +526,7 @@ void Constituent::run() {
     } else if (_role == CANDIDATE) {
       callElection();  // Run for office
     } else {
-      int32_t left = static_cast<int32_t>(100000.0 * config().minPing);
+      int32_t left = static_cast<int32_t>(1000000.0 * config().minPing);
       long rand_wait = static_cast<long>(left);
       {
         CONDITION_LOCKER(guardv, _cv);

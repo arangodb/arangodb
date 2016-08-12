@@ -100,11 +100,7 @@ std::string const& Agent::endpoint() const {
   return _config.endpoint;
 }
 
-
-/// Handle voting
-priv_rpc_ret_t Agent::requestVote(
-  term_t t, arangodb::consensus::id_t id, index_t lastLogIndex,
-  index_t lastLogTerm, query_t const& query) {
+void Agent::notifyEndpoints (query_t const& query) {
   
   /// Are we receiving new endpoints
   if (query != nullptr) {  // record new endpoints
@@ -116,7 +112,13 @@ priv_rpc_ret_t Agent::requestVote(
       }
     }
   }
+}
 
+/// Handle voting
+priv_rpc_ret_t Agent::requestVote(
+  term_t t, arangodb::consensus::id_t id, index_t lastLogIndex,
+  index_t lastLogTerm) {
+  
   /// Constituent handles this
   return priv_rpc_ret_t(_constituent.vote(t, id, lastLogIndex, lastLogTerm),
                         this->term());
@@ -240,7 +242,7 @@ bool Agent::recvAppendEntriesRPC(term_t term,
   MUTEX_LOCKER(mutexLocker, _ioLock);
 
   if (this->term() > term) {
-    LOG_TOPIC(WARN, Logger::AGENCY) << "I have a higher term than RPC caller.";
+    LOG_TOPIC(DEBUG, Logger::AGENCY) << "I have a higher term than RPC caller.";
     return false;
   }
 
