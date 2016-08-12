@@ -1994,7 +1994,6 @@ static int GetRevision(TRI_vocbase_col_t* collection, TRI_voc_rid_t& rid) {
   }
 
   TRI_ASSERT(collection->_collection != nullptr);
-  TRI_ASSERT(collection->_collection->_info != nullptr);
   // READ-LOCK start
   trx.lockRead();
   rid = collection->_collection->_info.revision();

@@ -1978,10 +1978,6 @@ bool VocbaseCollectionInfo::isVolatile() const { return _isVolatile; }
 // If true waits for mysnc
 bool VocbaseCollectionInfo::waitForSync() const { return _waitForSync; }
 
-void VocbaseCollectionInfo::setVersion(TRI_col_version_t version) {
-  _version = version;
-}
-
 void VocbaseCollectionInfo::rename(std::string const& name) {
   TRI_CopyString(_name, name.c_str(), sizeof(_name) - 1);
 }

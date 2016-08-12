@@ -219,21 +219,18 @@ class VocbaseCollectionInfo {
   // If true waits for mysnc
   bool waitForSync() const;
 
-  void setVersion(TRI_col_version_t);
-
   // Changes the name. Should only be called by TRI_collection_t::rename()
   // Use with caution!
   void rename(std::string const&);
-
-  void setIsSystem(bool value) { _isSystem = value; }
 
   void setRevision(TRI_voc_rid_t, bool);
 
   void setCollectionId(TRI_voc_cid_t);
 
+  void setPlanId(TRI_voc_cid_t);
+
   void updateCount(size_t);
 
-  void setPlanId(TRI_voc_cid_t);
 
   void setDeleted(bool);
 
