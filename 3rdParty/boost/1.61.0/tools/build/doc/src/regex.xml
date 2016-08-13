@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE section PUBLIC "-//Boost//DTD BoostBook XML V1.0//EN"
+  "http://www.boost.org/tools/boostbook/dtd/boostbook.dtd">
+
+<section id="bbv2.reference.modules.regex">
+
+  <title>regex</title>
+  <indexterm>
+    <primary>regex</primary>
+    <secondary>module</secondary>
+  </indexterm>
+
+  <para>
+    Contains rules for string processing using regular expressions.
+  </para>
+
+  <itemizedlist>
+
+    <listitem><para>
+      <code language="jam">"x*"</code> matches the pattern
+      <code language="jam">"x"</code> zero or more times.
+    </para></listitem>
+    
+    <listitem><para>
+      <code language="jam">"x+"</code> matches <code language="jam">"x"</code>
+      one or more times.
+    </para></listitem>
+    
+    <listitem><para>
+      <code language="jam">"x?"</code> matches <code language="jam">"x"</code>
+      zero or one time.
+    </para></listitem>
+    
+    <listitem><para>
+      <code language="jam">"[abcd]"</code> matches any of the characters,
+      <code language="jam">"a"</code>, <code language="jam">"b"</code>,
+      <code language="jam">"c"</code>, and <code language="jam">"d"</code>.
+      A character range such as <code language="jam">"[a-z]"</code> matches
+      any character between <code language="jam">"a"</code> and
+      <code language="jam">"z"</code>.  <code language="jam">"[^abc]"</code>
+      matches any character which is not <code language="jam">"a"</code>,
+      <code language="jam">"b"</code>, or <code language="jam">"c"</code>.
+    </para></listitem>
+
+    <listitem><para>
+      <code language="jam">"x|y"</code> matches either pattern
+      <code language="jam">"x"</code> or pattern <code language="jam">"y"</code>
+    </para></listitem>
+    
+    <listitem><para>
+      <code language="jam">(x)</code> matches <code language="jam">"x"</code>
+      and captures it.
+    </para></listitem>
+    
+    <listitem><para>
+      <code language="jam">"^"</code> matches the beginning of the string.
+    </para></listitem>
+    
+    <listitem><para>
+      <code language="jam">"$"</code> matches the end of the string.
+    </para></listitem>
+
+    <listitem><para>
+      "\&lt;" matches the beginning of a word.
+    </para></listitem>
+
+    <listitem><para>
+      "\&gt;" matches the end of a word.
+    </para></listitem>
+    
+  </itemizedlist>
+
+  <orderedlist>
+
+    <listitem id="bbv2.reference.modules.regex.split">
+      <indexterm zone="bbv2.reference.modules.regex.split">
+        <primary>split</primary>
+        <secondary>regex</secondary>
+      </indexterm>
+      <code language="jam">rule split ( string separator )</code>
+      <para>Returns a list of the following substrings:
+      <orderedlist>
+        <listitem><para>from beginning till the first occurrence of
+        <code language="jam">separator</code> or till the end,
+        </para></listitem>
+        <listitem><para>between each occurrence of
+        <code language="jam">separator</code> and the next occurrence,
+        </para></listitem>
+        <listitem><para>from the last occurrence of
+        <code language="jam">separator</code> till the end.
+        </para></listitem>
+      </orderedlist>
+      If no separator is present, the result will contain only one element.
+      </para>
+    </listitem>
+
+    <listitem id="bbv2.reference.modules.regex.split-list">
+      <indexterm zone="bbv2.reference.modules.regex.split-list">
+        <primary>split-list</primary>
+        <secondary>regex</secondary>
+      </indexterm>
+      <code language="jam">rule split-list ( list * : separator )</code>
+      <para>Returns the concatenated results of applying
+      <link linkend="bbv2.reference.modules.regex.split">regex.split</link>
+      to every element of the list using the separator pattern.</para>
+    </listitem>
+
+    <listitem id="bbv2.reference.modules.regex.match">
+      <indexterm zone="bbv2.reference.modules.regex.match">
+        <primary>match</primary>
+        <secondary>regex</secondary>
+      </indexterm>
+      <code language="jam">rule match ( pattern : string : indices * )</code>
+      <para>Match <code language="jam">string</code> against
+      <code language="jam">pattern</code>, and return the elements
+      indicated by <code language="jam">indices</code>.
+      </para>
+    </listitem>
+
+    <listitem id="bbv2.reference.modules.regex.transform">
+      <indexterm zone="bbv2.reference.modules.regex.transform">
+        <primary>transform</primary>
+        <secondary>regex</secondary>
+      </indexterm>
+      <code language="jam">rule transform ( list * : pattern : indices * )</code>
+      <para>Matches all elements of <code language="jam">list</code> against
+      the <code language="jam">pattern</code> and returns a list of elements
+      indicated by <code language="jam">indices</code> of all successful
+      matches. If <code language="jam">indices</code> is omitted returns a list
+      of first parenthesized groups of all successful matches.</para>
+    </listitem>
+
+    <listitem id="bbv2.reference.modules.regex.escape">
+      <indexterm zone="bbv2.reference.modules.regex.escape">
+        <primary>escape</primary>
+        <secondary>regex</secondary>
+      </indexterm>
+      <code language="jam">rule escape ( string : symbols : escape-symbol )</code>
+      <para>Escapes all of the characters in <code language="jam">symbols</code>
+      using the escape symbol <code language="jam">escape-symbol</code> for
+      the given string, and returns the escaped string.</para>
+    </listitem>
+
+    <listitem id="bbv2.reference.modules.regex.replace">
+      <indexterm zone="bbv2.reference.modules.regex.replace">
+        <primary>replace</primary>
+        <secondary>regex</secondary>
+      </indexterm>
+      <code language="jam">rule replace ( string match replacement )</code>
+      <para>Replaces occurrences of a match string in a given string and
+      returns the new string. The match string can be a regex expression.</para>
+    </listitem>
+
+    <listitem id="bbv2.reference.modules.regex.replace-list">
+      <indexterm zone="bbv2.reference.modules.regex.replace-list">
+        <primary>replace-list</primary>
+        <secondary>regex</secondary>
+      </indexterm>
+      <code language="jam">rule replace-list ( list * : match : replacement )</code>
+      <para>Replaces occurrences of a match string in a given list of strings
+      and returns a list of new strings. The match string can be a regex
+      expression.
+      </para>
+    </listitem>
+
+  </orderedlist>
+  
+  <para>See also: <link linkend="jam.language.rules.builtins.utility._match__">MATCH</link></para>
+
+</section>
