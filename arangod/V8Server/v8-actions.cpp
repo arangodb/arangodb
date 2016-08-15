@@ -521,21 +521,23 @@ static v8::Handle<v8::Object> RequestCppToV8(v8::Isolate* isolate,
   TRI_GET_GLOBAL_STRING(ParametersKey);
   req->ForceSet(ParametersKey, valuesObject);
 
-  // copy cookies
-  v8::Handle<v8::Object> cookiesObject = v8::Object::New(isolate);
+  // copy cookie -- only for http protocl
+  if (request->transportType() == Endpoint::TransportType::HTTP) {  // FIXME
+    v8::Handle<v8::Object> cookiesObject = v8::Object::New(isolate);
 
-  HttpRequest* httpRequest = dynamic_cast<HttpRequest*>(request);
-  if (httpRequest == nullptr) {
-    // maybe we can just continue
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
-  } else {
-    for (auto& it : httpRequest->cookieValues()) {
-      cookiesObject->ForceSet(TRI_V8_STD_STRING(it.first),
-                              TRI_V8_STD_STRING(it.second));
+    HttpRequest* httpRequest = dynamic_cast<HttpRequest*>(request);
+    if (httpRequest == nullptr) {
+      // maybe we can just continue
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    } else {
+      for (auto& it : httpRequest->cookieValues()) {
+        cookiesObject->ForceSet(TRI_V8_STD_STRING(it.first),
+                                TRI_V8_STD_STRING(it.second));
+      }
     }
+    TRI_GET_GLOBAL_STRING(CookiesKey);
+    req->ForceSet(CookiesKey, cookiesObject);
   }
-  TRI_GET_GLOBAL_STRING(CookiesKey);
-  req->ForceSet(CookiesKey, cookiesObject);
 
   return req;
 }
@@ -829,12 +831,9 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
 static TRI_action_result_t ExecuteActionVocbase(
     TRI_vocbase_t* vocbase, v8::Isolate* isolate, TRI_action_t const* action,
     v8::Handle<v8::Function> callback, GeneralRequest* request,
-    GeneralResponse* responseGeneral) {
+    GeneralResponse* response) {
   v8::HandleScope scope(isolate);
   v8::TryCatch tryCatch;
-
-  // TODO needs to generalized
-  auto response = dynamic_cast<HttpResponse*>(responseGeneral);
 
   if (response == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
@@ -911,7 +910,11 @@ static TRI_action_result_t ExecuteActionVocbase(
       errorMessage = TRI_errno_string(errorCode);
     }
 
-    response->body().appendText(errorMessage);
+    // TODO (obi)
+    if (response->transportType() == Endpoint::TransportType::HTTP) {  // FIXME
+      ((HttpResponse*)response)->body().appendText(errorMessage);
+    }
+
   }
 
   else if (v8g->_canceled) {
@@ -924,7 +927,11 @@ static TRI_action_result_t ExecuteActionVocbase(
       response->setResponseCode(GeneralResponse::ResponseCode::SERVER_ERROR);
 
       // TODO how to generalize this?
-      response->body().appendText(TRI_StringifyV8Exception(isolate, &tryCatch));
+      if (response->transportType() ==
+          Endpoint::TransportType::HTTP) {  // FIXME
+        ((HttpResponse*)response)->body().appendText(
+            TRI_StringifyV8Exception(isolate, &tryCatch));
+      }
     } else {
       v8g->_canceled = true;
       result.isValid = false;
