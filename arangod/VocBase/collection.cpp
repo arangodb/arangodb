@@ -136,10 +136,7 @@ static bool OpenIndexIterator(std::string const& filename, void* data) {
   }
 
   auto ctx = static_cast<OpenIndexIteratorContext*>(data);
-  arangodb::Transaction* trx = ctx->trx;
-  TRI_collection_t* document = ctx->collection;
-
-  int res = document->indexFromVelocyPack(trx, description, nullptr);
+  int res = ctx->collection->indexFromVelocyPack(ctx->trx, description, nullptr);
 
   if (res != TRI_ERROR_NO_ERROR) {
     // error was already printed if we get here
