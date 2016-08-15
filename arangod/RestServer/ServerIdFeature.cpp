@@ -85,7 +85,7 @@ int ServerIdFeature::readId() {
   TRI_server_id_t foundId;
   try {
     std::shared_ptr<VPackBuilder> builder =
-        arangodb::basics::VelocyPackHelper::velocyPackFromFile(_idFilename.c_str());
+        arangodb::basics::VelocyPackHelper::velocyPackFromFile(_idFilename);
     VPackSlice content = builder->slice();
     if (!content.isObject()) {
       return TRI_ERROR_INTERNAL;
@@ -139,7 +139,7 @@ int ServerIdFeature::writeId() {
   // save json info to file
   LOG(DEBUG) << "Writing server id to file '" << _idFilename << "'";
   bool ok = arangodb::basics::VelocyPackHelper::velocyPackToFile(
-      _idFilename.c_str(), builder.slice(), true);
+      _idFilename, builder.slice(), true);
 
   if (!ok) {
     LOG(ERR) << "could not save server id in file '" << _idFilename << "': " << TRI_last_error();

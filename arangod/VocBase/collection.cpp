@@ -121,7 +121,7 @@ static bool OpenIndexIterator(std::string const& filename, void* data) {
   // load VelocyPack description of the index
   std::shared_ptr<VPackBuilder> builder;
   try {
-    builder = arangodb::basics::VelocyPackHelper::velocyPackFromFile(filename.c_str());
+    builder = arangodb::basics::VelocyPackHelper::velocyPackFromFile(filename);
   } catch (...) {
     // Failed to parse file
     LOG(ERR) << "failed to parse index definition from '" << filename << "'";

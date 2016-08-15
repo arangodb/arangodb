@@ -706,7 +706,7 @@ int TRI_SaveStateReplicationApplier(
   LOG_TOPIC(TRACE, Logger::REPLICATION)
       << "saving replication applier state to file '" << filename << "'";
 
-  if (!VelocyPackHelper::velocyPackToFile(filename.c_str(), builder.slice(), doSync)) {
+  if (!VelocyPackHelper::velocyPackToFile(filename, builder.slice(), doSync)) {
     return TRI_errno();
   }
 
@@ -853,7 +853,7 @@ int TRI_SaveConfigurationReplicationApplier(
 
   std::string const filename = GetConfigurationFilename(vocbase);
 
-  if (!VelocyPackHelper::velocyPackToFile(filename.c_str(), builder->slice(), doSync)) {
+  if (!VelocyPackHelper::velocyPackToFile(filename, builder->slice(), doSync)) {
     return TRI_errno();
   } 
   
