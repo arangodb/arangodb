@@ -1432,7 +1432,7 @@ function startInstanceAgency (instanceInfo, protocol, options,
 
   for (let i = 0; i < N; i++) {
     let instanceArgs = _.clone(addArgs);
-    instanceArgs['agency.id'] = String(i);
+    instanceArgs['agency.activate'] = 'true';
     instanceArgs['agency.size'] = String(N);
     instanceArgs['agency.wait-for-sync'] = String(wfs);
     instanceArgs['agency.supervision'] = 'true';
@@ -1448,7 +1448,7 @@ function startInstanceAgency (instanceInfo, protocol, options,
       });
       l.push('--agency.endpoint');
       l.push('tcp://127.0.0.1:' + port);
-      l.push('--agency.notify');
+//      l.push('--agency.notify');
       l.push('true');
 
       instanceArgs['flatCommands'] = l;

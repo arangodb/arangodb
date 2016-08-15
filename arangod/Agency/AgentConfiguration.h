@@ -198,6 +198,11 @@ struct config_t {
       ret->add(i.first, VPackValue(i.second));
     }
     ret->close();
+    ret->add(activeStr, VPackValue(VPackValueType::Array));
+    for (auto const& i : active) {
+      ret->add(VPackValue(i));
+    }
+    ret->close();
     ret->add(idStr, VPackValue(id));
     ret->add(agencySizeStr, VPackValue(agencySize));
     ret->add(poolSizeStr, VPackValue(poolSize));
@@ -207,17 +212,31 @@ struct config_t {
     ret->add(supervisionStr, VPackValue(supervision));
     ret->add(supervisionFrequencyStr, VPackValue(supervisionFrequency));
     ret->add(compactionStepSizeStr, VPackValue(compactionStepSize));
+    ret->add("_key", VPackValue("0"));    
     ret->close();
     return ret;
+  }
+
+  bool setId (arangodb::consensus::id_t const& i) {
+    if (id.empty()) {
+      id = i;
+      pool[id] = endpoint; // Register my endpoint with it
+      return true;
+    } else {
+      return false;
+    }
   }
 
 
   /// @brief merge from persisted configuration
   bool merge (VPackSlice const& conf) { 
+
+    LOG(WARN) << conf.typeName();
     
     id = conf.get(idStr).copyString(); // I get my id
     pool[id] = endpoint; // Register my endpoint with it
 
+    LOG(WARN) << __FILE__ << ":" << __LINE__;
     std::stringstream ss;
     ss << "Agency size: ";
     if (conf.hasKey(agencySizeStr)) { // Persistence beats command line
@@ -233,6 +252,7 @@ struct config_t {
     }
     LOG_TOPIC(DEBUG, Logger::AGENCY) << ss.str();
 
+    LOG(WARN) << __FILE__ << ":" << __LINE__;
     ss.clear();
     ss << "Agency pool size: ";
     if (poolSize == 0) { // Command line beats persistence
@@ -248,6 +268,7 @@ struct config_t {
     }
     LOG_TOPIC(DEBUG, Logger::AGENCY) << ss.str();
 
+    LOG(WARN) << __FILE__ << ":" << __LINE__;
     ss.clear();
     ss << "Agent pool: ";
     if (conf.hasKey(poolStr)) { // Persistence only
@@ -263,6 +284,7 @@ struct config_t {
     }
     LOG_TOPIC(DEBUG, Logger::AGENCY) << ss.str();
 
+    LOG(WARN) << __FILE__ << ":" << __LINE__;
     ss.clear();
     ss << "Active agents: ";
     if (conf.hasKey(activeStr)) { // Persistence only?
@@ -276,6 +298,7 @@ struct config_t {
     }
     LOG_TOPIC(DEBUG, Logger::AGENCY) << ss.str();
 
+    LOG(WARN) << __FILE__ << ":" << __LINE__;
     ss.clear();
     ss << "Min RAFT interval: ";
     if (minPing == 0) { // Command line beats persistence
@@ -291,6 +314,7 @@ struct config_t {
     }
     LOG_TOPIC(DEBUG, Logger::AGENCY) << ss.str();
 
+    LOG(WARN) << __FILE__ << ":" << __LINE__;
     ss.clear();
     ss << "Max RAFT interval: ";
     if (maxPing == 0) { // Command line beats persistence
@@ -306,6 +330,7 @@ struct config_t {
     }
     LOG_TOPIC(DEBUG, Logger::AGENCY) << ss.str();
 
+    LOG(WARN) << __FILE__ << ":" << __LINE__;
     ss.clear();
     ss << "Supervision: ";
     if (supervision == false) { // Command line beats persistence
@@ -336,6 +361,7 @@ struct config_t {
     }
     LOG_TOPIC(DEBUG, Logger::AGENCY) << ss.str();
 
+    LOG(WARN) << __FILE__ << ":" << __LINE__;
     ss.clear();
     ss << "Compaction step size: ";
     if (compactionStepSize == 0) { // Command line beats persistence

@@ -78,7 +78,6 @@ Constituent::Constituent()
     _term(0),
     _cast(false),
     _leaderID(NO_LEADER),
-    _id(0),
     _role(FOLLOWER),
     _agent(nullptr),
     _votedFor(NO_LEADER)

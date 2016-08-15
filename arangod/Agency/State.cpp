@@ -432,9 +432,17 @@ bool State::loadCollections(TRI_vocbase_t* vocbase, QueryRegistry* queryRegistry
 bool State::loadPersisted() {
   TRI_ASSERT(_vocbase != nullptr);
 
-  if (checkCollection("configuration") && checkCollection("log")
-      && checkCollection("compact")) {
-    return (loadOrPersistConfiguration() && loadCompacted() && loadRemaining());
+  LOG(WARN) << __FILE__ << " " << __LINE__;
+
+  if (!checkCollection("configuration")) {
+    createCollection("configuration");
+  }
+
+  loadOrPersistConfiguration();
+
+  if (checkCollection("log") && checkCollection("compact")) {
+    LOG(WARN) << __FILE__ << " " << __LINE__;
+    return (loadCompacted() && loadRemaining());
   }
 
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "Couldn't find persisted log";
@@ -485,12 +493,14 @@ bool State::loadCompacted() {
 /// Load persisted configuration
 bool State::loadOrPersistConfiguration() {
 
+  LOG(WARN) << __FILE__ << " " << __LINE__;
+
   auto bindVars = std::make_shared<VPackBuilder>();
   bindVars->openObject();
   bindVars->close();
   
   std::string const aql(
-    std::string("FOR c in log FILTER c._key == \"0\" RETURN c"));
+    std::string("FOR c in configuration FILTER c._key == \"0\" RETURN c"));
   
   arangodb::aql::Query query(false, _vocbase, aql.c_str(), aql.size(), bindVars,
                              nullptr, arangodb::aql::PART_MAIN);
@@ -503,10 +513,13 @@ bool State::loadOrPersistConfiguration() {
 
   VPackSlice result = queryResult.result->slice();
 
+  LOG(WARN) << __FILE__ << ":" << __LINE__;
+
   if (result.isArray() && result.length()) { // We already have a persisted conf
 
     try {
-      _agent->mergeConfiguration(result);
+      LOG(WARN) << __FILE__ << ":" << __LINE__;
+      _agent->mergeConfiguration(result[0]);
     } catch (std::exception const& e) {
       LOG_TOPIC(ERR, Logger::AGENCY)
         << "Failed to merge persisted configuration into runtime configuration:"
@@ -516,16 +529,19 @@ bool State::loadOrPersistConfiguration() {
     
   } else {                                   // Fresh start
     
+  LOG(WARN) << __FILE__ << ":" << __LINE__;
     LOG_TOPIC(DEBUG, Logger::AGENCY) << "New agency!";
 
     TRI_ASSERT(_agent != nullptr);
     _agent->id(to_string(boost::uuids::random_generator()()));
     
+  LOG(WARN) << __FILE__ << ":" << __LINE__;
     auto transactionContext =
       std::make_shared<StandaloneTransactionContext>(_vocbase);
     SingleCollectionTransaction trx(transactionContext, "configuration",
                                     TRI_TRANSACTION_WRITE);
     
+  LOG(WARN) << __FILE__ << ":" << __LINE__;
     int res = trx.begin();
     OperationResult result;
 
@@ -534,6 +550,7 @@ bool State::loadOrPersistConfiguration() {
     }
     
     try {
+      LOG(WARN) << __FILE__ << ":" << __LINE__;
       result = trx.insert(
         "configuration", _agent->config().toBuilder()->slice(), _options);
     } catch (std::exception const& e) {
@@ -541,13 +558,13 @@ bool State::loadOrPersistConfiguration() {
         << "Failed to persist configuration entry:" << e.what();
       FATAL_ERROR_EXIT();
     }
-    
+
     res = trx.finish(result.code);
     
     return (res == TRI_ERROR_NO_ERROR);
     
   }
-  
+
   return true;
   
 }

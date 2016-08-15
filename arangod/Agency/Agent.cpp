@@ -68,7 +68,7 @@ arangodb::consensus::id_t Agent::id() const {
 /// Agent's id is set once from state machine
 bool Agent::id(arangodb::consensus::id_t const& id) {
   MUTEX_LOCKER(mutexLocker, _cfgLock);  
-  _config.id = id;
+  _config.setId(id);
   return true;
 }
 
@@ -369,7 +369,12 @@ bool Agent::load() {
         << "Failed to load persistent state on startup.";
   }
 
-  inception();
+  if (size() > 1) {
+    inception();
+  } else {
+    MUTEX_LOCKER(mutexLocker, _cfgLock);  
+    _config.active.push_back(_config.id);
+  }
   
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "Reassembling spearhead and read stores.";
   _spearhead.apply(_state.slices(_lastCommitIndex + 1));

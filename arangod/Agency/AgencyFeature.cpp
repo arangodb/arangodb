@@ -63,7 +63,7 @@ AgencyFeature::~AgencyFeature() {}
 void AgencyFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection("agency", "Configure the agency");
 
-  options->addOption("--agency.role", "Activate agency",
+  options->addOption("--agency.activate", "Activate agency",
                      new BooleanParameter(&_activated));
 
   options->addOption("--agency.size", "number of agents",
@@ -107,7 +107,7 @@ void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 
   ProgramOptions::ProcessingResult const& result = options->processingResult();
 
-  if (!result.touched("agency.role") || !_activated) {
+  if (!result.touched("agency.activate") || !_activated) {
     disable();
     return;
   }
@@ -172,8 +172,6 @@ void AgencyFeature::prepare() {
   _agencyEndpoints.resize(static_cast<size_t>(_size));
 }
 
-#warning iostream
-#include<iostream>
 void AgencyFeature::start() {
 
   if (!isEnabled()) {
