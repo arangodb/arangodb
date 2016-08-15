@@ -1,0 +1,5 @@
+{
+  "scripts": {
+    "queuetest": "queuetest.js"
+  }
+}

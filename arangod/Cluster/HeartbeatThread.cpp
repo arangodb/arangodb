@@ -323,6 +323,7 @@ void HeartbeatThread::runCoordinator() {
         {_agency.prefixPath() + "Plan/Version",
          _agency.prefixPath() + "Current/Version",
          _agency.prefixPath() + "Current/Foxxmaster",
+         _agency.prefixPath() + "Current/FoxxmasterQueueupdate",
          _agency.prefixPath() + "Sync/Commands/" + _myId,
          _agency.prefixPath() + "Sync/UserVersion"}));
     AgencyCommResult result = _agency.sendTransactionWithFailover(trx);
@@ -335,6 +336,18 @@ void HeartbeatThread::runCoordinator() {
           << "Looking at Sync/Commands/" + _myId;
 
       handleStateChange(result);
+      
+      // mop: order is actually important here...FoxxmasterQueueupdate will be set only when somebody
+      // registers some new queue stuff (for example on a different coordinator than this one)...
+      // However when we are just about to become the new foxxmaster we must immediately refresh our queues
+      // this is done in ServerState...if queueupdate is set after foxxmaster the change will be reset again
+      VPackSlice foxxmasterQueueupdateSlice = result.slice()[0].get(
+          std::vector<std::string>({_agency.prefix(), "Current", "FoxxmasterQueueupdate"})
+      );
+      
+      if (foxxmasterQueueupdateSlice.isBool()) {
+        ServerState::instance()->setFoxxmasterQueueupdate(foxxmasterQueueupdateSlice.getBool());
+      }
 
       VPackSlice foxxmasterSlice = result.slice()[0].get(
           std::vector<std::string>({_agency.prefix(), "Current", "Foxxmaster"})

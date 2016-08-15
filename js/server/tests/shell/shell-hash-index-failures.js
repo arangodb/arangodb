@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global fail, assertEqual */
+/*global fail, assertEqual, assertTrue */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests failure cases in HashIndex
@@ -73,7 +73,8 @@ function UniqueHashIndexFailuresSuite () {
         collection.save({a: 1});
         fail();
       } catch (e) {
-        assertEqual(internal.errors.ERROR_OUT_OF_MEMORY.code, e.errorNum);
+        assertTrue(e.errorNum === internal.errors.ERROR_OUT_OF_MEMORY.code ||
+                   e.errorNum === internal.errors.ERROR_INTERNAL.code);
       }
       assertEqual(collection.count(), 0);
       assertEqual(collection.firstExample({a: 1}), null);
@@ -89,7 +90,8 @@ function UniqueHashIndexFailuresSuite () {
         collection.save({a: 1});
         fail();
       } catch (e) {
-        assertEqual(internal.errors.ERROR_OUT_OF_MEMORY.code, e.errorNum);
+        assertTrue(e.errorNum === internal.errors.ERROR_OUT_OF_MEMORY.code ||
+                   e.errorNum === internal.errors.ERROR_INTERNAL.code);
       }
       assertEqual(collection.count(), 0);
       assertEqual(collection.firstExample({a: 1}), null);
@@ -140,7 +142,8 @@ function HashIndexMultiFailuresSuite () {
         collection.save({a: 1});
         fail();
       } catch (e) {
-        assertEqual(internal.errors.ERROR_OUT_OF_MEMORY.code, e.errorNum);
+        assertTrue(e.errorNum === internal.errors.ERROR_OUT_OF_MEMORY.code ||
+                   e.errorNum === internal.errors.ERROR_INTERNAL.code);
       }
       assertEqual(collection.count(), 0);
       assertEqual(collection.firstExample({a: 1}), null);
@@ -157,7 +160,8 @@ function HashIndexMultiFailuresSuite () {
         collection.save({a: 1});
         fail();
       } catch (e) {
-        assertEqual(internal.errors.ERROR_OUT_OF_MEMORY.code, e.errorNum);
+        assertTrue(e.errorNum === internal.errors.ERROR_OUT_OF_MEMORY.code ||
+                   e.errorNum === internal.errors.ERROR_INTERNAL.code);
       }
       assertEqual(collection.count(), 0);
       assertEqual(collection.firstExample({a: 1}), null);

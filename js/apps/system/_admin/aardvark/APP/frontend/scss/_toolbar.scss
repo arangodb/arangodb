@@ -53,6 +53,10 @@
     font-weight: 100;
     margin-left: 10px;
 
+    &.toolbarText {
+      top: 1px;
+    }
+
     &.clickable {
       cursor: pointer;
       margin-left: 0;

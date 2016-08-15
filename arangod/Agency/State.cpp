@@ -191,64 +191,64 @@ size_t State::removeConflicts (query_t const& transactions) {
     try {
       
       auto idx = slices[0].get("index").getUInt();
+      auto pos = idx-_cur;
       
-      if (idx-_cur < _log.size()) {
+      if (pos < _log.size()) {
         
         for (auto const& slice : VPackArrayIterator(slices)) {
 
-          LOG(WARN) << slice.toJson();
-          
           auto trm = slice.get("term").getUInt();
           idx = slice.get("index").getUInt();
+          pos = idx-_cur;
+          
+          if (pos < _log.size()) {
 
-          LOG(WARN) << VPackSlice(_log.at(idx-_cur).entry->data());
-          
-          if (trm > VPackSlice(
-                _log.at(idx-_cur).entry->data()).get("term").getUInt()) { 
-            
-            LOG_TOPIC(DEBUG, Logger::AGENCY)
-              << "Removing " << _log.size()-idx+_cur
-              << " entries from log starting with " << idx << "="
-              << _log.at(idx-_cur).index;
-            
-            // persisted logs
-            std::stringstream aql;
-            aql << "FOR l IN log FILTER l._key >= '" << stringify(idx)
-                << "' REMOVE l IN log";
-            
-            arangodb::aql::Query
-              query(false, _vocbase, aql.str().c_str(), aql.str().size(),
-                    bindVars, nullptr, arangodb::aql::PART_MAIN);
-            
-            auto queryResult = query.execute(_queryRegistry);
-            
-            if (queryResult.code != TRI_ERROR_NO_ERROR) {
-              THROW_ARANGO_EXCEPTION_MESSAGE(
-                queryResult.code, queryResult.details);
+            if (idx == _log.at(pos).index && trm != _log.at(pos).term) { 
+              
+              LOG_TOPIC(DEBUG, Logger::AGENCY)
+                << "Removing " << _log.size()-pos
+                << " entries from log starting with " << idx << "=="
+                << _log.at(pos).index << " and " << trm << "=" <<_log.at(pos).term;
+              
+              // persisted logs
+              std::stringstream aql;
+              aql << "FOR l IN log FILTER l._key >= '" << stringify(idx)
+                  << "' REMOVE l IN log";
+              
+              arangodb::aql::Query
+                query(false, _vocbase, aql.str().c_str(), aql.str().size(),
+                      bindVars, nullptr, arangodb::aql::PART_MAIN);
+              
+              auto queryResult = query.execute(_queryRegistry);
+              
+              if (queryResult.code != TRI_ERROR_NO_ERROR) {
+                THROW_ARANGO_EXCEPTION_MESSAGE(
+                  queryResult.code, queryResult.details);
+              }
+              
+              queryResult.result->slice();
+              
+              // volatile logs
+              {
+                MUTEX_LOCKER(mutexLocker, _logLock);
+                _log.erase(_log.begin()+pos, _log.end());
+              }
+              
+              break;
+              
+            } else {
+              
+              ++ndups;
             }
-            
-            queryResult.result->slice();
-            
-            // volatile logs
-            {
-              MUTEX_LOCKER(mutexLocker, _logLock);
-              _log.erase(_log.begin()+idx-_cur-1, _log.end());
-            }
-            
-            break;
-            
           }
-          
-          ++ndups;
-          
         }
       } 
     } catch (std::exception const& e) {
-      LOG_TOPIC(ERR, Logger::AGENCY) << e.what() << " " << __FILE__ << __LINE__;
+      LOG_TOPIC(DEBUG, Logger::AGENCY) << e.what() << " " << __FILE__ << __LINE__;
     }
     
   }
-  
+
   return ndups;
   
 }
@@ -289,7 +289,7 @@ std::vector<VPackSlice> State::slices(
   std::vector<VPackSlice> slices;
   MUTEX_LOCKER(mutexLocker, _logLock);
 
-  if (_log.empty()) {
+  if (_log.empty()) { 
     return slices;
   }
 
@@ -417,7 +417,6 @@ bool State::loadCollections(TRI_vocbase_t* vocbase, QueryRegistry* queryRegistry
     return true;
   }
   
-  LOG(WARN) << "... done";
   return false;
   
 }

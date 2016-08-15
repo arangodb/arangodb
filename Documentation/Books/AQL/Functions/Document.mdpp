@@ -72,13 +72,24 @@ from similar ways to test for the existance of an attribute, in case the attribu
 has a falsy value or is not present (implicitly *null* on object access):
 
 ```js
-!!{ name: "" }.name // false
+!!{ name: "" }.name        // false
 HAS( { name: "" }, "name") // true
 
-{ name: null }.name == null // true
-{ }.name == null // true
+{ name: null }.name == null   // true
+{ }.name == null              // true
 HAS( { name: null }, "name" ) // true
-HAS( { }, "name" ) // false
+HAS( { }, "name" )            // false
+```
+
+Note that `HAS()` can not utilize indexes. If it's not necessary to distinguish
+between explicit and implicit *null* values in your query, you may use an equality
+comparison to test for *null* and create a non-sparse index on the attribute you
+want to test against:
+
+```js
+FILTER !HAS(doc, "name")    // can not use indexes
+FILTER IS_NULL(doc, "name") // can not use indexes
+FILTER doc.name == null     // can utilize non-sparse indexes
 ```
 
 !SUBSECTION IS_SAME_COLLECTION()

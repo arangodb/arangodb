@@ -29,7 +29,7 @@
 #include "Basics/Thread.h"
 
 struct TRI_collection_t;
-struct TRI_vocbase_col_t;
+class TRI_vocbase_col_t;
 struct TRI_vocbase_t;
 
 namespace arangodb {
