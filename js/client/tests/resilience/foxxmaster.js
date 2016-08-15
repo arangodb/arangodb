@@ -1,5 +1,5 @@
 /*jshint strict: false, sub: true */
-/*global print, arango */
+/*global print, arango, assertTrue, assertNotNull, assertNotUndefined */
 'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -64,7 +64,7 @@ let executeOnServer = function(code) {
   } else {
     throw new Error('Could not send to server ' + JSON.stringify(reply));
   }
-}
+};
 
 function serverSetup() {
   let directory = require('./js/client/assets/queuetest/dirname.js');
@@ -112,23 +112,23 @@ function FoxxmasterSuite() {
       assertNotNull(server);
 
       let instance = instanceInfo.arangods.filter(arangod => {
-        if (arangod.role == 'agent') {
+        if (arangod.role === 'agent') {
           return false;
         }
         let url = arangod.endpoint.replace(/tcp/, 'http') + '/_admin/server/id';
         let res = request({method: 'GET', url: url});
         let parsed = JSON.parse(res.body);
-        if (parsed.id == server) {
+        if (parsed.id === server) {
           assertTrue(suspendExternal(arangod.pid));
         }
-        return parsed.id == server;
+        return parsed.id === server;
       })[0];
 
       assertNotUndefined(instance);
       assertTrue(suspendExternal(instance.pid));
 
       let newEndpoint = instanceInfo.arangods.filter(arangod => {
-        return arangod.role == 'coordinator' && arangod.pid != instance.pid;
+        return arangod.role === 'coordinator' && arangod.pid !== instance.pid;
       })[0];
       arango.reconnect(newEndpoint.endpoint, db._name(), 'root', '');
       let waitInterval = 0.1;
@@ -137,7 +137,7 @@ function FoxxmasterSuite() {
       while (waited <= 20) {
         document = db._collection('foxxqueuetest').document('test');
         let newServer = document.server;
-        if (server != newServer) {
+        if (server !== newServer) {
           ok = true;
           break;
         }
@@ -150,7 +150,7 @@ function FoxxmasterSuite() {
         throw new Error('Supervision should have moved the foxxqueues and foxxqueues should have been started to run on a new coordinator');
       }
     }
-  }
+  };
 }
 
 ////////////////////////////////////////////////////////////////////////////////
