@@ -132,6 +132,21 @@ struct AqlValue final {
     memcpy(_data.internal, slice.begin(), static_cast<size_t>(slice.byteSize()));
     setType(AqlValueType::VPACK_INLINE);
   }
+
+  // construct from a double value
+  explicit AqlValue(double value) {
+    _data.internal[0] = 0x1b;
+    uint64_t dv;
+    memcpy(&dv, &value, sizeof(double));
+    VPackValueLength vSize = sizeof(double);
+    int i = 1;
+    for (uint64_t x = dv; vSize > 0; vSize--) {
+      _data.internal[i] = x & 0xff;
+      x >>= 8;
+      ++i;
+    }
+    setType(AqlValueType::VPACK_INLINE);
+  }
   
   // construct from char* and length, copying the string
   AqlValue(char const* value, size_t length) {
