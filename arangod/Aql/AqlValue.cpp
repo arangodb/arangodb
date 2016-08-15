@@ -209,11 +209,7 @@ AqlValue AqlValue::at(arangodb::AqlTransaction* trx, int64_t position,
 
       if (position >= 0 && position < static_cast<int64_t>(n)) {
         // only look up the value if it is within array bounds
-        TransactionBuilderLeaser builder(trx);
-        builder->add(
-            VPackValue(_data.range->at(static_cast<size_t>(position))));
-        mustDestroy = true;
-        return AqlValue(builder->slice());
+        return AqlValue(_data.range->at(static_cast<size_t>(position)));
       }
       // fall-through intentional
       break;
