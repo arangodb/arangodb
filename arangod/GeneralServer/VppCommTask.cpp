@@ -137,18 +137,20 @@ std::unique_ptr<basics::StringBuffer> createChunkForNetworkSingle(
   return createChunkForNetworkDetail(slices, true, 1, id, 0 /*unused*/);
 }
 
-std::unique_ptr<basics::StringBuffer> createChunkForNetworkMultiFirst(
-    std::vector<VPackSlice> const& slices, uint64_t id, uint32_t numberOfChunks,
-    uint32_t totalMessageLength) {
-  return createChunkForNetworkDetail(slices, true, numberOfChunks, id,
-                                     totalMessageLength);
-}
-
-std::unique_ptr<basics::StringBuffer> createChunkForNetworkMultiFollow(
-    std::vector<VPackSlice> const& slices, uint64_t id, uint32_t chunkNumber,
-    uint32_t totalMessageLength) {
-  return createChunkForNetworkDetail(slices, false, chunkNumber, id, 0);
-}
+// TODO FIXME make use of these functions
+// std::unique_ptr<basics::StringBuffer> createChunkForNetworkMultiFirst(
+//     std::vector<VPackSlice> const& slices, uint64_t id, uint32_t
+//     numberOfChunks,
+//     uint32_t totalMessageLength) {
+//   return createChunkForNetworkDetail(slices, true, numberOfChunks, id,
+//                                      totalMessageLength);
+// }
+//
+// std::unique_ptr<basics::StringBuffer> createChunkForNetworkMultiFollow(
+//     std::vector<VPackSlice> const& slices, uint64_t id, uint32_t chunkNumber,
+//     uint32_t totalMessageLength) {
+//   return createChunkForNetworkDetail(slices, false, chunkNumber, id, 0);
+// }
 }
 
 VppCommTask::VppCommTask(GeneralServer* server, TRI_socket_t sock,
