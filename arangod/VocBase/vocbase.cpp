@@ -73,7 +73,8 @@ static std::atomic<bool> ThrowCollectionNotLoaded(false);
 /// @brief collection constructor
 TRI_vocbase_col_t::TRI_vocbase_col_t(TRI_vocbase_t* vocbase, TRI_col_type_e type,
                                      TRI_voc_cid_t cid, std::string const& name,
-                                     TRI_voc_cid_t planId, std::string const& path) 
+                                     TRI_voc_cid_t planId, std::string const& path,
+                                     bool isLocal) 
     : _vocbase(vocbase),
       _cid(cid),
       _planId(planId),
@@ -85,9 +86,8 @@ TRI_vocbase_col_t::TRI_vocbase_col_t(TRI_vocbase_t* vocbase, TRI_col_type_e type
       _dbName(vocbase->name()),
       _name(name),
       _path(path),
-      _isLocal(true),
+      _isLocal(isLocal),
       _canDrop(true),
-      _canUnload(true),
       _canRename(true) {
   // check for special system collection names
   if (TRI_collection_t::IsSystemName(name)) {
@@ -125,7 +125,7 @@ TRI_vocbase_col_t* TRI_vocbase_t::registerCollection(bool doLock,
 
   // create a new proxy
   auto collection =
-      std::make_unique<TRI_vocbase_col_t>(this, type, cid, name, planId, path);
+      std::make_unique<TRI_vocbase_col_t>(this, type, cid, name, planId, path, true);
    
   {
     CONDITIONAL_WRITE_LOCKER(writeLocker, _collectionsLock, doLock);
@@ -1136,10 +1136,6 @@ TRI_vocbase_col_t* TRI_vocbase_t::createCollection(
 
 /// @brief unloads a collection
 int TRI_vocbase_t::unloadCollection(TRI_vocbase_col_t* collection, bool force) {
-  if (!collection->_canUnload && !force) {
-    return TRI_set_errno(TRI_ERROR_FORBIDDEN);
-  }
-
   {
     WRITE_LOCKER_EVENTUAL(locker, collection->_lock, 1000);
 
@@ -1213,7 +1209,7 @@ int TRI_vocbase_t::unloadCollection(TRI_vocbase_col_t* collection, bool force) {
 int TRI_vocbase_t::dropCollection(TRI_vocbase_col_t* collection, bool writeMarker) {
   TRI_ASSERT(collection != nullptr);
 
-  if (!collection->_canDrop &&
+  if (!collection->canDrop() &&
       !arangodb::wal::LogfileManager::instance()->isInRecovery()) {
     return TRI_set_errno(TRI_ERROR_FORBIDDEN);
   }
@@ -1257,7 +1253,7 @@ int TRI_vocbase_t::dropCollection(TRI_vocbase_col_t* collection, bool writeMarke
 int TRI_vocbase_t::renameCollection(TRI_vocbase_col_t* collection,
                                     std::string const& newName, bool doOverride,
                                     bool writeMarker) {
-  if (!collection->_canRename) {
+  if (!collection->canRename()) {
     return TRI_set_errno(TRI_ERROR_FORBIDDEN);
   }
 

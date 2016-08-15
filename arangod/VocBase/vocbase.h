@@ -432,7 +432,7 @@ class TRI_vocbase_col_t {
 
   TRI_vocbase_col_t(TRI_vocbase_t* vocbase, TRI_col_type_e type,
                     TRI_voc_cid_t cid, std::string const& name, TRI_voc_cid_t planId,
-                    std::string const& path);
+                    std::string const& path, bool isLocal);
   ~TRI_vocbase_col_t();
 
   // Leftover from struct
@@ -448,7 +448,6 @@ class TRI_vocbase_col_t {
   std::string const& path() const { return _path; }
   bool isLocal() const { return _isLocal; }
   bool canDrop() const { return _canDrop; }
-  bool canUnload() const { return _canUnload; }
   bool canRename() const { return _canRename; }
 
  public:
@@ -499,11 +498,9 @@ class TRI_vocbase_col_t {
   std::string _name;          // name of the collection
   std::string const _path;    // storage path
 
- public:
   bool _isLocal;    // if true, the collection is local. if false,
                     // the collection is a remote (cluster) collection
   bool _canDrop;    // true if the collection can be dropped
-  bool _canUnload;  // true if the collection can be unloaded
   bool _canRename;  // true if the collection can be renamed
 };
 

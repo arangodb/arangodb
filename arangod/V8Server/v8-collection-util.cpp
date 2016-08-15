@@ -41,8 +41,7 @@ void ReleaseCollection(TRI_vocbase_col_t const* collection) {
 /// @brief convert a collection info into a TRI_vocbase_col_t
 TRI_vocbase_col_t* CoordinatorCollection(TRI_vocbase_t* vocbase,
                                          CollectionInfo const& ci) {
-  auto c = std::make_unique<TRI_vocbase_col_t>(vocbase, ci.type(), ci.id(), ci.name(), ci.id(), "");
-  c->_isLocal = false;
+  auto c = std::make_unique<TRI_vocbase_col_t>(vocbase, ci.type(), ci.id(), ci.name(), ci.id(), "", false);
   c->setStatus(ci.status());
 
   return c.release();
@@ -114,7 +113,7 @@ static void WeakCollectionCallback(const v8::WeakCallbackData<
   v8g->JSCollections[collection].Reset();
   v8g->JSCollections.erase(collection);
 
-  if (!collection->_isLocal) {
+  if (!collection->isLocal()) {
     delete collection;
   }
 }

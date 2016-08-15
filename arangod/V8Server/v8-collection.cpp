@@ -65,7 +65,7 @@ struct LocalCollectionGuard {
       : _collection(collection) {}
 
   ~LocalCollectionGuard() {
-    if (_collection != nullptr && !_collection->_isLocal) {
+    if (_collection != nullptr && !_collection->isLocal()) {
       delete _collection;
     }
   }
@@ -244,7 +244,7 @@ static TRI_vocbase_col_t const* UseCollection(
       TRI_UnwrapClass<TRI_vocbase_col_t>(collection, WRP_VOCBASE_COL_TYPE);
 
   if (col != nullptr) {
-    if (!col->_isLocal) {
+    if (!col->isLocal()) {
       TRI_CreateErrorObject(isolate, TRI_ERROR_NOT_IMPLEMENTED);
       TRI_set_errno(TRI_ERROR_NOT_IMPLEMENTED);
       return nullptr;
@@ -845,7 +845,7 @@ static void DropVocbaseColCoordinator(
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
-  if (!collection->_canDrop) {
+  if (!collection->canDrop()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
 
