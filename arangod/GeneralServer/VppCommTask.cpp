@@ -360,11 +360,18 @@ bool VppCommTask::processRead() {
         << "got request:" << message._header.toJson();
     _request = new VppRequest(_connectionInfo, std::move(message));
     GeneralServerFeature::HANDLER_FACTORY->setRequestContext(_request);
-    _request->setClientTaskId(_taskId);
-    _protocolVersion = _request->protocolVersion();
-    executeRequest(_request,
+    if (_request->requestContext() == nullptr) {
+       handleSimpleError(GeneralResponse::ResponseCode::NOT_FOUND, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
+                      TRI_errno_string(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND));
+    }
+    else {
+
+      _request->setClientTaskId(_taskId);
+      _protocolVersion = _request->protocolVersion();
+      executeRequest(_request,
                    new VppResponse(GeneralResponse::ResponseCode::SERVER_ERROR,
                                    chunkHeader._messageID));
+    }
   }
 
   if (read_maybe_only_part_of_buffer) {
