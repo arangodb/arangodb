@@ -61,13 +61,13 @@ var buildUrlBroken = function (append) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function RequestSuite () {
-  return { testVersionJsonJson : verionJsonJson
-         , testVersionVpackJson: verionVpackJson
-         , testVersionJsonVpack: versionJsonVpack
-         , testVersionVpackVpack: versionVpackVpack
-
-         , testEchoVpackVpack: echoVpackVpack
-         }
+  return { 
+    testVersionJsonJson : verionJsonJson,
+    testVersionVpackJson: verionVpackJson,
+    testVersionJsonVpack: versionJsonVpack,
+    testVersionVpackVpack: versionVpackVpack,
+    testEchoVpackVpack: echoVpackVpack
+  };
 };
 
 
