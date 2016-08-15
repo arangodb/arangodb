@@ -220,6 +220,27 @@ class MMFilesEngine final : public StorageEngine {
 
   /// @brief scans a collection and locates all files
   MMFilesEngineCollectionFiles scanCollectionDirectory(std::string const& path);
+
+  /// @brief remove data of expired compaction blockers
+  bool cleanupCompactionBlockers(TRI_vocbase_t* vocbase) override;
+
+  /// @brief insert a compaction blocker
+  int insertCompactionBlocker(TRI_vocbase_t* vocbase, double ttl, TRI_voc_tick_t& id) override;
+
+  /// @brief touch an existing compaction blocker
+  int extendCompactionBlocker(TRI_vocbase_t* vocbase, TRI_voc_tick_t id, double ttl) override;
+
+  /// @brief remove an existing compaction blocker
+  int removeCompactionBlocker(TRI_vocbase_t* vocbase, TRI_voc_tick_t id) override;
+
+  /// @brief a callback function that is run while it is guaranteed that there is no compaction ongoing
+  void preventCompaction(TRI_vocbase_t* vocbase,
+                         std::function<void(TRI_vocbase_t*)> const& callback) override;
+  
+  /// @brief a callback function that is run there is no compaction ongoing
+  bool tryPreventCompaction(TRI_vocbase_t* vocbase,
+                            std::function<void(TRI_vocbase_t*)> const& callback,
+                            bool checkForActiveBlockers) override;
   
  private:
   void verifyDirectories(); 
@@ -285,6 +306,19 @@ class MMFilesEngine final : public StorageEngine {
   std::vector<std::pair<std::string, std::string>> _deleted;
 
   std::unordered_map<TRI_voc_tick_t, std::unordered_map<TRI_voc_cid_t, std::string>> _collectionPaths;
+
+  struct CompactionBlocker {
+    CompactionBlocker(TRI_voc_tick_t id, double expires) : _id(id), _expires(expires) {}
+    CompactionBlocker() = delete;
+
+    TRI_voc_tick_t _id;
+    double _expires;
+  };
+
+  // lock for compaction blockers
+  arangodb::basics::ReadWriteLock _compactionBlockersLock;
+  // cross-database map of compaction blockers
+  std::unordered_map<TRI_voc_tick_t, std::vector<CompactionBlocker>> _compactionBlockers;
 };
 
 }

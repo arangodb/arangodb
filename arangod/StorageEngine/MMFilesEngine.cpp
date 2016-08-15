@@ -1298,3 +1298,159 @@ VocbaseCollectionInfo MMFilesEngine::loadCollectionInfo(TRI_vocbase_t* vocbase,
   }
   return info;
 }
+
+/// @brief remove data of expired compaction blockers
+bool MMFilesEngine::cleanupCompactionBlockers(TRI_vocbase_t* vocbase) {
+  // check if we can instantly acquire the lock
+  TRY_WRITE_LOCKER(locker, _compactionBlockersLock);
+
+  if (!locker.isLocked()) {
+    // couldn't acquire lock
+    return false;
+  }
+
+  auto it = _compactionBlockers.find(vocbase->id());
+
+  if (it == _compactionBlockers.end()) {
+    // no entry for this database
+    return true;
+  }
+
+  // we are now holding the write lock
+  double now = TRI_microtime();
+
+  size_t n = (*it).second.size();
+
+  for (size_t i = 0; i < n; /* no hoisting */) {
+    auto& blocker = (*it).second[i];
+
+    if (blocker._expires < now) {
+      (*it).second.erase((*it).second.begin() + i);
+      n--;
+    } else {
+      i++;
+    }
+  }
+
+  if ((*it).second.empty()) {
+    // remove last element
+    _compactionBlockers.erase(it);
+  }
+
+  return true;
+}
+
+/// @brief insert a compaction blocker
+int MMFilesEngine::insertCompactionBlocker(TRI_vocbase_t* vocbase, double ttl,
+                                           TRI_voc_tick_t& id) {
+  id = 0;
+
+  if (ttl <= 0.0) {
+    return TRI_ERROR_BAD_PARAMETER;
+  }
+
+  CompactionBlocker blocker(TRI_NewTickServer(), TRI_microtime() + ttl);
+
+  {
+    WRITE_LOCKER_EVENTUAL(locker, _compactionBlockersLock, 1000); 
+
+    auto it = _compactionBlockers.find(vocbase->id());
+
+    if (it == _compactionBlockers.end()) {
+      it = _compactionBlockers.emplace(vocbase->id(), std::vector<CompactionBlocker>()).first;
+    }
+
+    (*it).second.emplace_back(blocker);
+  }
+
+  id = blocker._id;
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+/// @brief touch an existing compaction blocker
+int MMFilesEngine::extendCompactionBlocker(TRI_vocbase_t* vocbase, TRI_voc_tick_t id,
+                                           double ttl) {
+  if (ttl <= 0.0) {
+    return TRI_ERROR_BAD_PARAMETER;
+  }
+
+  WRITE_LOCKER_EVENTUAL(locker, _compactionBlockersLock, 1000); 
+
+  auto it = _compactionBlockers.find(vocbase->id());
+
+  if (it == _compactionBlockers.end()) {
+    return TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
+  }
+
+  for (auto& blocker : (*it).second) {
+    if (blocker._id == id) {
+      blocker._expires = TRI_microtime() + ttl;
+      return TRI_ERROR_NO_ERROR;
+    }
+  }
+
+  return TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
+}
+
+/// @brief remove an existing compaction blocker
+int MMFilesEngine::removeCompactionBlocker(TRI_vocbase_t* vocbase,
+                                           TRI_voc_tick_t id) {
+  WRITE_LOCKER_EVENTUAL(locker, _compactionBlockersLock, 1000); 
+  
+  auto it = _compactionBlockers.find(vocbase->id());
+
+  if (it == _compactionBlockers.end()) {
+    return TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
+  }
+
+  size_t const n = (*it).second.size();
+
+  for (size_t i = 0; i < n; ++i) {
+    auto& blocker = (*it).second[i];
+    if (blocker._id == id) {
+      (*it).second.erase((*it).second.begin() + i);
+
+      if ((*it).second.empty()) {
+        // remove last item
+        _compactionBlockers.erase(it);
+      }
+      return TRI_ERROR_NO_ERROR;
+    }
+  }
+
+  return TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
+}
+
+void MMFilesEngine::preventCompaction(TRI_vocbase_t* vocbase,
+                                      std::function<void(TRI_vocbase_t*)> const& callback) {
+  WRITE_LOCKER_EVENTUAL(locker, _compactionBlockersLock, 5000);
+  callback(vocbase);
+}
+
+bool MMFilesEngine::tryPreventCompaction(TRI_vocbase_t* vocbase,
+                                         std::function<void(TRI_vocbase_t*)> const& callback,
+                                         bool checkForActiveBlockers) {
+  TRY_WRITE_LOCKER(locker, _compactionBlockersLock);
+
+  if (locker.isLocked()) {
+    if (checkForActiveBlockers) {
+      double const now = TRI_microtime();
+
+      // check if we have a still-valid compaction blocker
+      auto it = _compactionBlockers.find(vocbase->id());
+
+      if (it != _compactionBlockers.end()) {
+        for (auto const& blocker : (*it).second) {
+          if (blocker._expires > now) {
+            // found a compaction blocker
+            return false;
+          }
+        }
+      }
+    }
+    callback(vocbase);
+    return true;
+  }
+  return false;
+}

@@ -210,7 +210,28 @@ class StorageEngine : public application_features::ApplicationFeature {
   // from the storage engine's realm
   virtual void removeDocumentRevision(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId,
                                       arangodb::velocypack::Slice const& document) = 0;
+  
+  /// @brief remove data of expired compaction blockers
+  virtual bool cleanupCompactionBlockers(TRI_vocbase_t* vocbase) = 0;
 
+  /// @brief insert a compaction blocker
+  virtual int insertCompactionBlocker(TRI_vocbase_t* vocbase, double ttl, TRI_voc_tick_t& id) = 0;
+
+  /// @brief touch an existing compaction blocker
+  virtual int extendCompactionBlocker(TRI_vocbase_t* vocbase, TRI_voc_tick_t id, double ttl) = 0;
+
+  /// @brief remove an existing compaction blocker
+  virtual int removeCompactionBlocker(TRI_vocbase_t* vocbase, TRI_voc_tick_t id) = 0;
+  
+  /// @brief a callback function that is run while it is guaranteed that there is no compaction ongoing
+  virtual void preventCompaction(TRI_vocbase_t* vocbase,
+                                 std::function<void(TRI_vocbase_t*)> const& callback) = 0;
+  
+  /// @brief a callback function that is run there is no compaction ongoing
+  virtual bool tryPreventCompaction(TRI_vocbase_t* vocbase,
+                                    std::function<void(TRI_vocbase_t*)> const& callback,
+                                    bool checkForActiveBlockers) = 0;
+  
  protected:
   TRI_vocbase_col_t* registerCollection(bool doLock, TRI_vocbase_t* vocbase, TRI_col_type_e type, TRI_voc_cid_t cid, 
                                         std::string const& name, TRI_voc_cid_t planId, std::string const& path) {

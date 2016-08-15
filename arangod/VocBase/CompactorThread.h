@@ -101,10 +101,6 @@ class CompactorThread : public Thread {
   /// @brief remove an empty datafile
   int removeDatafile(TRI_collection_t* document, TRI_datafile_t* datafile);
 
-  /// @brief check whether there is an active compaction blocker
-  /// note that this must be called while holding the compactionBlockers lock
-  bool hasActiveBlockers() const;
-
   /// @brief determine the number of documents in the collection
   uint64_t getNumberOfDocuments(TRI_collection_t* document);
 
@@ -156,17 +152,5 @@ class CompactorThread : public Thread {
 };
 
 }
-
-/// @brief remove data of expired compaction blockers
-bool TRI_CleanupCompactorVocBase(TRI_vocbase_t*);
-
-/// @brief insert a compaction blocker
-int TRI_InsertBlockerCompactorVocBase(TRI_vocbase_t*, double, TRI_voc_tick_t*);
-
-/// @brief touch an existing compaction blocker
-int TRI_TouchBlockerCompactorVocBase(TRI_vocbase_t*, TRI_voc_tick_t, double);
-
-/// @brief remove an existing compaction blocker
-int TRI_RemoveBlockerCompactorVocBase(TRI_vocbase_t*, TRI_voc_tick_t);
 
 #endif

@@ -59,20 +59,6 @@ class Thread;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief compaction blocker entry
-////////////////////////////////////////////////////////////////////////////////
-
-struct compaction_blocker_t {
-  TRI_voc_tick_t _id;
-  double _expires;
-};
-
-struct compaction_blockers_t {
-  arangodb::basics::ReadWriteLock _lock;
-  std::vector<compaction_blocker_t> _data;
-};
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief name of the system database
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -214,8 +200,6 @@ struct TRI_vocbase_t {
 
   std::unique_ptr<arangodb::CompactorThread> _compactorThread;
   std::unique_ptr<arangodb::CleanupThread> _cleanupThread;
-
-  compaction_blockers_t _compactionBlockers;
 
  public:
   /// @brief checks if a database name is allowed

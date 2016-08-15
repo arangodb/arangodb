@@ -40,13 +40,14 @@
 #include "Rest/Version.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/ServerIdFeature.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/StorageEngine.h"
 #include "Utils/CollectionGuard.h"
 #include "Utils/CollectionKeys.h"
 #include "Utils/CollectionKeysRepository.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/StandaloneTransactionContext.h"
 #include "Utils/TransactionContext.h"
-#include "VocBase/CompactorThread.h"
 #include "VocBase/replication-applier.h"
 #include "VocBase/replication-dump.h"
 #include "VocBase/ticks.h"
@@ -561,7 +562,8 @@ void RestReplicationHandler::handleCommandBatch() {
         VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", 0);
 
     TRI_voc_tick_t id;
-    int res = TRI_InsertBlockerCompactorVocBase(_vocbase, expires, &id);
+    StorageEngine* engine = EngineSelectorFeature::ENGINE;
+    int res = engine->insertCompactionBlocker(_vocbase, expires, id);
 
     if (res != TRI_ERROR_NO_ERROR) {
       generateError(GeneralResponse::responseCode(res), res);
@@ -599,7 +601,8 @@ void RestReplicationHandler::handleCommandBatch() {
         VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", 0);
 
     // now extend the blocker
-    int res = TRI_TouchBlockerCompactorVocBase(_vocbase, id, expires);
+    StorageEngine* engine = EngineSelectorFeature::ENGINE;
+    int res = engine->extendCompactionBlocker(_vocbase, id, expires);
 
     if (res == TRI_ERROR_NO_ERROR) {
       setResponseCode(GeneralResponse::ResponseCode::NO_CONTENT);
@@ -614,7 +617,8 @@ void RestReplicationHandler::handleCommandBatch() {
     TRI_voc_tick_t id =
         static_cast<TRI_voc_tick_t>(StringUtils::uint64(suffix[1]));
 
-    int res = TRI_RemoveBlockerCompactorVocBase(_vocbase, id);
+    StorageEngine* engine = EngineSelectorFeature::ENGINE;
+    int res = engine->removeCompactionBlocker(_vocbase, id);
 
     if (res == TRI_ERROR_NO_ERROR) {
       setResponseCode(GeneralResponse::ResponseCode::NO_CONTENT);
@@ -2772,8 +2776,9 @@ void RestReplicationHandler::handleCommandCreateKeys() {
     TRI_ASSERT(col != nullptr);
 
     // turn off the compaction for the collection
+    StorageEngine* engine = EngineSelectorFeature::ENGINE;
     TRI_voc_tick_t id;
-    res = TRI_InsertBlockerCompactorVocBase(_vocbase, 1200.0, &id);
+    res = engine->insertCompactionBlocker(_vocbase, 1200.0, id);
 
     if (res != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(res);

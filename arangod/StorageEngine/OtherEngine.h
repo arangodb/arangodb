@@ -196,6 +196,37 @@ class OtherEngine final : public StorageEngine {
   // from the storage engine's realm
   void removeDocumentRevision(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId,
                               arangodb::velocypack::Slice const& document) override;
+  
+  /// @brief remove data of expired compaction blockers
+  bool cleanupCompactionBlockers(TRI_vocbase_t* vocbase) override { return false; }
+
+  /// @brief insert a compaction blocker
+  int insertCompactionBlocker(TRI_vocbase_t* vocbase, double ttl, TRI_voc_tick_t& id) override { 
+    id = 0; 
+    return TRI_ERROR_NO_ERROR; 
+  }
+
+  /// @brief touch an existing compaction blocker
+  int extendCompactionBlocker(TRI_vocbase_t* vocbase, TRI_voc_tick_t id, double ttl) override {
+    return TRI_ERROR_NO_ERROR; 
+  }
+
+  /// @brief remove an existing compaction blocker
+  int removeCompactionBlocker(TRI_vocbase_t* vocbase, TRI_voc_tick_t id) override {
+    return TRI_ERROR_NO_ERROR; 
+  }
+  
+  /// @brief a callback function that is run while it is guaranteed that there is no compaction ongoing
+  void preventCompaction(TRI_vocbase_t* vocbase,
+                         std::function<void(TRI_vocbase_t*)> const& callback) override {
+  }
+  
+  /// @brief a callback function that is run there is no compaction ongoing
+  bool tryPreventCompaction(TRI_vocbase_t* vocbase,
+                            std::function<void(TRI_vocbase_t*)> const& callback,
+                            bool checkForActiveBlockers) override {
+    return true;
+  }
 
  public:
   static std::string const EngineName;
