@@ -569,7 +569,7 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
   TRI_GET_GLOBAL_STRING(ContentTypeKey);
   if (res->Has(ContentTypeKey)) {
     contentType = TRI_ObjectToString(res->Get(ContentTypeKey));
-    if (contentType != "application/json") {
+    if (contentType.find("application/json") == std::string::npos) {
       jsonContent = false;
     }
     switch (response->transportType()) {
@@ -658,7 +658,9 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
         VPackBuilder builder;
 
         v8::Handle<v8::Value> v8_body = res->Get(BodyKey);
+        //LOG(ERR) << v8_body->IsString();
         std::string out;
+        bool done = false;
 
         // decode and set out
         if (transformArray->IsArray()) {
@@ -683,9 +685,14 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
         }
 
         // out is not set
-        if (out.empty()) {
+        if (out.empty() && !done) {
           if (jsonContent && !V8Buffer::hasInstance(isolate, v8_body)) {
-            TRI_V8ToVPack(isolate, builder, v8_body, false);
+            if (v8_body->IsString()) {
+              out = TRI_ObjectToString(res->Get(BodyKey));  // should get moved
+            } else {
+              TRI_V8ToVPack(isolate, builder, v8_body, false);
+              done = true;
+            }
             // done
           } else if (V8Buffer::hasInstance(
                          isolate,
@@ -710,11 +717,14 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
             } catch (...) {  // do nothing
                              // json could not be converted
                              // there was no json - change content type?
+              LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
+                  << "failed to parse json:\n" << out;
             }
           }
 
           if (!gotJson) {
-            builder.add(VPackValue(out));  // add test to the builder
+            builder.add(VPackValue(
+                out));  // add output to the builder - when not added via parser
           }
         }
 
