@@ -31,6 +31,9 @@ GossipCallback::GossipCallback(Agent* agent, arangodb::consensus::id_t peerId)
   : _agent(agent), _peerId(peerId) {}
 
 bool GossipCallback::operator()(arangodb::ClusterCommResult* res) {
-  //_agent->gossipCallback(_agent,_peerId);
+  if (res->status == CL_COMM_SENT && res->result->getHttpReturnCode() == 200) {
+    _agent->gossipCallback(_peerId,res->result->getBodyVelocyPack()
+);
+  }
   return true;
 }

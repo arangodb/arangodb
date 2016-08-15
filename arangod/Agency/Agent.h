@@ -155,7 +155,8 @@ class Agent : public arangodb::Thread {
   /// State reads persisted state and prepares the agent
   friend class State;
 
-  
+  /// @brief Handle gossip callbacks
+  void gossipCallback(arangodb::consensus::id_t const&, query_t const&);
 
  private:
 
