@@ -100,6 +100,17 @@ struct config_t {
   /// @brief pool size
   inline size_t pSize() const { return poolSize; }
 
+
+  query_t const activeToBuilder () {
+    query_t ret = std::make_shared<arangodb::velocypack::Builder>();
+    ret->openArray();
+    for (auto const& i : active) {
+      ret->add(VPackValue(i));
+    }
+    ret->close();
+    return ret;
+  }
+
   
   /// @brief override this configuration with prevailing opinion (startup)
   void override(VPackSlice const& conf) {
@@ -212,12 +223,11 @@ struct config_t {
     ret->add(supervisionStr, VPackValue(supervision));
     ret->add(supervisionFrequencyStr, VPackValue(supervisionFrequency));
     ret->add(compactionStepSizeStr, VPackValue(compactionStepSize));
-    ret->add("_key", VPackValue("0"));    
     ret->close();
     return ret;
   }
 
-  bool setId (arangodb::consensus::id_t const& i) {
+  bool setId(arangodb::consensus::id_t const& i) {
     if (id.empty()) {
       id = i;
       pool[id] = endpoint; // Register my endpoint with it
@@ -229,7 +239,7 @@ struct config_t {
 
 
   /// @brief merge from persisted configuration
-  bool merge (VPackSlice const& conf) { 
+  bool merge(VPackSlice const& conf) { 
 
     LOG(WARN) << conf.typeName();
     
@@ -253,7 +263,7 @@ struct config_t {
     LOG_TOPIC(DEBUG, Logger::AGENCY) << ss.str();
 
     LOG(WARN) << __FILE__ << ":" << __LINE__;
-    ss.clear();
+    ss.str(""); ss.clear();
     ss << "Agency pool size: ";
     if (poolSize == 0) { // Command line beats persistence
       if (conf.hasKey(poolSizeStr)) {
@@ -269,14 +279,12 @@ struct config_t {
     LOG_TOPIC(DEBUG, Logger::AGENCY) << ss.str();
 
     LOG(WARN) << __FILE__ << ":" << __LINE__;
-    ss.clear();
+    ss.str(""); ss.clear();
     ss << "Agent pool: ";
     if (conf.hasKey(poolStr)) { // Persistence only
       LOG_TOPIC(DEBUG, Logger::AGENCY) << "Found agent pool in persistence:";
-      for (auto const& peer : VPackArrayIterator(conf.get(poolStr))) {
-        auto key = peer.get(idStr).copyString();
-        auto value = peer.get(endpointStr).copyString(); 
-        pool[key] = value;
+      for (auto const& peer : VPackObjectIterator(conf.get(poolStr))) {
+        pool[peer.key.copyString()] = peer.value.copyString();
       }
       ss << conf.get(poolStr).toJson() << " (persisted)";
     } else {
@@ -285,7 +293,7 @@ struct config_t {
     LOG_TOPIC(DEBUG, Logger::AGENCY) << ss.str();
 
     LOG(WARN) << __FILE__ << ":" << __LINE__;
-    ss.clear();
+    ss.str(""); ss.clear();
     ss << "Active agents: ";
     if (conf.hasKey(activeStr)) { // Persistence only?
       for (auto const& a : VPackArrayIterator(conf.get(activeStr))) {
@@ -299,7 +307,7 @@ struct config_t {
     LOG_TOPIC(DEBUG, Logger::AGENCY) << ss.str();
 
     LOG(WARN) << __FILE__ << ":" << __LINE__;
-    ss.clear();
+    ss.str(""); ss.clear();
     ss << "Min RAFT interval: ";
     if (minPing == 0) { // Command line beats persistence
       if (conf.hasKey(minPingStr)) {
@@ -315,7 +323,7 @@ struct config_t {
     LOG_TOPIC(DEBUG, Logger::AGENCY) << ss.str();
 
     LOG(WARN) << __FILE__ << ":" << __LINE__;
-    ss.clear();
+    ss.str(""); ss.clear();
     ss << "Max RAFT interval: ";
     if (maxPing == 0) { // Command line beats persistence
       if (conf.hasKey(maxPingStr)) {
@@ -331,7 +339,7 @@ struct config_t {
     LOG_TOPIC(DEBUG, Logger::AGENCY) << ss.str();
 
     LOG(WARN) << __FILE__ << ":" << __LINE__;
-    ss.clear();
+    ss.str(""); ss.clear();
     ss << "Supervision: ";
     if (supervision == false) { // Command line beats persistence
       if (conf.hasKey(supervisionStr)) {
@@ -346,7 +354,7 @@ struct config_t {
     }
     LOG_TOPIC(DEBUG, Logger::AGENCY) << ss.str();
 
-    ss.clear();
+    ss.str(""); ss.clear();
     ss << "Supervision interval [s]: ";
     if (supervisionFrequency == 0) { // Command line beats persistence
       if (conf.hasKey(supervisionFrequencyStr)) {
@@ -362,7 +370,7 @@ struct config_t {
     LOG_TOPIC(DEBUG, Logger::AGENCY) << ss.str();
 
     LOG(WARN) << __FILE__ << ":" << __LINE__;
-    ss.clear();
+    ss.str(""); ss.clear();
     ss << "Compaction step size: ";
     if (compactionStepSize == 0) { // Command line beats persistence
       if (conf.hasKey(compactionStepSizeStr)) {

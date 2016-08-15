@@ -158,6 +158,11 @@ class Agent : public arangodb::Thread {
   
 
  private:
+
+  /// @brief Activate this agent in single agent mode.
+  bool activateSingle();
+
+  /// @brief Assignment of persisted state
   Agent& operator=(VPackSlice const&);
 
   /// @brief Get current term
@@ -212,6 +217,7 @@ class Agent : public arangodb::Thread {
   //std::vector<index_t> _confirmed;
   std::map<std::string, index_t> _confirmed;
   std::map<std::string, index_t> _lastHighest;
+
   std::map<std::string, TimePoint> _lastSent;
   arangodb::Mutex _ioLock; /**< @brief Read/Write lock */
   mutable arangodb::Mutex _cfgLock; /**< @brief configuration gossip lock */
@@ -221,6 +227,9 @@ class Agent : public arangodb::Thread {
 
   /// @brief Next compaction after
   arangodb::consensus::index_t _nextCompationAfter;
+
+  std::map<std::string, bool> _gossipTmp;
+
 };
 
 }

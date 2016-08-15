@@ -349,6 +349,17 @@ priv_rpc_ret_t Agent::sendAppendEntriesRPC(
 }
 
 
+
+bool Agent::activateSingle() {
+  MUTEX_LOCKER(mutexLocker, _ioLock);
+  if (_config.active.empty()) {
+    _config.active.push_back(_config.id);
+    return _state.persistActiveAgents(_config.id);
+  }
+  return true;
+}
+
+
 /// Load persistent state
 bool Agent::load() {
   
@@ -372,8 +383,8 @@ bool Agent::load() {
   if (size() > 1) {
     inception();
   } else {
-    MUTEX_LOCKER(mutexLocker, _cfgLock);  
-    _config.active.push_back(_config.id);
+    MUTEX_LOCKER(mutexLocker, _cfgLock);
+    activateSingle();
   }
   
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "Reassembling spearhead and read stores.";
@@ -631,7 +642,7 @@ void Agent::gossip() {
         arangodb::ClusterComm::instance()->asyncRequest(
           "1", 1, agent.second, GeneralRequest::RequestType::POST, path,
           std::make_shared<std::string>(word->toString()), headerFields,
-          std::make_shared<GossipCallback>(), 1.0, true);
+          std::make_shared<GossipCallback>(this, agent.first), 1.0, true);
       }
       
     }
@@ -702,9 +713,17 @@ inline static query_t getResponse(
 bool Agent::persistedAgents() {
   
   std::vector<std::string> active;
+  std::map<std::string,std::string> pool;
+  query_t activeBuilder = nullptr;
   {
     MUTEX_LOCKER(mutexLocker, _cfgLock);
     active = _config.active;
+    pool   = _config.pool;
+    activeBuilder = _config.activeToBuilder();
+  }
+
+  if (active.empty()) {
+    return false;
   }
 
   // 1 min timeout
@@ -712,23 +731,51 @@ bool Agent::persistedAgents() {
 
   auto const& it = find(active.begin(), active.end(), _config.id);
   auto start = std::chrono::system_clock::now();
+  std::string const path = "/_api/agency/activeAgents";
 
-  if (it != active.end()) { 
+  if (it != active.end()) {  // We used to be active agent
     
     {
       MUTEX_LOCKER(mutexLocker, _cfgLock);
       _serveActiveAgent = true; // Serve /_api/agency/activeAgents
     }
+
+    std::map<std::string,bool> consens;
     
     while (true) {
       
+      // contact others and count how many succeeded
+      for (auto const& agent : active) {
+        /*std::unique_ptr<ClusterCommResult> res =
+          ClusterComm::instance()->syncRequest(
+            "1", 1, pool.at(agent), GeneralRequest::RequestType::POST, path,
+            std::make_shared<std::string>(word->toString()), headerFields,
+            std::make_shared<GossipCallback>(), 1.0, true, 0.5);
+        if (res->status == CL_COMM_SENT) { 
+          if (res->result->getHttpReturnCode() == 200) {
+            consens[agent] = true;
+          } else if (res->result->getHttpReturnCode() == 428) {
+            LOG_TOPIC(DEBUG, Logger::AGENCY) <<
+              "Local information on agency is rejected by " << agent;
+          } else if (res->result->getHttpReturnCode() == 409) {
+            LOG_TOPIC(DEBUG, Logger::AGENCY) <<
+              "I am no longer active agent according to " << agent;
+          }
+          }*/
+        0;
+      }
+
+      // Collect what we know. Act accordingly.
+      
+      // timeout: clear list of active and give up
       if (std::chrono::system_clock::now() - start > timeout) { 
         {
           MUTEX_LOCKER(mutexLocker, _cfgLock);
           _config.active.clear();
         }
-        return false;
-      } 
+
+      }
+      
     }
     
     {

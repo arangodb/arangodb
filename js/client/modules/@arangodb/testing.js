@@ -1448,8 +1448,6 @@ function startInstanceAgency (instanceInfo, protocol, options,
       });
       l.push('--agency.endpoint');
       l.push('tcp://127.0.0.1:' + port);
-//      l.push('--agency.notify');
-      l.push('true');
 
       instanceArgs['flatCommands'] = l;
     }

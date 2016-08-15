@@ -492,67 +492,75 @@ bool State::loadCompacted() {
 
 /// Load persisted configuration
 bool State::loadOrPersistConfiguration() {
-
+  
   LOG(WARN) << __FILE__ << " " << __LINE__;
-
+  
   auto bindVars = std::make_shared<VPackBuilder>();
   bindVars->openObject();
   bindVars->close();
   
   std::string const aql(
-    std::string("FOR c in configuration FILTER c._key == \"0\" RETURN c"));
+    std::string("FOR c in configuration FILTER c._key==\"0\" RETURN c.cfg"));
   
   arangodb::aql::Query query(false, _vocbase, aql.c_str(), aql.size(), bindVars,
                              nullptr, arangodb::aql::PART_MAIN);
-
+  
   auto queryResult = query.execute(QueryRegistryFeature::QUERY_REGISTRY);
-
+  
   if (queryResult.code != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
   }
-
+  
   VPackSlice result = queryResult.result->slice();
-
+  
   LOG(WARN) << __FILE__ << ":" << __LINE__;
 
   if (result.isArray() && result.length()) { // We already have a persisted conf
-
+    
     try {
+      LOG(WARN) << __FILE__ << ":" << __LINE__;
+      LOG(WARN) << result[0].toJson();
       LOG(WARN) << __FILE__ << ":" << __LINE__;
       _agent->mergeConfiguration(result[0]);
     } catch (std::exception const& e) {
       LOG_TOPIC(ERR, Logger::AGENCY)
-        << "Failed to merge persisted configuration into runtime configuration:"
+        << "Failed to merge persisted configuration into runtime configuration: "
         << e.what();
       FATAL_ERROR_EXIT();
     }
     
   } else {                                   // Fresh start
     
-  LOG(WARN) << __FILE__ << ":" << __LINE__;
+    LOG(WARN) << __FILE__ << ":" << __LINE__;
     LOG_TOPIC(DEBUG, Logger::AGENCY) << "New agency!";
-
+    
     TRI_ASSERT(_agent != nullptr);
     _agent->id(to_string(boost::uuids::random_generator()()));
     
-  LOG(WARN) << __FILE__ << ":" << __LINE__;
+    LOG(WARN) << __FILE__ << ":" << __LINE__;
     auto transactionContext =
       std::make_shared<StandaloneTransactionContext>(_vocbase);
     SingleCollectionTransaction trx(transactionContext, "configuration",
                                     TRI_TRANSACTION_WRITE);
     
-  LOG(WARN) << __FILE__ << ":" << __LINE__;
+    LOG(WARN) << __FILE__ << ":" << __LINE__;
     int res = trx.begin();
     OperationResult result;
-
+    
     if (res != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(res);
     }
     
+    
+    Builder doc;
+    doc.openObject();
+    doc.add("_key", VPackValue("0"));
+    doc.add("cfg", _agent->config().toBuilder()->slice());
+    doc.close();
     try {
       LOG(WARN) << __FILE__ << ":" << __LINE__;
       result = trx.insert(
-        "configuration", _agent->config().toBuilder()->slice(), _options);
+        "configuration", doc.slice(), _options);
     } catch (std::exception const& e) {
       LOG_TOPIC(ERR, Logger::AGENCY)
         << "Failed to persist configuration entry:" << e.what();
@@ -706,14 +714,10 @@ bool State::removeObsolete(arangodb::consensus::index_t cind) {
                                bindVars, nullptr, arangodb::aql::PART_MAIN);
 
     auto queryResult = query.execute(QueryRegistryFeature::QUERY_REGISTRY);
-
     if (queryResult.code != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
     }
-
-    if (queryResult.code != TRI_ERROR_NO_ERROR) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
-    }
+    
   }
   return true;
 }
@@ -754,3 +758,37 @@ bool State::persistReadDB(arangodb::consensus::index_t cind) {
   LOG_TOPIC(ERR, Logger::AGENCY) << "Failed to persist read DB for compaction!";
   return false;
 }
+
+bool State::persistActiveAgents(arangodb::consensus::id_t const& id) {
+  return persistActiveAgents(std::vector<arangodb::consensus::id_t>(1, id));
+}
+  
+bool State::persistActiveAgents(
+  std::vector<arangodb::consensus::id_t> const& ids) {
+
+  TRI_ASSERT (!ids.empty());
+  
+  auto bindVars = std::make_shared<VPackBuilder>();
+  bindVars->openObject();
+  bindVars->close();
+  
+  std::stringstream aql;
+  aql << "FOR c IN configuration UPDATE {_key:c._key} WITH {cfg:{active:[";
+  for (size_t i = 0; i < ids.size()-1; ++i) {
+    aql << "\"" << ids.at(i) << "\",";
+  }
+  aql << "\"" << ids.back() << "\"]}} IN configuration')";
+
+  arangodb::aql::Query query(
+    false, _vocbase, aql.str().c_str(), aql.str().size(), bindVars, nullptr,
+    arangodb::aql::PART_MAIN);
+
+  auto queryResult = query.execute(QueryRegistryFeature::QUERY_REGISTRY);
+
+  if (queryResult.code != TRI_ERROR_NO_ERROR) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
+  }
+
+  return true;
+}
+

@@ -22,12 +22,15 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "GossipCallback.h"
+#include "Agent.h"
 
 using namespace arangodb::consensus;
 using namespace arangodb::velocypack;
 
-GossipCallback::GossipCallback() {}
+GossipCallback::GossipCallback(Agent* agent, arangodb::consensus::id_t peerId)
+  : _agent(agent), _peerId(peerId) {}
 
 bool GossipCallback::operator()(arangodb::ClusterCommResult* res) {
+  //_agent->gossipCallback(_agent,_peerId);
   return true;
 }

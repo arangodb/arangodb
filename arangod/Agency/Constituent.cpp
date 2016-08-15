@@ -80,8 +80,7 @@ Constituent::Constituent()
     _leaderID(NO_LEADER),
     _role(FOLLOWER),
     _agent(nullptr),
-    _votedFor(NO_LEADER)
-{}
+    _votedFor(NO_LEADER) {}
 
 
 /// Shutdown if not already

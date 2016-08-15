@@ -24,20 +24,27 @@
 #ifndef ARANGOD_CONSENSUS_GOSSIP_CALLBACK_H
 #define ARANGOD_CONSENSUS_GOSSIP_CALLBACK_H 1
 
+#include "Agency/AgencyCommon.h"
 #include "Cluster/ClusterComm.h"
 
 namespace arangodb {
 namespace consensus {
 
+class Agent;
+
 class GossipCallback : public arangodb::ClusterCommCallback {
- public:
-  GossipCallback();
-
+public:
+  GossipCallback(Agent*, arangodb::consensus::id_t);
+  
   virtual bool operator()(arangodb::ClusterCommResult*) override final;
-
+  
   void shutdown();
+  
+private:
+  
+  Agent* _agent;
+  arangodb::consensus::id_t _peerId;
 
- private:
 };
 }
 }  // namespace
