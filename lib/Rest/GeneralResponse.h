@@ -29,6 +29,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/StringBuffer.h"
+#include "lib/Endpoint/Endpoint.h"
 
 #include "GeneralRequest.h"
 
@@ -106,7 +107,8 @@ class GeneralResponse {
     VPACK,   // application/x-velocypack
     TEXT,    // text/plain
     HTML,    // text/html
-    DUMP     // application/x-arango-dump
+    DUMP,    // application/x-arango-dump
+    UNSET
   };
 
   enum ConnectionType {
@@ -125,13 +127,27 @@ class GeneralResponse {
   // response code from integer error code
   static ResponseCode responseCode(int);
 
-  // TODO OBI - check what can be implemented in this base class
-  // virtual basics::StringBuffer& body() = 0;
-  virtual void setContentType(ContentType type) = 0;
-  virtual void setContentType(std::string const& contentType) = 0;
-  virtual void setContentType(std::string&& contentType) = 0;
-  virtual void setConnectionType(ConnectionType type) = 0;
-  virtual void writeHeader(basics::StringBuffer*) = 0;
+  /// @brief set content-type this sets the contnt type like you expect it
+  void setContentType(ContentType type) { _contentType = type; }
+
+  /// @brief set content-type from a string. this should only be used in
+  /// cases when the content-type is user-defined
+  /// this is a functionality so that user can set a type like application/zip
+  /// from java script code the ContentType will be CUSTOM!!
+  void setContentType(std::string const& contentType) {
+    _headers[arangodb::StaticStrings::ContentTypeHeader] = contentType;
+    _contentType = ContentType::CUSTOM;
+  }
+
+  void setContentType(std::string&& contentType) {
+    _headers[arangodb::StaticStrings::ContentTypeHeader] =
+        std::move(contentType);
+    _contentType = ContentType::CUSTOM;
+  }
+
+  void setConnectionType(ConnectionType type) { _connectionType = type; }
+
+  virtual arangodb::Endpoint::TransportType transportType() = 0;
 
  protected:
   explicit GeneralResponse(ResponseCode);
@@ -171,14 +187,35 @@ class GeneralResponse {
 
   // generates the response body, sets the content type; this might
   // throw an error
-  virtual void setPayload(GeneralRequest const*,
-                          arangodb::velocypack::Slice const&, bool generateBody,
-                          arangodb::velocypack::Options const&) = 0;
+  virtual void setPayload(ContentType contentType,
+                          arangodb::velocypack::Slice const&,
+                          bool generateBody = true,
+                          arangodb::velocypack::Options const& = arangodb::
+                              velocypack::Options::Defaults) = 0;
+
+  // virtual void addPayload(VPackSlice const& slice) {
+  //   _vpackPayloads.emplace_back(slice.byteSize());
+  //   std::memcpy(&_vpackPayloads.back(), slice.start(), slice.byteSize());
+  // };
+
+  // virtual void addPayload(VPackBuffer<uint8_t>&& buffer) {
+  //   _vpackPayloads.push_back(std::move(buffer));
+  // };
+
+  // virtual void setPayload(ContentType contentType,
+  //                        VPackBuffer<uint8_t>&& sliceBuffer,
+  //                        bool generateBody = true,
+  //                        arangodb::velocypack::Options const& = arangodb::
+  //                            velocypack::Options::Defaults) = 0;
 
  protected:
   ResponseCode _responseCode;  // http response code
   std::unordered_map<std::string, std::string>
       _headers;  // headers/metadata map
+
+  std::vector<VPackBuffer<uint8_t>> _vpackPayloads;
+  ContentType _contentType;
+  ConnectionType _connectionType;
 };
 }
 

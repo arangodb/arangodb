@@ -38,8 +38,8 @@ class GeneralCommTask;
 }
 
 class HttpResponse : public GeneralResponse {
-  friend class rest::GeneralCommTask;
   friend class rest::HttpCommTask;
+  friend class rest::GeneralCommTask;
   friend class RestBatchHandler;  // TODO must be removed
 
  public:
@@ -68,44 +68,25 @@ class HttpResponse : public GeneralResponse {
   basics::StringBuffer& body() { return _body; }
   size_t bodySize() const;
 
-  /// @brief set type of connection
-  void setConnectionType(ConnectionType type) override {
-    _connectionType = type;
-  }
-
-  /// @brief set content-type
-  void setContentType(ContentType type) override { _contentType = type; }
-
-  /// @brief set content-type from a string. this should only be used in
-  /// cases when the content-type is user-defined
-  void setContentType(std::string const& contentType) override {
-    _headers[arangodb::StaticStrings::ContentTypeHeader] = contentType;
-    _contentType = ContentType::CUSTOM;
-  }
-
-  void setContentType(std::string&& contentType) override {
-    _headers[arangodb::StaticStrings::ContentTypeHeader] =
-        std::move(contentType);
-    _contentType = ContentType::CUSTOM;
-  }
-
   // you should call writeHeader only after the body has been created
-  void writeHeader(basics::StringBuffer*) override;
+  void writeHeader(basics::StringBuffer*);  // override;
 
  public:
   void reset(ResponseCode code) override final;
 
-  void setPayload(GeneralRequest const*, arangodb::velocypack::Slice const&,
+  void setPayload(ContentType, arangodb::velocypack::Slice const&,
                   bool generateBody,
                   arangodb::velocypack::Options const&) override final;
+
+  arangodb::Endpoint::TransportType transportType() override {
+    return arangodb::Endpoint::TransportType::HTTP;
+  }
 
  private:
   // the body must already be set. deflate is then run on the existing body
   int deflate(size_t = 16384);
 
  private:
-  ConnectionType _connectionType;
-  ContentType _contentType;
   bool _isHeadResponse;
   std::vector<std::string> _cookies;
   basics::StringBuffer _body;

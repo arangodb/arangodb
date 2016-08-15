@@ -63,11 +63,11 @@ class GeneralRequest {
   enum class RequestType {
     DELETE_REQ = 0,  // windows redefines DELETE
     GET,
-    HEAD,
-    OPTIONS,
     POST,
     PUT,
+    HEAD,
     PATCH,
+    OPTIONS,
     VSTREAM_CRED,
     VSTREAM_REGISTER,
     VSTREAM_STATUS,
@@ -75,7 +75,15 @@ class GeneralRequest {
   };
 
   enum class ProtocolVersion { HTTP_1_0, HTTP_1_1, VPP_1_0, UNKNOWN };
-  enum class ContentType { UNSET, VPACK, JSON };
+  enum class ContentType {
+    CUSTOM,  // use Content-Type from _headers
+    JSON,    // application/json
+    VPACK,   // application/x-velocypack
+    TEXT,    // text/plain
+    HTML,    // text/html
+    DUMP,    // application/x-arango-dump
+    UNSET
+  };
 
  public:
   // translate the HTTP protocol version
@@ -188,6 +196,7 @@ class GeneralRequest {
   };
 
   ContentType contentType() const { return _contentType; }
+  ContentType contentTypeResponse() const { return _contentTypeResponse; }
 
  protected:
   ProtocolVersion _version;

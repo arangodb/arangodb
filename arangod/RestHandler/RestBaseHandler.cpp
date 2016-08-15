@@ -30,6 +30,7 @@
 
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
+#include "Meta/conversion.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
 #include "Utils/TransactionContext.h"
@@ -140,7 +141,9 @@ void RestBaseHandler::writeResult(arangodb::velocypack::Slice const& slice,
                                   VPackOptions const& options) {
   try {
     TRI_ASSERT(options.escapeUnicode);
-    _response->setPayload(_request, slice, true, options);
+    _response->setPayload(meta::enumToEnum<GeneralResponse::ContentType>(
+                              _request->contentTypeResponse()),
+                          slice, true, options);
   } catch (std::exception const& ex) {
     generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
                   TRI_ERROR_INTERNAL, ex.what());

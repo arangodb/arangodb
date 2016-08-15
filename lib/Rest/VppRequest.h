@@ -26,6 +26,7 @@
 #define ARANGODB_REST_VPP_REQUEST_H 1
 
 #include "Rest/GeneralRequest.h"
+#include "Rest/VppMessage.h"
 #include "Endpoint/ConnectionInfo.h"
 
 #include <velocypack/Builder.h>
@@ -49,16 +50,7 @@ class Builder;
 struct Options;
 }
 
-struct VPackMessage {
-  VPackMessage() : _buffer(), _header(), _payload() {}
-  VPackMessage(VPackBuffer<uint8_t>&& buff, VPackSlice head, VPackSlice pay)
-      : _buffer(std::move(buff)), _header(head), _payload(pay) {}
-  VPackMessage(VPackMessage&&) = default;  // not necessary just to make sure!
-
-  VPackBuffer<uint8_t> _buffer;
-  VPackSlice _header;
-  VPackSlice _payload;
-};
+using rest::VPackMessage;
 
 class VppRequest : public GeneralRequest {
   friend class rest::VppCommTask;

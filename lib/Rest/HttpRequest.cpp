@@ -69,7 +69,7 @@ HttpRequest::HttpRequest(
       _vpackBuilder(nullptr),
       _headers(headers) {
   _contentType = contentType;
-  _contentTypeResponse = ContentType::JSON;
+  _contentTypeResponse = contentType;
 }
 
 void HttpRequest::parseHeader(size_t length) {
@@ -555,7 +555,7 @@ void HttpRequest::setHeader(char const* key, size_t keyLength,
   }
 
   if (keyLength == 6 && memcmp(key, "accept", keyLength) == 0) {
-    if (valueLength == 24 &&
+    if (valueLength == std::strlen("application/x-velocypack") &&
         memcmp(value, "application/x-velocypack", valueLength) == 0) {
       _contentTypeResponse = ContentType::VPACK;
       return;

@@ -123,6 +123,22 @@ configure_file(
   NEWLINE_STYLE UNIX
 )
 
+find_program (GIT_EXE git)
+set (EXECUTE_COMMAND ${GIT_EXE} describe --all --tags --long --dirty=-dirty)
+execute_process(COMMAND  ${EXECUTE_COMMAND} OUTPUT_VARIABLE GIT_OUTPUT)
+string(STRIP ${GIT_OUTPUT} REPOSITORY_VERSION)
+set(ARANGODB_BUILD_REPOSITORY ${REPOSITORY_VERSION})
+
+configure_file (
+  "${CMAKE_CURRENT_SOURCE_DIR}/lib/Basics/build-repository.h.in"
+  "${CMAKE_CURRENT_BINARY_DIR}/lib/Basics/build-repository.h"
+  NEWLINE_STYLE UNIX
+)
+
+if (VERBOSE)
+  message(STATUS "ARANGODB_BUILD_REPOSITORY=\"${ARANGODB_BUILD_REPOSITORY}\"")
+endif ()
+
 ################################################################################
 ## OPERATION SYSTEM
 ################################################################################

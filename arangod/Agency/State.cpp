@@ -417,7 +417,6 @@ bool State::loadCollections(TRI_vocbase_t* vocbase, QueryRegistry* queryRegistry
     return true;
   }
   
-  LOG(WARN) << "... done";
   return false;
   
 }
