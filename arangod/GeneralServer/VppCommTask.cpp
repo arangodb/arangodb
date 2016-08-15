@@ -25,6 +25,7 @@
 
 #include "Basics/StringBuffer.h"
 #include "Basics/HybridLogicalClock.h"
+#include "Basics/VelocyPackHelper.h"
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "GeneralServer/RestHandler.h"
@@ -174,15 +175,18 @@ void VppCommTask::addResponse(VppResponse* response, bool isError) {
   std::vector<VPackSlice> slices;
   slices.push_back(response_message._header);
 
+  VPackBuilder builder;
   if (response_message._generateBody) {
-    slices.push_back(response_message._payload);
+    builder = basics::VelocyPackHelper::stanitizeExternalsChecked(
+        response_message._payload);
+    slices.push_back(builder.slice());
   }
 
   // FIXME (obi)
   // If the message is big we will create many small chunks in a loop.
   // For the first tests we just send single Messages
 
-  LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "got request:";
+  LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "got response:";
   for (auto const& slice : slices) {
     LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << slice.toJson();
   }

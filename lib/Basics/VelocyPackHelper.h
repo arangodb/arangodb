@@ -355,8 +355,8 @@ class VelocyPackHelper {
   static void SanitizeExternals(arangodb::velocypack::Slice const,
                                 arangodb::velocypack::Builder&);
 
-  inline bool hasExternals(arangodb::velocypack::Slice const);
-  inline VPackBuilder stanitizeExternalsChecked(
+  static bool hasExternals(arangodb::velocypack::Slice const);
+  static VPackBuilder stanitizeExternalsChecked(
       arangodb::velocypack::Slice const, bool checkExternals = true);
 
   static uint8_t const KeyAttribute = 0x31;

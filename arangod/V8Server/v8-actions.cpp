@@ -657,8 +657,8 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
       case Endpoint::TransportType::VPP: {
         VPackBuilder builder;
 
-        v8::Handle<v8::Value> v8_body = res->Get(BodyKey);
-        //LOG(ERR) << v8_body->IsString();
+        v8::Handle<v8::Value> v8Body = res->Get(BodyKey);
+        // LOG(ERR) << v8Body->IsString();
         std::string out;
         bool done = false;
 
@@ -686,20 +686,20 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
 
         // out is not set
         if (out.empty() && !done) {
-          if (jsonContent && !V8Buffer::hasInstance(isolate, v8_body)) {
-            if (v8_body->IsString()) {
+          if (jsonContent && !V8Buffer::hasInstance(isolate, v8Body)) {
+            if (v8Body->IsString()) {
               out = TRI_ObjectToString(res->Get(BodyKey));  // should get moved
             } else {
-              TRI_V8ToVPack(isolate, builder, v8_body, false);
+              TRI_V8ToVPack(isolate, builder, v8Body, false);
               done = true;
             }
             // done
           } else if (V8Buffer::hasInstance(
                          isolate,
-                         v8_body)) {  // body form buffer - could
-                                      // contain json or not
+                         v8Body)) {  // body form buffer - could
+                                     // contain json or not
             // REVIEW (fc) - is this correct?
-            auto obj = v8_body.As<v8::Object>();
+            auto obj = v8Body.As<v8::Object>();
             out = std::string(V8Buffer::data(obj), V8Buffer::length(obj));
           } else {  // body is text - does not contain json
             out = TRI_ObjectToString(res->Get(BodyKey));  // should get moved
