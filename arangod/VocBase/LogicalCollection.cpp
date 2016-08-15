@@ -128,7 +128,6 @@ LogicalCollection::LogicalCollection(VPackSlice info)
       _allowUserKeys(ReadBooleanValue(info, "allowUserKeys", true)),
       _shardIds(new ShardMap()),
       _physical(nullptr) {
-  // TODO read shard id map
   if (info.isObject()) {
     // Otherwise the cluster communication is broken.
     // We cannot store anything further.
@@ -149,11 +148,20 @@ LogicalCollection::LogicalCollection(VPackSlice info)
           for (auto const& serverSlice : VPackArrayIterator(shardSlice.value)) {
             servers.push_back(serverSlice.copyString());
           }
-          (*_shardIds).emplace(shard, servers);
+          _shardIds->emplace(shard, servers);
         }
       }
     }
   }
+}
+
+LogicalCollection::~LogicalCollection() {
+  // TODO Do we have to free _physical
+}
+
+size_t LogicalCollection::journalSize() const {
+  // TODO FIXME should be part of physical collection
+  return 0;
 }
 
 // SECTION: Meta Information
@@ -278,4 +286,53 @@ void LogicalCollection::rename(std::string const& newName) {
 void LogicalCollection::drop() {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   _isDeleted = true;
+}
+
+void LogicalCollection::toVelocyPack(VPackBuilder& result) const {
+  result.openObject();
+  result.add("id", VPackValue(_cid));
+  result.add("name", VPackValue(_name));
+  result.add("status", VPackValue(_status));
+  result.add("deleted", VPackValue(_isDeleted));
+  result.add("doCompact", VPackValue(_doCompact));
+  result.add("isSystem", VPackValue(_isSystem));
+  result.add("isVolatile", VPackValue(_isVolatile));
+  result.add("waitForSync", VPackValue(_waitForSync));
+  result.add("keyOptions", VPackSlice(_keyOptions->data()));
+  result.add("indexBuckets", VPackValue(_indexBuckets));
+  result.add("indexes", VPackSlice(_indexes->data()));
+  result.add("replicationFactor", VPackValue(_replicationFactor));
+  result.add(VPackValue("shards"));
+  result.openObject();
+  for (auto const& shards : *_shardIds) {
+    result.add(VPackValue(shards.first));
+    result.openArray();
+    for (auto const& servers : shards.second) {
+      result.add(VPackValue(servers));
+    }
+    result.close(); // server array
+  }
+  result.close(); // shards
+  result.add("allowUserKeys", VPackValue(_allowUserKeys));
+  result.add(VPackValue("shardKeys"));
+  result.openArray();
+  for (auto const& key : _shardKeys) {
+    result.add(VPackValue(key));
+  }
+  result.close(); // shardKeys
+  result.close(); // Base Object
+}
+
+TRI_vocbase_t* LogicalCollection::vocbase() const {
+  return _vocbase;
+}
+
+int LogicalCollection::update(VPackSlice const&, bool, TRI_vocbase_t const*) {
+#warning should be cluster aware
+  return TRI_ERROR_NOT_IMPLEMENTED;
+  /*
+  return ClusterInfo::instance()->setCollectionPropertiesCoordinator(
+                databaseName, StringUtils::itoa(collection->_cid), this);
+                */
+
 }

@@ -47,6 +47,7 @@
 #include "VocBase/DatafileHelper.h"
 #include "VocBase/Ditch.h"
 #include "VocBase/KeyGenerator.h"
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/MasterPointers.h"
 #include "VocBase/collection.h"
 #include "VocBase/ticks.h"
@@ -3118,13 +3119,13 @@ std::shared_ptr<Index> Transaction::indexForCollectionCoordinator(
   auto collectionInfo =
       clusterInfo->getCollection(_vocbase->name(), name);
 
-  if (collectionInfo.get() == nullptr || (*collectionInfo).empty()) {
+  if (collectionInfo.get() == nullptr) {
     THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_INTERNAL,
                                   "collection not found '%s' in database '%s'",
                                   name.c_str(), _vocbase->name().c_str());
   }
 
-  VPackSlice const slice = (*collectionInfo).getIndexes();
+  VPackSlice const slice = collectionInfo->getIndexes();
 
   if (slice.isArray()) {
     for (auto const& v : VPackArrayIterator(slice)) {
@@ -3180,7 +3181,7 @@ std::vector<std::shared_ptr<Index>> Transaction::indexesForCollectionCoordinator
   auto collectionInfo =
       clusterInfo->getCollection(_vocbase->name(), name);
 
-  if (collectionInfo.get() == nullptr || (*collectionInfo).empty()) {
+  if (collectionInfo.get() == nullptr) {
     THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_INTERNAL,
                                   "collection not found '%s' in database '%s'",
                                   name.c_str(), _vocbase->name().c_str());

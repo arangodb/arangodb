@@ -793,10 +793,10 @@ static void EnsureIndex(v8::FunctionCallbackInfo<v8::Value> const& args,
 
     std::string const dbname(collection->dbName());
     std::string const collname(collection->name());
-    std::shared_ptr<CollectionInfo> c =
+    std::shared_ptr<LogicalCollection> c =
         ClusterInfo::instance()->getCollection(dbname, collname);
 
-    if (c->empty()) {
+    if (c == nullptr) {
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
     }
 
@@ -978,9 +978,9 @@ static void CreateCollectionCoordinator(
     if (otherCid != 0) {
       std::string otherCidString 
           = arangodb::basics::StringUtils::itoa(otherCid);
-      std::shared_ptr<CollectionInfo> collInfo =
+      std::shared_ptr<LogicalCollection> collInfo =
           ci->getCollection(databaseName, otherCidString);
-      if (!collInfo->empty()) {
+      if (collInfo != nullptr) {
         auto shards = collInfo->shardIds();
         auto shardList = ci->getShardList(otherCidString);
         for (auto const& s : *shardList) {
@@ -1082,9 +1082,8 @@ static void CreateCollectionCoordinator(
   }
   ci->loadPlan();
 
-  std::shared_ptr<CollectionInfo> c = ci->getCollection(databaseName, cid);
-  TRI_vocbase_col_t* newcoll = CoordinatorCollection(vocbase, *c);
-  TRI_V8_RETURN(WrapCollection(isolate, newcoll));
+  std::shared_ptr<LogicalCollection> c = ci->getCollection(databaseName, cid);
+  TRI_V8_RETURN(WrapCollection(isolate, c.get()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1242,10 +1241,10 @@ static void GetIndexesCoordinator(
   std::string const cid = StringUtils::itoa(collection->_cid);
   std::string const collectionName(collection->name());
 
-  std::shared_ptr<CollectionInfo> c =
+  std::shared_ptr<LogicalCollection> c =
       ClusterInfo::instance()->getCollection(databaseName, cid);
 
-  if ((*c).empty()) {
+  if (c == nullptr) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
   }
 

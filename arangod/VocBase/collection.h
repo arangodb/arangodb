@@ -53,7 +53,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 namespace arangodb {
-class CollectionInfo;
 class EdgeIndex;
 class Index;
 class KeyGenerator;
@@ -147,8 +146,6 @@ class VocbaseCollectionInfo {
  public:
   VocbaseCollectionInfo() = default;
   ~VocbaseCollectionInfo() = default;
-
-  explicit VocbaseCollectionInfo(CollectionInfo const&);
 
   VocbaseCollectionInfo(TRI_vocbase_t*, std::string const&, TRI_col_type_e,
                         TRI_voc_size_t, arangodb::velocypack::Slice const&);

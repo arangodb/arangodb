@@ -64,6 +64,9 @@ class LogicalCollection {
   TRI_vocbase_col_status_e status() const;
   std::string const statusString() const;
 
+  // TODO this should be part of physical collection!
+  size_t journalSize() const;
+
   // SECTION: Properties
   bool deleted() const;
   bool doCompact() const;
@@ -94,13 +97,21 @@ class LogicalCollection {
   void rename(std::string const&);
   void drop();
 
+
+  // SECTION: Serialisation
+  void toVelocyPack(arangodb::velocypack::Builder&) const;
+
+  TRI_vocbase_t* vocbase() const;
+
   // Only Local
   void updateCount(size_t);
   // Path will be taken from physical
   // Probably this can be handled internally only!
   int saveToFile(bool) const;
-  void update(arangodb::velocypack::Slice const&, bool, TRI_vocbase_t const*);
-  void update(VocbaseCollectionInfo const&);
+
+  // Update this collection.
+  int update(arangodb::velocypack::Slice const&, bool, TRI_vocbase_t const*);
+  int update(VocbaseCollectionInfo const&);
 
   PhysicalCollection* getPhysical() const;
 
@@ -155,6 +166,8 @@ class LogicalCollection {
   // A thread takes a copy of this, another one updates this
   // the first one still has a valid copy
   std::shared_ptr<ShardMap> _shardIds;
+
+  TRI_vocbase_t* _vocbase;
 
   PhysicalCollection* _physical;
 };

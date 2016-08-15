@@ -97,7 +97,7 @@ TRI_voc_cid_t Collection::getPlanId() const {
                                   vocbase->name().c_str(), name.c_str());
   }
 
-  return collectionInfo.get()->id();
+  return collectionInfo.get()->cid();
 }
 
 /// @brief returns the shard ids of a collection

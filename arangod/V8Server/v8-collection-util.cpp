@@ -38,16 +38,6 @@ void ReleaseCollection(TRI_vocbase_col_t const* collection) {
   collection->_vocbase->releaseCollection(const_cast<TRI_vocbase_col_t*>(collection));
 }
 
-/// @brief convert a collection info into a TRI_vocbase_col_t
-TRI_vocbase_col_t* CoordinatorCollection(TRI_vocbase_t* vocbase,
-                                         CollectionInfo const& ci) {
-  auto c = std::make_unique<TRI_vocbase_col_t>(vocbase, ci.type(), ci.id(), ci.name(), ci.id(), "");
-  c->_isLocal = false;
-  c->setStatus(ci.status());
-
-  return c.release();
-}
-
 /// @brief check if a name belongs to a collection
 bool EqualCollection(CollectionNameResolver const* resolver,
                      std::string const& collectionName,
@@ -172,6 +162,67 @@ v8::Handle<v8::Object> WrapCollection(v8::Isolate* isolate,
     result->ForceSet(
         VersionKeyHidden,
         v8::Integer::NewFromUnsigned(isolate, collection->internalVersion()),
+        v8::DontEnum);
+  }
+
+  return scope.Escape<v8::Object>(result);
+}
+
+/////////////////////////////////////////////////////////////////////////////////
+/// @brief wraps a LogicalCollection
+////////////////////////////////////////////////////////////////////////////////
+
+v8::Handle<v8::Object> WrapCollection(v8::Isolate* isolate,
+                                      arangodb::LogicalCollection const* collection) {
+  v8::EscapableHandleScope scope(isolate);
+
+  TRI_GET_GLOBALS();
+  TRI_GET_GLOBAL(VocbaseColTempl, v8::ObjectTemplate);
+  v8::Handle<v8::Object> result = VocbaseColTempl->NewInstance();
+
+  if (!result.IsEmpty()) {
+
+    LogicalCollection* nonconstCollection =
+        const_cast<LogicalCollection*>(collection);
+
+    result->SetInternalField(SLOT_CLASS_TYPE,
+                             v8::Integer::New(isolate, WRP_VOCBASE_COL_TYPE));
+    result->SetInternalField(SLOT_CLASS,
+                             v8::External::New(isolate, nonconstCollection));
+
+    auto const& it = v8g->JSCollections.find(nonconstCollection);
+
+    if (it == v8g->JSCollections.end()) {
+      // increase the reference-counter for the database
+      nonconstCollection->vocbase()->use();
+      try {
+        auto externalCollection = v8::External::New(isolate, nonconstCollection);
+
+        result->SetInternalField(SLOT_COLLECTION, externalCollection);
+
+        v8g->JSCollections[nonconstCollection].Reset(isolate, externalCollection);
+        v8g->JSCollections[nonconstCollection].SetWeak(
+            &v8g->JSCollections[nonconstCollection], WeakCollectionCallback);
+        v8g->increaseActiveExternals();
+      } catch (...) {
+        nonconstCollection->vocbase()->release();
+        throw;
+      }
+    } else {
+      auto myCollection = v8::Local<v8::External>::New(isolate, it->second);
+
+      result->SetInternalField(SLOT_COLLECTION, myCollection);
+    }
+    TRI_GET_GLOBAL_STRING(_IdKey);
+    TRI_GET_GLOBAL_STRING(_DbNameKey);
+    TRI_GET_GLOBAL_STRING(VersionKeyHidden);
+    result->ForceSet(_IdKey, V8CollectionId(isolate, collection->cid()),
+                     v8::ReadOnly);
+    result->Set(_DbNameKey, TRI_V8_STRING(collection->vocbase()->name().c_str()));
+#warning Hardcoded version. Do we need it?! Ask Jan.
+    result->ForceSet(
+        VersionKeyHidden,
+        v8::Integer::NewFromUnsigned(isolate, 5),
         v8::DontEnum);
   }
 

@@ -1626,37 +1626,6 @@ static std::string GetCollectionDirectory(std::string const& path, TRI_voc_cid_t
   return arangodb::basics::FileUtils::buildFilename(path, filename);
 }
 
-
-VocbaseCollectionInfo::VocbaseCollectionInfo(CollectionInfo const& other)
-    : _version(TRI_COL_VERSION),
-      _type(other.type()),
-      _revision(0),      // not known in the cluster case on the coordinator
-      _cid(other.id()),  // this is on the coordinator and describes a
-                         // cluster-wide collection, for safety reasons,
-                         // we also set _cid
-      _planId(other.id()),
-      _maximalSize(other.journalSize()),
-      _initialCount(-1),
-      _indexBuckets(other.indexBuckets()),
-      _keyOptions(nullptr),
-      _isSystem(other.isSystem()),
-      _deleted(other.deleted()),
-      _doCompact(other.doCompact()),
-      _isVolatile(other.isVolatile()),
-      _waitForSync(other.waitForSync()) {
-  std::string const name = other.name();
-  memset(_name, 0, sizeof(_name));
-  memcpy(_name, name.c_str(), name.size());
-
-  VPackSlice keyOptionsSlice(other.keyOptions());
-
-  if (!keyOptionsSlice.isNone()) {
-    VPackBuilder builder;
-    builder.add(keyOptionsSlice);
-    _keyOptions = builder.steal();
-  }
-}
-
 VocbaseCollectionInfo::VocbaseCollectionInfo(TRI_vocbase_t* vocbase,
                                              std::string const& name,
                                              TRI_col_type_e type,

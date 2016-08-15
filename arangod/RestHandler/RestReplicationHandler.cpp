@@ -1654,12 +1654,12 @@ int RestReplicationHandler::processRestoreCollectionCoordinator(
 
   // in a cluster, we only look up by name:
   ClusterInfo* ci = ClusterInfo::instance();
-  std::shared_ptr<CollectionInfo> col = ci->getCollection(dbName, name);
+  std::shared_ptr<LogicalCollection> col = ci->getCollection(dbName, name);
 
   // drop an existing collection if it exists
-  if (!col->empty()) {
+  if (col != nullptr) {
     if (dropExisting) {
-      int res = ci->dropCollectionCoordinator(dbName, col->id_as_string(),
+      int res = ci->dropCollectionCoordinator(dbName, col->cid_as_string(),
                                               errorMsg, 0.0);
       if (res == TRI_ERROR_FORBIDDEN) {
         // some collections must not be dropped
@@ -1974,9 +1974,9 @@ int RestReplicationHandler::processRestoreIndexesCoordinator(
 
   // in a cluster, we only look up by name:
   ClusterInfo* ci = ClusterInfo::instance();
-  std::shared_ptr<CollectionInfo> col = ci->getCollection(dbName, name);
+  std::shared_ptr<LogicalCollection> col = ci->getCollection(dbName, name);
 
-  if (col->empty()) {
+  if (col == nullptr) {
     errorMsg = "could not find collection '" + name + "'";
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
@@ -1991,7 +1991,7 @@ int RestReplicationHandler::processRestoreIndexesCoordinator(
     }
 
     VPackBuilder tmp;
-    res = ci->ensureIndexCoordinator(dbName, col->id_as_string(), idxDef, true,
+    res = ci->ensureIndexCoordinator(dbName, col->cid_as_string(), idxDef, true,
                                      arangodb::Index::Compare, tmp, errorMsg,
                                      3600.0);
     if (res != TRI_ERROR_NO_ERROR) {
@@ -2483,9 +2483,9 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator() {
 
   // in a cluster, we only look up by name:
   ClusterInfo* ci = ClusterInfo::instance();
-  std::shared_ptr<CollectionInfo> col = ci->getCollection(dbName, name);
+  std::shared_ptr<LogicalCollection> col = ci->getCollection(dbName, name);
 
-  if (col->empty()) {
+  if (col == nullptr) {
     generateError(GeneralResponse::ResponseCode::BAD,
                   TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
     return;
@@ -2551,7 +2551,7 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator() {
       if (!doc.isNone() && type != REPLICATION_MARKER_REMOVE) {
         ShardID responsibleShard;
         bool usesDefaultSharding;
-        res = ci->getResponsibleShard(col->id_as_string(), doc, true,
+        res = ci->getResponsibleShard(col->cid_as_string(), doc, true,
                                       responsibleShard, usesDefaultSharding);
         if (res != TRI_ERROR_NO_ERROR) {
           errorMsg = "error during determining responsible shard";

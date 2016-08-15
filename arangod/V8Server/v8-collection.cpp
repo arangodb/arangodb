@@ -170,23 +170,18 @@ static int ParseDocumentOrDocumentHandle(v8::Isolate* isolate,
     // no collection object was passed, now check the user-supplied collection
     // name
 
+#warning FIXME
     TRI_vocbase_col_t const* col = nullptr;
+    std::shared_ptr<LogicalCollection> colNew;
 
     if (ServerState::instance()->isCoordinator()) {
       ClusterInfo* ci = ClusterInfo::instance();
-      std::shared_ptr<CollectionInfo> c =
-          ci->getCollection(vocbase->name(), collectionName);
-      col = CoordinatorCollection(vocbase, *c);
-
-      if (col != nullptr && col->_cid == 0) {
-        delete col;
-        col = nullptr;
-      }
+      colNew = ci->getCollection(vocbase->name(), collectionName);
     } else {
       col = resolver->getCollectionStruct(collectionName);
     }
 
-    if (col == nullptr) {
+    if (colNew == nullptr && col == nullptr) {
       // collection not found
       return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
     }
@@ -269,25 +264,9 @@ static TRI_vocbase_col_t const* UseCollection(
 /// @brief get all cluster collections
 ////////////////////////////////////////////////////////////////////////////////
 
-static std::vector<TRI_vocbase_col_t*> GetCollectionsCluster(
+static std::vector<std::shared_ptr<LogicalCollection>> GetCollectionsCluster(
     TRI_vocbase_t* vocbase) {
-  std::vector<TRI_vocbase_col_t*> result;
-
-  std::vector<std::shared_ptr<CollectionInfo>> const collections =
-      ClusterInfo::instance()->getCollections(vocbase->name());
-
-  for (auto& collection : collections) {
-    TRI_vocbase_col_t* c = CoordinatorCollection(vocbase, *(collection));
-
-    try {
-      result.emplace_back(c);
-    } catch (...) {
-      delete c;
-      throw;
-    }
-  }
-
-  return result;
+  return ClusterInfo::instance()->getCollections(vocbase->name());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -298,7 +277,7 @@ static std::vector<std::string> GetCollectionNamesCluster(
     TRI_vocbase_t* vocbase) {
   std::vector<std::string> result;
 
-  std::vector<std::shared_ptr<CollectionInfo>> const collections =
+  std::vector<std::shared_ptr<LogicalCollection>> const collections =
       ClusterInfo::instance()->getCollections(vocbase->name());
 
   for (auto& collection : collections) {
@@ -1256,8 +1235,8 @@ static void JS_PropertiesVocbaseCol(
 
   if (ServerState::instance()->isCoordinator()) {
     std::string const databaseName(collection->dbName());
-    arangodb::VocbaseCollectionInfo info =
-        ClusterInfo::instance()->getCollectionProperties(
+    std::shared_ptr<LogicalCollection> info =
+        ClusterInfo::instance()->getCollection(
             databaseName, StringUtils::itoa(collection->_cid));
 
     if (0 < args.Length()) {
@@ -1283,13 +1262,13 @@ static void JS_PropertiesVocbaseCol(
                 "<properties>.journalSize too small");
           }
         }
-        if (info.isVolatile() !=
+        if (info->isVolatile() !=
             arangodb::basics::VelocyPackHelper::getBooleanValue(
-                slice, "isVolatile", info.isVolatile())) {
+                slice, "isVolatile", info->isVolatile())) {
           TRI_V8_THROW_EXCEPTION_PARAMETER(
               "isVolatile option cannot be changed at runtime");
         }
-        if (info.isVolatile() && info.waitForSync()) {
+        if (info->isVolatile() && info->waitForSync()) {
           TRI_V8_THROW_EXCEPTION_PARAMETER(
               "volatile collections do not support the waitForSync option");
         }
@@ -1301,15 +1280,13 @@ static void JS_PropertiesVocbaseCol(
           TRI_V8_THROW_EXCEPTION_PARAMETER(
               "indexBuckets must be a two-power between 1 and 1024");
         }
-        info.update(slice, false, collection->_vocbase);
+        int res = info->update(slice, false, collection->_vocbase);
+
+        if (res != TRI_ERROR_NO_ERROR) {
+          TRI_V8_THROW_EXCEPTION(res);
+        }
       }
 
-      int res = ClusterInfo::instance()->setCollectionPropertiesCoordinator(
-          databaseName, StringUtils::itoa(collection->_cid), &info);
-
-      if (res != TRI_ERROR_NO_ERROR) {
-        TRI_V8_THROW_EXCEPTION(res);
-      }
     }
 
     // return the current parameter set
@@ -1320,29 +1297,28 @@ static void JS_PropertiesVocbaseCol(
     TRI_GET_GLOBAL_STRING(IsVolatileKey);
     TRI_GET_GLOBAL_STRING(JournalSizeKey);
     TRI_GET_GLOBAL_STRING(WaitForSyncKey);
-    result->Set(DoCompactKey, v8::Boolean::New(isolate, info.doCompact()));
-    result->Set(IsSystemKey, v8::Boolean::New(isolate, info.isSystem()));
-    result->Set(IsVolatileKey, v8::Boolean::New(isolate, info.isVolatile()));
-    result->Set(JournalSizeKey, v8::Number::New(isolate, info.maximalSize()));
-    result->Set(WaitForSyncKey, v8::Boolean::New(isolate, info.waitForSync()));
+    result->Set(DoCompactKey, v8::Boolean::New(isolate, info->doCompact()));
+    result->Set(IsSystemKey, v8::Boolean::New(isolate, info->isSystem()));
+    result->Set(IsVolatileKey, v8::Boolean::New(isolate, info->isVolatile()));
+    result->Set(JournalSizeKey, v8::Number::New(isolate, info->journalSize()));
+    result->Set(WaitForSyncKey, v8::Boolean::New(isolate, info->waitForSync()));
     result->Set(TRI_V8_ASCII_STRING("indexBuckets"),
-                v8::Number::New(isolate, info.indexBuckets()));
+                v8::Number::New(isolate, info->indexBuckets()));
 
-    std::shared_ptr<CollectionInfo> c = ClusterInfo::instance()->getCollection(
+    std::shared_ptr<LogicalCollection> c = ClusterInfo::instance()->getCollection(
         databaseName, StringUtils::itoa(collection->_cid));
     v8::Handle<v8::Array> shardKeys = v8::Array::New(isolate);
-    std::vector<std::string> const sks = (*c).shardKeys();
+    std::vector<std::string> const sks = c->shardKeys();
     for (size_t i = 0; i < sks.size(); ++i) {
       shardKeys->Set((uint32_t)i, TRI_V8_STD_STRING(sks[i]));
     }
     result->Set(TRI_V8_ASCII_STRING("shardKeys"), shardKeys);
     result->Set(TRI_V8_ASCII_STRING("numberOfShards"),
-                v8::Number::New(isolate, (*c).numberOfShards()));
-    auto keyOpts = info.keyOptions();
-    if (keyOpts != nullptr && keyOpts->size() > 0) {
+                v8::Number::New(isolate, c->numberOfShards()));
+    auto keyOpts = info->keyOptions();
+    if (keyOpts.isObject() && keyOpts.length() > 0) {
       TRI_GET_GLOBAL_STRING(KeyOptionsKey);
-      VPackSlice const slice(keyOpts->data());
-      result->Set(KeyOptionsKey, TRI_VPackToV8(isolate, slice)->ToObject());
+      result->Set(KeyOptionsKey, TRI_VPackToV8(isolate, keyOpts)->ToObject());
     }
     result->Set(
         TRI_V8_ASCII_STRING("replicationFactor"),
@@ -2377,11 +2353,11 @@ static void JS_StatusVocbaseCol(
   if (ServerState::instance()->isCoordinator()) {
     std::string const databaseName(collection->dbName());
 
-    std::shared_ptr<CollectionInfo> const ci =
+    std::shared_ptr<LogicalCollection> const ci =
         ClusterInfo::instance()->getCollection(
             databaseName, StringUtils::itoa(collection->_cid));
 
-    if ((*ci).empty()) {
+    if (ci == nullptr) {
       TRI_V8_RETURN(v8::Number::New(isolate, (int)TRI_VOC_COL_STATUS_DELETED));
     }
     TRI_V8_RETURN(v8::Number::New(isolate, (int)ci->status()));
@@ -2548,11 +2524,11 @@ static void JS_TypeVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (ServerState::instance()->isCoordinator()) {
     std::string const databaseName = collection->dbName();
 
-    std::shared_ptr<CollectionInfo> const ci =
+    std::shared_ptr<LogicalCollection> const ci =
         ClusterInfo::instance()->getCollection(
             databaseName, StringUtils::itoa(collection->_cid));
 
-    if ((*ci).empty()) {
+    if (ci == nullptr) {
       TRI_V8_RETURN(v8::Number::New(isolate, (int)collection->type()));
     } else {
       TRI_V8_RETURN(v8::Number::New(isolate, (int)ci->type()));
@@ -2725,15 +2701,16 @@ static void JS_CollectionVocbase(
 
   if (ServerState::instance()->isCoordinator()) {
     std::string const name = TRI_ObjectToString(val);
-    std::shared_ptr<CollectionInfo> const ci =
+    std::shared_ptr<LogicalCollection> const ci =
         ClusterInfo::instance()->getCollection(vocbase->name(), name);
 
-    if ((*ci).id() == 0 || (*ci).empty()) {
+    if (ci == nullptr) {
       // not found
       TRI_V8_RETURN_NULL();
     }
 
-    collection = CoordinatorCollection(vocbase, *ci);
+    // TODO collection has to be ci.
+    // collection = CoordinatorCollection(vocbase, *ci);
   } else {
     collection = GetCollectionFromArgument(vocbase, val);
   }
@@ -2768,11 +2745,13 @@ static void JS_CollectionsVocbase(
   }
 
   std::vector<TRI_vocbase_col_t*> colls;
+#warning FIXME
+  std::vector<std::shared_ptr<LogicalCollection>> collsNew;
 
   // if we are a coordinator, we need to fetch the collection info from the
   // agency
   if (ServerState::instance()->isCoordinator()) {
-    colls = GetCollectionsCluster(vocbase);
+    collsNew = ClusterInfo::instance()->getCollections(vocbase->name());
   } else {
     colls = vocbase->collections();
   }

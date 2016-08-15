@@ -97,46 +97,6 @@ static std::string extractErrorMessage(std::string const& shardId,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates an empty  collection info object
-////////////////////////////////////////////////////////////////////////////////
-CollectionInfo::CollectionInfo() 
- : _vpack(std::make_shared<VPackBuilder>()) {
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a collection info object from json
-////////////////////////////////////////////////////////////////////////////////
-
-CollectionInfo::CollectionInfo(std::shared_ptr<VPackBuilder> vpack, VPackSlice slice)
-  : _vpack(vpack), _slice(slice) {}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a collection info object from another
-////////////////////////////////////////////////////////////////////////////////
-
-CollectionInfo::CollectionInfo(CollectionInfo const& other)
-    : _vpack(other._vpack), _slice(other._slice) {
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief copy assigns a collection info object from another one
-////////////////////////////////////////////////////////////////////////////////
-
-CollectionInfo& CollectionInfo::operator=(CollectionInfo const& other) {
-  _vpack = other._vpack;
-  _slice = other._slice;
-
-  return *this;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroys a collection info object
-////////////////////////////////////////////////////////////////////////////////
-
-CollectionInfo::~CollectionInfo() {
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an empty collection info object
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -473,7 +433,7 @@ void ClusterInfo::loadPlan() {
             }
             
             std::string const collectionId = collectionPairSlice.key.copyString();
-            auto newCollection = std::make_shared<CollectionInfo>(planBuilder, collectionSlice);
+            auto newCollection = std::make_shared<LogicalCollection>(collectionSlice);
             std::string const collectionName = newCollection->name();
             
             // mop: register with name as well as with id
@@ -498,6 +458,7 @@ void ClusterInfo::loadPlan() {
                 });
             newShards.emplace(std::make_pair(collectionId, shards));
           }
+
           newCollections.emplace(std::make_pair(databaseName, databaseCollections));
           swapCollections = true;
         }
@@ -646,9 +607,8 @@ void ClusterInfo::loadCurrent() {
 
 /// @brief ask about a collection
 /// If it is not found in the cache, the cache is reloaded once
-////////////////////////////////////////////////////////////////////////////////
 
-std::shared_ptr<CollectionInfo> ClusterInfo::getCollection(
+std::shared_ptr<LogicalCollection> ClusterInfo::getCollection(
     DatabaseID const& databaseID, CollectionID const& collectionID) {
   int tries = 0;
 
@@ -680,37 +640,16 @@ std::shared_ptr<CollectionInfo> ClusterInfo::getCollection(
     // must load collections outside the lock
     loadPlan();
   }
-
-  return std::make_shared<CollectionInfo>();
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get properties of a collection
-////////////////////////////////////////////////////////////////////////////////
-
-arangodb::VocbaseCollectionInfo ClusterInfo::getCollectionProperties(
-    CollectionInfo const& collection) {
-  arangodb::VocbaseCollectionInfo info(collection);
-  return info;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get properties of a collection
-////////////////////////////////////////////////////////////////////////////////
-
-VocbaseCollectionInfo ClusterInfo::getCollectionProperties(
-    DatabaseID const& databaseID, CollectionID const& collectionID) {
-  auto ci = getCollection(databaseID, collectionID);
-  return getCollectionProperties(*ci);
+  return nullptr;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ask about all collections
 ////////////////////////////////////////////////////////////////////////////////
 
-std::vector<std::shared_ptr<CollectionInfo>> const ClusterInfo::getCollections(
+std::vector<std::shared_ptr<LogicalCollection>> const ClusterInfo::getCollections(
     DatabaseID const& databaseID) {
-  std::vector<std::shared_ptr<CollectionInfo>> result;
+  std::vector<std::shared_ptr<LogicalCollection>> result;
 
   // always reload
   loadPlan();
@@ -1518,7 +1457,7 @@ int ClusterInfo::ensureIndexCoordinator(
 
   auto collectionBuilder = std::make_shared<VPackBuilder>();
   {
-    std::shared_ptr<CollectionInfo> c =
+    std::shared_ptr<LogicalCollection> c =
       getCollection(databaseName, collectionID);
     
     // Note that nobody is removing this collection in the plan, since
@@ -1528,7 +1467,7 @@ int ClusterInfo::ensureIndexCoordinator(
     //
     READ_LOCKER(readLocker, _planProt.lock);
     
-    if (c->empty()) {
+    if (c == nullptr) {
       return setErrormsg(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, errorMsg);
     }
     
@@ -1579,7 +1518,7 @@ int ClusterInfo::ensureIndexCoordinator(
     }
     
     // now create a new index
-    collectionBuilder->add(c->getSlice());
+    c->toVelocyPack(*collectionBuilder);
   }
   VPackSlice const collectionSlice = collectionBuilder->slice();
   
@@ -1770,12 +1709,12 @@ int ClusterInfo::dropIndexCoordinator(std::string const& databaseName,
   
   VPackSlice indexes;
   {
-    std::shared_ptr<CollectionInfo> c =
+    std::shared_ptr<LogicalCollection> c =
       getCollection(databaseName, collectionID);
     
     READ_LOCKER(readLocker, _planProt.lock);
     
-    if (c->empty()) {
+    if (c == nullptr) {
       return setErrormsg(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, errorMsg);
     }
     indexes = c->getIndexes();

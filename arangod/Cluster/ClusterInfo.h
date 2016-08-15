@@ -32,6 +32,7 @@
 #include "Basics/ReadWriteLock.h"
 #include "Cluster/AgencyComm.h"
 #include "Cluster/AgencyCallbackRegistry.h"
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
@@ -44,350 +45,12 @@ namespace velocypack {
 class Slice;
 }
 class ClusterInfo;
+class LogicalCollection;
 
 typedef std::string ServerID;      // ID of a server
 typedef std::string DatabaseID;    // ID/name of a database
 typedef std::string CollectionID;  // ID of a collection
 typedef std::string ShardID;       // ID of a shard
-
-class CollectionInfo {
-  friend class ClusterInfo;
-
- public:
-  CollectionInfo();
-
-  CollectionInfo(std::shared_ptr<VPackBuilder>, VPackSlice);
-
-  CollectionInfo(CollectionInfo const&);
-
-  CollectionInfo(CollectionInfo&&);
-
-  CollectionInfo& operator=(CollectionInfo const&);
-
-  CollectionInfo& operator=(CollectionInfo&&);
-
-  ~CollectionInfo();
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief returns the replication factor
-  //////////////////////////////////////////////////////////////////////////////
-
-  int replicationFactor () const {
-    if (!_slice.isObject()) {
-      return 1;
-    }
-    return arangodb::basics::VelocyPackHelper::getNumericValue<TRI_voc_size_t>(
-        _slice, "replicationFactor", 1);
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief checks whether there is no info contained
-  //////////////////////////////////////////////////////////////////////////////
-
-  bool empty() const {
-    return _slice.isNone();
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief returns the collection id
-  //////////////////////////////////////////////////////////////////////////////
-
-  TRI_voc_cid_t id() const {
-    if (!_slice.isObject()) {
-      return 0;
-    }
-    VPackSlice idSlice = _slice.get("id");
-    if (idSlice.isString()) {
-      return arangodb::basics::VelocyPackHelper::stringUInt64(idSlice);
-    }
-    return 0;
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief returns the collection id as a string
-  //////////////////////////////////////////////////////////////////////////////
-
-  std::string id_as_string() const {
-    if (!_slice.isObject()) {
-      return std::string("");
-    }
-    return arangodb::basics::VelocyPackHelper::getStringValue(_slice, "id", "");
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief returns the collection name
-  //////////////////////////////////////////////////////////////////////////////
-
-  std::string name() const {
-    if (!_slice.isObject()) {
-      return std::string("");
-    }
-    return arangodb::basics::VelocyPackHelper::getStringValue(_slice, "name", "");
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief returns the collection type
-  //////////////////////////////////////////////////////////////////////////////
-
-  TRI_col_type_e type() const {
-    if (!_slice.isObject()) {
-      return TRI_COL_TYPE_UNKNOWN;
-    }
-    return (TRI_col_type_e)arangodb::basics::VelocyPackHelper::getNumericValue<int>(
-        _slice, "type", (int)TRI_COL_TYPE_UNKNOWN);
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief returns the collection status
-  //////////////////////////////////////////////////////////////////////////////
-
-  TRI_vocbase_col_status_e status() const {
-    if (!_slice.isObject()) {
-      return TRI_VOC_COL_STATUS_CORRUPTED;
-    }
-    return (TRI_vocbase_col_status_e)
-        arangodb::basics::VelocyPackHelper::getNumericValue<int>(
-            _slice, "status", (int)TRI_VOC_COL_STATUS_CORRUPTED);
-  }
-
-  /// @brief returns the collection status as a string
-  std::string statusString() const { return TRI_vocbase_col_t::statusString(status()); }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief returns the deleted flag
-  //////////////////////////////////////////////////////////////////////////////
-
-  bool deleted() const {
-    if (!_slice.isObject()) {
-      return false;
-    }
-    return arangodb::basics::VelocyPackHelper::getBooleanValue(_slice, "deleted",
-                                                         false);
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief returns the docompact flag
-  //////////////////////////////////////////////////////////////////////////////
-
-  bool doCompact() const {
-    if (!_slice.isObject()) {
-      return false;
-    }
-    return arangodb::basics::VelocyPackHelper::getBooleanValue(_slice, "doCompact",
-                                                         false);
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief returns the issystem flag
-  //////////////////////////////////////////////////////////////////////////////
-
-  bool isSystem() const {
-    if (!_slice.isObject()) {
-      return false;
-    }
-    return arangodb::basics::VelocyPackHelper::getBooleanValue(_slice, "isSystem",
-                                                         false);
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief returns the isvolatile flag
-  //////////////////////////////////////////////////////////////////////////////
-
-  bool isVolatile() const {
-    if (!_slice.isObject()) {
-      return false;
-    }
-    return arangodb::basics::VelocyPackHelper::getBooleanValue(_slice, "isVolatile",
-                                                         false);
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief returns the indexes
-  //////////////////////////////////////////////////////////////////////////////
-
-  VPackSlice const getIndexes() const {
-    if (_slice.isNone()) {
-      return VPackSlice();
-    }
-    return _slice.get("indexes");
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief returns a copy of the key options
-  //////////////////////////////////////////////////////////////////////////////
-
-  VPackSlice const keyOptions() const {
-    if (_slice.isNone()) {
-      return VPackSlice();
-    }
-    return _slice.get("keyOptions");
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief whether or not a collection allows user-defined keys
-  //////////////////////////////////////////////////////////////////////////////
-
-  bool allowUserKeys() const {
-    VPackSlice keyOptionsSlice = keyOptions();
-    if (!keyOptionsSlice.isNone()) {
-      return arangodb::basics::VelocyPackHelper::getBooleanValue(
-          keyOptionsSlice, "allowUserKeys", true);
-    }
-
-    return true;  // the default value
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief returns the waitforsync flag
-  //////////////////////////////////////////////////////////////////////////////
-
-  bool waitForSync() const {
-    if (!_slice.isObject()) {
-      return false;
-    }
-    return arangodb::basics::VelocyPackHelper::getBooleanValue(_slice, "waitForSync",
-                                                         false);
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief returns the maximal journal size
-  //////////////////////////////////////////////////////////////////////////////
-
-  TRI_voc_size_t journalSize() const {
-    if (!_slice.isObject()) {
-      return 0;
-    }
-    return arangodb::basics::VelocyPackHelper::getNumericValue<TRI_voc_size_t>(
-        _slice, "journalSize", 0);
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief returns the number of buckets for indexes
-  //////////////////////////////////////////////////////////////////////////////
-
-  uint32_t indexBuckets() const {
-    if (!_slice.isObject()) {
-      return 1;
-    }
-    return arangodb::basics::VelocyPackHelper::getNumericValue<uint32_t>(
-        _slice, "indexBuckets", 1);
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief returns the shard keys
-  //////////////////////////////////////////////////////////////////////////////
-
-  std::vector<std::string> shardKeys() const {
-    std::vector<std::string> shardKeys;
-    
-    if (_slice.isNone()) {
-      return shardKeys;
-    }
-    auto shardKeysSlice = _slice.get("shardKeys");
-    if (shardKeysSlice.isArray()) {
-      for (auto const& shardKey: VPackArrayIterator(shardKeysSlice)) {
-        shardKeys.push_back(shardKey.copyString());
-      }
-    }
-
-    return shardKeys;
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief returns true if the default shard key is used
-  //////////////////////////////////////////////////////////////////////////////
-
-  bool usesDefaultShardKeys() const {
-    if (_slice.isNone()) {
-      return false;
-    }
-    auto shardKeysSlice = _slice.get("shardKeys");
-    if (!shardKeysSlice.isArray() || shardKeysSlice.length() != 1) {
-      return false;
-    }
-  
-    auto firstElement = shardKeysSlice.at(0);
-    TRI_ASSERT(firstElement.isString());
-    std::string shardKey =
-        arangodb::basics::VelocyPackHelper::getStringValue(firstElement, "");
-    return shardKey == StaticStrings::KeyString;
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief returns the shard ids
-  //////////////////////////////////////////////////////////////////////////////
-
-  typedef std::unordered_map<ShardID, std::vector<ServerID>> ShardMap;
-
-  std::shared_ptr<ShardMap> shardIds() const {
-    std::shared_ptr<ShardMap> res;
-    {
-      MUTEX_LOCKER(locker, _mutex);
-      res = _shardMapCache;
-    }
-    if (res.get() != nullptr) {
-      return res;
-    }
-    res.reset(new ShardMap());
-    
-    auto shardsSlice = _slice.get("shards");
-    if (shardsSlice.isObject()) {
-      for (auto const& shardSlice: VPackObjectIterator(shardsSlice)) {
-        if (shardSlice.key.isString() && shardSlice.value.isArray()) {
-          ShardID shard = shardSlice.key.copyString();
-
-          std::vector<ServerID> servers;
-          for (auto const& serverSlice: VPackArrayIterator(shardSlice.value)) {
-            servers.push_back(serverSlice.copyString());
-          }
-          (*res).insert(make_pair(shard, servers));
-        }
-      }
-    }
-    {
-      MUTEX_LOCKER(locker, _mutex);
-      _shardMapCache = res;
-    }
-    return res;
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief returns the number of shards
-  //////////////////////////////////////////////////////////////////////////////
-
-  int numberOfShards() const {
-    if (_slice.isNone()) {
-      return 0;
-    }
-    auto shardsSlice = _slice.get("shards");
-
-    if (shardsSlice.isObject()) {
-      return static_cast<int>(shardsSlice.length());
-    }
-    return 0;
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief returns the json
-  //////////////////////////////////////////////////////////////////////////////
-
-  std::shared_ptr<VPackBuilder> const getVPack() const { return _vpack; }
-  
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief returns the slice
-  //////////////////////////////////////////////////////////////////////////////
-  VPackSlice const getSlice() const { return _slice; }
-
- private:
-  std::shared_ptr<VPackBuilder> _vpack;
-  VPackSlice _slice;
-
-  // Only to protect the cache:
-  mutable Mutex _mutex;
-
-  // Just a cache
-  mutable std::shared_ptr<ShardMap> _shardMapCache;
-};
 
 class CollectionInfoCurrent {
   friend class ClusterInfo;
@@ -549,7 +212,8 @@ class CollectionInfoCurrent {
 
 class ClusterInfo {
  private:
-  typedef std::unordered_map<CollectionID, std::shared_ptr<CollectionInfo>>
+
+  typedef std::unordered_map<CollectionID, std::shared_ptr<LogicalCollection>>
       DatabaseCollections;
   typedef std::unordered_map<DatabaseID, DatabaseCollections> AllCollections;
   typedef std::unordered_map<CollectionID,
@@ -635,27 +299,14 @@ class ClusterInfo {
   /// argument can be a collection ID or a collection name (both cluster-wide).
   //////////////////////////////////////////////////////////////////////////////
 
-  std::shared_ptr<CollectionInfo> getCollection(DatabaseID const&,
-                                                CollectionID const&);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief get properties of a collection
-  //////////////////////////////////////////////////////////////////////////////
-
-  VocbaseCollectionInfo getCollectionProperties(CollectionInfo const&);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief get properties of a collection
-  //////////////////////////////////////////////////////////////////////////////
-
-  VocbaseCollectionInfo getCollectionProperties(DatabaseID const&,
-                                                CollectionID const&);
+  std::shared_ptr<LogicalCollection> getCollection(DatabaseID const&,
+                                                   CollectionID const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief ask about all collections
   //////////////////////////////////////////////////////////////////////////////
 
-  std::vector<std::shared_ptr<CollectionInfo>> const getCollections(
+  std::vector<std::shared_ptr<LogicalCollection>> const getCollections(
       DatabaseID const&);
 
   //////////////////////////////////////////////////////////////////////////////

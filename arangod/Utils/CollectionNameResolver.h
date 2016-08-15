@@ -97,12 +97,8 @@ class CollectionNameResolver {
 
     // We have to look up the collection info:
     ClusterInfo* ci = ClusterInfo::instance();
-    std::shared_ptr<CollectionInfo> cinfo =
-        ci->getCollection(_vocbase->name(), name);
-    if (cinfo->empty()) {
-      return 0;
-    }
-    return cinfo->id();
+    auto cinfo = ci->getCollection(_vocbase->name(), name);
+    return cinfo->cid();
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -179,11 +175,7 @@ class CollectionNameResolver {
 
     // We have to look up the collection info:
     ClusterInfo* ci = ClusterInfo::instance();
-    std::shared_ptr<CollectionInfo> cinfo =
-        ci->getCollection(_vocbase->name(), name);
-    if (cinfo->empty()) {
-      return TRI_COL_TYPE_UNKNOWN;
-    }
+    auto cinfo = ci->getCollection(_vocbase->name(), name);
     return cinfo->type();
   }
 
@@ -238,9 +230,8 @@ class CollectionNameResolver {
     int tries = 0;
 
     while (tries++ < 2) {
-      std::shared_ptr<CollectionInfo> ci =
-          ClusterInfo::instance()->getCollection(
-              _vocbase->name(), arangodb::basics::StringUtils::itoa(cid));
+      auto ci = ClusterInfo::instance()->getCollection(
+          _vocbase->name(), arangodb::basics::StringUtils::itoa(cid));
       name = ci->name();
 
       if (name.empty()) {
@@ -287,8 +278,8 @@ class CollectionNameResolver {
         } else {
           // DBserver case of a shard:
           name = arangodb::basics::StringUtils::itoa((*it).second->planId());
-          std::shared_ptr<CollectionInfo> ci =
-              ClusterInfo::instance()->getCollection((*it).second->dbName(), name);
+          auto ci = ClusterInfo::instance()->getCollection(
+              (*it).second->dbName(), name);
           name = ci->name();  // can be empty, if collection unknown
         }
       }
