@@ -1,0 +1,29 @@
+# Boost.Geometry (aka GGL, Generic Geometry Library)
+#
+# Copyright (c) 2007-2014 Barend Gehrels, Amsterdam, the Netherlands.
+# Copyright (c) 2008-2014 Bruno Lalande, Paris, France.
+# Copyright (c) 2009-2014 Mateusz Loskot, London, UK.
+#
+# This file was modified by Oracle on 2014, 2015.
+# Modifications copyright (c) 2014-2015, Oracle and/or its affiliates.
+#
+# Contributed and/or modified by Menelaos Karavelas, on behalf of Oracle
+# Contributed and/or modified by Adam Wulkiewicz, on behalf of Oracle
+#
+# Use, modification and distribution is subject to the Boost Software License,
+# Version 1.0. (See accompanying file LICENSE_1_0.txt or copy at
+# http://www.boost.org/LICENSE_1_0.txt)
+
+test-suite boost-geometry-algorithms-distance
+    :
+    [ run distance.cpp                     : : : : algorithms_distance ]
+    [ run distance_areal_areal.cpp         : : : : algorithms_distance_areal_areal ]
+    [ run distance_linear_areal.cpp        : : : : algorithms_distance_linear_areal ]
+    [ run distance_linear_linear.cpp       : : : : algorithms_distance_linear_linear ]
+    [ run distance_pointlike_areal.cpp     : : : : algorithms_distance_pointlike_areal ]
+    [ run distance_pointlike_linear.cpp    : : : : algorithms_distance_pointlike_linear ]
+    [ run distance_pointlike_pointlike.cpp : : : : algorithms_distance_pointlike_pointlike ]
+    [ run distance_se_pl_l.cpp             : : : : algorithms_distance_se_pl_l ]
+    [ run distance_se_pl_pl.cpp            : : : : algorithms_distance_se_pl_pl ]
+    [ run distance_se_point_box.cpp        : : : : algorithms_distance_se_point_box ]
+    ;

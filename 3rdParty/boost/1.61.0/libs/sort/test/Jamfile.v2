@@ -1,0 +1,25 @@
+#  Boost sorting_algo library test suite Jamfile  ----------------------------
+#
+#  Copyright Steven Ross 2009. Use, modification and
+#  distribution is subject to the Boost Software License, Version
+#  1.0. (See accompanying file LICENSE_1_0.txt or copy at
+#  http://www.boost.org/LICENSE_1_0.txt)
+#
+#  See http://www.boost.org/libs/sort for library home page.
+
+import testing ;
+
+{
+  test-suite "sort"
+    : [ run integer_sort_test.cpp
+       : : : : integer_sort ]   
+  [ run float_sort_test.cpp
+       : : : : float_sort ]   
+  [ run string_sort_test.cpp
+       : : : : string_sort ]  
+  [ run sort_detail_test.cpp
+       : : : : sort_detail ] 
+  
+  
+   ;
+}

@@ -1,0 +1,153 @@
+[section boost/python/numeric.hpp]
+[section Introduction]
+Exposes a [link concepts.objectwrapper.typewrapper_concept_requirements TypeWrapper] for the Python [@http://www.python.org/dev/doc/devel/lib/typesmapping.html array] type.
+[endsect]
+[section Class `array`]
+Provides access to the array types of [@http://www.pfdubois.com/numpy/ Numerical Python]\ 's [@http://www.pfdubois.com/numpy/#Numeric Numeric] and [@http://stsdas.stsci.edu/numarray/index.html NumArray] modules. With the exception of the functions documented below, the semantics of the constructors and member functions defined below can be fully understood by reading the [link concepts.objectwrapper.typewrapper_concept_requirements TypeWrapper] concept definition. Since array is publicly derived from object, the public object interface applies to array instances as well.
+
+The default behavior is to use numarray.NDArray as the associated Python type if the numarray module is installed in the default location. Otherwise it falls back to use Numeric.ArrayType. If neither extension module is installed, overloads of wrapped C++ functions with numeric::array parameters will never be matched, and other attempted uses of numeric::array will raise an appropriate Python exception. The associated Python type can be set manually using the set_module_and_type(...) static function.
+``
+namespace boost { namespace python { namespace numeric
+{
+   class array : public object
+   {
+    public:
+      object astype();
+      template <class Type>
+      object astype(Type const& type_);
+
+      template <class Type>
+      array new_(Type const& type_) const;
+
+      template <class Sequence> 
+      void resize(Sequence const& x);
+      void resize(long x1);
+      void resize(long x1, long x2);
+      ...
+      void resize(long x1, long x2,...long xn);
+
+      template <class Sequence> 
+      void setshape(Sequence const& x);
+      void setshape(long x1);
+      void setshape(long x1, long x2);
+      ...
+      void setshape(long x1, long x2,...long xn);
+
+      template <class Indices, class Values>
+      void put(Indices const& indices, Values const& values);
+
+      template <class Sequence>
+      object take(Sequence const& sequence, long axis = 0);
+
+      template <class File>
+      void tofile(File const& f) const;
+
+      object factory();
+      template <class Sequence>
+      object factory(Sequence const&);
+      template <class Sequence, class Typecode>
+      object factory(Sequence const&, Typecode const&, bool copy = true, bool savespace = false);
+      template <class Sequence, class Typecode, class Type>
+      object factory(Sequence const&, Typecode const&, bool copy, bool savespace, Type const&);
+      template <class Sequence, class Typecode, class Type, class Shape>
+      object factory(Sequence const&, Typecode const&, bool copy, bool savespace, Type const&, Shape const&);
+
+      template <class T1>
+      explicit array(T1 const& x1);
+      template <class T1, class T2>
+      explicit array(T1 const& x1, T2 const& x2);
+      ...
+      template <class T1, class T2,...class Tn>
+      explicit array(T1 const& x1, T2 const& x2,...Tn const& xn);
+
+      static void set_module_and_type();
+      static void set_module_and_type(char const* package_path = 0, char const* type_name = 0);
+      static void get_module_name();
+
+      object argmax(long axis=-1);
+
+      object argmin(long axis=-1);
+
+      object argsort(long axis=-1);
+
+      void byteswap();
+
+      object copy() const;
+
+      object diagonal(long offset = 0, long axis1 = 0, long axis2 = 1) const;
+
+      void info() const;
+
+      bool is_c_array() const;
+      bool isbyteswapped() const;
+      void sort();
+      object trace(long offset = 0, long axis1 = 0, long axis2 = 1) const;
+      object type() const;
+      char typecode() const;
+      
+      object getflat() const;
+      long getrank() const;
+      object getshape() const;
+      bool isaligned() const;
+      bool iscontiguous() const;
+      long itemsize() const;
+      long nelements() const;
+      object nonzero() const;
+   
+      void ravel();
+      object repeat(object const& repeats, long axis=0);
+      void setflat(object const& flat);
+      void swapaxes(long axis1, long axis2);
+      str tostring() const;
+      void transpose(object const& axes = object());
+      object view() const;
+  };
+}}}
+``
+[endsect]
+[section Class `array` observer functions]
+``
+object factory();
+template <class Sequence>
+object factory(Sequence const&);
+template <class Sequence, class Typecode>
+object factory(Sequence const&, Typecode const&, bool copy = true, bool savespace = false);
+template <class Sequence, class Typecode, class Type>
+object factory(Sequence const&, Typecode const&, bool copy, bool savespace, Type const&);
+template <class Sequence, class Typecode, class Type, class Shape>
+object factory(Sequence const&, Typecode const&, bool copy, bool savespace, Type const&, Shape const&);
+``
+These functions map to the underlying array type's array() function family. They are not called "array" because of the C++ limitation that you can't define a member function with the same name as its enclosing class.
+``
+template <class Type>
+array new_(Type const&) const;
+``
+This function maps to the underlying array type's new() function. It is not called "new" because that is a keyword in C++. 
+[endsect]
+[section Class `array` static functions]
+``
+static void set_module_and_type(char const* package_path, char const* type_name);
+static void set_module_and_type();
+``
+[variablelist
+[[Requires][package_path and type_name, if supplied, is an [link ntbs].]]
+[[Effects][The first form sets the package path of the module that supplies the type named by type_name to package_path. The second form restores the default search behavior. The associated Python type will be searched for only the first time it is needed, and thereafter the first time it is needed after an invocation of set_module_and_type.]]
+]
+``static std::string get_module_name()``
+[variablelist
+[[Effects][Returns the name of the module containing the class that will be held by new `numeric::array` instances.]]
+]
+[endsect]
+[section Example]
+``
+#include <boost/python/numeric.hpp>
+#include <boost/python/tuple.hpp>
+
+// sets the first element in a 2d numeric array
+void set_first_element(numeric::array& y, double value)
+{
+    y[make_tuple(0,0)] = value;
+}
+``
+[endsect]
+[endsect]

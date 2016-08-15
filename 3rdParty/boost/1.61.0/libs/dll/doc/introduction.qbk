@@ -1,0 +1,23 @@
+[/
+    Copyright 2014 Renato Tegon Forti, Antony Polukhin
+    Copyright 2015 Antony Polukhin
+    Distributed under the Boost Software License, Version 1.0.
+    (See accompanying file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+/]
+
+[section:introduction Motivation]
+
+Adding a specific features to an existing software applications at runtime could be useful in many cases. Such extensions, or plugins, are usually implemented using Dynamic Library Modules (DLL,SO/DSO) loaded at runtime. 
+
+This library was designed to simplify plugin development using C++ in a portable cross-platform manner. 
+
+Library provides a portable across platforms way to:
+
+* load libraries
+* import any native functions and variables
+* make alias names for C++ mangled functions and symbols
+* query libraries for sections and exported symbols
+* self loading and self querying
+* getting program and module location by exported symbol
+
+[endsect]

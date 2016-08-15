@@ -1,0 +1,359 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Controlling How Child Expressions Are Captured</title>
+<link rel="stylesheet" href="../../../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../../../../index.html" title="Chapter&#160;1.&#160;Boost.Proto">
+<link rel="up" href="../customizing_expressions_in_your_domain.html" title="Customizing Expressions in Your Domain">
+<link rel="prev" href="inhibiting_overloads.html" title="Controlling Operator Overloads">
+<link rel="next" href="subdomains.html" title="EDSL Interoperatability: Sub-Domains">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="inhibiting_overloads.html"><img src="../../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../customizing_expressions_in_your_domain.html"><img src="../../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../../index.html"><img src="../../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="subdomains.html"><img src="../../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="boost_proto.users_guide.front_end.customizing_expressions_in_your_domain.per_domain_as_child"></a><a class="link" href="per_domain_as_child.html" title="Controlling How Child Expressions Are Captured">Controlling
+          How Child Expressions Are Captured</a>
+</h5></div></div></div>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+              This is an advanced topic. Feel free to skip this if you're just getting
+              started with Proto.
+            </p></td></tr>
+</table></div>
+<p>
+            Proto's operator overloads build expressions from sub-expressions. The
+            sub-expressions become children of the new expression. By default, the
+            children are stored in the parent by reference. This section describes
+            how to change that default.
+          </p>
+<h6>
+<a name="boost_proto.users_guide.front_end.customizing_expressions_in_your_domain.per_domain_as_child.h0"></a>
+            <span><a name="boost_proto.users_guide.front_end.customizing_expressions_in_your_domain.per_domain_as_child.primer___literal_as_child__literal__vs___literal_as_expr__literal_"></a></span><a class="link" href="per_domain_as_child.html#boost_proto.users_guide.front_end.customizing_expressions_in_your_domain.per_domain_as_child.primer___literal_as_child__literal__vs___literal_as_expr__literal_">Primer:
+            <code class="literal">as_child</code> vs. <code class="literal">as_expr</code></a>
+          </h6>
+<p>
+            Proto lets you independently customize the behavior of <code class="computeroutput"><a class="link" href="../../../../boost/proto/as_child_idp31766224.html" title="Function as_child">proto::as_child()</a></code> and <code class="computeroutput"><a class="link" href="../../../../boost/proto/as_expr_idp31744256.html" title="Function as_expr">proto::as_expr()</a></code>.
+            Both accept an object <code class="literal">x</code> and return a Proto expression
+            by turning <code class="literal">x</code> it into a Proto terminal if necessary.
+            Although similar, the two functions are used in different situations
+            and have subtly different behavior by default. It's important to understand
+            the difference so that you know which to customize to achieve the behavior
+            you want.
+          </p>
+<p>
+            To wit: <code class="computeroutput"><a class="link" href="../../../../boost/proto/as_expr_idp31744256.html" title="Function as_expr">proto::as_expr()</a></code> is typically used by
+            <span class="emphasis"><em>you</em></span> to turn an object into a Proto expression that
+            is to be held in a local variable, as so:
+          </p>
+<pre class="programlisting"><span class="keyword">auto</span> <span class="identifier">l</span> <span class="special">=</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">as_expr</span><span class="special">(</span><span class="identifier">x</span><span class="special">);</span> <span class="comment">// Turn x into a Proto expression, hold the result in a local</span>
+</pre>
+<p>
+            The above works regardless of whether <code class="computeroutput"><span class="identifier">x</span></code>
+            is already a Proto expression or not. The object <code class="computeroutput"><span class="identifier">l</span></code>
+            is guaranteed to be a valid Proto expression. If <code class="computeroutput"><span class="identifier">x</span></code>
+            is a non-Proto object, it is turned into a terminal expression that holds
+            <code class="computeroutput"><span class="identifier">x</span></code> <span class="emphasis"><em>by value</em></span>.<sup>[<a name="boost_proto.users_guide.front_end.customizing_expressions_in_your_domain.per_domain_as_child.f0" href="#ftn.boost_proto.users_guide.front_end.customizing_expressions_in_your_domain.per_domain_as_child.f0" class="footnote">2</a>]</sup> If <code class="computeroutput"><span class="identifier">x</span></code> is a
+            Proto object already, <code class="computeroutput"><a class="link" href="../../../../boost/proto/as_expr_idp31744256.html" title="Function as_expr">proto::as_expr()</a></code>
+            returns it <span class="emphasis"><em>by value</em></span> unmodified.
+          </p>
+<p>
+            In contrast, <code class="computeroutput"><a class="link" href="../../../../boost/proto/as_child_idp31766224.html" title="Function as_child">proto::as_child()</a></code>
+            is used internally by Proto to pre-process objects before making them
+            children of another expression. Since it's internal to Proto, you don't
+            see it explicitly, but it's there behind the scenes in expressions like
+            this:
+          </p>
+<pre class="programlisting"><span class="identifier">x</span> <span class="special">+</span> <span class="identifier">y</span><span class="special">;</span> <span class="comment">// Consider that y is a Proto expression, but x may or may not be.</span>
+</pre>
+<p>
+            In this case, Proto builds a plus node from the two children. Both are
+            pre-processed by passing them to <code class="computeroutput"><a class="link" href="../../../../boost/proto/as_child_idp31766224.html" title="Function as_child">proto::as_child()</a></code>
+            before making them children of the new node. If <code class="computeroutput"><span class="identifier">x</span></code>
+            is not a Proto expression, it becomes one by being wrapped in a Proto
+            terminal that holds it <span class="emphasis"><em>by reference</em></span>. If <code class="computeroutput"><span class="identifier">x</span></code> is already a Proto expression, <code class="computeroutput"><a class="link" href="../../../../boost/proto/as_child_idp31766224.html" title="Function as_child">proto::as_child()</a></code> returns it <span class="emphasis"><em>by
+            reference</em></span> unmodified. Contrast this with the above description
+            for <code class="computeroutput"><a class="link" href="../../../../boost/proto/as_expr_idp31744256.html" title="Function as_expr">proto::as_expr()</a></code>.
+          </p>
+<p>
+            The table below summarizes the above description.
+          </p>
+<div class="table">
+<a name="boost_proto.users_guide.front_end.customizing_expressions_in_your_domain.per_domain_as_child.t0"></a><p class="title"><b>Table&#160;1.3.&#160;proto::as_expr() vs. proto::as_child()</b></p>
+<div class="table-contents"><table class="table" summary="proto::as_expr() vs. proto::as_child()">
+<colgroup>
+<col>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                    <p>
+                      <span class="bold"><strong>Function</strong></span>
+                    </p>
+                  </th>
+<th>
+                    <p>
+                      <span class="bold"><strong>When <code class="literal">t</code> is not a Proto
+                      expr...</strong></span>
+                    </p>
+                  </th>
+<th>
+                    <p>
+                      <span class="bold"><strong>When <code class="literal">t</code> is a Proto
+                      expr...</strong></span>
+                    </p>
+                  </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                    <p>
+                      <code class="literal">proto::as_expr(t)</code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      Return (by value) a new Proto terminal holding <code class="literal">t</code>
+                      by value.
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      Return <code class="literal">t</code> by value unmodified.
+                    </p>
+                  </td>
+</tr>
+<tr>
+<td>
+                    <p>
+                      <code class="literal">proto::as_child(t)</code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      Return (by value) a new Proto terminal holding <code class="literal">t</code>
+                      by reference.
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      Return <code class="literal">t</code> by reference unmodified.
+                    </p>
+                  </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<br class="table-break"><div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+              There is one important place where Proto uses both <code class="computeroutput"><span class="identifier">as_expr</span></code>
+              <span class="emphasis"><em>and</em></span> <code class="computeroutput"><span class="identifier">as_child</span></code>:
+              <code class="computeroutput"><a class="link" href="../../../../boost/proto/make_expr_idp29012944.html" title="Function make_expr">proto::make_expr()</a></code>. The <code class="computeroutput"><a class="link" href="../../../../boost/proto/make_expr_idp29012944.html" title="Function make_expr">proto::make_expr()</a></code> function requires
+              you to specify for each child whether it should be held by value or
+              by reference. Proto uses <code class="computeroutput"><a class="link" href="../../../../boost/proto/as_expr_idp31744256.html" title="Function as_expr">proto::as_expr()</a></code>
+              to pre-process the children to be held by value, and <code class="computeroutput"><a class="link" href="../../../../boost/proto/as_child_idp31766224.html" title="Function as_child">proto::as_child()</a></code> for the ones to be
+              held by reference.
+            </p></td></tr>
+</table></div>
+<p>
+            Now that you know what <code class="computeroutput"><a class="link" href="../../../../boost/proto/as_child_idp31766224.html" title="Function as_child">proto::as_child()</a></code>
+            and <code class="computeroutput"><a class="link" href="../../../../boost/proto/as_expr_idp31744256.html" title="Function as_expr">proto::as_expr()</a></code> are, where they are
+            used, and what they do by default, you may decide that one or both of
+            these functions should have different behavior for your domain. For instance,
+            given the above description of <code class="computeroutput"><a class="link" href="../../../../boost/proto/as_child_idp31766224.html" title="Function as_child">proto::as_child()</a></code>,
+            the following code is always wrong:
+          </p>
+<pre class="programlisting"><span class="identifier">proto</span><span class="special">::</span><span class="identifier">literal</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;</span> <span class="identifier">i</span><span class="special">(</span><span class="number">0</span><span class="special">);</span>
+<span class="keyword">auto</span> <span class="identifier">l</span> <span class="special">=</span> <span class="identifier">i</span> <span class="special">+</span> <span class="number">42</span><span class="special">;</span> <span class="comment">// This is WRONG! Don't do this.</span>
+</pre>
+<p>
+            Why is this wrong? Because <code class="computeroutput"><a class="link" href="../../../../boost/proto/as_child_idp31766224.html" title="Function as_child">proto::as_child()</a></code>
+            will turn the integer literal 42 into a Proto terminal that holds a reference
+            to a temporary integer initialized with 42. The lifetime of that temporary
+            ends at the semicolon, guaranteeing that the local <code class="computeroutput"><span class="identifier">l</span></code>
+            is left holding a dangling reference to a deceased integer. What to do?
+            One answer is to use <code class="computeroutput"><a class="link" href="../../../../boost/proto/deep_copy_idp27663840.html" title="Function template deep_copy">proto::deep_copy()</a></code>.
+            Another is to customize the behavior of <code class="computeroutput"><a class="link" href="../../../../boost/proto/as_child_idp31766224.html" title="Function as_child">proto::as_child()</a></code>
+            for your domain. Read on for the details.
+          </p>
+<h6>
+<a name="boost_proto.users_guide.front_end.customizing_expressions_in_your_domain.per_domain_as_child.h1"></a>
+            <span><a name="boost_proto.users_guide.front_end.customizing_expressions_in_your_domain.per_domain_as_child.per_domain__literal_as_child__literal_"></a></span><a class="link" href="per_domain_as_child.html#boost_proto.users_guide.front_end.customizing_expressions_in_your_domain.per_domain_as_child.per_domain__literal_as_child__literal_">Per-Domain
+            <code class="literal">as_child</code></a>
+          </h6>
+<p>
+            To control how Proto builds expressions out of sub-expressions in your
+            domain, define your domain as usual, and then define a nested <code class="computeroutput"><span class="identifier">as_child</span><span class="special">&lt;&gt;</span></code>
+            class template within it, as follows:
+          </p>
+<pre class="programlisting"><span class="keyword">class</span> <span class="identifier">my_domain</span>
+  <span class="special">:</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">domain</span><span class="special">&lt;</span> <span class="identifier">my_generator</span><span class="special">,</span> <span class="identifier">my_grammar</span> <span class="special">&gt;</span>
+<span class="special">{</span>
+    <span class="comment">// Here is where you define how Proto should handle</span>
+    <span class="comment">// sub-expressions that are about to be glommed into</span>
+    <span class="comment">// a larger expression.</span>
+    <span class="keyword">template</span><span class="special">&lt;</span> <span class="keyword">typename</span> <span class="identifier">T</span> <span class="special">&gt;</span>
+    <span class="keyword">struct</span> <span class="identifier">as_child</span>
+    <span class="special">{</span>
+        <span class="keyword">typedef</span> <span class="emphasis"><em><code class="literal">unspecified-Proto-expr-type</code></em></span> <span class="identifier">result_type</span><span class="special">;</span>
+
+        <span class="identifier">result_type</span> <span class="keyword">operator</span><span class="special">()(</span> <span class="identifier">T</span> <span class="special">&amp;</span> <span class="identifier">t</span> <span class="special">)</span> <span class="keyword">const</span>
+        <span class="special">{</span>
+            <span class="keyword">return</span> <span class="emphasis"><em><code class="literal">unspecified-Proto-expr-object</code></em></span><span class="special">;</span>
+        <span class="special">}</span>
+    <span class="special">};</span>
+<span class="special">};</span>
+</pre>
+<p>
+            There's one important thing to note: in the above code, the template
+            parameter <code class="literal">T</code> may or may not be a Proto expression type,
+            but the result <span class="emphasis"><em>must</em></span> be a Proto expression type,
+            or a reference to one. That means that most user-defined <code class="literal">as_child&lt;&gt;</code>
+            templates will need to check whether <code class="literal">T</code> is an expression
+            or not (using <code class="computeroutput"><a class="link" href="../../../../boost/proto/is_expr.html" title="Struct template is_expr">proto::is_expr&lt;&gt;</a></code>), and then turn non-expressions
+            into Proto terminals by wrapping them as <code class="computeroutput"><span class="identifier">proto</span><span class="special">::</span><span class="identifier">terminal</span><span class="special">&lt;</span> <span class="comment">/* ... */</span>
+            <span class="special">&gt;::</span><span class="identifier">type</span></code>
+            or equivalent.
+          </p>
+<h6>
+<a name="boost_proto.users_guide.front_end.customizing_expressions_in_your_domain.per_domain_as_child.h2"></a>
+            <span><a name="boost_proto.users_guide.front_end.customizing_expressions_in_your_domain.per_domain_as_child.per_domain__literal_as_expr__literal_"></a></span><a class="link" href="per_domain_as_child.html#boost_proto.users_guide.front_end.customizing_expressions_in_your_domain.per_domain_as_child.per_domain__literal_as_expr__literal_">Per-Domain
+            <code class="literal">as_expr</code></a>
+          </h6>
+<p>
+            Although less common, Proto also lets you customize the behavior of
+            <code class="computeroutput"><a class="link" href="../../../../boost/proto/as_expr_idp31744256.html" title="Function as_expr">proto::as_expr()</a></code> on a per-domain basis.
+            The technique is identical to that for <code class="literal">as_child</code>. See
+            below:
+          </p>
+<pre class="programlisting"><span class="keyword">class</span> <span class="identifier">my_domain</span>
+  <span class="special">:</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">domain</span><span class="special">&lt;</span> <span class="identifier">my_generator</span><span class="special">,</span> <span class="identifier">my_grammar</span> <span class="special">&gt;</span>
+<span class="special">{</span>
+    <span class="comment">// Here is where you define how Proto should handle</span>
+    <span class="comment">// objects that are to be turned into expressions</span>
+    <span class="comment">// fit for storage in local variables.</span>
+    <span class="keyword">template</span><span class="special">&lt;</span> <span class="keyword">typename</span> <span class="identifier">T</span> <span class="special">&gt;</span>
+    <span class="keyword">struct</span> <span class="identifier">as_expr</span>
+    <span class="special">{</span>
+        <span class="keyword">typedef</span> <span class="emphasis"><em><code class="literal">unspecified-Proto-expr-type</code></em></span> <span class="identifier">result_type</span><span class="special">;</span>
+
+        <span class="identifier">result_type</span> <span class="keyword">operator</span><span class="special">()(</span> <span class="identifier">T</span> <span class="special">&amp;</span> <span class="identifier">t</span> <span class="special">)</span> <span class="keyword">const</span>
+        <span class="special">{</span>
+            <span class="keyword">return</span> <span class="emphasis"><em><code class="literal">unspecified-Proto-expr-object</code></em></span><span class="special">;</span>
+        <span class="special">}</span>
+    <span class="special">};</span>
+<span class="special">};</span>
+</pre>
+<h6>
+<a name="boost_proto.users_guide.front_end.customizing_expressions_in_your_domain.per_domain_as_child.h3"></a>
+            <span><a name="boost_proto.users_guide.front_end.customizing_expressions_in_your_domain.per_domain_as_child.making_proto_expressions__literal_auto__literal__safe"></a></span><a class="link" href="per_domain_as_child.html#boost_proto.users_guide.front_end.customizing_expressions_in_your_domain.per_domain_as_child.making_proto_expressions__literal_auto__literal__safe">Making
+            Proto Expressions <code class="literal">auto</code>-safe</a>
+          </h6>
+<p>
+            Let's look again at the problem described above involving the C++11
+            <code class="computeroutput"><span class="keyword">auto</span></code> keyword and the default
+            behavior of <code class="computeroutput"><a class="link" href="../../../../boost/proto/as_child_idp31766224.html" title="Function as_child">proto::as_child()</a></code>.
+          </p>
+<pre class="programlisting"><span class="identifier">proto</span><span class="special">::</span><span class="identifier">literal</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;</span> <span class="identifier">i</span><span class="special">(</span><span class="number">0</span><span class="special">);</span>
+<span class="keyword">auto</span> <span class="identifier">l</span> <span class="special">=</span> <span class="identifier">i</span> <span class="special">+</span> <span class="number">42</span><span class="special">;</span> <span class="comment">// This is WRONG! Don't do this.</span>
+</pre>
+<p>
+            Recall that the problem is the lifetime of the temporary integer created
+            to hold the value 42. The local <code class="computeroutput"><span class="identifier">l</span></code>
+            will be left holding a dangling reference to it after its lifetime is
+            over. What if we want Proto to make expressions safe to store this way
+            in local variables? We can do so very easily by making <code class="computeroutput"><a class="link" href="../../../../boost/proto/as_child_idp31766224.html" title="Function as_child">proto::as_child()</a></code> behave just like <code class="computeroutput"><a class="link" href="../../../../boost/proto/as_expr_idp31744256.html" title="Function as_expr">proto::as_expr()</a></code>. The following code
+            achieves this:
+          </p>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span> <span class="keyword">typename</span> <span class="identifier">E</span> <span class="special">&gt;</span>
+<span class="keyword">struct</span> <span class="identifier">my_expr</span><span class="special">;</span>
+
+<span class="keyword">struct</span> <span class="identifier">my_generator</span>
+  <span class="special">:</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">pod_generator</span><span class="special">&lt;</span> <span class="identifier">my_expr</span> <span class="special">&gt;</span>
+<span class="special">{};</span>
+
+<span class="keyword">struct</span> <span class="identifier">my_domain</span>
+  <span class="special">:</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">domain</span><span class="special">&lt;</span> <span class="identifier">my_generator</span> <span class="special">&gt;</span>
+<span class="special">{</span>
+     <span class="comment">// Make as_child() behave like as_expr() in my_domain.</span>
+     <span class="comment">// (proto_base_domain is a typedef for proto::domain&lt; my_generator &gt;</span>
+     <span class="comment">// that is defined in proto::domain&lt;&gt;.)</span>
+     <span class="keyword">template</span><span class="special">&lt;</span> <span class="keyword">typename</span> <span class="identifier">T</span> <span class="special">&gt;</span>
+     <span class="keyword">struct</span> <span class="identifier">as_child</span>
+       <span class="special">:</span> <span class="identifier">proto_base_domain</span><span class="special">::</span><span class="identifier">as_expr</span><span class="special">&lt;</span> <span class="identifier">T</span> <span class="special">&gt;</span>
+     <span class="special">{};</span>
+<span class="special">};</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span> <span class="keyword">typename</span> <span class="identifier">E</span> <span class="special">&gt;</span>
+<span class="keyword">struct</span> <span class="identifier">my_expr</span>
+<span class="special">{</span>
+    <span class="identifier">BOOST_PROTO_EXTENDS</span><span class="special">(</span> <span class="identifier">E</span><span class="special">,</span> <span class="identifier">my_expr</span><span class="special">&lt;</span> <span class="identifier">E</span> <span class="special">&gt;,</span> <span class="identifier">my_domain</span> <span class="special">)</span>
+<span class="special">};</span>
+
+<span class="comment">/* ... */</span>
+
+<span class="identifier">proto</span><span class="special">::</span><span class="identifier">literal</span><span class="special">&lt;</span> <span class="keyword">int</span><span class="special">,</span> <span class="identifier">my_domain</span> <span class="special">&gt;</span> <span class="identifier">i</span><span class="special">(</span><span class="number">0</span><span class="special">);</span>
+<span class="keyword">auto</span> <span class="identifier">l</span> <span class="special">=</span> <span class="identifier">i</span> <span class="special">+</span> <span class="number">42</span><span class="special">;</span> <span class="comment">// OK! Everything is stored by value here.</span>
+</pre>
+<p>
+            Notice that <code class="computeroutput"><span class="identifier">my_domain</span><span class="special">::</span><span class="identifier">as_child</span><span class="special">&lt;&gt;</span></code> simply defers to the default
+            implementation of <code class="computeroutput"><span class="identifier">as_expr</span><span class="special">&lt;&gt;</span></code> found in <code class="computeroutput"><a class="link" href="../../../../boost/proto/domain.html" title="Struct template domain">proto::domain&lt;&gt;</a></code>.
+            By simply cross-wiring our domain's <code class="computeroutput"><span class="identifier">as_child</span><span class="special">&lt;&gt;</span></code> to <code class="computeroutput"><span class="identifier">as_expr</span><span class="special">&lt;&gt;</span></code>, we guarantee that all terminals
+            that can be held by value are, and that all child expressions are also
+            held by value. This increases copying and may incur a runtime performance
+            cost, but it eliminates any spector of lifetime management issues.
+          </p>
+<p>
+            For another example, see the definition of <code class="computeroutput"><span class="identifier">lldomain</span></code>
+            in <code class="literal">libs/proto/example/lambda.hpp</code>. That example is
+            a complete reimplementation of the Boost Lambda Library (BLL) on top
+            of Boost.Proto. The function objects the BLL generates are safe to be
+            stored in local variables. To emulate this with Proto, the <code class="computeroutput"><span class="identifier">lldomain</span></code> cross-wires <code class="computeroutput"><span class="identifier">as_child</span><span class="special">&lt;&gt;</span></code>
+            to <code class="computeroutput"><span class="identifier">as_expr</span><span class="special">&lt;&gt;</span></code>
+            as above, but with one extra twist: objects with array type are also
+            stored by reference. Check it out.
+          </p>
+<div class="footnotes">
+<br><hr width="100" align="left">
+<div class="footnote"><p><sup>[<a id="ftn.boost_proto.users_guide.front_end.customizing_expressions_in_your_domain.per_domain_as_child.f0" href="#boost_proto.users_guide.front_end.customizing_expressions_in_your_domain.per_domain_as_child.f0" class="para">2</a>] </sup>
+              It's not always possible to hold something by value. By default, <code class="computeroutput"><a class="link" href="../../../../boost/proto/as_expr_idp31744256.html" title="Function as_expr">proto::as_expr()</a></code> makes an exception
+              for functions, abstract types, and iostreams (types derived from <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">ios_base</span></code>). These objects are held
+              by reference. All others are held by value, even arrays.
+            </p></div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2008 Eric Niebler<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="inhibiting_overloads.html"><img src="../../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../customizing_expressions_in_your_domain.html"><img src="../../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../../index.html"><img src="../../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="subdomains.html"><img src="../../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

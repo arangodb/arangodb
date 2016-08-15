@@ -1,0 +1,1501 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Comparing Different Compilers</title>
+<link rel="stylesheet" href="../math.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../index.html" title="Math Toolkit 2.4.0">
+<link rel="up" href="../perf.html" title="Chapter&#160;16.&#160;Performance">
+<link rel="prev" href="tuning.html" title="Performance Tuning Macros">
+<link rel="next" href="comparisons.html" title="Comparisons to Other Open Source Libraries">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="tuning.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../perf.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="comparisons.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="math_toolkit.comp_compilers"></a><a class="link" href="comp_compilers.html" title="Comparing Different Compilers">Comparing Different Compilers</a>
+</h2></div></div></div>
+<p>
+      By running our performance test suite multiple times, we can compare the effect
+      of different compilers: as might be expected, the differences are generally
+      small compared to say disabling internal use of <code class="computeroutput"><span class="keyword">long</span>
+      <span class="keyword">double</span></code>. However, there are still gains
+      to be main, particularly from some of the commercial offerings:
+    </p>
+<div class="table">
+<a name="math_toolkit.comp_compilers.table_Compiler_Comparison_on_Windows_x64"></a><p class="title"><b>Table&#160;16.5.&#160;Compiler Comparison on Windows x64</b></p>
+<div class="table-contents"><table class="table" summary="Compiler Comparison on Windows x64">
+<colgroup>
+<col>
+<col>
+<col>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+              <p>
+                Function
+              </p>
+            </th>
+<th>
+              <p>
+                Microsoft Visual C++ version 14.0<br> boost 1.61
+              </p>
+            </th>
+<th>
+              <p>
+                GNU C++ version 5.3.0<br> boost 1.61
+              </p>
+            </th>
+<th>
+              <p>
+                GNU C++ version 5.3.0<br> boost 1.61<br> promote_double&lt;false&gt;
+              </p>
+            </th>
+<th>
+              <p>
+                Intel C++ C++0x mode version 1600<br> boost 1.61
+              </p>
+            </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+              <p>
+                assoc_laguerre
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="green">1.11<br> (199ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="blue">1.21<br> (217ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="green">1.06<br> (190ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="green">1.00<br> (180ns)</span>
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                assoc_legendre
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="blue">1.79<br> (172ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="blue">1.80<br> (173ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="green">1.16<br> (111ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="green">1.00<br> (96ns)</span>
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                beta
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="blue">1.65<br> (167ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="red">3.78<br> (382ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="red">2.17<br> (219ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="green">1.00<br> (101ns)</span>
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                beta (incomplete)
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="blue">1.38<br> (501ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="red">3.03<br> (1096ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="blue">1.84<br> (666ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="green">1.00<br> (362ns)</span>
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                cbrt
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="red">3.21<br> (45ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="red">3.43<br> (48ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="red">3.07<br> (43ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="green">1.00<br> (14ns)</span>
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                cyl_bessel_i
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="green">1.13<br> (413ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="red">2.78<br> (1016ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="blue">1.21<br> (442ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="green">1.00<br> (365ns)</span>
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                cyl_bessel_i (integer order)
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="blue">1.28<br> (258ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="red">3.16<br> (638ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="blue">1.22<br> (247ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="green">1.00<br> (202ns)</span>
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                cyl_bessel_j
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="green">1.20<br> (490ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="red">2.06<br> (841ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="blue">1.25<br> (513ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="green">1.00<br> (409ns)</span>
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                cyl_bessel_j (integer order)
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="blue">1.29<br> (98ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="red">2.39<br> (182ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="blue">1.47<br> (112ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="green">1.00<br> (76ns)</span>
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                cyl_bessel_k
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="green">1.05<br> (749ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="red">9.43<br> (6743ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="green">1.03<br> (734ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="green">1.00<br> (715ns)</span>
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                cyl_bessel_k (integer order)
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="blue">1.26<br> (419ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="red">10.49<br> (3494ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="green">1.10<br> (367ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="green">1.00<br> (333ns)</span>
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                cyl_neumann
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="red">17.51<br> (11716ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="red">2.01<br> (1346ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="green">1.00<br> (669ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="red">15.35<br> (10266ns)</span>
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                cyl_neumann (integer order)
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="green">1.00<br> (226ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="blue">1.78<br> (403ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="blue">1.23<br> (279ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="green">1.01<br> (229ns)</span>
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                digamma
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="blue">1.25<br> (25ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="red">3.75<br> (75ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="red">2.15<br> (43ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="green">1.00<br> (20ns)</span>
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                ellint_1
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="blue">1.55<br> (273ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="blue">1.99<br> (350ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="blue">1.32<br> (232ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="green">1.00<br> (176ns)</span>
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                ellint_1 (complete)
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="blue">1.75<br> (49ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="red">2.57<br> (72ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="blue">1.57<br> (44ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="green">1.00<br> (28ns)</span>
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                ellint_2
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="blue">1.51<br> (444ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="red">2.17<br> (640ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="blue">1.52<br> (449ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="green">1.00<br> (295ns)</span>
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                ellint_2 (complete)
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="blue">1.69<br> (49ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="red">2.07<br> (60ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="blue">1.24<br> (36ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="green">1.00<br> (29ns)</span>
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                ellint_3
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="blue">1.48<br> (884ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="red">2.91<br> (1733ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="blue">1.65<br> (986ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="green">1.00<br> (596ns)</span>
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                ellint_3 (complete)
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="blue">1.59<br> (558ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="red">3.07<br> (1079ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="blue">1.46<br> (514ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="green">1.00<br> (352ns)</span>
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                ellint_rc
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="blue">1.23<br> (38ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="red">2.68<br> (83ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="blue">1.55<br> (48ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="green">1.00<br> (31ns)</span>
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                ellint_rd
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="blue">1.41<br> (267ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="blue">1.83<br> (348ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="blue">1.40<br> (266ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="green">1.00<br> (190ns)</span>
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                ellint_rf
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="blue">1.36<br> (57ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="red">2.40<br> (101ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="blue">1.57<br> (66ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="green">1.00<br> (42ns)</span>
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                ellint_rj
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="blue">1.43<br> (257ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="red">2.96<br> (532ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="blue">1.43<br> (257ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="green">1.00<br> (180ns)</span>
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                erf
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="green">1.00<br> (13ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="red">2.92<br> (38ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="blue">1.92<br> (25ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="green">1.00<br> (13ns)</span>
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                erfc
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="green">1.06<br> (18ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="red">3.41<br> (58ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="red">2.06<br> (35ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="green">1.00<br> (17ns)</span>
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                expint
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="green">1.00<br> (28ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="red">3.07<br> (86ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="red">2.14<br> (60ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="green">1.00<br> (28ns)</span>
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                expint (En)
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="green">1.12<br> (119ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="red">2.19<br> (232ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="blue">1.38<br> (146ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="green">1.00<br> (106ns)</span>
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                expm1
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="green">1.00<br> (11ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="red">2.82<br> (31ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="red">2.18<br> (24ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="green">1.00<br> (11ns)</span>
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                gamma_p
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="blue">1.24<br> (185ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="red">2.64<br> (393ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="blue">1.71<br> (255ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="green">1.00<br> (149ns)</span>
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                gamma_p_inv
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="blue">1.31<br> (682ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="red">2.47<br> (1288ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="blue">1.91<br> (997ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="green">1.00<br> (521ns)</span>
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                gamma_q
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="blue">1.20<br> (185ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="red">2.79<br> (429ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="blue">1.61<br> (248ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="green">1.00<br> (154ns)</span>
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                gamma_q_inv
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="blue">1.33<br> (685ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="red">2.38<br> (1225ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="blue">1.89<br> (971ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="green">1.00<br> (515ns)</span>
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                ibeta
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="blue">1.57<br> (612ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="red">3.13<br> (1218ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="blue">1.83<br> (711ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="green">1.00<br> (389ns)</span>
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                ibeta_inv
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="blue">1.35<br> (1964ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="red">2.81<br> (4085ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="red">2.27<br> (3303ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="green">1.00<br> (1452ns)</span>
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                ibetac
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="blue">1.34<br> (537ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="red">2.94<br> (1179ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="blue">1.73<br> (694ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="green">1.00<br> (401ns)</span>
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                ibetac_inv
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="blue">1.34<br> (1938ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="red">2.80<br> (4058ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="blue">1.78<br> (2572ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="green">1.00<br> (1447ns)</span>
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                jacobi_cn
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="blue">1.37<br> (183ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="red">3.72<br> (499ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="red">2.28<br> (306ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="green">1.00<br> (134ns)</span>
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                jacobi_dn
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="blue">1.37<br> (197ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="red">3.68<br> (530ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="red">2.27<br> (327ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="green">1.00<br> (144ns)</span>
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                jacobi_sn
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="blue">1.32<br> (181ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="red">3.73<br> (511ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="red">2.43<br> (333ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="green">1.00<br> (137ns)</span>
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                laguerre
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="green">1.00<br> (126ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="green">1.10<br> (139ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="green">1.00<br> (126ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="green">1.06<br> (133ns)</span>
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                legendre
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="green">1.03<br> (350ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="green">1.16<br> (396ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="green">1.00<br> (340ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="green">1.13<br> (383ns)</span>
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                legendre Q
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="green">1.03<br> (443ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="green">1.19<br> (512ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="green">1.00<br> (430ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="green">1.06<br> (455ns)</span>
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                lgamma
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="blue">1.21<br> (93ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="red">2.91<br> (224ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="blue">1.73<br> (133ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="green">1.00<br> (77ns)</span>
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                log1p
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="blue">1.29<br> (18ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="blue">2.00<br> (28ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="green">1.14<br> (16ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="green">1.00<br> (14ns)</span>
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                polygamma
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="blue">1.23<br> (3997ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="green">1.02<br> (3320ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="red">2.24<br> (7270ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="green">1.00<br> (3246ns)</span>
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                sph_bessel
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="green">1.18<br> (1012ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="blue">1.55<br> (1325ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="green">1.09<br> (931ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="green">1.00<br> (857ns)</span>
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                sph_neumann
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="green">1.10<br> (1846ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="red">2.07<br> (3483ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="green">1.00<br> (1685ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="green">1.01<br> (1702ns)</span>
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                tgamma
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="blue">1.34<br> (79ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="red">4.03<br> (238ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="red">2.49<br> (147ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="green">1.00<br> (59ns)</span>
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                tgamma (incomplete)
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="green">1.19<br> (260ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="red">2.52<br> (552ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="blue">1.73<br> (379ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="green">1.00<br> (219ns)</span>
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                trigamma
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="blue">1.35<br> (23ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="red">2.88<br> (49ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="blue">1.41<br> (24ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="green">1.00<br> (17ns)</span>
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                zeta
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="blue">1.36<br> (122ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="red">3.83<br> (345ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="red">2.52<br> (227ns)</span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="green">1.00<br> (90ns)</span>
+              </p>
+            </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<br class="table-break"><p>
+      [table_Compiler_Comparison_on_linux]
+    </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2006-2010, 2012-2014 Nikhar Agrawal,
+      Anton Bikineev, Paul A. Bristow, Marco Guazzone, Christopher Kormanyos, Hubert
+      Holin, Bruno Lalande, John Maddock, Jeremy Murphy, Johan R&#229;de, Gautam Sewani,
+      Benjamin Sobotta, Thijs van den Berg, Daryle Walker and Xiaogang Zhang<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="tuning.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../perf.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="comparisons.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

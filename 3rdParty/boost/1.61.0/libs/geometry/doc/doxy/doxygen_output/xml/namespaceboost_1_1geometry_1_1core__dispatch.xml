@@ -1,0 +1,12 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="namespaceboost_1_1geometry_1_1core__dispatch" kind="namespace">
+    <compoundname>boost::geometry::core_dispatch</compoundname>
+    <innerclass refid="structboost_1_1geometry_1_1core__dispatch_1_1ring__type_3_01detail_1_1buffer_1_1buffered__ring__023aa1ac442b9bd7853f152f96b9eb7d" prot="public">boost::geometry::core_dispatch::ring_type&lt; detail::buffer::buffered_ring_collection_tag, detail::buffer::buffered_ring_collection&lt; Ring &gt;&gt;</innerclass>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/buffer/buffered_ring.hpp" line="138"/>
+  </compounddef>
+</doxygen>

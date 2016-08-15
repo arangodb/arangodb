@@ -1,0 +1,62 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="structboost_1_1geometry_1_1strategy_1_1within_1_1longitude__range" kind="struct" prot="public">
+    <compoundname>boost::geometry::strategy::within::longitude_range</compoundname>
+    <includes local="no">point_in_box.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename</type>
+        <declname>Geometry</declname>
+        <defname>Geometry</defname>
+      </param>
+      <param>
+        <type>typename</type>
+        <declname>ResultCheck</declname>
+        <defname>ResultCheck</defname>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-static-func">
+      <memberdef kind="function" id="structboost_1_1geometry_1_1strategy_1_1within_1_1longitude__range_1a140499cd9e05eb359b096784be32a177" prot="public" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Value1</type>
+          </param>
+          <param>
+            <type>typename Value2</type>
+          </param>
+        </templateparamlist>
+        <type>bool</type>
+        <definition>static bool boost::geometry::strategy::within::longitude_range&lt; Geometry, ResultCheck &gt;::apply</definition>
+        <argsstring>(Value1 const &amp;value, Value2 const &amp;min_value, Value2 const &amp;max_value)</argsstring>
+        <name>apply</name>
+        <param>
+          <type>Value1 const &amp;</type>
+          <declname>value</declname>
+        </param>
+        <param>
+          <type>Value2 const &amp;</type>
+          <declname>min_value</declname>
+        </param>
+        <param>
+          <type>Value2 const &amp;</type>
+          <declname>max_value</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/point_in_box.hpp" line="88" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/point_in_box.hpp" bodystart="87" bodyend="109"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/point_in_box.hpp" line="85" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/point_in_box.hpp" bodystart="84" bodyend="110"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1strategy_1_1within_1_1longitude__range_1a140499cd9e05eb359b096784be32a177" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::within::longitude_range</scope><name>apply</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

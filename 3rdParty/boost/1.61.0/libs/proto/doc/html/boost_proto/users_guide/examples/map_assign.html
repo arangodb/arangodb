@@ -1,0 +1,188 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Map Assign: An Intermediate Transform</title>
+<link rel="stylesheet" href="../../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../../../index.html" title="Chapter&#160;1.&#160;Boost.Proto">
+<link rel="up" href="../examples.html" title="Examples">
+<link rel="prev" href="mixed.html" title="Mixed: Adapting Several Non-Proto Terminal Types">
+<link rel="next" href="future_group.html" title="Future Group: A More Advanced Transform">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="mixed.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../examples.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="future_group.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="boost_proto.users_guide.examples.map_assign"></a><a class="link" href="map_assign.html" title="Map Assign: An Intermediate Transform">Map Assign:
+        An Intermediate Transform</a>
+</h4></div></div></div>
+<p>
+          A demonstration of how to implement <code class="computeroutput"><span class="identifier">map_list_of</span><span class="special">()</span></code> from the Boost.Assign library using Proto.
+          <code class="computeroutput"><span class="identifier">map_list_assign</span><span class="special">()</span></code>
+          is used to conveniently initialize a <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">map</span><span class="special">&lt;&gt;</span></code>. By using Proto, we can avoid any
+          dynamic allocation while building the intermediate representation.
+        </p>
+<p>
+</p>
+<pre class="programlisting"><span class="comment">//  Copyright 2008 Eric Niebler. Distributed under the Boost</span>
+<span class="comment">//  Software License, Version 1.0. (See accompanying file</span>
+<span class="comment">//  LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)</span>
+<span class="comment">//</span>
+<span class="comment">// This is a port of map_list_of() from the Boost.Assign library.</span>
+<span class="comment">// It has the advantage of being more efficient at runtime by not</span>
+<span class="comment">// building any temporary container that requires dynamic allocation.</span>
+
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">map</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">string</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">iostream</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">proto</span><span class="special">/</span><span class="identifier">core</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">proto</span><span class="special">/</span><span class="identifier">transform</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">type_traits</span><span class="special">/</span><span class="identifier">add_reference</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="keyword">namespace</span> <span class="identifier">proto</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">proto</span><span class="special">;</span>
+<span class="keyword">using</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">_</span><span class="special">;</span>
+
+<span class="keyword">struct</span> <span class="identifier">map_list_of_tag</span>
+<span class="special">{};</span>
+
+<span class="comment">// A simple callable function object that inserts a</span>
+<span class="comment">// (key,value) pair into a map.</span>
+<span class="keyword">struct</span> <span class="identifier">insert</span>
+  <span class="special">:</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">callable</span>
+<span class="special">{</span>
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">Sig</span><span class="special">&gt;</span>
+    <span class="keyword">struct</span> <span class="identifier">result</span><span class="special">;</span>
+
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">This</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">Map</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">Key</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">Value</span><span class="special">&gt;</span>
+    <span class="keyword">struct</span> <span class="identifier">result</span><span class="special">&lt;</span><span class="identifier">This</span><span class="special">(</span><span class="identifier">Map</span><span class="special">,</span> <span class="identifier">Key</span><span class="special">,</span> <span class="identifier">Value</span><span class="special">)&gt;</span>
+      <span class="special">:</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">add_reference</span><span class="special">&lt;</span><span class="identifier">Map</span><span class="special">&gt;</span>
+    <span class="special">{};</span>
+
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">Map</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">Key</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">Value</span><span class="special">&gt;</span>
+    <span class="identifier">Map</span> <span class="special">&amp;</span><span class="keyword">operator</span><span class="special">()(</span><span class="identifier">Map</span> <span class="special">&amp;</span><span class="identifier">map</span><span class="special">,</span> <span class="identifier">Key</span> <span class="keyword">const</span> <span class="special">&amp;</span><span class="identifier">key</span><span class="special">,</span> <span class="identifier">Value</span> <span class="keyword">const</span> <span class="special">&amp;</span><span class="identifier">value</span><span class="special">)</span> <span class="keyword">const</span>
+    <span class="special">{</span>
+        <span class="identifier">map</span><span class="special">.</span><span class="identifier">insert</span><span class="special">(</span><span class="keyword">typename</span> <span class="identifier">Map</span><span class="special">::</span><span class="identifier">value_type</span><span class="special">(</span><span class="identifier">key</span><span class="special">,</span> <span class="identifier">value</span><span class="special">));</span>
+        <span class="keyword">return</span> <span class="identifier">map</span><span class="special">;</span>
+    <span class="special">}</span>
+<span class="special">};</span>
+
+<span class="comment">// Work-arounds for Microsoft Visual C++ 7.1</span>
+<span class="preprocessor">#if</span> <span class="identifier">BOOST_WORKAROUND</span><span class="special">(</span><span class="identifier">BOOST_MSVC</span><span class="special">,</span> <span class="special">==</span> <span class="number">1310</span><span class="special">)</span>
+<span class="preprocessor">#define</span> <span class="identifier">MapListOf</span><span class="special">(</span><span class="identifier">x</span><span class="special">)</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">call</span><span class="special">&lt;</span><span class="identifier">MapListOf</span><span class="special">(</span><span class="identifier">x</span><span class="special">)&gt;</span>
+<span class="preprocessor">#define</span> <span class="identifier">_value</span><span class="special">(</span><span class="identifier">x</span><span class="special">)</span> <span class="identifier">call</span><span class="special">&lt;</span><span class="identifier">proto</span><span class="special">::</span><span class="identifier">_value</span><span class="special">(</span><span class="identifier">x</span><span class="special">)&gt;</span>
+<span class="preprocessor">#endif</span>
+
+<span class="comment">// The grammar for valid map-list expressions, and a</span>
+<span class="comment">// transform that populates the map.</span>
+<span class="keyword">struct</span> <span class="identifier">MapListOf</span>
+  <span class="special">:</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">or_</span><span class="special">&lt;</span>
+        <span class="identifier">proto</span><span class="special">::</span><span class="identifier">when</span><span class="special">&lt;</span>
+            <span class="comment">// map_list_of(a,b)</span>
+            <span class="identifier">proto</span><span class="special">::</span><span class="identifier">function</span><span class="special">&lt;</span>
+                <span class="identifier">proto</span><span class="special">::</span><span class="identifier">terminal</span><span class="special">&lt;</span><span class="identifier">map_list_of_tag</span><span class="special">&gt;</span>
+              <span class="special">,</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">terminal</span><span class="special">&lt;</span><span class="identifier">_</span><span class="special">&gt;</span>
+              <span class="special">,</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">terminal</span><span class="special">&lt;</span><span class="identifier">_</span><span class="special">&gt;</span>
+            <span class="special">&gt;</span>
+          <span class="special">,</span> <span class="identifier">insert</span><span class="special">(</span>
+                <span class="identifier">proto</span><span class="special">::</span><span class="identifier">_data</span>
+              <span class="special">,</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">_value</span><span class="special">(</span><span class="identifier">proto</span><span class="special">::</span><span class="identifier">_child1</span><span class="special">)</span>
+              <span class="special">,</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">_value</span><span class="special">(</span><span class="identifier">proto</span><span class="special">::</span><span class="identifier">_child2</span><span class="special">)</span>
+            <span class="special">)</span>
+        <span class="special">&gt;</span>
+      <span class="special">,</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">when</span><span class="special">&lt;</span>
+            <span class="comment">// map_list_of(a,b)(c,d)...</span>
+            <span class="identifier">proto</span><span class="special">::</span><span class="identifier">function</span><span class="special">&lt;</span>
+                <span class="identifier">MapListOf</span>
+              <span class="special">,</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">terminal</span><span class="special">&lt;</span><span class="identifier">_</span><span class="special">&gt;</span>
+              <span class="special">,</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">terminal</span><span class="special">&lt;</span><span class="identifier">_</span><span class="special">&gt;</span>
+            <span class="special">&gt;</span>
+          <span class="special">,</span> <span class="identifier">insert</span><span class="special">(</span>
+                <span class="identifier">MapListOf</span><span class="special">(</span><span class="identifier">proto</span><span class="special">::</span><span class="identifier">_child0</span><span class="special">)</span>
+              <span class="special">,</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">_value</span><span class="special">(</span><span class="identifier">proto</span><span class="special">::</span><span class="identifier">_child1</span><span class="special">)</span>
+              <span class="special">,</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">_value</span><span class="special">(</span><span class="identifier">proto</span><span class="special">::</span><span class="identifier">_child2</span><span class="special">)</span>
+            <span class="special">)</span>
+        <span class="special">&gt;</span>
+    <span class="special">&gt;</span>
+<span class="special">{};</span>
+
+<span class="preprocessor">#if</span> <span class="identifier">BOOST_WORKAROUND</span><span class="special">(</span><span class="identifier">BOOST_MSVC</span><span class="special">,</span> <span class="special">==</span> <span class="number">1310</span><span class="special">)</span>
+<span class="preprocessor">#undef</span> <span class="identifier">MapListOf</span>
+<span class="preprocessor">#undef</span> <span class="identifier">_value</span>
+<span class="preprocessor">#endif</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">Expr</span><span class="special">&gt;</span>
+<span class="keyword">struct</span> <span class="identifier">map_list_of_expr</span><span class="special">;</span>
+
+<span class="keyword">struct</span> <span class="identifier">map_list_of_dom</span>
+  <span class="special">:</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">domain</span><span class="special">&lt;</span><span class="identifier">proto</span><span class="special">::</span><span class="identifier">pod_generator</span><span class="special">&lt;</span><span class="identifier">map_list_of_expr</span><span class="special">&gt;,</span> <span class="identifier">MapListOf</span><span class="special">&gt;</span>
+<span class="special">{};</span>
+
+<span class="comment">// An expression wrapper that provides a conversion to a</span>
+<span class="comment">// map that uses the MapListOf</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">Expr</span><span class="special">&gt;</span>
+<span class="keyword">struct</span> <span class="identifier">map_list_of_expr</span>
+<span class="special">{</span>
+    <span class="identifier">BOOST_PROTO_BASIC_EXTENDS</span><span class="special">(</span><span class="identifier">Expr</span><span class="special">,</span> <span class="identifier">map_list_of_expr</span><span class="special">,</span> <span class="identifier">map_list_of_dom</span><span class="special">)</span>
+    <span class="identifier">BOOST_PROTO_EXTENDS_FUNCTION</span><span class="special">()</span>
+
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">Key</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">Value</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">Cmp</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">Al</span><span class="special">&gt;</span>
+    <span class="keyword">operator</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">map</span><span class="special">&lt;</span><span class="identifier">Key</span><span class="special">,</span> <span class="identifier">Value</span><span class="special">,</span> <span class="identifier">Cmp</span><span class="special">,</span> <span class="identifier">Al</span><span class="special">&gt;</span> <span class="special">()</span> <span class="keyword">const</span>
+    <span class="special">{</span>
+        <span class="identifier">BOOST_MPL_ASSERT</span><span class="special">((</span><span class="identifier">proto</span><span class="special">::</span><span class="identifier">matches</span><span class="special">&lt;</span><span class="identifier">Expr</span><span class="special">,</span> <span class="identifier">MapListOf</span><span class="special">&gt;));</span>
+        <span class="identifier">std</span><span class="special">::</span><span class="identifier">map</span><span class="special">&lt;</span><span class="identifier">Key</span><span class="special">,</span> <span class="identifier">Value</span><span class="special">,</span> <span class="identifier">Cmp</span><span class="special">,</span> <span class="identifier">Al</span><span class="special">&gt;</span> <span class="identifier">map</span><span class="special">;</span>
+        <span class="keyword">return</span> <span class="identifier">MapListOf</span><span class="special">()(*</span><span class="keyword">this</span><span class="special">,</span> <span class="number">0</span><span class="special">,</span> <span class="identifier">map</span><span class="special">);</span>
+    <span class="special">}</span>
+<span class="special">};</span>
+
+<span class="identifier">map_list_of_expr</span><span class="special">&lt;</span><span class="identifier">proto</span><span class="special">::</span><span class="identifier">terminal</span><span class="special">&lt;</span><span class="identifier">map_list_of_tag</span><span class="special">&gt;::</span><span class="identifier">type</span><span class="special">&gt;</span> <span class="keyword">const</span> <span class="identifier">map_list_of</span> <span class="special">=</span> <span class="special">{{{}}};</span>
+
+<span class="keyword">int</span> <span class="identifier">main</span><span class="special">()</span>
+<span class="special">{</span>
+    <span class="comment">// Initialize a map:</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">map</span><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span><span class="special">,</span> <span class="keyword">int</span><span class="special">&gt;</span> <span class="identifier">op</span> <span class="special">=</span>
+        <span class="identifier">map_list_of</span>
+            <span class="special">(</span><span class="string">"&lt;"</span><span class="special">,</span> <span class="number">1</span><span class="special">)</span>
+            <span class="special">(</span><span class="string">"&lt;="</span><span class="special">,</span><span class="number">2</span><span class="special">)</span>
+            <span class="special">(</span><span class="string">"&gt;"</span><span class="special">,</span> <span class="number">3</span><span class="special">)</span>
+            <span class="special">(</span><span class="string">"&gt;="</span><span class="special">,</span><span class="number">4</span><span class="special">)</span>
+            <span class="special">(</span><span class="string">"="</span><span class="special">,</span> <span class="number">5</span><span class="special">)</span>
+            <span class="special">(</span><span class="string">"&lt;&gt;"</span><span class="special">,</span><span class="number">6</span><span class="special">)</span>
+        <span class="special">;</span>
+
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"\"&lt;\"  --&gt; "</span> <span class="special">&lt;&lt;</span> <span class="identifier">op</span><span class="special">[</span><span class="string">"&lt;"</span><span class="special">]</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"\"&lt;=\" --&gt; "</span> <span class="special">&lt;&lt;</span> <span class="identifier">op</span><span class="special">[</span><span class="string">"&lt;="</span><span class="special">]</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"\"&gt;\"  --&gt; "</span> <span class="special">&lt;&lt;</span> <span class="identifier">op</span><span class="special">[</span><span class="string">"&gt;"</span><span class="special">]</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"\"&gt;=\" --&gt; "</span> <span class="special">&lt;&lt;</span> <span class="identifier">op</span><span class="special">[</span><span class="string">"&gt;="</span><span class="special">]</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"\"=\"  --&gt; "</span> <span class="special">&lt;&lt;</span> <span class="identifier">op</span><span class="special">[</span><span class="string">"="</span><span class="special">]</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"\"&lt;&gt;\" --&gt; "</span> <span class="special">&lt;&lt;</span> <span class="identifier">op</span><span class="special">[</span><span class="string">"&lt;&gt;"</span><span class="special">]</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+
+    <span class="keyword">return</span> <span class="number">0</span><span class="special">;</span>
+<span class="special">}</span>
+</pre>
+<p>
+        </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2008 Eric Niebler<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="mixed.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../examples.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="future_group.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

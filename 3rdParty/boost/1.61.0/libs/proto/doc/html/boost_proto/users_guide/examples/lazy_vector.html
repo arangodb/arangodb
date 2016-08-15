@@ -1,0 +1,199 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Lazy Vector: Controlling Operator Overloads</title>
+<link rel="stylesheet" href="../../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../../../index.html" title="Chapter&#160;1.&#160;Boost.Proto">
+<link rel="up" href="../examples.html" title="Examples">
+<link rel="prev" href="calc3.html" title="Calc3: Defining a Simple Transform">
+<link rel="next" href="rgb.html" title="RGB: Type Manipulations with Proto Transforms">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="calc3.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../examples.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="rgb.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="boost_proto.users_guide.examples.lazy_vector"></a><a class="link" href="lazy_vector.html" title="Lazy Vector: Controlling Operator Overloads">Lazy
+        Vector: Controlling Operator Overloads</a>
+</h4></div></div></div>
+<p>
+          This example constructs a mini-library for linear algebra, using expression
+          templates to eliminate the need for temporaries when adding vectors of
+          numbers.
+        </p>
+<p>
+          This example uses a domain with a grammar to prune the set of overloaded
+          operators. Only those operators that produce valid lazy vector expressions
+          are allowed.
+        </p>
+<p>
+</p>
+<pre class="programlisting"><span class="comment">///////////////////////////////////////////////////////////////////////////////</span>
+<span class="comment">//  Copyright 2008 Eric Niebler. Distributed under the Boost</span>
+<span class="comment">//  Software License, Version 1.0. (See accompanying file</span>
+<span class="comment">//  LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)</span>
+<span class="comment">//</span>
+<span class="comment">// This example constructs a mini-library for linear algebra, using</span>
+<span class="comment">// expression templates to eliminate the need for temporaries when</span>
+<span class="comment">// adding vectors of numbers.</span>
+<span class="comment">//</span>
+<span class="comment">// This example uses a domain with a grammar to prune the set</span>
+<span class="comment">// of overloaded operators. Only those operators that produce</span>
+<span class="comment">// valid lazy vector expressions are allowed.</span>
+
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">vector</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">iostream</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">mpl</span><span class="special">/</span><span class="keyword">int</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">proto</span><span class="special">/</span><span class="identifier">core</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">proto</span><span class="special">/</span><span class="identifier">context</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="keyword">namespace</span> <span class="identifier">mpl</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">mpl</span><span class="special">;</span>
+<span class="keyword">namespace</span> <span class="identifier">proto</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">proto</span><span class="special">;</span>
+<span class="keyword">using</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">_</span><span class="special">;</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">Expr</span><span class="special">&gt;</span>
+<span class="keyword">struct</span> <span class="identifier">lazy_vector_expr</span><span class="special">;</span>
+
+<span class="comment">// This grammar describes which lazy vector expressions</span>
+<span class="comment">// are allowed; namely, vector terminals and addition</span>
+<span class="comment">// and subtraction of lazy vector expressions.</span>
+<span class="keyword">struct</span> <span class="identifier">LazyVectorGrammar</span>
+  <span class="special">:</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">or_</span><span class="special">&lt;</span>
+        <span class="identifier">proto</span><span class="special">::</span><span class="identifier">terminal</span><span class="special">&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span><span class="identifier">_</span><span class="special">&gt;</span> <span class="special">&gt;</span>
+      <span class="special">,</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">plus</span><span class="special">&lt;</span> <span class="identifier">LazyVectorGrammar</span><span class="special">,</span> <span class="identifier">LazyVectorGrammar</span> <span class="special">&gt;</span>
+      <span class="special">,</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">minus</span><span class="special">&lt;</span> <span class="identifier">LazyVectorGrammar</span><span class="special">,</span> <span class="identifier">LazyVectorGrammar</span> <span class="special">&gt;</span>
+    <span class="special">&gt;</span>
+<span class="special">{};</span>
+
+<span class="comment">// Tell proto that in the lazy_vector_domain, all</span>
+<span class="comment">// expressions should be wrapped in laxy_vector_expr&lt;&gt;</span>
+<span class="comment">// and must conform to the lazy vector grammar.</span>
+<span class="keyword">struct</span> <span class="identifier">lazy_vector_domain</span>
+  <span class="special">:</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">domain</span><span class="special">&lt;</span><span class="identifier">proto</span><span class="special">::</span><span class="identifier">generator</span><span class="special">&lt;</span><span class="identifier">lazy_vector_expr</span><span class="special">&gt;,</span> <span class="identifier">LazyVectorGrammar</span><span class="special">&gt;</span>
+<span class="special">{};</span>
+
+<span class="comment">// Here is an evaluation context that indexes into a lazy vector</span>
+<span class="comment">// expression, and combines the result.</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">Size</span> <span class="special">=</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span><span class="special">&gt;</span>
+<span class="keyword">struct</span> <span class="identifier">lazy_subscript_context</span>
+<span class="special">{</span>
+    <span class="identifier">lazy_subscript_context</span><span class="special">(</span><span class="identifier">Size</span> <span class="identifier">subscript</span><span class="special">)</span>
+      <span class="special">:</span> <span class="identifier">subscript_</span><span class="special">(</span><span class="identifier">subscript</span><span class="special">)</span>
+    <span class="special">{}</span>
+
+    <span class="comment">// Use default_eval for all the operations ...</span>
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">Expr</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">Tag</span> <span class="special">=</span> <span class="keyword">typename</span> <span class="identifier">Expr</span><span class="special">::</span><span class="identifier">proto_tag</span><span class="special">&gt;</span>
+    <span class="keyword">struct</span> <span class="identifier">eval</span>
+      <span class="special">:</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">default_eval</span><span class="special">&lt;</span><span class="identifier">Expr</span><span class="special">,</span> <span class="identifier">lazy_subscript_context</span><span class="special">&gt;</span>
+    <span class="special">{};</span>
+
+    <span class="comment">// ... except for terminals, which we index with our subscript</span>
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">Expr</span><span class="special">&gt;</span>
+    <span class="keyword">struct</span> <span class="identifier">eval</span><span class="special">&lt;</span><span class="identifier">Expr</span><span class="special">,</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">tag</span><span class="special">::</span><span class="identifier">terminal</span><span class="special">&gt;</span>
+    <span class="special">{</span>
+        <span class="keyword">typedef</span> <span class="keyword">typename</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">result_of</span><span class="special">::</span><span class="identifier">value</span><span class="special">&lt;</span><span class="identifier">Expr</span><span class="special">&gt;::</span><span class="identifier">type</span><span class="special">::</span><span class="identifier">value_type</span> <span class="identifier">result_type</span><span class="special">;</span>
+
+        <span class="identifier">result_type</span> <span class="keyword">operator</span> <span class="special">()(</span> <span class="identifier">Expr</span> <span class="keyword">const</span> <span class="special">&amp;</span> <span class="identifier">expr</span><span class="special">,</span> <span class="identifier">lazy_subscript_context</span> <span class="special">&amp;</span> <span class="identifier">ctx</span> <span class="special">)</span> <span class="keyword">const</span>
+        <span class="special">{</span>
+            <span class="keyword">return</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">value</span><span class="special">(</span> <span class="identifier">expr</span> <span class="special">)[</span> <span class="identifier">ctx</span><span class="special">.</span><span class="identifier">subscript_</span> <span class="special">];</span>
+        <span class="special">}</span>
+    <span class="special">};</span>
+
+    <span class="identifier">Size</span> <span class="identifier">subscript_</span><span class="special">;</span>
+<span class="special">};</span>
+
+<span class="comment">// Here is the domain-specific expression wrapper, which overrides</span>
+<span class="comment">// operator [] to evaluate the expression using the lazy_subscript_context.</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">Expr</span><span class="special">&gt;</span>
+<span class="keyword">struct</span> <span class="identifier">lazy_vector_expr</span>
+  <span class="special">:</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">extends</span><span class="special">&lt;</span><span class="identifier">Expr</span><span class="special">,</span> <span class="identifier">lazy_vector_expr</span><span class="special">&lt;</span><span class="identifier">Expr</span><span class="special">&gt;,</span> <span class="identifier">lazy_vector_domain</span><span class="special">&gt;</span>
+<span class="special">{</span>
+    <span class="identifier">lazy_vector_expr</span><span class="special">(</span> <span class="identifier">Expr</span> <span class="keyword">const</span> <span class="special">&amp;</span> <span class="identifier">expr</span> <span class="special">=</span> <span class="identifier">Expr</span><span class="special">()</span> <span class="special">)</span>
+      <span class="special">:</span> <span class="identifier">lazy_vector_expr</span><span class="special">::</span><span class="identifier">proto_extends</span><span class="special">(</span> <span class="identifier">expr</span> <span class="special">)</span>
+    <span class="special">{}</span>
+
+    <span class="comment">// Use the lazy_subscript_context&lt;&gt; to implement subscripting</span>
+    <span class="comment">// of a lazy vector expression tree.</span>
+    <span class="keyword">template</span><span class="special">&lt;</span> <span class="keyword">typename</span> <span class="identifier">Size</span> <span class="special">&gt;</span>
+    <span class="keyword">typename</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">result_of</span><span class="special">::</span><span class="identifier">eval</span><span class="special">&lt;</span> <span class="identifier">Expr</span><span class="special">,</span> <span class="identifier">lazy_subscript_context</span><span class="special">&lt;</span><span class="identifier">Size</span><span class="special">&gt;</span> <span class="special">&gt;::</span><span class="identifier">type</span>
+    <span class="keyword">operator</span> <span class="special">[](</span> <span class="identifier">Size</span> <span class="identifier">subscript</span> <span class="special">)</span> <span class="keyword">const</span>
+    <span class="special">{</span>
+        <span class="identifier">lazy_subscript_context</span><span class="special">&lt;</span><span class="identifier">Size</span><span class="special">&gt;</span> <span class="identifier">ctx</span><span class="special">(</span><span class="identifier">subscript</span><span class="special">);</span>
+        <span class="keyword">return</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">eval</span><span class="special">(*</span><span class="keyword">this</span><span class="special">,</span> <span class="identifier">ctx</span><span class="special">);</span>
+    <span class="special">}</span>
+<span class="special">};</span>
+
+<span class="comment">// Here is our lazy_vector terminal, implemented in terms of lazy_vector_expr</span>
+<span class="keyword">template</span><span class="special">&lt;</span> <span class="keyword">typename</span> <span class="identifier">T</span> <span class="special">&gt;</span>
+<span class="keyword">struct</span> <span class="identifier">lazy_vector</span>
+  <span class="special">:</span> <span class="identifier">lazy_vector_expr</span><span class="special">&lt;</span> <span class="keyword">typename</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">terminal</span><span class="special">&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;</span> <span class="special">&gt;::</span><span class="identifier">type</span> <span class="special">&gt;</span>
+<span class="special">{</span>
+    <span class="keyword">typedef</span> <span class="keyword">typename</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">terminal</span><span class="special">&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;</span> <span class="special">&gt;::</span><span class="identifier">type</span> <span class="identifier">expr_type</span><span class="special">;</span>
+
+    <span class="identifier">lazy_vector</span><span class="special">(</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">size</span> <span class="special">=</span> <span class="number">0</span><span class="special">,</span> <span class="identifier">T</span> <span class="keyword">const</span> <span class="special">&amp;</span> <span class="identifier">value</span> <span class="special">=</span> <span class="identifier">T</span><span class="special">()</span> <span class="special">)</span>
+      <span class="special">:</span> <span class="identifier">lazy_vector_expr</span><span class="special">&lt;</span><span class="identifier">expr_type</span><span class="special">&gt;(</span> <span class="identifier">expr_type</span><span class="special">::</span><span class="identifier">make</span><span class="special">(</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;(</span> <span class="identifier">size</span><span class="special">,</span> <span class="identifier">value</span> <span class="special">)</span> <span class="special">)</span> <span class="special">)</span>
+    <span class="special">{}</span>
+
+    <span class="comment">// Here we define a += operator for lazy vector terminals that</span>
+    <span class="comment">// takes a lazy vector expression and indexes it. expr[i] here</span>
+    <span class="comment">// uses lazy_subscript_context&lt;&gt; under the covers.</span>
+    <span class="keyword">template</span><span class="special">&lt;</span> <span class="keyword">typename</span> <span class="identifier">Expr</span> <span class="special">&gt;</span>
+    <span class="identifier">lazy_vector</span> <span class="special">&amp;</span><span class="keyword">operator</span> <span class="special">+=</span> <span class="special">(</span><span class="identifier">Expr</span> <span class="keyword">const</span> <span class="special">&amp;</span> <span class="identifier">expr</span><span class="special">)</span>
+    <span class="special">{</span>
+        <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">size</span> <span class="special">=</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">value</span><span class="special">(*</span><span class="keyword">this</span><span class="special">).</span><span class="identifier">size</span><span class="special">();</span>
+        <span class="keyword">for</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">i</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span> <span class="identifier">i</span> <span class="special">&lt;</span> <span class="identifier">size</span><span class="special">;</span> <span class="special">++</span><span class="identifier">i</span><span class="special">)</span>
+        <span class="special">{</span>
+            <span class="identifier">proto</span><span class="special">::</span><span class="identifier">value</span><span class="special">(*</span><span class="keyword">this</span><span class="special">)[</span><span class="identifier">i</span><span class="special">]</span> <span class="special">+=</span> <span class="identifier">expr</span><span class="special">[</span><span class="identifier">i</span><span class="special">];</span>
+        <span class="special">}</span>
+        <span class="keyword">return</span> <span class="special">*</span><span class="keyword">this</span><span class="special">;</span>
+    <span class="special">}</span>
+<span class="special">};</span>
+
+<span class="keyword">int</span> <span class="identifier">main</span><span class="special">()</span>
+<span class="special">{</span>
+    <span class="comment">// lazy_vectors with 4 elements each.</span>
+    <span class="identifier">lazy_vector</span><span class="special">&lt;</span> <span class="keyword">double</span> <span class="special">&gt;</span> <span class="identifier">v1</span><span class="special">(</span> <span class="number">4</span><span class="special">,</span> <span class="number">1.0</span> <span class="special">),</span> <span class="identifier">v2</span><span class="special">(</span> <span class="number">4</span><span class="special">,</span> <span class="number">2.0</span> <span class="special">),</span> <span class="identifier">v3</span><span class="special">(</span> <span class="number">4</span><span class="special">,</span> <span class="number">3.0</span> <span class="special">);</span>
+
+    <span class="comment">// Add two vectors lazily and get the 2nd element.</span>
+    <span class="keyword">double</span> <span class="identifier">d1</span> <span class="special">=</span> <span class="special">(</span> <span class="identifier">v2</span> <span class="special">+</span> <span class="identifier">v3</span> <span class="special">)[</span> <span class="number">2</span> <span class="special">];</span>   <span class="comment">// Look ma, no temporaries!</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">d1</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+
+    <span class="comment">// Subtract two vectors and add the result to a third vector.</span>
+    <span class="identifier">v1</span> <span class="special">+=</span> <span class="identifier">v2</span> <span class="special">-</span> <span class="identifier">v3</span><span class="special">;</span>                  <span class="comment">// Still no temporaries!</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="char">'{'</span> <span class="special">&lt;&lt;</span> <span class="identifier">v1</span><span class="special">[</span><span class="number">0</span><span class="special">]</span> <span class="special">&lt;&lt;</span> <span class="char">','</span> <span class="special">&lt;&lt;</span> <span class="identifier">v1</span><span class="special">[</span><span class="number">1</span><span class="special">]</span>
+              <span class="special">&lt;&lt;</span> <span class="char">','</span> <span class="special">&lt;&lt;</span> <span class="identifier">v1</span><span class="special">[</span><span class="number">2</span><span class="special">]</span> <span class="special">&lt;&lt;</span> <span class="char">','</span> <span class="special">&lt;&lt;</span> <span class="identifier">v1</span><span class="special">[</span><span class="number">3</span><span class="special">]</span> <span class="special">&lt;&lt;</span> <span class="char">'}'</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+
+    <span class="comment">// This expression is disallowed because it does not conform</span>
+    <span class="comment">// to the LazyVectorGrammar</span>
+    <span class="comment">//(v2 + v3) += v1;</span>
+
+    <span class="keyword">return</span> <span class="number">0</span><span class="special">;</span>
+<span class="special">}</span>
+</pre>
+<p>
+        </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2008 Eric Niebler<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="calc3.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../examples.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="rgb.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

@@ -668,8 +668,6 @@ add_subdirectory(3rdParty)
 
 add_definitions("-DVELOCYPACK_XXHASH=1")
 
-set(BOOST_VERSION 1.61.0b1)
-
 foreach (LINK_DIR ${LINK_DIRECTORIES})
   link_directories("${LINK_DIR}")
 endforeach()
@@ -681,7 +679,7 @@ endforeach()
 message(STATUS "using 3rdParty BOOST")
 option(USE_BOOST_UNITTESTS "use boost unit-tests" ON)
 
-set(Boost_VERSION "1.61.0b1")
+set(Boost_VERSION "1.61.0")
 set(Boost_INCLUDE_DIR
   "${PROJECT_SOURCE_DIR}/3rdParty/boost/${Boost_VERSION}"
 )

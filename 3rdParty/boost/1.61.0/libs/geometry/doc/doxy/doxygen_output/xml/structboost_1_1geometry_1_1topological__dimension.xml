@@ -1,0 +1,20 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="structboost_1_1geometry_1_1topological__dimension" kind="struct" prot="public">
+    <compoundname>boost::geometry::topological_dimension</compoundname>
+    <includes local="no">topological_dimension.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename Geometry</type>
+      </param>
+    </templateparamlist>
+    <briefdescription>
+<para>Meta-function returning the topological dimension of a geometry. </para>    </briefdescription>
+    <detaileddescription>
+<para>The topological dimension defines a point as 0-dimensional, a linestring as 1-dimensional, and a ring or polygon as 2-dimensional. <simplesect kind="see"><para><ulink url="http://www.math.okstate.edu/mathdept/dynamics/lecnotes/node36.html">http://www.math.okstate.edu/mathdept/dynamics/lecnotes/node36.html</ulink> </para></simplesect>
+</para>    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/core/topological_dimension.hpp" line="95" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/core/topological_dimension.hpp" bodystart="94" bodyend="95"/>
+    <listofallmembers>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

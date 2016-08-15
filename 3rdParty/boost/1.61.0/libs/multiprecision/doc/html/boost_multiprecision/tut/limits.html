@@ -1,0 +1,100 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Numeric Limits</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../../index.html" title="Chapter&#160;1.&#160;Boost.Multiprecision">
+<link rel="up" href="../tut.html" title="Tutorial">
+<link rel="prev" href="serial.html" title="Boost.Serialization Support">
+<link rel="next" href="limits/constants.html" title="std::numeric_limits&lt;&gt; constants">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="serial.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../tut.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="limits/constants.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_multiprecision.tut.limits"></a><a class="link" href="limits.html" title="Numeric Limits">Numeric Limits</a>
+</h3></div></div></div>
+<div class="toc"><dl>
+<dt><span class="section"><a href="limits/constants.html">std::numeric_limits&lt;&gt;
+        constants</a></span></dt>
+<dt><span class="section"><a href="limits/functions.html">std::numeric_limits&lt;&gt;
+        functions</a></span></dt>
+<dt><span class="section"><a href="limits/limits32.html">Numeric limits
+        for 32-bit platform</a></span></dt>
+<dt><span class="section"><a href="limits/how_to_tell.html">How to
+        Determine the Kind of a Number From <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">numeric_limits</span></code></a></span></dt>
+</dl></div>
+<p>
+        Boost.Multiprecision tries hard to implement <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">numeric_limits</span></code>
+        for all types as far as possible and meaningful because experience with Boost.Math
+        has shown that this aids portability.
+      </p>
+<p>
+        The <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2013/n3690.pdf" target="_top">C++
+        standard library</a> defines <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">numeric_limits</span></code>
+        in section 18.3.2.
+      </p>
+<p>
+        This in turn refers to the C standard <a href="http://www.open-std.org/jtc1/sc22/wg11/docs/n507.pdf" target="_top">SC22/WG11
+        N507 DRAFT INTERNATIONAL ISO/IEC STANDARD WD 10967-1</a> Information
+        technology Language independent arithmetic Part 1: Integer and floating-point
+        arithmetic.
+      </p>
+<p>
+        That C Standard in turn refers to
+      </p>
+<p>
+        <a href="http://754r.ucbtest.org/standards/754.pdf" target="_top">IEEE754 IEEE Standard
+        for Binary Floating-Point Arithmetic</a>
+      </p>
+<p>
+        There is a useful summary at <a href="http://www.cplusplus.com/reference/limits/numeric_limits/" target="_top">C++
+        reference</a>.
+      </p>
+<p>
+        The chosen backend often determines how completely <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">numeric_limits</span></code>
+        is available.
+      </p>
+<p>
+        Compiler options, processor type, and definition of macros or assembler instructions
+        to control denormal numbers will alter the values in the tables given below.
+      </p>
+<div class="warning"><table border="0" summary="Warning">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Warning]" src="../../../../../../doc/src/images/warning.png"></td>
+<th align="left">Warning</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+          GMP's <code class="computeroutput"><span class="identifier">mpf_t</span></code> does not have
+          a concept of overflow: operations that lead to overflow eventually run
+          of out of resources and terminate with stack overflow (often after several
+          seconds).
+        </p></td></tr>
+</table></div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2002-2013 John Maddock and Christopher Kormanyos<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="serial.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../tut.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="limits/constants.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

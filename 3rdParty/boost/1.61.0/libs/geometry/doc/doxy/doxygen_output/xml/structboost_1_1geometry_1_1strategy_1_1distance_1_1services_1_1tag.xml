@@ -1,0 +1,19 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="structboost_1_1geometry_1_1strategy_1_1distance_1_1services_1_1tag" kind="struct" prot="public">
+    <compoundname>boost::geometry::strategy::distance::services::tag</compoundname>
+    <includes local="no">distance.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename Strategy</type>
+      </param>
+    </templateparamlist>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/distance.hpp" line="37" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/distance.hpp" bodystart="37" bodyend="37"/>
+    <listofallmembers>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

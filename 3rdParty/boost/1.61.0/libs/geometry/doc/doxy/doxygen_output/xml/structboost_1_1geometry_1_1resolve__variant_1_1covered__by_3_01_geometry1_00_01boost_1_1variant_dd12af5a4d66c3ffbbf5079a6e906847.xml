@@ -1,0 +1,96 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="structboost_1_1geometry_1_1resolve__variant_1_1covered__by_3_01_geometry1_00_01boost_1_1variant_dd12af5a4d66c3ffbbf5079a6e906847" kind="struct" prot="public">
+    <compoundname>boost::geometry::resolve_variant::covered_by&lt; Geometry1, boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; &gt;::visitor</compoundname>
+    <includes local="no">covered_by.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename Strategy</type>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="structboost_1_1geometry_1_1resolve__variant_1_1covered__by_3_01_geometry1_00_01boost_1_1variant_dd12af5a4d66c3ffbbf5079a6e906847_1a4828aecbb14186075f5df6c7b928bcd8" prot="public" static="no" mutable="no">
+        <type>Geometry1 const &amp;</type>
+        <definition>Geometry1 const&amp; boost::geometry::resolve_variant::covered_by&lt; Geometry1, boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; &gt;::visitor&lt; Strategy &gt;::m_geometry1</definition>
+        <argsstring></argsstring>
+        <name>m_geometry1</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/covered_by.hpp" line="363" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/covered_by.hpp" bodystart="363" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structboost_1_1geometry_1_1resolve__variant_1_1covered__by_3_01_geometry1_00_01boost_1_1variant_dd12af5a4d66c3ffbbf5079a6e906847_1ac03c18fe9fcf2469a9284388a65c3dce" prot="public" static="no" mutable="no">
+        <type>Strategy const &amp;</type>
+        <definition>Strategy const&amp; boost::geometry::resolve_variant::covered_by&lt; Geometry1, boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; &gt;::visitor&lt; Strategy &gt;::m_strategy</definition>
+        <argsstring></argsstring>
+        <name>m_strategy</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/covered_by.hpp" line="364" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/covered_by.hpp" bodystart="364" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="structboost_1_1geometry_1_1resolve__variant_1_1covered__by_3_01_geometry1_00_01boost_1_1variant_dd12af5a4d66c3ffbbf5079a6e906847_1a0c769fcaa1682a1ac77becaf4f533e47" prot="public" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Geometry2</type>
+          </param>
+        </templateparamlist>
+        <type>bool</type>
+        <definition>bool boost::geometry::resolve_variant::covered_by&lt; Geometry1, boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; &gt;::visitor&lt; Strategy &gt;::operator()</definition>
+        <argsstring>(Geometry2 const &amp;geometry2) const </argsstring>
+        <name>operator()</name>
+        <param>
+          <type>Geometry2 const &amp;</type>
+          <declname>geometry2</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/covered_by.hpp" line="371" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/covered_by.hpp" bodystart="370" bodyend="374"/>
+      </memberdef>
+      <memberdef kind="function" id="structboost_1_1geometry_1_1resolve__variant_1_1covered__by_3_01_geometry1_00_01boost_1_1variant_dd12af5a4d66c3ffbbf5079a6e906847_1a289407c737a4ea759b331c30852e7adf" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type></type>
+        <definition>boost::geometry::resolve_variant::covered_by&lt; Geometry1, boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; &gt;::visitor&lt; Strategy &gt;::visitor</definition>
+        <argsstring>(Geometry1 const &amp;geometry1, Strategy const &amp;strategy)</argsstring>
+        <name>visitor</name>
+        <param>
+          <type>Geometry1 const &amp;</type>
+          <declname>geometry1</declname>
+        </param>
+        <param>
+          <type>Strategy const &amp;</type>
+          <declname>strategy</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/covered_by.hpp" line="367" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/covered_by.hpp" bodystart="366" bodyend="367"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/covered_by.hpp" line="362" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/covered_by.hpp" bodystart="361" bodyend="375"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1resolve__variant_1_1covered__by_3_01_geometry1_00_01boost_1_1variant_dd12af5a4d66c3ffbbf5079a6e906847_1a4828aecbb14186075f5df6c7b928bcd8" prot="public" virt="non-virtual"><scope>boost::geometry::resolve_variant::covered_by&lt; Geometry1, boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; &gt;::visitor</scope><name>m_geometry1</name></member>
+      <member refid="structboost_1_1geometry_1_1resolve__variant_1_1covered__by_3_01_geometry1_00_01boost_1_1variant_dd12af5a4d66c3ffbbf5079a6e906847_1ac03c18fe9fcf2469a9284388a65c3dce" prot="public" virt="non-virtual"><scope>boost::geometry::resolve_variant::covered_by&lt; Geometry1, boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; &gt;::visitor</scope><name>m_strategy</name></member>
+      <member refid="structboost_1_1geometry_1_1resolve__variant_1_1covered__by_3_01_geometry1_00_01boost_1_1variant_dd12af5a4d66c3ffbbf5079a6e906847_1a0c769fcaa1682a1ac77becaf4f533e47" prot="public" virt="non-virtual"><scope>boost::geometry::resolve_variant::covered_by&lt; Geometry1, boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; &gt;::visitor</scope><name>operator()</name></member>
+      <member refid="structboost_1_1geometry_1_1resolve__variant_1_1covered__by_3_01_geometry1_00_01boost_1_1variant_dd12af5a4d66c3ffbbf5079a6e906847_1a289407c737a4ea759b331c30852e7adf" prot="public" virt="non-virtual"><scope>boost::geometry::resolve_variant::covered_by&lt; Geometry1, boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; &gt;::visitor</scope><name>visitor</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

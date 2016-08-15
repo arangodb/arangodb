@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE section PUBLIC "-//Boost//DTD BoostBook XML V1.0//EN"
+  "http://www.boost.org/tools/boostbook/dtd/boostbook.dtd">
+
+<section id="bbv2.reference.modules.sequence">
+
+  <title>sequence</title>
+  <indexterm>
+    <primary>sequence</primary>
+    <secondary>module</secondary>
+  </indexterm>
+
+  <para>
+    Various useful list functions.  Note that algorithms in this module
+    execute largely in the caller's module namespace, so that local
+    rules can be used as function objects. Also note that most predicates
+    can be multi-element lists. In that case, all but the first element
+    are prepended to the first argument which is passed to the rule named
+    by the first element.
+  </para>
+
+  <orderedlist>
+
+    <listitem id="bbv2.reference.modules.sequence.filter">
+      <indexterm zone="bbv2.reference.modules.sequence.filter">
+        <primary>filter</primary>
+        <secondary>sequence</secondary>
+      </indexterm>
+      <code language="jam">rule filter ( predicate + : sequence * )</code>
+      <para>Return the elements <code language="jam">e</code> of
+      <code language="jam">$(sequence)</code> for which
+      <code language="jam">[ $(predicate) e ]</code> has a non-null value.
+      </para>
+    </listitem>
+
+    <listitem id="bbv2.reference.modules.sequence.transform">
+      <indexterm zone="bbv2.reference.modules.sequence.transform">
+        <primary>transform</primary>
+        <secondary>sequence</secondary>
+      </indexterm>
+      <code language="jam">rule transform ( function + : sequence * )</code>
+      <para>Return a new sequence consisting of
+      <code language="jam">[ $(function) $(e) ]</code> for each element
+      <code language="jam">e</code> of <code language="jam">$(sequence)</code>.
+      </para>
+    </listitem>
+
+    <listitem id="bbv2.reference.modules.sequence.reverse">
+      <indexterm zone="bbv2.reference.modules.sequence.reverse">
+        <primary>reverse</primary>
+        <secondary>sequence</secondary>
+      </indexterm>
+      <code language="jam">rule reverse ( s * )</code>
+      <para>Returns the elements of <code language="jam">s</code> in
+      reverse order.</para>
+    </listitem>
+
+    <listitem id="bbv2.reference.modules.sequence.insertion-sort">
+      <indexterm zone="bbv2.reference.modules.sequence.insertion-sort">
+        <primary>insertion-sort</primary>
+        <secondary>sequence</secondary>
+      </indexterm>
+      <code language="jam">rule insertion-sort ( s * : ordered * )</code>
+      <para>Insertion-sort <code language="jam">s</code> using the
+      BinaryPredicate <code language="jam">ordered</code>.</para>
+    </listitem>
+
+    <listitem id="bbv2.reference.modules.sequence.merge">
+      <indexterm zone="bbv2.reference.modules.sequence.merge">
+        <primary>merge</primary>
+        <secondary>sequence</secondary>
+      </indexterm>
+      <code language="jam">rule merge ( s1 * : s2 * : ordered * )</code>
+      <para>Merge two ordered sequences using the BinaryPredicate
+      <code language="jam">ordered</code>.</para>
+    </listitem>
+
+    <listitem id="bbv2.reference.modules.sequence.join">
+      <indexterm zone="bbv2.reference.modules.sequence.join">
+        <primary>join</primary>
+        <secondary>sequence</secondary>
+      </indexterm>
+      <code language="jam">rule join ( s * : joint ? )</code>
+      <para>Join the elements of <code language="jam">s</code> into one
+      long string. If <code language="jam">joint</code> is supplied, it
+      is used as a separator.</para>
+    </listitem>
+
+    <listitem id="bbv2.reference.modules.sequence.length">
+      <indexterm zone="bbv2.reference.modules.sequence.length">
+        <primary>length</primary>
+        <secondary>sequence</secondary>
+      </indexterm>
+      <code language="jam">rule length ( s * )</code>
+      <para>Find the length of any sequence.</para>
+    </listitem>
+
+    <listitem id="bbv2.reference.modules.sequence.unique">
+      <indexterm zone="bbv2.reference.modules.sequence.unique">
+        <primary>unique</primary>
+        <secondary>sequence</secondary>
+      </indexterm>
+      <code language="jam">rule unique ( list * : stable ? )</code>
+      <para>Removes duplicates from <code language="jam">list</code>.
+      If <code language="jam">stable</code> is passed, then the order
+      of the elements will be unchanged.</para>
+    </listitem>
+
+    <listitem id="bbv2.reference.modules.sequence.max-element">
+      <indexterm zone="bbv2.reference.modules.sequence.max-element">
+        <primary>max-element</primary>
+        <secondary>sequence</secondary>
+      </indexterm>
+      <code language="jam">rule max-element ( elements + : ordered ? )</code>
+      <para>Returns the maximum number in <code language="jam">elements</code>.
+      Uses <code language="jam">ordered</code> for comparisons or
+      <link linkend="bbv2.reference.modules.numbers.less">numbers.less</link>
+      if none is provided.</para>
+    </listitem>
+
+    <listitem id="bbv2.reference.modules.sequence.select-highest-ranked">
+      <indexterm zone="bbv2.reference.modules.sequence.select-highest-ranked">
+        <primary>select-highest-ranked</primary>
+        <secondary>sequence</secondary>
+      </indexterm>
+      <code language="jam">rule select-highest-ranked ( elements * : ranks * )</code>
+      <para>Returns all of <code language="jam">elements</code> for which
+      the corresponding element in the parallel list
+      <code language="jam">rank</code> is equal to the maximum value in
+      <code language="jam">rank</code>.</para>
+    </listitem>
+
+  </orderedlist>
+
+</section>

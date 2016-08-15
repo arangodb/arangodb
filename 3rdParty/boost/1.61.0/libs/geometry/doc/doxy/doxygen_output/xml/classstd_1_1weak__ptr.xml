@@ -1,0 +1,63 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="classstd_1_1weak__ptr" kind="class" prot="public">
+    <compoundname>std::weak_ptr</compoundname>
+    <templateparamlist>
+      <param>
+        <type>typename</type>
+        <declname>T</declname>
+        <defname>T</defname>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="classstd_1_1weak__ptr_1a2346c22e2352ad88a4973f2c8aab91a5" prot="public" static="no" mutable="no">
+        <type>T</type>
+        <definition>T std::weak_ptr&lt; T &gt;::ptr</definition>
+        <argsstring></argsstring>
+        <name>ptr</name>
+        <briefdescription>
+<para>STL member. </para>        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="" line="1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="classstd_1_1weak__ptr_1a3385d327d4804d675b2a052265651a7b" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>T *</type>
+        <definition>T* std::weak_ptr&lt; T &gt;::operator-&gt;</definition>
+        <argsstring>()</argsstring>
+        <name>operator-&gt;</name>
+        <briefdescription>
+<para>STL member. </para>        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="" line="1"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+<para>STL class. </para>    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <collaborationgraph>
+      <node id="2175">
+        <label>T</label>
+      </node>
+      <node id="2174">
+        <label>std::weak_ptr&lt; T &gt;</label>
+        <childnode refid="2175" relation="usage">
+          <edgelabel>ptr</edgelabel>
+        </childnode>
+      </node>
+    </collaborationgraph>
+    <location file="[STL]" line="1"/>
+    <listofallmembers>
+      <member refid="classstd_1_1weak__ptr_1a3385d327d4804d675b2a052265651a7b" prot="public" virt="non-virtual"><scope>std::weak_ptr</scope><name>operator-&gt;</name></member>
+      <member refid="classstd_1_1weak__ptr_1a2346c22e2352ad88a4973f2c8aab91a5" prot="public" virt="non-virtual"><scope>std::weak_ptr</scope><name>ptr</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

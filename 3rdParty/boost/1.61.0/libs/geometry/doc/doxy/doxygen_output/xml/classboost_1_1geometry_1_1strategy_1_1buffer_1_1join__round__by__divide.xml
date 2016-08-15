@@ -1,0 +1,178 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="classboost_1_1geometry_1_1strategy_1_1buffer_1_1join__round__by__divide" kind="class" prot="public">
+    <compoundname>boost::geometry::strategy::buffer::join_round_by_divide</compoundname>
+    <includes local="no">buffer_join_round_by_divide.hpp</includes>
+      <sectiondef kind="private-attrib">
+      <memberdef kind="variable" id="classboost_1_1geometry_1_1strategy_1_1buffer_1_1join__round__by__divide_1adb74e7e27dd5927a0ec4602f987c5931" prot="private" static="no" mutable="no">
+        <type>std::size_t</type>
+        <definition>std::size_t boost::geometry::strategy::buffer::join_round_by_divide::m_max_level</definition>
+        <argsstring></argsstring>
+        <name>m_max_level</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/buffer_join_round_by_divide.hpp" line="145" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/buffer_join_round_by_divide.hpp" bodystart="145" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="classboost_1_1geometry_1_1strategy_1_1buffer_1_1join__round__by__divide_1a7d4034821f4a745c961123b3e732b222" prot="public" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Point</type>
+          </param>
+          <param>
+            <type>typename DistanceType</type>
+          </param>
+          <param>
+            <type>typename RangeOut</type>
+          </param>
+        </templateparamlist>
+        <type>bool</type>
+        <definition>bool boost::geometry::strategy::buffer::join_round_by_divide::apply</definition>
+        <argsstring>(Point const &amp;ip, Point const &amp;vertex, Point const &amp;perp1, Point const &amp;perp2, DistanceType const &amp;buffer_distance, RangeOut &amp;range_out) const </argsstring>
+        <name>apply</name>
+        <param>
+          <type>Point const &amp;</type>
+          <declname>ip</declname>
+        </param>
+        <param>
+          <type>Point const &amp;</type>
+          <declname>vertex</declname>
+        </param>
+        <param>
+          <type>Point const &amp;</type>
+          <declname>perp1</declname>
+        </param>
+        <param>
+          <type>Point const &amp;</type>
+          <declname>perp2</declname>
+        </param>
+        <param>
+          <type>DistanceType const &amp;</type>
+          <declname>buffer_distance</declname>
+        </param>
+        <param>
+          <type>RangeOut &amp;</type>
+          <declname>range_out</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/buffer_join_round_by_divide.hpp" line="89" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/buffer_join_round_by_divide.hpp" bodystart="85" bodyend="136"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1strategy_1_1buffer_1_1join__round__by__divide_1a2a0644df06292c93cdb18215eb01d84c" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type></type>
+        <definition>boost::geometry::strategy::buffer::join_round_by_divide::join_round_by_divide</definition>
+        <argsstring>(std::size_t max_level=4)</argsstring>
+        <name>join_round_by_divide</name>
+        <param>
+          <type>std::size_t</type>
+          <declname>max_level</declname>
+          <defval>4</defval>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/buffer_join_round_by_divide.hpp" line="36" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/buffer_join_round_by_divide.hpp" bodystart="34" bodyend="36"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1strategy_1_1buffer_1_1join__round__by__divide_1a7ad771a66722fcf5f4aa591456a9ada9" prot="public" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename PromotedType</type>
+          </param>
+          <param>
+            <type>typename Point</type>
+          </param>
+          <param>
+            <type>typename DistanceType</type>
+          </param>
+          <param>
+            <type>typename RangeOut</type>
+          </param>
+        </templateparamlist>
+        <type>void</type>
+        <definition>void boost::geometry::strategy::buffer::join_round_by_divide::mid_points</definition>
+        <argsstring>(Point const &amp;vertex, Point const &amp;p1, Point const &amp;p2, DistanceType const &amp;buffer_distance, RangeOut &amp;range_out, std::size_t level=1) const </argsstring>
+        <name>mid_points</name>
+        <param>
+          <type>Point const &amp;</type>
+          <declname>vertex</declname>
+        </param>
+        <param>
+          <type>Point const &amp;</type>
+          <declname>p1</declname>
+        </param>
+        <param>
+          <type>Point const &amp;</type>
+          <declname>p2</declname>
+        </param>
+        <param>
+          <type>DistanceType const &amp;</type>
+          <declname>buffer_distance</declname>
+        </param>
+        <param>
+          <type>RangeOut &amp;</type>
+          <declname>range_out</declname>
+        </param>
+        <param>
+          <type>std::size_t</type>
+          <declname>level</declname>
+          <defval>1</defval>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/buffer_join_round_by_divide.hpp" line="50" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/buffer_join_round_by_divide.hpp" bodystart="45" bodyend="82"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-static-func">
+      <memberdef kind="function" id="classboost_1_1geometry_1_1strategy_1_1buffer_1_1join__round__by__divide_1a2f8e2471c5527f36d7f1b53498f78119" prot="public" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename NumericType</type>
+          </param>
+        </templateparamlist>
+        <type>NumericType</type>
+        <definition>static NumericType boost::geometry::strategy::buffer::join_round_by_divide::max_distance</definition>
+        <argsstring>(NumericType const &amp;distance)</argsstring>
+        <name>max_distance</name>
+        <param>
+          <type>NumericType const &amp;</type>
+          <declname>distance</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/buffer_join_round_by_divide.hpp" line="140" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/buffer_join_round_by_divide.hpp" bodystart="139" bodyend="142"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/buffer_join_round_by_divide.hpp" line="31" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/buffer_join_round_by_divide.hpp" bodystart="30" bodyend="146"/>
+    <listofallmembers>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1buffer_1_1join__round__by__divide_1a7d4034821f4a745c961123b3e732b222" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::buffer::join_round_by_divide</scope><name>apply</name></member>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1buffer_1_1join__round__by__divide_1a2a0644df06292c93cdb18215eb01d84c" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::buffer::join_round_by_divide</scope><name>join_round_by_divide</name></member>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1buffer_1_1join__round__by__divide_1adb74e7e27dd5927a0ec4602f987c5931" prot="private" virt="non-virtual"><scope>boost::geometry::strategy::buffer::join_round_by_divide</scope><name>m_max_level</name></member>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1buffer_1_1join__round__by__divide_1a2f8e2471c5527f36d7f1b53498f78119" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::buffer::join_round_by_divide</scope><name>max_distance</name></member>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1buffer_1_1join__round__by__divide_1a7ad771a66722fcf5f4aa591456a9ada9" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::buffer::join_round_by_divide</scope><name>mid_points</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

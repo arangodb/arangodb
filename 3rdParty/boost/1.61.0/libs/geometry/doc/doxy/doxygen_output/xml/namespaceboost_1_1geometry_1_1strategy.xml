@@ -1,0 +1,25 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="namespaceboost_1_1geometry_1_1strategy" kind="namespace">
+    <compoundname>boost::geometry::strategy</compoundname>
+    <innerclass refid="structboost_1_1geometry_1_1strategy_1_1not__implemented" prot="public">boost::geometry::strategy::not_implemented</innerclass>
+    <innernamespace refid="namespaceboost_1_1geometry_1_1strategy_1_1intersection">boost::geometry::strategy::intersection</innernamespace>
+    <innernamespace refid="namespaceboost_1_1geometry_1_1strategy_1_1area">boost::geometry::strategy::area</innernamespace>
+    <innernamespace refid="namespaceboost_1_1geometry_1_1strategy_1_1buffer">boost::geometry::strategy::buffer</innernamespace>
+    <innernamespace refid="namespaceboost_1_1geometry_1_1strategy_1_1centroid">boost::geometry::strategy::centroid</innernamespace>
+    <innernamespace refid="namespaceboost_1_1geometry_1_1strategy_1_1compare">boost::geometry::strategy::compare</innernamespace>
+    <innernamespace refid="namespaceboost_1_1geometry_1_1strategy_1_1covered__by">boost::geometry::strategy::covered_by</innernamespace>
+    <innernamespace refid="namespaceboost_1_1geometry_1_1strategy_1_1distance">boost::geometry::strategy::distance</innernamespace>
+    <innernamespace refid="namespaceboost_1_1geometry_1_1strategy_1_1side">boost::geometry::strategy::side</innernamespace>
+    <innernamespace refid="namespaceboost_1_1geometry_1_1strategy_1_1transform">boost::geometry::strategy::transform</innernamespace>
+    <innernamespace refid="namespaceboost_1_1geometry_1_1strategy_1_1within">boost::geometry::strategy::within</innernamespace>
+    <innernamespace refid="namespaceboost_1_1geometry_1_1strategy_1_1convex__hull">boost::geometry::strategy::convex_hull</innernamespace>
+    <innernamespace refid="namespaceboost_1_1geometry_1_1strategy_1_1relate">boost::geometry::strategy::relate</innernamespace>
+    <innernamespace refid="namespaceboost_1_1geometry_1_1strategy_1_1simplify">boost::geometry::strategy::simplify</innernamespace>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/overlay/clip_linestring.hpp" line="30"/>
+  </compounddef>
+</doxygen>

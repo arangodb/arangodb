@@ -1,0 +1,91 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>How to read this documentation</title>
+<link rel="stylesheet" href="../../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../../index.html" title="Boost.Test">
+<link rel="up" href="../intro.html" title="Introduction">
+<link rel="prev" href="design_rationale.html" title="Design rationale">
+<link rel="next" href="../usage_variants.html" title="Usage variants">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="design_rationale.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../intro.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../usage_variants.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_test.intro.how_to_read"></a><a class="link" href="how_to_read.html" title="How to read this documentation">How to read this documentation</a>
+</h3></div></div></div>
+<p>
+        This documentation is structured by what <span class="bold"><strong>you</strong></span>,
+        as a user, need to know to successfully use the <span class="emphasis"><em>Unit Test Framework</em></span>
+        and the order of decisions you have to make and order of complexity of the
+        problems you might encounter. If you ever find yourself facing with some
+        unclear term feel free to jump directly to the <a class="link" href="../section_glossary.html" title="Glossary">glossary</a>
+        section, where short definitions for all used terms were collected.
+      </p>
+<p>
+        Typically, when writing a test module using the <span class="emphasis"><em>Unit Test Framework</em></span>
+        you have to go through the following steps:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" type="disc">
+<li class="listitem">
+            You decide how you want to incorporate the <span class="emphasis"><em>Unit Test Framework</em></span>:
+            <code class="computeroutput"><span class="preprocessor">#include</span></code> it as a header-only
+            library, or link with it as a static library, or use it as a shared (or
+            dynamically loaded) library. For details on this topic see section <a class="link" href="../usage_variants.html" title="Usage variants">Usage variants</a>.
+          </li>
+<li class="listitem">
+            You add a <a class="link" href="../section_glossary.html#test_case">test case</a> into a <a class="link" href="../section_glossary.html#ref_test_tree">test
+            tree</a>. For details, see section <a class="link" href="../tests_organization/test_cases.html" title="Test cases">Test
+            cases</a>.
+          </li>
+<li class="listitem">
+            You perform correctness checks of the code under tested. For details,
+            see section <a class="link" href="../testing_tools.html" title="Writing unit tests">Writing unit tests</a>.
+          </li>
+<li class="listitem">
+            You perform the initialization of code under test before each test case.
+            For details, see section <a class="link" href="../tests_organization/fixtures.html" title="Fixtures">Fixtures</a>.
+          </li>
+<li class="listitem">
+            You might want to customize the way test failures are reported. For details,
+            see section <a class="link" href="../test_output.html" title="Controlling outputs">Controlling output</a>.
+          </li>
+<li class="listitem">
+            You can control the run-time behavior of the built test module (e.g.,
+            run only selected tests, change the output format). This is covered in
+            section <a class="link" href="../runtime_config.html" title="Runtime parameters">Runtime configuration</a>.
+          </li>
+</ul></div>
+<p>
+        If you can't find answer to your question in any of the section mentioned
+        above or if you believe you need even more configuration options, you can
+        check <a class="link" href="../adv_scenarios.html" title="Advanced Usage Scenarios">Advanced usage scenarios</a>
+        section.
+      </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2001-2016 Boost.Test contributors<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="design_rationale.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../intro.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../usage_variants.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

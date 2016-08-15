@@ -1,0 +1,40 @@
+# Boost Container Library Test Jamfile
+
+#  (C) Copyright Ion Gaztanaga 2009-2013.
+# Use, modification and distribution are subject to the
+# Boost Software License, Version 1.0. (See accompanying file
+# LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+
+# Adapted from John Maddock's TR1 Jamfile.v2
+# Copyright John Maddock 2005.
+# Use, modification and distribution are subject to the
+# Boost Software License, Version 1.0. (See accompanying file
+# LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+
+project
+    : requirements 
+      <link>shared:<define>BOOST_CONTAINER_DYN_LINK=1 
+      <toolset>gcc-cygwin:<link>static
+    ;
+
+# this rule enumerates through all the sources and invokes
+# the run rule for each source, the result is a list of all
+# the run rules, which we can pass on to the test_suite rule:
+
+rule test_all
+{
+   local all_rules = ;
+
+   for local fileb in [ glob *.cpp ]
+   {
+      all_rules += [ run $(fileb)  /boost/container//boost_container /boost/timer//boost_timer
+      :  # additional args
+      :  # test-files
+      :  # requirements
+      ] ;
+   }
+
+   return $(all_rules) ;
+}
+
+test-suite container_test : [ test_all r ] ;

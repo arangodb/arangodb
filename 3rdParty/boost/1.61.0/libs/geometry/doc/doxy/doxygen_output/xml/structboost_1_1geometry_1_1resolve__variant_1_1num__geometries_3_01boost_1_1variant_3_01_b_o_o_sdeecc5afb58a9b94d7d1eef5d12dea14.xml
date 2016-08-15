@@ -1,0 +1,39 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="structboost_1_1geometry_1_1resolve__variant_1_1num__geometries_3_01boost_1_1variant_3_01_b_o_o_sdeecc5afb58a9b94d7d1eef5d12dea14" kind="struct" prot="public">
+    <compoundname>boost::geometry::resolve_variant::num_geometries&lt; boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; &gt;::visitor</compoundname>
+    <includes local="no">num_geometries.hpp</includes>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="structboost_1_1geometry_1_1resolve__variant_1_1num__geometries_3_01boost_1_1variant_3_01_b_o_o_sdeecc5afb58a9b94d7d1eef5d12dea14_1af14f676985e983c9a1e23346381e4d47" prot="public" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Geometry</type>
+          </param>
+        </templateparamlist>
+        <type>std::size_t</type>
+        <definition>std::size_t boost::geometry::resolve_variant::num_geometries&lt; boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; &gt;::visitor::operator()</definition>
+        <argsstring>(Geometry const &amp;geometry) const </argsstring>
+        <name>operator()</name>
+        <param>
+          <type>Geometry const &amp;</type>
+          <declname>geometry</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/num_geometries.hpp" line="106" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/num_geometries.hpp" bodystart="105" bodyend="108"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/num_geometries.hpp" line="103" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/num_geometries.hpp" bodystart="102" bodyend="109"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1resolve__variant_1_1num__geometries_3_01boost_1_1variant_3_01_b_o_o_sdeecc5afb58a9b94d7d1eef5d12dea14_1af14f676985e983c9a1e23346381e4d47" prot="public" virt="non-virtual"><scope>boost::geometry::resolve_variant::num_geometries&lt; boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; &gt;::visitor</scope><name>operator()</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

@@ -1,0 +1,12 @@
+{
+    "key": "mpi",
+    "name": "MPI",
+    "authors": [
+        "Douglas Gregor",
+        "Matthias Troyer"
+    ],
+    "description": "Message Passing Interface library, for use in distributed-memory parallel application programming.",
+    "category": [
+        "Concurrent"
+    ]
+}

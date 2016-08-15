@@ -1,0 +1,14 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="dir_fb95e015b0511ec55c8d28ef36c37b2d" kind="dir">
+    <compoundname>/home/travis/build/boostorg/boost/boost/geometry/arithmetic/</compoundname>
+    <innerfile refid="arithmetic_8hpp">arithmetic.hpp</innerfile>
+    <innerfile refid="determinant_8hpp">determinant.hpp</innerfile>
+    <innerfile refid="dot__product_8hpp">dot_product.hpp</innerfile>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/arithmetic/"/>
+  </compounddef>
+</doxygen>

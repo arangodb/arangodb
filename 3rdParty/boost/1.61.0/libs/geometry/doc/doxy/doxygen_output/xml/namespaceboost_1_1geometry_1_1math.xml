@@ -1,0 +1,983 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="namespaceboost_1_1geometry_1_1math" kind="namespace">
+    <compoundname>boost::geometry::math</compoundname>
+      <sectiondef kind="func">
+      <memberdef kind="function" id="namespaceboost_1_1geometry_1_1math_1a5195b9c2f433a755b96ea11b4b925542" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename T</type>
+          </param>
+        </templateparamlist>
+        <type>T</type>
+        <definition>T boost::geometry::math::abs</definition>
+        <argsstring>(T const &amp;value)</argsstring>
+        <name>abs</name>
+        <param>
+          <type>T const &amp;</type>
+          <declname>value</declname>
+        </param>
+        <briefdescription>
+<para>Short utility to workaround gcc/clang problem that abs is converting to integer and that older versions of MSVC does not support abs of long long... </para>        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/util/math.hpp" line="732" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/util/math.hpp" bodystart="731" bodyend="734"/>
+      </memberdef>
+      <memberdef kind="function" id="namespaceboost_1_1geometry_1_1math_1a424ff6fb28c45c2ef9efe69d37417122" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename DegreeOrRadian</type>
+          </param>
+          <param>
+            <type>typename T</type>
+          </param>
+        </templateparamlist>
+        <type>T</type>
+        <definition>T boost::geometry::math::as_radian</definition>
+        <argsstring>(T const &amp;value)</argsstring>
+        <name>as_radian</name>
+        <param>
+          <type>T const &amp;</type>
+          <declname>value</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/util/math.hpp" line="654" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/util/math.hpp" bodystart="653" bodyend="656"/>
+      </memberdef>
+      <memberdef kind="function" id="namespaceboost_1_1geometry_1_1math_1a5918e366fa038f972973d8c2a11cdf5d" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename T</type>
+          </param>
+        </templateparamlist>
+        <type>T</type>
+        <definition>T boost::geometry::math::d2r</definition>
+        <argsstring>()</argsstring>
+        <name>d2r</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/util/math.hpp" line="593" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/util/math.hpp" bodystart="592" bodyend="596"/>
+      </memberdef>
+      <memberdef kind="function" id="namespaceboost_1_1geometry_1_1math_1a0ef8f8d4839a1eb21d496f6e2a2fe218" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename T1</type>
+          </param>
+          <param>
+            <type>typename T2</type>
+          </param>
+        </templateparamlist>
+        <type>bool</type>
+        <definition>bool boost::geometry::math::equals</definition>
+        <argsstring>(T1 const &amp;a, T2 const &amp;b)</argsstring>
+        <name>equals</name>
+        <param>
+          <type>T1 const &amp;</type>
+          <declname>a</declname>
+        </param>
+        <param>
+          <type>T2 const &amp;</type>
+          <declname>b</declname>
+        </param>
+        <briefdescription>
+<para>returns true if both arguments are equal. </para>        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>a</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>first argument </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>b</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>second argument </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>true if a == b </para></simplesect>
+<simplesect kind="note"><para>If both a and b are of an integral type, comparison is done by ==. If one of the types is floating point, comparison is done by abs and comparing with epsilon. If one of the types is non-fundamental, it might be a high-precision number and comparison is done using the == operator of that class. </para></simplesect>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/util/math.hpp" line="538" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/util/math.hpp" bodystart="537" bodyend="543"/>
+      </memberdef>
+      <memberdef kind="function" id="namespaceboost_1_1geometry_1_1math_1acb3d77c27ffcec5c25756532580b5214" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename T1</type>
+          </param>
+          <param>
+            <type>typename T2</type>
+          </param>
+        </templateparamlist>
+        <type>bool</type>
+        <definition>bool boost::geometry::math::equals_with_epsilon</definition>
+        <argsstring>(T1 const &amp;a, T2 const &amp;b)</argsstring>
+        <name>equals_with_epsilon</name>
+        <param>
+          <type>T1 const &amp;</type>
+          <declname>a</declname>
+        </param>
+        <param>
+          <type>T2 const &amp;</type>
+          <declname>b</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/util/math.hpp" line="547" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/util/math.hpp" bodystart="546" bodyend="552"/>
+      </memberdef>
+      <memberdef kind="function" id="namespaceboost_1_1geometry_1_1math_1aa3a09408a776f89964386d65b5c3c5e5" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename DegreeOrRadian</type>
+          </param>
+          <param>
+            <type>typename T</type>
+          </param>
+        </templateparamlist>
+        <type>T</type>
+        <definition>T boost::geometry::math::from_radian</definition>
+        <argsstring>(T const &amp;value)</argsstring>
+        <name>from_radian</name>
+        <param>
+          <type>T const &amp;</type>
+          <declname>value</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/util/math.hpp" line="660" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/util/math.hpp" bodystart="659" bodyend="662"/>
+      </memberdef>
+      <memberdef kind="function" id="namespaceboost_1_1geometry_1_1math_1a21699893f254f35ca1d07d74294ace93" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename T</type>
+          </param>
+        </templateparamlist>
+        <type>T</type>
+        <definition>T boost::geometry::math::half_pi</definition>
+        <argsstring>()</argsstring>
+        <name>half_pi</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/util/math.hpp" line="506" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/util/math.hpp" bodystart="506" bodyend="506"/>
+      </memberdef>
+      <memberdef kind="function" id="namespaceboost_1_1geometry_1_1math_1a3e5b88abd56e4edb732c5f2ebd01671f" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename T</type>
+          </param>
+        </templateparamlist>
+        <type>T</type>
+        <definition>T boost::geometry::math::hav</definition>
+        <argsstring>(T const &amp;theta)</argsstring>
+        <name>hav</name>
+        <param>
+          <type>T const &amp;</type>
+          <declname>theta</declname>
+        </param>
+        <briefdescription>
+<para>Calculates the haversine of an angle. </para>        </briefdescription>
+        <detaileddescription>
+<para><simplesect kind="note"><para>See <ulink url="http://en.wikipedia.org/wiki/Haversine_formula">http://en.wikipedia.org/wiki/Haversine_formula</ulink> haversin(alpha) = sin2(alpha/2) </para></simplesect>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/util/math.hpp" line="673" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/util/math.hpp" bodystart="672" bodyend="677"/>
+      </memberdef>
+      <memberdef kind="function" id="namespaceboost_1_1geometry_1_1math_1ae8855788de4b521d3387bfbc115795f6" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename T1</type>
+          </param>
+          <param>
+            <type>typename T2</type>
+          </param>
+        </templateparamlist>
+        <type>bool</type>
+        <definition>bool boost::geometry::math::larger</definition>
+        <argsstring>(T1 const &amp;a, T2 const &amp;b)</argsstring>
+        <name>larger</name>
+        <param>
+          <type>T1 const &amp;</type>
+          <declname>a</declname>
+        </param>
+        <param>
+          <type>T2 const &amp;</type>
+          <declname>b</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/util/math.hpp" line="565" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/util/math.hpp" bodystart="564" bodyend="570"/>
+      </memberdef>
+      <memberdef kind="function" id="namespaceboost_1_1geometry_1_1math_1ae532ea90cdfbd4212e8978cf155dd7b5" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename T1</type>
+          </param>
+          <param>
+            <type>typename T2</type>
+          </param>
+        </templateparamlist>
+        <type>bool</type>
+        <definition>bool boost::geometry::math::larger_or_equals</definition>
+        <argsstring>(T1 const &amp;a, T2 const &amp;b)</argsstring>
+        <name>larger_or_equals</name>
+        <param>
+          <type>T1 const &amp;</type>
+          <declname>a</declname>
+        </param>
+        <param>
+          <type>T2 const &amp;</type>
+          <declname>b</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/util/math.hpp" line="583" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/util/math.hpp" bodystart="582" bodyend="588"/>
+      </memberdef>
+      <memberdef kind="function" id="namespaceboost_1_1geometry_1_1math_1a9d91147d64ca68045bca9ff04d9ad1b1" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Units</type>
+          </param>
+          <param>
+            <type>typename CoordinateType</type>
+          </param>
+        </templateparamlist>
+        <type>CoordinateType</type>
+        <definition>CoordinateType boost::geometry::math::longitude_distance_signed</definition>
+        <argsstring>(CoordinateType const &amp;longitude1, CoordinateType const &amp;longitude2)</argsstring>
+        <name>longitude_distance_signed</name>
+        <param>
+          <type>CoordinateType const &amp;</type>
+          <declname>longitude1</declname>
+        </param>
+        <param>
+          <type>CoordinateType const &amp;</type>
+          <declname>longitude2</declname>
+        </param>
+        <briefdescription>
+<para>Short utility to calculate difference between two longitudes normalized in range (-180, 180]. </para>        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>Units</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>The units of the coordindate system in the spheroid </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>CoordinateType</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>The type of the coordinates </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>longitude1</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Longitude 1 </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>longitude2</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Longitude 2 </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/util/normalize_spheroidal_coordinates.hpp" line="251" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/util/normalize_spheroidal_coordinates.hpp" bodystart="249" bodyend="255"/>
+      </memberdef>
+      <memberdef kind="function" id="namespaceboost_1_1geometry_1_1math_1aec917cf38a9c90c00206e21ad23b5dfb" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Units</type>
+          </param>
+          <param>
+            <type>typename CoordinateType</type>
+          </param>
+        </templateparamlist>
+        <type>CoordinateType</type>
+        <definition>CoordinateType boost::geometry::math::longitude_distance_unsigned</definition>
+        <argsstring>(CoordinateType const &amp;longitude1, CoordinateType const &amp;longitude2)</argsstring>
+        <name>longitude_distance_unsigned</name>
+        <param>
+          <type>CoordinateType const &amp;</type>
+          <declname>longitude1</declname>
+        </param>
+        <param>
+          <type>CoordinateType const &amp;</type>
+          <declname>longitude2</declname>
+        </param>
+        <briefdescription>
+<para>Short utility to calculate difference between two longitudes normalized in range [0, 360). </para>        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>Units</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>The units of the coordindate system in the spheroid </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>CoordinateType</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>The type of the coordinates </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>longitude1</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Longitude 1 </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>longitude2</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Longitude 2 </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/util/normalize_spheroidal_coordinates.hpp" line="270" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/util/normalize_spheroidal_coordinates.hpp" bodystart="268" bodyend="283"/>
+      </memberdef>
+      <memberdef kind="function" id="namespaceboost_1_1geometry_1_1math_1a69f85567fc9e5a5cf6e1fd2069305130" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename T</type>
+          </param>
+        </templateparamlist>
+        <type>detail::modulo&lt; T &gt;::return_type</type>
+        <definition>detail::modulo&lt;T&gt;::return_type boost::geometry::math::mod</definition>
+        <argsstring>(T const &amp;value1, T const &amp;value2)</argsstring>
+        <name>mod</name>
+        <param>
+          <type>T const &amp;</type>
+          <declname>value1</declname>
+        </param>
+        <param>
+          <type>T const &amp;</type>
+          <declname>value2</declname>
+        </param>
+        <briefdescription>
+<para>Short utility to return the modulo of two values. </para>        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>value1</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>First value </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>value2</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Second value </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>The result of the modulo operation on the (ordered) pair (value1, value2) </para></simplesect>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/util/math.hpp" line="718" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/util/math.hpp" bodystart="717" bodyend="723"/>
+      </memberdef>
+      <memberdef kind="function" id="namespaceboost_1_1geometry_1_1math_1a72104dcaa7e56e1a859ce5216e58a132" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Units</type>
+          </param>
+          <param>
+            <type>typename CoordinateType</type>
+          </param>
+        </templateparamlist>
+        <type>void</type>
+        <definition>void boost::geometry::math::normalize_longitude</definition>
+        <argsstring>(CoordinateType &amp;longitude)</argsstring>
+        <name>normalize_longitude</name>
+        <param>
+          <type>CoordinateType &amp;</type>
+          <declname>longitude</declname>
+        </param>
+        <briefdescription>
+<para>Short utility to normalize the longitude on a spheroid. Note that in general both coordinates should be normalized at once. This utility is suitable e.g. for normalization of the difference of longitudes. </para>        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>Units</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>The units of the coordindate system in the spheroid </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>CoordinateType</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>The type of the coordinates </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>longitude</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Longitude </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/util/normalize_spheroidal_coordinates.hpp" line="231" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/util/normalize_spheroidal_coordinates.hpp" bodystart="230" bodyend="236"/>
+      </memberdef>
+      <memberdef kind="function" id="namespaceboost_1_1geometry_1_1math_1a7c0eae011cc2ef53ea2dce1b3e86f375" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Units</type>
+          </param>
+          <param>
+            <type>typename CoordinateType</type>
+          </param>
+        </templateparamlist>
+        <type>void</type>
+        <definition>void boost::geometry::math::normalize_spheroidal_box_coordinates</definition>
+        <argsstring>(CoordinateType &amp;longitude1, CoordinateType &amp;latitude1, CoordinateType &amp;longitude2, CoordinateType &amp;latitude2)</argsstring>
+        <name>normalize_spheroidal_box_coordinates</name>
+        <param>
+          <type>CoordinateType &amp;</type>
+          <declname>longitude1</declname>
+        </param>
+        <param>
+          <type>CoordinateType &amp;</type>
+          <declname>latitude1</declname>
+        </param>
+        <param>
+          <type>CoordinateType &amp;</type>
+          <declname>longitude2</declname>
+        </param>
+        <param>
+          <type>CoordinateType &amp;</type>
+          <declname>latitude2</declname>
+        </param>
+        <briefdescription>
+<para>Short utility to normalize the coordinates of a box on a spheroid. </para>        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>Units</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>The units of the coordindate system in the spheroid </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>CoordinateType</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>The type of the coordinates </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>longitude1</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Minimum longitude of the box </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>latitude1</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Minimum latitude of the box </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>longitude2</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Maximum longitude of the box </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>latitude2</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Maximum latitude of the box </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/util/normalize_spheroidal_box_coordinates.hpp" line="122" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/util/normalize_spheroidal_box_coordinates.hpp" bodystart="118" bodyend="127"/>
+      </memberdef>
+      <memberdef kind="function" id="namespaceboost_1_1geometry_1_1math_1aa75647c17f8c94299f95c965831c19d1" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Units</type>
+          </param>
+          <param>
+            <type>typename CoordinateType</type>
+          </param>
+        </templateparamlist>
+        <type>void</type>
+        <definition>void boost::geometry::math::normalize_spheroidal_box_coordinates</definition>
+        <argsstring>(CoordinateType &amp;longitude1, CoordinateType &amp;latitude1, CoordinateType &amp;longitude2, CoordinateType &amp;latitude2, bool band)</argsstring>
+        <name>normalize_spheroidal_box_coordinates</name>
+        <param>
+          <type>CoordinateType &amp;</type>
+          <declname>longitude1</declname>
+        </param>
+        <param>
+          <type>CoordinateType &amp;</type>
+          <declname>latitude1</declname>
+        </param>
+        <param>
+          <type>CoordinateType &amp;</type>
+          <declname>longitude2</declname>
+        </param>
+        <param>
+          <type>CoordinateType &amp;</type>
+          <declname>latitude2</declname>
+        </param>
+        <param>
+          <type>bool</type>
+          <declname>band</declname>
+        </param>
+        <briefdescription>
+<para>Short utility to normalize the coordinates of a box on a spheroid. </para>        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>Units</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>The units of the coordindate system in the spheroid </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>CoordinateType</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>The type of the coordinates </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>longitude1</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Minimum longitude of the box </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>latitude1</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Minimum latitude of the box </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>longitude2</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Maximum longitude of the box </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>latitude2</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Maximum latitude of the box </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>band</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Indicates whether the box should be treated as a band or not and avoid the computation done in the other version of the function </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/util/normalize_spheroidal_box_coordinates.hpp" line="147" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/util/normalize_spheroidal_box_coordinates.hpp" bodystart="142" bodyend="152"/>
+      </memberdef>
+      <memberdef kind="function" id="namespaceboost_1_1geometry_1_1math_1a2ee4804e2c2559ba78a8f95bb81fc71e" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Units</type>
+          </param>
+          <param>
+            <type>typename CoordinateType</type>
+          </param>
+        </templateparamlist>
+        <type>void</type>
+        <definition>void boost::geometry::math::normalize_spheroidal_coordinates</definition>
+        <argsstring>(CoordinateType &amp;longitude, CoordinateType &amp;latitude)</argsstring>
+        <name>normalize_spheroidal_coordinates</name>
+        <param>
+          <type>CoordinateType &amp;</type>
+          <declname>longitude</declname>
+        </param>
+        <param>
+          <type>CoordinateType &amp;</type>
+          <declname>latitude</declname>
+        </param>
+        <briefdescription>
+<para>Short utility to normalize the coordinates on a spheroid. </para>        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>Units</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>The units of the coordindate system in the spheroid </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>CoordinateType</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>The type of the coordinates </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>longitude</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Longitude </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>latitude</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Latitude </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/util/normalize_spheroidal_coordinates.hpp" line="212" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/util/normalize_spheroidal_coordinates.hpp" bodystart="210" bodyend="217"/>
+      </memberdef>
+      <memberdef kind="function" id="namespaceboost_1_1geometry_1_1math_1a8e747ae1fe84655e4235f2f47c4aac99" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename T</type>
+          </param>
+        </templateparamlist>
+        <type>T</type>
+        <definition>T boost::geometry::math::pi</definition>
+        <argsstring>()</argsstring>
+        <name>pi</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/util/math.hpp" line="500" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/util/math.hpp" bodystart="500" bodyend="500"/>
+      </memberdef>
+      <memberdef kind="function" id="namespaceboost_1_1geometry_1_1math_1ae5f6e1d78c4914a741b9413b937eae65" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename T</type>
+          </param>
+        </templateparamlist>
+        <type>T</type>
+        <definition>T boost::geometry::math::r2d</definition>
+        <argsstring>()</argsstring>
+        <name>r2d</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/util/math.hpp" line="600" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/util/math.hpp" bodystart="599" bodyend="603"/>
+      </memberdef>
+      <memberdef kind="function" id="namespaceboost_1_1geometry_1_1math_1a51acf023bf8065ec861e01f4c4cc805f" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename T</type>
+          </param>
+        </templateparamlist>
+        <type>T</type>
+        <definition>T boost::geometry::math::relaxed_epsilon</definition>
+        <argsstring>(T const &amp;factor)</argsstring>
+        <name>relaxed_epsilon</name>
+        <param>
+          <type>T const &amp;</type>
+          <declname>factor</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/util/math.hpp" line="510" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/util/math.hpp" bodystart="509" bodyend="512"/>
+      </memberdef>
+      <memberdef kind="function" id="namespaceboost_1_1geometry_1_1math_1a9ee0eff484a0f70bc80f0c1a26aef4ad" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Result</type>
+          </param>
+          <param>
+            <type>typename T</type>
+          </param>
+        </templateparamlist>
+        <type>Result</type>
+        <definition>Result boost::geometry::math::rounding_cast</definition>
+        <argsstring>(T const &amp;v)</argsstring>
+        <name>rounding_cast</name>
+        <param>
+          <type>T const &amp;</type>
+          <declname>v</declname>
+        </param>
+        <briefdescription>
+<para>Short utility to cast a value possibly rounding it to the nearest integral value. </para>        </briefdescription>
+        <detaileddescription>
+<para><simplesect kind="note"><para>If the source T is NOT an integral type and Result is an integral type the value is rounded towards the closest integral value. Otherwise it&apos;s casted without rounding. </para></simplesect>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/util/math.hpp" line="757" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/util/math.hpp" bodystart="756" bodyend="759"/>
+      </memberdef>
+      <memberdef kind="function" id="namespaceboost_1_1geometry_1_1math_1a39f35b486fe993efe243015b3bfcb12b" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename T</type>
+          </param>
+        </templateparamlist>
+        <type>T</type>
+        <definition>T boost::geometry::math::scaled_epsilon</definition>
+        <argsstring>(T const &amp;value)</argsstring>
+        <name>scaled_epsilon</name>
+        <param>
+          <type>T const &amp;</type>
+          <declname>value</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/util/math.hpp" line="516" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/util/math.hpp" bodystart="515" bodyend="518"/>
+      </memberdef>
+      <memberdef kind="function" id="namespaceboost_1_1geometry_1_1math_1a90d4a8c844454f90a014a6a506f30b2f" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename T</type>
+          </param>
+        </templateparamlist>
+        <type>int</type>
+        <definition>int boost::geometry::math::sign</definition>
+        <argsstring>(T const &amp;value)</argsstring>
+        <name>sign</name>
+        <param>
+          <type>T const &amp;</type>
+          <declname>value</declname>
+        </param>
+        <briefdescription>
+<para>Short utility to calculate the sign of a number: -1 (negative), 0 (zero), 1 (positive) </para>        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/util/math.hpp" line="742" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/util/math.hpp" bodystart="741" bodyend="745"/>
+      </memberdef>
+      <memberdef kind="function" id="namespaceboost_1_1geometry_1_1math_1a1fcb14beeef88ba80fc81536339b8a9c" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename T1</type>
+          </param>
+          <param>
+            <type>typename T2</type>
+          </param>
+        </templateparamlist>
+        <type>bool</type>
+        <definition>bool boost::geometry::math::smaller</definition>
+        <argsstring>(T1 const &amp;a, T2 const &amp;b)</argsstring>
+        <name>smaller</name>
+        <param>
+          <type>T1 const &amp;</type>
+          <declname>a</declname>
+        </param>
+        <param>
+          <type>T2 const &amp;</type>
+          <declname>b</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/util/math.hpp" line="556" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/util/math.hpp" bodystart="555" bodyend="561"/>
+      </memberdef>
+      <memberdef kind="function" id="namespaceboost_1_1geometry_1_1math_1a1e8c7d337146a145aa98eac9cf49a65d" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename T1</type>
+          </param>
+          <param>
+            <type>typename T2</type>
+          </param>
+        </templateparamlist>
+        <type>bool</type>
+        <definition>bool boost::geometry::math::smaller_or_equals</definition>
+        <argsstring>(T1 const &amp;a, T2 const &amp;b)</argsstring>
+        <name>smaller_or_equals</name>
+        <param>
+          <type>T1 const &amp;</type>
+          <declname>a</declname>
+        </param>
+        <param>
+          <type>T2 const &amp;</type>
+          <declname>b</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/util/math.hpp" line="574" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/util/math.hpp" bodystart="573" bodyend="579"/>
+      </memberdef>
+      <memberdef kind="function" id="namespaceboost_1_1geometry_1_1math_1a9831a2a89659dff736070d80ed20738f" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename T</type>
+          </param>
+        </templateparamlist>
+        <type>T</type>
+        <definition>T boost::geometry::math::sqr</definition>
+        <argsstring>(T const &amp;value)</argsstring>
+        <name>sqr</name>
+        <param>
+          <type>T const &amp;</type>
+          <declname>value</declname>
+        </param>
+        <briefdescription>
+<para>Short utility to return the square. </para>        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>value</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Value to calculate the square from </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>The squared value </para></simplesect>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/util/math.hpp" line="687" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/util/math.hpp" bodystart="686" bodyend="689"/>
+      </memberdef>
+      <memberdef kind="function" id="namespaceboost_1_1geometry_1_1math_1a7f2abcc0afdf9ec19890bd6debdf8e87" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename T</type>
+          </param>
+        </templateparamlist>
+        <type>detail::square_root&lt; T &gt;::return_type</type>
+        <definition>detail::square_root&lt;T&gt;::return_type boost::geometry::math::sqrt</definition>
+        <argsstring>(T const &amp;value)</argsstring>
+        <name>sqrt</name>
+        <param>
+          <type>T const &amp;</type>
+          <declname>value</declname>
+        </param>
+        <briefdescription>
+<para>Short utility to return the square root. </para>        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>value</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Value to calculate the square root from </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>The square root value </para></simplesect>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/util/math.hpp" line="700" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/util/math.hpp" bodystart="699" bodyend="705"/>
+      </memberdef>
+      <memberdef kind="function" id="namespaceboost_1_1geometry_1_1math_1a4e378b7874bd19dcb42710747a24d675" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename T</type>
+          </param>
+        </templateparamlist>
+        <type>T</type>
+        <definition>T boost::geometry::math::two_pi</definition>
+        <argsstring>()</argsstring>
+        <name>two_pi</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/util/math.hpp" line="503" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/util/math.hpp" bodystart="503" bodyend="503"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/util/math.hpp" line="43"/>
+  </compounddef>
+</doxygen>

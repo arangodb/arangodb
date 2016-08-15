@@ -1,0 +1,48 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="structboost_1_1geometry_1_1strategy_1_1distance_1_1comparable_1_1cross__track_1_1return__type" kind="struct" prot="public">
+    <compoundname>boost::geometry::strategy::distance::comparable::cross_track::return_type</compoundname>
+    <basecompoundref refid="structboost_1_1geometry_1_1promote__floating__point" prot="public" virt="non-virtual">boost::geometry::promote_floating_point&lt; select_calculation_type&lt; Point, PointOfSegment, CalculationType &gt;::type &gt;</basecompoundref>
+    <includes local="no">distance_cross_track.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename Point</type>
+      </param>
+      <param>
+        <type>typename PointOfSegment</type>
+      </param>
+    </templateparamlist>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <inheritancegraph>
+      <node id="1207">
+        <label>boost::geometry::promote_floating_point&lt; select_calculation_type&lt; Point, PointOfSegment, CalculationType &gt;::type &gt;</label>
+        <link refid="structboost_1_1geometry_1_1promote__floating__point"/>
+      </node>
+      <node id="1206">
+        <label>boost::geometry::strategy::distance::comparable::cross_track&lt; CalculationType, Strategy &gt;::return_type&lt; Point, PointOfSegment &gt;</label>
+        <link refid="structboost_1_1geometry_1_1strategy_1_1distance_1_1comparable_1_1cross__track_1_1return__type"/>
+        <childnode refid="1207" relation="public-inheritance">
+        </childnode>
+      </node>
+    </inheritancegraph>
+    <collaborationgraph>
+      <node id="1209">
+        <label>boost::geometry::promote_floating_point&lt; select_calculation_type&lt; Point, PointOfSegment, CalculationType &gt;::type &gt;</label>
+        <link refid="structboost_1_1geometry_1_1promote__floating__point"/>
+      </node>
+      <node id="1208">
+        <label>boost::geometry::strategy::distance::comparable::cross_track&lt; CalculationType, Strategy &gt;::return_type&lt; Point, PointOfSegment &gt;</label>
+        <link refid="structboost_1_1geometry_1_1strategy_1_1distance_1_1comparable_1_1cross__track_1_1return__type"/>
+        <childnode refid="1209" relation="public-inheritance">
+        </childnode>
+      </node>
+    </collaborationgraph>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/distance_cross_track.hpp" line="341" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/distance_cross_track.hpp" bodystart="331" bodyend="341"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1promote__floating__point_1a732c9e3e88ac0957f4cae668f186a212" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::distance::comparable::cross_track::return_type</scope><name>type</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

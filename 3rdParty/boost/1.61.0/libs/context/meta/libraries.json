@@ -1,0 +1,15 @@
+{
+    "key": "context",
+    "name": "Context",
+    "authors": [
+        "Oliver Kowalke"
+    ],
+    "description": "Context switching library.",
+    "category": [
+        "Concurrent",
+        "System"
+    ],
+    "maintainers": [
+        "Oliver Kowalke <oliver.kowalke -at- gmail.com>"
+    ]
+}

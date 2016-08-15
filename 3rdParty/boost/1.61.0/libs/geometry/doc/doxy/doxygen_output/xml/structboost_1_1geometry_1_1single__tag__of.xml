@@ -1,0 +1,19 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="structboost_1_1geometry_1_1single__tag__of" kind="struct" prot="public">
+    <compoundname>boost::geometry::single_tag_of</compoundname>
+    <includes local="no">tags.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename Tag</type>
+      </param>
+    </templateparamlist>
+    <briefdescription>
+<para>Meta-function to get for a tag of a multi-geometry the tag of the corresponding single-geometry. </para>    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/core/tags.hpp" line="123" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/core/tags.hpp" bodystart="122" bodyend="123"/>
+    <listofallmembers>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

@@ -1,0 +1,110 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="structboost_1_1geometry_1_1index_1_1equal__to" kind="struct" prot="public">
+    <compoundname>boost::geometry::index::equal_to</compoundname>
+    <basecompoundref refid="structboost_1_1geometry_1_1index_1_1detail_1_1equal__to" prot="public" virt="non-virtual">boost::geometry::index::detail::equal_to&lt; Value &gt;</basecompoundref>
+    <includes refid="equal__to_8hpp" local="no">equal_to.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename Value</type>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-type">
+      <memberdef kind="typedef" id="structboost_1_1geometry_1_1index_1_1equal__to_1ae6a986988e380c2ba4afa646294cfd93" prot="public" static="no">
+        <type><ref refid="structboost_1_1geometry_1_1index_1_1detail_1_1equal__to" kindref="compound">detail::equal_to</ref>&lt; Value &gt;::<ref refid="structboost_1_1geometry_1_1index_1_1equal__to_1ae6a986988e380c2ba4afa646294cfd93" kindref="member">result_type</ref></type>
+        <definition>typedef detail::equal_to&lt;Value&gt;::result_type boost::geometry::index::equal_to&lt; Value &gt;::result_type</definition>
+        <argsstring></argsstring>
+        <name>result_type</name>
+        <reimplements refid="structboost_1_1geometry_1_1index_1_1detail_1_1equal__to_1afb53f9416414ba2c5faa0cf372fd8f16">result_type</reimplements>
+        <briefdescription>
+<para>The type of result returned by function object. </para>        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/equal_to.hpp" line="241" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/equal_to.hpp" bodystart="241" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="structboost_1_1geometry_1_1index_1_1equal__to_1adb497915885d69df9aff938d16922ff3" prot="public" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <type>bool</type>
+        <definition>bool boost::geometry::index::equal_to&lt; Value &gt;::operator()</definition>
+        <argsstring>(Value const &amp;l, Value const &amp;r) const </argsstring>
+        <name>operator()</name>
+        <reimplements refid="structboost_1_1geometry_1_1index_1_1detail_1_1equal__to_1a2fcd9ed3a5085a2dc4914976c0a1cabb">operator()</reimplements>
+        <param>
+          <type>Value const &amp;</type>
+          <declname>l</declname>
+        </param>
+        <param>
+          <type>Value const &amp;</type>
+          <declname>r</declname>
+        </param>
+        <briefdescription>
+<para>Compare Values. </para>        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>l</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>First value. </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>r</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Second value. </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>true if Values are equal. </para></simplesect>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/equal_to.hpp" line="251" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/equal_to.hpp" bodystart="250" bodyend="253"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+<para>The function object comparing Values. </para>    </briefdescription>
+    <detaileddescription>
+<para>The default version handles Values which are Indexables, std::pair&lt;T1, T2&gt;, boost::tuple&lt;...&gt; and std::tuple&lt;...&gt; if STD tuples and variadic templates are supported. All members are compared from left to right, Geometries using boost::geometry::equals() function, other types using operator==.</para><para><parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>Value</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>The type of objects which are compared by this function object. </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>    </detaileddescription>
+    <inheritancegraph>
+      <node id="94">
+        <label>boost::geometry::index::equal_to&lt; Value &gt;</label>
+        <link refid="structboost_1_1geometry_1_1index_1_1equal__to"/>
+        <childnode refid="95" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="95">
+        <label>boost::geometry::index::detail::equal_to&lt; Value &gt;</label>
+        <link refid="structboost_1_1geometry_1_1index_1_1detail_1_1equal__to"/>
+      </node>
+    </inheritancegraph>
+    <collaborationgraph>
+      <node id="96">
+        <label>boost::geometry::index::equal_to&lt; Value &gt;</label>
+        <link refid="structboost_1_1geometry_1_1index_1_1equal__to"/>
+        <childnode refid="97" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="97">
+        <label>boost::geometry::index::detail::equal_to&lt; Value &gt;</label>
+        <link refid="structboost_1_1geometry_1_1index_1_1detail_1_1equal__to"/>
+      </node>
+    </collaborationgraph>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/index/equal_to.hpp" line="239" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/equal_to.hpp" bodystart="237" bodyend="254"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1index_1_1equal__to_1adb497915885d69df9aff938d16922ff3" prot="public" virt="non-virtual"><scope>boost::geometry::index::equal_to</scope><name>operator()</name></member>
+      <member refid="structboost_1_1geometry_1_1index_1_1equal__to_1ae6a986988e380c2ba4afa646294cfd93" prot="public" virt="non-virtual"><scope>boost::geometry::index::equal_to</scope><name>result_type</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

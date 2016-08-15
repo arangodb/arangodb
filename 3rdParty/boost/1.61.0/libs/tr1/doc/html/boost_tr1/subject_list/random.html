@@ -1,0 +1,235 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Random Number Generators and Distributions.</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../../index.html" title="Chapter&#160;1.&#160;Boost.TR1">
+<link rel="up" href="../subject_list.html" title="TR1 By Subject">
+<link rel="prev" href="type_traits.html" title="Type Traits.">
+<link rel="next" href="tuple.html" title="Tuples.">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="type_traits.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../subject_list.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="tuple.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_tr1.subject_list.random"></a><a class="link" href="random.html" title="Random Number Generators and Distributions.">Random Number Generators
+      and Distributions.</a>
+</h3></div></div></div>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">tr1</span><span class="special">/</span><span class="identifier">random</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+</pre>
+<p>
+        or
+      </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">random</span><span class="special">&gt;</span>
+</pre>
+<p>
+        The random number library is divided into three parts: <a href="../../../../libs/random/random-generators.html" target="_top">generators</a>,
+        which are nullary functors producing uniform random number distributions.
+        <a href="../../../../libs/random/random-distributions.html" target="_top">Distributions</a>,
+        which are unary functors that adapt a generator to some specific kind of
+        distribution. And the class template <a href="../../../../libs/random/random-variate.html" target="_top">variate_generator</a>
+        which combines a generator with a distribution, to create a new generator.
+        For more information see the <a href="../../../../libs/random/index.html" target="_top">Boost.Random
+        documentation</a>.
+      </p>
+<pre class="programlisting"><span class="keyword">namespace</span> <span class="identifier">std</span> <span class="special">{</span>
+<span class="keyword">namespace</span> <span class="identifier">tr1</span> <span class="special">{</span>
+
+<span class="comment">// [5.1.3] Class template variate_generator</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">UniformRandomNumberGenerator</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">Distribution</span><span class="special">&gt;</span>
+<span class="keyword">class</span> <span class="identifier">variate_generator</span><span class="special">;</span>
+
+<span class="comment">// [5.1.4.1] Class template linear_congruential</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">IntType</span><span class="special">,</span> <span class="identifier">IntType</span> <span class="identifier">a</span><span class="special">,</span> <span class="identifier">IntType</span> <span class="identifier">c</span><span class="special">,</span> <span class="identifier">IntType</span> <span class="identifier">m</span><span class="special">&gt;</span>
+<span class="keyword">class</span> <span class="identifier">linear_congruential</span><span class="special">;</span>
+
+<span class="comment">// [5.1.4.2] Class template mersenne_twister</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">UIntType</span><span class="special">,</span> <span class="keyword">int</span> <span class="identifier">w</span><span class="special">,</span> <span class="keyword">int</span> <span class="identifier">n</span><span class="special">,</span> <span class="keyword">int</span> <span class="identifier">m</span><span class="special">,</span> <span class="keyword">int</span> <span class="identifier">r</span><span class="special">,</span>
+<span class="identifier">UIntType</span> <span class="identifier">a</span><span class="special">,</span> <span class="keyword">int</span> <span class="identifier">u</span><span class="special">,</span> <span class="keyword">int</span> <span class="identifier">s</span><span class="special">,</span> <span class="identifier">UIntType</span> <span class="identifier">b</span><span class="special">,</span> <span class="keyword">int</span> <span class="identifier">t</span><span class="special">,</span> <span class="identifier">UIntType</span> <span class="identifier">c</span><span class="special">,</span> <span class="keyword">int</span> <span class="identifier">l</span><span class="special">&gt;</span>
+<span class="keyword">class</span> <span class="identifier">mersenne_twister</span><span class="special">;</span>
+
+<span class="comment">// [5.1.4.3] Class template substract_with_carry</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">IntType</span><span class="special">,</span> <span class="identifier">IntType</span> <span class="identifier">m</span><span class="special">,</span> <span class="keyword">int</span> <span class="identifier">s</span><span class="special">,</span> <span class="keyword">int</span> <span class="identifier">r</span><span class="special">&gt;</span>
+<span class="keyword">class</span> <span class="identifier">subtract_with_carry</span><span class="special">;</span>
+
+<span class="comment">// [5.1.4.4] Class template substract_with_carry_01</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">RealType</span><span class="special">,</span> <span class="keyword">int</span> <span class="identifier">w</span><span class="special">,</span> <span class="keyword">int</span> <span class="identifier">s</span><span class="special">,</span> <span class="keyword">int</span> <span class="identifier">r</span><span class="special">&gt;</span>
+<span class="keyword">class</span> <span class="identifier">subtract_with_carry_01</span><span class="special">;</span>
+
+<span class="comment">// [5.1.4.5] Class template discard_block</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">UniformRandomNumberGenerator</span><span class="special">,</span> <span class="keyword">int</span> <span class="identifier">p</span><span class="special">,</span> <span class="keyword">int</span> <span class="identifier">r</span><span class="special">&gt;</span>
+<span class="keyword">class</span> <span class="identifier">discard_block</span><span class="special">;</span>
+
+<span class="comment">// [5.1.4.6] Class template xor_combine</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">UniformRandomNumberGenerator1</span><span class="special">,</span> <span class="keyword">int</span> <span class="identifier">s1</span><span class="special">,</span>
+<span class="keyword">class</span> <span class="identifier">UniformRandomNumberGenerator2</span><span class="special">,</span> <span class="keyword">int</span> <span class="identifier">s2</span><span class="special">&gt;</span>
+<span class="keyword">class</span> <span class="identifier">xor_combine</span><span class="special">;</span>
+
+<span class="comment">// [5.1.5] Predefined generators</span>
+<span class="keyword">typedef</span> <span class="identifier">linear_congruential</span><span class="special">&lt;</span>
+            <span class="identifier">implementation</span><span class="special">-</span><span class="identifier">defined</span> <span class="special">,</span>
+            <span class="number">16807</span><span class="special">,</span>
+            <span class="number">0</span><span class="special">,</span>
+            <span class="number">2147483647</span><span class="special">&gt;</span> <span class="identifier">minstd_rand0</span><span class="special">;</span>
+
+<span class="keyword">typedef</span> <span class="identifier">linear_congruential</span><span class="special">&lt;</span>
+            <span class="identifier">implementation</span><span class="special">-</span><span class="identifier">defined</span> <span class="special">,</span>
+            <span class="number">48271</span><span class="special">,</span>
+            <span class="number">0</span><span class="special">,</span>
+            <span class="number">2147483647</span><span class="special">&gt;</span> <span class="identifier">minstd_rand</span><span class="special">;</span>
+
+<span class="keyword">typedef</span> <span class="identifier">mersenne_twister</span><span class="special">&lt;</span>
+            <span class="identifier">implementation</span><span class="special">-</span><span class="identifier">defined</span> <span class="special">,</span>
+            <span class="number">32</span><span class="special">,</span> <span class="number">624</span><span class="special">,</span> <span class="number">397</span><span class="special">,</span> <span class="number">31</span><span class="special">,</span>
+            <span class="number">0x9908b0df</span><span class="special">,</span> <span class="number">11</span><span class="special">,</span> <span class="number">7</span><span class="special">,</span>
+            <span class="number">0x9d2c5680</span><span class="special">,</span> <span class="number">15</span><span class="special">,</span>
+            <span class="number">0xefc60000</span><span class="special">,</span> <span class="number">18</span><span class="special">&gt;</span> <span class="identifier">mt19937</span><span class="special">;</span>
+
+<span class="keyword">typedef</span> <span class="identifier">subtract_with_carry_01</span><span class="special">&lt;</span>
+            <span class="keyword">float</span><span class="special">,</span>
+            <span class="number">24</span><span class="special">,</span>
+            <span class="number">10</span><span class="special">,</span>
+            <span class="number">24</span><span class="special">&gt;</span> <span class="identifier">ranlux_base_01</span><span class="special">;</span>
+
+<span class="keyword">typedef</span> <span class="identifier">subtract_with_carry_01</span><span class="special">&lt;</span>
+            <span class="keyword">double</span><span class="special">,</span>
+            <span class="number">48</span><span class="special">,</span>
+            <span class="number">10</span><span class="special">,</span>
+            <span class="number">24</span><span class="special">&gt;</span> <span class="identifier">ranlux64_base_01</span><span class="special">;</span>
+
+<span class="keyword">typedef</span> <span class="identifier">discard_block</span><span class="special">&lt;</span>
+            <span class="identifier">subtract_with_carry</span><span class="special">&lt;</span>
+                  <span class="identifier">implementation</span><span class="special">-</span><span class="identifier">defined</span> <span class="special">,</span>
+                  <span class="special">(</span><span class="number">1</span><span class="special">&lt;&lt;</span><span class="number">24</span><span class="special">),</span>
+                  <span class="number">10</span><span class="special">,</span>
+                  <span class="number">24</span><span class="special">&gt;,</span>
+            <span class="number">223</span><span class="special">,</span>
+            <span class="number">24</span><span class="special">&gt;</span> <span class="identifier">ranlux3</span><span class="special">;</span>
+
+<span class="keyword">typedef</span> <span class="identifier">discard_block</span><span class="special">&lt;</span>
+            <span class="identifier">subtract_with_carry</span><span class="special">&lt;</span>
+                  <span class="identifier">implementation</span><span class="special">-</span><span class="identifier">defined</span><span class="special">,</span>
+                  <span class="special">(</span><span class="number">1</span><span class="special">&lt;&lt;</span><span class="number">24</span><span class="special">),</span>
+                  <span class="number">10</span><span class="special">,</span>
+                  <span class="number">24</span><span class="special">&gt;,</span>
+            <span class="number">389</span><span class="special">,</span>
+            <span class="number">24</span><span class="special">&gt;</span> <span class="identifier">ranlux4</span><span class="special">;</span>
+
+<span class="keyword">typedef</span> <span class="identifier">discard_block</span><span class="special">&lt;</span>
+            <span class="identifier">subtract_with_carry_01</span><span class="special">&lt;</span>
+                  <span class="keyword">float</span><span class="special">,</span>
+                  <span class="number">24</span><span class="special">,</span>
+                  <span class="number">10</span><span class="special">,</span>
+                  <span class="number">24</span><span class="special">&gt;,</span>
+            <span class="number">223</span><span class="special">,</span>
+            <span class="number">24</span><span class="special">&gt;</span> <span class="identifier">ranlux3_01</span><span class="special">;</span>
+
+<span class="keyword">typedef</span> <span class="identifier">discard_block</span><span class="special">&lt;</span>
+            <span class="identifier">subtract_with_carry_01</span><span class="special">&lt;</span>
+                  <span class="keyword">float</span><span class="special">,</span>
+                  <span class="number">24</span><span class="special">,</span>
+                  <span class="number">10</span><span class="special">,</span>
+                  <span class="number">24</span><span class="special">&gt;,</span>
+            <span class="number">389</span><span class="special">,</span>
+            <span class="number">24</span><span class="special">&gt;</span> <span class="identifier">ranlux4_01</span><span class="special">;</span>
+
+<span class="comment">// [5.1.6] Class random_device</span>
+<span class="keyword">class</span> <span class="identifier">random_device</span><span class="special">;</span>
+
+<span class="comment">// [5.1.7.1] Class template uniform_int</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">IntType</span> <span class="special">=</span> <span class="keyword">int</span><span class="special">&gt;</span>
+<span class="keyword">class</span> <span class="identifier">uniform_int</span><span class="special">;</span>
+
+<span class="comment">// [5.1.7.2] Class bernoulli_distribution</span>
+<span class="keyword">class</span> <span class="identifier">bernoulli_distribution</span><span class="special">;</span>
+
+<span class="comment">// [5.1.7.3] Class template geometric_distribution</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">IntType</span> <span class="special">=</span> <span class="keyword">int</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">RealType</span> <span class="special">=</span> <span class="keyword">double</span><span class="special">&gt;</span>
+<span class="keyword">class</span> <span class="identifier">geometric_distribution</span><span class="special">;</span>
+
+<span class="comment">// [5.1.7.4] Class template poisson_distribution</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">IntType</span> <span class="special">=</span> <span class="keyword">int</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">RealType</span> <span class="special">=</span> <span class="keyword">double</span><span class="special">&gt;</span>
+<span class="keyword">class</span> <span class="identifier">poisson_distribution</span><span class="special">;</span>
+
+<span class="comment">// [5.1.7.5] Class template binomial_distribution</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">IntType</span> <span class="special">=</span> <span class="keyword">int</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">RealType</span> <span class="special">=</span> <span class="keyword">double</span><span class="special">&gt;</span>
+<span class="keyword">class</span> <span class="identifier">binomial_distribution</span><span class="special">;</span>
+
+<span class="comment">// [5.1.7.6] Class template uniform_real</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">RealType</span> <span class="special">=</span> <span class="keyword">double</span><span class="special">&gt;</span>
+<span class="keyword">class</span> <span class="identifier">uniform_real</span><span class="special">;</span>
+
+<span class="comment">// [5.1.7.7] Class template exponential_distribution</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">RealType</span> <span class="special">=</span> <span class="keyword">double</span><span class="special">&gt;</span>
+<span class="keyword">class</span> <span class="identifier">exponential_distribution</span><span class="special">;</span>
+
+<span class="comment">// [5.1.7.8] Class template normal_distribution</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">RealType</span> <span class="special">=</span> <span class="keyword">double</span><span class="special">&gt;</span>
+<span class="keyword">class</span> <span class="identifier">normal_distribution</span><span class="special">;</span>
+
+<span class="comment">// [5.1.7.9] Class template gamma_distribution</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">RealType</span> <span class="special">=</span> <span class="keyword">double</span><span class="special">&gt;</span>
+<span class="keyword">class</span> <span class="identifier">gamma_distribution</span><span class="special">;</span>
+
+<span class="special">}</span> <span class="comment">// namespace tr1</span>
+<span class="special">}</span> <span class="comment">// namespace std</span>
+</pre>
+<p>
+        <span class="bold"><strong>Configuration:</strong></span> <a href="../../../../libs/config/index.html" target="_top">Boost.Config</a>
+        should (automatically) define the macro BOOST_HAS_TR1_RANDOM if your standard
+        library implements this part of TR1.
+      </p>
+<p>
+        <span class="bold"><strong>Standard Conformity:</strong></span> The Boost implementation
+        has the following limitations:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" type="disc">
+<li class="listitem">
+            The linear_congruential generator is fully supported for signed integer
+            types only (unsigned types probably only work when the modulus is zero).
+          </li>
+<li class="listitem">
+            The subtract_with_carry template does not support a modulus of zero.
+          </li>
+<li class="listitem">
+            Not all of the standard generator types have Boost documentation yet,
+            they are none the less supported however.
+          </li>
+<li class="listitem">
+            Class template variate_generator does not have a template unary function
+            call operator(), only the non-template nullary version.
+          </li>
+</ul></div>
+<p>
+        Note also that most of the Random number generators have been re-implemented
+        as thin wrappers around the Boost versions in order to provide a standard
+        conforming interface (the Boost versions all take an additional, redundant,
+        template parameter, and are initialized by iterators rather than functors).
+      </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2005 John Maddock<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="type_traits.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../subject_list.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="tuple.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

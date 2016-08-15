@@ -1,0 +1,41 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="structboost_1_1geometry_1_1spherical__tag" kind="struct" prot="public">
+    <compoundname>boost::geometry::spherical_tag</compoundname>
+    <derivedcompoundref refid="structboost_1_1geometry_1_1geographic__tag" prot="public" virt="non-virtual">boost::geometry::geographic_tag</derivedcompoundref>
+    <derivedcompoundref refid="structboost_1_1geometry_1_1spherical__equatorial__tag" prot="public" virt="non-virtual">boost::geometry::spherical_equatorial_tag</derivedcompoundref>
+    <derivedcompoundref refid="structboost_1_1geometry_1_1spherical__polar__tag" prot="public" virt="non-virtual">boost::geometry::spherical_polar_tag</derivedcompoundref>
+    <includes local="no">tags.hpp</includes>
+    <briefdescription>
+<para>Tag used for casting spherical/geographic coordinate systems. </para>    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <inheritancegraph>
+      <node id="1128">
+        <label>boost::geometry::spherical_equatorial_tag</label>
+        <link refid="structboost_1_1geometry_1_1spherical__equatorial__tag"/>
+        <childnode refid="1126" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="1127">
+        <label>boost::geometry::geographic_tag</label>
+        <link refid="structboost_1_1geometry_1_1geographic__tag"/>
+        <childnode refid="1126" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="1126">
+        <label>boost::geometry::spherical_tag</label>
+        <link refid="structboost_1_1geometry_1_1spherical__tag"/>
+      </node>
+      <node id="1129">
+        <label>boost::geometry::spherical_polar_tag</label>
+        <link refid="structboost_1_1geometry_1_1spherical__polar__tag"/>
+        <childnode refid="1126" relation="public-inheritance">
+        </childnode>
+      </node>
+    </inheritancegraph>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/core/tags.hpp" line="29" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/core/tags.hpp" bodystart="29" bodyend="29"/>
+    <listofallmembers>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

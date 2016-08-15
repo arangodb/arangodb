@@ -1,0 +1,77 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="equal__to_8hpp" kind="file">
+    <compoundname>equal_to.hpp</compoundname>
+    <includes local="no">boost/geometry/algorithms/equals.hpp</includes>
+    <includes refid="indexable_8hpp" local="no">boost/geometry/index/indexable.hpp</includes>
+    <includes local="no">tuple</includes>
+    <includedby refid="rtree_8hpp" local="no">/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp</includedby>
+    <incdepgraph>
+      <node id="6">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/index/equal_to.hpp</label>
+        <link refid="equal_to.hpp"/>
+        <childnode refid="7" relation="include">
+        </childnode>
+        <childnode refid="8" relation="include">
+        </childnode>
+        <childnode refid="11" relation="include">
+        </childnode>
+      </node>
+      <node id="9">
+        <label>boost/mpl/assert.hpp</label>
+      </node>
+      <node id="10">
+        <label>boost/geometry/index/detail/is_indexable.hpp</label>
+      </node>
+      <node id="7">
+        <label>boost/geometry/algorithms/equals.hpp</label>
+      </node>
+      <node id="11">
+        <label>tuple</label>
+      </node>
+      <node id="8">
+        <label>boost/geometry/index/indexable.hpp</label>
+        <link refid="indexable_8hpp_source"/>
+        <childnode refid="9" relation="include">
+        </childnode>
+        <childnode refid="10" relation="include">
+        </childnode>
+        <childnode refid="11" relation="include">
+        </childnode>
+      </node>
+    </incdepgraph>
+    <invincdepgraph>
+      <node id="12">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/index/equal_to.hpp</label>
+        <link refid="equal_to.hpp"/>
+        <childnode refid="13" relation="include">
+        </childnode>
+      </node>
+      <node id="13">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp</label>
+        <link refid="rtree_8hpp_source"/>
+      </node>
+    </invincdepgraph>
+    <innerclass refid="structboost_1_1geometry_1_1index_1_1detail_1_1equals" prot="public">boost::geometry::index::detail::equals</innerclass>
+    <innerclass refid="structboost_1_1geometry_1_1index_1_1detail_1_1equals_3_01_geometry_01_5_00_01_tag_01_4" prot="public">boost::geometry::index::detail::equals&lt; Geometry *, Tag &gt;</innerclass>
+    <innerclass refid="structboost_1_1geometry_1_1index_1_1detail_1_1equals_3_01_t_00_01void_01_4" prot="public">boost::geometry::index::detail::equals&lt; T, void &gt;</innerclass>
+    <innerclass refid="structboost_1_1geometry_1_1index_1_1detail_1_1tuple__equals" prot="public">boost::geometry::index::detail::tuple_equals</innerclass>
+    <innerclass refid="structboost_1_1geometry_1_1index_1_1detail_1_1tuple__equals_3_01_tuple_00_01_i_00_01_i_01_4" prot="public">boost::geometry::index::detail::tuple_equals&lt; Tuple, I, I &gt;</innerclass>
+    <innerclass refid="structboost_1_1geometry_1_1index_1_1detail_1_1equal__to" prot="public">boost::geometry::index::detail::equal_to</innerclass>
+    <innerclass refid="structboost_1_1geometry_1_1index_1_1detail_1_1equal__to_3_01std_1_1pair_3_01_t1_00_01_t2_01_4_00_01false_01_4" prot="public">boost::geometry::index::detail::equal_to&lt; std::pair&lt; T1, T2 &gt;, false &gt;</innerclass>
+    <innerclass refid="structboost_1_1geometry_1_1index_1_1detail_1_1equal__to_3_01boost_1_1tuple_3_01_t0_00_01_t1_00_05575411b27cb3dcedde3865d7b2e05da" prot="public">boost::geometry::index::detail::equal_to&lt; boost::tuple&lt; T0, T1, T2, T3, T4, T5, T6, T7, T8, T9 &gt;, false &gt;</innerclass>
+    <innerclass refid="structboost_1_1geometry_1_1index_1_1detail_1_1std__tuple__equals" prot="public">boost::geometry::index::detail::std_tuple_equals</innerclass>
+    <innerclass refid="structboost_1_1geometry_1_1index_1_1detail_1_1std__tuple__equals_3_01_tuple_00_01_i_00_01_i_01_4" prot="public">boost::geometry::index::detail::std_tuple_equals&lt; Tuple, I, I &gt;</innerclass>
+    <innerclass refid="structboost_1_1geometry_1_1index_1_1detail_1_1equal__to_3_01std_1_1tuple_3_01_args_8_8_8_4_00_01false_01_4" prot="public">boost::geometry::index::detail::equal_to&lt; std::tuple&lt; Args...&gt;, false &gt;</innerclass>
+    <innerclass refid="structboost_1_1geometry_1_1index_1_1equal__to" prot="public">boost::geometry::index::equal_to</innerclass>
+    <innernamespace refid="namespaceboost">boost</innernamespace>
+    <innernamespace refid="namespaceboost_1_1geometry">boost::geometry</innernamespace>
+    <innernamespace refid="namespaceboost_1_1geometry_1_1index">boost::geometry::index</innernamespace>
+    <innernamespace refid="namespaceboost_1_1geometry_1_1index_1_1detail">boost::geometry::index::detail</innernamespace>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/index/equal_to.hpp"/>
+  </compounddef>
+</doxygen>

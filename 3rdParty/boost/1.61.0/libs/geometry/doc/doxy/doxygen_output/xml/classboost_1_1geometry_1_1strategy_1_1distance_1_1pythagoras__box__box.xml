@@ -1,0 +1,82 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="classboost_1_1geometry_1_1strategy_1_1distance_1_1pythagoras__box__box" kind="class" prot="public">
+    <compoundname>boost::geometry::strategy::distance::pythagoras_box_box</compoundname>
+    <includes local="no">distance_pythagoras_box_box.hpp</includes>
+    <innerclass refid="structboost_1_1geometry_1_1strategy_1_1distance_1_1pythagoras__box__box_1_1calculation__type" prot="public">boost::geometry::strategy::distance::pythagoras_box_box::calculation_type</innerclass>
+    <templateparamlist>
+      <param>
+        <type>typename CalculationType</type>
+        <defval>void</defval>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-static-func">
+      <memberdef kind="function" id="classboost_1_1geometry_1_1strategy_1_1distance_1_1pythagoras__box__box_1ac1d29971842b2a8c62e090628c756193" prot="public" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Box1</type>
+          </param>
+          <param>
+            <type>typename Box2</type>
+          </param>
+        </templateparamlist>
+        <type><ref refid="structboost_1_1geometry_1_1strategy_1_1distance_1_1pythagoras__box__box_1_1calculation__type" kindref="compound">calculation_type</ref>&lt; Box1, Box2 &gt;::type</type>
+        <definition>static calculation_type&lt;Box1, Box2&gt;::type boost::geometry::strategy::distance::pythagoras_box_box&lt; CalculationType &gt;::apply</definition>
+        <argsstring>(Box1 const &amp;box1, Box2 const &amp;box2)</argsstring>
+        <name>apply</name>
+        <param>
+          <type>Box1 const &amp;</type>
+          <declname>box1</declname>
+        </param>
+        <param>
+          <type>Box2 const &amp;</type>
+          <declname>box2</declname>
+        </param>
+        <briefdescription>
+<para>applies the distance calculation using <ref refid="classboost_1_1geometry_1_1strategy_1_1distance_1_1pythagoras__box__box" kindref="compound">pythagoras_box_box</ref> </para>        </briefdescription>
+        <detaileddescription>
+<para><simplesect kind="return"><para>the calculated distance (including taking the square root) </para></simplesect>
+<parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>box1</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>first box </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>box2</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>second box </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/distance_pythagoras_box_box.hpp" line="183" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/distance_pythagoras_box_box.hpp" bodystart="182" bodyend="198"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+<para>Strategy to calculate the distance between two boxes. </para>    </briefdescription>
+    <detaileddescription>
+<para><parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>CalculationType</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>numeric type for calculation (e.g. high precision); if [*void] then it is extracted automatically from the coordinate type and (if necessary) promoted to floating point</para></parameterdescription>
+</parameteritem>
+</parameterlist>
+ <qbk>
+[heading Notes]
+[note Can be used for boxes with two, three or more dimensions]
+[heading See also]
+[link geometry.reference.algorithms.distance.distance_3_with_strategy distance (with strategy)]
+</qbk>  </para>    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/distance_pythagoras_box_box.hpp" line="159" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/distance_pythagoras_box_box.hpp" bodystart="158" bodyend="199"/>
+    <listofallmembers>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1distance_1_1pythagoras__box__box_1ac1d29971842b2a8c62e090628c756193" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::distance::pythagoras_box_box</scope><name>apply</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

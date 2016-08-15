@@ -1,0 +1,366 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="rtree_8hpp" kind="file">
+    <compoundname>rtree.hpp</compoundname>
+    <includes local="no">algorithm</includes>
+    <includes local="no">boost/tuple/tuple.hpp</includes>
+    <includes local="no">boost/move/move.hpp</includes>
+    <includes local="no">boost/geometry/algorithms/detail/comparable_distance/interface.hpp</includes>
+    <includes local="no">boost/geometry/algorithms/centroid.hpp</includes>
+    <includes local="no">boost/geometry/algorithms/covered_by.hpp</includes>
+    <includes local="no">boost/geometry/algorithms/disjoint.hpp</includes>
+    <includes local="no">boost/geometry/algorithms/equals.hpp</includes>
+    <includes local="no">boost/geometry/algorithms/intersects.hpp</includes>
+    <includes local="no">boost/geometry/algorithms/overlaps.hpp</includes>
+    <includes local="no">boost/geometry/algorithms/touches.hpp</includes>
+    <includes local="no">boost/geometry/algorithms/within.hpp</includes>
+    <includes local="no">boost/geometry/geometries/point.hpp</includes>
+    <includes local="no">boost/geometry/geometries/box.hpp</includes>
+    <includes local="no">boost/geometry/strategies/strategies.hpp</includes>
+    <includes local="no">boost/geometry/index/detail/config_begin.hpp</includes>
+    <includes local="no">boost/geometry/index/detail/assert.hpp</includes>
+    <includes local="no">boost/geometry/index/detail/exception.hpp</includes>
+    <includes local="no">boost/geometry/index/detail/rtree/options.hpp</includes>
+    <includes refid="indexable_8hpp" local="no">boost/geometry/index/indexable.hpp</includes>
+    <includes refid="equal__to_8hpp" local="no">boost/geometry/index/equal_to.hpp</includes>
+    <includes local="no">boost/geometry/index/detail/translator.hpp</includes>
+    <includes refid="predicates_8hpp" local="no">boost/geometry/index/predicates.hpp</includes>
+    <includes refid="distance__predicates_8hpp" local="no">boost/geometry/index/distance_predicates.hpp</includes>
+    <includes local="no">boost/geometry/index/detail/rtree/adaptors.hpp</includes>
+    <includes local="no">boost/geometry/index/detail/meta.hpp</includes>
+    <includes local="no">boost/geometry/index/detail/utilities.hpp</includes>
+    <includes local="no">boost/geometry/index/detail/rtree/node/node.hpp</includes>
+    <includes local="no">boost/geometry/index/detail/algorithms/is_valid.hpp</includes>
+    <includes local="no">boost/geometry/index/detail/rtree/visitors/insert.hpp</includes>
+    <includes local="no">boost/geometry/index/detail/rtree/visitors/iterator.hpp</includes>
+    <includes local="no">boost/geometry/index/detail/rtree/visitors/remove.hpp</includes>
+    <includes local="no">boost/geometry/index/detail/rtree/visitors/copy.hpp</includes>
+    <includes local="no">boost/geometry/index/detail/rtree/visitors/destroy.hpp</includes>
+    <includes local="no">boost/geometry/index/detail/rtree/visitors/spatial_query.hpp</includes>
+    <includes local="no">boost/geometry/index/detail/rtree/visitors/distance_query.hpp</includes>
+    <includes local="no">boost/geometry/index/detail/rtree/visitors/count.hpp</includes>
+    <includes local="no">boost/geometry/index/detail/rtree/visitors/children_box.hpp</includes>
+    <includes local="no">boost/geometry/index/detail/rtree/linear/linear.hpp</includes>
+    <includes local="no">boost/geometry/index/detail/rtree/quadratic/quadratic.hpp</includes>
+    <includes local="no">boost/geometry/index/detail/rtree/rstar/rstar.hpp</includes>
+    <includes local="no">boost/geometry/index/detail/rtree/pack_create.hpp</includes>
+    <includes refid="inserter_8hpp" local="no">boost/geometry/index/inserter.hpp</includes>
+    <includes local="no">boost/geometry/index/detail/rtree/utilities/view.hpp</includes>
+    <includes local="no">boost/geometry/index/detail/rtree/iterators.hpp</includes>
+    <includes local="no">boost/geometry/index/detail/rtree/query_iterators.hpp</includes>
+    <includes local="no">boost/geometry/algorithms/detail/comparable_distance/implementation.hpp</includes>
+    <includes local="no">boost/geometry/index/detail/config_end.hpp</includes>
+    <incdepgraph>
+      <node id="72">
+        <label>boost/geometry/index/detail/algorithms/is_valid.hpp</label>
+      </node>
+      <node id="38">
+        <label>boost/tuple/tuple.hpp</label>
+      </node>
+      <node id="87">
+        <label>iterator</label>
+      </node>
+      <node id="88">
+        <label>boost/geometry/index/detail/rtree/utilities/view.hpp</label>
+      </node>
+      <node id="66">
+        <label>boost/geometry/index/distance_predicates.hpp</label>
+        <link refid="distance__predicates_8hpp_source"/>
+        <childnode refid="67" relation="include">
+        </childnode>
+      </node>
+      <node id="76">
+        <label>boost/geometry/index/detail/rtree/visitors/copy.hpp</label>
+      </node>
+      <node id="54">
+        <label>boost/geometry/index/detail/exception.hpp</label>
+      </node>
+      <node id="80">
+        <label>boost/geometry/index/detail/rtree/visitors/count.hpp</label>
+      </node>
+      <node id="81">
+        <label>boost/geometry/index/detail/rtree/visitors/children_box.hpp</label>
+      </node>
+      <node id="60">
+        <label>boost/geometry/index/equal_to.hpp</label>
+        <link refid="equal__to_8hpp_source"/>
+        <childnode refid="44" relation="include">
+        </childnode>
+        <childnode refid="56" relation="include">
+        </childnode>
+        <childnode refid="59" relation="include">
+        </childnode>
+      </node>
+      <node id="52">
+        <label>boost/geometry/index/detail/config_begin.hpp</label>
+      </node>
+      <node id="62">
+        <label>boost/geometry/index/predicates.hpp</label>
+        <link refid="predicates_8hpp_source"/>
+        <childnode refid="63" relation="include">
+        </childnode>
+        <childnode refid="38" relation="include">
+        </childnode>
+        <childnode refid="57" relation="include">
+        </childnode>
+        <childnode refid="64" relation="include">
+        </childnode>
+        <childnode refid="65" relation="include">
+        </childnode>
+      </node>
+      <node id="46">
+        <label>boost/geometry/algorithms/overlaps.hpp</label>
+      </node>
+      <node id="39">
+        <label>boost/move/move.hpp</label>
+      </node>
+      <node id="82">
+        <label>boost/geometry/index/detail/rtree/linear/linear.hpp</label>
+      </node>
+      <node id="89">
+        <label>boost/geometry/index/detail/rtree/iterators.hpp</label>
+      </node>
+      <node id="57">
+        <label>boost/mpl/assert.hpp</label>
+      </node>
+      <node id="45">
+        <label>boost/geometry/algorithms/intersects.hpp</label>
+      </node>
+      <node id="85">
+        <label>boost/geometry/index/detail/rtree/pack_create.hpp</label>
+      </node>
+      <node id="58">
+        <label>boost/geometry/index/detail/is_indexable.hpp</label>
+      </node>
+      <node id="78">
+        <label>boost/geometry/index/detail/rtree/visitors/spatial_query.hpp</label>
+      </node>
+      <node id="49">
+        <label>boost/geometry/geometries/point.hpp</label>
+      </node>
+      <node id="69">
+        <label>boost/geometry/index/detail/meta.hpp</label>
+      </node>
+      <node id="44">
+        <label>boost/geometry/algorithms/equals.hpp</label>
+      </node>
+      <node id="68">
+        <label>boost/geometry/index/detail/rtree/adaptors.hpp</label>
+      </node>
+      <node id="65">
+        <label>boost/geometry/index/detail/tuples.hpp</label>
+      </node>
+      <node id="74">
+        <label>boost/geometry/index/detail/rtree/visitors/iterator.hpp</label>
+      </node>
+      <node id="79">
+        <label>boost/geometry/index/detail/rtree/visitors/distance_query.hpp</label>
+      </node>
+      <node id="73">
+        <label>boost/geometry/index/detail/rtree/visitors/insert.hpp</label>
+      </node>
+      <node id="86">
+        <label>boost/geometry/index/inserter.hpp</label>
+        <link refid="inserter_8hpp_source"/>
+        <childnode refid="87" relation="include">
+        </childnode>
+      </node>
+      <node id="84">
+        <label>boost/geometry/index/detail/rtree/rstar/rstar.hpp</label>
+      </node>
+      <node id="71">
+        <label>boost/geometry/index/detail/rtree/node/node.hpp</label>
+      </node>
+      <node id="40">
+        <label>boost/geometry/algorithms/detail/comparable_distance/interface.hpp</label>
+      </node>
+      <node id="59">
+        <label>tuple</label>
+      </node>
+      <node id="36">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp</label>
+        <link refid="rtree.hpp"/>
+        <childnode refid="37" relation="include">
+        </childnode>
+        <childnode refid="38" relation="include">
+        </childnode>
+        <childnode refid="39" relation="include">
+        </childnode>
+        <childnode refid="40" relation="include">
+        </childnode>
+        <childnode refid="41" relation="include">
+        </childnode>
+        <childnode refid="42" relation="include">
+        </childnode>
+        <childnode refid="43" relation="include">
+        </childnode>
+        <childnode refid="44" relation="include">
+        </childnode>
+        <childnode refid="45" relation="include">
+        </childnode>
+        <childnode refid="46" relation="include">
+        </childnode>
+        <childnode refid="47" relation="include">
+        </childnode>
+        <childnode refid="48" relation="include">
+        </childnode>
+        <childnode refid="49" relation="include">
+        </childnode>
+        <childnode refid="50" relation="include">
+        </childnode>
+        <childnode refid="51" relation="include">
+        </childnode>
+        <childnode refid="52" relation="include">
+        </childnode>
+        <childnode refid="53" relation="include">
+        </childnode>
+        <childnode refid="54" relation="include">
+        </childnode>
+        <childnode refid="55" relation="include">
+        </childnode>
+        <childnode refid="56" relation="include">
+        </childnode>
+        <childnode refid="60" relation="include">
+        </childnode>
+        <childnode refid="61" relation="include">
+        </childnode>
+        <childnode refid="62" relation="include">
+        </childnode>
+        <childnode refid="66" relation="include">
+        </childnode>
+        <childnode refid="68" relation="include">
+        </childnode>
+        <childnode refid="69" relation="include">
+        </childnode>
+        <childnode refid="70" relation="include">
+        </childnode>
+        <childnode refid="71" relation="include">
+        </childnode>
+        <childnode refid="72" relation="include">
+        </childnode>
+        <childnode refid="73" relation="include">
+        </childnode>
+        <childnode refid="74" relation="include">
+        </childnode>
+        <childnode refid="75" relation="include">
+        </childnode>
+        <childnode refid="76" relation="include">
+        </childnode>
+        <childnode refid="77" relation="include">
+        </childnode>
+        <childnode refid="78" relation="include">
+        </childnode>
+        <childnode refid="79" relation="include">
+        </childnode>
+        <childnode refid="80" relation="include">
+        </childnode>
+        <childnode refid="81" relation="include">
+        </childnode>
+        <childnode refid="82" relation="include">
+        </childnode>
+        <childnode refid="83" relation="include">
+        </childnode>
+        <childnode refid="84" relation="include">
+        </childnode>
+        <childnode refid="85" relation="include">
+        </childnode>
+        <childnode refid="86" relation="include">
+        </childnode>
+        <childnode refid="88" relation="include">
+        </childnode>
+        <childnode refid="89" relation="include">
+        </childnode>
+        <childnode refid="90" relation="include">
+        </childnode>
+        <childnode refid="91" relation="include">
+        </childnode>
+        <childnode refid="92" relation="include">
+        </childnode>
+      </node>
+      <node id="77">
+        <label>boost/geometry/index/detail/rtree/visitors/destroy.hpp</label>
+      </node>
+      <node id="51">
+        <label>boost/geometry/strategies/strategies.hpp</label>
+      </node>
+      <node id="63">
+        <label>utility</label>
+      </node>
+      <node id="55">
+        <label>boost/geometry/index/detail/rtree/options.hpp</label>
+      </node>
+      <node id="90">
+        <label>boost/geometry/index/detail/rtree/query_iterators.hpp</label>
+      </node>
+      <node id="64">
+        <label>boost/geometry/index/detail/predicates.hpp</label>
+      </node>
+      <node id="48">
+        <label>boost/geometry/algorithms/within.hpp</label>
+      </node>
+      <node id="70">
+        <label>boost/geometry/index/detail/utilities.hpp</label>
+      </node>
+      <node id="75">
+        <label>boost/geometry/index/detail/rtree/visitors/remove.hpp</label>
+      </node>
+      <node id="43">
+        <label>boost/geometry/algorithms/disjoint.hpp</label>
+      </node>
+      <node id="91">
+        <label>boost/geometry/algorithms/detail/comparable_distance/implementation.hpp</label>
+      </node>
+      <node id="42">
+        <label>boost/geometry/algorithms/covered_by.hpp</label>
+      </node>
+      <node id="47">
+        <label>boost/geometry/algorithms/touches.hpp</label>
+      </node>
+      <node id="83">
+        <label>boost/geometry/index/detail/rtree/quadratic/quadratic.hpp</label>
+      </node>
+      <node id="67">
+        <label>boost/geometry/index/detail/distance_predicates.hpp</label>
+      </node>
+      <node id="41">
+        <label>boost/geometry/algorithms/centroid.hpp</label>
+      </node>
+      <node id="56">
+        <label>boost/geometry/index/indexable.hpp</label>
+        <link refid="indexable_8hpp_source"/>
+        <childnode refid="57" relation="include">
+        </childnode>
+        <childnode refid="58" relation="include">
+        </childnode>
+        <childnode refid="59" relation="include">
+        </childnode>
+      </node>
+      <node id="37">
+        <label>algorithm</label>
+      </node>
+      <node id="50">
+        <label>boost/geometry/geometries/box.hpp</label>
+      </node>
+      <node id="53">
+        <label>boost/geometry/index/detail/assert.hpp</label>
+      </node>
+      <node id="92">
+        <label>boost/geometry/index/detail/config_end.hpp</label>
+      </node>
+      <node id="61">
+        <label>boost/geometry/index/detail/translator.hpp</label>
+      </node>
+    </incdepgraph>
+    <innerclass refid="classboost_1_1geometry_1_1index_1_1rtree" prot="public">boost::geometry::index::rtree</innerclass>
+    <innerclass refid="structboost_1_1geometry_1_1index_1_1rtree_1_1members__holder" prot="private">boost::geometry::index::rtree::members_holder</innerclass>
+    <innerclass refid="structboost_1_1range__mutable__iterator_3_01boost_1_1geometry_1_1index_1_1rtree_3_01_value_00_01377110862522c8f6142f1a65b06f20fa" prot="public">boost::range_mutable_iterator&lt; boost::geometry::index::rtree&lt; Value, Parameters, IndexableGetter, EqualTo, Allocator &gt; &gt;</innerclass>
+    <innernamespace refid="namespaceboost">boost</innernamespace>
+    <innernamespace refid="namespaceboost_1_1geometry">boost::geometry</innernamespace>
+    <innernamespace refid="namespaceboost_1_1geometry_1_1index">boost::geometry::index</innernamespace>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp"/>
+  </compounddef>
+</doxygen>

@@ -1,0 +1,133 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="classboost_1_1geometry_1_1index_1_1insert__iterator" kind="class" prot="public">
+    <compoundname>boost::geometry::index::insert_iterator</compoundname>
+    <templateparamlist>
+      <param>
+        <type>class Container</type>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-type">
+      <memberdef kind="typedef" id="classboost_1_1geometry_1_1index_1_1insert__iterator_1a409b4c7ae762f42b7ef518aed5d5e745" prot="public" static="no">
+        <type>Container</type>
+        <definition>typedef Container boost::geometry::index::insert_iterator&lt; Container &gt;::container_type</definition>
+        <argsstring></argsstring>
+        <name>container_type</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/inserter.hpp" line="27" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/inserter.hpp" bodystart="27" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="private-attrib">
+      <memberdef kind="variable" id="classboost_1_1geometry_1_1index_1_1insert__iterator_1a591b8e0b91f6af992050b129308c1c00" prot="private" static="no" mutable="no">
+        <type>Container *</type>
+        <definition>Container* boost::geometry::index::insert_iterator&lt; Container &gt;::container</definition>
+        <argsstring></argsstring>
+        <name>container</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/inserter.hpp" line="55" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/inserter.hpp" bodystart="55" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="classboost_1_1geometry_1_1index_1_1insert__iterator_1abb46e7f869d453d5eb48885273ad3117" prot="public" static="no" const="no" explicit="yes" inline="yes" virt="non-virtual">
+        <type></type>
+        <definition>boost::geometry::index::insert_iterator&lt; Container &gt;::insert_iterator</definition>
+        <argsstring>(Container &amp;c)</argsstring>
+        <name>insert_iterator</name>
+        <param>
+          <type>Container &amp;</type>
+          <declname>c</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/inserter.hpp" line="31" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/inserter.hpp" bodystart="29" bodyend="31"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1index_1_1insert__iterator_1a48fcdd18cf538b78c965d332ae643672" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>insert_iterator &amp;</type>
+        <definition>insert_iterator&amp; boost::geometry::index::insert_iterator&lt; Container &gt;::operator=</definition>
+        <argsstring>(typename Container::value_type const &amp;value)</argsstring>
+        <name>operator=</name>
+        <param>
+          <type>typename Container::value_type const &amp;</type>
+          <declname>value</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/inserter.hpp" line="34" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/inserter.hpp" bodystart="33" bodyend="37"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1index_1_1insert__iterator_1abbbcbb6d42b9d21af2b33ac70e507910" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>insert_iterator &amp;</type>
+        <definition>insert_iterator&amp; boost::geometry::index::insert_iterator&lt; Container &gt;::operator*</definition>
+        <argsstring>()</argsstring>
+        <name>operator*</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/inserter.hpp" line="40" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/inserter.hpp" bodystart="39" bodyend="42"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1index_1_1insert__iterator_1a2fc4597aa37cf185ed132884b3beb90d" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>insert_iterator &amp;</type>
+        <definition>insert_iterator&amp; boost::geometry::index::insert_iterator&lt; Container &gt;::operator++</definition>
+        <argsstring>()</argsstring>
+        <name>operator++</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/inserter.hpp" line="45" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/inserter.hpp" bodystart="44" bodyend="47"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1index_1_1insert__iterator_1aa4b211bf68b91e847451fbdaaf7188f4" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>insert_iterator</type>
+        <definition>insert_iterator boost::geometry::index::insert_iterator&lt; Container &gt;::operator++</definition>
+        <argsstring>(int)</argsstring>
+        <name>operator++</name>
+        <param>
+          <type>int</type>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/inserter.hpp" line="50" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/inserter.hpp" bodystart="49" bodyend="52"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/index/inserter.hpp" line="25" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/inserter.hpp" bodystart="23" bodyend="56"/>
+    <listofallmembers>
+      <member refid="classboost_1_1geometry_1_1index_1_1insert__iterator_1a591b8e0b91f6af992050b129308c1c00" prot="private" virt="non-virtual"><scope>boost::geometry::index::insert_iterator</scope><name>container</name></member>
+      <member refid="classboost_1_1geometry_1_1index_1_1insert__iterator_1a409b4c7ae762f42b7ef518aed5d5e745" prot="public" virt="non-virtual"><scope>boost::geometry::index::insert_iterator</scope><name>container_type</name></member>
+      <member refid="classboost_1_1geometry_1_1index_1_1insert__iterator_1abb46e7f869d453d5eb48885273ad3117" prot="public" virt="non-virtual"><scope>boost::geometry::index::insert_iterator</scope><name>insert_iterator</name></member>
+      <member refid="classboost_1_1geometry_1_1index_1_1insert__iterator_1abbbcbb6d42b9d21af2b33ac70e507910" prot="public" virt="non-virtual"><scope>boost::geometry::index::insert_iterator</scope><name>operator*</name></member>
+      <member refid="classboost_1_1geometry_1_1index_1_1insert__iterator_1a2fc4597aa37cf185ed132884b3beb90d" prot="public" virt="non-virtual"><scope>boost::geometry::index::insert_iterator</scope><name>operator++</name></member>
+      <member refid="classboost_1_1geometry_1_1index_1_1insert__iterator_1aa4b211bf68b91e847451fbdaaf7188f4" prot="public" virt="non-virtual"><scope>boost::geometry::index::insert_iterator</scope><name>operator++</name></member>
+      <member refid="classboost_1_1geometry_1_1index_1_1insert__iterator_1a48fcdd18cf538b78c965d332ae643672" prot="public" virt="non-virtual"><scope>boost::geometry::index::insert_iterator</scope><name>operator=</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

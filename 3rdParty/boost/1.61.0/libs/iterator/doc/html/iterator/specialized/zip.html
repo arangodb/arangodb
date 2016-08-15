@@ -1,0 +1,177 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Zip Iterator</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../../index.html" title="Chapter&#160;1.&#160;Boost.Iterator">
+<link rel="up" href="../specialized.html" title="Specialized Adaptors">
+<link rel="prev" href="transform.html" title="Transform Iterator">
+<link rel="next" href="zip/zip_reference.html" title="Reference">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="transform.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../specialized.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="zip/zip_reference.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="iterator.specialized.zip"></a><a class="link" href="zip.html" title="Zip Iterator">Zip Iterator</a>
+</h3></div></div></div>
+<div class="toc"><dl>
+<dt><span class="section"><a href="zip.html#iterator.specialized.zip.zip_example">Example</a></span></dt>
+<dt><span class="section"><a href="zip/zip_reference.html">Reference</a></span></dt>
+</dl></div>
+<p>
+        The zip iterator provides the ability to parallel-iterate over several controlled
+        sequences simultaneously. A zip iterator is constructed from a tuple of iterators.
+        Moving the zip iterator moves all the iterators in parallel. Dereferencing
+        the zip iterator returns a tuple that contains the results of dereferencing
+        the individual iterators.
+      </p>
+<p>
+        The tuple of iterators is now implemented in terms of a Boost fusion sequence.
+        Because of this the 'tuple' may be any Boost fusion sequence and, for backwards
+        compatibility through a Boost fusion sequence adapter, a Boost tuple. Because
+        the 'tuple' may be any boost::fusion sequence the 'tuple' may also be any
+        type for which a Boost fusion adapter exists. This includes, among others,
+        a std::tuple and a std::pair. Just remember to include the appropriate Boost
+        fusion adapter header files for these other Boost fusion adapters. The zip_iterator
+        header file already includes the Boost fusion adapter header file for Boost
+        tuple, so you need not include it yourself to use a Boost tuple as your 'tuple'.
+      </p>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="iterator.specialized.zip.zip_example"></a><a class="link" href="zip.html#iterator.specialized.zip.zip_example" title="Example">Example</a>
+</h4></div></div></div>
+<p>
+          There are two main types of applications of the <code class="computeroutput"><span class="identifier">zip_iterator</span></code>.
+          The first one concerns runtime efficiency: If one has several controlled
+          sequences of the same length that must be somehow processed, e.g., with
+          the <code class="computeroutput"><span class="identifier">for_each</span></code> algorithm,
+          then it is more efficient to perform just one parallel-iteration rather
+          than several individual iterations. For an example, assume that <code class="computeroutput"><span class="identifier">vect_of_doubles</span></code> and <code class="computeroutput"><span class="identifier">vect_of_ints</span></code>
+          are two vectors of equal length containing doubles and ints, respectively,
+          and consider the following two iterations:
+        </p>
+<pre class="programlisting"><span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span><span class="keyword">double</span><span class="special">&gt;::</span><span class="identifier">const_iterator</span> <span class="identifier">beg1</span> <span class="special">=</span> <span class="identifier">vect_of_doubles</span><span class="special">.</span><span class="identifier">begin</span><span class="special">();</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span><span class="keyword">double</span><span class="special">&gt;::</span><span class="identifier">const_iterator</span> <span class="identifier">end1</span> <span class="special">=</span> <span class="identifier">vect_of_doubles</span><span class="special">.</span><span class="identifier">end</span><span class="special">();</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;::</span><span class="identifier">const_iterator</span> <span class="identifier">beg2</span> <span class="special">=</span> <span class="identifier">vect_of_ints</span><span class="special">.</span><span class="identifier">begin</span><span class="special">();</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;::</span><span class="identifier">const_iterator</span> <span class="identifier">end2</span> <span class="special">=</span> <span class="identifier">vect_of_ints</span><span class="special">.</span><span class="identifier">end</span><span class="special">();</span>
+
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">for_each</span><span class="special">(</span><span class="identifier">beg1</span><span class="special">,</span> <span class="identifier">end1</span><span class="special">,</span> <span class="identifier">func_0</span><span class="special">());</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">for_each</span><span class="special">(</span><span class="identifier">beg2</span><span class="special">,</span> <span class="identifier">end2</span><span class="special">,</span> <span class="identifier">func_1</span><span class="special">());</span>
+</pre>
+<p>
+          These two iterations can now be replaced with a single one as follows:
+        </p>
+<pre class="programlisting"><span class="identifier">std</span><span class="special">::</span><span class="identifier">for_each</span><span class="special">(</span>
+  <span class="identifier">boost</span><span class="special">::</span><span class="identifier">make_zip_iterator</span><span class="special">(</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">make_tuple</span><span class="special">(</span><span class="identifier">beg1</span><span class="special">,</span> <span class="identifier">beg2</span><span class="special">)</span>
+    <span class="special">),</span>
+  <span class="identifier">boost</span><span class="special">::</span><span class="identifier">make_zip_iterator</span><span class="special">(</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">make_tuple</span><span class="special">(</span><span class="identifier">end1</span><span class="special">,</span> <span class="identifier">end2</span><span class="special">)</span>
+    <span class="special">),</span>
+  <span class="identifier">zip_func</span><span class="special">()</span>
+  <span class="special">);</span>
+</pre>
+<p>
+          A non-generic implementation of <code class="computeroutput"><span class="identifier">zip_func</span></code>
+          could look as follows:
+        </p>
+<pre class="programlisting"><span class="keyword">struct</span> <span class="identifier">zip_func</span> <span class="special">:</span>
+  <span class="keyword">public</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">unary_function</span><span class="special">&lt;</span><span class="keyword">const</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">tuple</span><span class="special">&lt;</span><span class="keyword">const</span> <span class="keyword">double</span><span class="special">&amp;,</span> <span class="keyword">const</span> <span class="keyword">int</span><span class="special">&amp;&gt;&amp;,</span> <span class="keyword">void</span><span class="special">&gt;</span>
+<span class="special">{</span>
+  <span class="keyword">void</span> <span class="keyword">operator</span><span class="special">()(</span><span class="keyword">const</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">tuple</span><span class="special">&lt;</span><span class="keyword">const</span> <span class="keyword">double</span><span class="special">&amp;,</span> <span class="keyword">const</span> <span class="keyword">int</span><span class="special">&amp;&gt;&amp;</span> <span class="identifier">t</span><span class="special">)</span> <span class="keyword">const</span>
+  <span class="special">{</span>
+    <span class="identifier">m_f0</span><span class="special">(</span><span class="identifier">t</span><span class="special">.</span><span class="identifier">get</span><span class="special">&lt;</span><span class="number">0</span><span class="special">&gt;());</span>
+    <span class="identifier">m_f1</span><span class="special">(</span><span class="identifier">t</span><span class="special">.</span><span class="identifier">get</span><span class="special">&lt;</span><span class="number">1</span><span class="special">&gt;());</span>
+  <span class="special">}</span>
+
+<span class="keyword">private</span><span class="special">:</span>
+  <span class="identifier">func_0</span> <span class="identifier">m_f0</span><span class="special">;</span>
+  <span class="identifier">func_1</span> <span class="identifier">m_f1</span><span class="special">;</span>
+<span class="special">};</span>
+</pre>
+<p>
+          The second important application of the <code class="computeroutput"><span class="identifier">zip_iterator</span></code>
+          is as a building block to make combining iterators. A combining iterator
+          is an iterator that parallel-iterates over several controlled sequences
+          and, upon dereferencing, returns the result of applying a functor to the
+          values of the sequences at the respective positions. This can now be achieved
+          by using the <code class="computeroutput"><span class="identifier">zip_iterator</span></code>
+          in conjunction with the <code class="computeroutput"><span class="identifier">transform_iterator</span></code>.
+        </p>
+<p>
+          Suppose, for example, that you have two vectors of doubles, say <code class="computeroutput"><span class="identifier">vect_1</span></code> and <code class="computeroutput"><span class="identifier">vect_2</span></code>,
+          and you need to expose to a client a controlled sequence containing the
+          products of the elements of <code class="computeroutput"><span class="identifier">vect_1</span></code>
+          and <code class="computeroutput"><span class="identifier">vect_2</span></code>. Rather than
+          placing these products in a third vector, you can use a combining iterator
+          that calculates the products on the fly. Let us assume that <code class="computeroutput"><span class="identifier">tuple_multiplies</span></code> is a functor that works
+          like <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">multiplies</span></code>, except that it takes its
+          two arguments packaged in a tuple. Then the two iterators <code class="computeroutput"><span class="identifier">it_begin</span></code> and <code class="computeroutput"><span class="identifier">it_end</span></code>
+          defined below delimit a controlled sequence containing the products of
+          the elements of <code class="computeroutput"><span class="identifier">vect_1</span></code>
+          and <code class="computeroutput"><span class="identifier">vect_2</span></code>:
+        </p>
+<pre class="programlisting"><span class="keyword">typedef</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">tuple</span><span class="special">&lt;</span>
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span><span class="keyword">double</span><span class="special">&gt;::</span><span class="identifier">const_iterator</span><span class="special">,</span>
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span><span class="keyword">double</span><span class="special">&gt;::</span><span class="identifier">const_iterator</span>
+  <span class="special">&gt;</span> <span class="identifier">the_iterator_tuple</span><span class="special">;</span>
+
+<span class="keyword">typedef</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">zip_iterator</span><span class="special">&lt;</span>
+  <span class="identifier">the_iterator_tuple</span>
+  <span class="special">&gt;</span> <span class="identifier">the_zip_iterator</span><span class="special">;</span>
+
+<span class="keyword">typedef</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">transform_iterator</span><span class="special">&lt;</span>
+  <span class="identifier">tuple_multiplies</span><span class="special">&lt;</span><span class="keyword">double</span><span class="special">&gt;,</span>
+  <span class="identifier">the_zip_iterator</span>
+  <span class="special">&gt;</span> <span class="identifier">the_transform_iterator</span><span class="special">;</span>
+
+<span class="identifier">the_transform_iterator</span> <span class="identifier">it_begin</span><span class="special">(</span>
+  <span class="identifier">the_zip_iterator</span><span class="special">(</span>
+    <span class="identifier">the_iterator_tuple</span><span class="special">(</span>
+      <span class="identifier">vect_1</span><span class="special">.</span><span class="identifier">begin</span><span class="special">(),</span>
+      <span class="identifier">vect_2</span><span class="special">.</span><span class="identifier">begin</span><span class="special">()</span>
+      <span class="special">)</span>
+    <span class="special">),</span>
+  <span class="identifier">tuple_multiplies</span><span class="special">&lt;</span><span class="keyword">double</span><span class="special">&gt;()</span>
+  <span class="special">);</span>
+
+<span class="identifier">the_transform_iterator</span> <span class="identifier">it_end</span><span class="special">(</span>
+  <span class="identifier">the_zip_iterator</span><span class="special">(</span>
+    <span class="identifier">the_iterator_tuple</span><span class="special">(</span>
+      <span class="identifier">vect_1</span><span class="special">.</span><span class="identifier">end</span><span class="special">(),</span>
+      <span class="identifier">vect_2</span><span class="special">.</span><span class="identifier">end</span><span class="special">()</span>
+      <span class="special">)</span>
+    <span class="special">),</span>
+  <span class="identifier">tuple_multiplies</span><span class="special">&lt;</span><span class="keyword">double</span><span class="special">&gt;()</span>
+  <span class="special">);</span>
+</pre>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003, 2005 David Abrahams Jeremy Siek Thomas
+      Witt<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at &lt;ulink url="http://www.boost.org/LICENSE_1_0.txt"&gt;
+        http://www.boost.org/LICENSE_1_0.txt &lt;/ulink&gt;)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="transform.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../specialized.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="zip/zip_reference.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

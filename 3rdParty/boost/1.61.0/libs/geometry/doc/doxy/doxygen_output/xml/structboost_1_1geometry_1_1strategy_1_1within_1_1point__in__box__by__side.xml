@@ -1,0 +1,66 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="structboost_1_1geometry_1_1strategy_1_1within_1_1point__in__box__by__side" kind="struct" prot="public">
+    <compoundname>boost::geometry::strategy::within::point_in_box_by_side</compoundname>
+    <includes local="no">point_in_box_by_side.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename Point</type>
+      </param>
+      <param>
+        <type>typename Box</type>
+      </param>
+      <param>
+        <type>typename Decide</type>
+        <defval><ref refid="structboost_1_1geometry_1_1strategy_1_1within_1_1decide__within" kindref="compound">decide_within</ref></defval>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-type">
+      <memberdef kind="typedef" id="structboost_1_1geometry_1_1strategy_1_1within_1_1point__in__box__by__side_1a1d6240f18e7237f62552fe2dd4cf02e6" prot="public" static="no">
+        <type><ref refid="structboost_1_1geometry_1_1strategy_1_1side_1_1services_1_1default__strategy" kindref="compound">strategy::side::services::default_strategy</ref>&lt; typename <ref refid="structboost_1_1geometry_1_1cs__tag" kindref="compound">cs_tag</ref>&lt; Box &gt;::type &gt;::type</type>
+        <definition>typedef strategy::side::services::default_strategy&lt; typename cs_tag&lt;Box&gt;::type &gt;::type boost::geometry::strategy::within::point_in_box_by_side&lt; Point, Box, Decide &gt;::side_strategy_type</definition>
+        <argsstring></argsstring>
+        <name>side_strategy_type</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/point_in_box_by_side.hpp" line="68" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/point_in_box_by_side.hpp" bodystart="68" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-static-func">
+      <memberdef kind="function" id="structboost_1_1geometry_1_1strategy_1_1within_1_1point__in__box__by__side_1ac8bac9af4321c588a787a8cfb2152b63" prot="public" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>bool</type>
+        <definition>static bool boost::geometry::strategy::within::point_in_box_by_side&lt; Point, Box, Decide &gt;::apply</definition>
+        <argsstring>(Point const &amp;point, Box const &amp;box)</argsstring>
+        <name>apply</name>
+        <param>
+          <type>Point const &amp;</type>
+          <declname>point</declname>
+        </param>
+        <param>
+          <type>Box const &amp;</type>
+          <declname>box</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/point_in_box_by_side.hpp" line="71" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/point_in_box_by_side.hpp" bodystart="70" bodyend="93"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/point_in_box_by_side.hpp" line="64" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/point_in_box_by_side.hpp" bodystart="63" bodyend="94"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1strategy_1_1within_1_1point__in__box__by__side_1ac8bac9af4321c588a787a8cfb2152b63" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::within::point_in_box_by_side</scope><name>apply</name></member>
+      <member refid="structboost_1_1geometry_1_1strategy_1_1within_1_1point__in__box__by__side_1a1d6240f18e7237f62552fe2dd4cf02e6" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::within::point_in_box_by_side</scope><name>side_strategy_type</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

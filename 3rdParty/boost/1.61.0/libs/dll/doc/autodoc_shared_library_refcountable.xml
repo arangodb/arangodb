@@ -1,0 +1,58 @@
+<?xml version="1.0" standalone="yes"?>
+<library-reference id="shared_library_refcountable_reference"><title>Shared Library Refcountable Reference</title><header name="boost/dll/import.hpp">
+<para>Contains all the boost::dll::import* reference counting functions that hold a shared pointer to the instance of boost::dll::shared_library. </para><namespace name="boost">
+<namespace name="dll">
+<overloaded-function name="import"><signature><type>result_type</type><template>
+          <template-type-parameter name="T"/>
+        </template><parameter name="lib"><paramtype>const boost::filesystem::path &amp;</paramtype><description><para>Path to shared library or shared library to load function from. </para></description></parameter><parameter name="name"><paramtype>const char *</paramtype><description><para>Null-terminated C or C++ mangled name of the function to import. Can handle std::string, char*, const char*. </para></description></parameter><parameter name="mode"><paramtype>load_mode::type</paramtype><default>load_mode::default_mode</default><description><para>An mode that will be used on library load.</para></description></parameter></signature><signature><type>result_type</type><template>
+          <template-type-parameter name="T"/>
+        </template><parameter name="lib"><paramtype>const boost::filesystem::path &amp;</paramtype></parameter><parameter name="name"><paramtype>const std::string &amp;</paramtype></parameter><parameter name="mode"><paramtype>load_mode::type</paramtype><default>load_mode::default_mode</default></parameter></signature><signature><type>result_type</type><template>
+          <template-type-parameter name="T"/>
+        </template><parameter name="lib"><paramtype>const shared_library &amp;</paramtype></parameter><parameter name="name"><paramtype>const char *</paramtype></parameter></signature><signature><type>result_type</type><template>
+          <template-type-parameter name="T"/>
+        </template><parameter name="lib"><paramtype>const shared_library &amp;</paramtype></parameter><parameter name="name"><paramtype>const std::string &amp;</paramtype></parameter></signature><signature><type>result_type</type><template>
+          <template-type-parameter name="T"/>
+        </template><parameter name="lib"><paramtype>shared_library &amp;&amp;</paramtype></parameter><parameter name="name"><paramtype>const char *</paramtype></parameter></signature><signature><type>result_type</type><template>
+          <template-type-parameter name="T"/>
+        </template><parameter name="lib"><paramtype>shared_library &amp;&amp;</paramtype></parameter><parameter name="name"><paramtype>const std::string &amp;</paramtype></parameter></signature><description><para>Returns callable object or boost::shared_ptr&lt;T&gt; that holds the symbol imported from the loaded library. Returned value refcounts usage of the loaded shared library, so that it won't get unload until all copies of return value are not destroyed.</para><para>This call will succeed if call to  <link linkend="boost.dll.shared_library">boost::dll::shared_library</link>`::has(const char* )` function with the same symbol name returned `true`.</para><para>For importing symbols by <emphasis role="bold">alias</emphasis> names use  <link linkend="boost.dll.import_alias">boost::dll::import_alias</link> method.</para><para><emphasis role="bold">Examples:</emphasis> </para><para><programlisting language="c++"> boost::function&lt;int(int)&gt; f = import&lt;int(int)&gt;("test_lib.so", "integer_func_name");
+
+ auto f_cpp11 = import&lt;int(int)&gt;("test_lib.so", "integer_func_name");
+</programlisting></para><para><programlisting language="c++"> boost::shared_ptr&lt;int&gt; i = import&lt;int&gt;("test_lib.so", "integer_name");
+</programlisting></para><para><emphasis role="bold">Template</emphasis> <emphasis role="bold">parameter</emphasis> <emphasis role="bold">T:</emphasis> Type of the symbol that we are going to import. Must be explicitly specified.</para><para>
+
+
+</para></description><returns><para>callable object if T is a function type, or boost::shared_ptr&lt;T&gt; if T is an object type.</para></returns><throws><simpara><classname>boost::system::system_error</classname> if symbol does not exist or if the DLL/DSO was not loaded. Overload that accepts path also throws std::bad_alloc in case of insufficient memory. </simpara></throws></overloaded-function>
+
+
+
+
+
+<overloaded-function name="import_alias"><signature><type>result_type</type><template>
+          <template-type-parameter name="T"/>
+        </template><parameter name="lib"><paramtype>const boost::filesystem::path &amp;</paramtype><description><para>Path to shared library or shared library to load function from. </para></description></parameter><parameter name="name"><paramtype>const char *</paramtype><description><para>Null-terminated C or C++ mangled name of the function or variable to import. Can handle std::string, char*, const char*. </para></description></parameter><parameter name="mode"><paramtype>load_mode::type</paramtype><default>load_mode::default_mode</default><description><para>An mode that will be used on library load.</para></description></parameter></signature><signature><type>result_type</type><template>
+          <template-type-parameter name="T"/>
+        </template><parameter name="lib"><paramtype>const boost::filesystem::path &amp;</paramtype></parameter><parameter name="name"><paramtype>const std::string &amp;</paramtype></parameter><parameter name="mode"><paramtype>load_mode::type</paramtype><default>load_mode::default_mode</default></parameter></signature><signature><type>result_type</type><template>
+          <template-type-parameter name="T"/>
+        </template><parameter name="lib"><paramtype>const shared_library &amp;</paramtype></parameter><parameter name="name"><paramtype>const char *</paramtype></parameter></signature><signature><type>result_type</type><template>
+          <template-type-parameter name="T"/>
+        </template><parameter name="lib"><paramtype>const shared_library &amp;</paramtype></parameter><parameter name="name"><paramtype>const std::string &amp;</paramtype></parameter></signature><signature><type>result_type</type><template>
+          <template-type-parameter name="T"/>
+        </template><parameter name="lib"><paramtype>shared_library &amp;&amp;</paramtype></parameter><parameter name="name"><paramtype>const char *</paramtype></parameter></signature><signature><type>result_type</type><template>
+          <template-type-parameter name="T"/>
+        </template><parameter name="lib"><paramtype>shared_library &amp;&amp;</paramtype></parameter><parameter name="name"><paramtype>const std::string &amp;</paramtype></parameter></signature><description><para>Returns callable object or boost::shared_ptr&lt;T&gt; that holds the symbol imported from the loaded library. Returned value refcounts usage of the loaded shared library, so that it won't get unload until all copies of return value are not destroyed.</para><para>This call will succeed if call to  <link linkend="boost.dll.shared_library">boost::dll::shared_library</link>`::has(const char* )` function with the same symbol name returned `true`.</para><para>For importing symbols by <emphasis role="bold">non</emphasis> <emphasis role="bold">alias</emphasis> names use  <link linkend="boost.dll.import">boost::dll::import</link> method.</para><para><emphasis role="bold">Examples:</emphasis> </para><para><programlisting language="c++"> boost::function&lt;int(int)&gt; f = import_alias&lt;int(int)&gt;("test_lib.so", "integer_func_alias_name");
+
+ auto f_cpp11 = import_alias&lt;int(int)&gt;("test_lib.so", "integer_func_alias_name");
+</programlisting></para><para><programlisting language="c++"> boost::shared_ptr&lt;int&gt; i = import_alias&lt;int&gt;("test_lib.so", "integer_alias_name");
+</programlisting></para><para><programlisting language="c++"/></para><para><emphasis role="bold">Template</emphasis> <emphasis role="bold">parameter</emphasis> <emphasis role="bold">T:</emphasis> Type of the symbol alias that we are going to import. Must be explicitly specified.</para><para>
+
+
+</para></description><returns><para>callable object if T is a function type, or boost::shared_ptr&lt;T&gt; if T is an object type.</para></returns><throws><simpara><classname>boost::system::system_error</classname> if symbol does not exist or if the DLL/DSO was not loaded. Overload that accepts path also throws std::bad_alloc in case of insufficient memory. </simpara></throws></overloaded-function>
+
+
+
+
+
+</namespace>
+</namespace>
+</header>
+</library-reference>

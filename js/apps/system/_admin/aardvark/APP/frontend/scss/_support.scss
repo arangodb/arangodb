@@ -7,6 +7,7 @@
 
   h4 {
     font-weight: 400;
+    margin-bottom: 10px;
   }
 
   a {
@@ -29,11 +30,28 @@
 
   .menu {
     li:first-child {
-      padding-top: 20px;
+      padding-top: 10px;
     }
 
     li:last-child {
       padding-top: 20px;
     }
+
+    li:before {
+      content: '– ';
+    }
+
+    li:last-child:before {
+      content: '';
+    }
+
+    line-height: 24px;
+    margin: 0 0 20px 10px;
+  }
+}
+
+#documentation {
+  h4 {
+    margin-bottom: 30px;
   }
 }

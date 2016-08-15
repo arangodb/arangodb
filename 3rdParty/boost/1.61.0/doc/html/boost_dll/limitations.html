@@ -1,0 +1,122 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Limitations</title>
+<link rel="stylesheet" href="../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../index.html" title="The Boost C++ Libraries BoostBook Documentation Subset">
+<link rel="up" href="../boost_dll.html" title="Chapter&#160;10.&#160;Boost.DLL">
+<link rel="prev" href="../boost/dll/import_alias.html" title="Function import_alias">
+<link rel="next" href="f_a_q_.html" title="F.A.Q.">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../boost.png"></td>
+<td align="center"><a href="../../../index.html">Home</a></td>
+<td align="center"><a href="../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../boost/dll/import_alias.html"><img src="../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../boost_dll.html"><img src="../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="f_a_q_.html"><img src="../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="boost_dll.limitations"></a><a class="link" href="limitations.html" title="Limitations">Limitations</a>
+</h2></div></div></div>
+<div class="toc"><dl>
+<dt><span class="section"><a href="limitations.html#boost_dll.limitations.exporting_weak_symbols__fails_on_mingw__android_">Exporting
+      weak symbols (Fails on MinGW, Android)</a></span></dt>
+<dt><span class="section"><a href="limitations.html#boost_dll.limitations.user_defined_section_names__fails_on_sunos___oracle_solaris_studio_compilers_">User
+      defined section names (Fails on SunOS + Oracle Solaris Studio Compilers)</a></span></dt>
+<dt><span class="section"><a href="limitations.html#boost_dll.limitations.multithread">Thread safe library
+      loading (Fails on FreeBSD, MacOS, iOS and some other)</a></span></dt>
+</dl></div>
+<p>
+      Some platforms and compilers do not provide all the required functionality
+      to have a fully functional Boost.DLL. Such compilers are mentioned in this
+      section along with possible workarounds for those limitations.
+    </p>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_dll.limitations.exporting_weak_symbols__fails_on_mingw__android_"></a><a class="link" href="limitations.html#boost_dll.limitations.exporting_weak_symbols__fails_on_mingw__android_" title="Exporting weak symbols (Fails on MinGW, Android)">Exporting
+      weak symbols (Fails on MinGW, Android)</a>
+</h3></div></div></div>
+<p>
+        Some versions of Android, <code class="computeroutput"><span class="identifier">MinGW</span></code>
+        and <code class="computeroutput"><span class="identifier">ld</span></code> on Windows platform
+        fail to mix <code class="computeroutput"><span class="identifier">__dllexport__</span></code>
+        and <code class="computeroutput"><span class="identifier">weak</span></code> attributes. This
+        leads us to situation, where we must explicitly specify translation unit
+        in which <code class="computeroutput"><a class="link" href="../BOOST_DLL_ALIAS.html" title="Macro BOOST_DLL_ALIAS">BOOST_DLL_ALIAS</a></code> is
+        instantiated, making all other <code class="computeroutput"><a class="link" href="../BOOST_DLL_ALIAS.html" title="Macro BOOST_DLL_ALIAS">BOOST_DLL_ALIAS</a></code>
+        declarations with that alias name an <code class="computeroutput"><span class="keyword">extern</span></code>
+        variable.
+      </p>
+<p>
+        Unit that must hold an instance of <code class="computeroutput"><a class="link" href="../BOOST_DLL_ALIAS.html" title="Macro BOOST_DLL_ALIAS">BOOST_DLL_ALIAS</a></code>
+        must define <code class="computeroutput"><a class="link" href="../BOOST_DLL_FORCE_ALIAS_INSTANTIATION.html" title="Macro BOOST_DLL_FORCE_ALIAS_INSTANTIATION">BOOST_DLL_FORCE_ALIAS_INSTANTIATION</a></code>
+        before including any of the Boost.DLL library headers.
+      </p>
+<p>
+        You may explicitly disable export of weak symbols using <code class="computeroutput"><a class="link" href="../BOOST_DLL_FORCE_NO_WEAK_EXPORTS.html" title="Macro BOOST_DLL_FORCE_NO_WEAK_EXPORTS">BOOST_DLL_FORCE_NO_WEAK_EXPORTS</a></code>.
+        This may be usefull for working around linker problems or to test your program
+        for compatability with linkers that do not support exporting weak symbols.
+      </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_dll.limitations.user_defined_section_names__fails_on_sunos___oracle_solaris_studio_compilers_"></a><a class="link" href="limitations.html#boost_dll.limitations.user_defined_section_names__fails_on_sunos___oracle_solaris_studio_compilers_" title="User defined section names (Fails on SunOS + Oracle Solaris Studio Compilers)">User
+      defined section names (Fails on SunOS + Oracle Solaris Studio Compilers)</a>
+</h3></div></div></div>
+<p>
+        Some platforms ignore section attributes, so that querying for a symbols
+        in a specified section using <code class="computeroutput"><a class="link" href="../boost/dll/library_info.html" title="Class library_info">boost::dll::library_info</a></code>
+        may return nothing.
+      </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_dll.limitations.multithread"></a><a class="link" href="limitations.html#boost_dll.limitations.multithread" title="Thread safe library loading (Fails on FreeBSD, MacOS, iOS and some other)">Thread safe library
+      loading (Fails on FreeBSD, MacOS, iOS and some other)</a>
+</h3></div></div></div>
+<p>
+        On some platforms <code class="computeroutput"><span class="identifier">dlopen</span></code>,<code class="computeroutput"><span class="identifier">dlclose</span></code> and some other functions assume
+        that they won't be called concurrently.
+      </p>
+<p>
+        Platforms that certaly have that issue are FreeBSD, MacOS, iOS.
+      </p>
+<p>
+        Platforms that certaly do not have such issue are Windows, Linux+glibc, Android,
+        QNX.
+      </p>
+<p>
+        Other platforms are under question. If you're using one of the platforms
+        that are not listed (for example Linux+busybox), you may run the <code class="computeroutput"><span class="identifier">shared_library_concurrent_load_test</span></code> test
+        to detect the issue:
+</p>
+<pre class="programlisting"><span class="identifier">cd</span> <span class="identifier">boost_folder</span><span class="special">/</span><span class="identifier">libs</span><span class="special">/</span><span class="identifier">dll</span><span class="special">/</span><span class="identifier">test</span>
+<span class="special">../../../</span><span class="identifier">b2</span> <span class="special">-</span><span class="identifier">a</span> <span class="identifier">shared_library_concurrent_load_test</span>
+</pre>
+<p>
+      </p>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2014 Renato Tegon Forti, Antony Polukhin<br>Copyright &#169; 2015, 2016 Antony Polukhin<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../boost/dll/import_alias.html"><img src="../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../boost_dll.html"><img src="../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="f_a_q_.html"><img src="../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

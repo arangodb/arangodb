@@ -1,0 +1,22 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="classboost_1_1geometry_1_1concept_1_1_multi_linestring" kind="class" prot="public">
+    <compoundname>boost::geometry::concept::MultiLinestring</compoundname>
+    <includes local="no">multi_linestring_concept.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename Geometry</type>
+      </param>
+    </templateparamlist>
+    <briefdescription>
+<para>multi-linestring concept </para>    </briefdescription>
+    <detaileddescription>
+<para><simplesect kind="par"><title>Formal definition:</title><para>The multi linestring concept is defined as following:<itemizedlist>
+<listitem><para>there must be a specialization of <ref refid="structboost_1_1geometry_1_1traits_1_1tag" kindref="compound">traits::tag</ref> defining <ref refid="structboost_1_1geometry_1_1multi__linestring__tag" kindref="compound">multi_linestring_tag</ref> as type</para></listitem><listitem><para>it must behave like a Boost.Range</para></listitem><listitem><para>its range value must fulfil the <ref refid="classboost_1_1geometry_1_1concept_1_1_linestring" kindref="compound">Linestring</ref> concept </para></listitem></itemizedlist>
+</para></simplesect>
+</para>    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/concepts/multi_linestring_concept.hpp" line="44" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/concepts/multi_linestring_concept.hpp" bodystart="43" bodyend="63"/>
+    <listofallmembers>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

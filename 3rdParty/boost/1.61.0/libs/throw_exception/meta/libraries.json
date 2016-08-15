@@ -1,0 +1,14 @@
+{
+    "key": "throw_exception",
+    "name": "ThrowException",
+    "authors": [
+        "Emil Dotchevski"
+    ],
+    "maintainers": [
+        "Emil Dotchevski <emil -at- revergestudios.com>"
+    ],
+    "description": "A common infrastructure for throwing exceptions from Boost libraries.",
+    "category": [
+        "Miscellaneous"
+    ]
+}

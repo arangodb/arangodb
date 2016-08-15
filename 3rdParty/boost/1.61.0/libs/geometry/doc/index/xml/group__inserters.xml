@@ -1,0 +1,44 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="group__inserters" kind="group">
+    <compoundname>inserters</compoundname>
+    <title>Inserters (boost::geometry::index::)</title>
+      <sectiondef kind="func">
+      <memberdef kind="function" id="group__inserters_1gab22c33d31b9805250e54ee6d6d240a47" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Container</type>
+          </param>
+        </templateparamlist>
+        <type>insert_iterator&lt; Container &gt;</type>
+        <definition>insert_iterator&lt;Container&gt; boost::geometry::index::inserter</definition>
+        <argsstring>(Container &amp;c)</argsstring>
+        <name>inserter</name>
+        <param>
+          <type>Container &amp;</type>
+          <declname>c</declname>
+        </param>
+        <briefdescription>
+<para>Insert iterator generator. </para>        </briefdescription>
+        <detaileddescription>
+<para>Returns insert iterator capable to insert values to the container (spatial index) which has member function insert(value_type const&amp;) defined.</para><para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>c</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>The reference to the container (spatial index) to which values will be inserted.</para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>The insert iterator inserting values to the container. </para></simplesect>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/inserter.hpp" line="72" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/inserter.hpp" bodystart="71" bodyend="74"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+  </compounddef>
+</doxygen>

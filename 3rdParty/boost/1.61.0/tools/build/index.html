@@ -1,0 +1,101 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<!-- Copyright 2004 Aleksey Gurtovoy -->
+<!-- Copyright 2004, 2005, 2006 Vladimir Prus -->
+<!-- Distributed under the Boost Software License, Version 1.0. -->
+<!-- (See accompanying file LICENSE_1_0.txt or http://www.boost.org/LICENSE_1_0.txt) -->
+
+<html>
+  <head>
+
+    <title>Boost.Build: modern C++ build system</title>
+
+    <link href="website/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+    <link href="website/index.css" rel="stylesheet">
+
+  </head>
+
+  <body bgcolor="#FFFFFF" text="#000000">
+    
+    <div style="text-align: center; margin-top: 10px;">
+      
+      <div style="position: relative; display: inline-block">
+        <img src="website/boost_build.png" width="396"
+             height="60" alt="Boost.Build V2"></img>
+        
+        <div style="padding-top: 10px; width: 100%; text-align: right">
+          <a href="tutorial.html" style="padding-right: 1em">Tutorial</a>
+          <a href="doc/html/index.html" style="padding-right: 1em">Documentation</a>  <a href="http://github.com/boostorg/build">GitHub</a>
+        </div>
+      </div>
+    </div>
+    
+    <div class="container content" style="margin-top: 2em">
+      
+      <div class="row">
+        <div class="col-md-12">
+          <p>Boost.Build makes it easy to build C++ projects, everywhere.
+            
+          <p>
+            You 
+            name you executables and libraries and list their sources. Boost.Build
+            takes care about compiling your sources with right options, creating
+            static and shared libraries, making executables, and other chores &mdash;
+            whether you're using gcc, msvc, or a dozen more supported C++
+            compilers &mdash; on Windows, OSX, Linux and commercial UNIX systems.
+        </div>
+      </div>
+      
+      <div class="row">
+        
+        <div class="col-md-6">
+          <p>
+            <b>Simple and high level build description</b>. In most
+            cases a name of target and list of sources is all you need.
+            
+          <p>
+            <b>Portability</b>. Most important build properties have symbolic
+            names that work everywhere. Why memorize compiler flags necessary 
+            for multi-threaded 64-bit shared library, if Boost.Build can do it for you?
+            
+          <p><b>Variant builds</b>. When you build the same project
+            twice with different properties, all produced files are placed
+            in different directories, so you can build with 2 versions of
+            gcc, or both debug and release variants in one invocation.
+            
+        </div>
+        
+        <div class="col-md-6">
+          <p>
+          <b>Global dependencies</b>. No matter what directory you build
+          in, Boost.Build will always check all dependencies in your entire
+          project, preventing inconsistent binaries.  And it's easy to
+          use one Boost.Build project in other, again with full dependency
+          tracking.
+          
+          <p>
+          <b>Usage requirements</b>. A target can specify properties,
+          like include paths and preprocessor defines, that are necessary to use
+          it.  Those properties will be automatically applied whenever the target
+          is used.
+
+          <p>
+          <b>Standalone</b>. Boost.Build's only dependency is a C compiler,
+          so it's easy to setup. You can even include all of Boost.Build in your 
+          project. Boost.Build does not depend on Boost C++ Libraries.
+        </div>        
+      </div> <!-- main content -->
+
+
+      <div class="row">
+        <div class="col-md-12">
+          <p>This index is for off-line use, visit
+          the <a href="http://boost.org/boost-build2">website</a> for most
+          up-to-date content.
+      </div>
+
+    </div>
+        
+  </body>
+</html>
+

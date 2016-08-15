@@ -1,0 +1,88 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="classstd_1_1wfstream" kind="class" prot="public">
+    <compoundname>std::wfstream</compoundname>
+    <basecompoundref prot="public" virt="non-virtual">std::basic_fstream&lt; wchar_t &gt;</basecompoundref>
+    <briefdescription>
+<para>STL class. </para>    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <inheritancegraph>
+      <node id="2179">
+        <label>std::basic_istream&lt; Char &gt;</label>
+        <childnode refid="2180" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="2178">
+        <label>std::basic_iostream&lt; Char &gt;</label>
+        <childnode refid="2179" relation="public-inheritance">
+        </childnode>
+        <childnode refid="2182" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="2176">
+        <label>std::wfstream</label>
+        <childnode refid="2177" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="2182">
+        <label>std::basic_ostream&lt; Char &gt;</label>
+        <childnode refid="2180" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="2180">
+        <label>std::basic_ios&lt; Char &gt;</label>
+        <childnode refid="2181" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="2181">
+        <label>std::ios_base</label>
+      </node>
+      <node id="2177">
+        <label>std::basic_fstream&lt; wchar_t &gt;</label>
+        <childnode refid="2178" relation="public-inheritance">
+        </childnode>
+      </node>
+    </inheritancegraph>
+    <collaborationgraph>
+      <node id="2186">
+        <label>std::basic_istream&lt; Char &gt;</label>
+        <childnode refid="2187" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="2185">
+        <label>std::basic_iostream&lt; Char &gt;</label>
+        <childnode refid="2186" relation="public-inheritance">
+        </childnode>
+        <childnode refid="2189" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="2183">
+        <label>std::wfstream</label>
+        <childnode refid="2184" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="2189">
+        <label>std::basic_ostream&lt; Char &gt;</label>
+        <childnode refid="2187" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="2187">
+        <label>std::basic_ios&lt; Char &gt;</label>
+        <childnode refid="2188" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="2188">
+        <label>std::ios_base</label>
+      </node>
+      <node id="2184">
+        <label>std::basic_fstream&lt; wchar_t &gt;</label>
+        <childnode refid="2185" relation="public-inheritance">
+        </childnode>
+      </node>
+    </collaborationgraph>
+    <location file="[STL]" line="1"/>
+    <listofallmembers>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

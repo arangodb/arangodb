@@ -1,0 +1,17 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="namespaceboost_1_1geometry_1_1strategy_1_1side" kind="namespace">
+    <compoundname>boost::geometry::strategy::side</compoundname>
+    <innerclass refid="classboost_1_1geometry_1_1strategy_1_1side_1_1side__by__cross__track" prot="public">boost::geometry::strategy::side::side_by_cross_track</innerclass>
+    <innerclass refid="classboost_1_1geometry_1_1strategy_1_1side_1_1side__by__triangle" prot="public">boost::geometry::strategy::side::side_by_triangle</innerclass>
+    <innerclass refid="classboost_1_1geometry_1_1strategy_1_1side_1_1side__of__intersection" prot="public">boost::geometry::strategy::side::side_of_intersection</innerclass>
+    <innerclass refid="classboost_1_1geometry_1_1strategy_1_1side_1_1spherical__side__formula" prot="public">boost::geometry::strategy::side::spherical_side_formula</innerclass>
+    <innernamespace refid="namespaceboost_1_1geometry_1_1strategy_1_1side_1_1services">boost::geometry::strategy::side::services</innernamespace>
+    <innernamespace refid="namespaceboost_1_1geometry_1_1strategy_1_1side_1_1detail">boost::geometry::strategy::side::detail</innernamespace>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/side.hpp" line="25"/>
+  </compounddef>
+</doxygen>

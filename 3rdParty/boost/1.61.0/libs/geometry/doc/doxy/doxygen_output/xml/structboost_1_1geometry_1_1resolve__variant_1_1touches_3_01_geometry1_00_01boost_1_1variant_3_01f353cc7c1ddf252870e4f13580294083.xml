@@ -1,0 +1,73 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="structboost_1_1geometry_1_1resolve__variant_1_1touches_3_01_geometry1_00_01boost_1_1variant_3_01f353cc7c1ddf252870e4f13580294083" kind="struct" prot="public">
+    <compoundname>boost::geometry::resolve_variant::touches&lt; Geometry1, boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; &gt;::visitor</compoundname>
+    <includes local="no">touches.hpp</includes>
+      <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="structboost_1_1geometry_1_1resolve__variant_1_1touches_3_01_geometry1_00_01boost_1_1variant_3_01f353cc7c1ddf252870e4f13580294083_1aacbd247d7a60d4a4ec944629214bc14c" prot="public" static="no" mutable="no">
+        <type>Geometry1 const &amp;</type>
+        <definition>Geometry1 const&amp; boost::geometry::resolve_variant::touches&lt; Geometry1, boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; &gt;::visitor::m_geometry1</definition>
+        <argsstring></argsstring>
+        <name>m_geometry1</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/touches.hpp" line="450" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/touches.hpp" bodystart="450" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="structboost_1_1geometry_1_1resolve__variant_1_1touches_3_01_geometry1_00_01boost_1_1variant_3_01f353cc7c1ddf252870e4f13580294083_1a3b0c5d6ad76dafa4f88a51883412e3f5" prot="public" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Geometry2</type>
+          </param>
+        </templateparamlist>
+        <type>bool</type>
+        <definition>bool boost::geometry::resolve_variant::touches&lt; Geometry1, boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; &gt;::visitor::operator()</definition>
+        <argsstring>(Geometry2 const &amp;geometry2) const </argsstring>
+        <name>operator()</name>
+        <param>
+          <type>Geometry2 const &amp;</type>
+          <declname>geometry2</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/touches.hpp" line="456" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/touches.hpp" bodystart="455" bodyend="458"/>
+      </memberdef>
+      <memberdef kind="function" id="structboost_1_1geometry_1_1resolve__variant_1_1touches_3_01_geometry1_00_01boost_1_1variant_3_01f353cc7c1ddf252870e4f13580294083_1a1dc00a5f784261aa5418e03566fd64df" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type></type>
+        <definition>boost::geometry::resolve_variant::touches&lt; Geometry1, boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; &gt;::visitor::visitor</definition>
+        <argsstring>(Geometry1 const &amp;geometry1)</argsstring>
+        <name>visitor</name>
+        <param>
+          <type>Geometry1 const &amp;</type>
+          <declname>geometry1</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/touches.hpp" line="452" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/touches.hpp" bodystart="452" bodyend="452"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/touches.hpp" line="449" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/touches.hpp" bodystart="448" bodyend="459"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1resolve__variant_1_1touches_3_01_geometry1_00_01boost_1_1variant_3_01f353cc7c1ddf252870e4f13580294083_1aacbd247d7a60d4a4ec944629214bc14c" prot="public" virt="non-virtual"><scope>boost::geometry::resolve_variant::touches&lt; Geometry1, boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; &gt;::visitor</scope><name>m_geometry1</name></member>
+      <member refid="structboost_1_1geometry_1_1resolve__variant_1_1touches_3_01_geometry1_00_01boost_1_1variant_3_01f353cc7c1ddf252870e4f13580294083_1a3b0c5d6ad76dafa4f88a51883412e3f5" prot="public" virt="non-virtual"><scope>boost::geometry::resolve_variant::touches&lt; Geometry1, boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; &gt;::visitor</scope><name>operator()</name></member>
+      <member refid="structboost_1_1geometry_1_1resolve__variant_1_1touches_3_01_geometry1_00_01boost_1_1variant_3_01f353cc7c1ddf252870e4f13580294083_1a1dc00a5f784261aa5418e03566fd64df" prot="public" virt="non-virtual"><scope>boost::geometry::resolve_variant::touches&lt; Geometry1, boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; &gt;::visitor</scope><name>visitor</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

@@ -1,0 +1,315 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Lambda: A Simple Lambda Library with Proto</title>
+<link rel="stylesheet" href="../../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../../../index.html" title="Chapter&#160;1.&#160;Boost.Proto">
+<link rel="up" href="../examples.html" title="Examples">
+<link rel="prev" href="future_group.html" title="Future Group: A More Advanced Transform">
+<link rel="next" href="checked_calc.html" title="Checked Calculator: A Simple Example of External Transforms">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="future_group.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../examples.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="checked_calc.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="boost_proto.users_guide.examples.lambda"></a><a class="link" href="lambda.html" title="Lambda: A Simple Lambda Library with Proto">Lambda: A
+        Simple Lambda Library with Proto</a>
+</h4></div></div></div>
+<p>
+          This is an advanced example that shows how to implement a simple lambda
+          EDSL with Proto, like the Boost.Lambda_library. It uses contexts, transforms
+          and expression extension.
+        </p>
+<p>
+</p>
+<pre class="programlisting"><span class="comment">///////////////////////////////////////////////////////////////////////////////</span>
+<span class="comment">// Copyright 2008 Eric Niebler. Distributed under the Boost</span>
+<span class="comment">// Software License, Version 1.0. (See accompanying file</span>
+<span class="comment">// LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)</span>
+<span class="comment">//</span>
+<span class="comment">// This example builds a simple but functional lambda library using Proto.</span>
+
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">iostream</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">algorithm</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">mpl</span><span class="special">/</span><span class="keyword">int</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">mpl</span><span class="special">/</span><span class="identifier">min_max</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">mpl</span><span class="special">/</span><span class="identifier">eval_if</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">mpl</span><span class="special">/</span><span class="identifier">identity</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">mpl</span><span class="special">/</span><span class="identifier">next_prior</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">fusion</span><span class="special">/</span><span class="identifier">tuple</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">typeof</span><span class="special">/</span><span class="identifier">typeof</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">typeof</span><span class="special">/</span><span class="identifier">std</span><span class="special">/</span><span class="identifier">ostream</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">typeof</span><span class="special">/</span><span class="identifier">std</span><span class="special">/</span><span class="identifier">iostream</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">proto</span><span class="special">/</span><span class="identifier">core</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">proto</span><span class="special">/</span><span class="identifier">context</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">proto</span><span class="special">/</span><span class="identifier">transform</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="keyword">namespace</span> <span class="identifier">mpl</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">mpl</span><span class="special">;</span>
+<span class="keyword">namespace</span> <span class="identifier">proto</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">proto</span><span class="special">;</span>
+<span class="keyword">namespace</span> <span class="identifier">fusion</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">fusion</span><span class="special">;</span>
+<span class="keyword">using</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">_</span><span class="special">;</span>
+
+<span class="comment">// Forward declaration of the lambda expression wrapper</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">T</span><span class="special">&gt;</span>
+<span class="keyword">struct</span> <span class="identifier">lambda</span><span class="special">;</span>
+
+<span class="keyword">struct</span> <span class="identifier">lambda_domain</span>
+  <span class="special">:</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">domain</span><span class="special">&lt;</span><span class="identifier">proto</span><span class="special">::</span><span class="identifier">pod_generator</span><span class="special">&lt;</span><span class="identifier">lambda</span><span class="special">&gt;</span> <span class="special">&gt;</span>
+<span class="special">{};</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">I</span><span class="special">&gt;</span>
+<span class="keyword">struct</span> <span class="identifier">placeholder</span>
+<span class="special">{</span>
+    <span class="keyword">typedef</span> <span class="identifier">I</span> <span class="identifier">arity</span><span class="special">;</span>
+<span class="special">};</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">T</span><span class="special">&gt;</span>
+<span class="keyword">struct</span> <span class="identifier">placeholder_arity</span>
+<span class="special">{</span>
+    <span class="keyword">typedef</span> <span class="keyword">typename</span> <span class="identifier">T</span><span class="special">::</span><span class="identifier">arity</span> <span class="identifier">type</span><span class="special">;</span>
+<span class="special">};</span>
+
+<span class="comment">// The lambda grammar, with the transforms for calculating the max arity</span>
+<span class="keyword">struct</span> <span class="identifier">lambda_arity</span>
+  <span class="special">:</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">or_</span><span class="special">&lt;</span>
+        <span class="identifier">proto</span><span class="special">::</span><span class="identifier">when</span><span class="special">&lt;</span>
+            <span class="identifier">proto</span><span class="special">::</span><span class="identifier">terminal</span><span class="special">&lt;</span> <span class="identifier">placeholder</span><span class="special">&lt;</span><span class="identifier">_</span><span class="special">&gt;</span> <span class="special">&gt;</span>
+          <span class="special">,</span> <span class="identifier">mpl</span><span class="special">::</span><span class="identifier">next</span><span class="special">&lt;</span><span class="identifier">placeholder_arity</span><span class="special">&lt;</span><span class="identifier">proto</span><span class="special">::</span><span class="identifier">_value</span><span class="special">&gt;</span> <span class="special">&gt;()</span>
+        <span class="special">&gt;</span>
+      <span class="special">,</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">when</span><span class="special">&lt;</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">terminal</span><span class="special">&lt;</span><span class="identifier">_</span><span class="special">&gt;</span>
+          <span class="special">,</span> <span class="identifier">mpl</span><span class="special">::</span><span class="identifier">int_</span><span class="special">&lt;</span><span class="number">0</span><span class="special">&gt;()</span>
+        <span class="special">&gt;</span>
+      <span class="special">,</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">when</span><span class="special">&lt;</span>
+            <span class="identifier">proto</span><span class="special">::</span><span class="identifier">nary_expr</span><span class="special">&lt;</span><span class="identifier">_</span><span class="special">,</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">vararg</span><span class="special">&lt;</span><span class="identifier">_</span><span class="special">&gt;</span> <span class="special">&gt;</span>
+          <span class="special">,</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">fold</span><span class="special">&lt;</span><span class="identifier">_</span><span class="special">,</span> <span class="identifier">mpl</span><span class="special">::</span><span class="identifier">int_</span><span class="special">&lt;</span><span class="number">0</span><span class="special">&gt;(),</span> <span class="identifier">mpl</span><span class="special">::</span><span class="identifier">max</span><span class="special">&lt;</span><span class="identifier">lambda_arity</span><span class="special">,</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">_state</span><span class="special">&gt;()&gt;</span>
+        <span class="special">&gt;</span>
+    <span class="special">&gt;</span>
+<span class="special">{};</span>
+
+<span class="comment">// The lambda context is the same as the default context</span>
+<span class="comment">// with the addition of special handling for lambda placeholders</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">Tuple</span><span class="special">&gt;</span>
+<span class="keyword">struct</span> <span class="identifier">lambda_context</span>
+  <span class="special">:</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">callable_context</span><span class="special">&lt;</span><span class="identifier">lambda_context</span><span class="special">&lt;</span><span class="identifier">Tuple</span><span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&gt;</span>
+<span class="special">{</span>
+    <span class="identifier">lambda_context</span><span class="special">(</span><span class="identifier">Tuple</span> <span class="keyword">const</span> <span class="special">&amp;</span><span class="identifier">args</span><span class="special">)</span>
+      <span class="special">:</span> <span class="identifier">args_</span><span class="special">(</span><span class="identifier">args</span><span class="special">)</span>
+    <span class="special">{}</span>
+
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">Sig</span><span class="special">&gt;</span>
+    <span class="keyword">struct</span> <span class="identifier">result</span><span class="special">;</span>
+
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">This</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">I</span><span class="special">&gt;</span>
+    <span class="keyword">struct</span> <span class="identifier">result</span><span class="special">&lt;</span><span class="identifier">This</span><span class="special">(</span><span class="identifier">proto</span><span class="special">::</span><span class="identifier">tag</span><span class="special">::</span><span class="identifier">terminal</span><span class="special">,</span> <span class="identifier">placeholder</span><span class="special">&lt;</span><span class="identifier">I</span><span class="special">&gt;</span> <span class="keyword">const</span> <span class="special">&amp;)&gt;</span>
+      <span class="special">:</span> <span class="identifier">fusion</span><span class="special">::</span><span class="identifier">result_of</span><span class="special">::</span><span class="identifier">at</span><span class="special">&lt;</span><span class="identifier">Tuple</span><span class="special">,</span> <span class="identifier">I</span><span class="special">&gt;</span>
+    <span class="special">{};</span>
+
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">I</span><span class="special">&gt;</span>
+    <span class="keyword">typename</span> <span class="identifier">fusion</span><span class="special">::</span><span class="identifier">result_of</span><span class="special">::</span><span class="identifier">at</span><span class="special">&lt;</span><span class="identifier">Tuple</span><span class="special">,</span> <span class="identifier">I</span><span class="special">&gt;::</span><span class="identifier">type</span>
+    <span class="keyword">operator</span> <span class="special">()(</span><span class="identifier">proto</span><span class="special">::</span><span class="identifier">tag</span><span class="special">::</span><span class="identifier">terminal</span><span class="special">,</span> <span class="identifier">placeholder</span><span class="special">&lt;</span><span class="identifier">I</span><span class="special">&gt;</span> <span class="keyword">const</span> <span class="special">&amp;)</span> <span class="keyword">const</span>
+    <span class="special">{</span>
+        <span class="keyword">return</span> <span class="identifier">fusion</span><span class="special">::</span><span class="identifier">at</span><span class="special">&lt;</span><span class="identifier">I</span><span class="special">&gt;(</span><span class="keyword">this</span><span class="special">-&gt;</span><span class="identifier">args_</span><span class="special">);</span>
+    <span class="special">}</span>
+
+    <span class="identifier">Tuple</span> <span class="identifier">args_</span><span class="special">;</span>
+<span class="special">};</span>
+
+<span class="comment">// The lambda&lt;&gt; expression wrapper makes expressions polymorphic</span>
+<span class="comment">// function objects</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">T</span><span class="special">&gt;</span>
+<span class="keyword">struct</span> <span class="identifier">lambda</span>
+<span class="special">{</span>
+    <span class="identifier">BOOST_PROTO_BASIC_EXTENDS</span><span class="special">(</span><span class="identifier">T</span><span class="special">,</span> <span class="identifier">lambda</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;,</span> <span class="identifier">lambda_domain</span><span class="special">)</span>
+    <span class="identifier">BOOST_PROTO_EXTENDS_ASSIGN</span><span class="special">()</span>
+    <span class="identifier">BOOST_PROTO_EXTENDS_SUBSCRIPT</span><span class="special">()</span>
+
+    <span class="comment">// Calculate the arity of this lambda expression</span>
+    <span class="keyword">static</span> <span class="keyword">int</span> <span class="keyword">const</span> <span class="identifier">arity</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">result_of</span><span class="special">&lt;</span><span class="identifier">lambda_arity</span><span class="special">(</span><span class="identifier">T</span><span class="special">)&gt;::</span><span class="identifier">type</span><span class="special">::</span><span class="identifier">value</span><span class="special">;</span>
+
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">Sig</span><span class="special">&gt;</span>
+    <span class="keyword">struct</span> <span class="identifier">result</span><span class="special">;</span>
+
+    <span class="comment">// Define nested result&lt;&gt; specializations to calculate the return</span>
+    <span class="comment">// type of this lambda expression. But be careful not to evaluate</span>
+    <span class="comment">// the return type of the nullary function unless we have a nullary</span>
+    <span class="comment">// lambda!</span>
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">This</span><span class="special">&gt;</span>
+    <span class="keyword">struct</span> <span class="identifier">result</span><span class="special">&lt;</span><span class="identifier">This</span><span class="special">()&gt;</span>
+      <span class="special">:</span> <span class="identifier">mpl</span><span class="special">::</span><span class="identifier">eval_if_c</span><span class="special">&lt;</span>
+            <span class="number">0</span> <span class="special">==</span> <span class="identifier">arity</span>
+          <span class="special">,</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">result_of</span><span class="special">::</span><span class="identifier">eval</span><span class="special">&lt;</span><span class="identifier">T</span> <span class="keyword">const</span><span class="special">,</span> <span class="identifier">lambda_context</span><span class="special">&lt;</span><span class="identifier">fusion</span><span class="special">::</span><span class="identifier">tuple</span><span class="special">&lt;&gt;</span> <span class="special">&gt;</span> <span class="special">&gt;</span>
+          <span class="special">,</span> <span class="identifier">mpl</span><span class="special">::</span><span class="identifier">identity</span><span class="special">&lt;</span><span class="keyword">void</span><span class="special">&gt;</span>
+        <span class="special">&gt;</span>
+    <span class="special">{};</span>
+
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">This</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">A0</span><span class="special">&gt;</span>
+    <span class="keyword">struct</span> <span class="identifier">result</span><span class="special">&lt;</span><span class="identifier">This</span><span class="special">(</span><span class="identifier">A0</span><span class="special">)&gt;</span>
+      <span class="special">:</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">result_of</span><span class="special">::</span><span class="identifier">eval</span><span class="special">&lt;</span><span class="identifier">T</span> <span class="keyword">const</span><span class="special">,</span> <span class="identifier">lambda_context</span><span class="special">&lt;</span><span class="identifier">fusion</span><span class="special">::</span><span class="identifier">tuple</span><span class="special">&lt;</span><span class="identifier">A0</span><span class="special">&gt;</span> <span class="special">&gt;</span> <span class="special">&gt;</span>
+    <span class="special">{};</span>
+
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">This</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">A0</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">A1</span><span class="special">&gt;</span>
+    <span class="keyword">struct</span> <span class="identifier">result</span><span class="special">&lt;</span><span class="identifier">This</span><span class="special">(</span><span class="identifier">A0</span><span class="special">,</span> <span class="identifier">A1</span><span class="special">)&gt;</span>
+      <span class="special">:</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">result_of</span><span class="special">::</span><span class="identifier">eval</span><span class="special">&lt;</span><span class="identifier">T</span> <span class="keyword">const</span><span class="special">,</span> <span class="identifier">lambda_context</span><span class="special">&lt;</span><span class="identifier">fusion</span><span class="special">::</span><span class="identifier">tuple</span><span class="special">&lt;</span><span class="identifier">A0</span><span class="special">,</span> <span class="identifier">A1</span><span class="special">&gt;</span> <span class="special">&gt;</span> <span class="special">&gt;</span>
+    <span class="special">{};</span>
+
+    <span class="comment">// Define our operator () that evaluates the lambda expression.</span>
+    <span class="keyword">typename</span> <span class="identifier">result</span><span class="special">&lt;</span><span class="identifier">lambda</span><span class="special">()&gt;::</span><span class="identifier">type</span>
+    <span class="keyword">operator</span> <span class="special">()()</span> <span class="keyword">const</span>
+    <span class="special">{</span>
+        <span class="identifier">fusion</span><span class="special">::</span><span class="identifier">tuple</span><span class="special">&lt;&gt;</span> <span class="identifier">args</span><span class="special">;</span>
+        <span class="identifier">lambda_context</span><span class="special">&lt;</span><span class="identifier">fusion</span><span class="special">::</span><span class="identifier">tuple</span><span class="special">&lt;&gt;</span> <span class="special">&gt;</span> <span class="identifier">ctx</span><span class="special">(</span><span class="identifier">args</span><span class="special">);</span>
+        <span class="keyword">return</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">eval</span><span class="special">(*</span><span class="keyword">this</span><span class="special">,</span> <span class="identifier">ctx</span><span class="special">);</span>
+    <span class="special">}</span>
+
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">A0</span><span class="special">&gt;</span>
+    <span class="keyword">typename</span> <span class="identifier">result</span><span class="special">&lt;</span><span class="identifier">lambda</span><span class="special">(</span><span class="identifier">A0</span> <span class="keyword">const</span> <span class="special">&amp;)&gt;::</span><span class="identifier">type</span>
+    <span class="keyword">operator</span> <span class="special">()(</span><span class="identifier">A0</span> <span class="keyword">const</span> <span class="special">&amp;</span><span class="identifier">a0</span><span class="special">)</span> <span class="keyword">const</span>
+    <span class="special">{</span>
+        <span class="identifier">fusion</span><span class="special">::</span><span class="identifier">tuple</span><span class="special">&lt;</span><span class="identifier">A0</span> <span class="keyword">const</span> <span class="special">&amp;&gt;</span> <span class="identifier">args</span><span class="special">(</span><span class="identifier">a0</span><span class="special">);</span>
+        <span class="identifier">lambda_context</span><span class="special">&lt;</span><span class="identifier">fusion</span><span class="special">::</span><span class="identifier">tuple</span><span class="special">&lt;</span><span class="identifier">A0</span> <span class="keyword">const</span> <span class="special">&amp;&gt;</span> <span class="special">&gt;</span> <span class="identifier">ctx</span><span class="special">(</span><span class="identifier">args</span><span class="special">);</span>
+        <span class="keyword">return</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">eval</span><span class="special">(*</span><span class="keyword">this</span><span class="special">,</span> <span class="identifier">ctx</span><span class="special">);</span>
+    <span class="special">}</span>
+
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">A0</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">A1</span><span class="special">&gt;</span>
+    <span class="keyword">typename</span> <span class="identifier">result</span><span class="special">&lt;</span><span class="identifier">lambda</span><span class="special">(</span><span class="identifier">A0</span> <span class="keyword">const</span> <span class="special">&amp;,</span> <span class="identifier">A1</span> <span class="keyword">const</span> <span class="special">&amp;)&gt;::</span><span class="identifier">type</span>
+    <span class="keyword">operator</span> <span class="special">()(</span><span class="identifier">A0</span> <span class="keyword">const</span> <span class="special">&amp;</span><span class="identifier">a0</span><span class="special">,</span> <span class="identifier">A1</span> <span class="keyword">const</span> <span class="special">&amp;</span><span class="identifier">a1</span><span class="special">)</span> <span class="keyword">const</span>
+    <span class="special">{</span>
+        <span class="identifier">fusion</span><span class="special">::</span><span class="identifier">tuple</span><span class="special">&lt;</span><span class="identifier">A0</span> <span class="keyword">const</span> <span class="special">&amp;,</span> <span class="identifier">A1</span> <span class="keyword">const</span> <span class="special">&amp;&gt;</span> <span class="identifier">args</span><span class="special">(</span><span class="identifier">a0</span><span class="special">,</span> <span class="identifier">a1</span><span class="special">);</span>
+        <span class="identifier">lambda_context</span><span class="special">&lt;</span><span class="identifier">fusion</span><span class="special">::</span><span class="identifier">tuple</span><span class="special">&lt;</span><span class="identifier">A0</span> <span class="keyword">const</span> <span class="special">&amp;,</span> <span class="identifier">A1</span> <span class="keyword">const</span> <span class="special">&amp;&gt;</span> <span class="special">&gt;</span> <span class="identifier">ctx</span><span class="special">(</span><span class="identifier">args</span><span class="special">);</span>
+        <span class="keyword">return</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">eval</span><span class="special">(*</span><span class="keyword">this</span><span class="special">,</span> <span class="identifier">ctx</span><span class="special">);</span>
+    <span class="special">}</span>
+<span class="special">};</span>
+
+<span class="comment">// Define some lambda placeholders</span>
+<span class="identifier">lambda</span><span class="special">&lt;</span><span class="identifier">proto</span><span class="special">::</span><span class="identifier">terminal</span><span class="special">&lt;</span><span class="identifier">placeholder</span><span class="special">&lt;</span><span class="identifier">mpl</span><span class="special">::</span><span class="identifier">int_</span><span class="special">&lt;</span><span class="number">0</span><span class="special">&gt;</span> <span class="special">&gt;</span> <span class="special">&gt;::</span><span class="identifier">type</span><span class="special">&gt;</span> <span class="keyword">const</span> <span class="identifier">_1</span> <span class="special">=</span> <span class="special">{{}};</span>
+<span class="identifier">lambda</span><span class="special">&lt;</span><span class="identifier">proto</span><span class="special">::</span><span class="identifier">terminal</span><span class="special">&lt;</span><span class="identifier">placeholder</span><span class="special">&lt;</span><span class="identifier">mpl</span><span class="special">::</span><span class="identifier">int_</span><span class="special">&lt;</span><span class="number">1</span><span class="special">&gt;</span> <span class="special">&gt;</span> <span class="special">&gt;::</span><span class="identifier">type</span><span class="special">&gt;</span> <span class="keyword">const</span> <span class="identifier">_2</span> <span class="special">=</span> <span class="special">{{}};</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">T</span><span class="special">&gt;</span>
+<span class="identifier">lambda</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">terminal</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;::</span><span class="identifier">type</span><span class="special">&gt;</span> <span class="keyword">const</span> <span class="identifier">val</span><span class="special">(</span><span class="identifier">T</span> <span class="keyword">const</span> <span class="special">&amp;</span><span class="identifier">t</span><span class="special">)</span>
+<span class="special">{</span>
+    <span class="identifier">lambda</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">terminal</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;::</span><span class="identifier">type</span><span class="special">&gt;</span> <span class="identifier">that</span> <span class="special">=</span> <span class="special">{{</span><span class="identifier">t</span><span class="special">}};</span>
+    <span class="keyword">return</span> <span class="identifier">that</span><span class="special">;</span>
+<span class="special">}</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">T</span><span class="special">&gt;</span>
+<span class="identifier">lambda</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">terminal</span><span class="special">&lt;</span><span class="identifier">T</span> <span class="special">&amp;&gt;::</span><span class="identifier">type</span><span class="special">&gt;</span> <span class="keyword">const</span> <span class="identifier">var</span><span class="special">(</span><span class="identifier">T</span> <span class="special">&amp;</span><span class="identifier">t</span><span class="special">)</span>
+<span class="special">{</span>
+    <span class="identifier">lambda</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">terminal</span><span class="special">&lt;</span><span class="identifier">T</span> <span class="special">&amp;&gt;::</span><span class="identifier">type</span><span class="special">&gt;</span> <span class="identifier">that</span> <span class="special">=</span> <span class="special">{{</span><span class="identifier">t</span><span class="special">}};</span>
+    <span class="keyword">return</span> <span class="identifier">that</span><span class="special">;</span>
+<span class="special">}</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">T</span><span class="special">&gt;</span>
+<span class="keyword">struct</span> <span class="identifier">construct_helper</span>
+<span class="special">{</span>
+    <span class="keyword">typedef</span> <span class="identifier">T</span> <span class="identifier">result_type</span><span class="special">;</span> <span class="comment">// for TR1 result_of</span>
+
+    <span class="identifier">T</span> <span class="keyword">operator</span><span class="special">()()</span> <span class="keyword">const</span>
+    <span class="special">{</span> <span class="keyword">return</span> <span class="identifier">T</span><span class="special">();</span> <span class="special">}</span>
+
+    <span class="comment">// Generate BOOST_PROTO_MAX_ARITY overloads of the</span>
+    <span class="comment">// following function call operator.</span>
+<span class="preprocessor">#define</span> <span class="identifier">BOOST_PROTO_LOCAL_MACRO</span><span class="special">(</span><span class="identifier">N</span><span class="special">,</span> <span class="identifier">typename_A</span><span class="special">,</span> <span class="identifier">A_const_ref</span><span class="special">,</span> <span class="identifier">A_const_ref_a</span><span class="special">,</span> <span class="identifier">a</span><span class="special">)\</span>
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="identifier">typename_A</span><span class="special">(</span><span class="identifier">N</span><span class="special">)&gt;</span>                                       <span class="special">\</span>
+    <span class="identifier">T</span> <span class="keyword">operator</span><span class="special">()(</span><span class="identifier">A_const_ref_a</span><span class="special">(</span><span class="identifier">N</span><span class="special">))</span> <span class="keyword">const</span>                          <span class="special">\</span>
+    <span class="special">{</span> <span class="keyword">return</span> <span class="identifier">T</span><span class="special">(</span><span class="identifier">a</span><span class="special">(</span><span class="identifier">N</span><span class="special">));</span> <span class="special">}</span>
+<span class="preprocessor">#define</span> <span class="identifier">BOOST_PROTO_LOCAL_a</span> <span class="identifier">BOOST_PROTO_a</span>
+<span class="preprocessor">#include</span> <span class="identifier">BOOST_PROTO_LOCAL_ITERATE</span><span class="special">()</span>
+<span class="special">};</span>
+
+<span class="comment">// Generate BOOST_PROTO_MAX_ARITY-1 overloads of the</span>
+<span class="comment">// following construct() function template.</span>
+<span class="preprocessor">#define</span> <span class="identifier">M0</span><span class="special">(</span><span class="identifier">N</span><span class="special">,</span> <span class="identifier">typename_A</span><span class="special">,</span> <span class="identifier">A_const_ref</span><span class="special">,</span> <span class="identifier">A_const_ref_a</span><span class="special">,</span> <span class="identifier">ref_a</span><span class="special">)</span>      <span class="special">\</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">T</span><span class="special">,</span> <span class="identifier">typename_A</span><span class="special">(</span><span class="identifier">N</span><span class="special">)&gt;</span>                               <span class="special">\</span>
+<span class="keyword">typename</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">result_of</span><span class="special">::</span><span class="identifier">make_expr</span><span class="special">&lt;</span>                             <span class="special">\</span>
+    <span class="identifier">proto</span><span class="special">::</span><span class="identifier">tag</span><span class="special">::</span><span class="identifier">function</span>                                          <span class="special">\</span>
+  <span class="special">,</span> <span class="identifier">lambda_domain</span>                                                 <span class="special">\</span>
+  <span class="special">,</span> <span class="identifier">construct_helper</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;</span>                                           <span class="special">\</span>
+  <span class="special">,</span> <span class="identifier">A_const_ref</span><span class="special">(</span><span class="identifier">N</span><span class="special">)</span>                                                <span class="special">\</span>
+<span class="special">&gt;::</span><span class="identifier">type</span> <span class="keyword">const</span>                                                     <span class="special">\</span>
+<span class="identifier">construct</span><span class="special">(</span><span class="identifier">A_const_ref_a</span><span class="special">(</span><span class="identifier">N</span><span class="special">))</span>                                       <span class="special">\</span>
+<span class="special">{</span>                                                                 <span class="special">\</span>
+    <span class="keyword">return</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">make_expr</span><span class="special">&lt;</span>                                      <span class="special">\</span>
+        <span class="identifier">proto</span><span class="special">::</span><span class="identifier">tag</span><span class="special">::</span><span class="identifier">function</span>                                      <span class="special">\</span>
+      <span class="special">,</span> <span class="identifier">lambda_domain</span>                                             <span class="special">\</span>
+    <span class="special">&gt;(</span>                                                            <span class="special">\</span>
+        <span class="identifier">construct_helper</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;()</span>                                     <span class="special">\</span>
+      <span class="special">,</span> <span class="identifier">ref_a</span><span class="special">(</span><span class="identifier">N</span><span class="special">)</span>                                                  <span class="special">\</span>
+    <span class="special">);</span>                                                            <span class="special">\</span>
+<span class="special">}</span>
+<span class="identifier">BOOST_PROTO_REPEAT_FROM_TO</span><span class="special">(</span><span class="number">1</span><span class="special">,</span> <span class="identifier">BOOST_PROTO_MAX_ARITY</span><span class="special">,</span> <span class="identifier">M0</span><span class="special">)</span>
+<span class="preprocessor">#undef</span> <span class="identifier">M0</span>
+
+<span class="keyword">struct</span> <span class="identifier">S</span>
+<span class="special">{</span>
+    <span class="identifier">S</span><span class="special">()</span> <span class="special">{}</span>
+    <span class="identifier">S</span><span class="special">(</span><span class="keyword">int</span> <span class="identifier">i</span><span class="special">,</span> <span class="keyword">char</span> <span class="identifier">c</span><span class="special">)</span>
+    <span class="special">{</span>
+        <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"S("</span> <span class="special">&lt;&lt;</span> <span class="identifier">i</span> <span class="special">&lt;&lt;</span> <span class="string">","</span> <span class="special">&lt;&lt;</span> <span class="identifier">c</span> <span class="special">&lt;&lt;</span> <span class="string">")\n"</span><span class="special">;</span>
+    <span class="special">}</span>
+<span class="special">};</span>
+
+<span class="keyword">int</span> <span class="identifier">main</span><span class="special">()</span>
+<span class="special">{</span>
+    <span class="comment">// Create some lambda objects and immediately</span>
+    <span class="comment">// invoke them by applying their operator():</span>
+    <span class="keyword">int</span> <span class="identifier">i</span> <span class="special">=</span> <span class="special">(</span> <span class="special">(</span><span class="identifier">_1</span> <span class="special">+</span> <span class="number">2</span><span class="special">)</span> <span class="special">/</span> <span class="number">4</span> <span class="special">)(</span><span class="number">42</span><span class="special">);</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">i</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span> <span class="comment">// prints 11</span>
+
+    <span class="keyword">int</span> <span class="identifier">j</span> <span class="special">=</span> <span class="special">(</span> <span class="special">(-(</span><span class="identifier">_1</span> <span class="special">+</span> <span class="number">2</span><span class="special">))</span> <span class="special">/</span> <span class="number">4</span> <span class="special">)(</span><span class="number">42</span><span class="special">);</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">j</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span> <span class="comment">// prints -11</span>
+
+    <span class="keyword">double</span> <span class="identifier">d</span> <span class="special">=</span> <span class="special">(</span> <span class="special">(</span><span class="number">4</span> <span class="special">-</span> <span class="identifier">_2</span><span class="special">)</span> <span class="special">*</span> <span class="number">3</span> <span class="special">)(</span><span class="number">42</span><span class="special">,</span> <span class="number">3.14</span><span class="special">);</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">d</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span> <span class="comment">// prints 2.58</span>
+
+    <span class="comment">// check non-const ref terminals</span>
+    <span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">_1</span> <span class="special">&lt;&lt;</span> <span class="string">" -- "</span> <span class="special">&lt;&lt;</span> <span class="identifier">_2</span> <span class="special">&lt;&lt;</span> <span class="char">'\n'</span><span class="special">)(</span><span class="number">42</span><span class="special">,</span> <span class="string">"Life, the Universe and Everything!"</span><span class="special">);</span>
+    <span class="comment">// prints "42 -- Life, the Universe and Everything!"</span>
+
+    <span class="comment">// "Nullary" lambdas work too</span>
+    <span class="keyword">int</span> <span class="identifier">k</span> <span class="special">=</span> <span class="special">(</span><span class="identifier">val</span><span class="special">(</span><span class="number">1</span><span class="special">)</span> <span class="special">+</span> <span class="identifier">val</span><span class="special">(</span><span class="number">2</span><span class="special">))();</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">k</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span> <span class="comment">// prints 3</span>
+
+    <span class="comment">// check array indexing for kicks</span>
+    <span class="keyword">int</span> <span class="identifier">integers</span><span class="special">[</span><span class="number">5</span><span class="special">]</span> <span class="special">=</span> <span class="special">{</span><span class="number">0</span><span class="special">};</span>
+    <span class="special">(</span><span class="identifier">var</span><span class="special">(</span><span class="identifier">integers</span><span class="special">)[</span><span class="number">2</span><span class="special">]</span> <span class="special">=</span> <span class="number">2</span><span class="special">)();</span>
+    <span class="special">(</span><span class="identifier">var</span><span class="special">(</span><span class="identifier">integers</span><span class="special">)[</span><span class="identifier">_1</span><span class="special">]</span> <span class="special">=</span> <span class="identifier">_1</span><span class="special">)(</span><span class="number">3</span><span class="special">);</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">integers</span><span class="special">[</span><span class="number">2</span><span class="special">]</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span> <span class="comment">// prints 2</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">integers</span><span class="special">[</span><span class="number">3</span><span class="special">]</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span> <span class="comment">// prints 3</span>
+
+    <span class="comment">// Now use a lambda with an STL algorithm!</span>
+    <span class="keyword">int</span> <span class="identifier">rgi</span><span class="special">[</span><span class="number">4</span><span class="special">]</span> <span class="special">=</span> <span class="special">{</span><span class="number">1</span><span class="special">,</span><span class="number">2</span><span class="special">,</span><span class="number">3</span><span class="special">,</span><span class="number">4</span><span class="special">};</span>
+    <span class="keyword">char</span> <span class="identifier">rgc</span><span class="special">[</span><span class="number">4</span><span class="special">]</span> <span class="special">=</span> <span class="special">{</span><span class="char">'a'</span><span class="special">,</span><span class="char">'b'</span><span class="special">,</span><span class="char">'c'</span><span class="special">,</span><span class="char">'d'</span><span class="special">};</span>
+    <span class="identifier">S</span> <span class="identifier">rgs</span><span class="special">[</span><span class="number">4</span><span class="special">];</span>
+
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">transform</span><span class="special">(</span><span class="identifier">rgi</span><span class="special">,</span> <span class="identifier">rgi</span><span class="special">+</span><span class="number">4</span><span class="special">,</span> <span class="identifier">rgc</span><span class="special">,</span> <span class="identifier">rgs</span><span class="special">,</span> <span class="identifier">construct</span><span class="special">&lt;</span><span class="identifier">S</span><span class="special">&gt;(</span><span class="identifier">_1</span><span class="special">,</span> <span class="identifier">_2</span><span class="special">));</span>
+    <span class="keyword">return</span> <span class="number">0</span><span class="special">;</span>
+<span class="special">}</span>
+</pre>
+<p>
+        </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2008 Eric Niebler<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="future_group.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../examples.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="checked_calc.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

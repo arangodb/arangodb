@@ -1,0 +1,85 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="classboost_1_1geometry_1_1centroid__exception" kind="class" prot="public">
+    <compoundname>boost::geometry::centroid_exception</compoundname>
+    <basecompoundref refid="classboost_1_1geometry_1_1exception" prot="public" virt="non-virtual">boost::geometry::exception</basecompoundref>
+    <includes local="no">centroid.hpp</includes>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="classboost_1_1geometry_1_1centroid__exception_1aa7f89d82571adc93bd774789cb3bfacf" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type></type>
+        <definition>boost::geometry::centroid_exception::centroid_exception</definition>
+        <argsstring>()</argsstring>
+        <name>centroid_exception</name>
+        <briefdescription>
+<para>The default constructor. </para>        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/centroid.hpp" line="89" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/centroid.hpp" bodystart="89" bodyend="89"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1centroid__exception_1a53fc09976554829bab5269f436d60d10" prot="public" static="no" const="yes" explicit="no" inline="yes" virt="virtual">
+        <type>char const *</type>
+        <definition>virtual char const* boost::geometry::centroid_exception::what</definition>
+        <argsstring>() const </argsstring>
+        <name>what</name>
+        <reimplements refid="classboost_1_1geometry_1_1exception_1ad9081ff7bda60a00da3de2ae4ff4ba7d">what</reimplements>
+        <exceptions> throw ()</exceptions>
+        <briefdescription>
+<para>Returns the explanatory string. </para>        </briefdescription>
+        <detaileddescription>
+<para><simplesect kind="return"><para>Pointer to a null-terminated string with explanatory information. </para></simplesect>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/centroid.hpp" line="96" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/centroid.hpp" bodystart="95" bodyend="98"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+<para>Centroid Exception. </para>    </briefdescription>
+    <detaileddescription>
+<para>The <ref refid="classboost_1_1geometry_1_1centroid__exception" kindref="compound">centroid_exception</ref> is thrown if the free centroid function is called with geometries for which the centroid cannot be calculated. For example: a linestring without points, a polygon without points, an empty multi-geometry.  <qbk>
+[heading See also]
+\* [link geometry.reference.algorithms.centroid the centroid function]
+</qbk>  </para>    </detaileddescription>
+    <inheritancegraph>
+      <node id="22">
+        <label>boost::geometry::exception</label>
+        <link refid="classboost_1_1geometry_1_1exception"/>
+        <childnode refid="23" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="21">
+        <label>boost::geometry::centroid_exception</label>
+        <link refid="classboost_1_1geometry_1_1centroid__exception"/>
+        <childnode refid="22" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="23">
+        <label>std::exception</label>
+      </node>
+    </inheritancegraph>
+    <collaborationgraph>
+      <node id="25">
+        <label>boost::geometry::exception</label>
+        <link refid="classboost_1_1geometry_1_1exception"/>
+        <childnode refid="26" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="24">
+        <label>boost::geometry::centroid_exception</label>
+        <link refid="classboost_1_1geometry_1_1centroid__exception"/>
+        <childnode refid="25" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="26">
+        <label>std::exception</label>
+      </node>
+    </collaborationgraph>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/centroid.hpp" line="83" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/centroid.hpp" bodystart="82" bodyend="99"/>
+    <listofallmembers>
+      <member refid="classboost_1_1geometry_1_1centroid__exception_1aa7f89d82571adc93bd774789cb3bfacf" prot="public" virt="non-virtual"><scope>boost::geometry::centroid_exception</scope><name>centroid_exception</name></member>
+      <member refid="classboost_1_1geometry_1_1centroid__exception_1a53fc09976554829bab5269f436d60d10" prot="public" virt="virtual"><scope>boost::geometry::centroid_exception</scope><name>what</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

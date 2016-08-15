@@ -1,0 +1,49 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="structboost_1_1geometry_1_1select__coordinate__type" kind="struct" prot="public">
+    <compoundname>boost::geometry::select_coordinate_type</compoundname>
+    <includes local="no">select_coordinate_type.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename</type>
+        <declname>T1</declname>
+        <defname>T1</defname>
+      </param>
+      <param>
+        <type>typename</type>
+        <declname>T2</declname>
+        <defname>T2</defname>
+        <defval>void</defval>
+      </param>
+      <param>
+        <type>typename</type>
+        <declname>T3</declname>
+        <defname>T3</defname>
+        <defval>void</defval>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-type">
+      <memberdef kind="typedef" id="structboost_1_1geometry_1_1select__coordinate__type_1aca2d9ddf81bc71ec1ff41ccd6aec0c03" prot="public" static="no">
+        <type><ref refid="structboost_1_1geometry_1_1select__most__precise" kindref="compound">select_most_precise</ref>&lt; typename <ref refid="structboost_1_1geometry_1_1coordinate__type" kindref="compound">coordinate_type</ref>&lt; T1 &gt;::<ref refid="structboost_1_1geometry_1_1select__coordinate__type_1aca2d9ddf81bc71ec1ff41ccd6aec0c03" kindref="member">type</ref>, typename <ref refid="structboost_1_1geometry_1_1coordinate__type" kindref="compound">coordinate_type</ref>&lt; T2 &gt;::<ref refid="structboost_1_1geometry_1_1select__coordinate__type_1aca2d9ddf81bc71ec1ff41ccd6aec0c03" kindref="member">type</ref>, typename <ref refid="structboost_1_1geometry_1_1coordinate__type" kindref="compound">coordinate_type</ref>&lt; T3 &gt;::<ref refid="structboost_1_1geometry_1_1select__coordinate__type_1aca2d9ddf81bc71ec1ff41ccd6aec0c03" kindref="member">type</ref> &gt;::<ref refid="structboost_1_1geometry_1_1select__coordinate__type_1aca2d9ddf81bc71ec1ff41ccd6aec0c03" kindref="member">type</ref></type>
+        <definition>typedef select_most_precise&lt; typename coordinate_type&lt;T1&gt;::type, typename coordinate_type&lt;T2&gt;::type, typename coordinate_type&lt;T3&gt;::type &gt;::type boost::geometry::select_coordinate_type&lt; T1, T2, T3 &gt;::type</definition>
+        <argsstring></argsstring>
+        <name>type</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/util/select_coordinate_type.hpp" line="44" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/util/select_coordinate_type.hpp" bodystart="44" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+<para>Meta-function selecting the most precise coordinate type of two geometries. </para>    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/util/select_coordinate_type.hpp" line="38" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/util/select_coordinate_type.hpp" bodystart="37" bodyend="45"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1select__coordinate__type_1aca2d9ddf81bc71ec1ff41ccd6aec0c03" prot="public" virt="non-virtual"><scope>boost::geometry::select_coordinate_type</scope><name>type</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

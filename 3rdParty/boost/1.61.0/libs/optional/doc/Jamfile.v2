@@ -1,0 +1,49 @@
+# Boost.Optional
+#
+# Copyright (c) 2003-2007 Fernando Luis Cacciola Carballal
+#
+# Distributed under the Boost Software License, Version 1.0.
+# (See accompanying file LICENSE_1_0.txt or copy at
+# http://www.boost.org/LICENSE_1_0.txt)
+
+
+# Quickbook
+# -----------------------------------------------------------------------------
+
+using boostbook ;
+import quickbook ;
+
+path-constant images : html ;
+
+xml optional
+    :
+        00_optional.qbk
+    ;
+
+install images
+    :
+        images/opt_align1.png
+        images/opt_align2.png
+        images/opt_align3.png
+        images/opt_align4.png
+    :
+        <location>html/images
+    ;
+        
+boostbook standalone
+    :
+        optional
+    :
+        <format>html:<xsl:param>boost.root=../../../..
+        <format>html:<xsl:param>boost.libraries=../../../../libs/libraries.htm
+        <xsl:param>chapter.autolabel=0
+        <xsl:param>chunk.section.depth=8
+        <xsl:param>toc.section.depth=2
+        <xsl:param>toc.max.depth=2
+        <xsl:param>generate.section.toc.level=1
+        <format>pdf:<xsl:param>img.src.path=$(images)/
+        <format>pdf:<xsl:param>boost.url.prefix=http://www.boost.org/doc/libs/release/libs/optional/doc/html
+        <format>docbook:<auto-index-internal>on
+    ;
+
+

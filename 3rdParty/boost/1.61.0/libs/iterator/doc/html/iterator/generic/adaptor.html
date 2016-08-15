@@ -1,0 +1,278 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Iterator Adaptor</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../../index.html" title="Chapter&#160;1.&#160;Boost.Iterator">
+<link rel="up" href="../generic.html" title="Generic Iterators">
+<link rel="prev" href="../generic.html" title="Generic Iterators">
+<link rel="next" href="adaptor/adaptor_tutorial.html" title="Tutorial">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../generic.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../generic.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="adaptor/adaptor_tutorial.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="iterator.generic.adaptor"></a><a class="link" href="adaptor.html" title="Iterator Adaptor">Iterator Adaptor</a>
+</h3></div></div></div>
+<div class="toc"><dl>
+<dt><span class="section"><a href="adaptor.html#iterator.generic.adaptor.adaptor_reference">Reference</a></span></dt>
+<dt><span class="section"><a href="adaptor/adaptor_tutorial.html">Tutorial</a></span></dt>
+</dl></div>
+<p>
+        The <code class="computeroutput"><span class="identifier">iterator_adaptor</span></code> class
+        template adapts some <code class="computeroutput"><span class="identifier">Base</span></code>
+        <a name="base"></a>_ type to create a new iterator. Instantiations of <code class="computeroutput"><span class="identifier">iterator_adaptor</span></code> are derived from a corresponding
+        instantiation of <code class="computeroutput"><span class="identifier">iterator_facade</span></code>
+        and implement the core behaviors in terms of the <code class="computeroutput"><span class="identifier">Base</span></code>
+        type. In essence, <code class="computeroutput"><span class="identifier">iterator_adaptor</span></code>
+        merely forwards all operations to an instance of the <code class="computeroutput"><span class="identifier">Base</span></code>
+        type, which it stores as a member.
+      </p>
+<p>
+        .. <a name="base0"></a>The term "Base" here does not refer to a
+        base class and is not meant to imply the use of derivation. We have followed
+        the lead of the standard library, which provides a base() function to access
+        the underlying iterator object of a <code class="computeroutput"><span class="identifier">reverse_iterator</span></code>
+        adaptor.
+      </p>
+<p>
+        The user of <code class="computeroutput"><span class="identifier">iterator_adaptor</span></code>
+        creates a class derived from an instantiation of <code class="computeroutput"><span class="identifier">iterator_adaptor</span></code>
+        and then selectively redefines some of the core member functions described
+        in the <code class="computeroutput"><span class="identifier">iterator_facade</span></code> core
+        requirements table. The <code class="computeroutput"><span class="identifier">Base</span></code>
+        type need not meet the full requirements for an iterator; it need only support
+        the operations used by the core interface functions of <code class="computeroutput"><span class="identifier">iterator_adaptor</span></code>
+        that have not been redefined in the user's derived class.
+      </p>
+<p>
+        Several of the template parameters of <code class="computeroutput"><span class="identifier">iterator_adaptor</span></code>
+        default to <code class="computeroutput"><span class="identifier">use_default</span></code>. This
+        allows the user to make use of a default parameter even when she wants to
+        specify a parameter later in the parameter list. Also, the defaults for the
+        corresponding associated types are somewhat complicated, so metaprogramming
+        is required to compute them, and <code class="computeroutput"><span class="identifier">use_default</span></code>
+        can help to simplify the implementation. Finally, the identity of the <code class="computeroutput"><span class="identifier">use_default</span></code> type is not left unspecified
+        because specification helps to highlight that the <code class="computeroutput"><span class="identifier">Reference</span></code>
+        template parameter may not always be identical to the iterator's <code class="computeroutput"><span class="identifier">reference</span></code> type, and will keep users from
+        making mistakes based on that assumption.
+      </p>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="iterator.generic.adaptor.adaptor_reference"></a><a class="link" href="adaptor.html#iterator.generic.adaptor.adaptor_reference" title="Reference">Reference</a>
+</h4></div></div></div>
+<h3>
+<a name="iterator.generic.adaptor.adaptor_reference.h0"></a>
+          <span><a name="iterator.generic.adaptor.adaptor_reference.synopsis"></a></span><a class="link" href="adaptor.html#iterator.generic.adaptor.adaptor_reference.synopsis">Synopsis</a>
+        </h3>
+<pre class="programlisting"><span class="keyword">template</span> <span class="special">&lt;</span>
+    <span class="keyword">class</span> <span class="identifier">Derived</span>
+  <span class="special">,</span> <span class="keyword">class</span> <span class="identifier">Base</span>
+  <span class="special">,</span> <span class="keyword">class</span> <span class="identifier">Value</span>               <span class="special">=</span> <span class="identifier">use_default</span>
+  <span class="special">,</span> <span class="keyword">class</span> <span class="identifier">CategoryOrTraversal</span> <span class="special">=</span> <span class="identifier">use_default</span>
+  <span class="special">,</span> <span class="keyword">class</span> <span class="identifier">Reference</span>           <span class="special">=</span> <span class="identifier">use_default</span>
+  <span class="special">,</span> <span class="keyword">class</span> <span class="identifier">Difference</span> <span class="special">=</span> <span class="identifier">use_default</span>
+<span class="special">&gt;</span>
+<span class="keyword">class</span> <span class="identifier">iterator_adaptor</span>
+  <span class="special">:</span> <span class="keyword">public</span> <span class="identifier">iterator_facade</span><span class="special">&lt;</span><span class="identifier">Derived</span><span class="special">,</span> <span class="special">*</span><span class="identifier">V</span><span class="char">'*, *C'</span><span class="special">*,</span> <span class="special">*</span><span class="identifier">R</span><span class="char">'*, *D'</span><span class="special">*&gt;</span> <span class="comment">// see details</span>
+<span class="special">{</span>
+    <span class="keyword">friend</span> <span class="keyword">class</span> <span class="identifier">iterator_core_access</span><span class="special">;</span>
+ <span class="keyword">public</span><span class="special">:</span>
+    <span class="identifier">iterator_adaptor</span><span class="special">();</span>
+    <span class="keyword">explicit</span> <span class="identifier">iterator_adaptor</span><span class="special">(</span><span class="identifier">Base</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">iter</span><span class="special">);</span>
+    <span class="keyword">typedef</span> <span class="identifier">Base</span> <span class="identifier">base_type</span><span class="special">;</span>
+    <span class="identifier">Base</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">base</span><span class="special">()</span> <span class="keyword">const</span><span class="special">;</span>
+ <span class="keyword">protected</span><span class="special">:</span>
+    <span class="keyword">typedef</span> <span class="identifier">iterator_adaptor</span> <span class="identifier">iterator_adaptor</span><span class="special">\</span><span class="identifier">_</span><span class="special">;</span>
+    <span class="identifier">Base</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">base_reference</span><span class="special">()</span> <span class="keyword">const</span><span class="special">;</span>
+    <span class="identifier">Base</span><span class="special">&amp;</span> <span class="identifier">base_reference</span><span class="special">();</span>
+ <span class="keyword">private</span><span class="special">:</span> <span class="comment">// Core iterator interface for iterator_facade.  </span>
+    <span class="keyword">typename</span> <span class="identifier">iterator_adaptor</span><span class="special">::</span><span class="identifier">reference</span> <span class="identifier">dereference</span><span class="special">()</span> <span class="keyword">const</span><span class="special">;</span>
+
+    <span class="keyword">template</span> <span class="special">&lt;</span>
+    <span class="keyword">class</span> <span class="identifier">OtherDerived</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">OtherIterator</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">V</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">C</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">R</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">D</span>
+    <span class="special">&gt;</span>
+    <span class="keyword">bool</span> <span class="identifier">equal</span><span class="special">(</span><span class="identifier">iterator_adaptor</span><span class="special">&lt;</span><span class="identifier">OtherDerived</span><span class="special">,</span> <span class="identifier">OtherIterator</span><span class="special">,</span> <span class="identifier">V</span><span class="special">,</span> <span class="identifier">C</span><span class="special">,</span> <span class="identifier">R</span><span class="special">,</span> <span class="identifier">D</span><span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">x</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+
+    <span class="keyword">void</span> <span class="identifier">advance</span><span class="special">(</span><span class="keyword">typename</span> <span class="identifier">iterator_adaptor</span><span class="special">::</span><span class="identifier">difference_type</span> <span class="identifier">n</span><span class="special">);</span>
+    <span class="keyword">void</span> <span class="identifier">increment</span><span class="special">();</span>
+    <span class="keyword">void</span> <span class="identifier">decrement</span><span class="special">();</span>
+
+    <span class="keyword">template</span> <span class="special">&lt;</span>
+        <span class="keyword">class</span> <span class="identifier">OtherDerived</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">OtherIterator</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">V</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">C</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">R</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">D</span>
+    <span class="special">&gt;</span>
+    <span class="keyword">typename</span> <span class="identifier">iterator_adaptor</span><span class="special">::</span><span class="identifier">difference_type</span> <span class="identifier">distance_to</span><span class="special">(</span>
+        <span class="identifier">iterator_adaptor</span><span class="special">&lt;</span><span class="identifier">OtherDerived</span><span class="special">,</span> <span class="identifier">OtherIterator</span><span class="special">,</span> <span class="identifier">V</span><span class="special">,</span> <span class="identifier">C</span><span class="special">,</span> <span class="identifier">R</span><span class="special">,</span> <span class="identifier">D</span><span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">y</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+
+ <span class="keyword">private</span><span class="special">:</span>
+    <span class="identifier">Base</span> <span class="identifier">m_iterator</span><span class="special">;</span> <span class="comment">// exposition only</span>
+<span class="special">};</span>
+</pre>
+<p>
+          __ base_parameters_
+        </p>
+<p>
+          .. _requirements:
+        </p>
+<h3>
+<a name="iterator.generic.adaptor.adaptor_reference.h1"></a>
+          <span><a name="iterator.generic.adaptor.adaptor_reference.requirements"></a></span><a class="link" href="adaptor.html#iterator.generic.adaptor.adaptor_reference.requirements">Requirements</a>
+        </h3>
+<p>
+          <code class="computeroutput"><span class="keyword">static_cast</span><span class="special">&lt;</span><span class="identifier">Derived</span><span class="special">*&gt;(</span><span class="identifier">iterator_adaptor</span><span class="special">*)</span></code>
+          shall be well-formed. The <code class="computeroutput"><span class="identifier">Base</span></code>
+          argument shall be Assignable and Copy Constructible.
+        </p>
+<p>
+          .. _base_parameters:
+        </p>
+<h3>
+<a name="iterator.generic.adaptor.adaptor_reference.h2"></a>
+          <span><a name="iterator.generic.adaptor.adaptor_reference.base_class_parameters"></a></span><a class="link" href="adaptor.html#iterator.generic.adaptor.adaptor_reference.base_class_parameters">Base
+          Class Parameters</a>
+        </h3>
+<p>
+          The <span class="bold"><strong>V'</strong></span>, <span class="bold"><strong>C'</strong></span>,
+          <span class="bold"><strong>R'</strong></span>, and <span class="bold"><strong>D'</strong></span>
+          parameters of the <code class="computeroutput"><span class="identifier">iterator_facade</span></code>
+          used as a base class in the summary of <code class="computeroutput"><span class="identifier">iterator_adaptor</span></code>
+          above are defined as follows:
+        </p>
+<pre class="programlisting">   <span class="bold"><strong>V'</strong></span> = if (Value is use_default)
+             return iterator_traits&lt;Base&gt;::value_type
+         else
+             return Value
+
+   <span class="bold"><strong>C'</strong></span> = if (CategoryOrTraversal is use_default)
+             return iterator_traversal&lt;Base&gt;::type
+         else
+             return CategoryOrTraversal
+
+   <span class="bold"><strong>R'</strong></span> = if (Reference is use_default)
+             if (Value is use_default)
+                 return iterator_traits&lt;Base&gt;::reference
+             else
+                 return Value&amp;
+         else
+             return Reference
+
+   <span class="bold"><strong>D'</strong></span> = if (Difference is use_default)
+             return iterator_traits&lt;Base&gt;::difference_type
+         else
+             return Difference
+</pre>
+<h3>
+<a name="iterator.generic.adaptor.adaptor_reference.h3"></a>
+          <span><a name="iterator.generic.adaptor.adaptor_reference.operations"></a></span><a class="link" href="adaptor.html#iterator.generic.adaptor.adaptor_reference.operations">Operations</a>
+        </h3>
+<h4>
+<a name="iterator.generic.adaptor.adaptor_reference.h4"></a>
+          <span><a name="iterator.generic.adaptor.adaptor_reference.public"></a></span><a class="link" href="adaptor.html#iterator.generic.adaptor.adaptor_reference.public">Public</a>
+        </h4>
+<pre class="programlisting"><span class="identifier">iterator_adaptor</span><span class="special">();</span>
+</pre>
+<p>
+          <span class="bold"><strong>Requires:</strong></span> The <code class="computeroutput"><span class="identifier">Base</span></code>
+          type must be Default Constructible.<br> <span class="bold"><strong>Returns:</strong></span>
+          An instance of <code class="computeroutput"><span class="identifier">iterator_adaptor</span></code>
+          with <code class="computeroutput"><span class="identifier">m_iterator</span></code> default
+          constructed.
+        </p>
+<pre class="programlisting"><span class="keyword">explicit</span> <span class="identifier">iterator_adaptor</span><span class="special">(</span><span class="identifier">Base</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">iter</span><span class="special">);</span>
+</pre>
+<p>
+          <span class="bold"><strong>Returns:</strong></span> An instance of <code class="computeroutput"><span class="identifier">iterator_adaptor</span></code> with <code class="computeroutput"><span class="identifier">m_iterator</span></code>
+          copy constructed from <code class="computeroutput"><span class="identifier">iter</span></code>.
+        </p>
+<pre class="programlisting"><span class="identifier">Base</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">base</span><span class="special">()</span> <span class="keyword">const</span><span class="special">;</span>
+</pre>
+<p>
+          <span class="bold"><strong>Returns:</strong></span> <code class="computeroutput"><span class="identifier">m_iterator</span></code>
+        </p>
+<h4>
+<a name="iterator.generic.adaptor.adaptor_reference.h5"></a>
+          <span><a name="iterator.generic.adaptor.adaptor_reference.protected"></a></span><a class="link" href="adaptor.html#iterator.generic.adaptor.adaptor_reference.protected">Protected</a>
+        </h4>
+<pre class="programlisting"><span class="identifier">Base</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">base_reference</span><span class="special">()</span> <span class="keyword">const</span><span class="special">;</span>
+</pre>
+<p>
+          <span class="bold"><strong>Returns:</strong></span> A const reference to <code class="computeroutput"><span class="identifier">m_iterator</span></code>.
+        </p>
+<pre class="programlisting"><span class="identifier">Base</span><span class="special">&amp;</span> <span class="identifier">base_reference</span><span class="special">();</span>
+</pre>
+<p>
+          <span class="bold"><strong>Returns:</strong></span> A non-const reference to <code class="computeroutput"><span class="identifier">m_iterator</span></code>.
+        </p>
+<h4>
+<a name="iterator.generic.adaptor.adaptor_reference.h6"></a>
+          <span><a name="iterator.generic.adaptor.adaptor_reference.private"></a></span><a class="link" href="adaptor.html#iterator.generic.adaptor.adaptor_reference.private">Private</a>
+        </h4>
+<pre class="programlisting"><span class="keyword">typename</span> <span class="identifier">iterator_adaptor</span><span class="special">::</span><span class="identifier">reference</span> <span class="identifier">dereference</span><span class="special">()</span> <span class="keyword">const</span><span class="special">;</span>
+</pre>
+<p>
+          <span class="bold"><strong>Returns:</strong></span> <code class="computeroutput"><span class="special">*</span><span class="identifier">m_iterator</span></code>
+        </p>
+<pre class="programlisting"><span class="keyword">template</span> <span class="special">&lt;</span>
+<span class="keyword">class</span> <span class="identifier">OtherDerived</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">OtherIterator</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">V</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">C</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">R</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">D</span>
+<span class="special">&gt;</span>
+<span class="keyword">bool</span> <span class="identifier">equal</span><span class="special">(</span><span class="identifier">iterator_adaptor</span><span class="special">&lt;</span><span class="identifier">OtherDerived</span><span class="special">,</span> <span class="identifier">OtherIterator</span><span class="special">,</span> <span class="identifier">V</span><span class="special">,</span> <span class="identifier">C</span><span class="special">,</span> <span class="identifier">R</span><span class="special">,</span> <span class="identifier">D</span><span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">x</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+</pre>
+<p>
+          <span class="bold"><strong>Returns:</strong></span> <code class="computeroutput"><span class="identifier">m_iterator</span>
+          <span class="special">==</span> <span class="identifier">x</span><span class="special">.</span><span class="identifier">base</span><span class="special">()</span></code>
+        </p>
+<pre class="programlisting"><span class="keyword">void</span> <span class="identifier">advance</span><span class="special">(</span><span class="keyword">typename</span> <span class="identifier">iterator_adaptor</span><span class="special">::</span><span class="identifier">difference_type</span> <span class="identifier">n</span><span class="special">);</span>
+</pre>
+<p>
+          <span class="bold"><strong>Effects:</strong></span> <code class="computeroutput"><span class="identifier">m_iterator</span>
+          <span class="special">+=</span> <span class="identifier">n</span><span class="special">;</span></code>
+        </p>
+<pre class="programlisting"><span class="keyword">void</span> <span class="identifier">increment</span><span class="special">();</span>
+</pre>
+<p>
+          <span class="bold"><strong>Effects:</strong></span> <code class="computeroutput"><span class="special">++</span><span class="identifier">m_iterator</span><span class="special">;</span></code>
+        </p>
+<pre class="programlisting"><span class="keyword">void</span> <span class="identifier">decrement</span><span class="special">();</span>
+</pre>
+<p>
+          <span class="bold"><strong>Effects:</strong></span> <code class="computeroutput"><span class="special">--</span><span class="identifier">m_iterator</span><span class="special">;</span></code>
+        </p>
+<pre class="programlisting"><span class="keyword">template</span> <span class="special">&lt;</span>
+    <span class="keyword">class</span> <span class="identifier">OtherDerived</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">OtherIterator</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">V</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">C</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">R</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">D</span>
+<span class="special">&gt;</span>
+<span class="keyword">typename</span> <span class="identifier">iterator_adaptor</span><span class="special">::</span><span class="identifier">difference_type</span> <span class="identifier">distance_to</span><span class="special">(</span>
+    <span class="identifier">iterator_adaptor</span><span class="special">&lt;</span><span class="identifier">OtherDerived</span><span class="special">,</span> <span class="identifier">OtherIterator</span><span class="special">,</span> <span class="identifier">V</span><span class="special">,</span> <span class="identifier">C</span><span class="special">,</span> <span class="identifier">R</span><span class="special">,</span> <span class="identifier">D</span><span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">y</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+</pre>
+<p>
+          <span class="bold"><strong>Returns:</strong></span> <code class="computeroutput"><span class="identifier">y</span><span class="special">.</span><span class="identifier">base</span><span class="special">()</span> <span class="special">-</span> <span class="identifier">m_iterator</span></code>
+        </p>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003, 2005 David Abrahams Jeremy Siek Thomas
+      Witt<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at &lt;ulink url="http://www.boost.org/LICENSE_1_0.txt"&gt;
+        http://www.boost.org/LICENSE_1_0.txt &lt;/ulink&gt;)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../generic.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../generic.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="adaptor/adaptor_tutorial.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

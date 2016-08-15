@@ -7,35 +7,28 @@
 @RESTBODYPARAM{name,string,required,string}
 Has to contain a valid database name.
 
-@RESTBODYPARAM{username,string,optional,string}
-The user name as a string.
+@RESTBODYPARAM{users,array,optional,JSF_get_api_database_new_USERS}
+Has to be an array of user objects to initially create for the new database.
+User information will not be changed for users that already exist.
 If *users* is not specified or does not contain any users, a default user
 *root* will be created with an empty string password. This ensures that the
 new database will be accessible after it is created.
-
-@RESTBODYPARAM{passwd,string,optional,string}
-The user password as a string. If not specified, it will default to an empty string.
-
-@RESTBODYPARAM{active,boolean,optional,}
-A Flag indicating whether the user account should be activated or not.
-The default value is *true*.
-
-@RESTBODYPARAM{extra,object,optional,}
-A JSON object with extra user information. The data contained in *extra*
- will be stored for the user but not be interpreted further by ArangoDB.
-
-@RESTBODYPARAM{users,array,optional,JSF_get_api_database_new_USERS}
-Has to be a list of user objects to initially create for the new database.
 Each user object can contain the following attributes:
 
 @RESTSTRUCT{username,JSF_get_api_database_new_USERS,string,required,string}
 Loginname of the user to be created
 
 @RESTSTRUCT{passwd,JSF_get_api_database_new_USERS,string,required,string}
-Password for the user
+The user password as a string. If not specified, it will default to an empty string.
 
 @RESTSTRUCT{active,JSF_get_api_database_new_USERS,boolean,required,}
-if *False* the user won't be able to log into the database.
+A flag indicating whether the user account should be activated or not.
+The default value is *true*. If set to *false*, the user won't be able to
+log into the database.
+
+@RESTBODYPARAM{extra,JSF_get_api_database_new_USERS,object,optional,}
+A JSON object with extra user information. The data contained in *extra*
+will be stored for the user but not be interpreted further by ArangoDB.
 
 @RESTDESCRIPTION
 Creates a new database

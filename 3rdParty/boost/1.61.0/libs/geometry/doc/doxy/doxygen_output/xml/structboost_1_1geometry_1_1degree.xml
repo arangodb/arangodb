@@ -1,0 +1,14 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="structboost_1_1geometry_1_1degree" kind="struct" prot="public">
+    <compoundname>boost::geometry::degree</compoundname>
+    <includes local="no">cs.hpp</includes>
+    <briefdescription>
+<para>Unit of plane angle: Degrees. </para>    </briefdescription>
+    <detaileddescription>
+<para>Tag defining the unit of plane angle for spherical coordinate systems. This tag specifies that coordinates are defined in degrees (-180 .. 180). It has to be specified for some coordinate systems.  <qbk>[include reference/core/degree_radian.qbk]</qbk>  </para>    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/core/cs.hpp" line="41" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/core/cs.hpp" bodystart="41" bodyend="41"/>
+    <listofallmembers>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

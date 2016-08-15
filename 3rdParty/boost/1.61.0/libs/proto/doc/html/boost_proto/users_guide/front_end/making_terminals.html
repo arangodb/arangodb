@@ -1,0 +1,80 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Making Terminals</title>
+<link rel="stylesheet" href="../../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../../../index.html" title="Chapter&#160;1.&#160;Boost.Proto">
+<link rel="up" href="../front_end.html" title="Fronts Ends: Defining Terminals and Non-Terminals of Your EDSL">
+<link rel="prev" href="../front_end.html" title="Fronts Ends: Defining Terminals and Non-Terminals of Your EDSL">
+<link rel="next" href="proto_s_operator_overloads.html" title="Proto's Operator Overloads">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../front_end.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../front_end.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="proto_s_operator_overloads.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="boost_proto.users_guide.front_end.making_terminals"></a><a class="link" href="making_terminals.html" title="Making Terminals">Making
+        Terminals</a>
+</h4></div></div></div>
+<p>
+          As we saw with the Calculator example from the Introduction, the simplest
+          way to get an EDSL up and running is simply to define some terminals, as
+          follows.
+        </p>
+<pre class="programlisting"><span class="comment">// Define a literal integer Proto expression.</span>
+<span class="identifier">proto</span><span class="special">::</span><span class="identifier">terminal</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;::</span><span class="identifier">type</span> <span class="identifier">i</span> <span class="special">=</span> <span class="special">{</span><span class="number">0</span><span class="special">};</span>
+
+<span class="comment">// This creates an expression template.</span>
+<span class="identifier">i</span> <span class="special">+</span> <span class="number">1</span><span class="special">;</span>
+</pre>
+<p>
+          With some terminals and Proto's operator overloads, you can immediately
+          start creating expression templates.
+        </p>
+<p>
+          Defining terminals -- with aggregate initialization -- can be a little
+          awkward at times. Proto provides an easier-to-use wrapper for literals
+          that can be used to construct Protofied terminal expressions. It's called
+          <code class="computeroutput"><a class="link" href="../../../boost/proto/literal.html" title="Struct template literal">proto::literal&lt;&gt;</a></code>.
+        </p>
+<pre class="programlisting"><span class="comment">// Define a literal integer Proto expression.</span>
+<span class="identifier">proto</span><span class="special">::</span><span class="identifier">literal</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;</span> <span class="identifier">i</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span>
+
+<span class="comment">// Proto literals are really just Proto terminal expressions.</span>
+<span class="comment">// For example, this builds a Proto expression template:</span>
+<span class="identifier">i</span> <span class="special">+</span> <span class="number">1</span><span class="special">;</span>
+</pre>
+<p>
+          There is also a <code class="computeroutput"><a class="link" href="../../../boost/proto/lit.html" title="Function lit">proto::lit()</a></code> function for constructing
+          a <code class="computeroutput"><a class="link" href="../../../boost/proto/literal.html" title="Struct template literal">proto::literal&lt;&gt;</a></code> in-place. The above
+          expression can simply be written as:
+        </p>
+<pre class="programlisting"><span class="comment">// proto::lit(0) creates an integer terminal expression</span>
+<span class="identifier">proto</span><span class="special">::</span><span class="identifier">lit</span><span class="special">(</span><span class="number">0</span><span class="special">)</span> <span class="special">+</span> <span class="number">1</span><span class="special">;</span>
+</pre>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2008 Eric Niebler<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../front_end.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../front_end.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="proto_s_operator_overloads.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

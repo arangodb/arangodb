@@ -1,0 +1,13 @@
+<% exec = (1..50).step(2).to_a %>
+
+{
+  "title": {
+    "text": "Runtime behavior of product"
+  },
+  "series": [
+    {
+      "name": "Homogeneous hana::tuple",
+      "data": <%= time_execution('execute.hana.tuple.homogeneous.erb.cpp', exec) %>
+    }
+  ]
+}

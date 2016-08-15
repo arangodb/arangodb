@@ -1,0 +1,503 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Latches -- EXPERIMENTAL</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../../index.html" title="Chapter&#160;1.&#160;Thread 4.7.0">
+<link rel="up" href="../synchronization.html" title="Synchronization">
+<link rel="prev" href="barriers.html" title="Barriers -- EXTENSION">
+<link rel="next" href="executors.html" title="Executors and Schedulers -- EXPERIMENTAL">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="barriers.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../synchronization.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="executors.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="thread.synchronization.latches"></a><a class="link" href="latches.html" title="Latches -- EXPERIMENTAL">Latches -- EXPERIMENTAL</a>
+</h3></div></div></div>
+<div class="toc"><dl>
+<dt><span class="section"><a href="latches.html#thread.synchronization.latches.introdcution">Introdcution</a></span></dt>
+<dt><span class="section"><a href="latches.html#thread.synchronization.latches.examples">Examples</a></span></dt>
+<dt><span class="section"><a href="latches.html#thread.synchronization.latches.latch">Class <code class="computeroutput"><span class="identifier">latch</span></code></a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="latches.html#thread.synchronization.latches.latch.constructor__latch_std__size_t__">Constructor
+          <code class="computeroutput"><span class="identifier">latch</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span><span class="special">)</span></code></a></span></dt>
+<dt><span class="section"><a href="latches.html#thread.synchronization.latches.latch.destructor___latch___">Destructor
+          <code class="computeroutput"><span class="special">~</span><span class="identifier">latch</span><span class="special">()</span></code></a></span></dt>
+<dt><span class="section"><a href="latches.html#thread.synchronization.latches.latch.wait">Member
+          Function <code class="computeroutput"><span class="identifier">wait</span><span class="special">()</span></code></a></span></dt>
+<dt><span class="section"><a href="latches.html#thread.synchronization.latches.latch.try_wait">Member
+          Function <code class="computeroutput"><span class="identifier">try_wait</span><span class="special">()</span></code></a></span></dt>
+<dt><span class="section"><a href="latches.html#thread.synchronization.latches.latch.wait_for">Member
+          Function <code class="computeroutput"><span class="identifier">wait_for</span><span class="special">()</span>
+          </code></a></span></dt>
+<dt><span class="section"><a href="latches.html#thread.synchronization.latches.latch.wait_until">Member
+          Function <code class="computeroutput"><span class="identifier">wait_until</span><span class="special">()</span></code></a></span></dt>
+<dt><span class="section"><a href="latches.html#thread.synchronization.latches.latch.count_down">Member
+          Function <code class="computeroutput"><span class="identifier">count_down</span><span class="special">()</span></code></a></span></dt>
+<dt><span class="section"><a href="latches.html#thread.synchronization.latches.latch.count_down_and_wait">Member
+          Function <code class="computeroutput"><span class="identifier">count_down_and_wait</span><span class="special">()</span></code></a></span></dt>
+<dt><span class="section"><a href="latches.html#thread.synchronization.latches.latch.reset">Member
+          Function <code class="computeroutput"><span class="identifier">reset</span><span class="special">()</span></code></a></span></dt>
+</dl></dd>
+</dl></div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="thread.synchronization.latches.introdcution"></a><a class="link" href="latches.html#thread.synchronization.latches.introdcution" title="Introdcution">Introdcution</a>
+</h4></div></div></div>
+<p>
+          Latches are a thread co-ordination mechanism that allow one or more threads
+          to block until one or more threads have reached a point.
+        </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="thread.synchronization.latches.examples"></a><a class="link" href="latches.html#thread.synchronization.latches.examples" title="Examples">Examples</a>
+</h4></div></div></div>
+<p>
+          Sample use cases for the latch include:
+        </p>
+<div class="itemizedlist"><ul class="itemizedlist" type="disc">
+<li class="listitem">
+              Setting multiple threads to perform a task, and then waiting until
+              all threads have reached a common point.
+            </li>
+<li class="listitem">
+              Creating multiple threads, which wait for a signal before advancing
+              beyond a common point.
+            </li>
+</ul></div>
+<p>
+          An example of the first use case would be as follows:
+        </p>
+<pre class="programlisting"><span class="keyword">void</span> <span class="identifier">DoWork</span><span class="special">(</span><span class="identifier">thread_pool</span><span class="special">*</span> <span class="identifier">pool</span><span class="special">)</span> <span class="special">{</span>
+  <span class="identifier">latch</span> <span class="identifier">completion_latch</span><span class="special">(</span><span class="identifier">NTASKS</span><span class="special">);</span>
+  <span class="keyword">for</span> <span class="special">(</span><span class="keyword">int</span> <span class="identifier">i</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span> <span class="identifier">i</span> <span class="special">&lt;</span> <span class="identifier">NTASKS</span><span class="special">;</span> <span class="special">++</span><span class="identifier">i</span><span class="special">)</span> <span class="special">{</span>
+    <span class="identifier">pool</span><span class="special">-&gt;</span><span class="identifier">submit</span><span class="special">([&amp;]</span> <span class="special">{</span>
+      <span class="comment">// perform work</span>
+      <span class="special">...</span>
+      <span class="identifier">completion_latch</span><span class="special">.</span><span class="identifier">count_down</span><span class="special">();</span>
+    <span class="special">}));</span>
+  <span class="special">}</span>
+  <span class="comment">// Block until work is done</span>
+  <span class="identifier">completion_latch</span><span class="special">.</span><span class="identifier">wait</span><span class="special">();</span>
+<span class="special">}</span>
+</pre>
+<p>
+          An example of the second use case is shown below. We need to load data
+          and then process it using a number of threads. Loading the data is I/O
+          bound, whereas starting threads and creating data structures is CPU bound.
+          By running these in parallel, throughput can be increased.
+        </p>
+<pre class="programlisting"><span class="keyword">void</span> <span class="identifier">DoWork</span><span class="special">()</span> <span class="special">{</span>
+  <span class="identifier">latch</span> <span class="identifier">start_latch</span><span class="special">(</span><span class="number">1</span><span class="special">);</span>
+  <span class="identifier">vector</span><span class="special">&lt;</span><span class="identifier">thread</span><span class="special">*&gt;</span> <span class="identifier">workers</span><span class="special">;</span>
+  <span class="keyword">for</span> <span class="special">(</span><span class="keyword">int</span> <span class="identifier">i</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span> <span class="identifier">i</span> <span class="special">&lt;</span> <span class="identifier">NTHREADS</span><span class="special">;</span> <span class="special">++</span><span class="identifier">i</span><span class="special">)</span> <span class="special">{</span>
+    <span class="identifier">workers</span><span class="special">.</span><span class="identifier">push_back</span><span class="special">(</span><span class="keyword">new</span> <span class="identifier">thread</span><span class="special">([&amp;]</span> <span class="special">{</span>
+      <span class="comment">// Initialize data structures. This is CPU bound.</span>
+      <span class="special">...</span>
+      <span class="identifier">start_latch</span><span class="special">.</span><span class="identifier">wait</span><span class="special">();</span>
+      <span class="comment">// perform work</span>
+      <span class="special">...</span>
+    <span class="special">}));</span>
+  <span class="special">}</span>
+  <span class="comment">// Load input data. This is I/O bound.</span>
+  <span class="special">...</span>
+  <span class="comment">// Threads can now start processing</span>
+  <span class="identifier">start_latch</span><span class="special">.</span><span class="identifier">count_down</span><span class="special">();</span>
+  <span class="special">}</span>
+</pre>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="thread.synchronization.latches.latch"></a><a class="link" href="latches.html#thread.synchronization.latches.latch" title="Class latch">Class <code class="computeroutput"><span class="identifier">latch</span></code></a>
+</h4></div></div></div>
+<div class="toc"><dl>
+<dt><span class="section"><a href="latches.html#thread.synchronization.latches.latch.constructor__latch_std__size_t__">Constructor
+          <code class="computeroutput"><span class="identifier">latch</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span><span class="special">)</span></code></a></span></dt>
+<dt><span class="section"><a href="latches.html#thread.synchronization.latches.latch.destructor___latch___">Destructor
+          <code class="computeroutput"><span class="special">~</span><span class="identifier">latch</span><span class="special">()</span></code></a></span></dt>
+<dt><span class="section"><a href="latches.html#thread.synchronization.latches.latch.wait">Member
+          Function <code class="computeroutput"><span class="identifier">wait</span><span class="special">()</span></code></a></span></dt>
+<dt><span class="section"><a href="latches.html#thread.synchronization.latches.latch.try_wait">Member
+          Function <code class="computeroutput"><span class="identifier">try_wait</span><span class="special">()</span></code></a></span></dt>
+<dt><span class="section"><a href="latches.html#thread.synchronization.latches.latch.wait_for">Member
+          Function <code class="computeroutput"><span class="identifier">wait_for</span><span class="special">()</span>
+          </code></a></span></dt>
+<dt><span class="section"><a href="latches.html#thread.synchronization.latches.latch.wait_until">Member
+          Function <code class="computeroutput"><span class="identifier">wait_until</span><span class="special">()</span></code></a></span></dt>
+<dt><span class="section"><a href="latches.html#thread.synchronization.latches.latch.count_down">Member
+          Function <code class="computeroutput"><span class="identifier">count_down</span><span class="special">()</span></code></a></span></dt>
+<dt><span class="section"><a href="latches.html#thread.synchronization.latches.latch.count_down_and_wait">Member
+          Function <code class="computeroutput"><span class="identifier">count_down_and_wait</span><span class="special">()</span></code></a></span></dt>
+<dt><span class="section"><a href="latches.html#thread.synchronization.latches.latch.reset">Member
+          Function <code class="computeroutput"><span class="identifier">reset</span><span class="special">()</span></code></a></span></dt>
+</dl></div>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">thread</span><span class="special">/</span><span class="identifier">latch</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="keyword">class</span> <span class="identifier">latch</span>
+<span class="special">{</span>
+<span class="keyword">public</span><span class="special">:</span>
+    <span class="identifier">latch</span><span class="special">(</span><span class="identifier">latch</span> <span class="keyword">const</span><span class="special">&amp;)</span> <span class="special">=</span> <span class="keyword">delete</span><span class="special">;</span>
+    <span class="identifier">latch</span><span class="special">&amp;</span> <span class="keyword">operator</span><span class="special">=(</span><span class="identifier">latch</span> <span class="keyword">const</span><span class="special">&amp;)</span> <span class="special">=</span> <span class="keyword">delete</span><span class="special">;</span>
+
+    <span class="identifier">latch</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">count</span><span class="special">);</span>
+    <span class="special">~</span><span class="identifier">latch</span><span class="special">();</span>
+
+    <span class="keyword">void</span> <span class="identifier">wait</span><span class="special">();</span>
+    <span class="keyword">bool</span> <span class="identifier">try_wait</span><span class="special">();</span>
+    <span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Rep</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">Period</span><span class="special">&gt;</span>
+    <span class="identifier">cv_status</span> <span class="identifier">wait_for</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">chrono</span><span class="special">::</span><span class="identifier">duration</span><span class="special">&lt;</span><span class="identifier">Rep</span><span class="special">,</span> <span class="identifier">Period</span><span class="special">&gt;&amp;</span> <span class="identifier">rel_time</span><span class="special">);</span>
+    <span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">lock_type</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">Clock</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">Duration</span><span class="special">&gt;</span>
+    <span class="identifier">cv_status</span> <span class="identifier">wait_until</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">chrono</span><span class="special">::</span><span class="identifier">time_point</span><span class="special">&lt;</span><span class="identifier">Clock</span><span class="special">,</span> <span class="identifier">Duration</span><span class="special">&gt;&amp;</span> <span class="identifier">abs_time</span><span class="special">);</span>
+    <span class="keyword">void</span> <span class="identifier">count_down</span><span class="special">();</span>
+    <span class="keyword">void</span> <span class="identifier">count_down_and_wait</span><span class="special">();</span>
+
+<span class="special">};</span>
+</pre>
+<p>
+          A latch maintains an internal counter that is initialized when the latch
+          is created. One or more threads may block waiting until the counter is
+          decremented to 0.
+        </p>
+<p>
+          Instances of <a class="link" href="latches.html#thread.synchronization.latches.latch" title="Class latch"><code class="computeroutput"><span class="identifier">latch</span></code></a> are not copyable or movable.
+        </p>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="thread.synchronization.latches.latch.constructor__latch_std__size_t__"></a><a class="link" href="latches.html#thread.synchronization.latches.latch.constructor__latch_std__size_t__" title="Constructor latch(std::size_t)">Constructor
+          <code class="computeroutput"><span class="identifier">latch</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span><span class="special">)</span></code></a>
+</h5></div></div></div>
+<pre class="programlisting"><span class="identifier">latch</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">count</span><span class="special">);</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl>
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+                  Construct a latch with is initial value for the internal counter.
+                </p></dd>
+<dt><span class="term">Note:</span></dt>
+<dd><p>
+                  The counter could be zero.
+                </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+                  Nothing.
+                </p></dd>
+</dl>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="thread.synchronization.latches.latch.destructor___latch___"></a><a class="link" href="latches.html#thread.synchronization.latches.latch.destructor___latch___" title="Destructor ~latch()">Destructor
+          <code class="computeroutput"><span class="special">~</span><span class="identifier">latch</span><span class="special">()</span></code></a>
+</h5></div></div></div>
+<pre class="programlisting"><span class="special">~</span><span class="identifier">latch</span><span class="special">();</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl>
+<dt><span class="term">Precondition:</span></dt>
+<dd><p>
+                  No threads are waiting or invoking count_down on <code class="computeroutput"><span class="special">*</span><span class="keyword">this</span></code>.
+                </p></dd>
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+                  Destroys <code class="computeroutput"><span class="special">*</span><span class="keyword">this</span></code>
+                  latch.
+                </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+                  Nothing.
+                </p></dd>
+</dl>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="thread.synchronization.latches.latch.wait"></a><a class="link" href="latches.html#thread.synchronization.latches.latch.wait" title="Member Function wait()">Member
+          Function <code class="computeroutput"><span class="identifier">wait</span><span class="special">()</span></code></a>
+</h5></div></div></div>
+<pre class="programlisting"><span class="keyword">void</span> <span class="identifier">wait</span><span class="special">();</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl>
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+                  Block the calling thread until the internal count reaches the value
+                  zero. Then all waiting threads are unblocked.
+                </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd>
+<p>
+                  - <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">thread_resource_error</span></code> if an error
+                  occurs.
+                </p>
+<p>
+                  - <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">thread_interrupted</span></code> if the wait
+                  was interrupted by a call to <a class="link" href="../thread_management/thread.html#thread.thread_management.thread.interrupt" title="Member function interrupt() EXTENSION"><code class="computeroutput"><span class="identifier">interrupt</span><span class="special">()</span></code></a>
+                  on the <a class="link" href="../thread_management/thread.html" title="Class thread"><code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">thread</span></code></a> object associated
+                  with the current thread of execution.
+                </p>
+</dd>
+<dt><span class="term">Notes:</span></dt>
+<dd><p>
+                  <code class="computeroutput"><span class="identifier">wait</span><span class="special">()</span></code>
+                  is an <span class="emphasis"><em>interruption point</em></span>.
+                </p></dd>
+</dl>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="thread.synchronization.latches.latch.try_wait"></a><a class="link" href="latches.html#thread.synchronization.latches.latch.try_wait" title="Member Function try_wait()">Member
+          Function <code class="computeroutput"><span class="identifier">try_wait</span><span class="special">()</span></code></a>
+</h5></div></div></div>
+<pre class="programlisting"><span class="keyword">bool</span> <span class="identifier">try_wait</span><span class="special">();</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl>
+<dt><span class="term">Returns:</span></dt>
+<dd><p>
+                  Returns true if the internal count is 0, and false otherwise. Does
+                  not block the calling thread.
+                </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+                  - <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">thread_resource_error</span></code> if an error
+                  occurs.
+                </p></dd>
+</dl>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="thread.synchronization.latches.latch.wait_for"></a><a class="link" href="latches.html#thread.synchronization.latches.latch.wait_for" title="Member Function wait_for()">Member
+          Function <code class="computeroutput"><span class="identifier">wait_for</span><span class="special">()</span>
+          </code></a>
+</h5></div></div></div>
+<pre class="programlisting"><span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Rep</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">Period</span><span class="special">&gt;</span>
+<span class="identifier">cv_status</span> <span class="identifier">wait_for</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">chrono</span><span class="special">::</span><span class="identifier">duration</span><span class="special">&lt;</span><span class="identifier">Rep</span><span class="special">,</span> <span class="identifier">Period</span><span class="special">&gt;&amp;</span> <span class="identifier">rel_time</span><span class="special">);</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl>
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+                  Block the calling thread until the internal count reaches the value
+                  zero or the duration has been elapsed. If no timeout, all waiting
+                  threads are unblocked.
+                </p></dd>
+<dt><span class="term">Returns:</span></dt>
+<dd><p>
+                  cv_status::no_timeout if the internal count is 0, and cv_status::timeout
+                  if duration has been elapsed.
+                </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd>
+<p>
+                  - <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">thread_resource_error</span></code> if an error
+                  occurs.
+                </p>
+<p>
+                  - <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">thread_interrupted</span></code> if the wait
+                  was interrupted by a call to <a class="link" href="../thread_management/thread.html#thread.thread_management.thread.interrupt" title="Member function interrupt() EXTENSION"><code class="computeroutput"><span class="identifier">interrupt</span><span class="special">()</span></code></a>
+                  on the <a class="link" href="../thread_management/thread.html" title="Class thread"><code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">thread</span></code></a> object associated
+                  with the current thread of execution.
+                </p>
+</dd>
+<dt><span class="term">Notes:</span></dt>
+<dd><p>
+                  <code class="computeroutput"><span class="identifier">wait_for</span><span class="special">()</span></code>
+                  is an <span class="emphasis"><em>interruption point</em></span>.
+                </p></dd>
+</dl>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="thread.synchronization.latches.latch.wait_until"></a><a class="link" href="latches.html#thread.synchronization.latches.latch.wait_until" title="Member Function wait_until()">Member
+          Function <code class="computeroutput"><span class="identifier">wait_until</span><span class="special">()</span></code></a>
+</h5></div></div></div>
+<pre class="programlisting"><span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">lock_type</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">Clock</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">Duration</span><span class="special">&gt;</span>
+<span class="identifier">cv_status</span> <span class="identifier">wait_until</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">chrono</span><span class="special">::</span><span class="identifier">time_point</span><span class="special">&lt;</span><span class="identifier">Clock</span><span class="special">,</span> <span class="identifier">Duration</span><span class="special">&gt;&amp;</span> <span class="identifier">abs_time</span><span class="special">);</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl>
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+                  Block the calling thread until the internal count reaches the value
+                  zero or the time_point has been reached. If no timeout, all waiting
+                  threads are unblocked.
+                </p></dd>
+<dt><span class="term">Returns:</span></dt>
+<dd><p>
+                  cv_status::no_timeout if the internal count is 0, and cv_status::timeout
+                  if time_point has been reached.
+                </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd>
+<p>
+                  - <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">thread_resource_error</span></code> if an error
+                  occurs.
+                </p>
+<p>
+                  - <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">thread_interrupted</span></code> if the wait
+                  was interrupted by a call to <a class="link" href="../thread_management/thread.html#thread.thread_management.thread.interrupt" title="Member function interrupt() EXTENSION"><code class="computeroutput"><span class="identifier">interrupt</span><span class="special">()</span></code></a>
+                  on the <a class="link" href="../thread_management/thread.html" title="Class thread"><code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">thread</span></code></a> object associated
+                  with the current thread of execution.
+                </p>
+</dd>
+<dt><span class="term">Notes:</span></dt>
+<dd><p>
+                  <code class="computeroutput"><span class="identifier">wait_until</span><span class="special">()</span></code>
+                  is an <span class="emphasis"><em>interruption point</em></span>.
+                </p></dd>
+</dl>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="thread.synchronization.latches.latch.count_down"></a><a class="link" href="latches.html#thread.synchronization.latches.latch.count_down" title="Member Function count_down()">Member
+          Function <code class="computeroutput"><span class="identifier">count_down</span><span class="special">()</span></code></a>
+</h5></div></div></div>
+<pre class="programlisting"><span class="keyword">void</span> <span class="identifier">count_down</span><span class="special">();</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl>
+<dt><span class="term">Requires:</span></dt>
+<dd><p>
+                  The internal counter is non zero.
+                </p></dd>
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+                  Decrements the internal count by 1, and returns. If the count reaches
+                  0, any threads blocked in wait() will be released.
+                </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd>
+<p>
+                  - <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">thread_resource_error</span></code> if an error
+                  occurs.
+                </p>
+<p>
+                  - <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">thread_interrupted</span></code> if the wait
+                  was interrupted by a call to <a class="link" href="../thread_management/thread.html#thread.thread_management.thread.interrupt" title="Member function interrupt() EXTENSION"><code class="computeroutput"><span class="identifier">interrupt</span><span class="special">()</span></code></a>
+                  on the <a class="link" href="../thread_management/thread.html" title="Class thread"><code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">thread</span></code></a> object associated
+                  with the current thread of execution.
+                </p>
+</dd>
+<dt><span class="term">Notes:</span></dt>
+<dd><p>
+                  <code class="computeroutput"><span class="identifier">count_down</span><span class="special">()</span></code>
+                  is an <span class="emphasis"><em>interruption point</em></span>.
+                </p></dd>
+</dl>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="thread.synchronization.latches.latch.count_down_and_wait"></a><a class="link" href="latches.html#thread.synchronization.latches.latch.count_down_and_wait" title="Member Function count_down_and_wait()">Member
+          Function <code class="computeroutput"><span class="identifier">count_down_and_wait</span><span class="special">()</span></code></a>
+</h5></div></div></div>
+<pre class="programlisting"><span class="keyword">void</span> <span class="identifier">count_down_and_wait</span><span class="special">();</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl>
+<dt><span class="term">Requires:</span></dt>
+<dd><p>
+                  The internal counter is non zero.
+                </p></dd>
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+                  Decrements the internal count by 1. If the resulting count is not
+                  0, blocks the calling thread until the internal count is decremented
+                  to 0 by one or more other threads calling count_down() or count_down_and_wait().
+                </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd>
+<p>
+                  - <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">thread_resource_error</span></code> if an error
+                  occurs.
+                </p>
+<p>
+                  - <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">thread_interrupted</span></code> if the wait
+                  was interrupted by a call to <a class="link" href="../thread_management/thread.html#thread.thread_management.thread.interrupt" title="Member function interrupt() EXTENSION"><code class="computeroutput"><span class="identifier">interrupt</span><span class="special">()</span></code></a>
+                  on the <a class="link" href="../thread_management/thread.html" title="Class thread"><code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">thread</span></code></a> object associated
+                  with the current thread of execution.
+                </p>
+</dd>
+<dt><span class="term">Notes:</span></dt>
+<dd><p>
+                  <code class="computeroutput"><span class="identifier">count_down_and_wait</span><span class="special">()</span></code> is an <span class="emphasis"><em>interruption
+                  point</em></span>.
+                </p></dd>
+</dl>
+</div>
+</div>
+<p>
+          [
+        </p>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="thread.synchronization.latches.latch.reset"></a><a class="link" href="latches.html#thread.synchronization.latches.latch.reset" title="Member Function reset()">Member
+          Function <code class="computeroutput"><span class="identifier">reset</span><span class="special">()</span></code></a>
+</h5></div></div></div>
+<pre class="programlisting"><span class="identifier">reset</span><span class="special">(</span> <span class="identifier">size_t</span> <span class="special">);</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl>
+<dt><span class="term">Requires:</span></dt>
+<dd><p>
+                  This function may only be invoked when there are no other threads
+                  currently inside the waiting functions.
+                </p></dd>
+<dt><span class="term">Returns:</span></dt>
+<dd><p>
+                  Resets the latch with a new value for the initial thread count.
+                </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+                  - <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">thread_resource_error</span></code> if an error
+                  occurs.
+                </p></dd>
+</dl>
+</div>
+</div>
+<p>
+          ]
+        </p>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2007 -11 Anthony Williams<br>Copyright &#169; 2011 -15 Vicente J. Botet Escriba<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="barriers.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../synchronization.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="executors.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

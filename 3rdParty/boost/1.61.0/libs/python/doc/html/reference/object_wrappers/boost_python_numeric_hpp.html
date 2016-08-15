@@ -1,0 +1,259 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>boost/python/numeric.hpp</title>
+<link rel="stylesheet" href="../../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../index.html" title="Boost.Python Reference Manual">
+<link rel="up" href="../object_wrappers.html" title="Chapter&#160;3.&#160;Object Wrappers">
+<link rel="prev" href="boost_python_long_hpp.html" title="boost/python/long.hpp">
+<link rel="next" href="boost_python_object_hpp.html" title="boost/python/object.hpp">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr><td valign="top"><img alt="" width="" height="" src="../../images/boost.png"></td></tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="boost_python_long_hpp.html"><img src="../../images/prev.png" alt="Prev"></a><a accesskey="u" href="../object_wrappers.html"><img src="../../images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../images/home.png" alt="Home"></a><a accesskey="n" href="boost_python_object_hpp.html"><img src="../../images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="object_wrappers.boost_python_numeric_hpp"></a><a class="link" href="boost_python_numeric_hpp.html" title="boost/python/numeric.hpp">boost/python/numeric.hpp</a>
+</h2></div></div></div>
+<div class="toc"><dl>
+<dt><span class="section"><a href="boost_python_numeric_hpp.html#object_wrappers.boost_python_numeric_hpp.introduction">Introduction</a></span></dt>
+<dt><span class="section"><a href="boost_python_numeric_hpp.html#object_wrappers.boost_python_numeric_hpp.class_array">Class
+        <code class="computeroutput"><span class="identifier">array</span></code></a></span></dt>
+<dt><span class="section"><a href="boost_python_numeric_hpp.html#object_wrappers.boost_python_numeric_hpp.class_array_observer_functions">Class
+        <code class="computeroutput"><span class="identifier">array</span></code> observer functions</a></span></dt>
+<dt><span class="section"><a href="boost_python_numeric_hpp.html#object_wrappers.boost_python_numeric_hpp.class_array_static_functions">Class
+        <code class="computeroutput"><span class="identifier">array</span></code> static functions</a></span></dt>
+<dt><span class="section"><a href="boost_python_numeric_hpp.html#object_wrappers.boost_python_numeric_hpp.example">Example</a></span></dt>
+</dl></div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="object_wrappers.boost_python_numeric_hpp.introduction"></a><a class="link" href="boost_python_numeric_hpp.html#object_wrappers.boost_python_numeric_hpp.introduction" title="Introduction">Introduction</a>
+</h3></div></div></div>
+<p>
+          Exposes a <a class="link" href="../concepts/objectwrapper.html#concepts.objectwrapper.typewrapper_concept_requirements" title="TypeWrapper Concept Requirements">TypeWrapper</a>
+          for the Python <a href="http://www.python.org/dev/doc/devel/lib/typesmapping.html" target="_top">array</a>
+          type.
+        </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="object_wrappers.boost_python_numeric_hpp.class_array"></a><a class="link" href="boost_python_numeric_hpp.html#object_wrappers.boost_python_numeric_hpp.class_array" title="Class array">Class
+        <code class="computeroutput"><span class="identifier">array</span></code></a>
+</h3></div></div></div>
+<p>
+          Provides access to the array types of <a href="http://www.pfdubois.com/numpy/" target="_top">Numerical
+          Python</a>'s <a href="http://www.pfdubois.com/numpy/#Numeric" target="_top">Numeric</a>
+          and <a href="http://stsdas.stsci.edu/numarray/index.html" target="_top">NumArray</a>
+          modules. With the exception of the functions documented below, the semantics
+          of the constructors and member functions defined below can be fully understood
+          by reading the <a class="link" href="../concepts/objectwrapper.html#concepts.objectwrapper.typewrapper_concept_requirements" title="TypeWrapper Concept Requirements">TypeWrapper</a>
+          concept definition. Since array is publicly derived from object, the public
+          object interface applies to array instances as well.
+        </p>
+<p>
+          The default behavior is to use numarray.NDArray as the associated Python
+          type if the numarray module is installed in the default location. Otherwise
+          it falls back to use Numeric.ArrayType. If neither extension module is
+          installed, overloads of wrapped C++ functions with numeric::array parameters
+          will never be matched, and other attempted uses of numeric::array will
+          raise an appropriate Python exception. The associated Python type can be
+          set manually using the set_module_and_type(...) static function.
+        </p>
+<pre class="programlisting"><span class="keyword">namespace</span> <span class="identifier">boost</span> <span class="special">{</span> <span class="keyword">namespace</span> <span class="identifier">python</span> <span class="special">{</span> <span class="keyword">namespace</span> <span class="identifier">numeric</span>
+<span class="special">{</span>
+   <span class="keyword">class</span> <span class="identifier">array</span> <span class="special">:</span> <span class="keyword">public</span> <span class="identifier">object</span>
+   <span class="special">{</span>
+    <span class="keyword">public</span><span class="special">:</span>
+      <span class="identifier">object</span> <span class="identifier">astype</span><span class="special">();</span>
+      <span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Type</span><span class="special">&gt;</span>
+      <span class="identifier">object</span> <span class="identifier">astype</span><span class="special">(</span><span class="identifier">Type</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">type_</span><span class="special">);</span>
+
+      <span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Type</span><span class="special">&gt;</span>
+      <span class="identifier">array</span> <span class="identifier">new_</span><span class="special">(</span><span class="identifier">Type</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">type_</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+
+      <span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Sequence</span><span class="special">&gt;</span>
+      <span class="keyword">void</span> <span class="identifier">resize</span><span class="special">(</span><span class="identifier">Sequence</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">x</span><span class="special">);</span>
+      <span class="keyword">void</span> <span class="identifier">resize</span><span class="special">(</span><span class="keyword">long</span> <span class="identifier">x1</span><span class="special">);</span>
+      <span class="keyword">void</span> <span class="identifier">resize</span><span class="special">(</span><span class="keyword">long</span> <span class="identifier">x1</span><span class="special">,</span> <span class="keyword">long</span> <span class="identifier">x2</span><span class="special">);</span>
+      <span class="special">...</span>
+      <span class="keyword">void</span> <span class="identifier">resize</span><span class="special">(</span><span class="keyword">long</span> <span class="identifier">x1</span><span class="special">,</span> <span class="keyword">long</span> <span class="identifier">x2</span><span class="special">,...</span><span class="keyword">long</span> <span class="identifier">xn</span><span class="special">);</span>
+
+      <span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Sequence</span><span class="special">&gt;</span>
+      <span class="keyword">void</span> <span class="identifier">setshape</span><span class="special">(</span><span class="identifier">Sequence</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">x</span><span class="special">);</span>
+      <span class="keyword">void</span> <span class="identifier">setshape</span><span class="special">(</span><span class="keyword">long</span> <span class="identifier">x1</span><span class="special">);</span>
+      <span class="keyword">void</span> <span class="identifier">setshape</span><span class="special">(</span><span class="keyword">long</span> <span class="identifier">x1</span><span class="special">,</span> <span class="keyword">long</span> <span class="identifier">x2</span><span class="special">);</span>
+      <span class="special">...</span>
+      <span class="keyword">void</span> <span class="identifier">setshape</span><span class="special">(</span><span class="keyword">long</span> <span class="identifier">x1</span><span class="special">,</span> <span class="keyword">long</span> <span class="identifier">x2</span><span class="special">,...</span><span class="keyword">long</span> <span class="identifier">xn</span><span class="special">);</span>
+
+      <span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Indices</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">Values</span><span class="special">&gt;</span>
+      <span class="keyword">void</span> <span class="identifier">put</span><span class="special">(</span><span class="identifier">Indices</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">indices</span><span class="special">,</span> <span class="identifier">Values</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">values</span><span class="special">);</span>
+
+      <span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Sequence</span><span class="special">&gt;</span>
+      <span class="identifier">object</span> <span class="identifier">take</span><span class="special">(</span><span class="identifier">Sequence</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">sequence</span><span class="special">,</span> <span class="keyword">long</span> <span class="identifier">axis</span> <span class="special">=</span> <span class="number">0</span><span class="special">);</span>
+
+      <span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">File</span><span class="special">&gt;</span>
+      <span class="keyword">void</span> <span class="identifier">tofile</span><span class="special">(</span><span class="identifier">File</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">f</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+
+      <span class="identifier">object</span> <span class="identifier">factory</span><span class="special">();</span>
+      <span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Sequence</span><span class="special">&gt;</span>
+      <span class="identifier">object</span> <span class="identifier">factory</span><span class="special">(</span><span class="identifier">Sequence</span> <span class="keyword">const</span><span class="special">&amp;);</span>
+      <span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Sequence</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">Typecode</span><span class="special">&gt;</span>
+      <span class="identifier">object</span> <span class="identifier">factory</span><span class="special">(</span><span class="identifier">Sequence</span> <span class="keyword">const</span><span class="special">&amp;,</span> <span class="identifier">Typecode</span> <span class="keyword">const</span><span class="special">&amp;,</span> <span class="keyword">bool</span> <span class="identifier">copy</span> <span class="special">=</span> <span class="keyword">true</span><span class="special">,</span> <span class="keyword">bool</span> <span class="identifier">savespace</span> <span class="special">=</span> <span class="keyword">false</span><span class="special">);</span>
+      <span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Sequence</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">Typecode</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">Type</span><span class="special">&gt;</span>
+      <span class="identifier">object</span> <span class="identifier">factory</span><span class="special">(</span><span class="identifier">Sequence</span> <span class="keyword">const</span><span class="special">&amp;,</span> <span class="identifier">Typecode</span> <span class="keyword">const</span><span class="special">&amp;,</span> <span class="keyword">bool</span> <span class="identifier">copy</span><span class="special">,</span> <span class="keyword">bool</span> <span class="identifier">savespace</span><span class="special">,</span> <span class="identifier">Type</span> <span class="keyword">const</span><span class="special">&amp;);</span>
+      <span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Sequence</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">Typecode</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">Type</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">Shape</span><span class="special">&gt;</span>
+      <span class="identifier">object</span> <span class="identifier">factory</span><span class="special">(</span><span class="identifier">Sequence</span> <span class="keyword">const</span><span class="special">&amp;,</span> <span class="identifier">Typecode</span> <span class="keyword">const</span><span class="special">&amp;,</span> <span class="keyword">bool</span> <span class="identifier">copy</span><span class="special">,</span> <span class="keyword">bool</span> <span class="identifier">savespace</span><span class="special">,</span> <span class="identifier">Type</span> <span class="keyword">const</span><span class="special">&amp;,</span> <span class="identifier">Shape</span> <span class="keyword">const</span><span class="special">&amp;);</span>
+
+      <span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T1</span><span class="special">&gt;</span>
+      <span class="keyword">explicit</span> <span class="identifier">array</span><span class="special">(</span><span class="identifier">T1</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">x1</span><span class="special">);</span>
+      <span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T1</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">T2</span><span class="special">&gt;</span>
+      <span class="keyword">explicit</span> <span class="identifier">array</span><span class="special">(</span><span class="identifier">T1</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">x1</span><span class="special">,</span> <span class="identifier">T2</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">x2</span><span class="special">);</span>
+      <span class="special">...</span>
+      <span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T1</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">T2</span><span class="special">,...</span><span class="keyword">class</span> <span class="identifier">Tn</span><span class="special">&gt;</span>
+      <span class="keyword">explicit</span> <span class="identifier">array</span><span class="special">(</span><span class="identifier">T1</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">x1</span><span class="special">,</span> <span class="identifier">T2</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">x2</span><span class="special">,...</span><span class="identifier">Tn</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">xn</span><span class="special">);</span>
+
+      <span class="keyword">static</span> <span class="keyword">void</span> <span class="identifier">set_module_and_type</span><span class="special">();</span>
+      <span class="keyword">static</span> <span class="keyword">void</span> <span class="identifier">set_module_and_type</span><span class="special">(</span><span class="keyword">char</span> <span class="keyword">const</span><span class="special">*</span> <span class="identifier">package_path</span> <span class="special">=</span> <span class="number">0</span><span class="special">,</span> <span class="keyword">char</span> <span class="keyword">const</span><span class="special">*</span> <span class="identifier">type_name</span> <span class="special">=</span> <span class="number">0</span><span class="special">);</span>
+      <span class="keyword">static</span> <span class="keyword">void</span> <span class="identifier">get_module_name</span><span class="special">();</span>
+
+      <span class="identifier">object</span> <span class="identifier">argmax</span><span class="special">(</span><span class="keyword">long</span> <span class="identifier">axis</span><span class="special">=-</span><span class="number">1</span><span class="special">);</span>
+
+      <span class="identifier">object</span> <span class="identifier">argmin</span><span class="special">(</span><span class="keyword">long</span> <span class="identifier">axis</span><span class="special">=-</span><span class="number">1</span><span class="special">);</span>
+
+      <span class="identifier">object</span> <span class="identifier">argsort</span><span class="special">(</span><span class="keyword">long</span> <span class="identifier">axis</span><span class="special">=-</span><span class="number">1</span><span class="special">);</span>
+
+      <span class="keyword">void</span> <span class="identifier">byteswap</span><span class="special">();</span>
+
+      <span class="identifier">object</span> <span class="identifier">copy</span><span class="special">()</span> <span class="keyword">const</span><span class="special">;</span>
+
+      <span class="identifier">object</span> <span class="identifier">diagonal</span><span class="special">(</span><span class="keyword">long</span> <span class="identifier">offset</span> <span class="special">=</span> <span class="number">0</span><span class="special">,</span> <span class="keyword">long</span> <span class="identifier">axis1</span> <span class="special">=</span> <span class="number">0</span><span class="special">,</span> <span class="keyword">long</span> <span class="identifier">axis2</span> <span class="special">=</span> <span class="number">1</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+
+      <span class="keyword">void</span> <span class="identifier">info</span><span class="special">()</span> <span class="keyword">const</span><span class="special">;</span>
+
+      <span class="keyword">bool</span> <span class="identifier">is_c_array</span><span class="special">()</span> <span class="keyword">const</span><span class="special">;</span>
+      <span class="keyword">bool</span> <span class="identifier">isbyteswapped</span><span class="special">()</span> <span class="keyword">const</span><span class="special">;</span>
+      <span class="keyword">void</span> <span class="identifier">sort</span><span class="special">();</span>
+      <span class="identifier">object</span> <span class="identifier">trace</span><span class="special">(</span><span class="keyword">long</span> <span class="identifier">offset</span> <span class="special">=</span> <span class="number">0</span><span class="special">,</span> <span class="keyword">long</span> <span class="identifier">axis1</span> <span class="special">=</span> <span class="number">0</span><span class="special">,</span> <span class="keyword">long</span> <span class="identifier">axis2</span> <span class="special">=</span> <span class="number">1</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+      <span class="identifier">object</span> <span class="identifier">type</span><span class="special">()</span> <span class="keyword">const</span><span class="special">;</span>
+      <span class="keyword">char</span> <span class="identifier">typecode</span><span class="special">()</span> <span class="keyword">const</span><span class="special">;</span>
+
+      <span class="identifier">object</span> <span class="identifier">getflat</span><span class="special">()</span> <span class="keyword">const</span><span class="special">;</span>
+      <span class="keyword">long</span> <span class="identifier">getrank</span><span class="special">()</span> <span class="keyword">const</span><span class="special">;</span>
+      <span class="identifier">object</span> <span class="identifier">getshape</span><span class="special">()</span> <span class="keyword">const</span><span class="special">;</span>
+      <span class="keyword">bool</span> <span class="identifier">isaligned</span><span class="special">()</span> <span class="keyword">const</span><span class="special">;</span>
+      <span class="keyword">bool</span> <span class="identifier">iscontiguous</span><span class="special">()</span> <span class="keyword">const</span><span class="special">;</span>
+      <span class="keyword">long</span> <span class="identifier">itemsize</span><span class="special">()</span> <span class="keyword">const</span><span class="special">;</span>
+      <span class="keyword">long</span> <span class="identifier">nelements</span><span class="special">()</span> <span class="keyword">const</span><span class="special">;</span>
+      <span class="identifier">object</span> <span class="identifier">nonzero</span><span class="special">()</span> <span class="keyword">const</span><span class="special">;</span>
+
+      <span class="keyword">void</span> <span class="identifier">ravel</span><span class="special">();</span>
+      <span class="identifier">object</span> <span class="identifier">repeat</span><span class="special">(</span><span class="identifier">object</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">repeats</span><span class="special">,</span> <span class="keyword">long</span> <span class="identifier">axis</span><span class="special">=</span><span class="number">0</span><span class="special">);</span>
+      <span class="keyword">void</span> <span class="identifier">setflat</span><span class="special">(</span><span class="identifier">object</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">flat</span><span class="special">);</span>
+      <span class="keyword">void</span> <span class="identifier">swapaxes</span><span class="special">(</span><span class="keyword">long</span> <span class="identifier">axis1</span><span class="special">,</span> <span class="keyword">long</span> <span class="identifier">axis2</span><span class="special">);</span>
+      <span class="identifier">str</span> <span class="identifier">tostring</span><span class="special">()</span> <span class="keyword">const</span><span class="special">;</span>
+      <span class="keyword">void</span> <span class="identifier">transpose</span><span class="special">(</span><span class="identifier">object</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">axes</span> <span class="special">=</span> <span class="identifier">object</span><span class="special">());</span>
+      <span class="identifier">object</span> <span class="identifier">view</span><span class="special">()</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="special">};</span>
+<span class="special">}}}</span>
+</pre>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="object_wrappers.boost_python_numeric_hpp.class_array_observer_functions"></a><a class="link" href="boost_python_numeric_hpp.html#object_wrappers.boost_python_numeric_hpp.class_array_observer_functions" title="Class array observer functions">Class
+        <code class="computeroutput"><span class="identifier">array</span></code> observer functions</a>
+</h3></div></div></div>
+<pre class="programlisting"><span class="identifier">object</span> <span class="identifier">factory</span><span class="special">();</span>
+<span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Sequence</span><span class="special">&gt;</span>
+<span class="identifier">object</span> <span class="identifier">factory</span><span class="special">(</span><span class="identifier">Sequence</span> <span class="keyword">const</span><span class="special">&amp;);</span>
+<span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Sequence</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">Typecode</span><span class="special">&gt;</span>
+<span class="identifier">object</span> <span class="identifier">factory</span><span class="special">(</span><span class="identifier">Sequence</span> <span class="keyword">const</span><span class="special">&amp;,</span> <span class="identifier">Typecode</span> <span class="keyword">const</span><span class="special">&amp;,</span> <span class="keyword">bool</span> <span class="identifier">copy</span> <span class="special">=</span> <span class="keyword">true</span><span class="special">,</span> <span class="keyword">bool</span> <span class="identifier">savespace</span> <span class="special">=</span> <span class="keyword">false</span><span class="special">);</span>
+<span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Sequence</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">Typecode</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">Type</span><span class="special">&gt;</span>
+<span class="identifier">object</span> <span class="identifier">factory</span><span class="special">(</span><span class="identifier">Sequence</span> <span class="keyword">const</span><span class="special">&amp;,</span> <span class="identifier">Typecode</span> <span class="keyword">const</span><span class="special">&amp;,</span> <span class="keyword">bool</span> <span class="identifier">copy</span><span class="special">,</span> <span class="keyword">bool</span> <span class="identifier">savespace</span><span class="special">,</span> <span class="identifier">Type</span> <span class="keyword">const</span><span class="special">&amp;);</span>
+<span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Sequence</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">Typecode</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">Type</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">Shape</span><span class="special">&gt;</span>
+<span class="identifier">object</span> <span class="identifier">factory</span><span class="special">(</span><span class="identifier">Sequence</span> <span class="keyword">const</span><span class="special">&amp;,</span> <span class="identifier">Typecode</span> <span class="keyword">const</span><span class="special">&amp;,</span> <span class="keyword">bool</span> <span class="identifier">copy</span><span class="special">,</span> <span class="keyword">bool</span> <span class="identifier">savespace</span><span class="special">,</span> <span class="identifier">Type</span> <span class="keyword">const</span><span class="special">&amp;,</span> <span class="identifier">Shape</span> <span class="keyword">const</span><span class="special">&amp;);</span>
+</pre>
+<p>
+          These functions map to the underlying array type's array() function family.
+          They are not called "array" because of the C++ limitation that
+          you can't define a member function with the same name as its enclosing
+          class.
+        </p>
+<pre class="programlisting"><span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Type</span><span class="special">&gt;</span>
+<span class="identifier">array</span> <span class="identifier">new_</span><span class="special">(</span><span class="identifier">Type</span> <span class="keyword">const</span><span class="special">&amp;)</span> <span class="keyword">const</span><span class="special">;</span>
+</pre>
+<p>
+          This function maps to the underlying array type's new() function. It is
+          not called "new" because that is a keyword in C++.
+        </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="object_wrappers.boost_python_numeric_hpp.class_array_static_functions"></a><a class="link" href="boost_python_numeric_hpp.html#object_wrappers.boost_python_numeric_hpp.class_array_static_functions" title="Class array static functions">Class
+        <code class="computeroutput"><span class="identifier">array</span></code> static functions</a>
+</h3></div></div></div>
+<pre class="programlisting"><span class="keyword">static</span> <span class="keyword">void</span> <span class="identifier">set_module_and_type</span><span class="special">(</span><span class="keyword">char</span> <span class="keyword">const</span><span class="special">*</span> <span class="identifier">package_path</span><span class="special">,</span> <span class="keyword">char</span> <span class="keyword">const</span><span class="special">*</span> <span class="identifier">type_name</span><span class="special">);</span>
+<span class="keyword">static</span> <span class="keyword">void</span> <span class="identifier">set_module_and_type</span><span class="special">();</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl>
+<dt><span class="term">Requires</span></dt>
+<dd><p>
+                package_path and type_name, if supplied, is an <a class="link" href="../glossary.html#ntbs">ntbs</a>.
+              </p></dd>
+<dt><span class="term">Effects</span></dt>
+<dd><p>
+                The first form sets the package path of the module that supplies
+                the type named by type_name to package_path. The second form restores
+                the default search behavior. The associated Python type will be searched
+                for only the first time it is needed, and thereafter the first time
+                it is needed after an invocation of set_module_and_type.
+              </p></dd>
+</dl>
+</div>
+<pre class="programlisting"><span class="keyword">static</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="identifier">get_module_name</span><span class="special">()</span></pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl>
+<dt><span class="term">Effects</span></dt>
+<dd><p>
+                Returns the name of the module containing the class that will be
+                held by new <code class="computeroutput"><span class="identifier">numeric</span><span class="special">::</span><span class="identifier">array</span></code>
+                instances.
+              </p></dd>
+</dl>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="object_wrappers.boost_python_numeric_hpp.example"></a><a class="link" href="boost_python_numeric_hpp.html#object_wrappers.boost_python_numeric_hpp.example" title="Example">Example</a>
+</h3></div></div></div>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">python</span><span class="special">/</span><span class="identifier">numeric</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">python</span><span class="special">/</span><span class="identifier">tuple</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="comment">// sets the first element in a 2d numeric array</span>
+<span class="keyword">void</span> <span class="identifier">set_first_element</span><span class="special">(</span><span class="identifier">numeric</span><span class="special">::</span><span class="identifier">array</span><span class="special">&amp;</span> <span class="identifier">y</span><span class="special">,</span> <span class="keyword">double</span> <span class="identifier">value</span><span class="special">)</span>
+<span class="special">{</span>
+    <span class="identifier">y</span><span class="special">[</span><span class="identifier">make_tuple</span><span class="special">(</span><span class="number">0</span><span class="special">,</span><span class="number">0</span><span class="special">)]</span> <span class="special">=</span> <span class="identifier">value</span><span class="special">;</span>
+<span class="special">}</span>
+</pre>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2002-2005, 2015 David Abrahams, Stefan Seefeld<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="boost_python_long_hpp.html"><img src="../../images/prev.png" alt="Prev"></a><a accesskey="u" href="../object_wrappers.html"><img src="../../images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../images/home.png" alt="Home"></a><a accesskey="n" href="boost_python_object_hpp.html"><img src="../../images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

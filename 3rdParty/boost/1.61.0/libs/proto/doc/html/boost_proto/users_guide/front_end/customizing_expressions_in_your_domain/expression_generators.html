@@ -1,0 +1,94 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Expression Generators</title>
+<link rel="stylesheet" href="../../../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../../../../index.html" title="Chapter&#160;1.&#160;Boost.Proto">
+<link rel="up" href="../customizing_expressions_in_your_domain.html" title="Customizing Expressions in Your Domain">
+<link rel="prev" href="extends.html" title="The extends&lt;&gt; Expression Wrapper">
+<link rel="next" href="inhibiting_overloads.html" title="Controlling Operator Overloads">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="extends.html"><img src="../../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../customizing_expressions_in_your_domain.html"><img src="../../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../../index.html"><img src="../../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="inhibiting_overloads.html"><img src="../../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="boost_proto.users_guide.front_end.customizing_expressions_in_your_domain.expression_generators"></a><a class="link" href="expression_generators.html" title="Expression Generators">Expression
+          Generators</a>
+</h5></div></div></div>
+<p>
+            The last thing that remains to be done is to tell Proto that it needs
+            to wrap all of our calculator expressions in our <code class="computeroutput"><span class="identifier">calculator</span><span class="special">&lt;&gt;</span></code> wrapper. We have already wrapped
+            the placeholders, but we want <span class="emphasis"><em>all</em></span> expressions that
+            involve the calculator placeholders to be calculators. We can do that
+            by specifying an expression generator when we define our <code class="computeroutput"><span class="identifier">calculator_domain</span></code>, as follows:
+          </p>
+<pre class="programlisting"><span class="comment">// Define the calculator_domain we forward-declared above.</span>
+<span class="comment">// Specify that all expression in this domain should be wrapped</span>
+<span class="comment">// in the calculator&lt;&gt; expression wrapper.</span>
+<span class="keyword">struct</span> <span class="identifier">calculator_domain</span>
+  <span class="special">:</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">domain</span><span class="special">&lt;</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">generator</span><span class="special">&lt;</span> <span class="identifier">calculator</span> <span class="special">&gt;</span> <span class="special">&gt;</span>
+<span class="special">{};</span>
+</pre>
+<p>
+            The first template parameter to <code class="computeroutput"><span class="identifier">proto</span><span class="special">::</span><span class="identifier">domain</span><span class="special">&lt;&gt;</span></code> is the generator. "Generator"
+            is just a fancy name for a function object that accepts an expression
+            and does something to it. <code class="computeroutput"><span class="identifier">proto</span><span class="special">::</span><span class="identifier">generator</span><span class="special">&lt;&gt;</span></code> is a very simple one --- it wraps
+            an expression in the wrapper you specify. <code class="computeroutput"><span class="identifier">proto</span><span class="special">::</span><span class="identifier">domain</span><span class="special">&lt;&gt;</span></code> inherits from its generator parameter,
+            so all domains are themselves function objects.
+          </p>
+<p>
+            If we used <code class="literal"><code class="computeroutput"><a class="link" href="../../../../BOOST_PROTO_EXTENDS.html" title="Macro BOOST_PROTO_EXTENDS">BOOST_PROTO_EXTENDS</a></code>()</code>
+            to keep our expression extension type POD, then we need to use <code class="computeroutput"><span class="identifier">proto</span><span class="special">::</span><span class="identifier">pod_generator</span><span class="special">&lt;&gt;</span></code>
+            instead of <code class="computeroutput"><span class="identifier">proto</span><span class="special">::</span><span class="identifier">generator</span><span class="special">&lt;&gt;</span></code>,
+            as follows:
+          </p>
+<pre class="programlisting"><span class="comment">// If calculator&lt;&gt; uses BOOST_PROTO_EXTENDS() instead of </span>
+<span class="comment">// use proto::extends&lt;&gt;, use proto::pod_generator&lt;&gt; instead</span>
+<span class="comment">// of proto::generator&lt;&gt;.</span>
+<span class="keyword">struct</span> <span class="identifier">calculator_domain</span>
+  <span class="special">:</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">domain</span><span class="special">&lt;</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">pod_generator</span><span class="special">&lt;</span> <span class="identifier">calculator</span> <span class="special">&gt;</span> <span class="special">&gt;</span>
+<span class="special">{};</span>
+</pre>
+<p>
+            After Proto has calculated a new expression type, it checks the domains
+            of the child expressions. They must match. Assuming they do, Proto creates
+            the new expression and passes it to <code class="computeroutput"><em class="replaceable"><code>Domain</code></em><span class="special">::</span><span class="keyword">operator</span><span class="special">()</span></code> for any additional processing. If we
+            don't specify a generator, the new expression gets passed through unchanged.
+            But since we've specified a generator above, <code class="computeroutput"><span class="identifier">calculator_domain</span><span class="special">::</span><span class="keyword">operator</span><span class="special">()</span></code> returns <code class="computeroutput"><span class="identifier">calculator</span><span class="special">&lt;&gt;</span></code> objects.
+          </p>
+<p>
+            Now we can use calculator expressions as function objects to STL algorithms,
+            as follows:
+          </p>
+<pre class="programlisting"><span class="keyword">double</span> <span class="identifier">data</span><span class="special">[]</span> <span class="special">=</span> <span class="special">{</span><span class="number">1.</span><span class="special">,</span> <span class="number">2.</span><span class="special">,</span> <span class="number">3.</span><span class="special">,</span> <span class="number">4.</span><span class="special">};</span>
+
+<span class="comment">// Use the calculator EDSL to square each element ... WORKS! :-)</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">transform</span><span class="special">(</span> <span class="identifier">data</span><span class="special">,</span> <span class="identifier">data</span> <span class="special">+</span> <span class="number">4</span><span class="special">,</span> <span class="identifier">data</span><span class="special">,</span> <span class="identifier">_1</span> <span class="special">*</span> <span class="identifier">_1</span> <span class="special">);</span>
+</pre>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2008 Eric Niebler<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="extends.html"><img src="../../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../customizing_expressions_in_your_domain.html"><img src="../../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../../index.html"><img src="../../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="inhibiting_overloads.html"><img src="../../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

@@ -1,0 +1,32 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="structboost_1_1geometry_1_1nyi_1_1tag__to__term_3_01multi__polygon__tag_01_4" kind="struct" prot="public">
+    <compoundname>boost::geometry::nyi::tag_to_term&lt; multi_polygon_tag &gt;</compoundname>
+    <includes local="no">not_implemented.hpp</includes>
+    <templateparamlist>
+    </templateparamlist>
+      <sectiondef kind="public-type">
+      <memberdef kind="typedef" id="structboost_1_1geometry_1_1nyi_1_1tag__to__term_3_01multi__polygon__tag_01_4_1a005208ac2de1ab4bd734394f1c371652" prot="public" static="no">
+        <type><ref refid="structboost_1_1geometry_1_1info_1_1_m_u_l_t_i___p_o_l_y_g_o_n" kindref="compound">info::MULTI_POLYGON</ref></type>
+        <definition>typedef info::MULTI_POLYGON boost::geometry::nyi::tag_to_term&lt; multi_polygon_tag &gt;::type</definition>
+        <argsstring></argsstring>
+        <name>type</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/not_implemented.hpp" line="94" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/not_implemented.hpp" bodystart="94" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/not_implemented.hpp" line="94" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/not_implemented.hpp" bodystart="94" bodyend="94"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1nyi_1_1tag__to__term_3_01multi__polygon__tag_01_4_1a005208ac2de1ab4bd734394f1c371652" prot="public" virt="non-virtual"><scope>boost::geometry::nyi::tag_to_term&lt; multi_polygon_tag &gt;</scope><name>type</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

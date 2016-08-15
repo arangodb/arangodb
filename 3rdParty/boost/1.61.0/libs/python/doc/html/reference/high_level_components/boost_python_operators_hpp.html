@@ -1,0 +1,1558 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>boost/python/operators.hpp</title>
+<link rel="stylesheet" href="../../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../index.html" title="Boost.Python Reference Manual">
+<link rel="up" href="../high_level_components.html" title="Chapter&#160;2.&#160;High Level Components">
+<link rel="prev" href="boost_python_module_hpp.html" title="boost/python/module.hpp">
+<link rel="next" href="boost_python_scope_hpp.html" title="boost/python/scope.hpp">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr><td valign="top"><img alt="" width="" height="" src="../../images/boost.png"></td></tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="boost_python_module_hpp.html"><img src="../../images/prev.png" alt="Prev"></a><a accesskey="u" href="../high_level_components.html"><img src="../../images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../images/home.png" alt="Home"></a><a accesskey="n" href="boost_python_scope_hpp.html"><img src="../../images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="high_level_components.boost_python_operators_hpp"></a><a class="link" href="boost_python_operators_hpp.html" title="boost/python/operators.hpp">boost/python/operators.hpp</a>
+</h2></div></div></div>
+<div class="toc"><dl>
+<dt><span class="section"><a href="boost_python_operators_hpp.html#high_level_components.boost_python_operators_hpp.introduction">Introduction</a></span></dt>
+<dt><span class="section"><a href="boost_python_operators_hpp.html#high_level_components.boost_python_operators_hpp.class_self_ns_self_t">Class
+        <code class="computeroutput"><span class="identifier">self_ns</span><span class="special">::</span><span class="identifier">self_t</span></code></a></span></dt>
+<dt><span class="section"><a href="boost_python_operators_hpp.html#high_level_components.boost_python_operators_hpp.class_template_other">Class
+        template <code class="computeroutput"><span class="identifier">other</span></code></a></span></dt>
+<dt><span class="section"><a href="boost_python_operators_hpp.html#high_level_components.boost_python_operators_hpp.class_template_detail_operator">Class
+        template <code class="computeroutput"><span class="identifier">detail</span><span class="special">::</span><span class="identifier">operator_</span></code></a></span></dt>
+<dt><span class="section"><a href="boost_python_operators_hpp.html#high_level_components.boost_python_operators_hpp.object_self">Object
+        <code class="computeroutput"><span class="identifier">self</span></code></a></span></dt>
+<dt><span class="section"><a href="boost_python_operators_hpp.html#high_level_components.boost_python_operators_hpp.example">Example</a></span></dt>
+</dl></div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="high_level_components.boost_python_operators_hpp.introduction"></a><a class="link" href="boost_python_operators_hpp.html#high_level_components.boost_python_operators_hpp.introduction" title="Introduction">Introduction</a>
+</h3></div></div></div>
+<p>
+          &lt;boost/python/operators.hpp&gt; provides types and functions for automatically
+          generating Python <a href="http://www.python.org/doc/ref/specialnames.html" target="_top">special
+          methods</a> from the corresponding C++ constructs. Most of these constructs
+          are operator expressions, hence the name. To use the facility, substitute
+          the <a class="link" href="boost_python_operators_hpp.html#high_level_components.boost_python_operators_hpp.object_self" title="Object self">self</a>
+          object for an object of the class type being wrapped in the expression
+          to be exposed, and pass the result to <a class="link" href="../high_level_components.html#high_level_components.boost_python_class_hpp.class_template_class_t_bases_hel.class_template_class_modifier_fu" title="Class template class_ modifier functions">class_&lt;&gt;::def()</a>.
+          Much of what is exposed in this header should be considered part of the
+          implementation, so is not documented in detail here.
+        </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="high_level_components.boost_python_operators_hpp.class_self_ns_self_t"></a><a class="link" href="boost_python_operators_hpp.html#high_level_components.boost_python_operators_hpp.class_self_ns_self_t" title="Class self_ns::self_t">Class
+        <code class="computeroutput"><span class="identifier">self_ns</span><span class="special">::</span><span class="identifier">self_t</span></code></a>
+</h3></div></div></div>
+<div class="toc"><dl>
+<dt><span class="section"><a href="boost_python_operators_hpp.html#high_level_components.boost_python_operators_hpp.class_self_ns_self_t.self_t_inplace_operators"><code class="computeroutput"><span class="identifier">self_t</span></code> inplace operators</a></span></dt>
+<dt><span class="section"><a href="boost_python_operators_hpp.html#high_level_components.boost_python_operators_hpp.class_self_ns_self_t.self_t_comparison_functions"><code class="computeroutput"><span class="identifier">self_t</span></code> comparison functions</a></span></dt>
+<dt><span class="section"><a href="boost_python_operators_hpp.html#high_level_components.boost_python_operators_hpp.class_self_ns_self_t.self_t_non_member_operations"><code class="computeroutput"><span class="identifier">self_t</span></code> non-member operations</a></span></dt>
+<dt><span class="section"><a href="boost_python_operators_hpp.html#high_level_components.boost_python_operators_hpp.class_self_ns_self_t.self_t_unary_operations"><code class="computeroutput"><span class="identifier">self_t</span></code> unary operations</a></span></dt>
+<dt><span class="section"><a href="boost_python_operators_hpp.html#high_level_components.boost_python_operators_hpp.class_self_ns_self_t.self_t_value_operations"><code class="computeroutput"><span class="identifier">self_t</span></code> value operations</a></span></dt>
+</dl></div>
+<p>
+          <code class="computeroutput"><span class="identifier">self_ns</span><span class="special">::</span><span class="identifier">self_t</span></code> is the actual type of the <a class="link" href="boost_python_operators_hpp.html#high_level_components.boost_python_operators_hpp.object_self" title="Object self">self</a>
+          object. The library isolates <code class="computeroutput"><span class="identifier">self_t</span></code>
+          in its own namespace, <code class="computeroutput"><span class="identifier">self_ns</span></code>,
+          in order to prevent the generalized operator templates which operate on
+          it from being found by argument-dependent lookup in other contexts. This
+          should be considered an implementation detail, since users should never
+          have to mention <code class="computeroutput"><span class="identifier">self_t</span></code>
+          directly.
+        </p>
+<pre class="programlisting"><span class="keyword">namespace</span> <span class="identifier">boost</span> <span class="special">{</span> <span class="keyword">namespace</span> <span class="identifier">python</span> <span class="special">{</span> <span class="keyword">namespace</span> <span class="identifier">self_ns</span> <span class="special">{</span>
+<span class="special">{</span>
+   <span class="identifier">unspecified</span><span class="special">-</span><span class="identifier">type</span><span class="special">-</span><span class="identifier">declaration</span> <span class="identifier">self_t</span><span class="special">;</span>
+
+   <span class="comment">// inplace operators</span>
+   <span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">&gt;</span> <span class="identifier">operator_</span><span class="special">&lt;</span><span class="identifier">unspecified</span><span class="special">&gt;</span> <span class="keyword">operator</span><span class="special">+=(</span><span class="identifier">self_t</span><span class="special">,</span> <span class="identifier">T</span><span class="special">);</span>
+   <span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">&gt;</span> <span class="identifier">operator_</span><span class="special">&lt;</span><span class="identifier">unspecified</span><span class="special">&gt;</span> <span class="keyword">operator</span><span class="special">-=(</span><span class="identifier">self_t</span><span class="special">,</span> <span class="identifier">T</span><span class="special">);</span>
+   <span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">&gt;</span> <span class="identifier">operator_</span><span class="special">&lt;</span><span class="identifier">unspecified</span><span class="special">&gt;</span> <span class="keyword">operator</span><span class="special">*=(</span><span class="identifier">self_t</span><span class="special">,</span> <span class="identifier">T</span><span class="special">);</span>
+   <span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">&gt;</span> <span class="identifier">operator_</span><span class="special">&lt;</span><span class="identifier">unspecified</span><span class="special">&gt;</span> <span class="keyword">operator</span><span class="special">/=(</span><span class="identifier">self_t</span><span class="special">,</span> <span class="identifier">T</span><span class="special">);</span>
+   <span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">&gt;</span> <span class="identifier">operator_</span><span class="special">&lt;</span><span class="identifier">unspecified</span><span class="special">&gt;</span> <span class="keyword">operator</span><span class="special">%=(</span><span class="identifier">self_t</span><span class="special">,</span> <span class="identifier">T</span><span class="special">);</span>
+   <span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">&gt;</span> <span class="identifier">operator_</span><span class="special">&lt;</span><span class="identifier">unspecified</span><span class="special">&gt;</span> <span class="keyword">operator</span><span class="special">&gt;&gt;=(</span><span class="identifier">self_t</span><span class="special">,</span> <span class="identifier">T</span><span class="special">);</span>
+   <span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">&gt;</span> <span class="identifier">operator_</span><span class="special">&lt;</span><span class="identifier">unspecified</span><span class="special">&gt;</span> <span class="keyword">operator</span><span class="special">&lt;&lt;=(</span><span class="identifier">self_t</span><span class="special">,</span> <span class="identifier">T</span><span class="special">);</span>
+   <span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">&gt;</span> <span class="identifier">operator_</span><span class="special">&lt;</span><span class="identifier">unspecified</span><span class="special">&gt;</span> <span class="keyword">operator</span><span class="special">&amp;=(</span><span class="identifier">self_t</span><span class="special">,</span> <span class="identifier">T</span><span class="special">);</span>
+   <span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">&gt;</span> <span class="identifier">operator_</span><span class="special">&lt;</span><span class="identifier">unspecified</span><span class="special">&gt;</span> <span class="keyword">operator</span><span class="special">^=(</span><span class="identifier">self_t</span><span class="special">,</span> <span class="identifier">T</span><span class="special">);</span>
+   <span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">&gt;</span> <span class="identifier">operator_</span><span class="special">&lt;</span><span class="identifier">unspecified</span><span class="special">&gt;</span> <span class="keyword">operator</span><span class="special">|=(</span><span class="identifier">self_t</span><span class="special">,</span> <span class="identifier">T</span><span class="special">);</span>
+
+   <span class="comment">// comparisons</span>
+   <span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">L</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">R</span><span class="special">&gt;</span> <span class="identifier">operator_</span><span class="special">&lt;</span><span class="identifier">unspecified</span><span class="special">&gt;</span> <span class="keyword">operator</span><span class="special">==(</span><span class="identifier">L</span> <span class="keyword">const</span><span class="special">&amp;,</span> <span class="identifier">R</span> <span class="keyword">const</span><span class="special">&amp;);</span>
+   <span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">L</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">R</span><span class="special">&gt;</span> <span class="identifier">operator_</span><span class="special">&lt;</span><span class="identifier">unspecified</span><span class="special">&gt;</span> <span class="keyword">operator</span><span class="special">!=(</span><span class="identifier">L</span> <span class="keyword">const</span><span class="special">&amp;,</span> <span class="identifier">R</span> <span class="keyword">const</span><span class="special">&amp;);</span>
+   <span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">L</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">R</span><span class="special">&gt;</span> <span class="identifier">operator_</span><span class="special">&lt;</span><span class="identifier">unspecified</span><span class="special">&gt;</span> <span class="keyword">operator</span><span class="special">&lt;(</span><span class="identifier">L</span> <span class="keyword">const</span><span class="special">&amp;,</span> <span class="identifier">R</span> <span class="keyword">const</span><span class="special">&amp;);</span>
+   <span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">L</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">R</span><span class="special">&gt;</span> <span class="identifier">operator_</span><span class="special">&lt;</span><span class="identifier">unspecified</span><span class="special">&gt;</span> <span class="keyword">operator</span><span class="special">&gt;(</span><span class="identifier">L</span> <span class="keyword">const</span><span class="special">&amp;,</span> <span class="identifier">R</span> <span class="keyword">const</span><span class="special">&amp;);</span>
+   <span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">L</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">R</span><span class="special">&gt;</span> <span class="identifier">operator_</span><span class="special">&lt;</span><span class="identifier">unspecified</span><span class="special">&gt;</span> <span class="keyword">operator</span><span class="special">&lt;=(</span><span class="identifier">L</span> <span class="keyword">const</span><span class="special">&amp;,</span> <span class="identifier">R</span> <span class="keyword">const</span><span class="special">&amp;);</span>
+   <span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">L</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">R</span><span class="special">&gt;</span> <span class="identifier">operator_</span><span class="special">&lt;</span><span class="identifier">unspecified</span><span class="special">&gt;</span> <span class="keyword">operator</span><span class="special">&gt;=(</span><span class="identifier">L</span> <span class="keyword">const</span><span class="special">&amp;,</span> <span class="identifier">R</span> <span class="keyword">const</span><span class="special">&amp;);</span>
+
+   <span class="comment">// non-member operations</span>
+   <span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">L</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">R</span><span class="special">&gt;</span> <span class="identifier">operator_</span><span class="special">&lt;</span><span class="identifier">unspecified</span><span class="special">&gt;</span> <span class="keyword">operator</span><span class="special">+(</span><span class="identifier">L</span> <span class="keyword">const</span><span class="special">&amp;,</span> <span class="identifier">R</span> <span class="keyword">const</span><span class="special">&amp;);</span>
+   <span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">L</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">R</span><span class="special">&gt;</span> <span class="identifier">operator_</span><span class="special">&lt;</span><span class="identifier">unspecified</span><span class="special">&gt;</span> <span class="keyword">operator</span><span class="special">-(</span><span class="identifier">L</span> <span class="keyword">const</span><span class="special">&amp;,</span> <span class="identifier">R</span> <span class="keyword">const</span><span class="special">&amp;);</span>
+   <span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">L</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">R</span><span class="special">&gt;</span> <span class="identifier">operator_</span><span class="special">&lt;</span><span class="identifier">unspecified</span><span class="special">&gt;</span> <span class="keyword">operator</span><span class="special">*(</span><span class="identifier">L</span> <span class="keyword">const</span><span class="special">&amp;,</span> <span class="identifier">R</span> <span class="keyword">const</span><span class="special">&amp;);</span>
+   <span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">L</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">R</span><span class="special">&gt;</span> <span class="identifier">operator_</span><span class="special">&lt;</span><span class="identifier">unspecified</span><span class="special">&gt;</span> <span class="keyword">operator</span><span class="special">/(</span><span class="identifier">L</span> <span class="keyword">const</span><span class="special">&amp;,</span> <span class="identifier">R</span> <span class="keyword">const</span><span class="special">&amp;);</span>
+   <span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">L</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">R</span><span class="special">&gt;</span> <span class="identifier">operator_</span><span class="special">&lt;</span><span class="identifier">unspecified</span><span class="special">&gt;</span> <span class="keyword">operator</span><span class="special">%(</span><span class="identifier">L</span> <span class="keyword">const</span><span class="special">&amp;,</span> <span class="identifier">R</span> <span class="keyword">const</span><span class="special">&amp;);</span>
+   <span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">L</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">R</span><span class="special">&gt;</span> <span class="identifier">operator_</span><span class="special">&lt;</span><span class="identifier">unspecified</span><span class="special">&gt;</span> <span class="keyword">operator</span><span class="special">&gt;&gt;(</span><span class="identifier">L</span> <span class="keyword">const</span><span class="special">&amp;,</span> <span class="identifier">R</span> <span class="keyword">const</span><span class="special">&amp;);</span>
+   <span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">L</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">R</span><span class="special">&gt;</span> <span class="identifier">operator_</span><span class="special">&lt;</span><span class="identifier">unspecified</span><span class="special">&gt;</span> <span class="keyword">operator</span><span class="special">&lt;&lt;(</span><span class="identifier">L</span> <span class="keyword">const</span><span class="special">&amp;,</span> <span class="identifier">R</span> <span class="keyword">const</span><span class="special">&amp;);</span>
+   <span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">L</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">R</span><span class="special">&gt;</span> <span class="identifier">operator_</span><span class="special">&lt;</span><span class="identifier">unspecified</span><span class="special">&gt;</span> <span class="keyword">operator</span><span class="special">&amp;(</span><span class="identifier">L</span> <span class="keyword">const</span><span class="special">&amp;,</span> <span class="identifier">R</span> <span class="keyword">const</span><span class="special">&amp;);</span>
+   <span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">L</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">R</span><span class="special">&gt;</span> <span class="identifier">operator_</span><span class="special">&lt;</span><span class="identifier">unspecified</span><span class="special">&gt;</span> <span class="keyword">operator</span><span class="special">^(</span><span class="identifier">L</span> <span class="keyword">const</span><span class="special">&amp;,</span> <span class="identifier">R</span> <span class="keyword">const</span><span class="special">&amp;);</span>
+   <span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">L</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">R</span><span class="special">&gt;</span> <span class="identifier">operator_</span><span class="special">&lt;</span><span class="identifier">unspecified</span><span class="special">&gt;</span> <span class="keyword">operator</span><span class="special">|(</span><span class="identifier">L</span> <span class="keyword">const</span><span class="special">&amp;,</span> <span class="identifier">R</span> <span class="keyword">const</span><span class="special">&amp;);</span>
+   <span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">L</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">R</span><span class="special">&gt;</span> <span class="identifier">operator_</span><span class="special">&lt;</span><span class="identifier">unspecified</span><span class="special">&gt;</span> <span class="identifier">pow</span><span class="special">(</span><span class="identifier">L</span> <span class="keyword">const</span><span class="special">&amp;,</span> <span class="identifier">R</span> <span class="keyword">const</span><span class="special">&amp;);</span>
+
+   <span class="comment">// unary operations</span>
+   <span class="identifier">operator_</span><span class="special">&lt;</span><span class="identifier">unspecified</span><span class="special">&gt;</span> <span class="keyword">operator</span><span class="special">-(</span><span class="identifier">self_t</span><span class="special">);</span>
+   <span class="identifier">operator_</span><span class="special">&lt;</span><span class="identifier">unspecified</span><span class="special">&gt;</span> <span class="keyword">operator</span><span class="special">+(</span><span class="identifier">self_t</span><span class="special">);</span>
+   <span class="identifier">operator_</span><span class="special">&lt;</span><span class="identifier">unspecified</span><span class="special">&gt;</span> <span class="keyword">operator</span><span class="special">~(</span><span class="identifier">self_t</span><span class="special">);</span>
+   <span class="identifier">operator_</span><span class="special">&lt;</span><span class="identifier">unspecified</span><span class="special">&gt;</span> <span class="keyword">operator</span><span class="special">!(</span><span class="identifier">self_t</span><span class="special">);</span>
+
+   <span class="comment">// value operations</span>
+   <span class="identifier">operator_</span><span class="special">&lt;</span><span class="identifier">unspecified</span><span class="special">&gt;</span> <span class="identifier">int_</span><span class="special">(</span><span class="identifier">self_t</span><span class="special">);</span>
+   <span class="identifier">operator_</span><span class="special">&lt;</span><span class="identifier">unspecified</span><span class="special">&gt;</span> <span class="identifier">long_</span><span class="special">(</span><span class="identifier">self_t</span><span class="special">);</span>
+   <span class="identifier">operator_</span><span class="special">&lt;</span><span class="identifier">unspecified</span><span class="special">&gt;</span> <span class="identifier">float_</span><span class="special">(</span><span class="identifier">self_t</span><span class="special">);</span>
+   <span class="identifier">operator_</span><span class="special">&lt;</span><span class="identifier">unspecified</span><span class="special">&gt;</span> <span class="identifier">complex_</span><span class="special">(</span><span class="identifier">self_t</span><span class="special">);</span>
+   <span class="identifier">operator_</span><span class="special">&lt;</span><span class="identifier">unspecified</span><span class="special">&gt;</span> <span class="identifier">str</span><span class="special">(</span><span class="identifier">self_t</span><span class="special">);</span>
+
+   <span class="identifier">operator_</span><span class="special">&lt;</span><span class="identifier">unspecified</span><span class="special">&gt;</span> <span class="identifier">repr</span><span class="special">(</span><span class="identifier">self_t</span><span class="special">);</span>
+<span class="special">}}};</span>
+</pre>
+<p>
+          The tables below describe the methods generated when the results of the
+          expressions described are passed as arguments to <a class="link" href="../high_level_components.html#high_level_components.boost_python_class_hpp.class_template_class_t_bases_hel.class_template_class_modifier_fu" title="Class template class_ modifier functions">class_&lt;&gt;::def()</a>.
+          <code class="computeroutput"><span class="identifier">x</span></code> is an object of the class
+          type being wrapped.
+        </p>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="high_level_components.boost_python_operators_hpp.class_self_ns_self_t.self_t_inplace_operators"></a><a class="link" href="boost_python_operators_hpp.html#high_level_components.boost_python_operators_hpp.class_self_ns_self_t.self_t_inplace_operators" title="self_t inplace operators"><code class="computeroutput"><span class="identifier">self_t</span></code> inplace operators</a>
+</h4></div></div></div>
+<p>
+            In the table below, If <code class="computeroutput"><span class="identifier">r</span></code>
+            is an object of type <a class="link" href="boost_python_operators_hpp.html#high_level_components.boost_python_operators_hpp.class_template_other" title="Class template other">other&lt;T&gt;</a>,
+            <code class="computeroutput"><span class="identifier">y</span></code> is an object of type
+            <code class="computeroutput"><span class="identifier">T</span></code>; otherwise, <code class="computeroutput"><span class="identifier">y</span></code> is an object of the same type as
+            <code class="computeroutput"><span class="identifier">r</span></code>.
+          </p>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                    <p>
+                      C++ Expression
+                    </p>
+                  </th>
+<th>
+                    <p>
+                      Python Method Name
+                    </p>
+                  </th>
+<th>
+                    <p>
+                      C++ Implementation
+                    </p>
+                  </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">self</span> <span class="special">+=</span>
+                      <span class="identifier">r</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">__iadd__</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">x</span> <span class="special">+=</span>
+                      <span class="identifier">y</span></code>
+                    </p>
+                  </td>
+</tr>
+<tr>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">self</span> <span class="special">-=</span>
+                      <span class="identifier">r</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">__isub__</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">x</span> <span class="special">-=</span>
+                      <span class="identifier">y</span></code>
+                    </p>
+                  </td>
+</tr>
+<tr>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">self</span> <span class="special">*=</span>
+                      <span class="identifier">r</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">__imul__</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">x</span> <span class="special">*=</span>
+                      <span class="identifier">y</span></code>
+                    </p>
+                  </td>
+</tr>
+<tr>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">self</span> <span class="special">/=</span>
+                      <span class="identifier">r</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">__idiv__</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">x</span> <span class="special">/=</span>
+                      <span class="identifier">y</span></code>
+                    </p>
+                  </td>
+</tr>
+<tr>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">self</span> <span class="special">%=</span>
+                      <span class="identifier">r</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">__imod__</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">x</span> <span class="special">%=</span>
+                      <span class="identifier">y</span></code>
+                    </p>
+                  </td>
+</tr>
+<tr>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">self</span> <span class="special">&gt;&gt;=</span>
+                      <span class="identifier">r</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">__irshift__</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">x</span> <span class="special">&gt;&gt;=</span>
+                      <span class="identifier">y</span></code>
+                    </p>
+                  </td>
+</tr>
+<tr>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">self</span> <span class="special">&lt;&lt;=</span>
+                      <span class="identifier">r</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">__ilshift__</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">x</span> <span class="special">&lt;&lt;=</span>
+                      <span class="identifier">y</span></code>
+                    </p>
+                  </td>
+</tr>
+<tr>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">self</span> <span class="special">&amp;=</span>
+                      <span class="identifier">r</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">__iand__</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">x</span> <span class="special">&amp;=</span>
+                      <span class="identifier">y</span></code>
+                    </p>
+                  </td>
+</tr>
+<tr>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">self</span> <span class="special">^=</span>
+                      <span class="identifier">r</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">__ixor__</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">x</span> <span class="special">^=</span>
+                      <span class="identifier">y</span></code>
+                    </p>
+                  </td>
+</tr>
+<tr>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">self</span> <span class="special">|=</span>
+                      <span class="identifier">r</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">__ior__</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">x</span> <span class="special">|=</span>
+                      <span class="identifier">y</span></code>
+                    </p>
+                  </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="high_level_components.boost_python_operators_hpp.class_self_ns_self_t.self_t_comparison_functions"></a><a class="link" href="boost_python_operators_hpp.html#high_level_components.boost_python_operators_hpp.class_self_ns_self_t.self_t_comparison_functions" title="self_t comparison functions"><code class="computeroutput"><span class="identifier">self_t</span></code> comparison functions</a>
+</h4></div></div></div>
+<p>
+            In the tables below, if <code class="computeroutput"><span class="identifier">r</span></code>
+            is of type <a class="link" href="boost_python_operators_hpp.html#high_level_components.boost_python_operators_hpp.class_self_ns_self_t" title="Class self_ns::self_t">self_t</a>,
+            <code class="computeroutput"><span class="identifier">y</span></code> is an object of the
+            same type as <code class="computeroutput"><span class="identifier">x</span></code>; if <code class="computeroutput"><span class="identifier">l</span></code> or <code class="computeroutput"><span class="identifier">r</span></code>
+            is an object of type <a class="link" href="boost_python_operators_hpp.html#high_level_components.boost_python_operators_hpp.class_template_other" title="Class template other">other&lt;T&gt;</a>,
+            <code class="computeroutput"><span class="identifier">y</span></code> is an object of type
+            <code class="computeroutput"><span class="identifier">T</span></code>; otherwise, <code class="computeroutput"><span class="identifier">y</span></code> is an object of the same type as
+            <code class="computeroutput"><span class="identifier">l</span></code> or <code class="computeroutput"><span class="identifier">r</span></code>.
+            <code class="computeroutput"><span class="identifier">l</span></code> is never of type <a class="link" href="boost_python_operators_hpp.html#high_level_components.boost_python_operators_hpp.class_self_ns_self_t" title="Class self_ns::self_t">self_t</a>.
+          </p>
+<p>
+            The column of Python Expressions illustrates the expressions that will
+            be supported in Python for objects convertible to the types of x and
+            y. The secondary operation arises due to Python's <a href="http://www.python.org/doc/ref/customization.html#l2h-89" target="_top">reflection
+            rules</a> for rich comparison operators, and are only used when the
+            corresponding operation is not defined as a method of the y object.
+          </p>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                    <p>
+                      C++ Expression
+                    </p>
+                  </th>
+<th>
+                    <p>
+                      Python Method Name
+                    </p>
+                  </th>
+<th>
+                    <p>
+                      C++ Implementation
+                    </p>
+                  </th>
+<th>
+                    <p>
+                      Python Expression (primary, secondary)
+                    </p>
+                  </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">self</span> <span class="special">==</span>
+                      <span class="identifier">r</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">__eq__</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">x</span> <span class="special">==</span>
+                      <span class="identifier">y</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">x</span> <span class="special">==</span>
+                      <span class="identifier">y</span></code>, <code class="computeroutput"><span class="identifier">y</span> <span class="special">==</span>
+                      <span class="identifier">x</span></code>
+                    </p>
+                  </td>
+</tr>
+<tr>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">l</span> <span class="special">==</span>
+                      <span class="identifier">self</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">__eq__</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">y</span> <span class="special">==</span>
+                      <span class="identifier">x</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">y</span> <span class="special">==</span>
+                      <span class="identifier">x</span></code>, <code class="computeroutput"><span class="identifier">x</span> <span class="special">==</span>
+                      <span class="identifier">y</span></code>
+                    </p>
+                  </td>
+</tr>
+<tr>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">self</span> <span class="special">!=</span>
+                      <span class="identifier">r</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">__nq__</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">x</span> <span class="special">!=</span>
+                      <span class="identifier">y</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">x</span> <span class="special">!=</span>
+                      <span class="identifier">y</span></code>, <code class="computeroutput"><span class="identifier">y</span> <span class="special">!=</span>
+                      <span class="identifier">x</span></code>
+                    </p>
+                  </td>
+</tr>
+<tr>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">l</span> <span class="special">!=</span>
+                      <span class="identifier">self</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">__nq__</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">y</span> <span class="special">!=</span>
+                      <span class="identifier">x</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">y</span> <span class="special">!=</span>
+                      <span class="identifier">x</span></code>, <code class="computeroutput"><span class="identifier">x</span> <span class="special">!=</span>
+                      <span class="identifier">y</span></code>
+                    </p>
+                  </td>
+</tr>
+<tr>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">self</span> <span class="special">&lt;</span>
+                      <span class="identifier">r</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">__lt__</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">x</span> <span class="special">&lt;</span>
+                      <span class="identifier">y</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">x</span> <span class="special">&lt;</span>
+                      <span class="identifier">y</span></code>, <code class="computeroutput"><span class="identifier">y</span> <span class="special">&gt;</span>
+                      <span class="identifier">x</span></code>
+                    </p>
+                  </td>
+</tr>
+<tr>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">l</span> <span class="special">&lt;</span>
+                      <span class="identifier">self</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">__gt__</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">y</span> <span class="special">&lt;</span>
+                      <span class="identifier">x</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">y</span> <span class="special">&gt;</span>
+                      <span class="identifier">x</span></code>, <code class="computeroutput"><span class="identifier">x</span> <span class="special">&lt;</span>
+                      <span class="identifier">y</span></code>
+                    </p>
+                  </td>
+</tr>
+<tr>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">self</span> <span class="special">&gt;</span>
+                      <span class="identifier">r</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">__gt__</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">x</span> <span class="special">&gt;</span>
+                      <span class="identifier">y</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">x</span> <span class="special">&gt;</span>
+                      <span class="identifier">y</span></code>, <code class="computeroutput"><span class="identifier">y</span> <span class="special">&lt;</span>
+                      <span class="identifier">x</span></code>
+                    </p>
+                  </td>
+</tr>
+<tr>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">l</span> <span class="special">&gt;</span>
+                      <span class="identifier">self</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">__lt__</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">y</span> <span class="special">&gt;</span>
+                      <span class="identifier">x</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">y</span> <span class="special">&lt;</span>
+                      <span class="identifier">x</span></code>, <code class="computeroutput"><span class="identifier">x</span> <span class="special">&gt;</span>
+                      <span class="identifier">y</span></code>
+                    </p>
+                  </td>
+</tr>
+<tr>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">self</span> <span class="special">&lt;=</span>
+                      <span class="identifier">r</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">__le__</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">x</span> <span class="special">&lt;=</span>
+                      <span class="identifier">y</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">x</span> <span class="special">&lt;=</span>
+                      <span class="identifier">y</span></code>, <code class="computeroutput"><span class="identifier">y</span> <span class="special">&gt;=</span>
+                      <span class="identifier">x</span></code>
+                    </p>
+                  </td>
+</tr>
+<tr>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">l</span> <span class="special">&lt;=</span>
+                      <span class="identifier">self</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">__ge__</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">y</span> <span class="special">&lt;=</span>
+                      <span class="identifier">x</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">y</span> <span class="special">&gt;=</span>
+                      <span class="identifier">x</span></code>, <code class="computeroutput"><span class="identifier">x</span> <span class="special">&lt;=</span>
+                      <span class="identifier">y</span></code>
+                    </p>
+                  </td>
+</tr>
+<tr>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">self</span> <span class="special">&gt;=</span>
+                      <span class="identifier">r</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">__ge__</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">x</span> <span class="special">&gt;=</span>
+                      <span class="identifier">y</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">x</span> <span class="special">&gt;=</span>
+                      <span class="identifier">y</span></code>, <code class="computeroutput"><span class="identifier">y</span> <span class="special">&lt;=</span>
+                      <span class="identifier">x</span></code>
+                    </p>
+                  </td>
+</tr>
+<tr>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">l</span> <span class="special">&lt;=</span>
+                      <span class="identifier">self</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">__le__</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">y</span> <span class="special">&gt;=</span>
+                      <span class="identifier">x</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">y</span> <span class="special">&lt;=</span>
+                      <span class="identifier">x</span></code>, <code class="computeroutput"><span class="identifier">x</span> <span class="special">&gt;=</span>
+                      <span class="identifier">y</span></code>
+                    </p>
+                  </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="high_level_components.boost_python_operators_hpp.class_self_ns_self_t.self_t_non_member_operations"></a><a class="link" href="boost_python_operators_hpp.html#high_level_components.boost_python_operators_hpp.class_self_ns_self_t.self_t_non_member_operations" title="self_t non-member operations"><code class="computeroutput"><span class="identifier">self_t</span></code> non-member operations</a>
+</h4></div></div></div>
+<p>
+            The operations whose names begin with "__r" below will only
+            be called if the left-hand operand does not already support the given
+            operation, as described <a href="http://www.python.org/doc/current/ref/numeric-types.html#l2h-152" target="_top">here</a>.
+          </p>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                    <p>
+                      C++ Expression
+                    </p>
+                  </th>
+<th>
+                    <p>
+                      Python Method Name
+                    </p>
+                  </th>
+<th>
+                    <p>
+                      C++ Implementation
+                    </p>
+                  </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">self</span> <span class="special">+</span>
+                      <span class="identifier">r</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">__add__</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">x</span> <span class="special">+</span>
+                      <span class="identifier">y</span></code>
+                    </p>
+                  </td>
+</tr>
+<tr>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">l</span> <span class="special">+</span>
+                      <span class="identifier">self</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">__radd__</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">y</span> <span class="special">+</span>
+                      <span class="identifier">x</span></code>
+                    </p>
+                  </td>
+</tr>
+<tr>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">self</span> <span class="special">-</span>
+                      <span class="identifier">r</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">__sub__</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">x</span> <span class="special">-</span>
+                      <span class="identifier">y</span></code>
+                    </p>
+                  </td>
+</tr>
+<tr>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">l</span> <span class="special">-</span>
+                      <span class="identifier">self</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">__rsub__</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">y</span> <span class="special">-</span>
+                      <span class="identifier">x</span></code>
+                    </p>
+                  </td>
+</tr>
+<tr>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">self</span> <span class="special">*</span>
+                      <span class="identifier">r</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">__mult__</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">x</span> <span class="special">*</span>
+                      <span class="identifier">y</span></code>
+                    </p>
+                  </td>
+</tr>
+<tr>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">l</span> <span class="special">*</span>
+                      <span class="identifier">self</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">__rmult__</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">y</span> <span class="special">*</span>
+                      <span class="identifier">x</span></code>
+                    </p>
+                  </td>
+</tr>
+<tr>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">self</span> <span class="special">/</span>
+                      <span class="identifier">r</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">__div__</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">x</span> <span class="special">/</span>
+                      <span class="identifier">y</span></code>
+                    </p>
+                  </td>
+</tr>
+<tr>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">l</span> <span class="special">/</span>
+                      <span class="identifier">self</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">__rdiv__</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">y</span> <span class="special">/</span>
+                      <span class="identifier">x</span></code>
+                    </p>
+                  </td>
+</tr>
+<tr>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">self</span> <span class="special">%</span>
+                      <span class="identifier">r</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">__mod__</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">x</span> <span class="special">%</span>
+                      <span class="identifier">y</span></code>
+                    </p>
+                  </td>
+</tr>
+<tr>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">l</span> <span class="special">%</span>
+                      <span class="identifier">self</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">__rmod__</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">y</span> <span class="special">%</span>
+                      <span class="identifier">x</span></code>
+                    </p>
+                  </td>
+</tr>
+<tr>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">self</span> <span class="special">&gt;&gt;</span>
+                      <span class="identifier">r</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">__rshift__</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">x</span> <span class="special">&gt;&gt;</span>
+                      <span class="identifier">y</span></code>
+                    </p>
+                  </td>
+</tr>
+<tr>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">l</span> <span class="special">&gt;&gt;</span>
+                      <span class="identifier">self</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">__rrshift__</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">y</span> <span class="special">&gt;&gt;</span>
+                      <span class="identifier">x</span></code>
+                    </p>
+                  </td>
+</tr>
+<tr>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">self</span> <span class="special">&lt;&lt;</span>
+                      <span class="identifier">r</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">__lshift__</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">x</span> <span class="special">&lt;&lt;</span>
+                      <span class="identifier">y</span></code>
+                    </p>
+                  </td>
+</tr>
+<tr>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">l</span> <span class="special">&lt;&lt;</span>
+                      <span class="identifier">self</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">__rlshift__</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">y</span> <span class="special">&lt;&lt;</span>
+                      <span class="identifier">x</span></code>
+                    </p>
+                  </td>
+</tr>
+<tr>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">self</span> <span class="special">&amp;</span>
+                      <span class="identifier">r</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">__and__</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">x</span> <span class="special">&amp;</span>
+                      <span class="identifier">y</span></code>
+                    </p>
+                  </td>
+</tr>
+<tr>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">l</span> <span class="special">&amp;</span>
+                      <span class="identifier">self</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">__rand__</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">y</span> <span class="special">&amp;</span>
+                      <span class="identifier">x</span></code>
+                    </p>
+                  </td>
+</tr>
+<tr>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">self</span> <span class="special">^</span>
+                      <span class="identifier">r</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">__xor__</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">x</span> <span class="special">^</span>
+                      <span class="identifier">y</span></code>
+                    </p>
+                  </td>
+</tr>
+<tr>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">l</span> <span class="special">^</span>
+                      <span class="identifier">self</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">__rxor__</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">y</span> <span class="special">^</span>
+                      <span class="identifier">x</span></code>
+                    </p>
+                  </td>
+</tr>
+<tr>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">self</span> <span class="special">|</span>
+                      <span class="identifier">r</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">__or__</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">x</span> <span class="special">|</span>
+                      <span class="identifier">y</span></code>
+                    </p>
+                  </td>
+</tr>
+<tr>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">l</span> <span class="special">|</span>
+                      <span class="identifier">self</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">__ror__</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">y</span> <span class="special">|</span>
+                      <span class="identifier">x</span></code>
+                    </p>
+                  </td>
+</tr>
+<tr>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">pow</span><span class="special">(</span><span class="identifier">self</span><span class="special">,</span>
+                      <span class="identifier">r</span><span class="special">)</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">__pow__</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">x</span> <span class="special">**</span>
+                      <span class="identifier">y</span></code>
+                    </p>
+                  </td>
+</tr>
+<tr>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">pow</span><span class="special">(</span><span class="identifier">l</span><span class="special">,</span>
+                      <span class="identifier">self</span><span class="special">)</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">__rpow__</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">y</span> <span class="special">**</span>
+                      <span class="identifier">x</span></code>
+                    </p>
+                  </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="high_level_components.boost_python_operators_hpp.class_self_ns_self_t.self_t_unary_operations"></a><a class="link" href="boost_python_operators_hpp.html#high_level_components.boost_python_operators_hpp.class_self_ns_self_t.self_t_unary_operations" title="self_t unary operations"><code class="computeroutput"><span class="identifier">self_t</span></code> unary operations</a>
+</h4></div></div></div>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                    <p>
+                      C++ Expression
+                    </p>
+                  </th>
+<th>
+                    <p>
+                      Python Method Name
+                    </p>
+                  </th>
+<th>
+                    <p>
+                      C++ Implementation
+                    </p>
+                  </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="special">-</span><span class="identifier">self</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">__neg__</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="special">-</span><span class="identifier">x</span></code>
+                    </p>
+                  </td>
+</tr>
+<tr>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="special">+</span><span class="identifier">self</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">__pos__</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="special">+</span><span class="identifier">x</span></code>
+                    </p>
+                  </td>
+</tr>
+<tr>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="special">~</span><span class="identifier">self</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">__invert__</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="special">~</span><span class="identifier">x</span></code>
+                    </p>
+                  </td>
+</tr>
+<tr>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="keyword">not</span> <span class="identifier">self</span></code>
+                      or <code class="computeroutput"><span class="special">!</span><span class="identifier">self</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">__nonzero__</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="special">!!</span><span class="identifier">x</span></code>
+                    </p>
+                  </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="high_level_components.boost_python_operators_hpp.class_self_ns_self_t.self_t_value_operations"></a><a class="link" href="boost_python_operators_hpp.html#high_level_components.boost_python_operators_hpp.class_self_ns_self_t.self_t_value_operations" title="self_t value operations"><code class="computeroutput"><span class="identifier">self_t</span></code> value operations</a>
+</h4></div></div></div>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                    <p>
+                      C++ Expression
+                    </p>
+                  </th>
+<th>
+                    <p>
+                      Python Method Name
+                    </p>
+                  </th>
+<th>
+                    <p>
+                      C++ Implementation
+                    </p>
+                  </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">int_</span><span class="special">(</span><span class="identifier">self</span><span class="special">)</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">__int__</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="keyword">long</span><span class="special">(</span><span class="identifier">x</span><span class="special">)</span></code>
+                    </p>
+                  </td>
+</tr>
+<tr>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">long_</span><span class="special">(</span><span class="identifier">self</span><span class="special">)</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">__long__</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">PyLong_FromLong</span><span class="special">(</span><span class="identifier">x</span><span class="special">)</span></code>
+                    </p>
+                  </td>
+</tr>
+<tr>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">float_</span><span class="special">(</span><span class="identifier">self</span><span class="special">)</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">__float__</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="keyword">double</span><span class="special">(</span><span class="identifier">x</span><span class="special">)</span></code>
+                    </p>
+                  </td>
+</tr>
+<tr>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">complex_</span><span class="special">(</span><span class="identifier">self</span><span class="special">)</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">__complex__</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">complex</span><span class="special">&lt;</span><span class="keyword">double</span><span class="special">&gt;(</span><span class="identifier">x</span><span class="special">)</span></code>
+                    </p>
+                  </td>
+</tr>
+<tr>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">str</span><span class="special">(</span><span class="identifier">self</span><span class="special">)</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">__str__</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">lexical_cast</span><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span><span class="special">&gt;(</span><span class="identifier">x</span><span class="special">)</span></code>
+                    </p>
+                  </td>
+</tr>
+<tr>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">repr</span><span class="special">(</span><span class="identifier">self</span><span class="special">)</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">__repr__</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">lexical_cast</span><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span><span class="special">&gt;(</span><span class="identifier">x</span><span class="special">)</span></code>
+                    </p>
+                  </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="high_level_components.boost_python_operators_hpp.class_template_other"></a><a class="link" href="boost_python_operators_hpp.html#high_level_components.boost_python_operators_hpp.class_template_other" title="Class template other">Class
+        template <code class="computeroutput"><span class="identifier">other</span></code></a>
+</h3></div></div></div>
+<p>
+          Instances of <code class="computeroutput"><span class="identifier">other</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;</span></code>
+          can be used in operator expressions with <a class="link" href="boost_python_operators_hpp.html#high_level_components.boost_python_operators_hpp.object_self" title="Object self">self</a>;
+          the result is equivalent to the same expression with a <code class="computeroutput"><span class="identifier">T</span></code>
+          object in place of <code class="computeroutput"><span class="identifier">other</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;</span></code>. Use <code class="computeroutput"><span class="identifier">other</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;</span></code> to prevent construction of a <code class="computeroutput"><span class="identifier">T</span></code> object in case it is heavyweight, when
+          no constructor is available, or simply for clarity.
+        </p>
+<pre class="programlisting"><span class="keyword">namespace</span> <span class="identifier">boost</span> <span class="special">{</span> <span class="keyword">namespace</span> <span class="identifier">python</span>
+<span class="special">{</span>
+  <span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">&gt;</span>
+  <span class="keyword">struct</span> <span class="identifier">other</span>
+  <span class="special">{</span>
+  <span class="special">};</span>
+<span class="special">}}</span>
+</pre>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="high_level_components.boost_python_operators_hpp.class_template_detail_operator"></a><a class="link" href="boost_python_operators_hpp.html#high_level_components.boost_python_operators_hpp.class_template_detail_operator" title="Class template detail::operator_">Class
+        template <code class="computeroutput"><span class="identifier">detail</span><span class="special">::</span><span class="identifier">operator_</span></code></a>
+</h3></div></div></div>
+<p>
+          Instantiations of <code class="computeroutput"><span class="identifier">detail</span><span class="special">::</span><span class="identifier">operator_</span><span class="special">&lt;&gt;</span></code> are used as the return type of
+          operator expressions involving <a class="link" href="boost_python_operators_hpp.html#high_level_components.boost_python_operators_hpp.object_self" title="Object self">self</a>.
+          This should be considered an implementation detail and is only documented
+          here as a way of showing how the result of self-expressions match calls
+          to <a class="link" href="../high_level_components.html#high_level_components.boost_python_class_hpp.class_template_class_t_bases_hel.class_template_class_modifier_fu" title="Class template class_ modifier functions"><code class="computeroutput"><span class="identifier">class_</span><span class="special">&lt;&gt;::</span><span class="identifier">def</span><span class="special">()</span></code></a>.
+        </p>
+<pre class="programlisting"><span class="keyword">namespace</span> <span class="identifier">boost</span> <span class="special">{</span> <span class="keyword">namespace</span> <span class="identifier">python</span> <span class="special">{</span> <span class="keyword">namespace</span> <span class="identifier">detail</span>
+<span class="special">{</span>
+  <span class="keyword">template</span> <span class="special">&lt;</span><span class="identifier">unspecified</span><span class="special">&gt;</span>
+  <span class="keyword">struct</span> <span class="identifier">operator_</span>
+  <span class="special">{</span>
+  <span class="special">};</span>
+<span class="special">}}}</span>
+</pre>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="high_level_components.boost_python_operators_hpp.object_self"></a><a class="link" href="boost_python_operators_hpp.html#high_level_components.boost_python_operators_hpp.object_self" title="Object self">Object
+        <code class="computeroutput"><span class="identifier">self</span></code></a>
+</h3></div></div></div>
+<pre class="programlisting"><span class="keyword">namespace</span> <span class="identifier">boost</span> <span class="special">{</span> <span class="keyword">namespace</span> <span class="identifier">python</span>
+<span class="special">{</span>
+  <span class="keyword">using</span> <span class="identifier">self_ns</span><span class="special">::</span><span class="identifier">self</span><span class="special">;</span>
+<span class="special">}}</span>
+</pre>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="high_level_components.boost_python_operators_hpp.example"></a><a class="link" href="boost_python_operators_hpp.html#high_level_components.boost_python_operators_hpp.example" title="Example">Example</a>
+</h3></div></div></div>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">python</span><span class="special">/</span><span class="identifier">module</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">python</span><span class="special">/</span><span class="keyword">class</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">python</span><span class="special">/</span><span class="identifier">operators</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">operators</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="keyword">struct</span> <span class="identifier">number</span>
+   <span class="special">:</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">integer_arithmetic</span><span class="special">&lt;</span><span class="identifier">number</span><span class="special">&gt;</span>
+<span class="special">{</span>
+    <span class="keyword">explicit</span> <span class="identifier">number</span><span class="special">(</span><span class="keyword">long</span> <span class="identifier">x_</span><span class="special">)</span> <span class="special">:</span> <span class="identifier">x</span><span class="special">(</span><span class="identifier">x_</span><span class="special">)</span> <span class="special">{}</span>
+    <span class="keyword">operator</span> <span class="keyword">long</span><span class="special">()</span> <span class="keyword">const</span> <span class="special">{</span> <span class="keyword">return</span> <span class="identifier">x</span><span class="special">;</span> <span class="special">}</span>
+
+    <span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">&gt;</span>
+    <span class="identifier">number</span><span class="special">&amp;</span> <span class="keyword">operator</span><span class="special">+=(</span><span class="identifier">T</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">rhs</span><span class="special">)</span>
+    <span class="special">{</span> <span class="identifier">x</span> <span class="special">+=</span> <span class="identifier">rhs</span><span class="special">;</span> <span class="keyword">return</span> <span class="special">*</span><span class="keyword">this</span><span class="special">;</span> <span class="special">}</span>
+
+    <span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">&gt;</span>
+    <span class="identifier">number</span><span class="special">&amp;</span> <span class="keyword">operator</span><span class="special">-=(</span><span class="identifier">T</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">rhs</span><span class="special">)</span>
+    <span class="special">{</span> <span class="identifier">x</span> <span class="special">-=</span> <span class="identifier">rhs</span><span class="special">;</span> <span class="keyword">return</span> <span class="special">*</span><span class="keyword">this</span><span class="special">;</span> <span class="special">}</span>
+
+    <span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">&gt;</span>
+    <span class="identifier">number</span><span class="special">&amp;</span> <span class="keyword">operator</span><span class="special">*=(</span><span class="identifier">T</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">rhs</span><span class="special">)</span>
+    <span class="special">{</span> <span class="identifier">x</span> <span class="special">*=</span> <span class="identifier">rhs</span><span class="special">;</span> <span class="keyword">return</span> <span class="special">*</span><span class="keyword">this</span><span class="special">;</span> <span class="special">}</span>
+
+    <span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">&gt;</span>
+    <span class="identifier">number</span><span class="special">&amp;</span> <span class="keyword">operator</span><span class="special">/=(</span><span class="identifier">T</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">rhs</span><span class="special">)</span>
+    <span class="special">{</span> <span class="identifier">x</span> <span class="special">/=</span> <span class="identifier">rhs</span><span class="special">;</span> <span class="keyword">return</span> <span class="special">*</span><span class="keyword">this</span><span class="special">;</span> <span class="special">}</span>
+
+    <span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">&gt;</span>
+    <span class="identifier">number</span><span class="special">&amp;</span> <span class="keyword">operator</span><span class="special">%=(</span><span class="identifier">T</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">rhs</span><span class="special">)</span>
+    <span class="special">{</span> <span class="identifier">x</span> <span class="special">%=</span> <span class="identifier">rhs</span><span class="special">;</span> <span class="keyword">return</span> <span class="special">*</span><span class="keyword">this</span><span class="special">;</span> <span class="special">}</span>
+
+   <span class="keyword">long</span> <span class="identifier">x</span><span class="special">;</span>
+<span class="special">};</span>
+
+<span class="keyword">using</span> <span class="keyword">namespace</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">python</span><span class="special">;</span>
+<span class="identifier">BOOST_PYTHON_MODULE</span><span class="special">(</span><span class="identifier">demo</span><span class="special">)</span>
+<span class="special">{</span>
+   <span class="identifier">class_</span><span class="special">&lt;</span><span class="identifier">number</span><span class="special">&gt;(</span><span class="string">"number"</span><span class="special">,</span> <span class="identifier">init</span><span class="special">&lt;</span><span class="keyword">long</span><span class="special">&gt;())</span>
+      <span class="comment">// interoperate with self</span>
+      <span class="special">.</span><span class="identifier">def</span><span class="special">(</span><span class="identifier">self</span> <span class="special">+=</span> <span class="identifier">self</span><span class="special">)</span>
+      <span class="special">.</span><span class="identifier">def</span><span class="special">(</span><span class="identifier">self</span> <span class="special">+</span> <span class="identifier">self</span><span class="special">)</span>
+      <span class="special">.</span><span class="identifier">def</span><span class="special">(</span><span class="identifier">self</span> <span class="special">-=</span> <span class="identifier">self</span><span class="special">)</span>
+      <span class="special">.</span><span class="identifier">def</span><span class="special">(</span><span class="identifier">self</span> <span class="special">-</span> <span class="identifier">self</span><span class="special">)</span>
+      <span class="special">.</span><span class="identifier">def</span><span class="special">(</span><span class="identifier">self</span> <span class="special">*=</span> <span class="identifier">self</span><span class="special">)</span>
+      <span class="special">.</span><span class="identifier">def</span><span class="special">(</span><span class="identifier">self</span> <span class="special">*</span> <span class="identifier">self</span><span class="special">)</span>
+      <span class="special">.</span><span class="identifier">def</span><span class="special">(</span><span class="identifier">self</span> <span class="special">/=</span> <span class="identifier">self</span><span class="special">)</span>
+      <span class="special">.</span><span class="identifier">def</span><span class="special">(</span><span class="identifier">self</span> <span class="special">/</span> <span class="identifier">self</span><span class="special">)</span>
+      <span class="special">.</span><span class="identifier">def</span><span class="special">(</span><span class="identifier">self</span> <span class="special">%=</span> <span class="identifier">self</span><span class="special">)</span>
+      <span class="special">.</span><span class="identifier">def</span><span class="special">(</span><span class="identifier">self</span> <span class="special">%</span> <span class="identifier">self</span><span class="special">)</span>
+
+      <span class="comment">// Convert to Python int</span>
+      <span class="special">.</span><span class="identifier">def</span><span class="special">(</span><span class="identifier">int_</span><span class="special">(</span><span class="identifier">self</span><span class="special">))</span>
+
+      <span class="comment">// interoperate with long</span>
+      <span class="special">.</span><span class="identifier">def</span><span class="special">(</span><span class="identifier">self</span> <span class="special">+=</span> <span class="keyword">long</span><span class="special">())</span>
+      <span class="special">.</span><span class="identifier">def</span><span class="special">(</span><span class="identifier">self</span> <span class="special">+</span> <span class="keyword">long</span><span class="special">())</span>
+      <span class="special">.</span><span class="identifier">def</span><span class="special">(</span><span class="keyword">long</span><span class="special">()</span> <span class="special">+</span> <span class="identifier">self</span><span class="special">)</span>
+      <span class="special">.</span><span class="identifier">def</span><span class="special">(</span><span class="identifier">self</span> <span class="special">-=</span> <span class="keyword">long</span><span class="special">())</span>
+      <span class="special">.</span><span class="identifier">def</span><span class="special">(</span><span class="identifier">self</span> <span class="special">-</span> <span class="keyword">long</span><span class="special">())</span>
+      <span class="special">.</span><span class="identifier">def</span><span class="special">(</span><span class="keyword">long</span><span class="special">()</span> <span class="special">-</span> <span class="identifier">self</span><span class="special">)</span>
+      <span class="special">.</span><span class="identifier">def</span><span class="special">(</span><span class="identifier">self</span> <span class="special">*=</span> <span class="keyword">long</span><span class="special">())</span>
+      <span class="special">.</span><span class="identifier">def</span><span class="special">(</span><span class="identifier">self</span> <span class="special">*</span> <span class="keyword">long</span><span class="special">())</span>
+      <span class="special">.</span><span class="identifier">def</span><span class="special">(</span><span class="keyword">long</span><span class="special">()</span> <span class="special">*</span> <span class="identifier">self</span><span class="special">)</span>
+      <span class="special">.</span><span class="identifier">def</span><span class="special">(</span><span class="identifier">self</span> <span class="special">/=</span> <span class="keyword">long</span><span class="special">())</span>
+      <span class="special">.</span><span class="identifier">def</span><span class="special">(</span><span class="identifier">self</span> <span class="special">/</span> <span class="keyword">long</span><span class="special">())</span>
+      <span class="special">.</span><span class="identifier">def</span><span class="special">(</span><span class="keyword">long</span><span class="special">()</span> <span class="special">/</span> <span class="identifier">self</span><span class="special">)</span>
+      <span class="special">.</span><span class="identifier">def</span><span class="special">(</span><span class="identifier">self</span> <span class="special">%=</span> <span class="keyword">long</span><span class="special">())</span>
+      <span class="special">.</span><span class="identifier">def</span><span class="special">(</span><span class="identifier">self</span> <span class="special">%</span> <span class="keyword">long</span><span class="special">())</span>
+      <span class="special">.</span><span class="identifier">def</span><span class="special">(</span><span class="keyword">long</span><span class="special">()</span> <span class="special">%</span> <span class="identifier">self</span><span class="special">)</span>
+      <span class="special">;</span>
+<span class="special">}</span>
+</pre>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2002-2005, 2015 David Abrahams, Stefan Seefeld<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="boost_python_module_hpp.html"><img src="../../images/prev.png" alt="Prev"></a><a accesskey="u" href="../high_level_components.html"><img src="../../images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../images/home.png" alt="Home"></a><a accesskey="n" href="boost_python_scope_hpp.html"><img src="../../images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

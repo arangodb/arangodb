@@ -1,0 +1,29 @@
+
+
+{
+  "title": {
+    "text": "Executable size for fold_right"
+  },
+  "yAxis": {
+    "title": {
+      "text": "Executable size (kb)"
+    },
+    "floor": 0
+  },
+  "tooltip": {
+    "valueSuffix": "kb"
+  },
+  "series": [
+    {
+      "name": "hana::tuple",
+      "data": [[1, 14.742], [11, 14.742], [21, 14.742], [31, 14.742], [41, 14.742]]
+    }
+
+    
+    , {
+      "name": "fusion::vector",
+      "data": [[1, 14.742], [11, 14.742], [21, 14.742], [31, 14.742], [41, 14.742]]
+    }
+    
+  ]
+}

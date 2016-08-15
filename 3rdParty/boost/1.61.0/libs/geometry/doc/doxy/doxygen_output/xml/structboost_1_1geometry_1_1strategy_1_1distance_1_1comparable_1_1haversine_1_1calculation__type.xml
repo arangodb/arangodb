@@ -1,0 +1,48 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="structboost_1_1geometry_1_1strategy_1_1distance_1_1comparable_1_1haversine_1_1calculation__type" kind="struct" prot="public">
+    <compoundname>boost::geometry::strategy::distance::comparable::haversine::calculation_type</compoundname>
+    <basecompoundref refid="structboost_1_1geometry_1_1promote__floating__point" prot="public" virt="non-virtual">boost::geometry::promote_floating_point&lt; select_calculation_type&lt; Point1, Point2, CalculationType &gt;::type &gt;</basecompoundref>
+    <includes local="no">distance_haversine.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename Point1</type>
+      </param>
+      <param>
+        <type>typename Point2</type>
+      </param>
+    </templateparamlist>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <inheritancegraph>
+      <node id="1213">
+        <label>boost::geometry::promote_floating_point&lt; select_calculation_type&lt; Point1, Point2, CalculationType &gt;::type &gt;</label>
+        <link refid="structboost_1_1geometry_1_1promote__floating__point"/>
+      </node>
+      <node id="1212">
+        <label>boost::geometry::strategy::distance::comparable::haversine&lt; RadiusType, CalculationType &gt;::calculation_type&lt; Point1, Point2 &gt;</label>
+        <link refid="structboost_1_1geometry_1_1strategy_1_1distance_1_1comparable_1_1haversine_1_1calculation__type"/>
+        <childnode refid="1213" relation="public-inheritance">
+        </childnode>
+      </node>
+    </inheritancegraph>
+    <collaborationgraph>
+      <node id="1215">
+        <label>boost::geometry::promote_floating_point&lt; select_calculation_type&lt; Point1, Point2, CalculationType &gt;::type &gt;</label>
+        <link refid="structboost_1_1geometry_1_1promote__floating__point"/>
+      </node>
+      <node id="1214">
+        <label>boost::geometry::strategy::distance::comparable::haversine&lt; RadiusType, CalculationType &gt;::calculation_type&lt; Point1, Point2 &gt;</label>
+        <link refid="structboost_1_1geometry_1_1strategy_1_1distance_1_1comparable_1_1haversine_1_1calculation__type"/>
+        <childnode refid="1215" relation="public-inheritance">
+        </childnode>
+      </node>
+    </collaborationgraph>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/distance_haversine.hpp" line="60" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/distance_haversine.hpp" bodystart="50" bodyend="60"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1promote__floating__point_1a732c9e3e88ac0957f4cae668f186a212" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::distance::comparable::haversine::calculation_type</scope><name>type</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

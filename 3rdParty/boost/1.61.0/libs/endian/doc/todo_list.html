@@ -1,0 +1,106 @@
+<html>
+
+<head>
+<meta http-equiv="Content-Language" content="en-us">
+<meta name="GENERATOR" content="Microsoft FrontPage 5.0">
+<meta name="ProgId" content="FrontPage.Editor.Document">
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Endian Library Do List</title>
+</head>
+
+<body>
+
+<h1>Endian Library TODO List</h1>
+
+<h2>To Do</h2>
+<h2>Format Review Comments</h2>
+<h3 dir="ltr">Interesting</h3>
+<ul>
+  <li dir="ltr">
+  <p dir="ltr">John Filo - &quot;Absolutely. I'd like to see support for float and 
+  double, but<br>
+  even without those additions, I still vote yes.&quot; &quot;For those who deal with 
+  non-native endian data, this library is<br>
+  extremely useful. It automatically eliminates a whole class of common<br>
+  programming errors when dealing with such data.&quot;<br>
+&nbsp;</li>
+  <li dir="ltr">
+  <p dir="ltr">Hartmut Kaiser - &quot;Even if this is not a full review, I would like 
+  to vote YES to include this <br>
+  library into Boost. 
+  <p>Boost.Spirit is using (and shipping) with an older version of this library
+  <br>
+  for several years now and we never had any problems with its usage in <br>
+  Spirit. It is used as the underlying framework for the binary parsers and <br>
+  generators and it is functioning as advertised.</p>
+  <p>As a quick test I replaced the internal (older) version of Boost.Endian in
+  <br>
+  Spirit with the reviewed version. All of Spirits regression tests still <br>
+  pass. &quot;<br>
+&nbsp;</li>
+</ul>
+<h3>Executive summary</h3>
+<ul>
+  <li>Common use case scenarios should be developed.</li>
+  <li>Example programs should be developed for the common use case scenarios.</li>
+  <li>Documentation should illuminate the differences between endian 
+  integer/float type and endian conversion approaches to the common use case 
+  scenarios, and provide guidelines for choosing the most appropriate approach 
+  for user's applications.</li>
+  <li>Conversion functions supplying results via <code>return</code> should be 
+  provided.</li>
+  <li>Platform specific performance enhancements such as use of compiler 
+  intrinsics or relaxed alignment requirements should be supported.</li>
+  <li>Endian integer (and floating) types should be implemented via the 
+  conversion functions. If that can't be done efficiently, consideration should 
+  be given to expanding the conversion function signatures to resolve the 
+  inefficiencies.</li>
+  <li>Benchmarks that measure performance should be provided. It should be 
+  possible to compare platform specific performance enhancements against 
+  portable base implementations, and to compare endian integer approaches 
+  against endian conversion approaches for the common use case scenarios.</li>
+  <li>Float (32-bits) and double (64-bits) should be supported. IEEE 754 is the 
+  primary use case.</li>
+  <li>Support for user defined types (UDTs) is desirable, and should be 
+  supported where there would be no conflict with the other concerns.</li>
+  <li>There is some concern that endian integer/float arithmetic operations 
+  might used 
+  inadvertently or inappropriately. The impact of adding an endian_buffer class without arithmetic 
+  operations should be investigated.</li>
+  <li>Stream insertion and extraction of the endian integer/float types should 
+  be documented and included in the test coverage.</li>
+  <li>Binary I/O support that was investigated during development of the Endian 
+  library should be put up for min-review for inclusion in the Boost I/O 
+  library.</li>
+</ul>
+<h3>Docs</h3>
+<ul>
+  <li>one other point ... the help file seems to directly link to the c++ 
+  headers.<br>
+  this should be changed:<br>
+  <br>
+  * some browsers (at least chromium) will not display the header when clicking<br>
+  &nbsp;the link, but will save them on disk.<br>
+  <br>
+  * providing a direct link to the source code from the docs implies that the<br>
+  &nbsp;user will get some information that are necessary to use the library by<br>
+  &nbsp;reading the sources. imo, this is not the case for using boost.endian.<br>
+  <br>
+  * if a user opens integer.hpp, the first 60 lines just contain copyright, some<br>
+  &nbsp;historical notes, compiler-specific stuff, includes and ifdefs. imo, this is<br>
+  &nbsp;the implementation part, which should not be exposed to a user.<br>
+  <br>
+  so i'd suggest to completely remove the links to the c++ headers.<br>
+&nbsp;</li>
+</ul>
+<hr>
+<p>Last revised:
+<!--webbot bot="Timestamp" s-type="EDITED" s-format="%d %B, %Y" startspan -->17 January, 2015<!--webbot bot="Timestamp" endspan i-checksum="38899" --></p>
+<p>© Copyright Beman Dawes, 2012</p>
+<p>Distributed under the Boost Software License, Version 1.0. See
+<a href="http://www.boost.org/LICENSE_1_0.txt">www.boost.org/LICENSE_1_0.txt</a></p>
+<p>&nbsp;</p>
+
+</body>
+
+</html>

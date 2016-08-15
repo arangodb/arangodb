@@ -1,0 +1,267 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Lock functions</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../../index.html" title="Chapter&#160;1.&#160;Thread 4.7.0">
+<link rel="up" href="../synchronization.html" title="Synchronization">
+<link rel="prev" href="other_locks.html" title="Other Lock Types - EXTENSION">
+<link rel="next" href="lock_factories.html" title="Lock Factories - EXTENSION">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="other_locks.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../synchronization.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="lock_factories.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="thread.synchronization.lock_functions"></a><a class="link" href="lock_functions.html" title="Lock functions">Lock functions</a>
+</h3></div></div></div>
+<div class="toc"><dl>
+<dt><span class="section"><a href="lock_functions.html#thread.synchronization.lock_functions.lock_multiple">Non-member
+        function <code class="computeroutput"><span class="identifier">lock</span><span class="special">(</span><span class="identifier">Lockable1</span><span class="special">,</span><span class="identifier">Lockable2</span><span class="special">,...)</span></code></a></span></dt>
+<dt><span class="section"><a href="lock_functions.html#thread.synchronization.lock_functions.lock_range">Non-member
+        function <code class="computeroutput"><span class="identifier">lock</span><span class="special">(</span><span class="identifier">begin</span><span class="special">,</span><span class="identifier">end</span><span class="special">)</span></code> //
+        EXTENSION</a></span></dt>
+<dt><span class="section"><a href="lock_functions.html#thread.synchronization.lock_functions.try_lock_multiple">Non-member
+        function <code class="computeroutput"><span class="identifier">try_lock</span><span class="special">(</span><span class="identifier">Lockable1</span><span class="special">,</span><span class="identifier">Lockable2</span><span class="special">,...)</span></code></a></span></dt>
+<dt><span class="section"><a href="lock_functions.html#thread.synchronization.lock_functions.try_lock_range">Non-member
+        function <code class="computeroutput"><span class="identifier">try_lock</span><span class="special">(</span><span class="identifier">begin</span><span class="special">,</span><span class="identifier">end</span><span class="special">)</span></code> //
+        EXTENSION</a></span></dt>
+</dl></div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="thread.synchronization.lock_functions.lock_multiple"></a><a class="link" href="lock_functions.html#thread.synchronization.lock_functions.lock_multiple" title="Non-member function lock(Lockable1,Lockable2,...)">Non-member
+        function <code class="computeroutput"><span class="identifier">lock</span><span class="special">(</span><span class="identifier">Lockable1</span><span class="special">,</span><span class="identifier">Lockable2</span><span class="special">,...)</span></code></a>
+</h4></div></div></div>
+<pre class="programlisting"><span class="comment">// #include &lt;boost/thread/locks.hpp&gt;</span>
+<span class="comment">// #include &lt;boost/thread/lock_algorithms.hpp&gt;</span>
+<span class="keyword">namespace</span> <span class="identifier">boost</span>
+<span class="special">{</span>
+
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">Lockable1</span><span class="special">,</span><span class="keyword">typename</span> <span class="identifier">Lockable2</span><span class="special">&gt;</span>
+  <span class="keyword">void</span> <span class="identifier">lock</span><span class="special">(</span><span class="identifier">Lockable1</span><span class="special">&amp;</span> <span class="identifier">l1</span><span class="special">,</span><span class="identifier">Lockable2</span><span class="special">&amp;</span> <span class="identifier">l2</span><span class="special">);</span>
+
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">Lockable1</span><span class="special">,</span><span class="keyword">typename</span> <span class="identifier">Lockable2</span><span class="special">,</span><span class="keyword">typename</span> <span class="identifier">Lockable3</span><span class="special">&gt;</span>
+  <span class="keyword">void</span> <span class="identifier">lock</span><span class="special">(</span><span class="identifier">Lockable1</span><span class="special">&amp;</span> <span class="identifier">l1</span><span class="special">,</span><span class="identifier">Lockable2</span><span class="special">&amp;</span> <span class="identifier">l2</span><span class="special">,</span><span class="identifier">Lockable3</span><span class="special">&amp;</span> <span class="identifier">l3</span><span class="special">);</span>
+
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">Lockable1</span><span class="special">,</span><span class="keyword">typename</span> <span class="identifier">Lockable2</span><span class="special">,</span><span class="keyword">typename</span> <span class="identifier">Lockable3</span><span class="special">,</span><span class="keyword">typename</span> <span class="identifier">Lockable4</span><span class="special">&gt;</span>
+  <span class="keyword">void</span> <span class="identifier">lock</span><span class="special">(</span><span class="identifier">Lockable1</span><span class="special">&amp;</span> <span class="identifier">l1</span><span class="special">,</span><span class="identifier">Lockable2</span><span class="special">&amp;</span> <span class="identifier">l2</span><span class="special">,</span><span class="identifier">Lockable3</span><span class="special">&amp;</span> <span class="identifier">l3</span><span class="special">,</span><span class="identifier">Lockable4</span><span class="special">&amp;</span> <span class="identifier">l4</span><span class="special">);</span>
+
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">Lockable1</span><span class="special">,</span><span class="keyword">typename</span> <span class="identifier">Lockable2</span><span class="special">,</span><span class="keyword">typename</span> <span class="identifier">Lockable3</span><span class="special">,</span><span class="keyword">typename</span> <span class="identifier">Lockable4</span><span class="special">,</span><span class="keyword">typename</span> <span class="identifier">Lockable5</span><span class="special">&gt;</span>
+  <span class="keyword">void</span> <span class="identifier">lock</span><span class="special">(</span><span class="identifier">Lockable1</span><span class="special">&amp;</span> <span class="identifier">l1</span><span class="special">,</span><span class="identifier">Lockable2</span><span class="special">&amp;</span> <span class="identifier">l2</span><span class="special">,</span><span class="identifier">Lockable3</span><span class="special">&amp;</span> <span class="identifier">l3</span><span class="special">,</span><span class="identifier">Lockable4</span><span class="special">&amp;</span> <span class="identifier">l4</span><span class="special">,</span><span class="identifier">Lockable5</span><span class="special">&amp;</span> <span class="identifier">l5</span><span class="special">);</span>
+
+<span class="special">}</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl>
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+                Locks the <a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.lockable" title="Lockable Concept"><code class="computeroutput"><span class="identifier">Lockable</span></code></a> objects supplied
+                as arguments in an unspecified and indeterminate order in a way that
+                avoids deadlock. It is safe to call this function concurrently from
+                multiple threads with the same mutexes (or other lockable objects)
+                in different orders without risk of deadlock. If any of the <a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.basic_lockable.lock" title="m.lock();"><code class="computeroutput"><span class="identifier">lock</span><span class="special">()</span></code></a>
+                or <a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.lockable.try_lock" title="m.try_lock()"><code class="computeroutput"><span class="identifier">try_lock</span><span class="special">()</span></code></a>
+                operations on the supplied <a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.lockable" title="Lockable Concept"><code class="computeroutput"><span class="identifier">Lockable</span></code></a> objects throws
+                an exception any locks acquired by the function will be released
+                before the function exits.
+              </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+                Any exceptions thrown by calling <a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.basic_lockable.lock" title="m.lock();"><code class="computeroutput"><span class="identifier">lock</span><span class="special">()</span></code></a>
+                or <a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.lockable.try_lock" title="m.try_lock()"><code class="computeroutput"><span class="identifier">try_lock</span><span class="special">()</span></code></a>
+                on the supplied <a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.lockable" title="Lockable Concept"><code class="computeroutput"><span class="identifier">Lockable</span></code></a> objects.
+              </p></dd>
+<dt><span class="term">Postcondition:</span></dt>
+<dd><p>
+                All the supplied <a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.lockable" title="Lockable Concept"><code class="computeroutput"><span class="identifier">Lockable</span></code></a> objects are locked
+                by the calling thread.
+              </p></dd>
+</dl>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="thread.synchronization.lock_functions.lock_range"></a><a class="link" href="lock_functions.html#thread.synchronization.lock_functions.lock_range" title="Non-member function lock(begin,end) // EXTENSION">Non-member
+        function <code class="computeroutput"><span class="identifier">lock</span><span class="special">(</span><span class="identifier">begin</span><span class="special">,</span><span class="identifier">end</span><span class="special">)</span></code> //
+        EXTENSION</a>
+</h4></div></div></div>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">ForwardIterator</span><span class="special">&gt;</span>
+<span class="keyword">void</span> <span class="identifier">lock</span><span class="special">(</span><span class="identifier">ForwardIterator</span> <span class="identifier">begin</span><span class="special">,</span><span class="identifier">ForwardIterator</span> <span class="identifier">end</span><span class="special">);</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl>
+<dt><span class="term">Preconditions:</span></dt>
+<dd><p>
+                The <code class="computeroutput"><span class="identifier">value_type</span></code> of
+                <code class="computeroutput"><span class="identifier">ForwardIterator</span></code> must
+                implement the <a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.lockable" title="Lockable Concept"><code class="computeroutput"><span class="identifier">Lockable</span></code> concept</a>
+              </p></dd>
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+                Locks all the <a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.lockable" title="Lockable Concept"><code class="computeroutput"><span class="identifier">Lockable</span></code></a> objects in the
+                supplied range in an unspecified and indeterminate order in a way
+                that avoids deadlock. It is safe to call this function concurrently
+                from multiple threads with the same mutexes (or other lockable objects)
+                in different orders without risk of deadlock. If any of the <a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.basic_lockable.lock" title="m.lock();"><code class="computeroutput"><span class="identifier">lock</span><span class="special">()</span></code></a>
+                or <a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.lockable.try_lock" title="m.try_lock()"><code class="computeroutput"><span class="identifier">try_lock</span><span class="special">()</span></code></a>
+                operations on the <a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.lockable" title="Lockable Concept"><code class="computeroutput"><span class="identifier">Lockable</span></code></a> objects in the
+                supplied range throws an exception any locks acquired by the function
+                will be released before the function exits.
+              </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+                Any exceptions thrown by calling <a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.basic_lockable.lock" title="m.lock();"><code class="computeroutput"><span class="identifier">lock</span><span class="special">()</span></code></a>
+                or <a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.lockable.try_lock" title="m.try_lock()"><code class="computeroutput"><span class="identifier">try_lock</span><span class="special">()</span></code></a>
+                on the supplied <a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.lockable" title="Lockable Concept"><code class="computeroutput"><span class="identifier">Lockable</span></code></a> objects.
+              </p></dd>
+<dt><span class="term">Postcondition:</span></dt>
+<dd><p>
+                All the <a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.lockable" title="Lockable Concept"><code class="computeroutput"><span class="identifier">Lockable</span></code></a> objects in the
+                supplied range are locked by the calling thread.
+              </p></dd>
+</dl>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="thread.synchronization.lock_functions.try_lock_multiple"></a><a class="link" href="lock_functions.html#thread.synchronization.lock_functions.try_lock_multiple" title="Non-member function try_lock(Lockable1,Lockable2,...)">Non-member
+        function <code class="computeroutput"><span class="identifier">try_lock</span><span class="special">(</span><span class="identifier">Lockable1</span><span class="special">,</span><span class="identifier">Lockable2</span><span class="special">,...)</span></code></a>
+</h4></div></div></div>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">Lockable1</span><span class="special">,</span><span class="keyword">typename</span> <span class="identifier">Lockable2</span><span class="special">&gt;</span>
+<span class="keyword">int</span> <span class="identifier">try_lock</span><span class="special">(</span><span class="identifier">Lockable1</span><span class="special">&amp;</span> <span class="identifier">l1</span><span class="special">,</span><span class="identifier">Lockable2</span><span class="special">&amp;</span> <span class="identifier">l2</span><span class="special">);</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">Lockable1</span><span class="special">,</span><span class="keyword">typename</span> <span class="identifier">Lockable2</span><span class="special">,</span><span class="keyword">typename</span> <span class="identifier">Lockable3</span><span class="special">&gt;</span>
+<span class="keyword">int</span> <span class="identifier">try_lock</span><span class="special">(</span><span class="identifier">Lockable1</span><span class="special">&amp;</span> <span class="identifier">l1</span><span class="special">,</span><span class="identifier">Lockable2</span><span class="special">&amp;</span> <span class="identifier">l2</span><span class="special">,</span><span class="identifier">Lockable3</span><span class="special">&amp;</span> <span class="identifier">l3</span><span class="special">);</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">Lockable1</span><span class="special">,</span><span class="keyword">typename</span> <span class="identifier">Lockable2</span><span class="special">,</span><span class="keyword">typename</span> <span class="identifier">Lockable3</span><span class="special">,</span><span class="keyword">typename</span> <span class="identifier">Lockable4</span><span class="special">&gt;</span>
+<span class="keyword">int</span> <span class="identifier">try_lock</span><span class="special">(</span><span class="identifier">Lockable1</span><span class="special">&amp;</span> <span class="identifier">l1</span><span class="special">,</span><span class="identifier">Lockable2</span><span class="special">&amp;</span> <span class="identifier">l2</span><span class="special">,</span><span class="identifier">Lockable3</span><span class="special">&amp;</span> <span class="identifier">l3</span><span class="special">,</span><span class="identifier">Lockable4</span><span class="special">&amp;</span> <span class="identifier">l4</span><span class="special">);</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">Lockable1</span><span class="special">,</span><span class="keyword">typename</span> <span class="identifier">Lockable2</span><span class="special">,</span><span class="keyword">typename</span> <span class="identifier">Lockable3</span><span class="special">,</span><span class="keyword">typename</span> <span class="identifier">Lockable4</span><span class="special">,</span><span class="keyword">typename</span> <span class="identifier">Lockable5</span><span class="special">&gt;</span>
+<span class="keyword">int</span> <span class="identifier">try_lock</span><span class="special">(</span><span class="identifier">Lockable1</span><span class="special">&amp;</span> <span class="identifier">l1</span><span class="special">,</span><span class="identifier">Lockable2</span><span class="special">&amp;</span> <span class="identifier">l2</span><span class="special">,</span><span class="identifier">Lockable3</span><span class="special">&amp;</span> <span class="identifier">l3</span><span class="special">,</span><span class="identifier">Lockable4</span><span class="special">&amp;</span> <span class="identifier">l4</span><span class="special">,</span><span class="identifier">Lockable5</span><span class="special">&amp;</span> <span class="identifier">l5</span><span class="special">);</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl>
+<dt><span class="term">Effects:</span></dt>
+<dd>
+<p>
+                Calls <a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.lockable.try_lock" title="m.try_lock()"><code class="computeroutput"><span class="identifier">try_lock</span><span class="special">()</span></code></a>
+                on each of the <a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.lockable" title="Lockable Concept"><code class="computeroutput"><span class="identifier">Lockable</span></code></a> objects supplied
+                as arguments. If any of the calls to <a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.lockable.try_lock" title="m.try_lock()"><code class="computeroutput"><span class="identifier">try_lock</span><span class="special">()</span></code></a>
+                returns <code class="computeroutput"><span class="keyword">false</span></code> then all
+                locks acquired are released and the zero-based index of the failed
+                lock is returned.
+              </p>
+<p>
+                If any of the <a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.lockable.try_lock" title="m.try_lock()"><code class="computeroutput"><span class="identifier">try_lock</span><span class="special">()</span></code></a>
+                operations on the supplied <a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.lockable" title="Lockable Concept"><code class="computeroutput"><span class="identifier">Lockable</span></code></a> objects throws
+                an exception any locks acquired by the function will be released
+                before the function exits.
+              </p>
+</dd>
+<dt><span class="term">Returns:</span></dt>
+<dd><p>
+                <code class="computeroutput"><span class="special">-</span><span class="number">1</span></code>
+                if all the supplied <a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.lockable" title="Lockable Concept"><code class="computeroutput"><span class="identifier">Lockable</span></code></a> objects are now
+                locked by the calling thread, the zero-based index of the object
+                which could not be locked otherwise.
+              </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+                Any exceptions thrown by calling <a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.lockable.try_lock" title="m.try_lock()"><code class="computeroutput"><span class="identifier">try_lock</span><span class="special">()</span></code></a>
+                on the supplied <a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.lockable" title="Lockable Concept"><code class="computeroutput"><span class="identifier">Lockable</span></code></a> objects.
+              </p></dd>
+<dt><span class="term">Postcondition:</span></dt>
+<dd><p>
+                If the function returns <code class="computeroutput"><span class="special">-</span><span class="number">1</span></code>, all the supplied <a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.lockable" title="Lockable Concept"><code class="computeroutput"><span class="identifier">Lockable</span></code></a> objects are locked
+                by the calling thread. Otherwise any locks acquired by this function
+                will have been released.
+              </p></dd>
+</dl>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="thread.synchronization.lock_functions.try_lock_range"></a><a class="link" href="lock_functions.html#thread.synchronization.lock_functions.try_lock_range" title="Non-member function try_lock(begin,end) // EXTENSION">Non-member
+        function <code class="computeroutput"><span class="identifier">try_lock</span><span class="special">(</span><span class="identifier">begin</span><span class="special">,</span><span class="identifier">end</span><span class="special">)</span></code> //
+        EXTENSION</a>
+</h4></div></div></div>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">ForwardIterator</span><span class="special">&gt;</span>
+<span class="identifier">ForwardIterator</span> <span class="identifier">try_lock</span><span class="special">(</span><span class="identifier">ForwardIterator</span> <span class="identifier">begin</span><span class="special">,</span><span class="identifier">ForwardIterator</span> <span class="identifier">end</span><span class="special">);</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl>
+<dt><span class="term">Preconditions:</span></dt>
+<dd><p>
+                The <code class="computeroutput"><span class="identifier">value_type</span></code> of
+                <code class="computeroutput"><span class="identifier">ForwardIterator</span></code> must
+                implement the <a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.lockable" title="Lockable Concept"><code class="computeroutput"><span class="identifier">Lockable</span></code> concept</a>
+              </p></dd>
+<dt><span class="term">Effects:</span></dt>
+<dd>
+<p>
+                Calls <a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.lockable.try_lock" title="m.try_lock()"><code class="computeroutput"><span class="identifier">try_lock</span><span class="special">()</span></code></a>
+                on each of the <a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.lockable" title="Lockable Concept"><code class="computeroutput"><span class="identifier">Lockable</span></code></a> objects in the
+                supplied range. If any of the calls to <a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.lockable.try_lock" title="m.try_lock()"><code class="computeroutput"><span class="identifier">try_lock</span><span class="special">()</span></code></a>
+                returns <code class="computeroutput"><span class="keyword">false</span></code> then all
+                locks acquired are released and an iterator referencing the failed
+                lock is returned.
+              </p>
+<p>
+                If any of the <a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.lockable.try_lock" title="m.try_lock()"><code class="computeroutput"><span class="identifier">try_lock</span><span class="special">()</span></code></a>
+                operations on the supplied <a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.lockable" title="Lockable Concept"><code class="computeroutput"><span class="identifier">Lockable</span></code></a> objects throws
+                an exception any locks acquired by the function will be released
+                before the function exits.
+              </p>
+</dd>
+<dt><span class="term">Returns:</span></dt>
+<dd><p>
+                <code class="computeroutput"><span class="identifier">end</span></code> if all the supplied
+                <a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.lockable" title="Lockable Concept"><code class="computeroutput"><span class="identifier">Lockable</span></code></a> objects are now
+                locked by the calling thread, an iterator referencing the object
+                which could not be locked otherwise.
+              </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+                Any exceptions thrown by calling <a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.lockable.try_lock" title="m.try_lock()"><code class="computeroutput"><span class="identifier">try_lock</span><span class="special">()</span></code></a>
+                on the supplied <a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.lockable" title="Lockable Concept"><code class="computeroutput"><span class="identifier">Lockable</span></code></a> objects.
+              </p></dd>
+<dt><span class="term">Postcondition:</span></dt>
+<dd><p>
+                If the function returns <code class="computeroutput"><span class="identifier">end</span></code>
+                then all the <a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.lockable" title="Lockable Concept"><code class="computeroutput"><span class="identifier">Lockable</span></code></a> objects in the
+                supplied range are locked by the calling thread, otherwise all locks
+                acquired by the function have been released.
+              </p></dd>
+</dl>
+</div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2007 -11 Anthony Williams<br>Copyright &#169; 2011 -15 Vicente J. Botet Escriba<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="other_locks.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../synchronization.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="lock_factories.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

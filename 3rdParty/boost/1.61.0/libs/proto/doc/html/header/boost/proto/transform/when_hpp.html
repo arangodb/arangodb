@@ -1,0 +1,72 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Header &lt;boost/proto/transform/when.hpp&gt;</title>
+<link rel="stylesheet" href="../../../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../../../../index.html" title="Chapter&#160;1.&#160;Boost.Proto">
+<link rel="up" href="../../../../proto/reference.html" title="Reference">
+<link rel="prev" href="../../../../boost/proto/pass_through/impl.html" title="Struct template impl">
+<link rel="next" href="../../../../boost/proto/transforms_type.html" title="Struct transforms_type">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../../../../boost/proto/pass_through/impl.html"><img src="../../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../../../proto/reference.html"><img src="../../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../../index.html"><img src="../../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../../../../boost/proto/transforms_type.html"><img src="../../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="header.boost.proto.transform.when_hpp"></a>Header &lt;<a href="../../../../../../../../boost/proto/transform/when.hpp" target="_top">boost/proto/transform/when.hpp</a>&gt;</h3></div></div></div>
+<p>
+    Definition of the
+    <code class="computeroutput">
+      <a class="link" href="../../../../boost/proto/when.html" title="Struct template when">proto::when&lt;&gt;</a>
+    </code> and
+    <code class="computeroutput">
+      <a class="link" href="../../../../boost/proto/otherwise.html" title="Struct template otherwise">proto::otherwise&lt;&gt;</a>
+    </code> transforms.
+  </p>
+<pre class="synopsis"><span class="keyword">namespace</span> <span class="identifier">boost</span> <span class="special">{</span>
+  <span class="keyword">namespace</span> <span class="identifier">proto</span> <span class="special">{</span>
+    <span class="keyword">struct</span> <a class="link" href="../../../../boost/proto/transforms_type.html" title="Struct transforms_type">transforms_type</a><span class="special">;</span>
+
+    <a class="link" href="../../../../boost/proto/transforms_type.html" title="Struct transforms_type">proto::transforms_type</a> <span class="keyword">const</span> <a class="link" href="../../../../boost/proto/transforms.html" title="Global transforms">transforms</a><span class="special">;</span>
+
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Grammar<span class="special">,</span> <span class="keyword">typename</span> <a class="link" href="../../../../PrimitiveTransform.html" title="Concept PrimitiveTransform">PrimitiveTransform</a> <span class="special">=</span> <span class="identifier">Grammar</span><span class="special">&gt;</span> 
+      <span class="keyword">struct</span> <a class="link" href="../../../../boost/proto/when.html" title="Struct template when">when</a><span class="special">;</span>
+
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Grammar<span class="special">,</span> <span class="keyword">typename</span> Fun<span class="special">&gt;</span> <span class="keyword">struct</span> <a class="link" href="../../../../boost/proto/when_Grammar___idp33079536.html" title="Struct template when&lt;Grammar, Fun *&gt;">when</a><span class="special">&lt;</span><span class="identifier">Grammar</span><span class="special">,</span> <span class="identifier">Fun</span> <span class="special">*</span><span class="special">&gt;</span><span class="special">;</span>
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Grammar<span class="special">,</span> <span class="keyword">typename</span> R<span class="special">,</span> <span class="keyword">typename</span><span class="special">...</span> A<span class="special">&gt;</span> 
+      <span class="keyword">struct</span> <a class="link" href="../../../../boost/proto/when_Grammar___idp33088992.html" title="Struct template when&lt;Grammar, R(A...)&gt;">when</a><span class="special">&lt;</span><span class="identifier">Grammar</span><span class="special">,</span> <span class="identifier">R</span><span class="special">(</span><span class="identifier">A</span><span class="special">...</span><span class="special">)</span><span class="special">&gt;</span><span class="special">;</span>
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Grammar<span class="special">,</span> <span class="keyword">typename</span> R<span class="special">,</span> <span class="keyword">typename</span><span class="special">...</span> A<span class="special">&gt;</span> 
+      <span class="keyword">struct</span> <a class="link" href="../../../../boost/proto/when_Grammar___idp33130032.html" title="Struct template when&lt;Grammar, R(A..., ...)&gt;">when</a><span class="special">&lt;</span><span class="identifier">Grammar</span><span class="special">,</span> <span class="identifier">R</span><span class="special">(</span><span class="identifier">A</span><span class="special">...</span><span class="special">,</span> <span class="special">...</span><span class="special">)</span><span class="special">&gt;</span><span class="special">;</span>
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Grammar<span class="special">&gt;</span> <span class="keyword">struct</span> <a class="link" href="../../../../boost/proto/when_Grammar__idp33172864.html" title="Struct template when&lt;Grammar, proto::external_transform&gt;">when</a><span class="special">&lt;</span><span class="identifier">Grammar</span><span class="special">,</span> <a class="link" href="../../../../boost/proto/external_transform.html" title="Struct external_transform">proto::external_transform</a><span class="special">&gt;</span><span class="special">;</span>
+
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Fun<span class="special">&gt;</span> <span class="keyword">struct</span> <a class="link" href="../../../../boost/proto/otherwise.html" title="Struct template otherwise">otherwise</a><span class="special">;</span>
+    <span class="keyword">struct</span> <a class="link" href="../../../../boost/proto/external_transform.html" title="Struct external_transform">external_transform</a><span class="special">;</span>
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span><span class="special">...</span> When<span class="special">&gt;</span> <span class="keyword">struct</span> <a class="link" href="../../../../boost/proto/external_transforms.html" title="Struct template external_transforms">external_transforms</a><span class="special">;</span>
+  <span class="special">}</span>
+<span class="special">}</span></pre>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2008 Eric Niebler<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../../../../boost/proto/pass_through/impl.html"><img src="../../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../../../proto/reference.html"><img src="../../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../../index.html"><img src="../../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../../../../boost/proto/transforms_type.html"><img src="../../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

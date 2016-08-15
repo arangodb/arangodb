@@ -1,0 +1,56 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="structboost_1_1geometry_1_1resolve__variant_1_1within_3_01boost_1_1variant_3_01_b_o_o_s_t___v_a_5f77cf778e67d0339776b0628fe4f34c" kind="struct" prot="public">
+    <compoundname>boost::geometry::resolve_variant::within&lt; boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt;, Geometry2 &gt;</compoundname>
+    <includes local="no">within.hpp</includes>
+    <innerclass refid="structboost_1_1geometry_1_1resolve__variant_1_1within_3_01boost_1_1variant_3_01_b_o_o_s_t___v_a_8693b34f35359a01aeef0a27bac8d2cb" prot="public">boost::geometry::resolve_variant::within&lt; boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt;, Geometry2 &gt;::visitor</innerclass>
+    <templateparamlist>
+      <param>
+        <type>BOOST_VARIANT_ENUM_PARAMS(typename T)</type>
+      </param>
+      <param>
+        <type>typename Geometry2</type>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-static-func">
+      <memberdef kind="function" id="structboost_1_1geometry_1_1resolve__variant_1_1within_3_01boost_1_1variant_3_01_b_o_o_s_t___v_a_5f77cf778e67d0339776b0628fe4f34c_1acce19089670bf43b023abf9dc9f9302b" prot="public" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Strategy</type>
+          </param>
+        </templateparamlist>
+        <type>bool</type>
+        <definition>static bool boost::geometry::resolve_variant::within&lt; boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt;, Geometry2 &gt;::apply</definition>
+        <argsstring>(boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; const &amp;geometry1, Geometry2 const &amp;geometry2, Strategy const &amp;strategy)</argsstring>
+        <name>apply</name>
+        <param>
+          <type>boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; const &amp;</type>
+          <declname>geometry1</declname>
+        </param>
+        <param>
+          <type>Geometry2 const &amp;</type>
+          <declname>geometry2</declname>
+        </param>
+        <param>
+          <type>Strategy const &amp;</type>
+          <declname>strategy</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/within.hpp" line="380" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/within.hpp" bodystart="377" bodyend="383"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/within.hpp" line="354" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/within.hpp" bodystart="353" bodyend="384"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1resolve__variant_1_1within_3_01boost_1_1variant_3_01_b_o_o_s_t___v_a_5f77cf778e67d0339776b0628fe4f34c_1acce19089670bf43b023abf9dc9f9302b" prot="public" virt="non-virtual"><scope>boost::geometry::resolve_variant::within&lt; boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt;, Geometry2 &gt;</scope><name>apply</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

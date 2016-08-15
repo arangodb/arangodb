@@ -1,0 +1,456 @@
+#
+#          Copyright Andrey Semashev 2007 - 2015.
+# Distributed under the Boost Software License, Version 1.0.
+#    (See accompanying file LICENSE_1_0.txt or copy at
+#          http://www.boost.org/LICENSE_1_0.txt)
+#
+
+import common ;
+import modules ;
+import os ;
+import path ;
+import project ;
+import feature ;
+import configure ;
+import log-architecture ;
+using mc ;
+
+local here = [ modules.binding $(__name__) ] ;
+
+project.push-current [ project.current ] ;
+project.load [ path.join [ path.make $(here:D) ] ../config/message-compiler ] ;
+project.load [ path.join [ path.make $(here:D) ] ../config/x86-ext ] ;
+project.load [ path.join [ path.make $(here:D) ] ../config/visibility ] ;
+project.pop-current ;
+
+# Windows libs
+lib psapi ;
+lib advapi32 ;
+lib ws2_32 ;
+lib mswsock ;
+
+# UNIX libs
+lib rt ;
+lib socket ;
+lib nsl ;
+lib ipv6 ;
+
+feature.feature log-api : generic winnt unix ;
+
+rule check-instruction-set ( properties * )
+{
+    local result ;
+    local instruction_set = [ feature.get-values "log-instruction-set" : [ log-architecture.deduce-instruction-set $(properties) ] ] ;
+
+    if $(instruction_set) = i386 || $(instruction_set) = i486
+    {
+        if ! $(.annouced-failure)
+        {
+            ECHO Boost.Log is not supported on the specified target CPU and will not be built. At least i586 class CPU is required. ;
+            .annouced-failure = 1 ;
+        }
+        result = <build>no ;
+    }
+
+    return $(result) ;
+}
+
+rule select-log-api ( properties * )
+{
+    local result = <log-api>generic ;
+
+    local target_os = [ feature.get-values "target-os" : $(properties) ] ;
+    switch $(target_os)
+    {
+    case windows :
+        # We have to verify if message compiler is available
+        if ! ( <define>BOOST_LOG_WITHOUT_EVENT_LOG in $(properties) || <define>BOOST_LOG_WITHOUT_EVENT_LOG=1 in $(properties) )
+        {
+            local has_mc = [ configure.builds /boost/log/message-compiler//test-availability : $(properties) : message-compiler ] ;
+            if $(has_mc)
+            {
+                result = <log-api>winnt ;
+            }
+        }
+
+    case linux : result = <log-api>unix ;
+    case *bsd : result = <log-api>unix ;
+    case darwin : result = <log-api>unix ;
+    case unix : result = <log-api>unix ;
+    case unixware : result = <log-api>unix ;
+    case cygwin : result = <log-api>unix ;
+    case hpux : result = <log-api>unix ;
+    case solaris : result = <log-api>unix ;
+    case qnx* : result = <log-api>unix ;
+    case sgi : result = <log-api>unix ;
+    case aix : result = <log-api>unix ;
+
+    case * : result = <log-api>generic ;
+    }
+
+    if ! <log-api>winnt in $(result)
+    {
+        result += <define>BOOST_LOG_WITHOUT_EVENT_LOG ;
+    }
+    if <log-api>unix in $(result)
+    {
+        result += <define>BOOST_LOG_USE_NATIVE_SYSLOG ;
+    }
+
+    return $(result) ;
+}
+
+rule select-regex-backend ( properties * )
+{
+    local result = ;
+
+    # Use Boost.Regex backend by default. It produces smaller executables and also has the best performance for small string matching.
+    if ! ( <define>BOOST_LOG_WITHOUT_SETTINGS_PARSERS in $(properties) || <define>BOOST_LOG_WITHOUT_DEFAULT_FACTORIES in $(properties) || <define>BOOST_LOG_USE_STD_REGEX in $(properties) || <define>BOOST_LOG_USE_BOOST_XPRESSIVE in $(properties) )
+    {
+        result = <library>/boost/regex//boost_regex ;
+    }
+
+    return $(result) ;
+}
+
+rule check-visibility ( properties * )
+{
+    local result = ;
+
+    local has_visibility = [ configure.builds /boost/log/visibility//visibility : $(properties) : compiler-supports-visibility ] ;
+    if $(has_visibility)
+    {
+        result = <cxxflags>"-fvisibility=hidden" ;
+    }
+
+    return $(result) ;
+}
+
+project boost/log
+    : source-location ../src
+    : requirements
+        <conditional>@select-log-api
+        <conditional>@check-instruction-set
+        <conditional>@select-regex-backend
+        <conditional>@check-visibility
+
+        <define>__STDC_CONSTANT_MACROS # Use system-defined macros for integer constants, if possible
+        <define>BOOST_SPIRIT_USE_PHOENIX_V3=1
+        <define>BOOST_THREAD_DONT_USE_CHRONO=1 # Don't introduce false dependency on Boost.Chrono
+
+        # Disable warnings about using 'insecure' standard C functions
+        <toolset>msvc:<define>_SCL_SECURE_NO_WARNINGS
+        <toolset>msvc:<define>_SCL_SECURE_NO_DEPRECATE
+        <toolset>msvc:<define>_CRT_SECURE_NO_WARNINGS
+        <toolset>msvc:<define>_CRT_SECURE_NO_DEPRECATE
+        <toolset>intel-win:<define>_SCL_SECURE_NO_WARNINGS
+        <toolset>intel-win:<define>_SCL_SECURE_NO_DEPRECATE
+        <toolset>intel-win:<define>_CRT_SECURE_NO_WARNINGS
+        <toolset>intel-win:<define>_CRT_SECURE_NO_DEPRECATE
+
+        <toolset>msvc:<cxxflags>/bigobj
+        <toolset>msvc:<cxxflags>/wd4503 # decorated name length exceeded, name was truncated
+        <toolset>msvc:<cxxflags>/wd4456 # declaration of 'A' hides previous local declaration
+        <toolset>msvc:<cxxflags>/wd4459 # declaration of 'A' hides global declaration
+        <toolset>msvc:<cxxflags>/wd4003 # not enough actual parameters for macro 'X' - caused by BOOST_PP_IS_EMPTY and BOOST_PP_IS_BEGIN_PARENS which are used by Fusion
+
+        # Disable Intel warnings:
+        # warning #177: function "X" was declared but never referenced
+        # warning #780: using-declaration ignored -- it refers to the current namespace
+        # warning #2196: routine is both "inline" and "noinline"
+        # remark #1782: #pragma once is obsolete. Use #ifndef guard instead.
+        # remark #193: zero used for undefined preprocessing identifier "X"
+        # remark #304: access control not specified ("public" by default)
+        # remark #981: operands are evaluated in unspecified order
+        # remark #1418: external function definition with no prior declaration
+        # Mostly comes from Boost.Phoenix: warning #411: class "X" defines no constructor to initialize the following: reference member "Y"...
+        # warning #734: "X" (declared at line N of "file.hpp"), required for copy that was eliminated, is inaccessible
+        # warning #279: controlling expression is constant
+        <toolset>intel-win:<cxxflags>"/Qwd177,780,2196,1782,193,304,981,1418,411,734,279"
+        <toolset>intel-linux:<cxxflags>"-wd177,780,2196,1782,193,304,981,1418,411,734,279"
+        <toolset>intel-darwin:<cxxflags>"-wd177,780,2196,1782,193,304,981,1418,411,734,279"
+
+        <toolset>darwin:<cxxflags>-ftemplate-depth-1024
+        <toolset>clang:<cxxflags>-ftemplate-depth-1024
+        <toolset>gcc:<cxxflags>-ftemplate-depth-1024
+
+        <toolset>gcc:<cxxflags>-fno-strict-aliasing  # avoids strict aliasing violations in other Boost components
+        <toolset>gcc,<target-os>windows:<linkflags>-Wl,--enable-auto-import
+        <toolset>gcc,<target-os>cygwin:<linkflags>-Wl,--enable-auto-import
+
+        <library>/boost/date_time//boost_date_time
+        <library>/boost/filesystem//boost_filesystem
+        <library>/boost/system//boost_system
+        <threading>single:<define>BOOST_LOG_NO_THREADS
+        <threading>multi:<library>/boost/atomic//boost_atomic
+        <threading>multi:<library>/boost/thread//boost_thread
+
+        <target-os>windows:<define>NOMINMAX
+        <target-os>windows:<define>WIN32_LEAN_AND_MEAN
+        <target-os>windows:<define>BOOST_USE_WINDOWS_H
+        <target-os>windows:<library>ws2_32
+        <target-os>windows:<library>mswsock
+
+        <target-os>cygwin:<define>NOMINMAX
+        <target-os>cygwin:<define>WIN32_LEAN_AND_MEAN
+        <target-os>cygwin:<define>__USE_W32_SOCKETS
+        <target-os>cygwin:<define>BOOST_USE_WINDOWS_H
+        <target-os>cygwin:<library>ws2_32
+        <target-os>cygwin:<library>mswsock
+
+        <target-os>linux:<library>rt
+        <target-os>linux:<define>_XOPEN_SOURCE=600
+        <target-os>linux:<define>_GNU_SOURCE=1
+
+        <target-os>solaris:<define>_XOPEN_SOURCE=500 # Solaris headers are broken and cannot be included in C++ when _XOPEN_SOURCE=600
+        <target-os>solaris:<define>__EXTENSIONS__
+        <target-os>solaris:<library>socket
+        <target-os>solaris:<library>nsl
+
+        <target-os>hpux,<toolset>gcc:<define>_XOPEN_SOURCE_EXTENDED
+        <target-os>hpux:<library>ipv6
+
+        <target-os>freebsd:<library>rt
+        <target-os>qnxnto:<library>socket
+        <toolset>pgi:<library>rt
+    : usage-requirements
+        <toolset>clang:<cxxflags>-Wno-bind-to-temporary-copy
+        <toolset>clang:<cxxflags>-Wno-unused-function
+    ;
+
+local BOOST_LOG_COMMON_SRC =
+    attribute_name.cpp
+    attribute_set.cpp
+    attribute_value_set.cpp
+    code_conversion.cpp
+    core.cpp
+    record_ostream.cpp
+    severity_level.cpp
+    global_logger_storage.cpp
+    named_scope.cpp
+    process_name.cpp
+    process_id.cpp
+    thread_id.cpp
+    timer.cpp
+    exceptions.cpp
+    default_attribute_names.cpp
+    default_sink.cpp
+    text_ostream_backend.cpp
+    text_file_backend.cpp
+    text_multifile_backend.cpp
+    syslog_backend.cpp
+    thread_specific.cpp
+    once_block.cpp
+    timestamp.cpp
+    threadsafe_queue.cpp
+    event.cpp
+    trivial.cpp
+    spirit_encoding.cpp
+    format_parser.cpp
+    date_time_format_parser.cpp
+    named_scope_format_parser.cpp
+    unhandled_exception_count.cpp
+    dump.cpp
+    ;
+
+local BOOST_LOG_COMMON_SSSE3_SRC =
+    dump_ssse3
+    ;
+
+local BOOST_LOG_COMMON_AVX2_SRC =
+    dump_avx2
+    ;
+
+rule ssse3-targets-cond ( properties * )
+{
+    local result = <build>no ;
+
+    if <log-architecture>x86 in [ log-architecture.deduce-architecture $(properties) ]
+    {
+        local has_ssse3 = [ configure.builds /boost/log/x86-extensions//ssse3 : $(properties) : compiler-supports-ssse3 ] ;
+        if $(has_ssse3)
+        {
+            result = ;
+            if <toolset>gcc in $(properties) || <toolset>clang in $(properties)
+            {
+                result = <cxxflags>"-march=core2 -msse -msse2 -msse3 -mssse3" ;
+            }
+            else if <toolset>intel in $(properties)
+            {
+                if <toolset-intel:platform>win in $(properties)
+                {
+                    result = <cxxflags>"/QxSSSE3" ;
+                }
+                else
+                {
+                    result = <cxxflags>"-march=core2" ;
+                }
+            }
+            else if <toolset>msvc in $(properties)
+            {
+                # MSVC doesn't really care about these switches, all SSE intrinsics are always available, but still...
+                # Also 64 bit MSVC doesn't have the /arch:SSE2 switch as it is the default.
+                if <log-address-model>32 in [ log-architecture.deduce-address-model $(properties) ]
+                {
+                    result = <cxxflags>"/arch:SSE2" ;
+                }
+            }
+        }
+    }
+
+#    if ! <build>no in $(result)
+#    {
+#        ECHO Boost.Log: Using SSSE3 optimized implementation ;
+#    }
+#    ECHO $(result) ;
+
+    return $(result) ;
+}
+
+for local src in $(BOOST_LOG_COMMON_SSSE3_SRC)
+{
+    obj $(src)
+        : ## sources ##
+            $(src).cpp
+        : ## requirements ##
+            <conditional>@ssse3-targets-cond
+            <link>shared:<define>BOOST_LOG_DLL
+            <define>BOOST_LOG_BUILDING_THE_LIB=1
+        : ## default-build ##
+        : ## usage-requirements ##
+            <define>BOOST_LOG_USE_SSSE3
+        ;
+}
+
+
+rule avx2-targets-cond ( properties * )
+{
+    local result = <build>no ;
+
+    if <log-architecture>x86 in [ log-architecture.deduce-architecture $(properties) ]
+    {
+        local has_ssse3 = [ configure.builds /boost/log/x86-extensions//avx2 : $(properties) : compiler-supports-avx2 ] ;
+        if $(has_ssse3)
+        {
+            result = ;
+            if <toolset>gcc in $(properties)
+            {
+                result = <cxxflags>"-march=core-avx2 -mavx -mavx2 -fabi-version=0" ;
+            }
+            else if <toolset>clang in $(properties)
+            {
+                result = <cxxflags>"-march=core-avx2 -mavx -mavx2" ;
+            }
+            else if <toolset>intel in $(properties)
+            {
+                if <toolset-intel:platform>win in $(properties)
+                {
+                    result = <cxxflags>"/arch:CORE-AVX2" ;
+                }
+                else
+                {
+                    result = <cxxflags>"-march=core-avx2 -fabi-version=0" ;
+                }
+            }
+            else if <toolset>msvc in $(properties)
+            {
+                result = <cxxflags>"/arch:AVX" ;
+            }
+        }
+    }
+
+#    if ! <build>no in $(result)
+#    {
+#        ECHO Boost.Log: Using AVX2 optimized implementation ;
+#    }
+#    ECHO $(result) ;
+
+    return $(result) ;
+}
+
+for local src in $(BOOST_LOG_COMMON_AVX2_SRC)
+{
+    obj $(src)
+        : ## sources ##
+            $(src).cpp
+        : ## requirements ##
+            <conditional>@avx2-targets-cond
+            <link>shared:<define>BOOST_LOG_DLL
+            <define>BOOST_LOG_BUILDING_THE_LIB=1
+        : ## default-build ##
+        : ## usage-requirements ##
+            <define>BOOST_LOG_USE_AVX2
+        ;
+}
+
+alias platform-specific-sources
+    : ## sources ##
+        debug_output_backend.cpp
+        light_rw_mutex.cpp
+    : ## requirements ##
+        <target-os>windows
+    ;
+
+alias platform-specific-sources ;
+
+rule select-log-api-specific-sources ( properties * )
+{
+    local result ;
+
+    if <log-api>winnt in $(properties)
+    {
+        result = <source>simple_event_log.mc ;
+        result += <source>event_log_backend.cpp ;
+        result += <library>psapi ;
+        result += <library>advapi32 ;
+
+        DEPENDS event_log_backend.cpp : simple_event_log.mc ;
+    }
+
+    return $(result) ;
+}
+
+lib boost_log
+    : ## sources ##
+        $(BOOST_LOG_COMMON_SRC)
+        $(BOOST_LOG_COMMON_SSSE3_SRC)
+        $(BOOST_LOG_COMMON_AVX2_SRC)
+        platform-specific-sources
+    : ## requirements ##
+        <conditional>@select-log-api-specific-sources
+        <link>shared:<define>BOOST_LOG_DLL
+        <define>BOOST_LOG_BUILDING_THE_LIB=1
+    : ## default-build ##
+    : ## usage-requirements ##
+        <link>shared:<define>BOOST_LOG_DYN_LINK=1
+        <threading>single:<define>BOOST_LOG_NO_THREADS
+        <log-api>generic:<define>BOOST_LOG_WITHOUT_EVENT_LOG
+        <log-api>unix:<define>BOOST_LOG_WITHOUT_EVENT_LOG
+    ;
+
+
+local BOOST_LOG_SETUP_COMMON_SRC =
+    parser_utils.cpp
+    init_from_stream.cpp
+    init_from_settings.cpp
+    settings_parser.cpp
+    filter_parser.cpp
+    formatter_parser.cpp
+    default_filter_factory.cpp
+    matches_relation_factory.cpp
+    default_formatter_factory.cpp
+    ;
+
+lib boost_log_setup
+    : ## sources ##
+        $(BOOST_LOG_SETUP_COMMON_SRC)
+    : ## requirements ##
+        <link>shared:<define>BOOST_LOG_DYN_LINK=1
+        <link>shared:<define>BOOST_LOG_SETUP_DLL
+        <define>BOOST_LOG_SETUP_BUILDING_THE_LIB=1
+        <library>boost_log
+    : ## default-build ##
+    : ## usage-requirements ##
+        <link>shared:<define>BOOST_LOG_SETUP_DYN_LINK=1
+        <threading>single:<define>BOOST_LOG_NO_THREADS
+    ;

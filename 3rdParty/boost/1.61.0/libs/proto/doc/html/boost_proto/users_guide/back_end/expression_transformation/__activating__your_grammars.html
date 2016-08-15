@@ -1,0 +1,144 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>&#8220;Activating&#8221; Your Grammars</title>
+<link rel="stylesheet" href="../../../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../../../../index.html" title="Chapter&#160;1.&#160;Boost.Proto">
+<link rel="up" href="../expression_transformation.html" title="Expression Transformation: Semantic Actions">
+<link rel="prev" href="../expression_transformation.html" title="Expression Transformation: Semantic Actions">
+<link rel="next" href="handling_alternation_and_recursion.html" title="Handling Alternation and Recursion">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../expression_transformation.html"><img src="../../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../expression_transformation.html"><img src="../../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../../index.html"><img src="../../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="handling_alternation_and_recursion.html"><img src="../../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="boost_proto.users_guide.back_end.expression_transformation.__activating__your_grammars"></a><a class="link" href="__activating__your_grammars.html" title="&#8220;Activating&#8221; Your Grammars"><span class="quote">&#8220;<span class="quote">Activating</span>&#8221;</span>
+          Your Grammars</a>
+</h5></div></div></div>
+<p>
+            The Proto grammars we've seen so far are static. You can check at compile-time
+            to see if an expression type matches a grammar, but that's it. Things
+            get more interesting when you give them runtime behaviors. A grammar
+            with embedded transforms is more than just a static grammar. It is a
+            function object that accepts expressions that match the grammar and does
+            <span class="emphasis"><em>something</em></span> with them.
+          </p>
+<p>
+            Below is a very simple grammar. It matches terminal expressions.
+          </p>
+<pre class="programlisting"><span class="comment">// A simple Proto grammar that matches all terminals</span>
+<span class="identifier">proto</span><span class="special">::</span><span class="identifier">terminal</span><span class="special">&lt;</span> <span class="identifier">_</span> <span class="special">&gt;</span>
+</pre>
+<p>
+            Here is the same grammar with a transform that extracts the value from
+            the terminal:
+          </p>
+<pre class="programlisting"><span class="comment">// A simple Proto grammar that matches all terminals</span>
+<span class="comment">// *and* a function object that extracts the value from</span>
+<span class="comment">// the terminal</span>
+<span class="identifier">proto</span><span class="special">::</span><span class="identifier">when</span><span class="special">&lt;</span>
+    <span class="identifier">proto</span><span class="special">::</span><span class="identifier">terminal</span><span class="special">&lt;</span> <span class="identifier">_</span> <span class="special">&gt;</span>
+  <span class="special">,</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">_value</span>          <span class="comment">// &lt;-- Look, a transform!</span>
+<span class="special">&gt;</span>
+</pre>
+<p>
+            You can read this as follows: when you match a terminal expression, extract
+            the value. The type <code class="computeroutput"><span class="identifier">proto</span><span class="special">::</span><span class="identifier">_value</span></code>
+            is a so-called transform. Later we'll see what makes it a transform,
+            but for now just think of it as a kind of function object. Note the use
+            of <code class="computeroutput"><a class="link" href="../../../../boost/proto/when.html" title="Struct template when">proto::when&lt;&gt;</a></code>: the first template
+            parameter is the grammar to match and the second is the transform to
+            execute. The result is both a grammar that matches terminal expressions
+            and a function object that accepts terminal expressions and extracts
+            their values.
+          </p>
+<p>
+            As with ordinary grammars, we can define an empty struct that inherits
+            from a grammar+transform to give us an easy way to refer back to the
+            thing we're defining, as follows:
+          </p>
+<pre class="programlisting"><span class="comment">// A grammar and a function object, as before</span>
+<span class="keyword">struct</span> <span class="identifier">Value</span>
+  <span class="special">:</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">when</span><span class="special">&lt;</span>
+        <span class="identifier">proto</span><span class="special">::</span><span class="identifier">terminal</span><span class="special">&lt;</span> <span class="identifier">_</span> <span class="special">&gt;</span>
+      <span class="special">,</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">_value</span>
+    <span class="special">&gt;</span>
+<span class="special">{};</span>
+
+<span class="comment">// "Value" is a grammar that matches terminal expressions</span>
+<span class="identifier">BOOST_MPL_ASSERT</span><span class="special">((</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">matches</span><span class="special">&lt;</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">terminal</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;::</span><span class="identifier">type</span><span class="special">,</span> <span class="identifier">Value</span> <span class="special">&gt;</span> <span class="special">));</span>
+
+<span class="comment">// "Value" also defines a function object that accepts terminals</span>
+<span class="comment">// and extracts their value.</span>
+<span class="identifier">proto</span><span class="special">::</span><span class="identifier">terminal</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;::</span><span class="identifier">type</span> <span class="identifier">answer</span> <span class="special">=</span> <span class="special">{</span><span class="number">42</span><span class="special">};</span>
+<span class="identifier">Value</span> <span class="identifier">get_value</span><span class="special">;</span>
+<span class="keyword">int</span> <span class="identifier">i</span> <span class="special">=</span> <span class="identifier">get_value</span><span class="special">(</span> <span class="identifier">answer</span> <span class="special">);</span>
+</pre>
+<p>
+            As already mentioned, <code class="computeroutput"><span class="identifier">Value</span></code>
+            is a grammar that matches terminal expressions and a function object
+            that operates on terminal expressions. It would be an error to pass a
+            non-terminal expression to the <code class="computeroutput"><span class="identifier">Value</span></code>
+            function object. This is a general property of grammars with transforms;
+            when using them as function objects, expressions passed to them must
+            match the grammar.
+          </p>
+<p>
+            Proto grammars are valid TR1-style function objects. That means you can
+            use <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">result_of</span><span class="special">&lt;&gt;</span></code>
+            to ask a grammar what its return type will be, given a particular expression
+            type. For instance, we can access the <code class="computeroutput"><span class="identifier">Value</span></code>
+            grammar's return type as follows:
+          </p>
+<pre class="programlisting"><span class="comment">// We can use boost::result_of&lt;&gt; to get the return type</span>
+<span class="comment">// of a Proto grammar.</span>
+<span class="keyword">typedef</span>
+    <span class="keyword">typename</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">result_of</span><span class="special">&lt;</span><span class="identifier">Value</span><span class="special">(</span><span class="identifier">proto</span><span class="special">::</span><span class="identifier">terminal</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;::</span><span class="identifier">type</span><span class="special">)&gt;::</span><span class="identifier">type</span>
+<span class="identifier">result_type</span><span class="special">;</span>
+
+<span class="comment">// Check that we got the type we expected</span>
+<span class="identifier">BOOST_MPL_ASSERT</span><span class="special">((</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">is_same</span><span class="special">&lt;</span><span class="identifier">result_type</span><span class="special">,</span> <span class="keyword">int</span><span class="special">&gt;</span> <span class="special">));</span>
+</pre>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+              A grammar with embedded transforms is both a grammar and a function
+              object. Calling these things "grammars with transforms" would
+              get tedious. We could call them something like "active grammars",
+              but as we'll see <span class="emphasis"><em>every</em></span> grammar that you can define
+              with Proto is "active"; that is, every grammar has some behavior
+              when used as a function object. So we'll continue calling these things
+              plain "grammars". The term "transform" is reserved
+              for the thing that is used as the second parameter to the <code class="computeroutput"><a class="link" href="../../../../boost/proto/when.html" title="Struct template when">proto::when&lt;&gt;</a></code> template.
+            </p></td></tr>
+</table></div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2008 Eric Niebler<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../expression_transformation.html"><img src="../../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../expression_transformation.html"><img src="../../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../../index.html"><img src="../../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="handling_alternation_and_recursion.html"><img src="../../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

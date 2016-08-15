@@ -1,0 +1,85 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="structboost_1_1geometry_1_1strategy_1_1side_1_1side__by__triangle_1_1eps__policy" kind="struct" prot="private">
+    <compoundname>boost::geometry::strategy::side::side_by_triangle::eps_policy</compoundname>
+    <templateparamlist>
+      <param>
+        <type>typename Policy</type>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="structboost_1_1geometry_1_1strategy_1_1side_1_1side__by__triangle_1_1eps__policy_1a22a845da8dc7e018a128ecb00db8bdff" prot="public" static="no" mutable="no">
+        <type>Policy</type>
+        <definition>Policy boost::geometry::strategy::side::side_by_triangle&lt; CalculationType &gt;::eps_policy&lt; Policy &gt;::policy</definition>
+        <argsstring></argsstring>
+        <name>policy</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/side_by_triangle.hpp" line="58" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/side_by_triangle.hpp" bodystart="58" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="structboost_1_1geometry_1_1strategy_1_1side_1_1side__by__triangle_1_1eps__policy_1a41048c26aa4f061b709aa0380bd0386c" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type></type>
+        <definition>boost::geometry::strategy::side::side_by_triangle&lt; CalculationType &gt;::eps_policy&lt; Policy &gt;::eps_policy</definition>
+        <argsstring>()</argsstring>
+        <name>eps_policy</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/side_by_triangle.hpp" line="53" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/side_by_triangle.hpp" bodystart="53" bodyend="53"/>
+      </memberdef>
+      <memberdef kind="function" id="structboost_1_1geometry_1_1strategy_1_1side_1_1side__by__triangle_1_1eps__policy_1a8fb11be87af52cbd55488f162a5a3d7b" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Type</type>
+          </param>
+        </templateparamlist>
+        <type></type>
+        <definition>boost::geometry::strategy::side::side_by_triangle&lt; CalculationType &gt;::eps_policy&lt; Policy &gt;::eps_policy</definition>
+        <argsstring>(Type const &amp;a, Type const &amp;b, Type const &amp;c, Type const &amp;d)</argsstring>
+        <name>eps_policy</name>
+        <param>
+          <type>Type const &amp;</type>
+          <declname>a</declname>
+        </param>
+        <param>
+          <type>Type const &amp;</type>
+          <declname>b</declname>
+        </param>
+        <param>
+          <type>Type const &amp;</type>
+          <declname>c</declname>
+        </param>
+        <param>
+          <type>Type const &amp;</type>
+          <declname>d</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/side_by_triangle.hpp" line="57" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/side_by_triangle.hpp" bodystart="55" bodyend="57"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/side_by_triangle.hpp" line="52" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/side_by_triangle.hpp" bodystart="51" bodyend="59"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1strategy_1_1side_1_1side__by__triangle_1_1eps__policy_1a41048c26aa4f061b709aa0380bd0386c" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::side::side_by_triangle::eps_policy</scope><name>eps_policy</name></member>
+      <member refid="structboost_1_1geometry_1_1strategy_1_1side_1_1side__by__triangle_1_1eps__policy_1a8fb11be87af52cbd55488f162a5a3d7b" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::side::side_by_triangle::eps_policy</scope><name>eps_policy</name></member>
+      <member refid="structboost_1_1geometry_1_1strategy_1_1side_1_1side__by__triangle_1_1eps__policy_1a22a845da8dc7e018a128ecb00db8bdff" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::side::side_by_triangle::eps_policy</scope><name>policy</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

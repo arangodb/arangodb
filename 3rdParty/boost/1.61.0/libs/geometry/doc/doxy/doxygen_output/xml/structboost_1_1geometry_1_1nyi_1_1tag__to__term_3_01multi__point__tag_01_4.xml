@@ -1,0 +1,32 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="structboost_1_1geometry_1_1nyi_1_1tag__to__term_3_01multi__point__tag_01_4" kind="struct" prot="public">
+    <compoundname>boost::geometry::nyi::tag_to_term&lt; multi_point_tag &gt;</compoundname>
+    <includes local="no">not_implemented.hpp</includes>
+    <templateparamlist>
+    </templateparamlist>
+      <sectiondef kind="public-type">
+      <memberdef kind="typedef" id="structboost_1_1geometry_1_1nyi_1_1tag__to__term_3_01multi__point__tag_01_4_1a676ecae20ef42e64390ecbe68581c401" prot="public" static="no">
+        <type><ref refid="structboost_1_1geometry_1_1info_1_1_m_u_l_t_i___p_o_i_n_t" kindref="compound">info::MULTI_POINT</ref></type>
+        <definition>typedef info::MULTI_POINT boost::geometry::nyi::tag_to_term&lt; multi_point_tag &gt;::type</definition>
+        <argsstring></argsstring>
+        <name>type</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/not_implemented.hpp" line="92" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/not_implemented.hpp" bodystart="92" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/not_implemented.hpp" line="92" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/not_implemented.hpp" bodystart="92" bodyend="92"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1nyi_1_1tag__to__term_3_01multi__point__tag_01_4_1a676ecae20ef42e64390ecbe68581c401" prot="public" virt="non-virtual"><scope>boost::geometry::nyi::tag_to_term&lt; multi_point_tag &gt;</scope><name>type</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

@@ -1,0 +1,35 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="structboost_1_1geometry_1_1util_1_1bare__type" kind="struct" prot="public">
+    <compoundname>boost::geometry::util::bare_type</compoundname>
+    <includes local="no">bare_type.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename T</type>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-type">
+      <memberdef kind="typedef" id="structboost_1_1geometry_1_1util_1_1bare__type_1aa2e6b6bf0021a0e5a1dc9003c96c861a" prot="public" static="no">
+        <type>boost::remove_const&lt; typename boost::remove_pointer&lt; typename boost::remove_reference&lt; T &gt;::<ref refid="structboost_1_1geometry_1_1util_1_1bare__type_1aa2e6b6bf0021a0e5a1dc9003c96c861a" kindref="member">type</ref> &gt;::<ref refid="structboost_1_1geometry_1_1util_1_1bare__type_1aa2e6b6bf0021a0e5a1dc9003c96c861a" kindref="member">type</ref> &gt;::<ref refid="structboost_1_1geometry_1_1util_1_1bare__type_1aa2e6b6bf0021a0e5a1dc9003c96c861a" kindref="member">type</ref></type>
+        <definition>typedef boost::remove_const&lt; typename boost::remove_pointer &lt; typename boost::remove_reference &lt; T &gt;::type &gt;::type &gt;::type boost::geometry::util::bare_type&lt; T &gt;::type</definition>
+        <argsstring></argsstring>
+        <name>type</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/util/bare_type.hpp" line="43" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/util/bare_type.hpp" bodystart="43" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/util/bare_type.hpp" line="33" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/util/bare_type.hpp" bodystart="32" bodyend="44"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1util_1_1bare__type_1aa2e6b6bf0021a0e5a1dc9003c96c861a" prot="public" virt="non-virtual"><scope>boost::geometry::util::bare_type</scope><name>type</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

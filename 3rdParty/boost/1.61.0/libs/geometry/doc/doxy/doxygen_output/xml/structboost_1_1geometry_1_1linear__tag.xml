@@ -1,0 +1,41 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="structboost_1_1geometry_1_1linear__tag" kind="struct" prot="public">
+    <compoundname>boost::geometry::linear_tag</compoundname>
+    <derivedcompoundref refid="structboost_1_1geometry_1_1linestring__tag" prot="public" virt="non-virtual">boost::geometry::linestring_tag</derivedcompoundref>
+    <derivedcompoundref refid="structboost_1_1geometry_1_1multi__linestring__tag" prot="public" virt="non-virtual">boost::geometry::multi_linestring_tag</derivedcompoundref>
+    <derivedcompoundref refid="structboost_1_1geometry_1_1segment__tag" prot="public" virt="non-virtual">boost::geometry::segment_tag</derivedcompoundref>
+    <includes local="no">tags.hpp</includes>
+    <briefdescription>
+<para>For linear types (linestring, multi-linestring, segment) </para>    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <inheritancegraph>
+      <node id="418">
+        <label>boost::geometry::linear_tag</label>
+        <link refid="structboost_1_1geometry_1_1linear__tag"/>
+      </node>
+      <node id="420">
+        <label>boost::geometry::multi_linestring_tag</label>
+        <link refid="structboost_1_1geometry_1_1multi__linestring__tag"/>
+        <childnode refid="418" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="421">
+        <label>boost::geometry::segment_tag</label>
+        <link refid="structboost_1_1geometry_1_1segment__tag"/>
+        <childnode refid="418" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="419">
+        <label>boost::geometry::linestring_tag</label>
+        <link refid="structboost_1_1geometry_1_1linestring__tag"/>
+        <childnode refid="418" relation="public-inheritance">
+        </childnode>
+      </node>
+    </inheritancegraph>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/core/tags.hpp" line="67" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/core/tags.hpp" bodystart="67" bodyend="67"/>
+    <listofallmembers>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

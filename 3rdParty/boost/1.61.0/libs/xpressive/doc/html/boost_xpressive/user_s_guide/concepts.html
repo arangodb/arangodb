@@ -1,0 +1,727 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Concepts</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../../index.html" title="Chapter&#160;1.&#160;Boost.Xpressive">
+<link rel="up" href="../../xpressive/user_s_guide.html" title="User's Guide">
+<link rel="prev" href="tips_n_tricks.html" title="Tips 'N Tricks">
+<link rel="next" href="examples.html" title="Examples">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="tips_n_tricks.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../xpressive/user_s_guide.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="examples.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_xpressive.user_s_guide.concepts"></a><a class="link" href="concepts.html" title="Concepts">Concepts</a>
+</h3></div></div></div>
+<h3>
+<a name="boost_xpressive.user_s_guide.concepts.h0"></a>
+        <span><a name="boost_xpressive.user_s_guide.concepts.chart_requirements"></a></span><a class="link" href="concepts.html#boost_xpressive.user_s_guide.concepts.chart_requirements">CharT
+        requirements</a>
+      </h3>
+<p>
+        If type <code class="computeroutput"><span class="identifier">BidiIterT</span></code> is used
+        as a template argument to <code class="literal"><code class="computeroutput"><a class="link" href="../../boost/xpressive/basic_regex.html" title="Struct template basic_regex">basic_regex&lt;&gt;</a></code></code>,
+        then <code class="computeroutput"><span class="identifier">CharT</span></code> is <code class="computeroutput"><span class="identifier">iterator_traits</span><span class="special">&lt;</span><span class="identifier">BidiIterT</span><span class="special">&gt;::</span><span class="identifier">value_type</span></code>. Type <code class="computeroutput"><span class="identifier">CharT</span></code>
+        must have a trivial default constructor, copy constructor, assignment operator,
+        and destructor. In addition the following requirements must be met for objects;
+        <code class="computeroutput"><span class="identifier">c</span></code> of type <code class="computeroutput"><span class="identifier">CharT</span></code>,
+        <code class="computeroutput"><span class="identifier">c1</span></code> and <code class="computeroutput"><span class="identifier">c2</span></code>
+        of type <code class="computeroutput"><span class="identifier">CharT</span> <span class="keyword">const</span></code>,
+        and <code class="computeroutput"><span class="identifier">i</span></code> of type <code class="computeroutput"><span class="keyword">int</span></code>:
+      </p>
+<div class="table">
+<a name="boost_xpressive.user_s_guide.concepts.t0"></a><p class="title"><b>Table&#160;1.14.&#160;CharT Requirements</b></p>
+<div class="table-contents"><table class="table" summary="CharT Requirements">
+<colgroup>
+<col>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  <span class="bold"><strong>Expression</strong></span>
+                </p>
+              </th>
+<th>
+                <p>
+                  <span class="bold"><strong>Return type</strong></span>
+                </p>
+              </th>
+<th>
+                <p>
+                  <span class="bold"><strong>Assertion / Note / Pre- / Post-condition</strong></span>
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">CharT</span> <span class="identifier">c</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">CharT</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Default constructor (must be trivial).
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">CharT</span> <span class="identifier">c</span><span class="special">(</span><span class="identifier">c1</span><span class="special">)</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">CharT</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Copy constructor (must be trivial).
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">c1</span> <span class="special">=</span>
+                  <span class="identifier">c2</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">CharT</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Assignment operator (must be trivial).
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">c1</span> <span class="special">==</span>
+                  <span class="identifier">c2</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="keyword">bool</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="keyword">true</span></code> if <code class="computeroutput"><span class="identifier">c1</span></code> has the same value as <code class="computeroutput"><span class="identifier">c2</span></code>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">c1</span> <span class="special">!=</span>
+                  <span class="identifier">c2</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="keyword">bool</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="keyword">true</span></code> if <code class="computeroutput"><span class="identifier">c1</span></code> and <code class="computeroutput"><span class="identifier">c2</span></code>
+                  are not equal.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">c1</span> <span class="special">&lt;</span>
+                  <span class="identifier">c2</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="keyword">bool</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="keyword">true</span></code> if the value
+                  of <code class="computeroutput"><span class="identifier">c1</span></code> is less than
+                  <code class="computeroutput"><span class="identifier">c2</span></code>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">c1</span> <span class="special">&gt;</span>
+                  <span class="identifier">c2</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="keyword">bool</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="keyword">true</span></code> if the value
+                  of <code class="computeroutput"><span class="identifier">c1</span></code> is greater
+                  than <code class="computeroutput"><span class="identifier">c2</span></code>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">c1</span> <span class="special">&lt;=</span>
+                  <span class="identifier">c2</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="keyword">bool</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="keyword">true</span></code> if <code class="computeroutput"><span class="identifier">c1</span></code> is less than or equal to
+                  <code class="computeroutput"><span class="identifier">c2</span></code>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">c1</span> <span class="special">&gt;=</span>
+                  <span class="identifier">c2</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="keyword">bool</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="keyword">true</span></code> if <code class="computeroutput"><span class="identifier">c1</span></code> is greater than or equal to
+                  <code class="computeroutput"><span class="identifier">c2</span></code>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">intmax_t</span> <span class="identifier">i</span>
+                  <span class="special">=</span> <span class="identifier">c1</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="keyword">int</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">CharT</span></code> must be convertible
+                  to an integral type.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">CharT</span> <span class="identifier">c</span><span class="special">(</span><span class="identifier">i</span><span class="special">);</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">CharT</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">CharT</span></code> must be constructable
+                  from an integral type.
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<br class="table-break"><h3>
+<a name="boost_xpressive.user_s_guide.concepts.h1"></a>
+        <span><a name="boost_xpressive.user_s_guide.concepts.traits_requirements"></a></span><a class="link" href="concepts.html#boost_xpressive.user_s_guide.concepts.traits_requirements">Traits
+        Requirements</a>
+      </h3>
+<p>
+        In the following table <code class="computeroutput"><span class="identifier">X</span></code>
+        denotes a traits class defining types and functions for the character container
+        type <code class="computeroutput"><span class="identifier">CharT</span></code>; <code class="computeroutput"><span class="identifier">u</span></code> is an object of type <code class="computeroutput"><span class="identifier">X</span></code>;
+        <code class="computeroutput"><span class="identifier">v</span></code> is an object of type <code class="computeroutput"><span class="keyword">const</span> <span class="identifier">X</span></code>;
+        <code class="computeroutput"><span class="identifier">p</span></code> is a value of type <code class="computeroutput"><span class="keyword">const</span> <span class="identifier">CharT</span><span class="special">*</span></code>; <code class="computeroutput"><span class="identifier">I1</span></code>
+        and <code class="computeroutput"><span class="identifier">I2</span></code> are <code class="computeroutput"><span class="identifier">Input</span> <span class="identifier">Iterators</span></code>;
+        <code class="computeroutput"><span class="identifier">c</span></code> is a value of type <code class="computeroutput"><span class="keyword">const</span> <span class="identifier">CharT</span></code>;
+        <code class="computeroutput"><span class="identifier">s</span></code> is an object of type <code class="computeroutput"><span class="identifier">X</span><span class="special">::</span><span class="identifier">string_type</span></code>;
+        <code class="computeroutput"><span class="identifier">cs</span></code> is an object of type
+        <code class="computeroutput"><span class="keyword">const</span> <span class="identifier">X</span><span class="special">::</span><span class="identifier">string_type</span></code>;
+        <code class="computeroutput"><span class="identifier">b</span></code> is a value of type <code class="computeroutput"><span class="keyword">bool</span></code>; <code class="computeroutput"><span class="identifier">i</span></code>
+        is a value of type <code class="computeroutput"><span class="keyword">int</span></code>; <code class="computeroutput"><span class="identifier">F1</span></code> and <code class="computeroutput"><span class="identifier">F2</span></code>
+        are values of type <code class="computeroutput"><span class="keyword">const</span> <span class="identifier">CharT</span><span class="special">*</span></code>; <code class="computeroutput"><span class="identifier">loc</span></code>
+        is an object of type <code class="computeroutput"><span class="identifier">X</span><span class="special">::</span><span class="identifier">locale_type</span></code>; and <code class="computeroutput"><span class="identifier">ch</span></code>
+        is an object of <code class="computeroutput"><span class="keyword">const</span> <span class="keyword">char</span></code>.
+      </p>
+<div class="table">
+<a name="boost_xpressive.user_s_guide.concepts.t1"></a><p class="title"><b>Table&#160;1.15.&#160;Traits Requirements</b></p>
+<div class="table-contents"><table class="table" summary="Traits Requirements">
+<colgroup>
+<col>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  <span class="bold"><strong>Expression</strong></span>
+                </p>
+              </th>
+<th>
+                <p>
+                  <span class="bold"><strong>Return type</strong></span>
+                </p>
+              </th>
+<th>
+                <p>
+                  <span class="bold"><strong>Assertion / Note<br> Pre / Post condition</strong></span>
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">X</span><span class="special">::</span><span class="identifier">char_type</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">CharT</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  The character container type used in the implementation of class
+                  template <code class="literal"><code class="computeroutput"><a class="link" href="../../boost/xpressive/basic_regex.html" title="Struct template basic_regex">basic_regex&lt;&gt;</a></code></code>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">X</span><span class="special">::</span><span class="identifier">string_type</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">basic_string</span><span class="special">&lt;</span><span class="identifier">CharT</span><span class="special">&gt;</span></code>
+                  or <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span><span class="identifier">CharT</span><span class="special">&gt;</span></code>
+                </p>
+              </td>
+<td>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">X</span><span class="special">::</span><span class="identifier">locale_type</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="emphasis"><em>Implementation defined</em></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  A copy constructible type that represents the locale used by the
+                  traits class.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">X</span><span class="special">::</span><span class="identifier">char_class_type</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="emphasis"><em>Implementation defined</em></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  A bitmask type representing a particular character classification.
+                  Multiple values of this type can be bitwise-or'ed together to obtain
+                  a new valid value.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">X</span><span class="special">::</span><span class="identifier">hash</span><span class="special">(</span><span class="identifier">c</span><span class="special">)</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="keyword">unsigned</span> <span class="keyword">char</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Yields a value between <code class="computeroutput"><span class="number">0</span></code>
+                  and <code class="computeroutput"><span class="identifier">UCHAR_MAX</span></code> inclusive.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">v</span><span class="special">.</span><span class="identifier">widen</span><span class="special">(</span><span class="identifier">ch</span><span class="special">)</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">CharT</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Widens the specified <code class="computeroutput"><span class="keyword">char</span></code>
+                  and returns the resulting <code class="computeroutput"><span class="identifier">CharT</span></code>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">v</span><span class="special">.</span><span class="identifier">in_range</span><span class="special">(</span><span class="identifier">r1</span><span class="special">,</span>
+                  <span class="identifier">r2</span><span class="special">,</span>
+                  <span class="identifier">c</span><span class="special">)</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="keyword">bool</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  For any characters <code class="computeroutput"><span class="identifier">r1</span></code>
+                  and <code class="computeroutput"><span class="identifier">r2</span></code>, returns
+                  <code class="computeroutput"><span class="keyword">true</span></code> if <code class="computeroutput"><span class="identifier">r1</span> <span class="special">&lt;=</span>
+                  <span class="identifier">c</span> <span class="special">&amp;&amp;</span>
+                  <span class="identifier">c</span> <span class="special">&lt;=</span>
+                  <span class="identifier">r2</span></code>. Requires that <code class="computeroutput"><span class="identifier">r1</span> <span class="special">&lt;=</span>
+                  <span class="identifier">r2</span></code>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">v</span><span class="special">.</span><span class="identifier">in_range_nocase</span><span class="special">(</span><span class="identifier">r1</span><span class="special">,</span>
+                  <span class="identifier">r2</span><span class="special">,</span>
+                  <span class="identifier">c</span><span class="special">)</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="keyword">bool</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  For characters <code class="computeroutput"><span class="identifier">r1</span></code>
+                  and <code class="computeroutput"><span class="identifier">r2</span></code>, returns
+                  <code class="computeroutput"><span class="keyword">true</span></code> if there is some
+                  character <code class="computeroutput"><span class="identifier">d</span></code> for
+                  which <code class="computeroutput"><span class="identifier">v</span><span class="special">.</span><span class="identifier">translate_nocase</span><span class="special">(</span><span class="identifier">d</span><span class="special">)</span>
+                  <span class="special">==</span> <span class="identifier">v</span><span class="special">.</span><span class="identifier">translate_nocase</span><span class="special">(</span><span class="identifier">c</span><span class="special">)</span></code> and <code class="computeroutput"><span class="identifier">r1</span>
+                  <span class="special">&lt;=</span> <span class="identifier">d</span>
+                  <span class="special">&amp;&amp;</span> <span class="identifier">d</span>
+                  <span class="special">&lt;=</span> <span class="identifier">r2</span></code>.
+                  Requires that <code class="computeroutput"><span class="identifier">r1</span> <span class="special">&lt;=</span> <span class="identifier">r2</span></code>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">v</span><span class="special">.</span><span class="identifier">translate</span><span class="special">(</span><span class="identifier">c</span><span class="special">)</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">X</span><span class="special">::</span><span class="identifier">char_type</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Returns a character such that for any character <code class="computeroutput"><span class="identifier">d</span></code>
+                  that is to be considered equivalent to <code class="computeroutput"><span class="identifier">c</span></code>
+                  then <code class="computeroutput"><span class="identifier">v</span><span class="special">.</span><span class="identifier">translate</span><span class="special">(</span><span class="identifier">c</span><span class="special">)</span>
+                  <span class="special">==</span> <span class="identifier">v</span><span class="special">.</span><span class="identifier">translate</span><span class="special">(</span><span class="identifier">d</span><span class="special">)</span></code>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">v</span><span class="special">.</span><span class="identifier">translate_nocase</span><span class="special">(</span><span class="identifier">c</span><span class="special">)</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">X</span><span class="special">::</span><span class="identifier">char_type</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  For all characters <code class="computeroutput"><span class="identifier">C</span></code>
+                  that are to be considered equivalent to <code class="computeroutput"><span class="identifier">c</span></code>
+                  when comparisons are to be performed without regard to case, then
+                  <code class="computeroutput"><span class="identifier">v</span><span class="special">.</span><span class="identifier">translate_nocase</span><span class="special">(</span><span class="identifier">c</span><span class="special">)</span>
+                  <span class="special">==</span> <span class="identifier">v</span><span class="special">.</span><span class="identifier">translate_nocase</span><span class="special">(</span><span class="identifier">C</span><span class="special">)</span></code>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">v</span><span class="special">.</span><span class="identifier">transform</span><span class="special">(</span><span class="identifier">F1</span><span class="special">,</span>
+                  <span class="identifier">F2</span><span class="special">)</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">X</span><span class="special">::</span><span class="identifier">string_type</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Returns a sort key for the character sequence designated by the
+                  iterator range <code class="computeroutput"><span class="special">[</span><span class="identifier">F1</span><span class="special">,</span> <span class="identifier">F2</span><span class="special">)</span></code> such that if the character sequence
+                  <code class="computeroutput"><span class="special">[</span><span class="identifier">G1</span><span class="special">,</span> <span class="identifier">G2</span><span class="special">)</span></code> sorts before the character sequence
+                  <code class="computeroutput"><span class="special">[</span><span class="identifier">H1</span><span class="special">,</span> <span class="identifier">H2</span><span class="special">)</span></code> then <code class="computeroutput"><span class="identifier">v</span><span class="special">.</span><span class="identifier">transform</span><span class="special">(</span><span class="identifier">G1</span><span class="special">,</span> <span class="identifier">G2</span><span class="special">)</span> <span class="special">&lt;</span>
+                  <span class="identifier">v</span><span class="special">.</span><span class="identifier">transform</span><span class="special">(</span><span class="identifier">H1</span><span class="special">,</span>
+                  <span class="identifier">H2</span><span class="special">)</span></code>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">v</span><span class="special">.</span><span class="identifier">transform_primary</span><span class="special">(</span><span class="identifier">F1</span><span class="special">,</span>
+                  <span class="identifier">F2</span><span class="special">)</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">X</span><span class="special">::</span><span class="identifier">string_type</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Returns a sort key for the character sequence designated by the
+                  iterator range <code class="computeroutput"><span class="special">[</span><span class="identifier">F1</span><span class="special">,</span> <span class="identifier">F2</span><span class="special">)</span></code> such that if the character sequence
+                  <code class="computeroutput"><span class="special">[</span><span class="identifier">G1</span><span class="special">,</span> <span class="identifier">G2</span><span class="special">)</span></code> sorts before the character sequence
+                  <code class="computeroutput"><span class="special">[</span><span class="identifier">H1</span><span class="special">,</span> <span class="identifier">H2</span><span class="special">)</span></code> when character case is not considered
+                  then <code class="computeroutput"><span class="identifier">v</span><span class="special">.</span><span class="identifier">transform_primary</span><span class="special">(</span><span class="identifier">G1</span><span class="special">,</span>
+                  <span class="identifier">G2</span><span class="special">)</span>
+                  <span class="special">&lt;</span> <span class="identifier">v</span><span class="special">.</span><span class="identifier">transform_primary</span><span class="special">(</span><span class="identifier">H1</span><span class="special">,</span> <span class="identifier">H2</span><span class="special">)</span></code>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">v</span><span class="special">.</span><span class="identifier">lookup_classname</span><span class="special">(</span><span class="identifier">F1</span><span class="special">,</span>
+                  <span class="identifier">F2</span><span class="special">)</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">X</span><span class="special">::</span><span class="identifier">char_class_type</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Converts the character sequence designated by the iterator range
+                  <code class="computeroutput"><span class="special">[</span><span class="identifier">F1</span><span class="special">,</span><span class="identifier">F2</span><span class="special">)</span></code> into a bitmask type that can subsequently
+                  be passed to <code class="computeroutput"><span class="identifier">isctype</span></code>.
+                  Values returned from <code class="computeroutput"><span class="identifier">lookup_classname</span></code>
+                  can be safely bitwise or'ed together. Returns <code class="computeroutput"><span class="number">0</span></code>
+                  if the character sequence is not the name of a character class
+                  recognized by <code class="computeroutput"><span class="identifier">X</span></code>.
+                  The value returned shall be independent of the case of the characters
+                  in the sequence.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">v</span><span class="special">.</span><span class="identifier">lookup_collatename</span><span class="special">(</span><span class="identifier">F1</span><span class="special">,</span>
+                  <span class="identifier">F2</span><span class="special">)</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">X</span><span class="special">::</span><span class="identifier">string_type</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Returns a sequence of characters that represents the collating
+                  element consisting of the character sequence designated by the
+                  iterator range <code class="computeroutput"><span class="special">[</span><span class="identifier">F1</span><span class="special">,</span> <span class="identifier">F2</span><span class="special">)</span></code>. Returns an empty string if the
+                  character sequence is not a valid collating element.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">v</span><span class="special">.</span><span class="identifier">isctype</span><span class="special">(</span><span class="identifier">c</span><span class="special">,</span>
+                  <span class="identifier">v</span><span class="special">.</span><span class="identifier">lookup_classname</span><span class="special">(</span><span class="identifier">F1</span><span class="special">,</span>
+                  <span class="identifier">F2</span><span class="special">))</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="keyword">bool</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Returns <code class="computeroutput"><span class="keyword">true</span></code> if character
+                  <code class="computeroutput"><span class="identifier">c</span></code> is a member of
+                  the character class designated by the iterator range <code class="computeroutput"><span class="special">[</span><span class="identifier">F1</span><span class="special">,</span> <span class="identifier">F2</span><span class="special">)</span></code>, <code class="computeroutput"><span class="keyword">false</span></code>
+                  otherwise.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">v</span><span class="special">.</span><span class="identifier">value</span><span class="special">(</span><span class="identifier">c</span><span class="special">,</span>
+                  <span class="identifier">i</span><span class="special">)</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="keyword">int</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Returns the value represented by the digit <code class="computeroutput"><span class="identifier">c</span></code>
+                  in base <code class="computeroutput"><span class="identifier">i</span></code> if the
+                  character <code class="computeroutput"><span class="identifier">c</span></code> is
+                  a valid digit in base <code class="computeroutput"><span class="identifier">i</span></code>;
+                  otherwise returns <code class="computeroutput"><span class="special">-</span><span class="number">1</span></code>.<br> [Note: the value of <code class="computeroutput"><span class="identifier">i</span></code> will only be <code class="computeroutput"><span class="number">8</span></code>, <code class="computeroutput"><span class="number">10</span></code>,
+                  or <code class="computeroutput"><span class="number">16</span></code>. -end note]
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">u</span><span class="special">.</span><span class="identifier">imbue</span><span class="special">(</span><span class="identifier">loc</span><span class="special">)</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">X</span><span class="special">::</span><span class="identifier">locale_type</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Imbues <code class="computeroutput"><span class="identifier">u</span></code> with the
+                  locale <code class="computeroutput"><span class="identifier">loc</span></code>, returns
+                  the previous locale used by <code class="computeroutput"><span class="identifier">u</span></code>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">v</span><span class="special">.</span><span class="identifier">getloc</span><span class="special">()</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">X</span><span class="special">::</span><span class="identifier">locale_type</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Returns the current locale used by <code class="computeroutput"><span class="identifier">v</span></code>.
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<br class="table-break"><h3>
+<a name="boost_xpressive.user_s_guide.concepts.h2"></a>
+        <span><a name="boost_xpressive.user_s_guide.concepts.acknowledgements"></a></span><a class="link" href="concepts.html#boost_xpressive.user_s_guide.concepts.acknowledgements">Acknowledgements</a>
+      </h3>
+<p>
+        This section is adapted from the equivalent page in the <a href="../../../../libs/regex" target="_top">Boost.Regex</a>
+        documentation and from the <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2003/n1429.htm" target="_top">proposal</a>
+        to add regular expressions to the Standard Library.
+      </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2007 Eric Niebler<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="tips_n_tricks.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../xpressive/user_s_guide.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="examples.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

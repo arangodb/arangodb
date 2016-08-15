@@ -1,0 +1,99 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="classboost_1_1geometry_1_1empty__input__exception" kind="class" prot="public">
+    <compoundname>boost::geometry::empty_input_exception</compoundname>
+    <basecompoundref refid="classboost_1_1geometry_1_1invalid__input__exception" prot="public" virt="non-virtual">boost::geometry::invalid_input_exception</basecompoundref>
+    <includes local="no">exception.hpp</includes>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="classboost_1_1geometry_1_1empty__input__exception_1a1c3d65842f0324e29c489917264afdb7" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type></type>
+        <definition>boost::geometry::empty_input_exception::empty_input_exception</definition>
+        <argsstring>()</argsstring>
+        <name>empty_input_exception</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/core/exception.hpp" line="78" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/core/exception.hpp" bodystart="78" bodyend="78"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1empty__input__exception_1ae4346930d2abdde6a7d142b3493d66ac" prot="public" static="no" const="yes" explicit="no" inline="yes" virt="virtual">
+        <type>char const *</type>
+        <definition>virtual char const* boost::geometry::empty_input_exception::what</definition>
+        <argsstring>() const </argsstring>
+        <name>what</name>
+        <reimplements refid="classboost_1_1geometry_1_1invalid__input__exception_1aa10e3d6dfbfb93ee4c62900ae7c4d9c9">what</reimplements>
+        <exceptions> throw ()</exceptions>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/core/exception.hpp" line="81" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/core/exception.hpp" bodystart="80" bodyend="83"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+<para>Empty Input Exception. </para>    </briefdescription>
+    <detaileddescription>
+<para>The <ref refid="classboost_1_1geometry_1_1empty__input__exception" kindref="compound">empty_input_exception</ref> is thrown if free functions, e.g. distance, are called with empty geometries, e.g. a linestring without points, a polygon without points, an empty multi-geometry.  <qbk>
+[heading See also]
+\* [link geometry.reference.algorithms.area the area function]
+\* [link geometry.reference.algorithms.distance the distance function]
+\* [link geometry.reference.algorithms.length the length function]
+</qbk>  </para>    </detaileddescription>
+    <inheritancegraph>
+      <node id="318">
+        <label>boost::geometry::exception</label>
+        <link refid="classboost_1_1geometry_1_1exception"/>
+        <childnode refid="319" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="316">
+        <label>boost::geometry::empty_input_exception</label>
+        <link refid="classboost_1_1geometry_1_1empty__input__exception"/>
+        <childnode refid="317" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="319">
+        <label>std::exception</label>
+      </node>
+      <node id="317">
+        <label>boost::geometry::invalid_input_exception</label>
+        <link refid="classboost_1_1geometry_1_1invalid__input__exception"/>
+        <childnode refid="318" relation="public-inheritance">
+        </childnode>
+      </node>
+    </inheritancegraph>
+    <collaborationgraph>
+      <node id="322">
+        <label>boost::geometry::exception</label>
+        <link refid="classboost_1_1geometry_1_1exception"/>
+        <childnode refid="323" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="320">
+        <label>boost::geometry::empty_input_exception</label>
+        <link refid="classboost_1_1geometry_1_1empty__input__exception"/>
+        <childnode refid="321" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="323">
+        <label>std::exception</label>
+      </node>
+      <node id="321">
+        <label>boost::geometry::invalid_input_exception</label>
+        <link refid="classboost_1_1geometry_1_1invalid__input__exception"/>
+        <childnode refid="322" relation="public-inheritance">
+        </childnode>
+      </node>
+    </collaborationgraph>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/core/exception.hpp" line="75" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/core/exception.hpp" bodystart="74" bodyend="84"/>
+    <listofallmembers>
+      <member refid="classboost_1_1geometry_1_1empty__input__exception_1a1c3d65842f0324e29c489917264afdb7" prot="public" virt="non-virtual"><scope>boost::geometry::empty_input_exception</scope><name>empty_input_exception</name></member>
+      <member refid="classboost_1_1geometry_1_1invalid__input__exception_1ac12de04bce791576ca6c52fd32f2c357" prot="public" virt="non-virtual"><scope>boost::geometry::empty_input_exception</scope><name>invalid_input_exception</name></member>
+      <member refid="classboost_1_1geometry_1_1empty__input__exception_1ae4346930d2abdde6a7d142b3493d66ac" prot="public" virt="virtual"><scope>boost::geometry::empty_input_exception</scope><name>what</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

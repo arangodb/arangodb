@@ -1,0 +1,108 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="geometries_2register_2ring_8hpp" kind="file">
+    <compoundname>ring.hpp</compoundname>
+    <includes refid="tag_8hpp" local="no">boost/geometry/core/tag.hpp</includes>
+    <includes refid="core_2tags_8hpp" local="no">boost/geometry/core/tags.hpp</includes>
+    <incdepgraph>
+      <node id="25086">
+        <label>boost/type_traits/remove_const.hpp</label>
+      </node>
+      <node id="25082">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/geometries/register/ring.hpp</label>
+        <link refid="geometries/register/ring.hpp"/>
+        <childnode refid="25083" relation="include">
+        </childnode>
+        <childnode refid="25084" relation="include">
+        </childnode>
+      </node>
+      <node id="25088">
+        <label>boost/type_traits/remove_reference.hpp</label>
+      </node>
+      <node id="25084">
+        <label>boost/geometry/core/tags.hpp</label>
+        <link refid="core_2tags_8hpp"/>
+      </node>
+      <node id="25083">
+        <label>boost/geometry/core/tag.hpp</label>
+        <link refid="tag_8hpp"/>
+        <childnode refid="25084" relation="include">
+        </childnode>
+        <childnode refid="25085" relation="include">
+        </childnode>
+      </node>
+      <node id="25085">
+        <label>boost/geometry/util/bare_type.hpp</label>
+        <link refid="bare__type_8hpp"/>
+        <childnode refid="25086" relation="include">
+        </childnode>
+        <childnode refid="25087" relation="include">
+        </childnode>
+        <childnode refid="25088" relation="include">
+        </childnode>
+      </node>
+      <node id="25087">
+        <label>boost/type_traits/remove_pointer.hpp</label>
+      </node>
+    </incdepgraph>
+      <sectiondef kind="define">
+      <memberdef kind="define" id="group__register_1ga742491bcf6ece3b0c9d21d5f6a991ac1" prot="public" static="no">
+        <name>BOOST_GEOMETRY_REGISTER_RING</name>
+        <param><defname>Ring</defname></param>
+        <initializer>namespace boost { namespace geometry { namespace traits {  \
+    template&lt;&gt; struct tag&lt;Ring&gt; { typedef ring_tag type; }; \
+}}}</initializer>
+        <briefdescription>
+<para>Macro to register a \1. </para>        </briefdescription>
+        <detaileddescription>
+<para>The macro BOOST_GEOMETRY_REGISTER_RING registers a ring such that it is recognized by Boost.Geometry and that Boost.Geometry functionality can used with the specified type. The ring may contain template parameters, which must be specified then. <parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>Ring</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>ring type to be registered</para></parameterdescription>
+</parameteritem>
+</parameterlist>
+ <qbk>
+[heading Example]
+[register_ring]
+[register_ring_output]
+</qbk>  </para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/register/ring.hpp" line="38" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/register/ring.hpp" bodystart="35" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="define" id="group__register_1ga8a9071c3e9e9e0175250677a50e3fcc8" prot="public" static="no">
+        <name>BOOST_GEOMETRY_REGISTER_RING_TEMPLATED</name>
+        <param><defname>Ring</defname></param>
+        <initializer>namespace boost { namespace geometry { namespace traits {  \
+    template&lt;typename P&gt; struct tag&lt; Ring&lt;P&gt; &gt; { typedef ring_tag type; }; \
+}}}</initializer>
+        <briefdescription>
+<para>Macro to register a \1. </para>        </briefdescription>
+        <detaileddescription>
+<para>The macro BOOST_GEOMETRY_REGISTER_RING_TEMPLATED registers a templated ring such that it is recognized by Boost.Geometry and that Boost.Geometry functionality can used with the specified type. The type must have one template parameter, which should be a point type, and should not be specified. Boost.Geometry takes care of inserting the template parameter. Hence all types of this templated ring are registered, regardless of their point type. <parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>Ring</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>ring (without template parameters) type to be registered</para></parameterdescription>
+</parameteritem>
+</parameterlist>
+ <qbk>
+[heading Example]
+[register_ring_templated]
+[register_ring_templated_output]
+</qbk>  </para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/register/ring.hpp" line="57" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/register/ring.hpp" bodystart="54" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/register/ring.hpp"/>
+  </compounddef>
+</doxygen>

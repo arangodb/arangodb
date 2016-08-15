@@ -1,0 +1,152 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="classboost_1_1geometry_1_1model_1_1linestring" kind="class" prot="public">
+    <compoundname>boost::geometry::model::linestring</compoundname>
+    <includes local="no">linestring.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename Point</type>
+      </param>
+      <param>
+        <type>template&lt; typename, typename &gt; class</type>
+        <declname>Container</declname>
+        <defname>Container</defname>
+        <defval>std::vector</defval>
+      </param>
+      <param>
+        <type>template&lt; typename &gt; class</type>
+        <declname>Allocator</declname>
+        <defname>Allocator</defname>
+        <defval>std::allocator</defval>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="private-type">
+      <memberdef kind="typedef" id="classboost_1_1geometry_1_1model_1_1linestring_1ad166000688c7d99f2f76b39c7fa22524" prot="private" static="no">
+        <type>Container&lt; Point, Allocator&lt; Point &gt; &gt;</type>
+        <definition>typedef Container&lt;Point, Allocator&lt;Point&gt; &gt; boost::geometry::model::linestring&lt; Point, Container, Allocator &gt;::base_type</definition>
+        <argsstring></argsstring>
+        <name>base_type</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/linestring.hpp" line="64" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/linestring.hpp" bodystart="64" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="private-func">
+      <memberdef kind="function" id="classboost_1_1geometry_1_1model_1_1linestring_1a6ff14c63d09a805cdf9322ca84edb549" prot="private" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type></type>
+        <definition>boost::geometry::model::linestring&lt; Point, Container, Allocator &gt;::BOOST_CONCEPT_ASSERT</definition>
+        <argsstring>((concept::Point&lt; Point &gt;))</argsstring>
+        <name>BOOST_CONCEPT_ASSERT</name>
+        <param>
+          <type>(<ref refid="classboost_1_1geometry_1_1concept_1_1_point" kindref="compound">concept::Point</ref>&lt; Point &gt;)</type>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/linestring.hpp" line="62"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="classboost_1_1geometry_1_1model_1_1linestring_1a0325e90346e333317da380691007aa66" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type></type>
+        <definition>boost::geometry::model::linestring&lt; Point, Container, Allocator &gt;::linestring</definition>
+        <argsstring>()</argsstring>
+        <name>linestring</name>
+        <briefdescription>
+<para>Default constructor, creating an empty \1. </para>        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/linestring.hpp" line="70" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/linestring.hpp" bodystart="68" bodyend="70"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1model_1_1linestring_1a09b2523065ccd5bc9df6a04e77c40a5a" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Iterator</type>
+          </param>
+        </templateparamlist>
+        <type></type>
+        <definition>boost::geometry::model::linestring&lt; Point, Container, Allocator &gt;::linestring</definition>
+        <argsstring>(Iterator begin, Iterator end)</argsstring>
+        <name>linestring</name>
+        <param>
+          <type>Iterator</type>
+          <declname>begin</declname>
+        </param>
+        <param>
+          <type>Iterator</type>
+          <declname>end</declname>
+        </param>
+        <briefdescription>
+<para>Constructor with begin and end, filling the \1. </para>        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/linestring.hpp" line="76" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/linestring.hpp" bodystart="74" bodyend="76"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1model_1_1linestring_1aa964ac0f6bae17c8f1cf7b458c934f7f" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type></type>
+        <definition>boost::geometry::model::linestring&lt; Point, Container, Allocator &gt;::linestring</definition>
+        <argsstring>(std::initializer_list&lt; Point &gt; l)</argsstring>
+        <name>linestring</name>
+        <param>
+          <type>std::initializer_list&lt; Point &gt;</type>
+          <declname>l</declname>
+        </param>
+        <briefdescription>
+<para>Constructor taking std::initializer_list, filling the \1. </para>        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/linestring.hpp" line="83" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/linestring.hpp" bodystart="81" bodyend="83"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+<para>A linestring (named so by OGC) is a collection (default a vector) of points. </para>    </briefdescription>
+    <detaileddescription>
+<para><parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>Point</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Any type fulfilling a Point Concept </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Container</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>container type, for example std::vector, std::deque </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Allocator</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>container-allocator-type</para></parameterdescription>
+</parameteritem>
+</parameterlist>
+ <qbk>[include reference/geometries/linestring.qbk]</qbk>   <qbk.before.synopsis>
+[heading Model of]
+[link geometry.reference.concepts.concept_linestring Linestring Concept]
+</qbk.before.synopsis>  </para>    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/linestring.hpp" line="61" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/linestring.hpp" bodystart="60" bodyend="99"/>
+    <listofallmembers>
+      <member refid="classboost_1_1geometry_1_1model_1_1linestring_1ad166000688c7d99f2f76b39c7fa22524" prot="private" virt="non-virtual"><scope>boost::geometry::model::linestring</scope><name>base_type</name></member>
+      <member refid="classboost_1_1geometry_1_1model_1_1linestring_1a6ff14c63d09a805cdf9322ca84edb549" prot="private" virt="non-virtual"><scope>boost::geometry::model::linestring</scope><name>BOOST_CONCEPT_ASSERT</name></member>
+      <member refid="classboost_1_1geometry_1_1model_1_1linestring_1a0325e90346e333317da380691007aa66" prot="public" virt="non-virtual"><scope>boost::geometry::model::linestring</scope><name>linestring</name></member>
+      <member refid="classboost_1_1geometry_1_1model_1_1linestring_1a09b2523065ccd5bc9df6a04e77c40a5a" prot="public" virt="non-virtual"><scope>boost::geometry::model::linestring</scope><name>linestring</name></member>
+      <member refid="classboost_1_1geometry_1_1model_1_1linestring_1aa964ac0f6bae17c8f1cf7b458c934f7f" prot="public" virt="non-virtual"><scope>boost::geometry::model::linestring</scope><name>linestring</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

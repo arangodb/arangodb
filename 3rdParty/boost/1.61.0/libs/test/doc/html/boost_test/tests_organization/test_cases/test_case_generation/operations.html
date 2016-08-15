@@ -1,0 +1,465 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Operations on dataset</title>
+<link rel="stylesheet" href="../../../../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../../../../index.html" title="Boost.Test">
+<link rel="up" href="../test_case_generation.html" title="Data-driven test cases">
+<link rel="prev" href="datasets_auto_registration.html" title="Declaring and registering test cases with datasets">
+<link rel="next" href="generators.html" title="Datasets generators">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="datasets_auto_registration.html"><img src="../../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../test_case_generation.html"><img src="../../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../../index.html"><img src="../../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="generators.html"><img src="../../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="boost_test.tests_organization.test_cases.test_case_generation.operations"></a><a class="link" href="operations.html" title="Operations on dataset">Operations
+          on dataset</a>
+</h5></div></div></div>
+<p>
+            As mentioned earlier, one of the major aspects of using the <span class="emphasis"><em>Unit
+            Test Framework</em></span> datasets lies in the number of operations provided
+            for their combination.
+          </p>
+<p>
+            For that purpose, three operators are provided:
+          </p>
+<div class="itemizedlist"><ul class="itemizedlist" type="disc">
+<li class="listitem">
+                joins with <code class="computeroutput"><span class="keyword">operator</span><span class="special">+</span></code>
+              </li>
+<li class="listitem">
+                zips with <code class="computeroutput"><span class="keyword">operator</span><span class="special">^</span></code>
+                on datasets
+              </li>
+<li class="listitem">
+                and grids or Cartesian products with <code class="computeroutput"><span class="keyword">operator</span><span class="special">*</span></code>
+              </li>
+</ul></div>
+<div class="tip"><table border="0" summary="Tip">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Tip]" src="../../../../../../../../doc/src/images/tip.png"></td>
+<th align="left">Tip</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+              All these operators are associative, which enables their combination
+              without parenthesis. However, the precedence rule on the operators
+              for the language still apply.
+            </p></td></tr>
+</table></div>
+<div class="section">
+<div class="titlepage"><div><div><h6 class="title">
+<a name="boost_test.tests_organization.test_cases.test_case_generation.operations.joins"></a><a class="link" href="operations.html#boost_test.tests_organization.test_cases.test_case_generation.operations.joins" title="Joins">Joins</a>
+</h6></div></div></div>
+<p>
+              A <span class="emphasis"><em>join</em></span>, denoted <code class="computeroutput"><span class="special">+</span></code>,
+              is an operation on two datasets <code class="computeroutput"><span class="identifier">dsa</span></code>
+              and <code class="computeroutput"><span class="identifier">dsb</span></code> of same arity
+              and compatible types, resulting in the <span class="bold"><strong>concatenation</strong></span>
+              of these two datasets <code class="computeroutput"><span class="identifier">dsa</span></code>
+              and <code class="computeroutput"><span class="identifier">dsb</span></code> from the left
+              to the right order of the symbol <code class="computeroutput"><span class="special">+</span></code>:
+            </p>
+<pre class="programlisting"><span class="identifier">dsa</span> <span class="special">=</span> <span class="special">(</span><span class="identifier">a_1</span><span class="special">,</span> <span class="identifier">a_2</span><span class="special">,</span> <span class="special">...</span> <span class="identifier">a_i</span><span class="special">)</span>
+<span class="identifier">dsb</span> <span class="special">=</span> <span class="special">(</span><span class="identifier">b_1</span><span class="special">,</span> <span class="identifier">b_2</span><span class="special">,</span> <span class="special">...</span> <span class="identifier">b_j</span><span class="special">)</span>
+<span class="identifier">dsa</span> <span class="special">+</span> <span class="identifier">dsb</span> <span class="special">=</span> <span class="special">(</span><span class="identifier">a_1</span><span class="special">,</span> <span class="identifier">a_2</span><span class="special">,</span> <span class="special">...</span> <span class="identifier">a_i</span><span class="special">,</span> <span class="identifier">b_1</span><span class="special">,</span> <span class="identifier">b_2</span><span class="special">,</span> <span class="special">...</span> <span class="identifier">b_j</span><span class="special">)</span>
+</pre>
+<p>
+              The following properties hold:
+            </p>
+<div class="itemizedlist"><ul class="itemizedlist" type="disc">
+<li class="listitem">
+                  the resulting dataset is of same arity as the operand datasets,
+                </li>
+<li class="listitem">
+                  the size of the returned dataset is the sum of the size of the
+                  joined datasets,
+                </li>
+<li class="listitem">
+<p class="simpara">
+                  the operation is associative, and it is possible to combine more
+                  than two datasets in one expression. The following joins are equivalent
+                  for any datasets <code class="computeroutput"><span class="identifier">dsa</span></code>,
+                  <code class="computeroutput"><span class="identifier">dsb</span></code> and <code class="computeroutput"><span class="identifier">dsc</span></code>:
+                </p>
+<pre class="programlisting"><span class="special">(</span> <span class="identifier">dsa</span> <span class="special">+</span> <span class="identifier">dsb</span> <span class="special">)</span> <span class="special">+</span> <span class="identifier">dsc</span>
+<span class="special">==</span> <span class="identifier">dsa</span> <span class="special">+</span> <span class="special">(</span> <span class="identifier">dsb</span> <span class="special">+</span> <span class="identifier">dsc</span> <span class="special">)</span>
+<span class="special">==</span> <span class="identifier">dsa</span> <span class="special">+</span> <span class="identifier">dsb</span> <span class="special">+</span> <span class="identifier">dsc</span>
+</pre>
+</li>
+</ul></div>
+<div class="warning"><table border="0" summary="Warning">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Warning]" src="../../../../../../../../doc/src/images/warning.png"></td>
+<th align="left">Warning</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+                In the expression <code class="computeroutput"><span class="identifier">dsa</span> <span class="special">+</span> <span class="identifier">dsb</span></code>,
+                <code class="computeroutput"><span class="identifier">dsa</span></code> and/or <code class="computeroutput"><span class="identifier">dsb</span></code> can be of infinite size. The
+                resulting dataset will have an infinite size as well. If <code class="computeroutput"><span class="identifier">dsa</span></code> is infinite, the content of
+                <code class="computeroutput"><span class="identifier">dsb</span></code> will never be
+                reached.
+              </p></td></tr>
+</table></div>
+<h6>
+<a name="boost_test.tests_organization.test_cases.test_case_generation.operations.joins.h0"></a>
+              <span><a name="boost_test.tests_organization.test_cases.test_case_generation.operations.joins.example_descr"></a></span><a class="link" href="operations.html#boost_test.tests_organization.test_cases.test_case_generation.operations.joins.example_descr">Example:
+              Example of join on datasets</a>
+            </h6>
+<div class="informaltable"><table class="table">
+<colgroup><col></colgroup>
+<thead><tr><th>
+                      <p>
+                        Code
+                      </p>
+                    </th></tr></thead>
+<tbody><tr><td>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="preprocessor">#define</span> <span class="identifier">BOOST_TEST_MODULE</span> <span class="identifier">dataset_example62</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">test</span><span class="special">/</span><span class="identifier">included</span><span class="special">/</span><span class="identifier">unit_test</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">test</span><span class="special">/</span><span class="identifier">data</span><span class="special">/</span><span class="identifier">test_case</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">test</span><span class="special">/</span><span class="identifier">data</span><span class="special">/</span><span class="identifier">monomorphic</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="keyword">namespace</span> <span class="identifier">data</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">unit_test</span><span class="special">::</span><span class="identifier">data</span><span class="special">;</span>
+
+<span class="keyword">int</span> <span class="identifier">samples1</span><span class="special">[]</span> <span class="special">=</span> <span class="special">{</span><span class="number">1</span><span class="special">,</span> <span class="number">2</span><span class="special">};</span>
+<span class="keyword">int</span> <span class="identifier">samples2</span><span class="special">[]</span> <span class="special">=</span> <span class="special">{</span><span class="number">8</span><span class="special">,</span> <span class="number">9</span><span class="special">,</span> <span class="number">10</span><span class="special">};</span>
+
+<span class="identifier">BOOST_DATA_TEST_CASE</span><span class="special">(</span>
+      <span class="identifier">test1</span><span class="special">,</span>
+      <span class="identifier">data</span><span class="special">::</span><span class="identifier">make</span><span class="special">(</span><span class="identifier">samples1</span><span class="special">)</span> <span class="special">+</span> <span class="identifier">samples2</span><span class="special">,</span>
+      <span class="identifier">var</span><span class="special">)</span>
+<span class="special">{</span>
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">var</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+<span class="special">}</span>
+</pre>
+                    </td></tr></tbody>
+</table></div>
+<div class="informaltable"><table class="table">
+<colgroup><col></colgroup>
+<thead><tr><th>
+                      <p>
+                        Output
+                      </p>
+                    </th></tr></thead>
+<tbody><tr><td>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="special">&gt;</span> <span class="identifier">dataset_example62</span>
+<span class="identifier">Running</span> <span class="number">5</span> <span class="identifier">test</span> <span class="identifier">cases</span><span class="special">...</span>
+<span class="number">1</span>
+<span class="number">2</span>
+<span class="number">8</span>
+<span class="number">9</span>
+<span class="number">10</span>
+
+<span class="special">***</span> <span class="identifier">No</span> <span class="identifier">errors</span> <span class="identifier">detected</span>
+</pre>
+                    </td></tr></tbody>
+</table></div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h6 class="title">
+<a name="boost_test.tests_organization.test_cases.test_case_generation.operations.zips"></a><a class="link" href="operations.html#boost_test.tests_organization.test_cases.test_case_generation.operations.zips" title="Zips">Zips</a>
+</h6></div></div></div>
+<p>
+              A <span class="emphasis"><em>zip</em></span>, denoted <code class="computeroutput"><span class="special">^</span></code>
+              , is an operation on two datasets <code class="computeroutput"><span class="identifier">dsa</span></code>
+              and <code class="computeroutput"><span class="identifier">dsb</span></code> of same arity
+              and same size, resulting in a dataset where the <code class="computeroutput"><span class="identifier">k</span></code>-th
+              sample of <code class="computeroutput"><span class="identifier">dsa</span></code> is paired
+              with the corresponding <code class="computeroutput"><span class="identifier">k</span></code>-th
+              sample of <code class="computeroutput"><span class="identifier">dsb</span></code>. The
+              resulting dataset samples order follows the left to right order against
+              the symbol <code class="computeroutput"><span class="special">^</span></code>.
+            </p>
+<pre class="programlisting"><span class="identifier">dsa</span> <span class="special">=</span> <span class="special">(</span><span class="identifier">a_1</span><span class="special">,</span> <span class="identifier">a_2</span><span class="special">,</span> <span class="special">...</span> <span class="identifier">a_i</span><span class="special">)</span>
+<span class="identifier">dsb</span> <span class="special">=</span> <span class="special">(</span><span class="identifier">b_1</span><span class="special">,</span> <span class="identifier">b_2</span><span class="special">,</span> <span class="special">...</span> <span class="identifier">b_i</span><span class="special">)</span>
+<span class="identifier">dsa</span> <span class="special">^</span> <span class="identifier">dsb</span> <span class="special">=</span> <span class="special">(</span> <span class="special">(</span><span class="identifier">a_1</span><span class="special">,</span> <span class="identifier">b_1</span><span class="special">),</span> <span class="special">(</span><span class="identifier">a_2</span><span class="special">,</span> <span class="identifier">b_2</span><span class="special">)</span> <span class="special">...</span> <span class="special">(</span><span class="identifier">a_i</span><span class="special">,</span> <span class="identifier">b_i</span><span class="special">)</span> <span class="special">)</span>
+</pre>
+<p>
+              The following properties hold:
+            </p>
+<div class="itemizedlist"><ul class="itemizedlist" type="disc">
+<li class="listitem">
+                  the arity of the resulting dataset is the sum of the arities of
+                  the operand datasets,
+                </li>
+<li class="listitem">
+                  the size of the resulting dataset is equal to the size of the datasets
+                  (since they are supposed to be of the same size), exception made
+                  for the case the operand datasets size mismatch (see below),
+                </li>
+<li class="listitem">
+<p class="simpara">
+                  the operation is associative, and it is possible to combine more
+                  than two datasets in one expression,
+                </p>
+<pre class="programlisting"><span class="special">(</span> <span class="identifier">dsa</span> <span class="special">^</span> <span class="identifier">dsb</span> <span class="special">)</span> <span class="special">^</span> <span class="identifier">dsc</span>
+<span class="special">==</span> <span class="identifier">dsa</span> <span class="special">^</span> <span class="special">(</span> <span class="identifier">dsb</span> <span class="special">^</span> <span class="identifier">dsc</span> <span class="special">)</span>
+<span class="special">==</span> <span class="identifier">dsa</span> <span class="special">^</span> <span class="identifier">dsb</span> <span class="special">^</span> <span class="identifier">dsc</span>
+</pre>
+</li>
+</ul></div>
+<p>
+              A particular handling of the size is performed if <code class="computeroutput"><span class="identifier">dsa</span></code>
+              and <code class="computeroutput"><span class="identifier">dsb</span></code> are of different
+              size. The rule is as follow:
+            </p>
+<div class="itemizedlist"><ul class="itemizedlist" type="disc">
+<li class="listitem">
+                  if the both zipped datasets have the same size, this is the size
+                  of the resulting dataset (this size can then be infinite).
+                </li>
+<li class="listitem">
+                  otherwise if one of the dataset is of size 1 (singleton) or of
+                  infinite size, the resulting size is governed by the other dataset.
+                </li>
+<li class="listitem">
+                  otherwise an exception is thrown at runtime
+                </li>
+</ul></div>
+<div class="caution"><table border="0" summary="Caution">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Caution]" src="../../../../../../../../doc/src/images/caution.png"></td>
+<th align="left">Caution</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+                If the <span class="emphasis"><em>zip</em></span> operation is not supported for your
+                compiler, the macro <code class="computeroutput"><a class="link" href="../../../../BOOST_TEST_NO_ZIP_COMPOSITION_AVAILABLE.html" title="Macro BOOST_TEST_NO_ZIP_COMPOSITION_AVAILABLE">BOOST_TEST_NO_ZIP_COMPOSITION_AVAILABLE</a></code>
+                will be automatically set by the <span class="emphasis"><em>Unit Test Framework</em></span>
+              </p></td></tr>
+</table></div>
+<h6>
+<a name="boost_test.tests_organization.test_cases.test_case_generation.operations.zips.h0"></a>
+              <span><a name="boost_test.tests_organization.test_cases.test_case_generation.operations.zips.example_descr"></a></span><a class="link" href="operations.html#boost_test.tests_organization.test_cases.test_case_generation.operations.zips.example_descr">Example:
+              Example of zip on datasets</a>
+            </h6>
+<div class="informaltable"><table class="table">
+<colgroup><col></colgroup>
+<thead><tr><th>
+                      <p>
+                        Code
+                      </p>
+                    </th></tr></thead>
+<tbody><tr><td>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="preprocessor">#define</span> <span class="identifier">BOOST_TEST_MODULE</span> <span class="identifier">dataset_example61</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">test</span><span class="special">/</span><span class="identifier">included</span><span class="special">/</span><span class="identifier">unit_test</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">test</span><span class="special">/</span><span class="identifier">data</span><span class="special">/</span><span class="identifier">test_case</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">test</span><span class="special">/</span><span class="identifier">data</span><span class="special">/</span><span class="identifier">monomorphic</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="keyword">namespace</span> <span class="identifier">data</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">unit_test</span><span class="special">::</span><span class="identifier">data</span><span class="special">;</span>
+
+<span class="keyword">int</span> <span class="identifier">samples1</span><span class="special">[]</span> <span class="special">=</span> <span class="special">{</span><span class="number">1</span><span class="special">,</span><span class="number">2</span><span class="special">};</span>
+<span class="keyword">char</span> <span class="keyword">const</span><span class="special">*</span> <span class="identifier">samples2</span><span class="special">[]</span> <span class="special">=</span> <span class="special">{</span><span class="string">"qwerty"</span><span class="special">,</span> <span class="string">"asdfg"</span><span class="special">};</span>
+
+<span class="identifier">BOOST_DATA_TEST_CASE</span><span class="special">(</span>
+      <span class="identifier">test1</span><span class="special">,</span>
+      <span class="identifier">data</span><span class="special">::</span><span class="identifier">make</span><span class="special">(</span><span class="identifier">samples1</span><span class="special">)^</span><span class="identifier">samples2</span><span class="special">,</span>
+      <span class="identifier">integer_values</span><span class="special">,</span>
+      <span class="identifier">string_value</span><span class="special">)</span>
+<span class="special">{</span>
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">integer_values</span> <span class="special">&lt;&lt;</span> <span class="string">", "</span> <span class="special">&lt;&lt;</span> <span class="identifier">string_value</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+<span class="special">}</span>
+</pre>
+                    </td></tr></tbody>
+</table></div>
+<div class="informaltable"><table class="table">
+<colgroup><col></colgroup>
+<thead><tr><th>
+                      <p>
+                        Output
+                      </p>
+                    </th></tr></thead>
+<tbody><tr><td>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="special">&gt;</span> <span class="identifier">dataset_example61</span>
+<span class="identifier">Running</span> <span class="number">2</span> <span class="identifier">test</span> <span class="identifier">cases</span><span class="special">...</span>
+<span class="number">1</span><span class="special">,</span> <span class="identifier">qwerty</span>
+<span class="number">2</span><span class="special">,</span> <span class="identifier">asdfg</span>
+
+<span class="special">***</span> <span class="identifier">No</span> <span class="identifier">errors</span> <span class="identifier">detected</span>
+</pre>
+                    </td></tr></tbody>
+</table></div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h6 class="title">
+<a name="boost_test.tests_organization.test_cases.test_case_generation.operations.grid_cartesian_products"></a><a class="link" href="operations.html#boost_test.tests_organization.test_cases.test_case_generation.operations.grid_cartesian_products" title="Grid (Cartesian products)">Grid
+            (Cartesian products)</a>
+</h6></div></div></div>
+<p>
+              A <span class="emphasis"><em>grid</em></span>, denoted <code class="computeroutput"><span class="special">*</span></code>
+              , is an operation on two any datasets <code class="computeroutput"><span class="identifier">dsa</span></code>
+              and <code class="computeroutput"><span class="identifier">dsb</span></code> resulting in
+              a dataset where each sample of <code class="computeroutput"><span class="identifier">dsa</span></code>
+              is paired with each sample of <code class="computeroutput"><span class="identifier">dsb</span></code>
+              exactly once. The resulting dataset samples order follows the left
+              to right order against the symbol <code class="computeroutput"><span class="special">*</span></code>.
+              The rightmost dataset samples are iterated first.
+            </p>
+<pre class="programlisting"><span class="identifier">dsa</span> <span class="special">=</span> <span class="special">(</span><span class="identifier">a_1</span><span class="special">,</span> <span class="identifier">a_2</span><span class="special">,</span> <span class="special">...</span> <span class="identifier">a_i</span><span class="special">)</span>
+<span class="identifier">dsb</span> <span class="special">=</span> <span class="special">(</span><span class="identifier">b_1</span><span class="special">,</span> <span class="identifier">b_2</span><span class="special">,</span> <span class="special">...</span> <span class="identifier">b_j</span><span class="special">)</span>
+<span class="identifier">dsa</span> <span class="special">*</span> <span class="identifier">dsb</span> <span class="special">=</span> <span class="special">((</span><span class="identifier">a_1</span><span class="special">,</span> <span class="identifier">b_1</span><span class="special">),</span> <span class="special">(</span><span class="identifier">a_1</span><span class="special">,</span> <span class="identifier">b_2</span><span class="special">)</span> <span class="special">...</span> <span class="special">(</span><span class="identifier">a_1</span><span class="special">,</span> <span class="identifier">b_j</span><span class="special">),</span> <span class="special">(</span><span class="identifier">a_2</span><span class="special">,</span> <span class="identifier">b_1</span><span class="special">),</span> <span class="special">...</span> <span class="special">(</span><span class="identifier">a_2</span><span class="special">,</span> <span class="identifier">b_j</span><span class="special">)</span> <span class="special">...</span> <span class="special">(</span><span class="identifier">a_i</span><span class="special">,</span> <span class="identifier">b_1</span><span class="special">),</span> <span class="special">...</span> <span class="special">(</span><span class="identifier">a_i</span><span class="special">,</span> <span class="identifier">b_j</span><span class="special">))</span>
+</pre>
+<p>
+              The grid hence is similar to the mathematical notion of Cartesian product
+              <sup>[<a name="boost_test.tests_organization.test_cases.test_case_generation.operations.grid_cartesian_products.f0" href="#ftn.boost_test.tests_organization.test_cases.test_case_generation.operations.grid_cartesian_products.f0" class="footnote">3</a>]</sup>.
+            </p>
+<p>
+              The following properties hold:
+            </p>
+<div class="itemizedlist"><ul class="itemizedlist" type="disc">
+<li class="listitem">
+                  the arity of the resulting dataset is the sum of the arities of
+                  the operand datasets,
+                </li>
+<li class="listitem">
+                  the size of the resulting dataset is the product of the sizes of
+                  the datasets,
+                </li>
+<li class="listitem">
+                  the operation is associative, and it is possible to combine more
+                  than two datasets in one expression,
+                </li>
+<li class="listitem">
+                  as for <span class="emphasis"><em>zip</em></span>, there is no need the dataset to
+                  have the same type of samples.
+                </li>
+</ul></div>
+<div class="caution"><table border="0" summary="Caution">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Caution]" src="../../../../../../../../doc/src/images/caution.png"></td>
+<th align="left">Caution</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+                If the <span class="emphasis"><em>grid</em></span> operation is not supported for your
+                compiler, the macro <code class="computeroutput"><a class="link" href="../../../../BOOST_TEST_NO_GRID_COMPOSITION_AVAILABLE.html" title="Macro BOOST_TEST_NO_GRID_COMPOSITION_AVAILABLE">BOOST_TEST_NO_GRID_COMPOSITION_AVAILABLE</a></code>
+                will be automatically set by the <span class="emphasis"><em>Unit Test Framework</em></span>
+              </p></td></tr>
+</table></div>
+<p>
+              In the following example, the random number generator is the second
+              dataset. Its state is evaluated 6 times (3 times for the first <code class="computeroutput"><span class="identifier">xrange</span></code> - first dimension - and twice
+              for the second <code class="computeroutput"><span class="identifier">xrange</span></code>
+              - second dimension - to which it is zipped). Note that the state of
+              the random engine is not copied between two successive evaluations
+              of the first dimension.
+            </p>
+<h6>
+<a name="boost_test.tests_organization.test_cases.test_case_generation.operations.grid_cartesian_products.h0"></a>
+              <span><a name="boost_test.tests_organization.test_cases.test_case_generation.operations.grid_cartesian_products.example_descr"></a></span><a class="link" href="operations.html#boost_test.tests_organization.test_cases.test_case_generation.operations.grid_cartesian_products.example_descr">Example:
+              Example of Cartesian product</a>
+            </h6>
+<div class="informaltable"><table class="table">
+<colgroup><col></colgroup>
+<thead><tr><th>
+                      <p>
+                        Code
+                      </p>
+                    </th></tr></thead>
+<tbody><tr><td>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="preprocessor">#define</span> <span class="identifier">BOOST_TEST_MODULE</span> <span class="identifier">dataset_example64</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">test</span><span class="special">/</span><span class="identifier">included</span><span class="special">/</span><span class="identifier">unit_test</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">test</span><span class="special">/</span><span class="identifier">data</span><span class="special">/</span><span class="identifier">test_case</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">test</span><span class="special">/</span><span class="identifier">data</span><span class="special">/</span><span class="identifier">monomorphic</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="keyword">namespace</span> <span class="identifier">bdata</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">unit_test</span><span class="special">::</span><span class="identifier">data</span><span class="special">;</span>
+
+
+<span class="identifier">BOOST_DATA_TEST_CASE</span><span class="special">(</span>
+  <span class="identifier">test1</span><span class="special">,</span>
+  <span class="identifier">bdata</span><span class="special">::</span><span class="identifier">xrange</span><span class="special">(</span><span class="number">2</span><span class="special">)</span> <span class="special">*</span> <span class="identifier">bdata</span><span class="special">::</span><span class="identifier">xrange</span><span class="special">(</span><span class="number">3</span><span class="special">),</span>
+  <span class="identifier">xr1</span><span class="special">,</span> <span class="identifier">xr2</span><span class="special">)</span>
+<span class="special">{</span>
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"test 1: "</span> <span class="special">&lt;&lt;</span> <span class="identifier">xr1</span> <span class="special">&lt;&lt;</span> <span class="string">", "</span> <span class="special">&lt;&lt;</span> <span class="identifier">xr2</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+  <span class="identifier">BOOST_TEST</span><span class="special">((</span><span class="identifier">xr1</span> <span class="special">&lt;=</span> <span class="number">2</span> <span class="special">&amp;&amp;</span> <span class="identifier">xr2</span> <span class="special">&lt;=</span> <span class="number">3</span><span class="special">));</span>
+<span class="special">}</span>
+
+<span class="identifier">BOOST_DATA_TEST_CASE</span><span class="special">(</span>
+  <span class="identifier">test2</span><span class="special">,</span>
+  <span class="identifier">bdata</span><span class="special">::</span><span class="identifier">xrange</span><span class="special">(</span><span class="number">3</span><span class="special">)</span>
+  <span class="special">*</span>
+  <span class="special">(</span> <span class="identifier">bdata</span><span class="special">::</span><span class="identifier">random</span><span class="special">(</span>
+      <span class="identifier">bdata</span><span class="special">::</span><span class="identifier">distribution</span><span class="special">=</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">uniform_real_distribution</span><span class="special">&lt;</span><span class="keyword">float</span><span class="special">&gt;(</span><span class="number">1</span><span class="special">,</span> <span class="number">2</span><span class="special">))</span>
+    <span class="special">^</span> <span class="identifier">bdata</span><span class="special">::</span><span class="identifier">xrange</span><span class="special">(</span><span class="number">2</span><span class="special">)</span>
+  <span class="special">),</span>
+  <span class="identifier">xr</span><span class="special">,</span> <span class="identifier">random_sample</span><span class="special">,</span> <span class="identifier">index</span><span class="special">)</span>
+<span class="special">{</span>
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"test 2: "</span>
+    <span class="special">&lt;&lt;</span> <span class="identifier">xr</span> <span class="special">&lt;&lt;</span> <span class="string">" / "</span>
+    <span class="special">&lt;&lt;</span> <span class="identifier">random_sample</span> <span class="special">&lt;&lt;</span> <span class="string">", "</span> <span class="special">&lt;&lt;</span> <span class="identifier">index</span>
+    <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+  <span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="identifier">random_sample</span> <span class="special">&lt;</span> <span class="number">1.7</span><span class="special">);</span> <span class="comment">// 30% chance of failure</span>
+<span class="special">}</span>
+</pre>
+                    </td></tr></tbody>
+</table></div>
+<div class="informaltable"><table class="table">
+<colgroup><col></colgroup>
+<thead><tr><th>
+                      <p>
+                        Output
+                      </p>
+                    </th></tr></thead>
+<tbody><tr><td>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="special">&gt;</span> <span class="identifier">dataset_example64</span>
+<span class="identifier">Running</span> <span class="number">12</span> <span class="identifier">test</span> <span class="identifier">cases</span><span class="special">...</span>
+<span class="identifier">test</span> <span class="number">1</span><span class="special">:</span> <span class="number">0</span><span class="special">,</span> <span class="number">0</span>
+<span class="identifier">test</span> <span class="number">1</span><span class="special">:</span> <span class="number">0</span><span class="special">,</span> <span class="number">1</span>
+<span class="identifier">test</span> <span class="number">1</span><span class="special">:</span> <span class="number">0</span><span class="special">,</span> <span class="number">2</span>
+<span class="identifier">test</span> <span class="number">1</span><span class="special">:</span> <span class="number">1</span><span class="special">,</span> <span class="number">0</span>
+<span class="identifier">test</span> <span class="number">1</span><span class="special">:</span> <span class="number">1</span><span class="special">,</span> <span class="number">1</span>
+<span class="identifier">test</span> <span class="number">1</span><span class="special">:</span> <span class="number">1</span><span class="special">,</span> <span class="number">2</span>
+<span class="identifier">test</span> <span class="number">2</span><span class="special">:</span> <span class="number">0</span> <span class="special">/</span> <span class="number">1.81472</span><span class="special">,</span> <span class="number">0</span>
+<span class="identifier">test</span><span class="special">.</span><span class="identifier">cpp</span><span class="special">(</span><span class="number">40</span><span class="special">):</span> <span class="identifier">error</span><span class="special">:</span> <span class="identifier">in</span> <span class="string">"test2"</span><span class="special">:</span> <span class="identifier">check</span> <span class="identifier">random_sample</span> <span class="special">&lt;</span> <span class="number">1.7</span> <span class="identifier">has</span> <span class="identifier">failed</span> <span class="special">[</span><span class="number">1.81472373</span> <span class="special">&gt;=</span> <span class="number">1.7</span><span class="special">]</span>
+<span class="identifier">Failure</span> <span class="identifier">occurred</span> <span class="identifier">in</span> <span class="identifier">a</span> <span class="identifier">following</span> <span class="identifier">context</span><span class="special">:</span>
+    <span class="identifier">xr</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span> <span class="identifier">random_sample</span> <span class="special">=</span> <span class="number">1.81472373</span><span class="special">;</span> <span class="identifier">index</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span>
+<span class="identifier">test</span> <span class="number">2</span><span class="special">:</span> <span class="number">0</span> <span class="special">/</span> <span class="number">1.13548</span><span class="special">,</span> <span class="number">1</span>
+<span class="identifier">test</span> <span class="number">2</span><span class="special">:</span> <span class="number">1</span> <span class="special">/</span> <span class="number">1.90579</span><span class="special">,</span> <span class="number">0</span>
+<span class="identifier">test</span><span class="special">.</span><span class="identifier">cpp</span><span class="special">(</span><span class="number">40</span><span class="special">):</span> <span class="identifier">error</span><span class="special">:</span> <span class="identifier">in</span> <span class="string">"test2"</span><span class="special">:</span> <span class="identifier">check</span> <span class="identifier">random_sample</span> <span class="special">&lt;</span> <span class="number">1.7</span> <span class="identifier">has</span> <span class="identifier">failed</span> <span class="special">[</span><span class="number">1.905792</span> <span class="special">&gt;=</span> <span class="number">1.7</span><span class="special">]</span>
+<span class="identifier">Failure</span> <span class="identifier">occurred</span> <span class="identifier">in</span> <span class="identifier">a</span> <span class="identifier">following</span> <span class="identifier">context</span><span class="special">:</span>
+    <span class="identifier">xr</span> <span class="special">=</span> <span class="number">1</span><span class="special">;</span> <span class="identifier">random_sample</span> <span class="special">=</span> <span class="number">1.905792</span><span class="special">;</span> <span class="identifier">index</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span>
+<span class="identifier">test</span> <span class="number">2</span><span class="special">:</span> <span class="number">1</span> <span class="special">/</span> <span class="number">1.83501</span><span class="special">,</span> <span class="number">1</span>
+<span class="identifier">test</span><span class="special">.</span><span class="identifier">cpp</span><span class="special">(</span><span class="number">40</span><span class="special">):</span> <span class="identifier">error</span><span class="special">:</span> <span class="identifier">in</span> <span class="string">"test2"</span><span class="special">:</span> <span class="identifier">check</span> <span class="identifier">random_sample</span> <span class="special">&lt;</span> <span class="number">1.7</span> <span class="identifier">has</span> <span class="identifier">failed</span> <span class="special">[</span><span class="number">1.83500862</span> <span class="special">&gt;=</span> <span class="number">1.7</span><span class="special">]</span>
+<span class="identifier">Failure</span> <span class="identifier">occurred</span> <span class="identifier">in</span> <span class="identifier">a</span> <span class="identifier">following</span> <span class="identifier">context</span><span class="special">:</span>
+    <span class="identifier">xr</span> <span class="special">=</span> <span class="number">1</span><span class="special">;</span> <span class="identifier">random_sample</span> <span class="special">=</span> <span class="number">1.83500862</span><span class="special">;</span> <span class="identifier">index</span> <span class="special">=</span> <span class="number">1</span><span class="special">;</span>
+<span class="identifier">test</span> <span class="number">2</span><span class="special">:</span> <span class="number">2</span> <span class="special">/</span> <span class="number">1.12699</span><span class="special">,</span> <span class="number">0</span>
+<span class="identifier">test</span> <span class="number">2</span><span class="special">:</span> <span class="number">2</span> <span class="special">/</span> <span class="number">1.96887</span><span class="special">,</span> <span class="number">1</span>
+<span class="identifier">test</span><span class="special">.</span><span class="identifier">cpp</span><span class="special">(</span><span class="number">40</span><span class="special">):</span> <span class="identifier">error</span><span class="special">:</span> <span class="identifier">in</span> <span class="string">"test2"</span><span class="special">:</span> <span class="identifier">check</span> <span class="identifier">random_sample</span> <span class="special">&lt;</span> <span class="number">1.7</span> <span class="identifier">has</span> <span class="identifier">failed</span> <span class="special">[</span><span class="number">1.96886778</span> <span class="special">&gt;=</span> <span class="number">1.7</span><span class="special">]</span>
+<span class="identifier">Failure</span> <span class="identifier">occurred</span> <span class="identifier">in</span> <span class="identifier">a</span> <span class="identifier">following</span> <span class="identifier">context</span><span class="special">:</span>
+    <span class="identifier">xr</span> <span class="special">=</span> <span class="number">2</span><span class="special">;</span> <span class="identifier">random_sample</span> <span class="special">=</span> <span class="number">1.96886778</span><span class="special">;</span> <span class="identifier">index</span> <span class="special">=</span> <span class="number">1</span><span class="special">;</span>
+
+<span class="special">***</span> <span class="number">4</span> <span class="identifier">failures</span> <span class="identifier">are</span> <span class="identifier">detected</span> <span class="identifier">in</span> <span class="identifier">the</span> <span class="identifier">test</span> <span class="identifier">module</span> <span class="string">"dataset_example64"</span>
+</pre>
+                    </td></tr></tbody>
+</table></div>
+</div>
+<div class="footnotes">
+<br><hr width="100" align="left">
+<div class="footnote"><p><sup>[<a id="ftn.boost_test.tests_organization.test_cases.test_case_generation.operations.grid_cartesian_products.f0" href="#boost_test.tests_organization.test_cases.test_case_generation.operations.grid_cartesian_products.f0" class="para">3</a>] </sup>
+                if the sequence is viewed as a set
+              </p></div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2001-2016 Boost.Test contributors<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="datasets_auto_registration.html"><img src="../../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../test_case_generation.html"><img src="../../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../../index.html"><img src="../../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="generators.html"><img src="../../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

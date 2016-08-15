@@ -1,0 +1,55 @@
+[#digit_val]
+[section digit_val]
+
+[h1 Synopsis]
+
+  struct digit_val;
+
+This is a [link parser parser].
+
+[h1 Description]
+
+It accepts one character in the range `0-9`. The result of the parser is the
+value represented by the accepted character.
+
+[h1 Header]
+
+  #include <boost/metaparse/digit_val.hpp>
+
+[h1 Expression semantics]
+
+The following are equivalent:
+
+  digit_val
+  
+  transform<digit, util::digit_to_int<>>
+
+[h1 Example]
+
+  #include <boost/metaparse/digit_val.hpp>
+  #include <boost/metaparse/start.hpp>
+  #include <boost/metaparse/string.hpp>
+  #include <boost/metaparse/is_error.hpp>
+  #include <boost/metaparse/get_result.hpp>
+  
+  using namespace boost::metaparse;
+  
+  static_assert(
+    !is_error<digit_val::apply<BOOST_METAPARSE_STRING("0"), start>>::type::value,
+    "digit_val should accept a digit"
+  );
+  
+  static_assert(
+    is_error<digit_val::apply<BOOST_METAPARSE_STRING("x"), start>>::type::value,
+    "digit_val should reject a character"
+  );
+  
+  static_assert(
+    get_result<
+      digit_val::apply<BOOST_METAPARSE_STRING("0"), start>
+    >::type::value == 0,
+    "the result of parsing should be the int value"
+  );
+
+[endsect]
+

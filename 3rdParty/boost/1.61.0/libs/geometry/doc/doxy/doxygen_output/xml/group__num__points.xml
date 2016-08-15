@@ -1,0 +1,64 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="group__num__points" kind="group">
+    <compoundname>num_points</compoundname>
+    <title>number of points: calculate number of points of a geometry</title>
+      <sectiondef kind="func">
+      <memberdef kind="function" id="group__num__points_1ga4e90b249b3cf16e4ef8f486df042aacd" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Geometry</type>
+          </param>
+        </templateparamlist>
+        <type>std::size_t</type>
+        <definition>std::size_t boost::geometry::num_points</definition>
+        <argsstring>(Geometry const &amp;geometry, bool add_for_open=false)</argsstring>
+        <name>num_points</name>
+        <param>
+          <type>Geometry const &amp;</type>
+          <declname>geometry</declname>
+        </param>
+        <param>
+          <type>bool</type>
+          <declname>add_for_open</declname>
+          <defval>false</defval>
+        </param>
+        <briefdescription>
+<para>Calculates the number of points of a geometry. </para>        </briefdescription>
+        <detaileddescription>
+<para>The free function num_points calculates the number of points of a geometry. <parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>Geometry</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Any type fulfilling a Geometry Concept </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>geometry</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>A model of the specified concept </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>add_for_open</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>add one for open geometries (i.e. polygon types which are not closed) </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>The calculated \1</para></simplesect>
+ <qbk>[include reference/algorithms/num_points.qbk]</qbk>  </para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/num_points.hpp" line="200" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/num_points.hpp" bodystart="199" bodyend="202"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+  </compounddef>
+</doxygen>

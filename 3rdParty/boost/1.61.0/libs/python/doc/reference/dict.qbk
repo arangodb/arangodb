@@ -1,0 +1,71 @@
+[section boost/python/dict.hpp]
+[section Introduction]
+Exposes a [link concepts.objectwrapper.typewrapper_concept_requirements TypeWrapper] for the Python [@http://www.python.org/dev/doc/devel/lib/typesmapping.html `dict`] type.
+[endsect]
+[section Class `dict`]
+Exposes the [@http://www.python.org/dev/doc/devel/lib/typesmapping.html mapping protocol] of Python's built-in `dict` type. The semantics of the constructors and member functions defined below can be fully understood by reading the [link concepts.objectwrapper.typewrapper_concept_requirements TypeWrapper] concept definition. Since `dict` is publicly derived from [link object_wrappers.boost_python_object_hpp.class_object `object`], the public `object` interface applies to `dict` instances as well.
+``
+namespace boost { namespace python
+{
+   class dict : public object
+   {
+      dict();
+
+      template< class T >
+      dict(T const & data);
+
+      // modifiers
+      void clear();
+      dict copy();
+
+      template <class T1, class T2>
+      tuple popitem();
+
+      template <class T>
+      object setdefault(T const &k);
+
+      template <class T1, class T2>
+      object setdefault(T1 const & k, T2 const & d);
+
+      void update(object_cref E);
+ 
+      template< class T >
+      void update(T const & E);
+
+      // observers
+      list values() const;
+    
+      object get(object_cref k) const;
+
+      template<class T>
+      object get(T const & k) const;
+
+      object get(object_cref k, object_cref d) const;
+      object get(T1 const & k, T2 const & d) const;
+
+      bool has_key(object_cref k) const;
+
+      template< class T >
+      bool has_key(T const & k) const;
+
+      list items() const;
+      object iteritems() const;
+      object iterkeys() const;
+      object itervalues() const;
+      list keys() const;
+  };
+}}
+``
+[endsect]
+[section Example]
+``
+using namespace boost::python;
+dict swap_object_dict(object target, dict d)
+{
+    dict result = extract<dict>(target.attr("__dict__"));
+    target.attr("__dict__") = d;
+    return result;
+}
+``
+[endsect]
+[endsect]
