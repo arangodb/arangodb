@@ -134,7 +134,7 @@ class StorageEngine : public application_features::ApplicationFeature {
   // to "createCollection" returns
   virtual std::string createCollection(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
                                        arangodb::VocbaseCollectionInfo const& parameters) = 0;
-
+  
   // asks the storage engine to drop the specified collection and persist the 
   // deletion info. Note that physical deletion of the collection data must not 
   // be carried out by this call, as there may
@@ -163,8 +163,9 @@ class StorageEngine : public application_features::ApplicationFeature {
   // property changes and throw only then, so that subsequent operations will not fail.
   // the WAL entry for the propery change will be written *after* the call
   // to "changeCollection" returns
-  virtual void changeCollection(TRI_voc_tick_t databaseId, TRI_voc_cid_t id,
-                                arangodb::velocypack::Slice const& data) = 0;
+  virtual void changeCollection(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
+                                arangodb::VocbaseCollectionInfo const& parameters,
+                                bool doSync) = 0;
   
   // asks the storage engine to create an index as specified in the VPack
   // Slice object and persist the creation info. The database id, collection id 

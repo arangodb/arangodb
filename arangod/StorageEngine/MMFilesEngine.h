@@ -92,10 +92,14 @@ class MMFilesEngine final : public StorageEngine {
   uint64_t getMaxRevision() override;
   
   // return the path for a database
-  std::string databasePath(TRI_vocbase_t const* vocbase) const override { return databaseDirectory(vocbase->id()); }
+  std::string databasePath(TRI_vocbase_t const* vocbase) const override { 
+    return databaseDirectory(vocbase->id()); 
+  }
   
   // return the path for a collection
-  std::string collectionPath(TRI_vocbase_t const* vocbase, TRI_voc_cid_t id) const override { return collectionDirectory(vocbase->id(), id); }
+  std::string collectionPath(TRI_vocbase_t const* vocbase, TRI_voc_cid_t id) const override { 
+    return collectionDirectory(vocbase->id(), id); 
+  }
 
   TRI_vocbase_t* openDatabase(arangodb::velocypack::Slice const& parameters, bool isUpgrade) override;
 
@@ -137,7 +141,7 @@ class MMFilesEngine final : public StorageEngine {
   // to "createCollection" returns
   std::string createCollection(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
                                arangodb::VocbaseCollectionInfo const& parameters) override;
-
+  
   // asks the storage engine to drop the specified collection and persist the 
   // deletion info. Note that physical deletion of the collection data must not 
   // be carried out by this call, as there may
@@ -166,8 +170,9 @@ class MMFilesEngine final : public StorageEngine {
   // property changes and throw only then, so that subsequent operations will not fail.
   // the WAL entry for the propery change will be written *after* the call
   // to "changeCollection" returns
-  void changeCollection(TRI_voc_tick_t databaseId, TRI_voc_cid_t id,
-                        arangodb::velocypack::Slice const& data) override;
+  void changeCollection(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
+                        arangodb::VocbaseCollectionInfo const& parameters,
+                        bool doSync) override;
   
   // asks the storage engine to create an index as specified in the VPack
   // Slice object and persist the creation info. The database id, collection id 
@@ -260,6 +265,13 @@ class MMFilesEngine final : public StorageEngine {
 
   void registerCollectionPath(TRI_voc_tick_t databaseId, TRI_voc_cid_t id, std::string const& path);
   void unregisterCollectionPath(TRI_voc_tick_t databaseId, TRI_voc_cid_t id);
+
+  void saveCollectionInfo(TRI_vocbase_t* vocbase,
+                          TRI_voc_cid_t id,
+                          arangodb::VocbaseCollectionInfo const& parameters,
+                          bool forceSync) const;
+  VocbaseCollectionInfo loadCollectionInfo(TRI_vocbase_t* vocbase,
+    std::string const& collectionName, std::string const& path, bool versionWarning);
 
  public:
   static std::string const EngineName;

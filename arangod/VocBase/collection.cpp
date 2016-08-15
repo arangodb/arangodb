@@ -79,9 +79,6 @@
 #include <velocypack/Value.h>
 #include <velocypack/velocypack-aliases.h>
 
-// TODO: remove this
-#define TRI_VOC_PARAMETER_FILE "parameter.json"
-
 using namespace arangodb;
 using namespace arangodb::basics;
 
@@ -794,7 +791,10 @@ int TRI_collection_t::updateCollectionInfo(TRI_vocbase_t* vocbase,
     }
   }
 
-  return _info.saveToFile(path(), doSync);
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  engine->changeCollection(vocbase, _info.id(), _info, doSync);
+
+  return TRI_ERROR_NO_ERROR;
 }
 
 /// @brief seal a datafile
@@ -1369,6 +1369,8 @@ static bool CheckCollection(TRI_collection_t* collection, bool ignoreErrors) {
   std::vector<TRI_datafile_t*> sealed;
   bool stop = false;
 
+  TRI_ASSERT(collection->_info.id() != 0);
+
   // check files within the directory
   std::vector<std::string> files = TRI_FilesDirectory(collection->path().c_str());
 
@@ -1875,66 +1877,6 @@ VocbaseCollectionInfo::VocbaseCollectionInfo(TRI_vocbase_t* vocbase,
   _isSystem = (*_name == '_');
 }
 
-VocbaseCollectionInfo VocbaseCollectionInfo::fromFile(
-    std::string const& path, TRI_vocbase_t* vocbase, std::string const& collectionName,
-    bool versionWarning) {
-  // find parameter file
-  std::string filename =
-      arangodb::basics::FileUtils::buildFilename(path, TRI_VOC_PARAMETER_FILE);
-
-  if (!TRI_ExistsFile(filename.c_str())) {
-    filename += ".tmp";  // try file with .tmp extension
-    if (!TRI_ExistsFile(filename.c_str())) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_PARAMETER_FILE);
-    }
-  }
-
-  std::shared_ptr<VPackBuilder> content =
-      arangodb::basics::VelocyPackHelper::velocyPackFromFile(filename);
-  VPackSlice slice = content->slice();
-  if (!slice.isObject()) {
-    LOG(ERR) << "cannot open '" << filename
-             << "', collection parameters are not readable";
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_PARAMETER_FILE);
-  }
-
-  if (filename.substr(filename.size() - 4, 4) == ".tmp") {
-    // we got a tmp file. Now try saving the original file
-    arangodb::basics::VelocyPackHelper::velocyPackToFile(filename.c_str(),
-                                                         slice, true);
-  }
-
-  // fiddle "isSystem" value, which is not contained in the JSON file
-  bool isSystemValue = false;
-  if (slice.hasKey("name")) {
-    auto name = slice.get("name").copyString();
-    if (!name.empty()) {
-      isSystemValue = name[0] == '_';
-    }
-  }
-
-  VPackBuilder bx;
-  bx.openObject();
-  bx.add("isSystem", VPackValue(isSystemValue));
-  bx.close();
-  VPackSlice isSystem = bx.slice();
-  VPackBuilder b2 = VPackCollection::merge(slice, isSystem, false);
-  slice = b2.slice();
-
-  VocbaseCollectionInfo info(vocbase, collectionName, slice, isSystemValue);
-
-  // warn about wrong version of the collection
-  if (versionWarning && info.version() < TRI_COL_VERSION) {
-    if (info.name()[0] != '\0') {
-      // only warn if the collection version is older than expected, and if it's
-      // not a shape collection
-      LOG(WARN) << "collection '" << info.name()
-                << "' has an old version and needs to be upgraded.";
-    }
-  }
-  return info;
-}
-
 // collection version
 TRI_col_version_t VocbaseCollectionInfo::version() const { return _version; }
 
@@ -2010,29 +1952,6 @@ void VocbaseCollectionInfo::setPlanId(TRI_voc_cid_t planId) {
 void VocbaseCollectionInfo::setDeleted(bool deleted) { _deleted = deleted; }
 
 void VocbaseCollectionInfo::clearKeyOptions() { _keyOptions.reset(); }
-
-int VocbaseCollectionInfo::saveToFile(std::string const& path,
-                                      bool forceSync) const {
-  std::string filename =
-      basics::FileUtils::buildFilename(path, TRI_VOC_PARAMETER_FILE);
-
-  VPackBuilder builder;
-  builder.openObject();
-  toVelocyPack(builder);
-  builder.close();
-
-  bool ok = VelocyPackHelper::velocyPackToFile(filename.c_str(),
-                                               builder.slice(), forceSync);
-
-  if (!ok) {
-    int res = TRI_errno();
-    LOG(ERR) << "cannot save collection properties file '" << filename
-             << "': " << TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY);
-    return res;
-  }
-
-  return TRI_ERROR_NO_ERROR;
-}
 
 void VocbaseCollectionInfo::update(VPackSlice const& slice, bool preferDefaults,
                                    TRI_vocbase_t const* vocbase) {
@@ -2168,10 +2087,18 @@ void VocbaseCollectionInfo::toVelocyPack(VPackBuilder& builder) const {
 /// @brief renames a collection
 int TRI_collection_t::rename(std::string const& name) {
   // Save name for rollback
-  std::string oldName = _info.name();
+  std::string const oldName = _info.name();
   _info.rename(name);
-
-  int res = _info.saveToFile(path(), true);
+  
+  int res = TRI_ERROR_NO_ERROR;
+  try {
+    StorageEngine* engine = EngineSelectorFeature::ENGINE;
+    engine->renameCollection(_vocbase, _info.id(), name);
+  } catch (basics::Exception const& ex) {
+    res = ex.code();
+  } catch (...) {
+    res = TRI_ERROR_INTERNAL;
+  }
 
   if (res != TRI_ERROR_NO_ERROR) {
     // Rollback
@@ -5359,19 +5286,14 @@ TRI_collection_t* TRI_collection_t::create(
 TRI_collection_t* TRI_collection_t::open(TRI_vocbase_t* vocbase,
                                          TRI_vocbase_col_t* col,
                                          bool ignoreErrors) {
+  VPackBuilder builder;
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  engine->getCollectionInfo(vocbase, col->cid(), builder, false, 0);
 
-  std::string const path = col->path();
-
-  if (!TRI_IsDirectory(path.c_str())) {
-    LOG(ERR) << "cannot open '" << path << "', not a directory or not found";
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATADIR_INVALID);
-  }
-    
-  // read parameters, no need to lock as we are opening the collection
-  VocbaseCollectionInfo parameters =
-      VocbaseCollectionInfo::fromFile(path, vocbase, "", true); // name will be set later on
-
-  // first open the document collection
+  VocbaseCollectionInfo parameters(vocbase, col->name(), builder.slice().get("parameters"), true); 
+  TRI_ASSERT(parameters.id() != 0);
+  
+  // open the collection
   auto collection = std::make_unique<TRI_collection_t>(vocbase, parameters);
 
   double start = TRI_microtime();
@@ -5469,10 +5391,6 @@ int TRI_collection_t::unload(bool updateStats) {
   if (!_info.deleted() &&
       _info.initialCount() != static_cast<int64_t>(idxSize)) {
     _info.updateCount(idxSize);
-
-    bool doSync = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database")->forceSyncProperties();
-    // Ignore the error?
-    _info.saveToFile(path(), doSync);
   }
 
   // closes all open compactors, journals, datafiles

@@ -121,6 +121,8 @@ TRI_vocbase_col_t* TRI_vocbase_t::registerCollection(bool doLock,
                                                      std::string const& name,
                                                      TRI_voc_cid_t planId,
                                                      std::string const& path) {
+  TRI_ASSERT(cid != 0);
+
   // create a new proxy
   auto collection =
       std::make_unique<TRI_vocbase_col_t>(this, type, cid, name, planId, path);
@@ -460,6 +462,8 @@ TRI_vocbase_col_t* TRI_vocbase_t::createCollectionWorker(
   TRI_voc_cid_t planId = parameters.planId();
   col->_info.setPlanId(planId);
 
+  TRI_ASSERT(col->_info.id() != 0);
+  
   try {
     collection = registerCollection(ConditionalWriteLocker::DoNotLock(), col->_info.type(), col->_info.id(), col->_info.name(), planId, col->path());
   } catch (...) {
@@ -527,6 +531,9 @@ int TRI_vocbase_t::renameCollectionWorker(TRI_vocbase_col_t* collection,
       if (res != TRI_ERROR_NO_ERROR) {
         return res;
       }
+      
+      StorageEngine* engine = EngineSelectorFeature::ENGINE;
+      engine->renameCollection(this, collection->cid(), newName); 
       // fall-through intentional
     }
     else {
@@ -541,14 +548,13 @@ int TRI_vocbase_t::renameCollectionWorker(TRI_vocbase_col_t* collection,
     TRI_ASSERT(it2.second);
     
     _collectionsByName.erase(oldName);
-    collection->setName(newName);
-
     TRI_ASSERT(_collectionsByName.size() == _collectionsById.size());
+
+    collection->setName(newName);
   }  // _colllectionsLock
 
   // to prevent caching returning now invalid old collection name in db's
-  // NamedPropertyAccessor,
-  // i.e. db.<old-collection-name>
+  // NamedPropertyAccessor, i.e. db.<old-collection-name>
   collection->increaseVersion();
 
   // invalidate all entries for the two collections
@@ -564,6 +570,8 @@ int TRI_vocbase_t::renameCollectionWorker(TRI_vocbase_col_t* collection,
 int TRI_vocbase_t::loadCollection(TRI_vocbase_col_t* collection,
                                   TRI_vocbase_col_status_e& status,
                                   bool setStatus) {
+  TRI_ASSERT(collection->cid() != 0);
+
   // read lock
   // check if the collection is already loaded
   {
@@ -711,7 +719,7 @@ int TRI_vocbase_t::loadCollection(TRI_vocbase_col_t* collection,
 
 /// @brief drops a collection, worker function
 int TRI_vocbase_t::dropCollectionWorker(TRI_vocbase_col_t* collection,
-                          bool writeMarker, DropState& state) {
+                                        bool writeMarker, DropState& state) {
   state = DROP_EXIT;
   std::string const colName(collection->name());
 
@@ -728,26 +736,24 @@ int TRI_vocbase_t::dropCollectionWorker(TRI_vocbase_col_t* collection,
 
   // collection is unloaded
   if (collection->status() == TRI_VOC_COL_STATUS_UNLOADED) {
-    try {
-      arangodb::VocbaseCollectionInfo info =
-          arangodb::VocbaseCollectionInfo::fromFile(collection->path(),
-                                                    this, colName, true);
-      if (!info.deleted()) {
-        info.setDeleted(true);
+    bool doSync = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database")->forceSyncProperties();
+    doSync = (doSync && !arangodb::wal::LogfileManager::instance()->isInRecovery());
+    
+    StorageEngine* engine = EngineSelectorFeature::ENGINE;
+    VPackBuilder builder;
+    engine->getCollectionInfo(this, collection->cid(), builder, false, 0);
 
-        // we don't need to fsync if we are in the recovery phase
-        bool doSync = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database")->forceSyncProperties();
-        doSync = (doSync && !arangodb::wal::LogfileManager::instance()->isInRecovery());
+    arangodb::VocbaseCollectionInfo info(this, collection->name(), builder.slice().get("parameters"), true);
 
-        int res = info.saveToFile(collection->path(), doSync);
-
-        if (res != TRI_ERROR_NO_ERROR) {
-          return TRI_set_errno(res);
-        }
+    if (!info.deleted()) {
+      info.setDeleted(true);
+ 
+      try { 
+        engine->changeCollection(this, collection->cid(), info, doSync);
+      } catch (arangodb::basics::Exception const& ex) {
+        info.setDeleted(false);
+        return ex.code();
       }
-
-    } catch (arangodb::basics::Exception const& e) {
-      return TRI_set_errno(e.code());
     }
 
     collection->setStatus(TRI_VOC_COL_STATUS_DELETED);
@@ -800,7 +806,7 @@ int TRI_vocbase_t::dropCollectionWorker(TRI_vocbase_col_t* collection,
   }
 
   // unknown status
-  return TRI_set_errno(TRI_ERROR_INTERNAL);
+  return TRI_ERROR_INTERNAL;
 }
 
 /// @brief try to fetch the collection status under a lock
@@ -815,7 +821,7 @@ TRI_vocbase_col_status_e TRI_vocbase_col_t::tryFetchStatus(bool& found) {
   found = false;
   return TRI_VOC_COL_STATUS_CORRUPTED;
 }
-  
+
 void TRI_vocbase_col_t::toVelocyPack(VPackBuilder& builder, bool includeIndexes,
                                      TRI_voc_tick_t maxTick) {
   TRI_ASSERT(!builder.isClosed());
@@ -974,32 +980,32 @@ std::shared_ptr<VPackBuilder> TRI_vocbase_t::inventory(TRI_voc_tick_t maxTick,
   }
 
   auto builder = std::make_shared<VPackBuilder>();
-  {
-    VPackArrayBuilder b(builder.get());
+  builder->openArray();
 
-    for (auto& collection : collections) {
-      READ_LOCKER(readLocker, collection->_lock);
+  for (auto& collection : collections) {
+    READ_LOCKER(readLocker, collection->_lock);
 
-      if (collection->status() == TRI_VOC_COL_STATUS_DELETED ||
-          collection->status() == TRI_VOC_COL_STATUS_CORRUPTED) {
-        // we do not need to care about deleted or corrupted collections
-        continue;
-      }
-
-      if (collection->_cid > maxTick) {
-        // collection is too new
-        continue;
-      }
-
-      // check if we want this collection
-      if (filter != nullptr && !filter(collection, data)) {
-        continue;
-      }
-
-      VPackObjectBuilder b(builder.get());
-      collection->toVelocyPack(*builder, true, maxTick);
+    if (collection->status() == TRI_VOC_COL_STATUS_DELETED ||
+        collection->status() == TRI_VOC_COL_STATUS_CORRUPTED) {
+      // we do not need to care about deleted or corrupted collections
+      continue;
     }
+
+    if (collection->_cid > maxTick) {
+      // collection is too new
+      continue;
+    }
+
+    // check if we want this collection
+    if (filter != nullptr && !filter(collection, data)) {
+      continue;
+    }
+
+    collection->toVelocyPack(*builder, true, maxTick);
   }
+
+  builder->close();
+
   return builder;
 }
 

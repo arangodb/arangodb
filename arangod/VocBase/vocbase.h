@@ -477,7 +477,7 @@ class TRI_vocbase_col_t {
   /// @brief transform the information for this collection to velocypack
   ///        The builder has to be an opened Type::Object
   void toVelocyPack(arangodb::velocypack::Builder&, bool, TRI_voc_tick_t);
-
+ 
  public:
   TRI_vocbase_t* const _vocbase;
   TRI_voc_cid_t const _cid;     // local collection identifier

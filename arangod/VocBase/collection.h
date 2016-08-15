@@ -164,11 +164,6 @@ class VocbaseCollectionInfo {
   std::shared_ptr<VPackBuilder> toVelocyPack() const;
   void toVelocyPack(VPackBuilder& builder) const;
 
-  /// @brief Creates a new VocbaseCollectionInfo from the json content of a file
-  /// This function throws if the file cannot be parsed.
-  static VocbaseCollectionInfo fromFile(std::string const& path, TRI_vocbase_t* vocbase,
-                                        std::string const& collectionName, bool versionWarning);
-
   // collection version
   TRI_col_version_t version() const;
 
@@ -238,12 +233,6 @@ class VocbaseCollectionInfo {
   void setDeleted(bool);
 
   void clearKeyOptions();
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief saves a parameter info block to file
-  //////////////////////////////////////////////////////////////////////////////
-
-  int saveToFile(std::string const&, bool) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief updates settings for this collection info.
