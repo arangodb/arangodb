@@ -1719,7 +1719,8 @@ bool AstNode::isSimple() const {
   }
 
   if (type == NODE_TYPE_OBJECT_ELEMENT || type == NODE_TYPE_ATTRIBUTE_ACCESS ||
-      type == NODE_TYPE_OPERATOR_UNARY_NOT) {
+      type == NODE_TYPE_OPERATOR_UNARY_NOT || type == NODE_TYPE_OPERATOR_UNARY_PLUS ||
+      type == NODE_TYPE_OPERATOR_UNARY_MINUS) {
     TRI_ASSERT(numMembers() == 1);
 
     if (!getMember(0)->isSimple()) {

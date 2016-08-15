@@ -34,8 +34,6 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
-struct TRI_json_t;
-
 namespace arangodb {
 class AqlTransaction;
 
@@ -293,6 +291,20 @@ class Expression {
                                        std::vector<Variable const*> const&,
                                        std::vector<RegisterId> const&,
                                        bool& mustDestroy);
+  
+  /// @brief execute an expression of type SIMPLE with +
+  AqlValue executeSimpleExpressionPlus(AstNode const*, arangodb::AqlTransaction*,
+                                       AqlItemBlock const*, size_t,
+                                       std::vector<Variable const*> const&,
+                                       std::vector<RegisterId> const&,
+                                       bool& mustDestroy);
+  
+  /// @brief execute an expression of type SIMPLE with -
+  AqlValue executeSimpleExpressionMinus(AstNode const*, arangodb::AqlTransaction*,
+                                        AqlItemBlock const*, size_t,
+                                        std::vector<Variable const*> const&,
+                                        std::vector<RegisterId> const&,
+                                        bool& mustDestroy);
 
   /// @brief execute an expression of type SIMPLE with AND or OR
   AqlValue executeSimpleExpressionAndOr(AstNode const*,
