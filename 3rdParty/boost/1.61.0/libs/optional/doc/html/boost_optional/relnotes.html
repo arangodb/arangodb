@@ -1,0 +1,212 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Release Notes</title>
+<link rel="stylesheet" href="../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../index.html" title="Boost.Optional">
+<link rel="up" href="../index.html" title="Boost.Optional">
+<link rel="prev" href="dependencies_and_portability/optional_reference_binding.html" title="Optional Reference Binding">
+<link rel="next" href="acknowledgements.html" title="Acknowledgements">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="dependencies_and_portability/optional_reference_binding.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="acknowledgements.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="boost_optional.relnotes"></a><a class="link" href="relnotes.html" title="Release Notes">Release Notes</a>
+</h2></div></div></div>
+<h4>
+<a name="boost_optional.relnotes.h0"></a>
+      <span><a name="boost_optional.relnotes.boost_release_1_61"></a></span><a class="link" href="relnotes.html#boost_optional.relnotes.boost_release_1_61">Boost
+      Release 1.61</a>
+    </h4>
+<div class="itemizedlist"><ul class="itemizedlist" type="disc">
+<li class="listitem">
+          Now <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">optional</span></code> is specialized for reference
+          parameters. This addresses a couple of issues:
+          <div class="itemizedlist"><ul class="itemizedlist" type="circle">
+<li class="listitem">
+                the <code class="computeroutput"><span class="keyword">sizeof</span></code> of optional
+                reference is that of a pointer,
+              </li>
+<li class="listitem">
+                some bugs connected to copying optional references are gone,
+              </li>
+<li class="listitem">
+                all run-time bugs caused by incorrect reference binding on some compilers
+                are now turned into compile-time errors,
+              </li>
+<li class="listitem">
+                you can swap optional references: it is like swapping pointers: shalow,
+                underlying objects are not affected,
+              </li>
+<li class="listitem">
+                optional references to abstract types work.
+              </li>
+</ul></div>
+        </li>
+<li class="listitem">
+          Documented nested typedefs (<a href="https://svn.boost.org/trac/boost/ticket/5193" target="_top">Trac
+          #5193</a>).
+        </li>
+<li class="listitem">
+          Made the perfect-forwarding constructor SFINAE-friendly, which fixes <a href="https://svn.boost.org/trac/boost/ticket/12002" target="_top">Trac #12002</a>.
+          However, this only works in the newer platforms that correctly implement
+          C++11 <code class="computeroutput"><span class="special">&lt;</span><span class="identifier">type_traits</span><span class="special">&gt;</span></code>.
+        </li>
+<li class="listitem">
+          Fixed <a href="https://svn.boost.org/trac/boost/ticket/10445" target="_top">Trac #10445</a>.
+        </li>
+</ul></div>
+<h4>
+<a name="boost_optional.relnotes.h1"></a>
+      <span><a name="boost_optional.relnotes.boost_release_1_60"></a></span><a class="link" href="relnotes.html#boost_optional.relnotes.boost_release_1_60">Boost
+      Release 1.60</a>
+    </h4>
+<div class="itemizedlist"><ul class="itemizedlist" type="disc"><li class="listitem">
+          Changed the implementation of <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">none</span></code>
+          again. Now it is a const object with internal linkage (as any other tag).
+          This fixes <a href="https://svn.boost.org/trac/boost/ticket/11203" target="_top">Trac
+          #11203</a>.
+        </li></ul></div>
+<h4>
+<a name="boost_optional.relnotes.h2"></a>
+      <span><a name="boost_optional.relnotes.boost_release_1_59"></a></span><a class="link" href="relnotes.html#boost_optional.relnotes.boost_release_1_59">Boost
+      Release 1.59</a>
+    </h4>
+<div class="itemizedlist"><ul class="itemizedlist" type="disc">
+<li class="listitem">
+          For C++03 compilers, added 0-argument overload for member function <code class="computeroutput"><span class="identifier">emplace</span><span class="special">()</span></code>,
+          and therewith removed the dependency on <code class="computeroutput"><span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">utility</span><span class="special">/</span><span class="identifier">in_place_factory</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span></code>.
+        </li>
+<li class="listitem">
+          Fixed <a href="https://svn.boost.org/trac/boost/ticket/11241" target="_top">Trac #11241</a>.
+        </li>
+</ul></div>
+<h4>
+<a name="boost_optional.relnotes.h3"></a>
+      <span><a name="boost_optional.relnotes.boost_release_1_58"></a></span><a class="link" href="relnotes.html#boost_optional.relnotes.boost_release_1_58">Boost
+      Release 1.58</a>
+    </h4>
+<div class="itemizedlist"><ul class="itemizedlist" type="disc">
+<li class="listitem">
+          <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">none_t</span></code> is no longer convertible from
+          literal <code class="computeroutput"><span class="number">0</span></code>. This avoids a bug
+          where <code class="computeroutput"><span class="identifier">optional</span><span class="special">&lt;</span><span class="identifier">rational</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;&gt;</span> <span class="identifier">oi</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span></code> would
+          initialize an optional object with no contained value.
+        </li>
+<li class="listitem">
+          Improved the trick that prevents streaming out <code class="computeroutput"><span class="identifier">optional</span></code>
+          without header <code class="computeroutput"><span class="identifier">optional_io</span><span class="special">.</span><span class="identifier">hpp</span></code>
+          by using safe-bool idiom. This addresses <a href="https://svn.boost.org/trac/boost/ticket/10825" target="_top">Trac
+          #10825</a>.
+        </li>
+<li class="listitem">
+          IOStream operators are now mentioned in documentation.
+        </li>
+<li class="listitem">
+          Added a way to manually disable move semantics: just define macro <code class="computeroutput"><span class="identifier">BOOST_OPTIONAL_CONFIG_NO_RVALUE_REFERENCES</span></code>.
+          This can be used to work around <a href="https://svn.boost.org/trac/boost/ticket/10399" target="_top">Trac
+          #10399</a>.
+        </li>
+<li class="listitem">
+          It is no longer possible to assign <code class="computeroutput"><span class="identifier">optional</span><span class="special">&lt;</span><span class="identifier">U</span><span class="special">&gt;</span></code> to <code class="computeroutput"><span class="identifier">optional</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;</span></code> when <code class="computeroutput"><span class="identifier">U</span></code>
+          is not assignable or convertible to <code class="computeroutput"><span class="identifier">T</span></code>
+          (<a href="https://svn.boost.org/trac/boost/ticket/11087" target="_top">Trac #11087</a>).
+        </li>
+<li class="listitem">
+          Value accessors now work correctly on rvalues of <code class="computeroutput"><span class="identifier">optional</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&amp;&gt;</span></code> (<a href="https://svn.boost.org/trac/boost/ticket/10839" target="_top">Trac
+          #10839</a>).
+        </li>
+</ul></div>
+<h4>
+<a name="boost_optional.relnotes.h4"></a>
+      <span><a name="boost_optional.relnotes.boost_release_1_57"></a></span><a class="link" href="relnotes.html#boost_optional.relnotes.boost_release_1_57">Boost
+      Release 1.57</a>
+    </h4>
+<div class="itemizedlist"><ul class="itemizedlist" type="disc"><li class="listitem">
+          <a href="https://github.com/boostorg/optional/pull/9" target="_top">Git pull #9</a>:
+          <span class="emphasis"><em>"Supply <code class="computeroutput"><span class="special">&lt;</span><span class="identifier">string</span><span class="special">&gt;</span></code>
+          to fix C++03 compile error on <code class="computeroutput"><span class="identifier">logic_error</span><span class="special">(</span><span class="string">"..."</span><span class="special">)</span></code>"</em></span>.
+        </li></ul></div>
+<h4>
+<a name="boost_optional.relnotes.h5"></a>
+      <span><a name="boost_optional.relnotes.boost_release_1_56"></a></span><a class="link" href="relnotes.html#boost_optional.relnotes.boost_release_1_56">Boost
+      Release 1.56</a>
+    </h4>
+<div class="itemizedlist"><ul class="itemizedlist" type="disc">
+<li class="listitem">
+          Added support for rvalue references. Now <code class="computeroutput"><span class="identifier">optional</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;</span></code> works with moveable but non-copyable
+          <code class="computeroutput"><span class="identifier">T</span></code>'s,
+        </li>
+<li class="listitem">
+          Improved <code class="computeroutput"><span class="identifier">swap</span></code> (now uses
+          move operations),
+        </li>
+<li class="listitem">
+          Added function <code class="computeroutput"><span class="identifier">emplace</span><span class="special">()</span></code>. This is the last of the requests from
+          <a href="https://svn.boost.org/trac/boost/ticket/1841" target="_top">Trac #1841</a>,
+        </li>
+<li class="listitem">
+          <code class="computeroutput"><span class="identifier">optional</span></code> is moveable, including
+          conditional <code class="computeroutput"><span class="keyword">noexcept</span></code> specifications,
+          which make it <code class="computeroutput"><span class="identifier">move_if_noexcept</span></code>-friendly,
+        </li>
+<li class="listitem">
+          Using explicit operator bool() on platforms that support it (<a href="https://svn.boost.org/trac/boost/ticket/4227" target="_top">Trac
+          #4227</a>) (breaking change),
+        </li>
+<li class="listitem">
+          Forward declaration of <code class="computeroutput"><span class="keyword">operator</span><span class="special">&lt;&lt;(</span><span class="identifier">ostream</span><span class="special">&amp;,</span> <span class="identifier">optional</span>
+          <span class="keyword">const</span><span class="special">&amp;)</span></code>
+          to prevent inadvertent incorrect serialization of optional objects,
+        </li>
+<li class="listitem">
+          Removed deprecated function <code class="computeroutput"><span class="identifier">reset</span><span class="special">()</span></code> from examples (<a href="https://svn.boost.org/trac/boost/ticket/9005" target="_top">Trac
+          #9005</a>),
+        </li>
+<li class="listitem">
+          Equality comparison with <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">none</span></code>
+          does not require that <code class="computeroutput"><span class="identifier">T</span></code>
+          be EqualityComparable,
+        </li>
+<li class="listitem">
+          Optional rvalue references are explicitly disallowed,
+        </li>
+<li class="listitem">
+          Binding temporaries to optional references is explicitly disallowed (breaking
+          change),
+        </li>
+<li class="listitem">
+          More ways to access the contained value, functions <code class="computeroutput"><span class="identifier">value</span><span class="special">()</span></code>, <code class="computeroutput"><span class="identifier">value_or</span><span class="special">()</span></code>, <code class="computeroutput"><span class="identifier">value_or_eval</span><span class="special">()</span></code>,
+        </li>
+<li class="listitem">
+          Updated and reorganized documentation, added tutorial and quick guide sections.
+        </li>
+</ul></div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2007 Fernando Luis Cacciola Carballal<br>Copyright &#169; 2014-2016 Andrzej Krzemie&#324;ski<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="dependencies_and_portability/optional_reference_binding.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="acknowledgements.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

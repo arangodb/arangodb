@@ -1,0 +1,45 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="structboost_1_1geometry_1_1ring__type" kind="struct" prot="public">
+    <compoundname>boost::geometry::ring_type</compoundname>
+    <includes local="no">ring_type.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename</type>
+        <declname>Geometry</declname>
+        <defname>Geometry</defname>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-type">
+      <memberdef kind="typedef" id="structboost_1_1geometry_1_1ring__type_1a009cf4da9da6576d9733537a6e4d9ed6" prot="public" static="no">
+        <type>core_dispatch::ring_type&lt; typename <ref refid="structboost_1_1geometry_1_1tag" kindref="compound">tag</ref>&lt; Geometry &gt;::<ref refid="structboost_1_1geometry_1_1ring__type_1a009cf4da9da6576d9733537a6e4d9ed6" kindref="member">type</ref>, Geometry &gt;::<ref refid="structboost_1_1geometry_1_1ring__type_1a009cf4da9da6576d9733537a6e4d9ed6" kindref="member">type</ref></type>
+        <definition>typedef core_dispatch::ring_type&lt; typename tag&lt;Geometry&gt;::type, Geometry &gt;::type boost::geometry::ring_type&lt; Geometry &gt;::type</definition>
+        <argsstring></argsstring>
+        <name>type</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/core/ring_type.hpp" line="208" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/core/ring_type.hpp" bodystart="208" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+<para>Metafunction defining [*type] as the <ref refid="structboost_1_1geometry_1_1ring__type" kindref="compound">ring_type</ref> of the \3. </para>    </briefdescription>
+    <detaileddescription>
+<para>A polygon contains one exterior ring and zero or more interior rings (holes). This metafunction retrieves the type of the rings. Exterior ring and each of the interior rings all have the same <ref refid="structboost_1_1geometry_1_1ring__type" kindref="compound">ring_type</ref>. <parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>Geometry</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>A type fullfilling the Ring, Polygon or MultiPolygon concept.</para></parameterdescription>
+</parameteritem>
+</parameterlist>
+ <qbk>[include reference/core/ring_type.qbk]</qbk>  </para>    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/core/ring_type.hpp" line="203" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/core/ring_type.hpp" bodystart="202" bodyend="209"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1ring__type_1a009cf4da9da6576d9733537a6e4d9ed6" prot="public" virt="non-virtual"><scope>boost::geometry::ring_type</scope><name>type</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

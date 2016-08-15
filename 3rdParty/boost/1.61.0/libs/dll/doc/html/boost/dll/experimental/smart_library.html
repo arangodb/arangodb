@@ -1,0 +1,667 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Class smart_library</title>
+<link rel="stylesheet" href="http://www.boost.org/doc/libs/1_60_0/doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../../../index.html" title="Chapter&#160;1.&#160;Boost.DLL">
+<link rel="up" href="../../../boost_dll/reference.html#header.boost.dll.smart_library_hpp" title="Header &lt;boost/dll/smart_library.hpp&gt;">
+<link rel="prev" href="../load_mode/type.html" title="Type type">
+<link rel="next" href="../import.html" title="Function import">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="http://www.boost.org/doc/libs/1_60_0/boost.png"></td>
+<td align="center"><a href="http://www.boost.org/doc/libs/1_60_0/index.html">Home</a></td>
+<td align="center"><a href="http://www.boost.org/doc/libs/1_60_0/libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="http://www.boost.org/doc/libs/1_60_0/more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../load_mode/type.html"><img src="http://www.boost.org/doc/libs/1_60_0/doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../../boost_dll/reference.html#header.boost.dll.smart_library_hpp"><img src="http://www.boost.org/doc/libs/1_60_0/doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="http://www.boost.org/doc/libs/1_60_0/doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../import.html"><img src="http://www.boost.org/doc/libs/1_60_0/doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="refentry">
+<a name="boost.dll.experimental.smart_library"></a><div class="titlepage"></div>
+<div class="refnamediv">
+<h2><span class="refentrytitle">Class smart_library</span></h2>
+<p>boost::dll::experimental::smart_library &#8212; This class is an extension of <a class="link" href="../shared_library.html" title="Class shared_library">shared_library</a>, which allows to load C++ symbols. </p>
+</div>
+<h2 xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv-title">Synopsis</h2>
+<div xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv"><pre class="synopsis"><span class="comment">// In header: &lt;<a class="link" href="../../../boost_dll/reference.html#header.boost.dll.smart_library_hpp" title="Header &lt;boost/dll/smart_library.hpp&gt;">boost/dll/smart_library.hpp</a>&gt;
+
+</span>
+<span class="keyword">class</span> <a class="link" href="smart_library.html" title="Class smart_library">smart_library</a> <span class="special">{</span>
+<span class="keyword">public</span><span class="special">:</span>
+  <span class="comment">// <a class="link" href="smart_library.html#boost.dll.experimental.smart_libraryconstruct-copy-destruct">construct/copy/destruct</a></span>
+  <a class="link" href="smart_library.html#idp7687680-bb"><span class="identifier">smart_library</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <a class="link" href="smart_library.html#idp7689280-bb"><span class="identifier">smart_library</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">filesystem</span><span class="special">::</span><span class="identifier">path</span> <span class="special">&amp;</span><span class="special">,</span> 
+                <span class="identifier">load_mode</span><span class="special">::</span><span class="identifier">type</span> <span class="special">=</span> <span class="identifier">load_mode</span><span class="special">::</span><span class="identifier">default_mode</span><span class="special">)</span><span class="special">;</span>
+  <a class="link" href="smart_library.html#idp7692368-bb"><span class="identifier">smart_library</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">filesystem</span><span class="special">::</span><span class="identifier">path</span> <span class="special">&amp;</span><span class="special">,</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">system</span><span class="special">::</span><span class="identifier">error_code</span> <span class="special">&amp;</span><span class="special">,</span> 
+                <span class="identifier">load_mode</span><span class="special">::</span><span class="identifier">type</span> <span class="special">=</span> <span class="identifier">load_mode</span><span class="special">::</span><span class="identifier">default_mode</span><span class="special">)</span><span class="special">;</span>
+  <a class="link" href="smart_library.html#idp7696192-bb"><span class="identifier">smart_library</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">filesystem</span><span class="special">::</span><span class="identifier">path</span> <span class="special">&amp;</span><span class="special">,</span> <span class="identifier">load_mode</span><span class="special">::</span><span class="identifier">type</span><span class="special">,</span> 
+                <span class="identifier">boost</span><span class="special">::</span><span class="identifier">system</span><span class="special">::</span><span class="identifier">error_code</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <a class="link" href="smart_library.html#idp7699408-bb"><span class="identifier">smart_library</span></a><span class="special">(</span><a class="link" href="smart_library.html" title="Class smart_library">smart_library</a> <span class="special">&amp;&amp;</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <a class="link" href="smart_library.html#idp7702000-bb"><span class="special">~</span><span class="identifier">smart_library</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+
+  <span class="comment">// <a class="link" href="smart_library.html#idp7604736-bb">public member functions</a></span>
+  <span class="keyword">const</span> <a class="link" href="../shared_library.html" title="Class shared_library">shared_library</a> <span class="special">&amp;</span> <a class="link" href="smart_library.html#idp7605296-bb"><span class="identifier">shared_lib</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="keyword">const</span> <span class="identifier">mangled_storage</span> <span class="special">&amp;</span> <a class="link" href="smart_library.html#idp7608016-bb"><span class="identifier">symbol_storage</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="keyword">void</span> <a class="link" href="smart_library.html#idp7610592-bb"><span class="identifier">load</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">filesystem</span><span class="special">::</span><span class="identifier">path</span> <span class="special">&amp;</span><span class="special">,</span> 
+            <span class="identifier">load_mode</span><span class="special">::</span><span class="identifier">type</span> <span class="special">=</span> <span class="identifier">load_mode</span><span class="special">::</span><span class="identifier">default_mode</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">void</span> <a class="link" href="smart_library.html#idp7615600-bb"><span class="identifier">load</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">filesystem</span><span class="special">::</span><span class="identifier">path</span> <span class="special">&amp;</span><span class="special">,</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">system</span><span class="special">::</span><span class="identifier">error_code</span> <span class="special">&amp;</span><span class="special">,</span> 
+            <span class="identifier">load_mode</span><span class="special">::</span><span class="identifier">type</span> <span class="special">=</span> <span class="identifier">load_mode</span><span class="special">::</span><span class="identifier">default_mode</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">void</span> <a class="link" href="smart_library.html#idp7621344-bb"><span class="identifier">load</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">filesystem</span><span class="special">::</span><span class="identifier">path</span> <span class="special">&amp;</span><span class="special">,</span> <span class="identifier">load_mode</span><span class="special">::</span><span class="identifier">type</span><span class="special">,</span> 
+            <span class="identifier">boost</span><span class="special">::</span><span class="identifier">system</span><span class="special">::</span><span class="identifier">error_code</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> T<span class="special">&gt;</span> <span class="identifier">T</span> <span class="special">&amp;</span> <a class="link" href="smart_library.html#idp7625120-bb"><span class="identifier">get_variable</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Func<span class="special">&gt;</span> <span class="identifier">Func</span> <span class="special">&amp;</span> <a class="link" href="smart_library.html#idp7631104-bb"><span class="identifier">get_function</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Class<span class="special">,</span> <span class="keyword">typename</span> Func<span class="special">&gt;</span> 
+    <span class="emphasis"><em><span class="identifier">unspecified</span></em></span> <a class="link" href="smart_library.html#idp7638544-bb"><span class="identifier">get_mem_fn</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Signature<span class="special">&gt;</span> <span class="identifier">constructor</span><span class="special">&lt;</span> <span class="identifier">Signature</span> <span class="special">&gt;</span> <a class="link" href="smart_library.html#idp7647344-bb"><span class="identifier">get_constructor</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Class<span class="special">&gt;</span> <span class="identifier">destructor</span><span class="special">&lt;</span> <span class="identifier">Class</span> <span class="special">&gt;</span> <a class="link" href="smart_library.html#idp7653184-bb"><span class="identifier">get_destructor</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Alias<span class="special">&gt;</span> <span class="keyword">void</span> <a class="link" href="smart_library.html#idp7658928-bb"><span class="identifier">add_type_alias</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">void</span> <a class="link" href="smart_library.html#idp7665232-bb"><span class="identifier">unload</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="keyword">bool</span> <a class="link" href="smart_library.html#idp7667520-bb"><span class="identifier">is_loaded</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="keyword">bool</span> <a class="link" href="smart_library.html#idp7669648-bb"><span class="keyword">operator</span><span class="special">!</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="keyword">explicit</span> <a class="link" href="smart_library.html#idp7671776-bb"><span class="keyword">operator</span> <span class="keyword">bool</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="keyword">bool</span> <a class="link" href="smart_library.html#idp7674176-bb"><span class="identifier">has</span></a><span class="special">(</span><span class="keyword">const</span> <span class="keyword">char</span> <span class="special">*</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="keyword">bool</span> <a class="link" href="smart_library.html#idp7677536-bb"><span class="identifier">has</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="special">&amp;</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <a class="link" href="smart_library.html" title="Class smart_library">smart_library</a> <span class="special">&amp;</span> <a class="link" href="smart_library.html#idp7680176-bb"><span class="identifier">assign</span></a><span class="special">(</span><span class="keyword">const</span> <a class="link" href="smart_library.html" title="Class smart_library">smart_library</a> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">void</span> <a class="link" href="smart_library.html#idp7683936-bb"><span class="identifier">swap</span></a><span class="special">(</span><a class="link" href="smart_library.html" title="Class smart_library">smart_library</a> <span class="special">&amp;</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+<span class="special">}</span><span class="special">;</span></pre></div>
+<div class="refsect1">
+<a name="idp66124848"></a><h2>Description</h2>
+<p>This class allows type safe loading of overloaded functions, member-functions, constructors and variables. It also allows to overwrite classes so they can be loaded, while being declared with different names.</p>
+<div class="warning"><table border="0" summary="Warning">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Warning]" src="http://www.boost.org/doc/libs/1_60_0/doc/src/images/warning.png"></td>
+<th align="left">Warning</th>
+</tr>
+<tr><td align="left" valign="top"><p>Is still very experimental.</p></td></tr>
+</table></div>
+<p>
+Currently known limitations:</p>
+<p>Member functions must be defined outside of the class to be exported. That is: </p>
+<pre class="programlisting"> <span class="comment">//not exported:</span>
+ <span class="keyword">struct</span> <span class="identifier">BOOST_SYMBOL_EXPORT</span> <span class="identifier">my_class</span> <span class="special">{</span> <span class="keyword">void</span> <span class="identifier">func</span><span class="special">(</span><span class="special">)</span> <span class="special">{</span><span class="special">}</span><span class="special">}</span><span class="special">;</span>
+ <span class="comment">//exported</span>
+ <span class="keyword">struct</span> <span class="identifier">BOOST_SYMBOL_EXPORT</span> <span class="identifier">my_class</span> <span class="special">{</span> <span class="keyword">void</span> <span class="identifier">func</span><span class="special">(</span><span class="special">)</span><span class="special">;</span><span class="special">}</span><span class="special">;</span>
+ <span class="keyword">void</span> <span class="identifier">my_class</span><span class="special">::</span><span class="identifier">func</span><span class="special">(</span><span class="special">)</span> <span class="special">{</span><span class="special">}</span><span class="special">;</span>
+</pre>
+<p>With the current analysis, the first version does get exported in MSVC. MinGW also does export it, BOOST_SYMBOL_EXPORT is written before it. To allow this on windows one can use BOOST_DLL_MEMBER_EXPORT for this, so that MinGW and MSVC can provide those functions. This does however not work with gcc on linux.</p>
+<p>Direct initialization of members. On linux the following member variable i will not be initialized when using the allocating contructor: </p>
+<pre class="programlisting"> <span class="keyword">struct</span> <span class="identifier">BOOST_SYMBOL_EXPORT</span> <span class="identifier">my_class</span> <span class="special">{</span> <span class="keyword">int</span> <span class="identifier">i</span><span class="special">;</span> <span class="identifier">my_class</span><span class="special">(</span><span class="special">)</span> <span class="special">:</span> <span class="identifier">i</span><span class="special">(</span><span class="number">42</span><span class="special">)</span> <span class="special">{</span><span class="special">}</span> <span class="special">}</span><span class="special">;</span>
+</pre>
+<p>This does however not happen when the value is set inside the constructor function. </p>
+<div class="refsect2">
+<a name="idp66161488"></a><h3>
+<a name="boost.dll.experimental.smart_libraryconstruct-copy-destruct"></a><code class="computeroutput">smart_library</code> 
+        public
+       construct/copy/destruct</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+<pre class="literallayout"><a name="idp7687680-bb"></a><span class="identifier">smart_library</span><span class="special">(</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p>Creates in anstance that does not reference any DLL/DSO.</p>
+<p>
+
+</p>
+<p>
+ </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><a name="idp7689280-bb"></a><span class="identifier">smart_library</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">filesystem</span><span class="special">::</span><span class="identifier">path</span> <span class="special">&amp;</span> lib_path<span class="special">,</span> 
+              <span class="identifier">load_mode</span><span class="special">::</span><span class="identifier">type</span> mode <span class="special">=</span> <span class="identifier">load_mode</span><span class="special">::</span><span class="identifier">default_mode</span><span class="special">)</span><span class="special">;</span></pre>
+<p>Creates in anstance that does not reference any DLL/DSO.</p>
+<p>
+
+</p>
+<p>
+(const boost::filesystem::path&amp; lib_path, load_mode::type mode = load_mode::default_mode) </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><a name="idp7692368-bb"></a><span class="identifier">smart_library</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">filesystem</span><span class="special">::</span><span class="identifier">path</span> <span class="special">&amp;</span> lib_path<span class="special">,</span> 
+              <span class="identifier">boost</span><span class="special">::</span><span class="identifier">system</span><span class="special">::</span><span class="identifier">error_code</span> <span class="special">&amp;</span> ec<span class="special">,</span> 
+              <span class="identifier">load_mode</span><span class="special">::</span><span class="identifier">type</span> mode <span class="special">=</span> <span class="identifier">load_mode</span><span class="special">::</span><span class="identifier">default_mode</span><span class="special">)</span><span class="special">;</span></pre>
+<p>Creates in anstance that does not reference any DLL/DSO.</p>
+<p>
+
+</p>
+<p>
+(const boost::filesystem::path&amp; lib_path, boost::system::error_code&amp; ec, load_mode::type mode = load_mode::default_mode) </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><a name="idp7696192-bb"></a><span class="identifier">smart_library</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">filesystem</span><span class="special">::</span><span class="identifier">path</span> <span class="special">&amp;</span> lib_path<span class="special">,</span> <span class="identifier">load_mode</span><span class="special">::</span><span class="identifier">type</span> mode<span class="special">,</span> 
+              <span class="identifier">boost</span><span class="special">::</span><span class="identifier">system</span><span class="special">::</span><span class="identifier">error_code</span> <span class="special">&amp;</span> ec<span class="special">)</span><span class="special">;</span></pre>
+<p>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts. </p>
+<p>
+ </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><a name="idp7699408-bb"></a><span class="identifier">smart_library</span><span class="special">(</span><a class="link" href="smart_library.html" title="Class smart_library">smart_library</a> <span class="special">&amp;&amp;</span> lib<span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p>Creates in anstance that does not reference any DLL/DSO.</p>
+<p>
+
+</p>
+<p>
+(BOOST_RV_REF(smart_library) lib) </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><a name="idp7702000-bb"></a><span class="special">~</span><span class="identifier">smart_library</span><span class="special">(</span><span class="special">)</span><span class="special">;</span></pre>
+<p>Destroys the object by calling `unload()`. If library was loaded multiple times by different instances, the actual DLL/DSO won't be unloaded until there is at least one instance that references the DLL/DSO.</p>
+<p>
+</p>
+<p>
+ </p>
+</li>
+</ol></div>
+</div>
+<div class="refsect2">
+<a name="idp66227648"></a><h3>
+<a name="idp7604736-bb"></a><code class="computeroutput">smart_library</code> public member functions</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">const</span> <a class="link" href="../shared_library.html" title="Class shared_library">shared_library</a> <span class="special">&amp;</span> <a name="idp7605296-bb"></a><span class="identifier">shared_lib</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>
+<p>Get the underlying <code class="computeroutput"><a class="link" href="../shared_library.html" title="Class shared_library">shared_library</a></code> </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">const</span> <span class="identifier">mangled_storage</span> <span class="special">&amp;</span> <a name="idp7608016-bb"></a><span class="identifier">symbol_storage</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>
+<p>Acces to the mangled storage, which is created on construction.</p>
+<p>
+</p>
+<div class="variablelist"><table border="0">
+<col align="left" valign="top">
+<tbody><tr>
+<td><p><span class="term">Throws:</span></p></td>
+<td>Nothing. </td>
+</tr></tbody>
+</table></div>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">void</span> <a name="idp7610592-bb"></a><span class="identifier">load</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">filesystem</span><span class="special">::</span><span class="identifier">path</span> <span class="special">&amp;</span> lib_path<span class="special">,</span> 
+          <span class="identifier">load_mode</span><span class="special">::</span><span class="identifier">type</span> mode <span class="special">=</span> <span class="identifier">load_mode</span><span class="special">::</span><span class="identifier">default_mode</span><span class="special">)</span><span class="special">;</span></pre>
+<p>Loads a library by specified path with a specified mode.</p>
+<p>Note that if some library is already loaded in this instance, load will call unload() and then load the new provided library.</p>
+<p>
+
+</p>
+<p>
+(const boost::filesystem::path&amp; lib_path, load_mode::type mode = load_mode::default_mode) </p>
+<div class="variablelist"><table border="0">
+<col align="left" valign="top">
+<tbody><tr>
+<td><p><span class="term">Parameters:</span></p></td>
+<td><div class="variablelist"><table border="0">
+<col align="left" valign="top">
+<tbody>
+<tr>
+<td><p><span class="term"><code class="computeroutput">lib_path</code></span></p></td>
+<td><p>Library file name. Can handle std::string, const char*, std::wstring, const wchar_t* or boost::filesystem::path. </p></td>
+</tr>
+<tr>
+<td><p><span class="term"><code class="computeroutput">mode</code></span></p></td>
+<td><p>A mode that will be used on library load. </p></td>
+</tr>
+</tbody>
+</table></div></td>
+</tr></tbody>
+</table></div>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">void</span> <a name="idp7615600-bb"></a><span class="identifier">load</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">filesystem</span><span class="special">::</span><span class="identifier">path</span> <span class="special">&amp;</span> lib_path<span class="special">,</span> 
+          <span class="identifier">boost</span><span class="special">::</span><span class="identifier">system</span><span class="special">::</span><span class="identifier">error_code</span> <span class="special">&amp;</span> ec<span class="special">,</span> 
+          <span class="identifier">load_mode</span><span class="special">::</span><span class="identifier">type</span> mode <span class="special">=</span> <span class="identifier">load_mode</span><span class="special">::</span><span class="identifier">default_mode</span><span class="special">)</span><span class="special">;</span></pre>
+<p>Loads a library by specified path with a specified mode.</p>
+<p>Note that if some library is already loaded in this instance, load will call unload() and then load the new provided library.</p>
+<p>
+
+</p>
+<p>
+(const boost::filesystem::path&amp; lib_path, boost::system::error_code&amp; ec, load_mode::type mode = load_mode::default_mode) </p>
+<div class="variablelist"><table border="0">
+<col align="left" valign="top">
+<tbody><tr>
+<td><p><span class="term">Parameters:</span></p></td>
+<td><div class="variablelist"><table border="0">
+<col align="left" valign="top">
+<tbody>
+<tr>
+<td><p><span class="term"><code class="computeroutput">lib_path</code></span></p></td>
+<td><p>Library file name. Can handle std::string, const char*, std::wstring, const wchar_t* or boost::filesystem::path. </p></td>
+</tr>
+<tr>
+<td><p><span class="term"><code class="computeroutput">mode</code></span></p></td>
+<td><p>A mode that will be used on library load. </p></td>
+</tr>
+</tbody>
+</table></div></td>
+</tr></tbody>
+</table></div>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">void</span> <a name="idp7621344-bb"></a><span class="identifier">load</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">filesystem</span><span class="special">::</span><span class="identifier">path</span> <span class="special">&amp;</span> lib_path<span class="special">,</span> <span class="identifier">load_mode</span><span class="special">::</span><span class="identifier">type</span> mode<span class="special">,</span> 
+          <span class="identifier">boost</span><span class="special">::</span><span class="identifier">system</span><span class="special">::</span><span class="identifier">error_code</span> <span class="special">&amp;</span> ec<span class="special">)</span><span class="special">;</span></pre>
+<p>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts. </p>
+<p>
+ </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> T<span class="special">&gt;</span> <span class="identifier">T</span> <span class="special">&amp;</span> <a name="idp7625120-bb"></a><span class="identifier">get_variable</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="special">&amp;</span> name<span class="special">)</span><span class="special">;</span></pre>
+<p>Load a variable from the referenced library.</p>
+<p>Unlinke shared_library::get this function will also load scoped variables, which also includes static class members.</p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="http://www.boost.org/doc/libs/1_60_0/doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>When mangled, MSVC will also check the type.</p></td></tr>
+</table></div>
+<p>
+
+
+
+
+</p>
+<div class="variablelist"><table border="0">
+<col align="left" valign="top">
+<tbody>
+<tr>
+<td><p><span class="term">Parameters:</span></p></td>
+<td><div class="variablelist"><table border="0">
+<col align="left" valign="top">
+<tbody><tr>
+<td><p><span class="term"><code class="computeroutput">name</code></span></p></td>
+<td><p>Name of the variable </p></td>
+</tr></tbody>
+</table></div></td>
+</tr>
+<tr>
+<td><p><span class="term">Template Parameters:</span></p></td>
+<td><div class="variablelist"><table border="0">
+<col align="left" valign="top">
+<tbody><tr>
+<td><p><span class="term"><code class="computeroutput">T</code></span></p></td>
+<td><p>Type of the variable </p></td>
+</tr></tbody>
+</table></div></td>
+</tr>
+<tr>
+<td><p><span class="term">Returns:</span></p></td>
+<td><p>A reference to the variable of type T.</p></td>
+</tr>
+<tr>
+<td><p><span class="term">Throws:</span></p></td>
+<td>boost::system::system_error if symbol does not exist or if the DLL/DSO was not loaded. </td>
+</tr>
+</tbody>
+</table></div>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Func<span class="special">&gt;</span> <span class="identifier">Func</span> <span class="special">&amp;</span> <a name="idp7631104-bb"></a><span class="identifier">get_function</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="special">&amp;</span> name<span class="special">)</span><span class="special">;</span></pre>
+<p>Load a function from the referenced library.</p>
+<p><span class="bold"><strong>Example:</strong></span> </p>
+<pre class="programlisting"> <span class="identifier">smart_library</span> <span class="identifier">lib</span><span class="special">(</span><span class="string">"test_lib.so"</span><span class="special">)</span><span class="special">;</span>
+ <span class="keyword">typedef</span> <span class="keyword">int</span>      <span class="special">(</span><span class="special">&amp;</span><span class="identifier">add_ints</span><span class="special">)</span><span class="special">(</span><span class="keyword">int</span><span class="special">,</span> <span class="keyword">int</span><span class="special">)</span><span class="special">;</span>
+ <span class="keyword">typedef</span> <span class="keyword">double</span> <span class="special">(</span><span class="special">&amp;</span><span class="identifier">add_doubles</span><span class="special">)</span><span class="special">(</span><span class="keyword">double</span><span class="special">,</span> <span class="keyword">double</span><span class="special">)</span><span class="special">;</span>
+ <span class="identifier">add_ints</span>     <span class="identifier">f1</span> <span class="special">=</span> <span class="identifier">lib</span><span class="special">.</span><span class="identifier">get_function</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">(</span><span class="keyword">int</span><span class="special">,</span> <span class="keyword">int</span><span class="special">)</span><span class="special">&gt;</span>         <span class="special">(</span><span class="string">"func_name"</span><span class="special">)</span><span class="special">;</span>
+ <span class="identifier">add_doubles</span>  <span class="identifier">f2</span> <span class="special">=</span> <span class="identifier">lib</span><span class="special">.</span><span class="identifier">get_function</span><span class="special">&lt;</span><span class="keyword">double</span><span class="special">(</span><span class="keyword">double</span><span class="special">,</span> <span class="keyword">double</span><span class="special">)</span><span class="special">&gt;</span><span class="special">(</span><span class="string">"func_name"</span><span class="special">)</span><span class="special">;</span>
+</pre>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="http://www.boost.org/doc/libs/1_60_0/doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>When mangled, MSVC will also check the return type.</p></td></tr>
+</table></div>
+<p>
+
+
+
+
+</p>
+<div class="variablelist"><table border="0">
+<col align="left" valign="top">
+<tbody>
+<tr>
+<td><p><span class="term">Parameters:</span></p></td>
+<td><div class="variablelist"><table border="0">
+<col align="left" valign="top">
+<tbody><tr>
+<td><p><span class="term"><code class="computeroutput">name</code></span></p></td>
+<td><p>Name of the function. </p></td>
+</tr></tbody>
+</table></div></td>
+</tr>
+<tr>
+<td><p><span class="term">Template Parameters:</span></p></td>
+<td><div class="variablelist"><table border="0">
+<col align="left" valign="top">
+<tbody><tr>
+<td><p><span class="term"><code class="computeroutput">Func</code></span></p></td>
+<td><p>Type of the function, required for determining the overload </p></td>
+</tr></tbody>
+</table></div></td>
+</tr>
+<tr>
+<td><p><span class="term">Returns:</span></p></td>
+<td><p>A reference to the function of type F.</p></td>
+</tr>
+<tr>
+<td><p><span class="term">Throws:</span></p></td>
+<td>boost::system::system_error if symbol does not exist or if the DLL/DSO was not loaded. </td>
+</tr>
+</tbody>
+</table></div>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Class<span class="special">,</span> <span class="keyword">typename</span> Func<span class="special">&gt;</span> 
+  <span class="emphasis"><em><span class="identifier">unspecified</span></em></span> <a name="idp7638544-bb"></a><span class="identifier">get_mem_fn</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="special">&amp;</span> name<span class="special">)</span><span class="special">;</span></pre>
+<p>Load a member-function from the referenced library.</p>
+<p><span class="bold"><strong>Example</strong></span> (import class is MyClass, which is available inside the library and the host):</p>
+<pre class="programlisting"> <span class="identifier">smart_library</span> <span class="identifier">lib</span><span class="special">(</span><span class="string">"test_lib.so"</span><span class="special">)</span><span class="special">;</span>
+
+ <span class="keyword">typedef</span> <span class="keyword">int</span>      <span class="identifier">MyClass</span><span class="special">(</span><span class="special">*</span><span class="identifier">func</span><span class="special">)</span><span class="special">(</span><span class="keyword">int</span><span class="special">)</span><span class="special">;</span>
+ <span class="keyword">typedef</span> <span class="keyword">int</span>   <span class="identifier">MyClass</span><span class="special">(</span><span class="special">*</span><span class="identifier">func_const</span><span class="special">)</span><span class="special">(</span><span class="keyword">int</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+
+ <span class="identifier">add_ints</span>     <span class="identifier">f1</span> <span class="special">=</span> <span class="identifier">lib</span><span class="special">.</span><span class="identifier">get_mem_fn</span><span class="special">&lt;</span><span class="identifier">MyClass</span><span class="special">,</span> <span class="keyword">int</span><span class="special">(</span><span class="keyword">int</span><span class="special">)</span><span class="special">&gt;</span>              <span class="special">(</span><span class="string">"MyClass::function"</span><span class="special">)</span><span class="special">;</span>
+ <span class="identifier">add_doubles</span>  <span class="identifier">f2</span> <span class="special">=</span> <span class="identifier">lib</span><span class="special">.</span><span class="identifier">get_mem_fn</span><span class="special">&lt;</span><span class="keyword">const</span> <span class="identifier">MyClass</span><span class="special">,</span> <span class="keyword">double</span><span class="special">(</span><span class="keyword">double</span><span class="special">)</span><span class="special">&gt;</span><span class="special">(</span><span class="string">"MyClass::function"</span><span class="special">)</span><span class="special">;</span>
+</pre>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="http://www.boost.org/doc/libs/1_60_0/doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>When mangled, MSVC will also check the return type.</p></td></tr>
+</table></div>
+<p>
+
+
+
+
+</p>
+<div class="variablelist"><table border="0">
+<col align="left" valign="top">
+<tbody>
+<tr>
+<td><p><span class="term">Parameters:</span></p></td>
+<td><div class="variablelist"><table border="0">
+<col align="left" valign="top">
+<tbody><tr>
+<td><p><span class="term"><code class="computeroutput">name</code></span></p></td>
+<td><p>Name of the function. </p></td>
+</tr></tbody>
+</table></div></td>
+</tr>
+<tr>
+<td><p><span class="term">Template Parameters:</span></p></td>
+<td><div class="variablelist"><table border="0">
+<col align="left" valign="top">
+<tbody>
+<tr>
+<td><p><span class="term"><code class="computeroutput">Class</code></span></p></td>
+<td><p>The class the function is a member of. If Class is const, the function will be assumed as taking a const this-pointer. The same applies for volatile. </p></td>
+</tr>
+<tr>
+<td><p><span class="term"><code class="computeroutput">Func</code></span></p></td>
+<td><p>Signature of the function, required for determining the overload </p></td>
+</tr>
+</tbody>
+</table></div></td>
+</tr>
+<tr>
+<td><p><span class="term">Returns:</span></p></td>
+<td><p>A pointer to the member-function with the signature provided</p></td>
+</tr>
+<tr>
+<td><p><span class="term">Throws:</span></p></td>
+<td>boost::system::system_error if symbol does not exist or if the DLL/DSO was not loaded. </td>
+</tr>
+</tbody>
+</table></div>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Signature<span class="special">&gt;</span> <span class="identifier">constructor</span><span class="special">&lt;</span> <span class="identifier">Signature</span> <span class="special">&gt;</span> <a name="idp7647344-bb"></a><span class="identifier">get_constructor</span><span class="special">(</span><span class="special">)</span><span class="special">;</span></pre>
+<p>Load a constructor from the referenced library.</p>
+<p><span class="bold"><strong>Example</strong></span> (import class is MyClass, which is available inside the library and the host):</p>
+<pre class="programlisting"> <span class="identifier">smart_library</span> <span class="identifier">lib</span><span class="special">(</span><span class="string">"test_lib.so"</span><span class="special">)</span><span class="special">;</span>
+
+ <span class="identifier">constructor</span><span class="special">&lt;</span><span class="identifier">MyClass</span><span class="special">(</span><span class="keyword">int</span><span class="special">)</span>    <span class="identifier">f1</span> <span class="special">=</span> <span class="identifier">lib</span><span class="special">.</span><span class="identifier">get_mem_fn</span><span class="special">&lt;</span><span class="identifier">MyClass</span><span class="special">(</span><span class="keyword">int</span><span class="special">)</span><span class="special">&gt;</span><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+</pre>
+<p>
+
+
+</p>
+<div class="variablelist"><table border="0">
+<col align="left" valign="top">
+<tbody>
+<tr>
+<td><p><span class="term">Template Parameters:</span></p></td>
+<td><div class="variablelist"><table border="0">
+<col align="left" valign="top">
+<tbody><tr>
+<td><p><span class="term"><code class="computeroutput">Signature</code></span></p></td>
+<td><p>Signature of the function, required for determining the overload. The return type is the class which this is the constructor of. </p></td>
+</tr></tbody>
+</table></div></td>
+</tr>
+<tr>
+<td><p><span class="term">Returns:</span></p></td>
+<td><p>A constructor object.</p></td>
+</tr>
+<tr>
+<td><p><span class="term">Throws:</span></p></td>
+<td>boost::system::system_error if symbol does not exist or if the DLL/DSO was not loaded. </td>
+</tr>
+</tbody>
+</table></div>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Class<span class="special">&gt;</span> <span class="identifier">destructor</span><span class="special">&lt;</span> <span class="identifier">Class</span> <span class="special">&gt;</span> <a name="idp7653184-bb"></a><span class="identifier">get_destructor</span><span class="special">(</span><span class="special">)</span><span class="special">;</span></pre>
+<p>Load a destructor from the referenced library.</p>
+<p><span class="bold"><strong>Example</strong></span> (import class is MyClass, which is available inside the library and the host):</p>
+<pre class="programlisting"> <span class="identifier">smart_library</span> <span class="identifier">lib</span><span class="special">(</span><span class="string">"test_lib.so"</span><span class="special">)</span><span class="special">;</span>
+
+ <span class="identifier">destructor</span><span class="special">&lt;</span><span class="identifier">MyClass</span><span class="special">&gt;</span>     <span class="identifier">f1</span> <span class="special">=</span> <span class="identifier">lib</span><span class="special">.</span><span class="identifier">get_mem_fn</span><span class="special">&lt;</span><span class="identifier">MyClass</span><span class="special">&gt;</span><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+</pre>
+<p>
+
+
+</p>
+<div class="variablelist"><table border="0">
+<col align="left" valign="top">
+<tbody>
+<tr>
+<td><p><span class="term">Template Parameters:</span></p></td>
+<td><div class="variablelist"><table border="0">
+<col align="left" valign="top">
+<tbody><tr>
+<td><p><span class="term"><code class="computeroutput">Class</code></span></p></td>
+<td><p>The class whichs destructor shall be loaded </p></td>
+</tr></tbody>
+</table></div></td>
+</tr>
+<tr>
+<td><p><span class="term">Returns:</span></p></td>
+<td><p>A destructor object.</p></td>
+</tr>
+<tr>
+<td><p><span class="term">Throws:</span></p></td>
+<td>boost::system::system_error if symbol does not exist or if the DLL/DSO was not loaded. </td>
+</tr>
+</tbody>
+</table></div>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Alias<span class="special">&gt;</span> <span class="keyword">void</span> <a name="idp7658928-bb"></a><span class="identifier">add_type_alias</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="special">&amp;</span> name<span class="special">)</span><span class="special">;</span></pre>
+<p>This function can be used to add a type alias.</p>
+<p>This is to be used, when a class shall be imported, which is not declared on the host side.</p>
+<p>Example: </p>
+<pre class="programlisting"> <span class="identifier">smart_library</span> <span class="identifier">lib</span><span class="special">(</span><span class="string">"test_lib.so"</span><span class="special">)</span><span class="special">;</span>
+
+ <span class="identifier">lib</span><span class="special">.</span><span class="identifier">add_type_alias</span><span class="special">&lt;</span><span class="identifier">MyAlias</span><span class="special">&gt;</span><span class="special">(</span><span class="string">"MyClass"</span><span class="special">)</span><span class="special">;</span> <span class="comment">//when using MyAlias, the library will look for MyClass</span>
+
+ <span class="comment">//get the destructor of MyClass</span>
+ <span class="identifier">destructor</span><span class="special">&lt;</span><span class="identifier">MyAlias</span><span class="special">&gt;</span> <span class="identifier">dtor</span> <span class="special">=</span> <span class="identifier">lib</span><span class="special">.</span><span class="identifier">get_destructor</span><span class="special">&lt;</span><span class="identifier">MyAlias</span><span class="special">&gt;</span><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+</pre>
+<p>
+</p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="http://www.boost.org/doc/libs/1_60_0/doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>If the alias-type is not large enough for the imported class, it will result in undefined behaviour. </p></td></tr>
+</table></div>
+<p>
+</p>
+<div class="warning"><table border="0" summary="Warning">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Warning]" src="http://www.boost.org/doc/libs/1_60_0/doc/src/images/warning.png"></td>
+<th align="left">Warning</th>
+</tr>
+<tr><td align="left" valign="top"><p>The alias will only be applied for the type signature, it will not replace the token in the scoped name. </p></td></tr>
+</table></div>
+<p>
+</p>
+<div class="variablelist"><table border="0">
+<col align="left" valign="top">
+<tbody><tr>
+<td><p><span class="term">Parameters:</span></p></td>
+<td><div class="variablelist"><table border="0">
+<col align="left" valign="top">
+<tbody><tr>
+<td><p><span class="term"><code class="computeroutput">name</code></span></p></td>
+<td><p>Name of the class the alias is for.</p></td>
+</tr></tbody>
+</table></div></td>
+</tr></tbody>
+</table></div>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">void</span> <a name="idp7665232-bb"></a><span class="identifier">unload</span><span class="special">(</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p>Unloads a shared library. If library was loaded multiple times by different instances, the actual DLL/DSO won't be unloaded until there is at least one instance that references the DLL/DSO.</p>
+<p>
+
+</p>
+<p>
+ </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">bool</span> <a name="idp7667520-bb"></a><span class="identifier">is_loaded</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p>Check if an library is loaded.</p>
+<p>
+
+</p>
+<p>
+ </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">bool</span> <a name="idp7669648-bb"></a><span class="keyword">operator</span><span class="special">!</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p>Check if an library is not loaded.</p>
+<p>
+
+</p>
+<p>
+ </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">explicit</span> <a name="idp7671776-bb"></a><span class="keyword">operator</span> <span class="keyword">bool</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p>Check if an library is loaded.</p>
+<p>
+
+</p>
+<p>
+ </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">bool</span> <a name="idp7674176-bb"></a><span class="identifier">has</span><span class="special">(</span><span class="keyword">const</span> <span class="keyword">char</span> <span class="special">*</span> symbol_name<span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p>Search for a given symbol on loaded library. Works for all symbols, including alias names.</p>
+<p>
+
+
+</p>
+<p>
+ </p>
+<div class="variablelist"><table border="0">
+<col align="left" valign="top">
+<tbody><tr>
+<td><p><span class="term">Parameters:</span></p></td>
+<td><div class="variablelist"><table border="0">
+<col align="left" valign="top">
+<tbody><tr>
+<td><p><span class="term"><code class="computeroutput">symbol_name</code></span></p></td>
+<td><p>Null-terminated symbol name. Can handle std::string, char*, const char*. </p></td>
+</tr></tbody>
+</table></div></td>
+</tr></tbody>
+</table></div>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">bool</span> <a name="idp7677536-bb"></a><span class="identifier">has</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="special">&amp;</span> symbol_name<span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts. </p>
+<p>
+ </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><a class="link" href="smart_library.html" title="Class smart_library">smart_library</a> <span class="special">&amp;</span> <a name="idp7680176-bb"></a><span class="identifier">assign</span><span class="special">(</span><span class="keyword">const</span> <a class="link" href="smart_library.html" title="Class smart_library">smart_library</a> <span class="special">&amp;</span> lib<span class="special">)</span><span class="special">;</span></pre>
+<p>Makes *this share the same shared object as lib. If *this is loaded, then unloads it.</p>
+<p>
+
+
+</p>
+<p>
+ </p>
+<div class="variablelist"><table border="0">
+<col align="left" valign="top">
+<tbody><tr>
+<td><p><span class="term">Parameters:</span></p></td>
+<td><div class="variablelist"><table border="0">
+<col align="left" valign="top">
+<tbody><tr>
+<td><p><span class="term"><code class="computeroutput">lib</code></span></p></td>
+<td><p>A library instance to assign from. </p></td>
+</tr></tbody>
+</table></div></td>
+</tr></tbody>
+</table></div>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">void</span> <a name="idp7683936-bb"></a><span class="identifier">swap</span><span class="special">(</span><a class="link" href="smart_library.html" title="Class smart_library">smart_library</a> <span class="special">&amp;</span> rhs<span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p>Swaps two libraries. Does not invalidate existing symbols and functions loaded from libraries.</p>
+<p>
+
+</p>
+<p>
+ </p>
+<div class="variablelist"><table border="0">
+<col align="left" valign="top">
+<tbody><tr>
+<td><p><span class="term">Parameters:</span></p></td>
+<td><div class="variablelist"><table border="0">
+<col align="left" valign="top">
+<tbody><tr>
+<td><p><span class="term"><code class="computeroutput">rhs</code></span></p></td>
+<td><p>Library to swap with. </p></td>
+</tr></tbody>
+</table></div></td>
+</tr></tbody>
+</table></div>
+</li>
+</ol></div>
+</div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2014 Renato Tegon Forti, Antony Polukhin<br>Copyright &#169; 2015, 2016 Antony Polukhin<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../load_mode/type.html"><img src="http://www.boost.org/doc/libs/1_60_0/doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../../boost_dll/reference.html#header.boost.dll.smart_library_hpp"><img src="http://www.boost.org/doc/libs/1_60_0/doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="http://www.boost.org/doc/libs/1_60_0/doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../import.html"><img src="http://www.boost.org/doc/libs/1_60_0/doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

@@ -21,7 +21,7 @@
   * [Data models](Scalability/DataModels.md)
   * [Limitations](Scalability/Limitations.md)
 #
-* [Data model & modeling](DataModeling/README.md)
+* [Data models & modeling](DataModeling/README.md)
 # * [Collections](FirstSteps/CollectionsAndDocuments.md) #TODO
   * [Concepts](DataModeling/Concepts.md)
   * [Databases](DataModeling/Databases/README.md)

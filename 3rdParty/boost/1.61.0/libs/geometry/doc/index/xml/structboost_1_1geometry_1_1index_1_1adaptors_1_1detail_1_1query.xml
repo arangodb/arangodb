@@ -1,0 +1,54 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="structboost_1_1geometry_1_1index_1_1adaptors_1_1detail_1_1query" kind="struct" prot="public">
+    <compoundname>boost::geometry::index::adaptors::detail::query</compoundname>
+    <templateparamlist>
+      <param>
+        <type>typename Predicates</type>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="structboost_1_1geometry_1_1index_1_1adaptors_1_1detail_1_1query_1a9c1b7faa9516e0a1e357adf1885b32c7" prot="public" static="no" mutable="no">
+        <type>Predicates const &amp;</type>
+        <definition>Predicates const&amp; boost::geometry::index::adaptors::detail::query&lt; Predicates &gt;::predicates</definition>
+        <argsstring></argsstring>
+        <name>predicates</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/adaptors/query.hpp" line="56" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/adaptors/query.hpp" bodystart="56" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="structboost_1_1geometry_1_1index_1_1adaptors_1_1detail_1_1query_1a505dfc58abfee39836e698a5289fa46a" prot="public" static="no" const="no" explicit="yes" inline="yes" virt="non-virtual">
+        <type></type>
+        <definition>boost::geometry::index::adaptors::detail::query&lt; Predicates &gt;::query</definition>
+        <argsstring>(Predicates const &amp;pred)</argsstring>
+        <name>query</name>
+        <param>
+          <type>Predicates const &amp;</type>
+          <declname>pred</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/adaptors/query.hpp" line="54" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/adaptors/query.hpp" bodystart="52" bodyend="54"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/index/adaptors/query.hpp" line="51" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/adaptors/query.hpp" bodystart="50" bodyend="57"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1index_1_1adaptors_1_1detail_1_1query_1a9c1b7faa9516e0a1e357adf1885b32c7" prot="public" virt="non-virtual"><scope>boost::geometry::index::adaptors::detail::query</scope><name>predicates</name></member>
+      <member refid="structboost_1_1geometry_1_1index_1_1adaptors_1_1detail_1_1query_1a505dfc58abfee39836e698a5289fa46a" prot="public" virt="non-virtual"><scope>boost::geometry::index::adaptors::detail::query</scope><name>query</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

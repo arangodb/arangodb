@@ -1,0 +1,117 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Scoped Threads</title>
+<link rel="stylesheet" href="../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../index.html" title="Chapter&#160;1.&#160;Thread 4.7.0">
+<link rel="up" href="../index.html" title="Chapter&#160;1.&#160;Thread 4.7.0">
+<link rel="prev" href="thread_management/threadgroup.html" title="Class thread_group EXTENSION">
+<link rel="next" href="ScopedThreads/motivation.html" title="Motivation">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="thread_management/threadgroup.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="ScopedThreads/motivation.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="thread.ScopedThreads"></a><a class="link" href="ScopedThreads.html" title="Scoped Threads">Scoped Threads</a>
+</h2></div></div></div>
+<div class="toc"><dl>
+<dt><span class="section"><a href="ScopedThreads/motivation.html">Motivation</a></span></dt>
+<dt><span class="section"><a href="ScopedThreads/tutorial.html">Tutorial</a></span></dt>
+<dt><span class="section"><a href="ScopedThreads/thread_functors.html">Free Thread Functors</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="ScopedThreads/thread_functors.html#thread.ScopedThreads.thread_functors.detach">Functor
+        <code class="computeroutput"><span class="identifier">detach</span></code></a></span></dt>
+<dt><span class="section"><a href="ScopedThreads/thread_functors.html#thread.ScopedThreads.thread_functors.join_if_joinable">Functor
+        <code class="computeroutput"><span class="identifier">join_if_joinable</span></code></a></span></dt>
+<dt><span class="section"><a href="ScopedThreads/thread_functors.html#thread.ScopedThreads.thread_functors.interrupt_and_join_if_joinable">Functor
+        <code class="computeroutput"><span class="identifier">interrupt_and_join_if_joinable</span></code></a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="ScopedThreads/strict_scoped_thread.html">Class <code class="computeroutput"><span class="identifier">strict_scoped_thread</span></code></a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="ScopedThreads/strict_scoped_thread.html#thread.ScopedThreads.strict_scoped_thread.default_constructor">Constructor
+        from a <a class="link" href="../thread_management/thread.html" title="Class thread"><code class="computeroutput"><span class="identifier">thread</span></code></a></a></span></dt>
+<dt><span class="section"><a href="ScopedThreads/strict_scoped_thread.html#thread.ScopedThreads.strict_scoped_thread.call_constructor">Move
+        Constructor from a Callable</a></span></dt>
+<dt><span class="section"><a href="ScopedThreads/strict_scoped_thread.html#thread.ScopedThreads.strict_scoped_thread.destructor">Destructor</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="ScopedThreads/scoped_thread.html">Class <code class="computeroutput"><span class="identifier">scoped_thread</span></code></a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="ScopedThreads/scoped_thread.html#thread.ScopedThreads.scoped_thread.default_constructor">Default
+        Constructor</a></span></dt>
+<dt><span class="section"><a href="ScopedThreads/scoped_thread.html#thread.ScopedThreads.scoped_thread.move_constructor">Move
+        Constructor</a></span></dt>
+<dt><span class="section"><a href="ScopedThreads/scoped_thread.html#thread.ScopedThreads.scoped_thread.move_assignment">Move
+        assignment operator</a></span></dt>
+<dt><span class="section"><a href="ScopedThreads/scoped_thread.html#thread.ScopedThreads.scoped_thread.thread_constructor">Move
+        Constructor from a <a class="link" href="../thread_management/thread.html" title="Class thread"><code class="computeroutput"><span class="identifier">thread</span></code></a></a></span></dt>
+<dt><span class="section"><a href="ScopedThreads/scoped_thread.html#thread.ScopedThreads.scoped_thread.call_constructor">Move
+        Constructor from a Callable</a></span></dt>
+<dt><span class="section"><a href="ScopedThreads/scoped_thread.html#thread.ScopedThreads.scoped_thread.destructor">Destructor</a></span></dt>
+<dt><span class="section"><a href="ScopedThreads/scoped_thread.html#thread.ScopedThreads.scoped_thread.joinable">Member
+        function <code class="computeroutput"><span class="identifier">joinable</span><span class="special">()</span></code></a></span></dt>
+<dt><span class="section"><a href="ScopedThreads/scoped_thread.html#thread.ScopedThreads.scoped_thread.join">Member function
+        <code class="computeroutput"><span class="identifier">join</span><span class="special">()</span></code></a></span></dt>
+<dt><span class="section"><a href="ScopedThreads/scoped_thread.html#thread.ScopedThreads.scoped_thread.try_join_for">Member
+        function <code class="computeroutput"><span class="identifier">try_join_for</span><span class="special">()</span></code></a></span></dt>
+<dt><span class="section"><a href="ScopedThreads/scoped_thread.html#thread.ScopedThreads.scoped_thread.try_join_until">Member
+        function <code class="computeroutput"><span class="identifier">try_join_until</span><span class="special">()</span></code></a></span></dt>
+<dt><span class="section"><a href="ScopedThreads/scoped_thread.html#thread.ScopedThreads.scoped_thread.detach">Member function
+        <code class="computeroutput"><span class="identifier">detach</span><span class="special">()</span></code></a></span></dt>
+<dt><span class="section"><a href="ScopedThreads/scoped_thread.html#thread.ScopedThreads.scoped_thread.get_id">Member function
+        <code class="computeroutput"><span class="identifier">get_id</span><span class="special">()</span></code></a></span></dt>
+<dt><span class="section"><a href="ScopedThreads/scoped_thread.html#thread.ScopedThreads.scoped_thread.interrupt">Member
+        function <code class="computeroutput"><span class="identifier">interrupt</span><span class="special">()</span></code></a></span></dt>
+<dt><span class="section"><a href="ScopedThreads/scoped_thread.html#thread.ScopedThreads.scoped_thread.hardware_concurrency">Static
+        member function <code class="computeroutput"><span class="identifier">hardware_concurrency</span><span class="special">()</span></code></a></span></dt>
+<dt><span class="section"><a href="ScopedThreads/scoped_thread.html#thread.ScopedThreads.scoped_thread.physical_concurrency">Static
+        member function <code class="computeroutput"><span class="identifier">physical_concurrency</span><span class="special">()</span></code></a></span></dt>
+<dt><span class="section"><a href="ScopedThreads/scoped_thread.html#thread.ScopedThreads.scoped_thread.nativehandle">Member
+        function <code class="computeroutput"><span class="identifier">native_handle</span><span class="special">()</span></code></a></span></dt>
+<dt><span class="section"><a href="ScopedThreads/scoped_thread.html#thread.ScopedThreads.scoped_thread.swap">Member function
+        <code class="computeroutput"><span class="identifier">swap</span><span class="special">()</span></code></a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="ScopedThreads/non_member_swap.html">Non-member function
+      <code class="computeroutput"><span class="identifier">swap</span><span class="special">(</span><span class="identifier">scoped_thread</span><span class="special">&amp;,</span><span class="identifier">scoped_thread</span><span class="special">&amp;)</span></code></a></span></dt>
+</dl></div>
+<h4>
+<a name="thread.ScopedThreads.h0"></a>
+      <span><a name="thread.ScopedThreads.synopsis"></a></span><a class="link" href="ScopedThreads.html#thread.ScopedThreads.synopsis">Synopsis</a>
+    </h4>
+<pre class="programlisting"><span class="comment">//#include &lt;boost/thread/scoped_thread.hpp&gt;</span>
+
+<span class="keyword">struct</span> <span class="identifier">detach</span><span class="special">;</span>
+<span class="keyword">struct</span> <span class="identifier">join_if_joinable</span><span class="special">;</span>
+<span class="keyword">struct</span> <span class="identifier">interrupt_and_join_if_joinable</span><span class="special">;</span>
+<span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">CallableThread</span> <span class="special">=</span> <span class="identifier">join_if_joinable</span><span class="special">&gt;</span>
+<span class="keyword">class</span> <span class="identifier">strict_scoped_thread</span><span class="special">;</span>
+<span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">CallableThread</span> <span class="special">=</span> <span class="identifier">join_if_joinable</span><span class="special">&gt;</span>
+<span class="keyword">class</span> <span class="identifier">scoped_thread</span><span class="special">;</span>
+<span class="keyword">void</span> <span class="identifier">swap</span><span class="special">(</span><span class="identifier">scoped_thread</span><span class="special">&amp;</span> <span class="identifier">lhs</span><span class="special">,</span><span class="identifier">scoped_thread</span><span class="special">&amp;</span> <span class="identifier">rhs</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+</pre>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2007 -11 Anthony Williams<br>Copyright &#169; 2011 -15 Vicente J. Botet Escriba<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="thread_management/threadgroup.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="ScopedThreads/motivation.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

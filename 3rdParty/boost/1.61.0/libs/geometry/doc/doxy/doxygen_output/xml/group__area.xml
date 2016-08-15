@@ -1,0 +1,125 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="group__area" kind="group">
+    <compoundname>area</compoundname>
+    <title>area: calculate area of a Geometry</title>
+    <innerclass refid="classboost_1_1geometry_1_1concept_1_1_area_strategy" prot="public">boost::geometry::concept::AreaStrategy</innerclass>
+    <innerclass refid="structboost_1_1geometry_1_1default__area__result" prot="public">boost::geometry::default_area_result</innerclass>
+    <innerclass refid="structboost_1_1geometry_1_1strategy_1_1area_1_1services_1_1default__strategy" prot="public">boost::geometry::strategy::area::services::default_strategy</innerclass>
+      <sectiondef kind="func">
+      <memberdef kind="function" id="group__area_1gaf7a1c34467f74f290d0b090adb27db62" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Geometry</type>
+          </param>
+        </templateparamlist>
+        <type>default_area_result&lt; Geometry &gt;::type</type>
+        <definition>default_area_result&lt;Geometry&gt;::type boost::geometry::area</definition>
+        <argsstring>(Geometry const &amp;geometry)</argsstring>
+        <name>area</name>
+        <param>
+          <type>Geometry const &amp;</type>
+          <declname>geometry</declname>
+        </param>
+        <briefdescription>
+<para>Calculates the area of a geometry. </para>        </briefdescription>
+        <detaileddescription>
+<para>The free function area calculates the area of a geometry. It uses the default strategy, based on the coordinate system of the geometry.</para><para>The area algorithm calculates the surface area of all geometries having a surface, namely box, polygon, ring, multipolygon. The units are the square of the units used for the points defining the surface. If subject geometry is defined in meters, then area is calculated in square meters.</para><para>The area calculation can be done in all three common coordinate systems, Cartesian, Spherical and Geographic as well.</para><para><parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>Geometry</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Any type fulfilling a Geometry Concept </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>geometry</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>A model of the specified concept </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>The calculated \1</para></simplesect>
+ <qbk>[include reference/algorithms/area.qbk]</qbk>   <qbk>[heading Examples]</qbk>   <qbk>[area] [area_output]</qbk>  </para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/area.hpp" line="268" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/area.hpp" bodystart="267" bodyend="283"/>
+      </memberdef>
+      <memberdef kind="function" id="group__area_1ga59861901cb4e4b95a9e9bf82f3b4fa35" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Geometry</type>
+          </param>
+          <param>
+            <type>typename Strategy</type>
+          </param>
+        </templateparamlist>
+        <type>Strategy::return_type</type>
+        <definition>Strategy::return_type boost::geometry::area</definition>
+        <argsstring>(Geometry const &amp;geometry, Strategy const &amp;strategy)</argsstring>
+        <name>area</name>
+        <param>
+          <type>Geometry const &amp;</type>
+          <declname>geometry</declname>
+        </param>
+        <param>
+          <type>Strategy const &amp;</type>
+          <declname>strategy</declname>
+        </param>
+        <briefdescription>
+<para>Calculates the area of a geometry using the specified strategy. </para>        </briefdescription>
+        <detaileddescription>
+<para>The free function area calculates the area of a geometry using the specified strategy. Reasons to specify a strategy include: use another coordinate system for calculations; construct the strategy beforehand (e.g. with the radius of the Earth); select a strategy when there are more than one available for a calculation. <parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>Geometry</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Any type fulfilling a Geometry Concept </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Strategy</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Any type fulfilling a Area Strategy Concept </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>geometry</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>A model of the specified concept </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>strategy</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>The strategy which will be used for area calculations </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>The calculated \1</para></simplesect>
+ <qbk.distinguish>with strategy</qbk.distinguish> </para><para> <qbk>
+[include reference/algorithms/area.qbk]
+
+[heading Example]
+[area_with_strategy]
+[area_with_strategy_output]
+
+[heading Available Strategies]
+\* [link geometry.reference.strategies.strategy_area_surveyor Surveyor (cartesian)]
+\* [link geometry.reference.strategies.strategy_area_huiller Huiller (spherical)]
+</qbk>  </para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/area.hpp" line="312" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/area.hpp" bodystart="310" bodyend="318"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+  </compounddef>
+</doxygen>

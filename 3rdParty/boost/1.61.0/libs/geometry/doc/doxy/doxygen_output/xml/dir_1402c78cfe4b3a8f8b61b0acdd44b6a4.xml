@@ -1,0 +1,14 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="dir_1402c78cfe4b3a8f8b61b0acdd44b6a4" kind="dir">
+    <compoundname>/home/travis/build/boostorg/boost/boost/geometry/strategies/transform/</compoundname>
+    <innerfile refid="inverse__transformer_8hpp">inverse_transformer.hpp</innerfile>
+    <innerfile refid="map__transformer_8hpp">map_transformer.hpp</innerfile>
+    <innerfile refid="matrix__transformers_8hpp">matrix_transformers.hpp</innerfile>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/transform/"/>
+  </compounddef>
+</doxygen>

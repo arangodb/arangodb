@@ -1,0 +1,288 @@
+# Copyright Rene Rivera 2015
+# Distributed under the Boost Software License, Version 1.0.
+# (See accompanying file LICENSE_1_0.txt or copy at
+# http://www.boost.org/LICENSE_1_0.txt)
+
+import path ;
+import project ;
+import modules ;
+import regex ;
+import type ;
+
+# Add a location, i.e. directory, where to search for libraries.
+# The optional 'prefix' indicates which rooted-prefixes the new
+# search dir applies to. The prefix defaults to '/'.
+rule add-location ( dir prefix ? : base-dir ? )
+{
+    process-args ;
+    
+    prefix ?= "/" ;
+    
+    # Dir path of caller to base paths from.
+    caller-module ?= [ CALLER_MODULE ] ;
+    local caller-dir = [ modules.peek $(caller-module) : __file__ ] ;
+    caller-dir = $(caller-dir:D) ;
+    
+    base-dir ?= $(caller-dir) ;
+    
+    .search-path-prefix += $(prefix) ;
+    .search-path.$(prefix) += [ path.root [ path.root $(dir) $(base-dir) ] [ path.pwd ] ] ;
+}
+
+# Declares additional definitions of a modular library target external
+# to the modular library build itself. This makes it possible to externally
+# define modular libraries without modifying the library. The passed in
+# values are added on demand when the named library is first declared.
+rule external (
+    name : sources * : requirements * : default-build * :
+    usage-requirements * )
+{
+    .external.($(name)).sources = $(sources) ;
+    .external.($(name)).requirements = $(requirements) ;
+    .external.($(name)).default-build = $(default-build) ;
+    .external.($(name)).usage-requirements = $(usage-requirements) ;
+}
+
+# Find, and declare, any modular libraries referenced in the target-refs.
+# This will both load the modular libraries, and declare/manufacture
+# the modular libraries as needed.
+rule find ( target-refs + )
+{
+    process-args ;
+    
+    local caller-mod = [ CALLER_MODULE ] ;
+    local caller-dir = [ modules.peek $(caller-mod) : __file__ ] ;
+    caller-dir = $(caller-dir:D) ;
+    caller-dir = [ path.root $(caller-dir) [ path.pwd ] ] ;
+    
+    local result-refs ;
+    for local target-ref in $(target-refs)
+    {
+        result-refs += [ resolve-reference $(target-ref)
+            : $(caller-mod) $(caller-dir) ] ;
+    }
+    
+    return $(result-refs) ;
+}
+
+##############################################################################
+
+local rule resolve-reference ( target-ref : caller-mod caller-dir ? )
+{
+    # ECHO %%% modular.resolve-target-ref $(target-ref) :: $(caller-mod) $(caller-dir) ;
+    if ! $(caller-dir)
+    {
+        caller-dir = [ modules.peek $(caller-mod) : __file__ ] ;
+        caller-dir = $(caller-dir:D) ;
+        caller-dir = [ path.root $(caller-dir) [ path.pwd ] ] ;
+    }
+    local result-ref = $(target-ref) ;
+    local ref = [ MATCH ^(.*)//.* : $(target-ref:G=) ] ;
+    # if ! ( $(ref) in $(.target-refs) )
+    {
+        # .target-refs += $(ref) ;
+        local search-prefix ;
+        local search-sub ;
+        for local prefix in $(.search-path-prefix)
+        {
+            if ! $(search-prefix)
+            {
+                local search-match = [ MATCH ^($(prefix))/(.*)$ : $(ref) ] ;
+                search-prefix = $(search-match[1]) ;
+                search-sub = $(search-match[2]) ;
+            }
+        }
+        
+        if $(search-prefix)
+        {
+            local found = [ path.glob $(.search-path.$(search-prefix)) : $(search-sub) ] ;
+            found = $(found[1]) ;
+            if $(found)
+            {
+                local lib-ref = [ regex.split $(search-sub) / ] ;
+                lib-ref = $(search-prefix)/$(lib-ref[1]) ;
+                local lib-path = [ path.relative-to $(caller-dir) $(found) ] ;
+                define-library $(lib-ref) $(caller-mod) : $(lib-path) ;
+            }
+        }
+    }
+    return $(result-ref) ;
+}
+
+local rule define-library ( name caller-module ? : root )
+{
+    # ECHO ~~~ modular.library $(name) $(caller-module) :: $(root) :: $(depends) ;
+
+    process-args ;
+    
+    # Dir path of caller to base paths from.
+    caller-module ?= [ CALLER_MODULE ] ;
+    local caller-dir = [ modules.peek $(caller-module) : __file__ ] ;
+    caller-dir = $(caller-dir:D) ;
+    
+    # Find the various parts of the library.
+    local lib-dir = [ path.root [ path.root $(root) $(caller-dir) ] [ path.pwd ] ] ;
+    local lib-contents = [ path.glob $(lib-dir) : "include" "build" ] ;
+    lib-contents = $(lib-contents:D=) ;
+    
+    # "include" dir for library..
+    local include-dir ;
+    if "include" in $(lib-contents)
+    {
+        include-dir = $(root)/include ;
+    }
+    
+    # If it has a build dir, i.e. it has targets to build,
+    # we root the project at the build dir to make it easy
+    # to refer to the build targets. This mirrors the regular
+    # Boost organization of the project aliases.
+    if "build" in $(lib-contents)
+    {
+        root = $(root)/build ;
+        build-dir = "." ;
+    }
+    
+    # Shadow target declarations so that we can alter build targets
+    # to work in the standalone modular structure.
+    local lib-location = [ path.root [ path.make $(root) ] $(caller-dir) ] ;
+    local lib-module-name = [ project.module-name $(lib-location) ] ;
+    local modular-rules = [ RULENAMES modular-rules ] ;
+    IMPORT modular-rules : $(modular-rules) : $(lib-module-name) : $(modular-rules) ;
+    
+    # Load/create/declare library project.
+    local lib-module = [ project.find $(root) : $(caller-dir) ] ;
+    if ! $(lib-module)
+    {
+        # If the find was unable to load the project we synthesize it.
+        lib-module = [ project.load $(lib-location) : synthesize ] ;
+    }
+    local lib-target = [ project.target $(lib-module) ] ;
+    if ! [ modules.peek $(lib-module) : __library__ ]
+    {
+        modules.poke $(lib-module) : __library__ : $(name) ;
+        for local type in [ modules.peek type : .types ]
+        {
+            main-rule-name = [ type.type-to-rule-name $(type) ] ;
+            IMPORT modular-rules : main-target-rule : $(lib-module-name) : $(main-rule-name) ;
+        }
+    }
+    
+    # Declare project alternate ID.
+    modules.call-in $(caller-module) : use-project $(name) : $(root) ;
+    
+    # Create a "library" target that has basic usage info if needed.
+    if ! [ $(lib-target).has-alternative-for-target library ]
+    {
+        include-dir = [ path.relative-to $(root) $(include-dir) ] ;
+        
+        project.push-current $(lib-target) ;
+        
+        # Declare the library alias.
+        modules.call-in $(lib-module) : library
+            : # Sources
+            : # Requirements
+            : # Default Build
+            : # Usage Requirements
+              <include>$(include-dir)
+            ;
+        
+        project.pop-current ;
+    }
+}
+
+local rule process-args ( )
+{
+    if ! $(.did-process-args)
+    {
+        .did-process-args = yes ;
+        local argv = [ modules.peek : ARGV ] ;
+        local dirs = [ MATCH ^--modular-search-dir=(.*)$ : $(argv) ] ;
+        for local dir in $(dirs)
+        {
+            add-location $(dir) : [ path.pwd ] ;
+        }
+    }
+}
+
+rule apply-external (
+    mod : field : values * )
+{
+    local result ;
+    local name = [ modules.peek $(mod) : __library__ ] ;
+    values += $(.external.($(name)).$(field)) ;
+    for local value in $(values)
+    {
+        result += [ resolve-reference $(value) : $(mod) ] ;
+    }
+    return $(result) ;
+}
+
+module modular-rules
+{
+    import type ;
+    import targets ;
+    import builtin ;
+    import alias ;
+    
+    # Avoids any form of installation for Boost modules.
+    rule boost-install ( libraries * ) { }
+    
+    # Generic typed target rule to pre-process main target
+    # declarations to make them work within the standalone
+    # modular structure.
+    rule main-target-rule (
+        name : sources * : requirements * : default-build * :
+        usage-requirements * )
+    {
+        local mod = [ CALLER_MODULE ] ;
+        
+        # ECHO @@@ [[$(mod)]] modular-rules.main-target-rule $(name) :: $(sources) :: $(requirements) :: $(default-build) :: $(usage-requirements) ;
+        
+        # First discover the required target type based on the exact alias used to
+        # invoke this rule.
+        local bt = [ BACKTRACE 1 ] ;
+        local rulename = $(bt[4]) ;
+        local target-type = [ type.type-from-rule-name $(rulename) ] ;
+        return [ targets.create-typed-target $(target-type) : [ project.current ] :
+            $(name) : $(sources) : $(requirements) : $(default-build) :
+            $(usage-requirements) ] ;
+    }
+    
+    rule lib ( names + : sources * : requirements * : default-build * :
+        usage-requirements * )
+    {
+        local mod = [ CALLER_MODULE ] ;
+        requirements += <use>library ;
+        usage-requirements += <use>library ;
+        
+        # ECHO @@@ [[$(mod)]] modular-rules.lib $(names) :: $(sources) :: $(requirements) :: $(default-build) :: $(usage-requirements) ;
+        return [ builtin.lib $(names) : $(sources) : $(requirements) : $(default-build) : $(usage-requirements) ] ;
+    }
+    
+    rule alias ( name : sources * : requirements * : default-build * :
+        usage-requirements * )
+    {
+        local mod = [ CALLER_MODULE ] ;
+        
+        # ECHO @@@ [[$(mod)]] modular-rules.alias $(name) :: $(sources) :: $(requirements) :: $(default-build) :: $(usage-requirements) ;
+        return [ alias.alias $(name) : $(sources) : $(requirements) : $(default-build) : $(usage-requirements) ] ;
+    }
+    
+    rule library ( name ? : sources * : requirements * : default-build * :
+        usage-requirements * )
+    {
+        import modular ;
+        
+        local mod = [ CALLER_MODULE ] ;
+        sources = [ modular.apply-external $(mod) : sources : $(sources) ] ;
+        requirements = [ modular.apply-external $(mod) : requirements : $(requirements) ] ;
+        default-build = [ modular.apply-external $(mod) : default-build : $(default-build) ] ;
+        usage-requirements = [ modular.apply-external $(mod) : usage-requirements : $(usage-requirements) ] ;
+        
+        name ?= library ;
+        
+        # ECHO @@@ [[$(mod)]] modular-rules.library $(name) :: $(sources) :: $(requirements) :: $(default-build) :: $(usage-requirements) ;
+        return [ alias.alias $(name) : $(sources) : $(requirements) : $(default-build) : $(usage-requirements) ] ;
+    }
+}
+

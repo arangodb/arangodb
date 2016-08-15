@@ -1,0 +1,103 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="classboost_1_1geometry_1_1strategy_1_1centroid_1_1bashein__detmer_1_1sums" kind="class" prot="private">
+    <compoundname>boost::geometry::strategy::centroid::bashein_detmer::sums</compoundname>
+      <sectiondef kind="friend">
+      <memberdef kind="friend" id="classboost_1_1geometry_1_1strategy_1_1centroid_1_1bashein__detmer_1_1sums_1ae2c9ea8bada321537d9166fe487af506" prot="private" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>friend class</type>
+        <definition>friend class bashein_detmer</definition>
+        <argsstring></argsstring>
+        <name>bashein_detmer</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/centroid_bashein_detmer.hpp" line="153" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/centroid_bashein_detmer.hpp" bodystart="153" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="private-attrib">
+      <memberdef kind="variable" id="classboost_1_1geometry_1_1strategy_1_1centroid_1_1bashein__detmer_1_1sums_1ae99e064614a6d48cbd60c16d1272c520" prot="private" static="no" mutable="no">
+        <type>std::size_t</type>
+        <definition>std::size_t boost::geometry::strategy::centroid::bashein_detmer&lt; Point, PointOfSegment, CalculationType &gt;::sums::count</definition>
+        <argsstring></argsstring>
+        <name>count</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/centroid_bashein_detmer.hpp" line="154" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/centroid_bashein_detmer.hpp" bodystart="154" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classboost_1_1geometry_1_1strategy_1_1centroid_1_1bashein__detmer_1_1sums_1ac802a62d2819f48aa0e50ee46e40ffba" prot="private" static="no" mutable="no">
+        <type>calculation_type</type>
+        <definition>calculation_type boost::geometry::strategy::centroid::bashein_detmer&lt; Point, PointOfSegment, CalculationType &gt;::sums::sum_a2</definition>
+        <argsstring></argsstring>
+        <name>sum_a2</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/centroid_bashein_detmer.hpp" line="155" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/centroid_bashein_detmer.hpp" bodystart="155" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classboost_1_1geometry_1_1strategy_1_1centroid_1_1bashein__detmer_1_1sums_1a3838b1588c3bd4cadb0c45ab15828d6c" prot="private" static="no" mutable="no">
+        <type>calculation_type</type>
+        <definition>calculation_type boost::geometry::strategy::centroid::bashein_detmer&lt; Point, PointOfSegment, CalculationType &gt;::sums::sum_x</definition>
+        <argsstring></argsstring>
+        <name>sum_x</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/centroid_bashein_detmer.hpp" line="156" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/centroid_bashein_detmer.hpp" bodystart="156" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classboost_1_1geometry_1_1strategy_1_1centroid_1_1bashein__detmer_1_1sums_1a4fdef61715bde5c60bf4bf3804955dd0" prot="private" static="no" mutable="no">
+        <type>calculation_type</type>
+        <definition>calculation_type boost::geometry::strategy::centroid::bashein_detmer&lt; Point, PointOfSegment, CalculationType &gt;::sums::sum_y</definition>
+        <argsstring></argsstring>
+        <name>sum_y</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/centroid_bashein_detmer.hpp" line="157" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/centroid_bashein_detmer.hpp" bodystart="157" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="classboost_1_1geometry_1_1strategy_1_1centroid_1_1bashein__detmer_1_1sums_1a112813a1e10e4e1f2fc0b6c6d762fb08" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type></type>
+        <definition>boost::geometry::strategy::centroid::bashein_detmer&lt; Point, PointOfSegment, CalculationType &gt;::sums::sums</definition>
+        <argsstring>()</argsstring>
+        <name>sums</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/centroid_bashein_detmer.hpp" line="165" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/centroid_bashein_detmer.hpp" bodystart="160" bodyend="165"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+<para>subclass to keep state </para>    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/centroid_bashein_detmer.hpp" line="152" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/centroid_bashein_detmer.hpp" bodystart="151" bodyend="166"/>
+    <listofallmembers>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1centroid_1_1bashein__detmer_1_1sums_1ae2c9ea8bada321537d9166fe487af506" prot="private" virt="non-virtual"><scope>boost::geometry::strategy::centroid::bashein_detmer::sums</scope><name>bashein_detmer</name></member>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1centroid_1_1bashein__detmer_1_1sums_1ae99e064614a6d48cbd60c16d1272c520" prot="private" virt="non-virtual"><scope>boost::geometry::strategy::centroid::bashein_detmer::sums</scope><name>count</name></member>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1centroid_1_1bashein__detmer_1_1sums_1ac802a62d2819f48aa0e50ee46e40ffba" prot="private" virt="non-virtual"><scope>boost::geometry::strategy::centroid::bashein_detmer::sums</scope><name>sum_a2</name></member>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1centroid_1_1bashein__detmer_1_1sums_1a3838b1588c3bd4cadb0c45ab15828d6c" prot="private" virt="non-virtual"><scope>boost::geometry::strategy::centroid::bashein_detmer::sums</scope><name>sum_x</name></member>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1centroid_1_1bashein__detmer_1_1sums_1a4fdef61715bde5c60bf4bf3804955dd0" prot="private" virt="non-virtual"><scope>boost::geometry::strategy::centroid::bashein_detmer::sums</scope><name>sum_y</name></member>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1centroid_1_1bashein__detmer_1_1sums_1a112813a1e10e4e1f2fc0b6c6d762fb08" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::centroid::bashein_detmer::sums</scope><name>sums</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

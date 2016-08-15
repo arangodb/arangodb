@@ -1,0 +1,68 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Visual C++ define</title>
+<link rel="stylesheet" href="../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../index.html" title="Chapter&#160;1.&#160;The Variadic Macro Data Library 1.9">
+<link rel="up" href="../index.html" title="Chapter&#160;1.&#160;The Variadic Macro Data Library 1.9">
+<link rel="prev" href="vmd_vmacros.html" title="Using variadic macros">
+<link rel="next" href="vmd_detail.html" title="Functional groups">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="vmd_vmacros.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="vmd_detail.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="variadic_macro_data.vmd_vc"></a><a class="link" href="vmd_vc.html" title="Visual C++ define">Visual C++ define</a>
+</h2></div></div></div>
+<p>
+      Microsoft's Visual C++ compiler, abbreviated VC++, is a very popular compiler
+      but does not implement the standard C++ preprocessor correctly in a number
+      of respects. Because of this the programmer using the VMD needs to occasionally
+      do things differently when VC++ is being used. These "quirks" of
+      VC++ have been smoothed over as much as possible in the VMD library, but are
+      mentioned in further topics and occasionally must be addressed by the programmer
+      using VMD.
+    </p>
+<p>
+      The VMD has a macro that indicates when VC++ is the compiler being used. The
+      macro is an object-like macro called BOOST_VMD_MSVC. It is set to 1 when VC++
+      is being used and set to 0 when VC++ is not being used. You can use this macro
+      in your own macro code whenever you include a VMD header file to write code
+      which may need special processing for VC++ as outlined in this documentation.
+      Your macro processing may therefore occasional take the form of:
+    </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">vmd</span><span class="special">/</span><span class="identifier">some_header</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="preprocessor">#if</span> <span class="identifier">BOOST_VMD_MSVC</span>
+
+<span class="preprocessor">#define</span> <span class="identifier">SOME_MACRO</span> <span class="special">...</span> <span class="identifier">code</span> <span class="keyword">for</span> <span class="identifier">VC</span><span class="special">++</span>
+
+<span class="preprocessor">#else</span>
+
+<span class="preprocessor">#define</span> <span class="identifier">SOME_MACRO</span> <span class="special">...</span> <span class="identifier">code</span> <span class="keyword">for</span> <span class="identifier">all</span> <span class="identifier">other</span> <span class="identifier">compilers</span>
+
+<span class="preprocessor">#endif</span>
+</pre>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2010-2015 Tropic Software East Inc</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="vmd_vmacros.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="vmd_detail.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

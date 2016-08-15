@@ -1,0 +1,739 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Class captured_context</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.75.2">
+<link rel="home" href="../../index.html" title="Chapter&#160;1.&#160;Context">
+<link rel="up" href="../abstract_context.html" title="Context classes">
+<link rel="prev" href="econtext.html" title="Class execution_context">
+<link rel="next" href="stack.html" title="Stack allocation">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="econtext.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../abstract_context.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="stack.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="context.abstract_context.ccontext"></a><a class="link" href="ccontext.html" title="Class captured_context">Class captured_context</a>
+</h3></div></div></div>
+<div class="important"><table border="0" summary="Important">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Important]" src="../../../../../../doc/src/images/important.png"></td>
+<th align="left">Important</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+          <span class="emphasis"><em>captured_context</em></span> requires C++11!
+        </p></td></tr>
+</table></div>
+<p>
+        Class <span class="emphasis"><em>captured_context</em></span> encapsulates <span class="emphasis"><em>fcontext_t</em></span>
+        and manages the context' stack (allocation/deallocation).
+      </p>
+<p>
+        <span class="emphasis"><em>captured_context</em></span> allocates the context stack (using
+        its <span class="emphasis"><em>StackAllocator</em></span> argument) and creates a control structure
+        on top of it. This structure controls the life time of the stack. The address
+        of the control structure is stored in the first frame of context' stack (e.g.
+        it can not accessed by instances of <span class="emphasis"><em>captured_context</em></span>
+        directly). In contrast to <span class="emphasis"><em>execution_context</em></span> the ownership
+        of the control structure is not shared A call of<span class="emphasis"><em>captured_context::operator()</em></span>
+        enters the context represented by <code class="computeroutput"><span class="special">*</span><span class="keyword">this</span></code> and invalidates <code class="computeroutput"><span class="special">*</span><span class="keyword">this</span></code>. The context that has been suspended
+        by calling <span class="emphasis"><em>captured_context::operator()</em></span> is passed to
+        the resumed context, e.g. as argument of the context-function if the context
+        was resumed the first time or returned by <span class="emphasis"><em>captured_context::operator()</em></span>.
+        <span class="emphasis"><em>captured_context</em></span> is only move-constructible and move-assignable.
+        If the last reference (<span class="emphasis"><em>captured_context</em></span>) goes out of
+        scope, the control structure is destroyed and the stack gets deallocated
+        via the <span class="emphasis"><em>StackAllocator</em></span>. <span class="emphasis"><em>captured_context</em></span>
+        maintains a static, thread-local pointer (smart pointer), accessed by <span class="emphasis"><em>execution_context::current()</em></span>,
+        pointing to the active context. On each context switch the static, thread-local
+        pointer is updated. This makes the context switch a little bit slower, but
+        enables faster context destruction (stack unwinding) compared to <span class="emphasis"><em>captured_context</em></span>.
+      </p>
+<p>
+        <span class="emphasis"><em>captured_context</em></span> expects a function/functor with signature
+        <code class="computeroutput"><span class="identifier">captured_context</span><span class="special">(</span>
+        <span class="identifier">captured_context</span> <span class="identifier">ctx</span><span class="special">,</span> <span class="keyword">void</span> <span class="special">*</span>
+        <span class="identifier">vp</span><span class="special">)</span></code>.
+        The parameter <code class="computeroutput"><span class="identifier">ctx</span></code> represents
+        the context from which this context was resumed (e.g. that has called <span class="emphasis"><em>captured_context::operator()</em></span>
+        on <code class="computeroutput"><span class="special">*</span><span class="keyword">this</span></code>)
+        and <code class="computeroutput"><span class="identifier">vp</span></code> is the data passed
+        to <span class="emphasis"><em>captured_context::operator()</em></span>. The function/functor
+        has to return the captured_context that has to be resumed, while this context
+        terminates.
+      </p>
+<div class="important"><table border="0" summary="Important">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Important]" src="../../../../../../doc/src/images/important.png"></td>
+<th align="left">Important</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+          Segemnted stacks are not supported together with <span class="emphasis"><em>captured_context</em></span>.
+        </p></td></tr>
+</table></div>
+<h5>
+<a name="context.abstract_context.ccontext.h0"></a>
+        <span><a name="context.abstract_context.ccontext.usage_of__emphasis_captured_context__emphasis_"></a></span><a class="link" href="ccontext.html#context.abstract_context.ccontext.usage_of__emphasis_captured_context__emphasis_">usage
+        of <span class="emphasis"><em>captured_context</em></span></a>
+      </h5>
+<pre class="programlisting"><span class="comment">/*
+ * grammar:
+ *   P ---&gt; E '\0'
+ *   E ---&gt; T {('+'|'-') T}
+ *   T ---&gt; S {('*'|'/') S}
+ *   S ---&gt; digit | '(' E ')'
+ */</span>
+<span class="keyword">class</span> <span class="identifier">Parser</span><span class="special">{</span>
+    <span class="comment">// implementation omitted; see examples directory</span>
+<span class="special">};</span>
+
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">istringstream</span> <span class="identifier">is</span><span class="special">(</span><span class="string">"1+1"</span><span class="special">);</span>
+<span class="keyword">bool</span> <span class="identifier">done</span><span class="special">=</span><span class="keyword">false</span><span class="special">;</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">exception_ptr</span> <span class="identifier">except</span><span class="special">;</span>
+
+<span class="comment">// execute parser in new execution context</span>
+<span class="identifier">boost</span><span class="special">::</span><span class="identifier">context</span><span class="special">::</span><span class="identifier">captured_context</span> <span class="identifier">pctx</span><span class="special">(</span>
+        <span class="special">[&amp;</span><span class="identifier">is</span><span class="special">,&amp;</span><span class="identifier">done</span><span class="special">,&amp;</span><span class="identifier">except</span><span class="special">](</span><span class="identifier">ctx</span><span class="special">::</span><span class="identifier">captured_context</span> <span class="identifier">mctx</span><span class="special">,</span><span class="keyword">void</span><span class="special">*</span> <span class="identifier">ignored</span><span class="special">){</span>
+        <span class="comment">// create parser with callback function</span>
+        <span class="identifier">Parser</span> <span class="identifier">p</span><span class="special">(</span> <span class="identifier">is</span><span class="special">,</span>
+                  <span class="special">[&amp;</span><span class="identifier">mctx</span><span class="special">](</span><span class="keyword">char</span> <span class="identifier">ch</span><span class="special">){</span>
+                        <span class="comment">// resume main execution context</span>
+                        <span class="keyword">auto</span> <span class="identifier">result</span> <span class="special">=</span> <span class="identifier">mctx</span><span class="special">(</span> <span class="special">&amp;</span> <span class="identifier">ch</span><span class="special">);</span>
+                        <span class="identifier">mctx</span> <span class="special">=</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">move</span><span class="special">(</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">get</span><span class="special">&lt;</span><span class="number">0</span><span class="special">&gt;(</span> <span class="identifier">result</span><span class="special">)</span> <span class="special">);</span>
+                <span class="special">});</span>
+            <span class="keyword">try</span> <span class="special">{</span>
+                <span class="comment">// start recursive parsing</span>
+                <span class="identifier">p</span><span class="special">.</span><span class="identifier">run</span><span class="special">();</span>
+            <span class="special">}</span> <span class="keyword">catch</span> <span class="special">(</span> <span class="special">...</span> <span class="special">)</span> <span class="special">{</span>
+                <span class="comment">// store other exceptions in exception-pointer</span>
+                <span class="identifier">except</span> <span class="special">=</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">current_exception</span><span class="special">();</span>
+            <span class="special">}</span>
+            <span class="comment">// set termination flag</span>
+            <span class="identifier">done</span><span class="special">=</span><span class="keyword">true</span><span class="special">;</span>
+            <span class="comment">// resume main execution context</span>
+            <span class="keyword">return</span> <span class="identifier">mctx</span><span class="special">;</span>
+        <span class="special">});</span>
+
+<span class="comment">// user-code pulls parsed data from parser</span>
+<span class="comment">// invert control flow</span>
+<span class="keyword">auto</span> <span class="identifier">result</span> <span class="special">=</span> <span class="identifier">pctx</span><span class="special">();</span>
+<span class="identifier">pctx</span> <span class="special">=</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">move</span><span class="special">(</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">get</span><span class="special">&lt;</span><span class="number">0</span><span class="special">&gt;(</span> <span class="identifier">result</span><span class="special">)</span> <span class="special">);</span>
+<span class="keyword">void</span> <span class="special">*</span> <span class="identifier">vp</span> <span class="special">=</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">get</span><span class="special">&lt;</span><span class="number">1</span><span class="special">&gt;(</span> <span class="identifier">result</span><span class="special">);</span>
+<span class="keyword">if</span> <span class="special">(</span> <span class="identifier">except</span><span class="special">)</span> <span class="special">{</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">rethrow_exception</span><span class="special">(</span> <span class="identifier">except</span><span class="special">);</span>
+<span class="special">}</span>
+<span class="keyword">while</span><span class="special">(</span> <span class="special">!</span> <span class="identifier">done</span><span class="special">)</span> <span class="special">{</span>
+    <span class="identifier">printf</span><span class="special">(</span><span class="string">"Parsed: %c\n"</span><span class="special">,*</span> <span class="keyword">static_cast</span><span class="special">&lt;</span> <span class="keyword">char</span><span class="special">*</span> <span class="special">&gt;(</span> <span class="identifier">vp</span><span class="special">)</span> <span class="special">);</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">tie</span><span class="special">(</span><span class="identifier">pctx</span><span class="special">,</span><span class="identifier">vp</span><span class="special">)</span> <span class="special">=</span> <span class="identifier">pctx</span><span class="special">();</span>
+    <span class="keyword">if</span> <span class="special">(</span> <span class="identifier">except</span><span class="special">)</span> <span class="special">{</span>
+        <span class="identifier">std</span><span class="special">::</span><span class="identifier">rethrow_exception</span><span class="special">(</span> <span class="identifier">except</span><span class="special">);</span>
+    <span class="special">}</span>
+<span class="special">}</span>
+
+<span class="identifier">output</span><span class="special">:</span>
+    <span class="identifier">Parsed</span><span class="special">:</span> <span class="number">1</span>
+    <span class="identifier">Parsed</span><span class="special">:</span> <span class="special">+</span>
+    <span class="identifier">Parsed</span><span class="special">:</span> <span class="number">1</span>
+</pre>
+<p>
+        In this example a recursive descent parser uses a callback to emit a newly
+        passed symbol. Using <span class="emphasis"><em>captured_context</em></span> the control flow
+        can be inverted, e.g. the user-code pulls parsed symbols from the parser
+        - instead to get pushed from the parser (via callback).
+      </p>
+<p>
+        The data (character) is transferred between the two <span class="emphasis"><em>captured_context</em></span>.
+      </p>
+<p>
+        If the code executed by <span class="emphasis"><em>captured_context</em></span> emits an exception,
+        the application is terminated. <span class="emphasis"><em>std::exception_ptr</em></span> can
+        be used to transfer exceptions between different execution contexts.
+      </p>
+<p>
+        Sometimes it is necessary to unwind the stack of an unfinished context to
+        destroy local stack variables so they can release allocated resources (RAII
+        pattern). The user is responsible for this task.
+      </p>
+<h5>
+<a name="context.abstract_context.ccontext.h1"></a>
+        <span><a name="context.abstract_context.ccontext.allocating_control_structures_on_top_of_stack"></a></span><a class="link" href="ccontext.html#context.abstract_context.ccontext.allocating_control_structures_on_top_of_stack">allocating
+        control structures on top of stack</a>
+      </h5>
+<p>
+        Allocating control structures on top of the stack requires to allocated the
+        <span class="emphasis"><em>stack_context</em></span> and create the control structure with
+        placement new before <span class="emphasis"><em>captured_context</em></span> is created.
+      </p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+          The user is responsible for destructing the control structure at the top
+          of the stack.
+        </p></td></tr>
+</table></div>
+<pre class="programlisting"><span class="comment">// stack-allocator used for (de-)allocating stack</span>
+<span class="identifier">fixedsize_stack</span> <span class="identifier">salloc</span><span class="special">(</span> <span class="number">4048</span><span class="special">);</span>
+<span class="comment">// allocate stack space</span>
+<span class="identifier">stack_context</span> <span class="identifier">sctx</span><span class="special">(</span> <span class="identifier">salloc</span><span class="special">.</span><span class="identifier">allocate</span><span class="special">()</span> <span class="special">);</span>
+<span class="comment">// reserve space for control structure on top of the stack</span>
+<span class="keyword">void</span> <span class="special">*</span> <span class="identifier">sp</span> <span class="special">=</span> <span class="keyword">static_cast</span><span class="special">&lt;</span> <span class="keyword">char</span> <span class="special">*</span> <span class="special">&gt;(</span> <span class="identifier">sctx</span><span class="special">.</span><span class="identifier">sp</span><span class="special">)</span> <span class="special">-</span> <span class="keyword">sizeof</span><span class="special">(</span> <span class="identifier">my_control_structure</span><span class="special">);</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">size</span> <span class="special">=</span> <span class="identifier">sctx</span><span class="special">.</span><span class="identifier">size</span> <span class="special">-</span> <span class="keyword">sizeof</span><span class="special">(</span> <span class="identifier">my_control_structure</span><span class="special">);</span>
+<span class="comment">// placement new creates control structure on reserved space</span>
+<span class="identifier">my_control_structure</span> <span class="special">*</span> <span class="identifier">cs</span> <span class="special">=</span> <span class="keyword">new</span> <span class="special">(</span> <span class="identifier">sp</span><span class="special">)</span> <span class="identifier">my_control_structure</span><span class="special">(</span> <span class="identifier">sp</span><span class="special">,</span> <span class="identifier">size</span><span class="special">,</span> <span class="identifier">sctx</span><span class="special">,</span> <span class="identifier">salloc</span><span class="special">);</span>
+<span class="special">...</span>
+<span class="comment">// destructing the control structure</span>
+<span class="identifier">cs</span><span class="special">-&gt;~</span><span class="identifier">my_control_structure</span><span class="special">();</span>
+<span class="special">...</span>
+<span class="keyword">struct</span> <span class="identifier">my_control_structure</span>  <span class="special">{</span>
+    <span class="comment">// captured context</span>
+    <span class="identifier">captured_context</span> <span class="identifier">cctx</span><span class="special">;</span>
+
+    <span class="keyword">template</span><span class="special">&lt;</span> <span class="keyword">typename</span> <span class="identifier">StackAllocator</span> <span class="special">&gt;</span>
+    <span class="identifier">my_control_structure</span><span class="special">(</span> <span class="keyword">void</span> <span class="special">*</span> <span class="identifier">sp</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">size</span><span class="special">,</span> <span class="identifier">stack_context</span> <span class="identifier">sctx</span><span class="special">,</span> <span class="identifier">StackAllocator</span> <span class="identifier">salloc</span><span class="special">)</span> <span class="special">:</span>
+        <span class="comment">// create captured context</span>
+        <span class="identifier">cctx</span><span class="special">(</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">allocator_arg</span><span class="special">,</span> <span class="identifier">preallocated</span><span class="special">(</span> <span class="identifier">sp</span><span class="special">,</span> <span class="identifier">size</span><span class="special">,</span> <span class="identifier">sctx</span><span class="special">),</span> <span class="identifier">salloc</span><span class="special">,</span> <span class="identifier">entry_func</span><span class="special">)</span> <span class="special">{</span>
+    <span class="special">}</span>
+    <span class="special">...</span>
+<span class="special">};</span>
+</pre>
+<h5>
+<a name="context.abstract_context.ccontext.h2"></a>
+        <span><a name="context.abstract_context.ccontext.exception_handling"></a></span><a class="link" href="ccontext.html#context.abstract_context.ccontext.exception_handling">exception
+        handling</a>
+      </h5>
+<p>
+        If the function executed inside a <span class="emphasis"><em>captured_context</em></span> emits
+        ans exception, the application is terminated by calling ['std::terminate().
+        <span class="emphasis"><em>std::exception_ptr</em></span> can be used to transfer exceptions
+        between different execution contexts.
+      </p>
+<h5>
+<a name="context.abstract_context.ccontext.h3"></a>
+        <span><a name="context.abstract_context.ccontext.parameter_passing"></a></span><a class="link" href="ccontext.html#context.abstract_context.ccontext.parameter_passing">parameter
+        passing</a>
+      </h5>
+<p>
+        The void pointer argument passed to <span class="emphasis"><em>captured_context::operator()</em></span>,
+        in one context, is passed as the last argument of the <span class="emphasis"><em>context-function</em></span>
+        if the context is started for the first time. In all following invocations
+        of <span class="emphasis"><em>captured_context::operator()</em></span> the void pointer passed
+        to <span class="emphasis"><em>captured_context::operator()</em></span>, in one context, is
+        returned by <span class="emphasis"><em>captured_context::operator()</em></span> in the other
+        context.
+      </p>
+<pre class="programlisting"><span class="keyword">class</span> <span class="identifier">X</span> <span class="special">{</span>
+<span class="keyword">private</span><span class="special">:</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">exception_ptr</span> <span class="identifier">excptr_</span><span class="special">;</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">context</span><span class="special">::</span><span class="identifier">captured_context</span> <span class="identifier">ctx_</span><span class="special">;</span>
+
+<span class="keyword">public</span><span class="special">:</span>
+    <span class="identifier">X</span><span class="special">()</span> <span class="special">:</span>
+        <span class="identifier">excptr_</span><span class="special">(),</span>
+        <span class="identifier">ctx_</span><span class="special">(</span> <span class="special">[=](</span><span class="identifier">ctx</span><span class="special">::</span><span class="identifier">captured_context</span> <span class="identifier">ctx</span><span class="special">,</span> <span class="keyword">void</span> <span class="special">*</span> <span class="identifier">vp</span><span class="special">)-&gt;</span><span class="identifier">ctx</span><span class="special">::</span><span class="identifier">captured_context</span><span class="special">{</span>
+                    <span class="keyword">try</span> <span class="special">{</span>
+                        <span class="keyword">for</span> <span class="special">(;;)</span> <span class="special">{</span>
+                            <span class="keyword">int</span> <span class="identifier">i</span> <span class="special">=</span> <span class="special">*</span> <span class="keyword">static_cast</span><span class="special">&lt;</span> <span class="keyword">int</span> <span class="special">*</span> <span class="special">&gt;(</span> <span class="identifier">vp</span><span class="special">);</span>
+                            <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="identifier">str</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">lexical_cast</span><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span><span class="special">&gt;(</span><span class="identifier">i</span><span class="special">);</span>
+                            <span class="keyword">auto</span> <span class="identifier">result</span> <span class="special">=</span> <span class="identifier">ctx</span><span class="special">(</span> <span class="special">&amp;</span> <span class="identifier">str</span><span class="special">);</span>
+                            <span class="identifier">ctx</span> <span class="special">=</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">move</span><span class="special">(</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">get</span><span class="special">&lt;</span><span class="number">0</span><span class="special">&gt;(</span> <span class="identifier">result</span><span class="special">)</span> <span class="special">);</span>
+                            <span class="identifier">vp</span> <span class="special">=</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">get</span><span class="special">&lt;</span><span class="number">1</span><span class="special">&gt;(</span> <span class="identifier">result</span><span class="special">);</span>
+                        <span class="special">}</span>
+                    <span class="special">}</span> <span class="keyword">catch</span> <span class="special">(</span> <span class="identifier">ctx</span><span class="special">::</span><span class="identifier">detail</span><span class="special">::</span><span class="identifier">forced_unwind</span> <span class="keyword">const</span><span class="special">&amp;)</span> <span class="special">{</span>
+                        <span class="keyword">throw</span><span class="special">;</span>
+                    <span class="special">}</span> <span class="keyword">catch</span> <span class="special">(...)</span> <span class="special">{</span>
+                        <span class="identifier">excptr_</span><span class="special">=</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">current_exception</span><span class="special">();</span>
+                    <span class="special">}</span>
+                    <span class="keyword">return</span> <span class="identifier">ctx</span><span class="special">;</span>
+              <span class="special">})</span>
+    <span class="special">{}</span>
+
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="keyword">operator</span><span class="special">()(</span> <span class="keyword">int</span> <span class="identifier">i</span><span class="special">)</span> <span class="special">{</span>
+        <span class="keyword">auto</span> <span class="identifier">result</span> <span class="special">=</span> <span class="identifier">ctx_</span><span class="special">(</span> <span class="special">&amp;</span> <span class="identifier">i</span><span class="special">);</span>
+        <span class="identifier">ctx_</span> <span class="special">=</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">move</span><span class="special">(</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">get</span><span class="special">&lt;</span><span class="number">0</span><span class="special">&gt;(</span> <span class="identifier">result</span><span class="special">)</span> <span class="special">);</span>
+        <span class="keyword">void</span> <span class="special">*</span> <span class="identifier">ret</span> <span class="special">=</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">get</span><span class="special">&lt;</span><span class="number">1</span><span class="special">&gt;(</span> <span class="identifier">result</span><span class="special">);</span>
+        <span class="keyword">if</span><span class="special">(</span><span class="identifier">excptr_</span><span class="special">){</span>
+            <span class="identifier">std</span><span class="special">::</span><span class="identifier">rethrow_exception</span><span class="special">(</span><span class="identifier">excptr_</span><span class="special">);</span>
+        <span class="special">}</span>
+        <span class="keyword">return</span> <span class="special">*</span> <span class="keyword">static_cast</span><span class="special">&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="special">*</span> <span class="special">&gt;(</span> <span class="identifier">ret</span><span class="special">);</span>
+    <span class="special">}</span>
+<span class="special">};</span>
+
+<span class="identifier">X</span> <span class="identifier">x</span><span class="special">;</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">x</span><span class="special">(</span> <span class="number">7</span><span class="special">)</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+
+<span class="identifier">output</span><span class="special">:</span>
+<span class="number">7</span>
+</pre>
+<h5>
+<a name="context.abstract_context.ccontext.h4"></a>
+        <span><a name="context.abstract_context.ccontext.class__code__phrase_role__identifier__captured_context__phrase___code_"></a></span><a class="link" href="ccontext.html#context.abstract_context.ccontext.class__code__phrase_role__identifier__captured_context__phrase___code_">Class
+        <code class="computeroutput"><span class="identifier">captured_context</span></code></a>
+      </h5>
+<pre class="programlisting"><span class="keyword">class</span> <span class="identifier">captured_context</span> <span class="special">{</span>
+<span class="keyword">public</span><span class="special">:</span>
+    <span class="keyword">template</span><span class="special">&lt;</span> <span class="keyword">typename</span> <span class="identifier">Fn</span><span class="special">,</span> <span class="keyword">typename</span> <span class="special">...</span> <span class="identifier">Args</span> <span class="special">&gt;</span>
+    <span class="identifier">captured_context</span><span class="special">(</span> <span class="identifier">Fn</span> <span class="special">&amp;&amp;</span> <span class="identifier">fn</span><span class="special">,</span> <span class="identifier">Args</span> <span class="special">&amp;&amp;</span> <span class="special">...</span> <span class="identifier">args</span><span class="special">);</span>
+
+    <span class="keyword">template</span><span class="special">&lt;</span> <span class="keyword">typename</span> <span class="identifier">StackAlloc</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">Fn</span><span class="special">,</span> <span class="keyword">typename</span> <span class="special">...</span> <span class="identifier">Args</span> <span class="special">&gt;</span>
+    <span class="identifier">captured_context</span><span class="special">(</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">allocator_arg_t</span><span class="special">,</span> <span class="identifier">StackAlloc</span> <span class="identifier">salloc</span><span class="special">,</span> <span class="identifier">Fn</span> <span class="special">&amp;&amp;</span> <span class="identifier">fn</span><span class="special">,</span> <span class="identifier">Args</span> <span class="special">&amp;&amp;</span> <span class="special">...</span> <span class="identifier">args</span><span class="special">);</span>
+
+    <span class="keyword">template</span><span class="special">&lt;</span> <span class="keyword">typename</span> <span class="identifier">StackAlloc</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">Fn</span><span class="special">,</span> <span class="keyword">typename</span> <span class="special">...</span> <span class="identifier">Args</span> <span class="special">&gt;</span>
+    <span class="identifier">captured_context</span><span class="special">(</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">allocator_arg_t</span><span class="special">,</span> <span class="identifier">preallocated</span> <span class="identifier">palloc</span><span class="special">,</span> <span class="identifier">StackAlloc</span> <span class="identifier">salloc</span><span class="special">,</span> <span class="identifier">Fn</span> <span class="special">&amp;&amp;</span> <span class="identifier">fn</span><span class="special">,</span> <span class="identifier">Args</span> <span class="special">&amp;&amp;</span> <span class="special">...</span> <span class="identifier">args</span><span class="special">);</span>
+
+    <span class="special">~</span><span class="identifier">captured_context</span><span class="special">();</span>
+
+    <span class="identifier">captured_context</span><span class="special">(</span> <span class="identifier">captured_context</span> <span class="special">&amp;&amp;</span> <span class="identifier">other</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+    <span class="identifier">captured_context</span> <span class="special">&amp;</span> <span class="keyword">operator</span><span class="special">=(</span> <span class="identifier">captured_context</span> <span class="special">&amp;&amp;</span> <span class="identifier">other</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+
+    <span class="identifier">captured_context</span><span class="special">(</span> <span class="identifier">captured_context</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">other</span><span class="special">)</span> <span class="keyword">noexcept</span> <span class="special">=</span> <span class="keyword">delete</span><span class="special">;</span>
+    <span class="identifier">captured_context</span> <span class="special">&amp;</span> <span class="keyword">operator</span><span class="special">=(</span> <span class="identifier">captured_context</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">other</span><span class="special">)</span> <span class="keyword">noexcept</span> <span class="special">=</span> <span class="keyword">delete</span><span class="special">;</span>
+
+    <span class="keyword">explicit</span> <span class="keyword">operator</span> <span class="keyword">bool</span><span class="special">()</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+    <span class="keyword">bool</span> <span class="keyword">operator</span><span class="special">!()</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">tuple</span><span class="special">&lt;</span> <span class="identifier">captured_context</span><span class="special">,</span> <span class="keyword">void</span> <span class="special">*</span> <span class="special">&gt;</span> <span class="keyword">operator</span><span class="special">()(</span> <span class="keyword">void</span> <span class="special">*</span> <span class="identifier">data</span> <span class="special">=</span> <span class="keyword">nullptr</span><span class="special">);</span>
+
+    <span class="keyword">template</span><span class="special">&lt;</span> <span class="keyword">typename</span> <span class="identifier">Fn</span><span class="special">,</span> <span class="keyword">typename</span> <span class="special">...</span> <span class="identifier">Args</span> <span class="special">&gt;</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">tuple</span><span class="special">&lt;</span> <span class="identifier">captured_context</span><span class="special">,</span> <span class="keyword">void</span> <span class="special">*</span> <span class="special">&gt;</span> <span class="keyword">operator</span><span class="special">()(</span> <span class="identifier">exec_ontop_arg_t</span><span class="special">,</span> <span class="identifier">Fn</span> <span class="special">&amp;&amp;</span> <span class="identifier">fn</span><span class="special">,</span> <span class="identifier">Args</span> <span class="special">&amp;&amp;</span> <span class="special">...</span> <span class="identifier">args</span><span class="special">);</span>
+
+    <span class="keyword">template</span><span class="special">&lt;</span> <span class="keyword">typename</span> <span class="identifier">Fn</span><span class="special">,</span> <span class="keyword">typename</span> <span class="special">...</span> <span class="identifier">Args</span> <span class="special">&gt;</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">tuple</span><span class="special">&lt;</span> <span class="identifier">captured_context</span><span class="special">,</span> <span class="keyword">void</span> <span class="special">*</span> <span class="special">&gt;</span> <span class="keyword">operator</span><span class="special">()(</span> <span class="keyword">void</span> <span class="special">*</span> <span class="identifier">data</span><span class="special">,</span> <span class="identifier">exec_ontop_arg_t</span><span class="special">,</span> <span class="identifier">Fn</span> <span class="special">&amp;&amp;</span> <span class="identifier">fn</span><span class="special">,</span> <span class="identifier">Args</span> <span class="special">&amp;&amp;</span> <span class="special">...</span> <span class="identifier">args</span><span class="special">);</span>
+
+    <span class="keyword">bool</span> <span class="keyword">operator</span><span class="special">==(</span> <span class="identifier">captured_context</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">other</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+
+    <span class="keyword">bool</span> <span class="keyword">operator</span><span class="special">!=(</span> <span class="identifier">captured_context</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">other</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+
+    <span class="keyword">bool</span> <span class="keyword">operator</span><span class="special">&lt;(</span> <span class="identifier">captured_context</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">other</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+
+    <span class="keyword">bool</span> <span class="keyword">operator</span><span class="special">&gt;(</span> <span class="identifier">captured_context</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">other</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+
+    <span class="keyword">bool</span> <span class="keyword">operator</span><span class="special">&lt;=(</span> <span class="identifier">captured_context</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">other</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+
+    <span class="keyword">bool</span> <span class="keyword">operator</span><span class="special">&gt;=(</span> <span class="identifier">captured_context</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">other</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+
+    <span class="keyword">template</span><span class="special">&lt;</span> <span class="keyword">typename</span> <span class="identifier">charT</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">traitsT</span> <span class="special">&gt;</span>
+    <span class="keyword">friend</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">basic_ostream</span><span class="special">&lt;</span> <span class="identifier">charT</span><span class="special">,</span> <span class="identifier">traitsT</span> <span class="special">&gt;</span> <span class="special">&amp;</span>
+    <span class="keyword">operator</span><span class="special">&lt;&lt;(</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">basic_ostream</span><span class="special">&lt;</span> <span class="identifier">charT</span><span class="special">,</span> <span class="identifier">traitsT</span> <span class="special">&gt;</span> <span class="special">&amp;</span> <span class="identifier">os</span><span class="special">,</span> <span class="identifier">captured_context</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">other</span><span class="special">);</span>
+<span class="special">};</span>
+</pre>
+<h5>
+<a name="context.abstract_context.ccontext.h5"></a>
+        <span><a name="context.abstract_context.ccontext._code__phrase_role__keyword__template__phrase__phrase_role__special___lt___phrase___phrase_role__identifier__typname__phrase___phrase_role__identifier__fn__phrase__phrase_role__special_____phrase___phrase_role__keyword__typename__phrase___phrase_role__special_______phrase___phrase_role__identifier__args__phrase___phrase_role__special___gt___phrase___phrase_role__identifier__captured_context__phrase__phrase_role__special_____phrase___phrase_role__identifier__fn__phrase___phrase_role__special___amp__amp___phrase___phrase_role__identifier__fn__phrase__phrase_role__special_____phrase___phrase_role__identifier__args__phrase___phrase_role__special___amp__amp___phrase___phrase_role__special_______phrase___phrase_role__identifier__args__phrase__phrase_role__special_____phrase___code_"></a></span><a class="link" href="ccontext.html#context.abstract_context.ccontext._code__phrase_role__keyword__template__phrase__phrase_role__special___lt___phrase___phrase_role__identifier__typname__phrase___phrase_role__identifier__fn__phrase__phrase_role__special_____phrase___phrase_role__keyword__typename__phrase___phrase_role__special_______phrase___phrase_role__identifier__args__phrase___phrase_role__special___gt___phrase___phrase_role__identifier__captured_context__phrase__phrase_role__special_____phrase___phrase_role__identifier__fn__phrase___phrase_role__special___amp__amp___phrase___phrase_role__identifier__fn__phrase__phrase_role__special_____phrase___phrase_role__identifier__args__phrase___phrase_role__special___amp__amp___phrase___phrase_role__special_______phrase___phrase_role__identifier__args__phrase__phrase_role__special_____phrase___code_"><code class="computeroutput"><span class="keyword">template</span><span class="special">&lt;</span> <span class="identifier">typname</span> <span class="identifier">Fn</span><span class="special">,</span> <span class="keyword">typename</span> <span class="special">...</span> <span class="identifier">Args</span> <span class="special">&gt;</span> <span class="identifier">captured_context</span><span class="special">(</span> <span class="identifier">Fn</span> <span class="special">&amp;&amp;</span>
+        <span class="identifier">fn</span><span class="special">,</span> <span class="identifier">Args</span> <span class="special">&amp;&amp;</span>
+        <span class="special">...</span> <span class="identifier">args</span><span class="special">)</span></code></a>
+      </h5>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl>
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+              Creates a new execution context and prepares the context to execute
+              <code class="computeroutput"><span class="identifier">fn</span></code>. <code class="computeroutput"><span class="identifier">fixedsize_stack</span></code>
+              is used as default stack allocator (stack size == fixedsize_stack::traits::default_size().
+            </p></dd>
+</dl>
+</div>
+<h5>
+<a name="context.abstract_context.ccontext.h6"></a>
+        <span><a name="context.abstract_context.ccontext._code__phrase_role__keyword__template__phrase__phrase_role__special___lt___phrase___phrase_role__keyword__typename__phrase___phrase_role__identifier__stackalloc__phrase__phrase_role__special_____phrase___phrase_role__identifier__typname__phrase___phrase_role__identifier__fn__phrase__phrase_role__special_____phrase___phrase_role__keyword__typename__phrase___phrase_role__special_______phrase___phrase_role__identifier__args__phrase___phrase_role__special___gt___phrase___phrase_role__identifier__captured_context__phrase__phrase_role__special_____phrase___phrase_role__identifier__std__phrase__phrase_role__special______phrase__phrase_role__identifier__allocator_arg_t__phrase__phrase_role__special_____phrase___phrase_role__identifier__stackalloc__phrase___phrase_role__identifier__salloc__phrase__phrase_role__special_____phrase___phrase_role__identifier__fn__phrase___phrase_role__special___amp__amp___phrase___phrase_role__identifier__fn__phrase__phrase_role__special_____phrase___phrase_role__identifier__args__phrase___phrase_role__special___amp__amp___phrase___phrase_role__special_______phrase___phrase_role__identifier__args__phrase__phrase_role__special_____phrase___code_"></a></span><a class="link" href="ccontext.html#context.abstract_context.ccontext._code__phrase_role__keyword__template__phrase__phrase_role__special___lt___phrase___phrase_role__keyword__typename__phrase___phrase_role__identifier__stackalloc__phrase__phrase_role__special_____phrase___phrase_role__identifier__typname__phrase___phrase_role__identifier__fn__phrase__phrase_role__special_____phrase___phrase_role__keyword__typename__phrase___phrase_role__special_______phrase___phrase_role__identifier__args__phrase___phrase_role__special___gt___phrase___phrase_role__identifier__captured_context__phrase__phrase_role__special_____phrase___phrase_role__identifier__std__phrase__phrase_role__special______phrase__phrase_role__identifier__allocator_arg_t__phrase__phrase_role__special_____phrase___phrase_role__identifier__stackalloc__phrase___phrase_role__identifier__salloc__phrase__phrase_role__special_____phrase___phrase_role__identifier__fn__phrase___phrase_role__special___amp__amp___phrase___phrase_role__identifier__fn__phrase__phrase_role__special_____phrase___phrase_role__identifier__args__phrase___phrase_role__special___amp__amp___phrase___phrase_role__special_______phrase___phrase_role__identifier__args__phrase__phrase_role__special_____phrase___code_"><code class="computeroutput"><span class="keyword">template</span><span class="special">&lt;</span> <span class="keyword">typename</span> <span class="identifier">StackAlloc</span><span class="special">,</span> <span class="identifier">typname</span> <span class="identifier">Fn</span><span class="special">,</span> <span class="keyword">typename</span>
+        <span class="special">...</span> <span class="identifier">Args</span>
+        <span class="special">&gt;</span> <span class="identifier">captured_context</span><span class="special">(</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">allocator_arg_t</span><span class="special">,</span>
+        <span class="identifier">StackAlloc</span> <span class="identifier">salloc</span><span class="special">,</span> <span class="identifier">Fn</span> <span class="special">&amp;&amp;</span>
+        <span class="identifier">fn</span><span class="special">,</span> <span class="identifier">Args</span> <span class="special">&amp;&amp;</span>
+        <span class="special">...</span> <span class="identifier">args</span><span class="special">)</span></code></a>
+      </h5>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl>
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+              Creates a new execution context and prepares the context to execute
+              <code class="computeroutput"><span class="identifier">fn</span></code>.
+            </p></dd>
+</dl>
+</div>
+<h5>
+<a name="context.abstract_context.ccontext.h7"></a>
+        <span><a name="context.abstract_context.ccontext._code__phrase_role__keyword__template__phrase__phrase_role__special___lt___phrase___phrase_role__keyword__typename__phrase___phrase_role__identifier__stackalloc__phrase__phrase_role__special_____phrase___phrase_role__identifier__typname__phrase___phrase_role__identifier__fn__phrase__phrase_role__special_____phrase___phrase_role__keyword__typename__phrase___phrase_role__special_______phrase___phrase_role__identifier__args__phrase___phrase_role__special___gt___phrase___phrase_role__identifier__captured_context__phrase__phrase_role__special_____phrase___phrase_role__identifier__std__phrase__phrase_role__special______phrase__phrase_role__identifier__allocator_arg_t__phrase__phrase_role__special_____phrase___phrase_role__identifier__preallocated__phrase___phrase_role__identifier__palloc__phrase__phrase_role__special_____phrase___phrase_role__identifier__stackalloc__phrase___phrase_role__identifier__salloc__phrase__phrase_role__special_____phrase___phrase_role__identifier__fn__phrase___phrase_role__special___amp__amp___phrase___phrase_role__identifier__fn__phrase__phrase_role__special_____phrase___phrase_role__identifier__args__phrase___phrase_role__special___amp__amp___phrase___phrase_role__special_______phrase___phrase_role__identifier__args__phrase__phrase_role__special_____phrase___code_"></a></span><a class="link" href="ccontext.html#context.abstract_context.ccontext._code__phrase_role__keyword__template__phrase__phrase_role__special___lt___phrase___phrase_role__keyword__typename__phrase___phrase_role__identifier__stackalloc__phrase__phrase_role__special_____phrase___phrase_role__identifier__typname__phrase___phrase_role__identifier__fn__phrase__phrase_role__special_____phrase___phrase_role__keyword__typename__phrase___phrase_role__special_______phrase___phrase_role__identifier__args__phrase___phrase_role__special___gt___phrase___phrase_role__identifier__captured_context__phrase__phrase_role__special_____phrase___phrase_role__identifier__std__phrase__phrase_role__special______phrase__phrase_role__identifier__allocator_arg_t__phrase__phrase_role__special_____phrase___phrase_role__identifier__preallocated__phrase___phrase_role__identifier__palloc__phrase__phrase_role__special_____phrase___phrase_role__identifier__stackalloc__phrase___phrase_role__identifier__salloc__phrase__phrase_role__special_____phrase___phrase_role__identifier__fn__phrase___phrase_role__special___amp__amp___phrase___phrase_role__identifier__fn__phrase__phrase_role__special_____phrase___phrase_role__identifier__args__phrase___phrase_role__special___amp__amp___phrase___phrase_role__special_______phrase___phrase_role__identifier__args__phrase__phrase_role__special_____phrase___code_"><code class="computeroutput"><span class="keyword">template</span><span class="special">&lt;</span> <span class="keyword">typename</span> <span class="identifier">StackAlloc</span><span class="special">,</span> <span class="identifier">typname</span> <span class="identifier">Fn</span><span class="special">,</span> <span class="keyword">typename</span>
+        <span class="special">...</span> <span class="identifier">Args</span>
+        <span class="special">&gt;</span> <span class="identifier">captured_context</span><span class="special">(</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">allocator_arg_t</span><span class="special">,</span>
+        <span class="identifier">preallocated</span> <span class="identifier">palloc</span><span class="special">,</span> <span class="identifier">StackAlloc</span>
+        <span class="identifier">salloc</span><span class="special">,</span>
+        <span class="identifier">Fn</span> <span class="special">&amp;&amp;</span>
+        <span class="identifier">fn</span><span class="special">,</span> <span class="identifier">Args</span> <span class="special">&amp;&amp;</span>
+        <span class="special">...</span> <span class="identifier">args</span><span class="special">)</span></code></a>
+      </h5>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl>
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+              Creates a new execution context and prepares the context to execute
+              <code class="computeroutput"><span class="identifier">fn</span></code>. Used to store control
+              structures on top of the stack.
+            </p></dd>
+</dl>
+</div>
+<h5>
+<a name="context.abstract_context.ccontext.h8"></a>
+        <span><a name="context.abstract_context.ccontext._code__phrase_role__identifier__captured_context__phrase__phrase_role__special_____phrase___phrase_role__identifier__captured_context__phrase___phrase_role__special___amp__amp___phrase___phrase_role__identifier__other__phrase__phrase_role__special_____phrase___code_"></a></span><a class="link" href="ccontext.html#context.abstract_context.ccontext._code__phrase_role__identifier__captured_context__phrase__phrase_role__special_____phrase___phrase_role__identifier__captured_context__phrase___phrase_role__special___amp__amp___phrase___phrase_role__identifier__other__phrase__phrase_role__special_____phrase___code_"><code class="computeroutput"><span class="identifier">captured_context</span><span class="special">(</span>
+        <span class="identifier">captured_context</span> <span class="special">&amp;&amp;</span>
+        <span class="identifier">other</span><span class="special">)</span></code></a>
+      </h5>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl>
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+              Moves underlying capture record to <code class="computeroutput"><span class="special">*</span><span class="keyword">this</span></code>.
+            </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+              Nothing.
+            </p></dd>
+</dl>
+</div>
+<h5>
+<a name="context.abstract_context.ccontext.h9"></a>
+        <span><a name="context.abstract_context.ccontext._code__phrase_role__identifier__captured_context__phrase___phrase_role__special___amp___phrase___phrase_role__keyword__operator__phrase__phrase_role__special______phrase___phrase_role__identifier__captured_context__phrase___phrase_role__special___amp__amp___phrase___phrase_role__identifier__other__phrase__phrase_role__special_____phrase___code_"></a></span><a class="link" href="ccontext.html#context.abstract_context.ccontext._code__phrase_role__identifier__captured_context__phrase___phrase_role__special___amp___phrase___phrase_role__keyword__operator__phrase__phrase_role__special______phrase___phrase_role__identifier__captured_context__phrase___phrase_role__special___amp__amp___phrase___phrase_role__identifier__other__phrase__phrase_role__special_____phrase___code_"><code class="computeroutput"><span class="identifier">captured_context</span> <span class="special">&amp;</span>
+        <span class="keyword">operator</span><span class="special">=(</span>
+        <span class="identifier">captured_context</span> <span class="special">&amp;&amp;</span>
+        <span class="identifier">other</span><span class="special">)</span></code></a>
+      </h5>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl>
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+              Moves the state of <code class="computeroutput"><span class="identifier">other</span></code>
+              to <code class="computeroutput"><span class="special">*</span><span class="keyword">this</span></code>
+              using move semantics.
+            </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+              Nothing.
+            </p></dd>
+</dl>
+</div>
+<h5>
+<a name="context.abstract_context.ccontext.h10"></a>
+        <span><a name="context.abstract_context.ccontext._code__phrase_role__keyword__explicit__phrase___phrase_role__keyword__operator__phrase___phrase_role__keyword__bool__phrase__phrase_role__special______phrase___phrase_role__keyword__const__phrase___phrase_role__keyword__noexcept__phrase___code_"></a></span><a class="link" href="ccontext.html#context.abstract_context.ccontext._code__phrase_role__keyword__explicit__phrase___phrase_role__keyword__operator__phrase___phrase_role__keyword__bool__phrase__phrase_role__special______phrase___phrase_role__keyword__const__phrase___phrase_role__keyword__noexcept__phrase___code_"><code class="computeroutput"><span class="keyword">explicit</span> <span class="keyword">operator</span>
+        <span class="keyword">bool</span><span class="special">()</span> <span class="keyword">const</span> <span class="keyword">noexcept</span></code></a>
+      </h5>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl>
+<dt><span class="term">Returns:</span></dt>
+<dd><p>
+              <code class="computeroutput"><span class="keyword">true</span></code> if <code class="computeroutput"><span class="special">*</span><span class="keyword">this</span></code>
+              points to a capture record.
+            </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+              Nothing.
+            </p></dd>
+</dl>
+</div>
+<h5>
+<a name="context.abstract_context.ccontext.h11"></a>
+        <span><a name="context.abstract_context.ccontext._code__phrase_role__keyword__bool__phrase___phrase_role__keyword__operator__phrase__phrase_role__special_______phrase___phrase_role__keyword__const__phrase___phrase_role__keyword__noexcept__phrase___code_"></a></span><a class="link" href="ccontext.html#context.abstract_context.ccontext._code__phrase_role__keyword__bool__phrase___phrase_role__keyword__operator__phrase__phrase_role__special_______phrase___phrase_role__keyword__const__phrase___phrase_role__keyword__noexcept__phrase___code_"><code class="computeroutput"><span class="keyword">bool</span> <span class="keyword">operator</span><span class="special">!()</span> <span class="keyword">const</span> <span class="keyword">noexcept</span></code></a>
+      </h5>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl>
+<dt><span class="term">Returns:</span></dt>
+<dd><p>
+              <code class="computeroutput"><span class="keyword">true</span></code> if <code class="computeroutput"><span class="special">*</span><span class="keyword">this</span></code>
+              does not point to a capture record.
+            </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+              Nothing.
+            </p></dd>
+</dl>
+</div>
+<h5>
+<a name="context.abstract_context.ccontext.h12"></a>
+        <span><a name="context.abstract_context.ccontext._code__phrase_role__keyword__void__phrase___phrase_role__special_____phrase___phrase_role__keyword__operator__phrase__phrase_role__special_______phrase___phrase_role__keyword__void__phrase___phrase_role__special_____phrase___phrase_role__identifier__vp__phrase__phrase_role__special_____phrase___code_"></a></span><a class="link" href="ccontext.html#context.abstract_context.ccontext._code__phrase_role__keyword__void__phrase___phrase_role__special_____phrase___phrase_role__keyword__operator__phrase__phrase_role__special_______phrase___phrase_role__keyword__void__phrase___phrase_role__special_____phrase___phrase_role__identifier__vp__phrase__phrase_role__special_____phrase___code_"><code class="computeroutput"><span class="keyword">void</span> <span class="special">*</span> <span class="keyword">operator</span><span class="special">()(</span> <span class="keyword">void</span> <span class="special">*</span> <span class="identifier">vp</span><span class="special">)</span></code></a>
+      </h5>
+<pre class="programlisting"><span class="keyword">void</span> <span class="special">*</span> <span class="keyword">operator</span><span class="special">()(</span> <span class="keyword">void</span> <span class="special">*</span> <span class="identifier">vp</span> <span class="special">=</span> <span class="keyword">nullptr</span><span class="special">);</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span> <span class="keyword">typename</span> <span class="identifier">Fn</span><span class="special">,</span> <span class="keyword">typename</span> <span class="special">...</span> <span class="identifier">Args</span> <span class="special">&gt;</span>
+<span class="keyword">void</span> <span class="special">*</span> <span class="keyword">operator</span><span class="special">()(</span> <span class="identifier">exec_ontop_arg_t</span><span class="special">,</span> <span class="identifier">Fn</span> <span class="special">&amp;&amp;</span> <span class="identifier">fn</span><span class="special">,</span> <span class="identifier">Args</span> <span class="special">&amp;&amp;</span> <span class="special">...</span> <span class="identifier">args</span><span class="special">);</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span> <span class="keyword">typename</span> <span class="identifier">Fn</span><span class="special">,</span> <span class="keyword">typename</span> <span class="special">...</span> <span class="identifier">Args</span> <span class="special">&gt;</span>
+<span class="keyword">void</span> <span class="special">*</span> <span class="keyword">operator</span><span class="special">()(</span> <span class="keyword">void</span> <span class="special">*</span> <span class="identifier">vp</span><span class="special">,</span> <span class="identifier">exec_ontop_arg_t</span><span class="special">,</span> <span class="identifier">Fn</span> <span class="special">&amp;&amp;</span> <span class="identifier">fn</span><span class="special">,</span> <span class="identifier">Args</span> <span class="special">&amp;&amp;</span> <span class="special">...</span> <span class="identifier">args</span><span class="special">);</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl>
+<dt><span class="term">Effects:</span></dt>
+<dd>
+<p>
+              Stores internally the current context data (stack pointer, instruction
+              pointer, and CPU registers) to the current active context and restores
+              the context data from <code class="computeroutput"><span class="special">*</span><span class="keyword">this</span></code>, which implies jumping to <code class="computeroutput"><span class="special">*</span><span class="keyword">this</span></code>'s
+              execution context. The void pointer argument, <code class="computeroutput"><span class="identifier">vp</span></code>,
+              is passed to the current context to be returned by the most recent
+              call to <code class="computeroutput"><span class="identifier">captured_context</span><span class="special">::</span><span class="keyword">operator</span><span class="special">()</span></code> in the same thread. [[Note:
+            </p>
+<p>
+              The behaviour is undefined if <code class="computeroutput"><span class="keyword">operator</span><span class="special">()()</span></code> is called while <code class="computeroutput"><span class="identifier">captured_context</span><span class="special">::</span><span class="identifier">current</span><span class="special">()</span></code> returns <code class="computeroutput"><span class="special">*</span><span class="keyword">this</span></code> (e.g. resuming an already running
+              context). If the top-level context function returns, <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">exit</span><span class="special">()</span></code>
+              is called.
+            </p>
+</dd>
+<dt><span class="term">Returns:</span></dt>
+<dd><p>
+              The void pointer argument passed to the most recent call to <code class="computeroutput"><span class="identifier">captured_context</span><span class="special">::</span><span class="keyword">operator</span><span class="special">()</span></code>,
+              if any.
+            </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+              Nothing.
+            </p></dd>
+</dl>
+</div>
+<h5>
+<a name="context.abstract_context.ccontext.h13"></a>
+        <span><a name="context.abstract_context.ccontext._code__phrase_role__identifier__std__phrase__phrase_role__special______phrase__phrase_role__identifier__tuple__phrase__phrase_role__special___lt___phrase___phrase_role__identifier__captured_context__phrase__phrase_role__special_____phrase___phrase_role__keyword__void__phrase___phrase_role__special___gt___phrase___phrase_role__keyword__operator__phrase__phrase_role__special_______phrase___phrase_role__keyword__void__phrase___phrase_role__special_____phrase___phrase_role__identifier__vp__phrase__phrase_role__special_____phrase___code_"></a></span><a class="link" href="ccontext.html#context.abstract_context.ccontext._code__phrase_role__identifier__std__phrase__phrase_role__special______phrase__phrase_role__identifier__tuple__phrase__phrase_role__special___lt___phrase___phrase_role__identifier__captured_context__phrase__phrase_role__special_____phrase___phrase_role__keyword__void__phrase___phrase_role__special___gt___phrase___phrase_role__keyword__operator__phrase__phrase_role__special_______phrase___phrase_role__keyword__void__phrase___phrase_role__special_____phrase___phrase_role__identifier__vp__phrase__phrase_role__special_____phrase___code_"><code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">tuple</span><span class="special">&lt;</span> <span class="identifier">captured_context</span><span class="special">,</span> <span class="keyword">void</span> <span class="special">&gt;</span>
+        <span class="keyword">operator</span><span class="special">()(</span>
+        <span class="keyword">void</span> <span class="special">*</span> <span class="identifier">vp</span><span class="special">)</span></code></a>
+      </h5>
+<pre class="programlisting"><span class="identifier">std</span><span class="special">::</span><span class="identifier">tuple</span><span class="special">&lt;</span> <span class="identifier">captured_context</span><span class="special">,</span> <span class="keyword">void</span> <span class="special">*</span> <span class="special">&gt;</span> <span class="keyword">operator</span><span class="special">()(</span> <span class="keyword">void</span> <span class="special">*</span> <span class="identifier">data</span> <span class="special">=</span> <span class="keyword">nullptr</span><span class="special">);</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span> <span class="keyword">typename</span> <span class="identifier">Fn</span><span class="special">,</span> <span class="keyword">typename</span> <span class="special">...</span> <span class="identifier">Args</span> <span class="special">&gt;</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">tuple</span><span class="special">&lt;</span> <span class="identifier">captured_context</span><span class="special">,</span> <span class="keyword">void</span> <span class="special">*</span> <span class="special">&gt;</span> <span class="keyword">operator</span><span class="special">()(</span> <span class="identifier">exec_ontop_arg_t</span><span class="special">,</span> <span class="identifier">Fn</span> <span class="special">&amp;&amp;</span> <span class="identifier">fn</span><span class="special">,</span> <span class="identifier">Args</span> <span class="special">&amp;&amp;</span> <span class="special">...</span> <span class="identifier">args</span><span class="special">);</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span> <span class="keyword">typename</span> <span class="identifier">Fn</span><span class="special">,</span> <span class="keyword">typename</span> <span class="special">...</span> <span class="identifier">Args</span> <span class="special">&gt;</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">tuple</span><span class="special">&lt;</span> <span class="identifier">captured_context</span><span class="special">,</span> <span class="keyword">void</span> <span class="special">*</span> <span class="special">&gt;</span> <span class="keyword">operator</span><span class="special">()(</span> <span class="keyword">void</span> <span class="special">*</span> <span class="identifier">data</span><span class="special">,</span> <span class="identifier">exec_ontop_arg_t</span><span class="special">,</span> <span class="identifier">Fn</span> <span class="special">&amp;&amp;</span> <span class="identifier">fn</span><span class="special">,</span> <span class="identifier">Args</span> <span class="special">&amp;&amp;</span> <span class="special">...</span> <span class="identifier">args</span><span class="special">);</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl>
+<dt><span class="term">Effects:</span></dt>
+<dd>
+<p>
+              Stores internally the current context data (stack pointer, instruction
+              pointer, and CPU registers) of the current active context and restores
+              the context data from <code class="computeroutput"><span class="special">*</span><span class="keyword">this</span></code>, which implies jumping to <code class="computeroutput"><span class="special">*</span><span class="keyword">this</span></code>'s
+              context. The void pointer argument, <code class="computeroutput"><span class="identifier">vp</span></code>,
+              is passed to the current context to be returned by the most recent
+              call to <code class="computeroutput"><span class="identifier">captured_context</span><span class="special">::</span><span class="keyword">operator</span><span class="special">()</span></code> in the same thread. <code class="computeroutput"><span class="identifier">fn</span></code> is executed with arguments <code class="computeroutput"><span class="identifier">args</span></code> on top of the stack of <code class="computeroutput"><span class="keyword">this</span></code>. [[Note:
+            </p>
+<p>
+              The behaviour is undefined if <code class="computeroutput"><span class="keyword">operator</span><span class="special">()()</span></code> is called while <code class="computeroutput"><span class="identifier">captured_context</span><span class="special">::</span><span class="identifier">current</span><span class="special">()</span></code> returns <code class="computeroutput"><span class="special">*</span><span class="keyword">this</span></code> (e.g. resuming an already running
+              context). If the top-level context function returns, <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">exit</span><span class="special">()</span></code>
+              is called.
+            </p>
+</dd>
+<dt><span class="term">Returns:</span></dt>
+<dd><p>
+              The tuple of void pointer argument passed to the most recent call to
+              <code class="computeroutput"><span class="identifier">captured_context</span><span class="special">::</span><span class="keyword">operator</span><span class="special">()</span></code>,
+              if any and a captured_context representing the context that has been
+              suspended .
+            </p></dd>
+</dl>
+</div>
+<h5>
+<a name="context.abstract_context.ccontext.h14"></a>
+        <span><a name="context.abstract_context.ccontext._code__phrase_role__keyword__operator__phrase__phrase_role__special______phrase___code_"></a></span><a class="link" href="ccontext.html#context.abstract_context.ccontext._code__phrase_role__keyword__operator__phrase__phrase_role__special______phrase___code_"><code class="computeroutput"><span class="keyword">operator</span><span class="special">==</span></code></a>
+      </h5>
+<pre class="programlisting"><span class="keyword">bool</span> <span class="keyword">operator</span><span class="special">==(</span> <span class="identifier">captured_context</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">other</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl>
+<dt><span class="term">Returns:</span></dt>
+<dd><p>
+              <code class="computeroutput"><span class="keyword">true</span></code> if <code class="computeroutput"><span class="special">*</span><span class="keyword">this</span></code>
+              and <code class="computeroutput"><span class="identifier">other</span></code> represent
+              the same execution context, <code class="computeroutput"><span class="keyword">false</span></code>
+              otherwise.
+            </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+              Nothing.
+            </p></dd>
+</dl>
+</div>
+<h5>
+<a name="context.abstract_context.ccontext.h15"></a>
+        <span><a name="context.abstract_context.ccontext.code_phrase_role_keyword_operat0"></a></span><a class="link" href="ccontext.html#context.abstract_context.ccontext.code_phrase_role_keyword_operat0"><code class="computeroutput"><span class="keyword">operator</span><span class="special">!=</span></code></a>
+      </h5>
+<pre class="programlisting"><span class="keyword">bool</span> <span class="keyword">operator</span><span class="special">!=(</span> <span class="identifier">captured_context</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">other</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl>
+<dt><span class="term">Returns:</span></dt>
+<dd><p>
+              [`! (other == * this)
+            </p></dd>
+</dl>
+</div>
+<p>
+        [[Throws:] [Nothing.]] ]
+      </p>
+<h5>
+<a name="context.abstract_context.ccontext.h16"></a>
+        <span><a name="context.abstract_context.ccontext._code__phrase_role__keyword__operator__phrase__phrase_role__special___lt___phrase___code_"></a></span><a class="link" href="ccontext.html#context.abstract_context.ccontext._code__phrase_role__keyword__operator__phrase__phrase_role__special___lt___phrase___code_"><code class="computeroutput"><span class="keyword">operator</span><span class="special">&lt;</span></code></a>
+      </h5>
+<pre class="programlisting"><span class="keyword">bool</span> <span class="keyword">operator</span><span class="special">&lt;(</span> <span class="identifier">captured_context</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">other</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl>
+<dt><span class="term">Returns:</span></dt>
+<dd><p>
+              <code class="computeroutput"><span class="keyword">true</span></code> if <code class="computeroutput"><span class="special">*</span><span class="keyword">this</span> <span class="special">!=</span> <span class="identifier">other</span></code>
+              is true and the implementation-defined total order of <code class="computeroutput"><span class="identifier">captured_context</span></code> values places <code class="computeroutput"><span class="special">*</span><span class="keyword">this</span></code>
+              before <code class="computeroutput"><span class="identifier">other</span></code>, false
+              otherwise.
+            </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+              Nothing.
+            </p></dd>
+</dl>
+</div>
+<h5>
+<a name="context.abstract_context.ccontext.h17"></a>
+        <span><a name="context.abstract_context.ccontext._code__phrase_role__keyword__operator__phrase__phrase_role__special___gt___phrase___code_"></a></span><a class="link" href="ccontext.html#context.abstract_context.ccontext._code__phrase_role__keyword__operator__phrase__phrase_role__special___gt___phrase___code_"><code class="computeroutput"><span class="keyword">operator</span><span class="special">&gt;</span></code></a>
+      </h5>
+<pre class="programlisting"><span class="keyword">bool</span> <span class="keyword">operator</span><span class="special">&gt;(</span> <span class="identifier">captured_context</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">other</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl>
+<dt><span class="term">Returns:</span></dt>
+<dd><p>
+              <code class="computeroutput"><span class="identifier">other</span> <span class="special">&lt;</span>
+              <span class="special">*</span> <span class="keyword">this</span></code>
+            </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+              Nothing.
+            </p></dd>
+</dl>
+</div>
+<h5>
+<a name="context.abstract_context.ccontext.h18"></a>
+        <span><a name="context.abstract_context.ccontext._code__phrase_role__keyword__operator__phrase__phrase_role__special___lt____phrase___code_"></a></span><a class="link" href="ccontext.html#context.abstract_context.ccontext._code__phrase_role__keyword__operator__phrase__phrase_role__special___lt____phrase___code_"><code class="computeroutput"><span class="keyword">operator</span><span class="special">&lt;=</span></code></a>
+      </h5>
+<pre class="programlisting"><span class="keyword">bool</span> <span class="keyword">operator</span><span class="special">&lt;=(</span> <span class="identifier">captured_context</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">other</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl>
+<dt><span class="term">Returns:</span></dt>
+<dd><p>
+              <code class="computeroutput"><span class="special">!</span> <span class="special">(</span><span class="identifier">other</span> <span class="special">&lt;</span>
+              <span class="special">*</span> <span class="keyword">this</span><span class="special">)</span></code>
+            </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+              Nothing.
+            </p></dd>
+</dl>
+</div>
+<h5>
+<a name="context.abstract_context.ccontext.h19"></a>
+        <span><a name="context.abstract_context.ccontext._code__phrase_role__keyword__operator__phrase__phrase_role__special___gt____phrase___code_"></a></span><a class="link" href="ccontext.html#context.abstract_context.ccontext._code__phrase_role__keyword__operator__phrase__phrase_role__special___gt____phrase___code_"><code class="computeroutput"><span class="keyword">operator</span><span class="special">&gt;=</span></code></a>
+      </h5>
+<pre class="programlisting"><span class="keyword">bool</span> <span class="keyword">operator</span><span class="special">&gt;=(</span> <span class="identifier">captured_context</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">other</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl>
+<dt><span class="term">Returns:</span></dt>
+<dd><p>
+              <code class="computeroutput"><span class="special">!</span> <span class="special">(*</span>
+              <span class="keyword">this</span> <span class="special">&lt;</span>
+              <span class="identifier">other</span><span class="special">)</span></code>
+            </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+              Nothing.
+            </p></dd>
+</dl>
+</div>
+<h5>
+<a name="context.abstract_context.ccontext.h20"></a>
+        <span><a name="context.abstract_context.ccontext._code__phrase_role__keyword__operator__phrase__phrase_role__special___lt__lt___phrase___code_"></a></span><a class="link" href="ccontext.html#context.abstract_context.ccontext._code__phrase_role__keyword__operator__phrase__phrase_role__special___lt__lt___phrase___code_"><code class="computeroutput"><span class="keyword">operator</span><span class="special">&lt;&lt;</span></code></a>
+      </h5>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span> <span class="keyword">typename</span> <span class="identifier">charT</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">traitsT</span> <span class="special">&gt;</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">basic_ostream</span><span class="special">&lt;</span> <span class="identifier">charT</span><span class="special">,</span> <span class="identifier">traitsT</span> <span class="special">&gt;</span> <span class="special">&amp;</span>
+<span class="keyword">operator</span><span class="special">&lt;&lt;(</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">basic_ostream</span><span class="special">&lt;</span> <span class="identifier">charT</span><span class="special">,</span> <span class="identifier">traitsT</span> <span class="special">&gt;</span> <span class="special">&amp;</span> <span class="identifier">os</span><span class="special">,</span> <span class="identifier">captured_context</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">other</span><span class="special">);</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl>
+<dt><span class="term">Efects:</span></dt>
+<dd><p>
+              Writes the representation of <code class="computeroutput"><span class="identifier">other</span></code>
+              to stream <code class="computeroutput"><span class="identifier">os</span></code>.
+            </p></dd>
+<dt><span class="term">Returns:</span></dt>
+<dd><p>
+              <code class="computeroutput"><span class="identifier">os</span></code>
+            </p></dd>
+</dl>
+</div>
+<h5>
+<a name="context.abstract_context.ccontext.h21"></a>
+        <span><a name="context.abstract_context.ccontext.struct__code__phrase_role__identifier__preallocated__phrase___code_"></a></span><a class="link" href="ccontext.html#context.abstract_context.ccontext.struct__code__phrase_role__identifier__preallocated__phrase___code_">Struct
+        <code class="computeroutput"><span class="identifier">preallocated</span></code></a>
+      </h5>
+<pre class="programlisting"><span class="keyword">struct</span> <span class="identifier">preallocated</span> <span class="special">{</span>
+    <span class="keyword">void</span>        <span class="special">*</span>   <span class="identifier">sp</span><span class="special">;</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span>     <span class="identifier">size</span><span class="special">;</span>
+    <span class="identifier">stack_context</span>   <span class="identifier">sctx</span><span class="special">;</span>
+
+    <span class="identifier">preallocated</span><span class="special">(</span> <span class="keyword">void</span> <span class="special">*</span> <span class="identifier">sp</span><span class="special">,</span> <span class="identifier">std</span><span class="special">:</span><span class="identifier">size_t</span> <span class="identifier">size</span><span class="special">,</span> <span class="identifier">stack_allocator</span> <span class="identifier">sctx</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+<span class="special">};</span>
+</pre>
+<h5>
+<a name="context.abstract_context.ccontext.h22"></a>
+        <span><a name="context.abstract_context.ccontext._code__phrase_role__identifier__preallocated__phrase__phrase_role__special_____phrase___phrase_role__keyword__void__phrase___phrase_role__special_____phrase___phrase_role__identifier__sp__phrase__phrase_role__special_____phrase___phrase_role__identifier__std__phrase__phrase_role__special_____phrase__phrase_role__identifier__size_t__phrase___phrase_role__identifier__size__phrase__phrase_role__special_____phrase___phrase_role__identifier__stack_allocator__phrase___phrase_role__identifier__sctx__phrase__phrase_role__special_____phrase___code_"></a></span><a class="link" href="ccontext.html#context.abstract_context.ccontext._code__phrase_role__identifier__preallocated__phrase__phrase_role__special_____phrase___phrase_role__keyword__void__phrase___phrase_role__special_____phrase___phrase_role__identifier__sp__phrase__phrase_role__special_____phrase___phrase_role__identifier__std__phrase__phrase_role__special_____phrase__phrase_role__identifier__size_t__phrase___phrase_role__identifier__size__phrase__phrase_role__special_____phrase___phrase_role__identifier__stack_allocator__phrase___phrase_role__identifier__sctx__phrase__phrase_role__special_____phrase___code_"><code class="computeroutput"><span class="identifier">preallocated</span><span class="special">(</span>
+        <span class="keyword">void</span> <span class="special">*</span> <span class="identifier">sp</span><span class="special">,</span> <span class="identifier">std</span><span class="special">:</span><span class="identifier">size_t</span> <span class="identifier">size</span><span class="special">,</span> <span class="identifier">stack_allocator</span> <span class="identifier">sctx</span><span class="special">)</span></code></a>
+      </h5>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl>
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+              Creates an object of preallocated.
+            </p></dd>
+</dl>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2014 Oliver Kowalke<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="econtext.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../abstract_context.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="stack.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

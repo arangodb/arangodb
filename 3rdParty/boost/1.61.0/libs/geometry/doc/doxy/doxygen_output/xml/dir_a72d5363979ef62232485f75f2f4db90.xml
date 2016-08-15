@@ -1,0 +1,36 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="dir_a72d5363979ef62232485f75f2f4db90" kind="dir">
+    <compoundname>/home/travis/build/boostorg/boost/boost/geometry/core/</compoundname>
+    <innerfile refid="access_8hpp">access.hpp</innerfile>
+    <innerfile refid="assert_8hpp">assert.hpp</innerfile>
+    <innerfile refid="closure_8hpp">closure.hpp</innerfile>
+    <innerfile refid="coordinate__dimension_8hpp">coordinate_dimension.hpp</innerfile>
+    <innerfile refid="coordinate__system_8hpp">coordinate_system.hpp</innerfile>
+    <innerfile refid="coordinate__type_8hpp">coordinate_type.hpp</innerfile>
+    <innerfile refid="cs_8hpp">cs.hpp</innerfile>
+    <innerfile refid="exception_8hpp">exception.hpp</innerfile>
+    <innerfile refid="exterior__ring_8hpp">exterior_ring.hpp</innerfile>
+    <innerfile refid="geometry__id_8hpp">geometry_id.hpp</innerfile>
+    <innerfile refid="interior__rings_8hpp">interior_rings.hpp</innerfile>
+    <innerfile refid="interior__type_8hpp">interior_type.hpp</innerfile>
+    <innerfile refid="is__areal_8hpp">is_areal.hpp</innerfile>
+    <innerfile refid="mutable__range_8hpp">mutable_range.hpp</innerfile>
+    <innerfile refid="point__order_8hpp">point_order.hpp</innerfile>
+    <innerfile refid="point__type_8hpp">point_type.hpp</innerfile>
+    <innerfile refid="radian__access_8hpp">radian_access.hpp</innerfile>
+    <innerfile refid="radius_8hpp">radius.hpp</innerfile>
+    <innerfile refid="reverse__dispatch_8hpp">reverse_dispatch.hpp</innerfile>
+    <innerfile refid="ring__type_8hpp">ring_type.hpp</innerfile>
+    <innerfile refid="srs_8hpp">srs.hpp</innerfile>
+    <innerfile refid="tag_8hpp">tag.hpp</innerfile>
+    <innerfile refid="tag__cast_8hpp">tag_cast.hpp</innerfile>
+    <innerfile refid="core_2tags_8hpp">tags.hpp</innerfile>
+    <innerfile refid="topological__dimension_8hpp">topological_dimension.hpp</innerfile>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/core/"/>
+  </compounddef>
+</doxygen>

@@ -1,0 +1,115 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Datasets</title>
+<link rel="stylesheet" href="../../../../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../../../../index.html" title="Boost.Test">
+<link rel="up" href="../test_case_generation.html" title="Data-driven test cases">
+<link rel="prev" href="../test_case_generation.html" title="Data-driven test cases">
+<link rel="next" href="datasets_auto_registration.html" title="Declaring and registering test cases with datasets">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../test_case_generation.html"><img src="../../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../test_case_generation.html"><img src="../../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../../index.html"><img src="../../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="datasets_auto_registration.html"><img src="../../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="boost_test.tests_organization.test_cases.test_case_generation.datasets"></a><a class="link" href="datasets.html" title="Datasets">Datasets</a>
+</h5></div></div></div>
+<p>
+            To define properly datasets, the notion of <span class="bold"><strong>sample</strong></span>
+            should be introduced first. A <span class="bold"><strong>sample</strong></span>
+            is defined as <span class="emphasis"><em>polymorphic tuple</em></span>. The size of the
+            tuple will be by definition the <span class="bold"><strong>arity</strong></span>
+            of the sample itself.
+          </p>
+<p>
+            A <code class="computeroutput">dataset</code>
+            is a <span class="emphasis"><em>collection of samples</em></span>, that
+          </p>
+<div class="itemizedlist"><ul class="itemizedlist" type="disc">
+<li class="listitem">
+                is forward iterable,
+              </li>
+<li class="listitem">
+                can be queried for its <code class="computeroutput"><span class="identifier">size</span></code>,
+                which in turn can be infinite,
+              </li>
+<li class="listitem">
+                has an arity that is the arity of the samples it contains.
+              </li>
+</ul></div>
+<p>
+            Hence the dataset implements the notion of <span class="emphasis"><em>sequence</em></span>.
+          </p>
+<p>
+            The descriptive power of the datasets in <span class="emphasis"><em>Unit Test Framework</em></span>
+            comes from
+          </p>
+<div class="itemizedlist"><ul class="itemizedlist" type="disc">
+<li class="listitem">
+                the <code class="computeroutput">interface</code>
+                for creating a custom datasets, which is quite simple,
+              </li>
+<li class="listitem">
+                the <a class="link" href="operations.html" title="Operations on dataset">operations</a>
+                they provide for combining different datasets
+              </li>
+<li class="listitem">
+                their interface with other type of collections (<code class="computeroutput"><span class="identifier">stl</span></code>
+                containers, <code class="computeroutput"><span class="identifier">C</span></code> arrays)
+              </li>
+<li class="listitem">
+                the available built-in <a class="link" href="generators.html" title="Datasets generators"><span class="emphasis"><em>dataset
+                generators</em></span></a>
+              </li>
+</ul></div>
+<div class="tip"><table border="0" summary="Tip">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Tip]" src="../../../../../../../../doc/src/images/tip.png"></td>
+<th align="left">Tip</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+              Only "monomorphic" datasets are supported, which means that
+              all samples in a dataset have the same type and same arity <sup>[<a name="boost_test.tests_organization.test_cases.test_case_generation.datasets.f0" href="#ftn.boost_test.tests_organization.test_cases.test_case_generation.datasets.f0" class="footnote">2</a>]</sup> .
+            </p></td></tr>
+</table></div>
+<p>
+            As we will see in the next sections, datasets representing collections
+            of different types may be combined together (e.g.. <span class="emphasis"><em>zip</em></span>
+            or <span class="emphasis"><em>grid</em></span>). These operations result in new datasets,
+            in which the samples are of an augmented type.
+          </p>
+<div class="footnotes">
+<br><hr width="100" align="left">
+<div class="footnote"><p><sup>[<a id="ftn.boost_test.tests_organization.test_cases.test_case_generation.datasets.f0" href="#boost_test.tests_organization.test_cases.test_case_generation.datasets.f0" class="para">2</a>] </sup>
+                polymorphic datasets will be considered in the future. Their need
+                is mainly driven by the replacement of the <a class="link" href="../test_organization_templates.html" title="Template test cases">typed
+                parametrized test cases</a> by the dataset-like API.
+              </p></div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2001-2016 Boost.Test contributors<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../test_case_generation.html"><img src="../../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../test_case_generation.html"><img src="../../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../../index.html"><img src="../../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="datasets_auto_registration.html"><img src="../../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

@@ -1,0 +1,84 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Header &lt;boost/test/unit_test_parameters.hpp&gt;</title>
+<link rel="stylesheet" href="../../../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../../../index.html" title="Boost.Test">
+<link rel="up" href="../../../boost_test/reference.html" title="Reference">
+<link rel="prev" href="../../../boost/unit_test/unit_test_log_formatter.html" title="Class unit_test_log_formatter">
+<link rel="next" href="../../../boost/unit_test/runtime_config/stream_holder.html" title="Class stream_holder">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../../../boost/unit_test/unit_test_log_formatter.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../../boost_test/reference.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../../../boost/unit_test/runtime_config/stream_holder.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="header.boost.test.unit_test_parameters_hpp"></a>Header &lt;<a href="../../../../../../../boost/test/unit_test_parameters.hpp" target="_top">boost/test/unit_test_parameters.hpp</a>&gt;</h4></div></div></div>
+<p>Provides access to various Unit Test Framework runtime parameters. </p>
+<p>Primarily for use by the framework itself </p>
+<pre class="synopsis"><span class="keyword">namespace</span> <span class="identifier">boost</span> <span class="special">{</span>
+  <span class="keyword">namespace</span> <span class="identifier">unit_test</span> <span class="special">{</span>
+    <span class="keyword">namespace</span> <span class="identifier">runtime_config</span> <span class="special">{</span>
+      <span class="keyword">class</span> <a class="link" href="../../../boost/unit_test/runtime_config/stream_holder.html" title="Class stream_holder">stream_holder</a><span class="special">;</span>
+
+      <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <a class="link" href="../../../boost/unit_test/runtime_config/AUTO_START_DBG.html" title="Global AUTO_START_DBG">AUTO_START_DBG</a><span class="special">;</span>
+      <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <a class="link" href="../../../boost/unit_test/runtime_config/BREAK_EXEC_PATH.html" title="Global BREAK_EXEC_PATH">BREAK_EXEC_PATH</a><span class="special">;</span>
+      <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <a class="link" href="../../../boost/unit_test/runtime_config/BUILD_INFO.html" title="Global BUILD_INFO">BUILD_INFO</a><span class="special">;</span>
+      <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <a class="link" href="../../../boost/unit_test/runtime_config/CATCH_SYS_ERRORS.html" title="Global CATCH_SYS_ERRORS">CATCH_SYS_ERRORS</a><span class="special">;</span>
+      <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <a class="link" href="../../../boost/unit_test/runtime_config/COLOR_OUTPUT.html" title="Global COLOR_OUTPUT">COLOR_OUTPUT</a><span class="special">;</span>
+      <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <a class="link" href="../../../boost/unit_test/runtime_config/DETECT_FP_EXCEPT.html" title="Global DETECT_FP_EXCEPT">DETECT_FP_EXCEPT</a><span class="special">;</span>
+      <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <a class="link" href="../../../boost/unit_test/runtime_config/DETECT_MEM_LEAKS.html" title="Global DETECT_MEM_LEAKS">DETECT_MEM_LEAKS</a><span class="special">;</span>
+      <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <a class="link" href="../../../boost/unit_test/runtime_config/LIST_CONTENT.html" title="Global LIST_CONTENT">LIST_CONTENT</a><span class="special">;</span>
+      <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <a class="link" href="../../../boost/unit_test/runtime_config/LIST_LABELS.html" title="Global LIST_LABELS">LIST_LABELS</a><span class="special">;</span>
+      <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <a class="link" href="../../../boost/unit_test/runtime_config/LOG_FORMAT.html" title="Global LOG_FORMAT">LOG_FORMAT</a><span class="special">;</span>
+      <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <a class="link" href="../../../boost/unit_test/runtime_config/LOG_LEVEL.html" title="Global LOG_LEVEL">LOG_LEVEL</a><span class="special">;</span>
+      <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <a class="link" href="../../../boost/unit_test/runtime_config/LOG_SINK.html" title="Global LOG_SINK">LOG_SINK</a><span class="special">;</span>
+      <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <a class="link" href="../../../boost/unit_test/runtime_config/OUTPUT_FORMAT.html" title="Global OUTPUT_FORMAT">OUTPUT_FORMAT</a><span class="special">;</span>
+      <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <a class="link" href="../../../boost/unit_test/runtime_config/RANDOM_SEED.html" title="Global RANDOM_SEED">RANDOM_SEED</a><span class="special">;</span>
+      <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <a class="link" href="../../../boost/unit_test/runtime_config/REPORT_FORMAT.html" title="Global REPORT_FORMAT">REPORT_FORMAT</a><span class="special">;</span>
+      <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <a class="link" href="../../../boost/unit_test/runtime_config/REPORT_LEVEL.html" title="Global REPORT_LEVEL">REPORT_LEVEL</a><span class="special">;</span>
+      <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <a class="link" href="../../../boost/unit_test/runtime_config/REPORT_MEM_LEAKS.html" title="Global REPORT_MEM_LEAKS">REPORT_MEM_LEAKS</a><span class="special">;</span>
+      <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <a class="link" href="../../../boost/unit_test/runtime_config/REPORT_SINK.html" title="Global REPORT_SINK">REPORT_SINK</a><span class="special">;</span>
+      <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <a class="link" href="../../../boost/unit_test/runtime_config/RESULT_CODE.html" title="Global RESULT_CODE">RESULT_CODE</a><span class="special">;</span>
+      <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <a class="link" href="../../../boost/unit_test/runtime_config/RUN_FILTERS.html" title="Global RUN_FILTERS">RUN_FILTERS</a><span class="special">;</span>
+      <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <a class="link" href="../../../boost/unit_test/runtime_config/SAVE_TEST_PATTERN.html" title="Global SAVE_TEST_PATTERN">SAVE_TEST_PATTERN</a><span class="special">;</span>
+      <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <a class="link" href="../../../boost/unit_test/runtime_config/SHOW_PROGRESS.html" title="Global SHOW_PROGRESS">SHOW_PROGRESS</a><span class="special">;</span>
+      <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <a class="link" href="../../../boost/unit_test/runtime_config/USE_ALT_STACK.html" title="Global USE_ALT_STACK">USE_ALT_STACK</a><span class="special">;</span>
+      <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <a class="link" href="../../../boost/unit_test/runtime_config/WAIT_FOR_DEBUGGER.html" title="Global WAIT_FOR_DEBUGGER">WAIT_FOR_DEBUGGER</a><span class="special">;</span>
+      <span class="keyword">void</span> <a name="boost.unit_test.runtime_config.init_idp27967936"></a><span class="identifier">init</span><span class="special">(</span><span class="keyword">int</span> <span class="special">&amp;</span> argc<span class="special">,</span> <span class="keyword">char</span> <span class="special">*</span><span class="special">*</span> argv<span class="special">)</span><span class="special">;</span>
+
+      <span class="comment">// Access to arguments. </span>
+      <span class="identifier">runtime</span><span class="special">::</span><span class="identifier">arguments_store</span> <span class="keyword">const</span> <span class="special">&amp;</span> <a name="boost.unit_test.runtime_config.argument_store"></a><span class="identifier">argument_store</span><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+      <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> T<span class="special">&gt;</span> <span class="identifier">T</span> <span class="keyword">const</span> <span class="special">&amp;</span> <a name="boost.unit_test.runtime_config.get_idp27971312"></a><span class="identifier">get</span><span class="special">(</span><span class="identifier">runtime</span><span class="special">::</span><span class="identifier">cstring</span> parameter_name<span class="special">)</span><span class="special">;</span>
+
+      <span class="comment">// For public access. </span>
+      <span class="keyword">bool</span> <a name="boost.unit_test.runtime_config.save_pattern"></a><span class="identifier">save_pattern</span><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+    <span class="special">}</span>
+  <span class="special">}</span>
+<span class="special">}</span></pre>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2001-2016 Boost.Test contributors<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../../../boost/unit_test/unit_test_log_formatter.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../../boost_test/reference.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../../../boost/unit_test/runtime_config/stream_holder.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

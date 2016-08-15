@@ -1,0 +1,75 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="coordinate__cast_8hpp" kind="file">
+    <compoundname>coordinate_cast.hpp</compoundname>
+    <includes local="no">cstdlib</includes>
+    <includes local="no">string</includes>
+    <includes local="no">boost/lexical_cast.hpp</includes>
+    <includedby refid="read_8hpp" local="no">/home/travis/build/boostorg/boost/boost/geometry/io/wkt/read.hpp</includedby>
+    <includedby refid="rational_8hpp" local="no">/home/travis/build/boostorg/boost/boost/geometry/util/rational.hpp</includedby>
+    <incdepgraph>
+      <node id="61138">
+        <label>boost/lexical_cast.hpp</label>
+      </node>
+      <node id="61137">
+        <label>string</label>
+      </node>
+      <node id="61136">
+        <label>cstdlib</label>
+      </node>
+      <node id="61135">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/util/coordinate_cast.hpp</label>
+        <link refid="coordinate_cast.hpp"/>
+        <childnode refid="61136" relation="include">
+        </childnode>
+        <childnode refid="61137" relation="include">
+        </childnode>
+        <childnode refid="61138" relation="include">
+        </childnode>
+      </node>
+    </incdepgraph>
+    <invincdepgraph>
+      <node id="61143">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/strategies/strategies.hpp</label>
+        <link refid="strategies_8hpp"/>
+      </node>
+      <node id="61144">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/util/rational.hpp</label>
+        <link refid="rational_8hpp"/>
+      </node>
+      <node id="61142">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/buffer_end_round.hpp</label>
+        <link refid="buffer__end__round_8hpp"/>
+        <childnode refid="61143" relation="include">
+        </childnode>
+      </node>
+      <node id="61140">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/io/wkt/read.hpp</label>
+        <link refid="read_8hpp"/>
+        <childnode refid="61141" relation="include">
+        </childnode>
+      </node>
+      <node id="61141">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/io/wkt/wkt.hpp</label>
+        <link refid="wkt_8hpp"/>
+        <childnode refid="61142" relation="include">
+        </childnode>
+      </node>
+      <node id="61139">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/util/coordinate_cast.hpp</label>
+        <link refid="coordinate_cast.hpp"/>
+        <childnode refid="61140" relation="include">
+        </childnode>
+        <childnode refid="61144" relation="include">
+        </childnode>
+      </node>
+    </invincdepgraph>
+    <innernamespace refid="namespaceboost">boost</innernamespace>
+    <innernamespace refid="namespaceboost_1_1geometry">boost::geometry</innernamespace>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/util/coordinate_cast.hpp"/>
+  </compounddef>
+</doxygen>

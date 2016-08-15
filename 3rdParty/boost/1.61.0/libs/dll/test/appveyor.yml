@@ -1,0 +1,73 @@
+# Use, modification, and distribution are
+# subject to the Boost Software License, Version 1.0. (See accompanying
+# file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+#
+# Copyright Antony Polukhin 2016.
+
+#
+# See https://svn.boost.org/trac/boost/wiki/TravisCoverals for description of this file
+# and how it can be used with Boost libraries.
+#
+# File revision #1
+
+init:
+    - set BRANCH_TO_TEST=%APPVEYOR_REPO_BRANCH%
+    - set BOOST_REMOVE=dll
+
+os: Visual Studio 2015
+configuration: Debug
+platform: x64
+
+###############################################################################################################
+# From this point and below code is same for all the Boost libs
+###############################################################################################################
+
+version: 1.61.{build}-{branch}
+ 
+# branches to build
+branches:
+  except:
+    - gh-pages
+
+skip_tags: true
+
+before_build:
+    # Set this to the name of the library
+    - set PROJECT_TO_TEST=%APPVEYOR_PROJECT_NAME%
+    - echo "Testing %PROJECT_TO_TEST%"
+    # Cloning Boost libraries (fast nondeep cloning)
+    - set BOOST=C:/boost-local
+    - git init %BOOST%
+    - cd %BOOST%
+    - git remote add --no-tags -t %BRANCH_TO_TEST% origin https://github.com/boostorg/boost.git
+    - git fetch --depth=1
+    - git checkout %BRANCH_TO_TEST%
+    - git submodule update --init --merge
+    - git remote set-branches --add origin %BRANCH_TO_TEST%
+    - git pull --recurse-submodules
+    - git submodule update --init
+    - git checkout %BRANCH_TO_TEST%
+    #- git submodule foreach "git reset --quiet --hard"
+    #- git submodule foreach "git clean -fxd"
+    - git reset --hard
+    - git clean -fxd
+    - git status
+    - rm -rf %BOOST%/libs/%BOOST_REMOVE%
+    - mv %APPVEYOR_BUILD_FOLDER% %BOOST%/libs/%PROJECT_TO_TEST%
+    - set TRAVIS_BUILD_DIR=%BOOST%/libs/%PROJECT_TO_TEST%
+
+build_script:
+    - call "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" x64
+    - bootstrap.bat
+    - b2.exe headers
+    - cd %BOOST%/libs/%PROJECT_TO_TEST%/test
+
+after_build:
+before_test:
+test_script:
+  - ..\..\..\b2.exe address-model=64 architecture=x86 cxxflags="-DBOOST_TRAVISCI_BUILD" -sBOOST_BUILD_PATH=.
+
+after_test:
+on_success:
+on_failure:
+on_finish:

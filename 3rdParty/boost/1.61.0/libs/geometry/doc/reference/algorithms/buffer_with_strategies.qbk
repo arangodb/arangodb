@@ -1,0 +1,72 @@
+[/============================================================================
+  Boost.Geometry (aka GGL, Generic Geometry Library)
+
+  Copyright (c) 2014 Barend Gehrels, Amsterdam, the Netherlands.
+
+  Use, modification and distribution is subject to the Boost Software License,
+  Version 1.0. (See accompanying file LICENSE_1_0.txt or copy at
+  http://www.boost.org/LICENSE_1_0.txt)
+=============================================================================/]
+
+[def __this_function__ buffer]
+
+[heading Strategies]
+The 5 strategies give the user control to the generated buffer
+
+* convex corners can be rounded or sharp
+* line-ends can be rounded or flat
+* distance can be symmetric or assymetric, and positive or negative
+* around points the shape can be circular or square
+* the sides can be controlled (currently there is only one option provided)
+
+By specifying a negative distance for the distance_strategy, for the (multi) polygon case, the polygon will be smaller (also known as deflate). The distance cannot be 0.
+
+The next figure shows where in the generated buffer the strategies have effect
+
+[$img/algorithms/buffer_strategies.png]
+
+[heading_conformance_ogc __this_function__..Buffer]
+It is conformant if used with the following combination of strategies:
+[link geometry.reference.strategies.strategy_buffer_join_round join_round],
+[link geometry.reference.strategies.strategy_buffer_end_round end_round],
+[link geometry.reference.strategies.strategy_buffer_distance_symmetric distance_symmetric],
+[link geometry.reference.strategies.strategy_buffer_point_circle point_circle],
+side_straight
+
+[heading Supported geometries]
+[table
+[[ ][2D Cartesian]]
+[[Point][[$img/ok.png]]]
+[[Segment][[$img/nyi.png]]]
+[[Box][[$img/nyi.png]]]
+[[Linestring][[$img/ok.png]]]
+[[Ring][[$img/ok.png]]]
+[[Polygon][[$img/ok.png]]]
+[[MultiPoint][[$img/ok.png]]]
+[[MultiLinestring][[$img/ok.png]]]
+[[MultiPolygon][[$img/ok.png]]]
+]
+
+
+[heading Examples]
+[buffer_with_strategies]
+
+[heading The linestring case]
+[$img/algorithms/buffer_linestring.png]
+
+[heading The multi_point case]
+[$img/algorithms/buffer_multi_point.png]
+
+[heading The multi_polygon case]
+[$img/algorithms/buffer_multi_polygon.png]
+
+[heading Available Strategies]
+* JoinStrategy: [link geometry.reference.strategies.strategy_buffer_join_round join_round (cartesian)]
+* JoinStrategy: [link geometry.reference.strategies.strategy_buffer_join_miter join_miter (cartesian)]
+* EndStrategy: [link geometry.reference.strategies.strategy_buffer_end_round end_round (cartesian)]
+* EndStrategy: [link geometry.reference.strategies.strategy_buffer_end_flat end_flat (cartesian)]
+* DistanceStrategy: [link geometry.reference.strategies.strategy_buffer_distance_symmetric distance_symmetric]
+* DistanceStrategy: [link geometry.reference.strategies.strategy_buffer_distance_asymmetric distance_asymmetric]
+* PointStrategy: [link geometry.reference.strategies.strategy_buffer_point_circle point_circle (cartesian)]
+* PointStrategy: [link geometry.reference.strategies.strategy_buffer_point_square point_square (cartesian)]
+* SideStrategy: [link geometry.reference.strategies.strategy_buffer_side_straight side_straight (cartesian)]

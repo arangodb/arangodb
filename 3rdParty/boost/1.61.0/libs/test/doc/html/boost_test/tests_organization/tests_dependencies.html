@@ -1,0 +1,196 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Managing test dependencies</title>
+<link rel="stylesheet" href="../../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../../index.html" title="Boost.Test">
+<link rel="up" href="../tests_organization.html" title="Declaring and organizing tests">
+<link rel="prev" href="fixtures/global.html" title="Global fixture">
+<link rel="next" href="tests_grouping.html" title="Grouping tests into logical units by labels">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="fixtures/global.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../tests_organization.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="tests_grouping.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_test.tests_organization.tests_dependencies"></a><a class="link" href="tests_dependencies.html" title="Managing test dependencies">Managing
+      test dependencies</a>
+</h3></div></div></div>
+<p>
+        In general, you should make sure that test cases are independent on one another.
+        For any two test cases <code class="computeroutput"><span class="identifier">TA</span></code>
+        and <code class="computeroutput"><span class="identifier">TB</span></code>, <code class="computeroutput"><span class="identifier">TB</span></code>
+        must not take for granted that <code class="computeroutput"><span class="identifier">TA</span></code>
+        has already executed, even if <code class="computeroutput"><span class="identifier">TA</span></code>
+        is declared before <code class="computeroutput"><span class="identifier">TB</span></code> in
+        the same translation unit.
+      </p>
+<p>
+        The only ordering-related guarantee that <span class="emphasis"><em>Unit Test Framework</em></span>
+        makes by default is that if test cases <code class="computeroutput"><span class="identifier">TA</span></code>
+        and <code class="computeroutput"><span class="identifier">TB</span></code> are declared in the
+        same test suite, no test case (call it <code class="computeroutput"><span class="identifier">TX</span></code>)
+        from any other test suite is executed between <code class="computeroutput"><span class="identifier">TA</span></code>
+        and <code class="computeroutput"><span class="identifier">TB</span></code>, even if the declaration
+        of <code class="computeroutput"><span class="identifier">TX</span></code> appears between the
+        declarations of <code class="computeroutput"><span class="identifier">TA</span></code> and <code class="computeroutput"><span class="identifier">TB</span></code>. In other words, all tests from a suite
+        are executed in one go, even if the test suite namespace is opened multiple
+        times.
+      </p>
+<p>
+        Even though the order is not guaranteed, it may be accidentally preserved
+        across the different runs. In order to make sure the test cases do not depend
+        on one another, whoever runs the test module may provide a command-line argument
+        <a class="link" href="../utf_reference/rt_param_reference/random.html" title="random"><code class="computeroutput"><span class="identifier">random</span></code></a> to make sure the test units
+        are shuffled within the suites.
+      </p>
+<h4>
+<a name="boost_test.tests_organization.tests_dependencies.h0"></a>
+        <span><a name="boost_test.tests_organization.tests_dependencies.declaring_a_test_case_dependency"></a></span><a class="link" href="tests_dependencies.html#boost_test.tests_organization.tests_dependencies.declaring_a_test_case_dependency">Declaring
+        a test case dependency</a>
+      </h4>
+<p>
+        If an ordering dependency is required between the test units within the same
+        suite, it has to be declared explicitly. Dependencies in the <span class="emphasis"><em>Unit
+        Test Framework</em></span> affect two dimensions of test units, which are:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" type="disc">
+<li class="listitem">
+            the order of execution of these units
+          </li>
+<li class="listitem">
+            the execution of a test unit, which is conditioned by the state of its
+            parents
+          </li>
+</ul></div>
+<p>
+        <a class="link" href="decorators.html" title="Decorators">Decorator</a>
+        <a class="link" href="../utf_reference/test_org_reference/decorator_depends_on.html" title="depends_on (decorator)"><code class="computeroutput"><span class="identifier">depends_on</span></code></a> associates the decorated
+        test case (call it <code class="computeroutput"><span class="identifier">TB</span></code>) with
+        another test case (call it <code class="computeroutput"><span class="identifier">TA</span></code>)
+        specified by name. This affects the processing the test tree in two ways.
+        First, test case <code class="computeroutput"><span class="identifier">TA</span></code> is ordered
+        to be run before <code class="computeroutput"><span class="identifier">TB</span></code>, irrespective
+        of the order in which they were declared or added to the test tree. Second,
+        the execution of <code class="computeroutput"><span class="identifier">TB</span></code> is skipped
+        if <code class="computeroutput"><span class="identifier">TA</span></code> is either disabled
+        or skipped or is executed and marked as failed.
+      </p>
+<h6>
+<a name="boost_test.tests_organization.tests_dependencies.h1"></a>
+        <span><a name="boost_test.tests_organization.tests_dependencies.example_descr"></a></span><a class="link" href="tests_dependencies.html#boost_test.tests_organization.tests_dependencies.example_descr">Example:
+        decorator depends_on</a>
+      </h6>
+<div class="informaltable"><table class="table">
+<colgroup><col></colgroup>
+<thead><tr><th>
+                <p>
+                  Code
+                </p>
+              </th></tr></thead>
+<tbody><tr><td>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="preprocessor">#define</span> <span class="identifier">BOOST_TEST_MODULE</span> <span class="identifier">decorator_07</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">test</span><span class="special">/</span><span class="identifier">included</span><span class="special">/</span><span class="identifier">unit_test</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="keyword">namespace</span> <span class="identifier">utf</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">unit_test</span><span class="special">;</span>
+
+<span class="comment">// test1 and test2 defined at the bottom</span>
+
+<span class="identifier">BOOST_AUTO_TEST_CASE</span><span class="special">(</span><span class="identifier">test3</span><span class="special">,</span> <span class="special">*</span> <span class="identifier">utf</span><span class="special">::</span><span class="identifier">depends_on</span><span class="special">(</span><span class="string">"s1/test1"</span><span class="special">))</span>
+<span class="special">{</span>
+  <span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="keyword">false</span><span class="special">);</span>
+<span class="special">}</span>
+
+<span class="identifier">BOOST_AUTO_TEST_CASE</span><span class="special">(</span><span class="identifier">test4</span><span class="special">,</span> <span class="special">*</span> <span class="identifier">utf</span><span class="special">::</span><span class="identifier">depends_on</span><span class="special">(</span><span class="string">"test3"</span><span class="special">))</span>
+<span class="special">{</span>
+  <span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="keyword">false</span><span class="special">);</span>
+<span class="special">}</span>
+
+<span class="identifier">BOOST_AUTO_TEST_CASE</span><span class="special">(</span><span class="identifier">test5</span><span class="special">,</span> <span class="special">*</span> <span class="identifier">utf</span><span class="special">::</span><span class="identifier">depends_on</span><span class="special">(</span><span class="string">"s1/test2"</span><span class="special">))</span>
+<span class="special">{</span>
+  <span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="keyword">false</span><span class="special">);</span>
+<span class="special">}</span>
+
+<span class="identifier">BOOST_AUTO_TEST_SUITE</span><span class="special">(</span><span class="identifier">s1</span><span class="special">)</span>
+
+  <span class="identifier">BOOST_AUTO_TEST_CASE</span><span class="special">(</span><span class="identifier">test1</span><span class="special">)</span>
+  <span class="special">{</span>
+    <span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="keyword">true</span><span class="special">);</span>
+  <span class="special">}</span>
+
+  <span class="identifier">BOOST_AUTO_TEST_CASE</span><span class="special">(</span><span class="identifier">test2</span><span class="special">,</span> <span class="special">*</span> <span class="identifier">utf</span><span class="special">::</span><span class="identifier">disabled</span><span class="special">())</span>
+  <span class="special">{</span>
+    <span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="keyword">false</span><span class="special">);</span>
+  <span class="special">}</span>
+
+<span class="identifier">BOOST_AUTO_TEST_SUITE_END</span><span class="special">()</span>
+</pre>
+              </td></tr></tbody>
+</table></div>
+<div class="informaltable"><table class="table">
+<colgroup><col></colgroup>
+<thead><tr><th>
+                <p>
+                  Output
+                </p>
+              </th></tr></thead>
+<tbody><tr><td>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="special">&gt;</span> <span class="identifier">decorator_07</span> <span class="special">--</span><span class="identifier">report_level</span><span class="special">=</span><span class="identifier">detailed</span>
+<span class="identifier">Running</span> <span class="number">4</span> <span class="identifier">test</span> <span class="identifier">cases</span><span class="special">...</span>
+<span class="identifier">test</span><span class="special">.</span><span class="identifier">cpp</span><span class="special">(</span><span class="number">10</span><span class="special">):</span> <span class="identifier">error</span><span class="special">:</span> <span class="identifier">in</span> <span class="string">"test3"</span><span class="special">:</span> <span class="identifier">check</span> <span class="keyword">false</span> <span class="identifier">has</span> <span class="identifier">failed</span>
+
+<span class="identifier">Test</span> <span class="identifier">module</span> <span class="string">"decorator_07"</span> <span class="identifier">has</span> <span class="identifier">failed</span> <span class="identifier">with</span><span class="special">:</span>
+  <span class="number">1</span> <span class="identifier">test</span> <span class="keyword">case</span> <span class="identifier">out</span> <span class="identifier">of</span> <span class="number">4</span> <span class="identifier">passed</span>
+  <span class="number">1</span> <span class="identifier">test</span> <span class="keyword">case</span> <span class="identifier">out</span> <span class="identifier">of</span> <span class="number">4</span> <span class="identifier">failed</span>
+  <span class="number">2</span> <span class="identifier">test</span> <span class="identifier">cases</span> <span class="identifier">out</span> <span class="identifier">of</span> <span class="number">4</span> <span class="identifier">skipped</span>
+  <span class="number">1</span> <span class="identifier">assertion</span> <span class="identifier">out</span> <span class="identifier">of</span> <span class="number">2</span> <span class="identifier">passed</span>
+  <span class="number">1</span> <span class="identifier">assertion</span> <span class="identifier">out</span> <span class="identifier">of</span> <span class="number">2</span> <span class="identifier">failed</span>
+
+  <span class="identifier">Test</span> <span class="keyword">case</span> <span class="string">"test3"</span> <span class="identifier">has</span> <span class="identifier">failed</span> <span class="identifier">with</span><span class="special">:</span>
+    <span class="number">1</span> <span class="identifier">assertion</span> <span class="identifier">out</span> <span class="identifier">of</span> <span class="number">1</span> <span class="identifier">failed</span>
+
+  <span class="identifier">Test</span> <span class="keyword">case</span> <span class="string">"test4"</span> <span class="identifier">was</span> <span class="identifier">skipped</span>
+  <span class="identifier">Test</span> <span class="keyword">case</span> <span class="string">"test5"</span> <span class="identifier">was</span> <span class="identifier">skipped</span>
+  <span class="identifier">Test</span> <span class="identifier">suite</span> <span class="string">"s1"</span> <span class="identifier">has</span> <span class="identifier">passed</span> <span class="identifier">with</span><span class="special">:</span>
+    <span class="number">1</span> <span class="identifier">test</span> <span class="keyword">case</span> <span class="identifier">out</span> <span class="identifier">of</span> <span class="number">1</span> <span class="identifier">passed</span>
+    <span class="number">1</span> <span class="identifier">assertion</span> <span class="identifier">out</span> <span class="identifier">of</span> <span class="number">1</span> <span class="identifier">passed</span>
+
+    <span class="identifier">Test</span> <span class="keyword">case</span> <span class="string">"s1/test1"</span> <span class="identifier">has</span> <span class="identifier">passed</span> <span class="identifier">with</span><span class="special">:</span>
+      <span class="number">1</span> <span class="identifier">assertion</span> <span class="identifier">out</span> <span class="identifier">of</span> <span class="number">1</span> <span class="identifier">passed</span>
+</pre>
+              </td></tr></tbody>
+</table></div>
+<p>
+        In the above scenario, test case <code class="computeroutput"><span class="identifier">test3</span></code>
+        is run (and fails) because <code class="computeroutput"><span class="identifier">s1</span><span class="special">/</span><span class="identifier">test1</span></code>
+        has been run and succeeded; <code class="computeroutput"><span class="identifier">test4</span></code>
+        is skipped because <code class="computeroutput"><span class="identifier">test3</span></code>
+        has failed; <code class="computeroutput"><span class="identifier">test5</span></code> is skipped
+        because <code class="computeroutput"><span class="identifier">s1</span><span class="special">/</span><span class="identifier">test2</span></code> is disabled.
+      </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2001-2016 Boost.Test contributors<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="fixtures/global.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../tests_organization.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="tests_grouping.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

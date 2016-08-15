@@ -1,0 +1,117 @@
+[#next_char]
+[section next_char]
+
+[h1 Synopsis]
+
+  template <class SourcePosition, class Ch>
+  struct next_char;
+
+This is a [link lazy_metafunction lazy template metafunction].
+
+[table Arguments
+  [[Name]             [Type]]
+  [[`SourcePosition`] [[link source_position source position]]]
+  [[`Ch`]             [[link boxed_value boxed] character value. The character `SourcePosition` points to in the input.]]
+]
+
+[h1 Description]
+
+Returns a new source position, pointing to the next character of the same line.
+
+[h1 Header]
+
+  #include <boost/metaparse/next_char.hpp>
+
+[h1 Expression semantics]
+
+For any `s` source position and `c` wrapped character the following are
+equivalent
+
+  get_col<next_char<s, c>>
+  
+  boost::mpl::plus<get_col<s>::type, boost::mpl::int_<1>>
+
+  get_line<next_char<s, c>>
+  
+  get_line<s>
+
+  get_prev_char<next_char<s, c>>::type
+  
+  c
+
+[h1 Example]
+
+  #include <boost/metaparse/next_char.hpp>
+  #include <boost/metaparse/source_position.hpp>
+  #include <boost/metaparse/get_col.hpp>
+  #include <boost/metaparse/get_line.hpp>
+  #include <boost/metaparse/get_prev_char.hpp>
+  
+  #include <type_traits>
+  
+  using namespace boost::metaparse;
+  
+  struct returns_source_position
+  {
+    using type =
+      source_position<
+        std::integral_constant<int, 11>,
+        std::integral_constant<int, 13>,
+        std::integral_constant<char, 'a'>
+      >;
+  };
+  
+  struct returns_char
+  {
+    using type = std::integral_constant<char, 'x'>;
+  };
+  
+  static_assert(
+    get_col<
+      next_char<
+        source_position<
+          std::integral_constant<int, 11>,
+          std::integral_constant<int, 13>,
+          std::integral_constant<char, 'a'>
+        >,
+        std::integral_constant<char, 'x'>
+      >
+    >::type::value == 14,
+    "it should increase the column component of the source position"
+  );
+  
+  static_assert(
+    get_line<
+      next_char<
+        source_position<
+          std::integral_constant<int, 11>,
+          std::integral_constant<int, 13>,
+          std::integral_constant<char, 'a'>
+        >,
+        std::integral_constant<char, 'x'>
+      >
+    >::type::value == 11,
+    "it should not increase the line component of the source position"
+  );
+  
+  static_assert(
+    get_prev_char<
+      next_char<
+        source_position<
+          std::integral_constant<int, 11>,
+          std::integral_constant<int, 13>,
+          std::integral_constant<char, 'a'>
+        >,
+        std::integral_constant<char, 'x'>
+      >
+    >::type::value == 'x',
+    "it should update the prev char component of the source position"
+  );
+  
+  static_assert(
+    get_col<next_char<returns_source_position, returns_char>>::type::value == 14,
+    "it should support lazy evaluation"
+  );
+
+[endsect]
+

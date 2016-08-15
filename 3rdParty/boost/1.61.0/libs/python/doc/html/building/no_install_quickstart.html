@@ -1,0 +1,318 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>No-Install Quickstart</title>
+<link rel="stylesheet" href="../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../index.html" title="Boost.Python">
+<link rel="up" href="../building.html" title="Chapter&#160;1.&#160;Building and Testing">
+<link rel="prev" href="background.html" title="Background">
+<link rel="next" href="installing_boost_python_on_your_.html" title="Installing Boost.Python on your System">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr><td valign="top"><img alt="" width="" height="" src="../images/boost.png"></td></tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="background.html"><img src="../images/prev.png" alt="Prev"></a><a accesskey="u" href="../building.html"><img src="../images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../images/home.png" alt="Home"></a><a accesskey="n" href="installing_boost_python_on_your_.html"><img src="../images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="building.no_install_quickstart"></a><a class="link" href="no_install_quickstart.html" title="No-Install Quickstart">No-Install Quickstart</a>
+</h3></div></div></div>
+<div class="toc"><dl>
+<dt><span class="section"><a href="no_install_quickstart.html#building.no_install_quickstart.basic_procedure">Basic
+        Procedure</a></span></dt>
+<dt><span class="section"><a href="no_install_quickstart.html#building.no_install_quickstart.in_case_of_trouble">In
+        Case of Trouble</a></span></dt>
+<dt><span class="section"><a href="no_install_quickstart.html#building.no_install_quickstart.in_case_everything_seemed_to_wor">In
+        Case Everything Seemed to Work</a></span></dt>
+<dt><span class="section"><a href="no_install_quickstart.html#building.no_install_quickstart.modifying_the_example_project">Modifying
+        the Example Project</a></span></dt>
+</dl></div>
+<p>
+        There is no need to &#8220;install Boost&#8221; in order to get started using Boost.Python.
+        These instructions use <a href="http://www.boost.org/build" target="_top">Boost.Build</a>
+        projects, which will build those binaries as soon as they're needed. Your
+        first tests may take a little longer while you wait for Boost.Python to build,
+        but doing things this way will save you from worrying about build intricacies
+        like which library binaries to use for a specific compiler configuration
+        and figuring out the right compiler options to use yourself.
+      </p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top">
+<p>
+          Of course it's possible to use other build systems to build Boost.Python
+          and its extensions, but they are not officially supported by Boost. Moreover
+          <span class="bold"><strong>99% of all &#8220;I can't build Boost.Python&#8221; problems
+          come from trying to use another build system</strong></span> without first following
+          these instructions.
+        </p>
+<p>
+          If you want to use another system anyway, we suggest that you follow these
+          instructions, and then invoke <code class="computeroutput"><span class="identifier">bjam</span></code>
+          with the
+        </p>
+<p>
+          <code class="computeroutput"><span class="special">-</span><span class="identifier">a</span>
+          <span class="special">-</span><span class="identifier">o</span></code><span class="emphasis"><em>filename</em></span>
+        </p>
+<p>
+          options to dump the build commands it executes to a file, so you can see
+          what your alternate build system needs to do.
+        </p>
+</td></tr>
+</table></div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="building.no_install_quickstart.basic_procedure"></a><a class="link" href="no_install_quickstart.html#building.no_install_quickstart.basic_procedure" title="Basic Procedure">Basic
+        Procedure</a>
+</h4></div></div></div>
+<p>
+          1. Get Boost; see sections 1 and 2 of the Boost <a href="http://www.boost.org/more/getting_started/" target="_top">Getting
+          Started Guide</a>.
+        </p>
+<p>
+          2. Get the <code class="computeroutput"><span class="identifier">bjam</span></code> build driver.
+          See section 5 of the Boost <a href="http://www.boost.org/more/getting_started/" target="_top">Getting
+          Started Guide</a>.
+        </p>
+<p>
+          3. cd into the <code class="computeroutput"><span class="identifier">example</span><span class="special">/</span><span class="identifier">quickstart</span><span class="special">/</span></code> directory of your Boost.Python installation,
+          which contains a small example project.
+        </p>
+<p>
+          4. Invoke <code class="computeroutput"><span class="identifier">bjam</span></code>. Replace
+          the &#8220;<code class="computeroutput"><span class="identifier">stage</span></code>&#8220; argument
+          from the example invocation from section 5 of the Boost <a href="http://www.boost.org/more/getting_started/" target="_top">Getting
+          Started Guide</a> with &#8220;<code class="computeroutput"><span class="identifier">test</span></code>,&#8220;
+          to build all the test targets. Also add the argument &#8220;<code class="computeroutput"><span class="special">--</span><span class="identifier">verbose</span><span class="special">-</span><span class="identifier">test</span></code>&#8221; to see the output generated by
+          the tests when they are run. On Windows, your <code class="computeroutput"><span class="identifier">bjam</span></code>
+          invocation might look something like:
+        </p>
+<pre class="programlisting"><span class="identifier">C</span><span class="special">:\\...\\</span><span class="identifier">quickstart</span><span class="special">&gt;</span> <span class="identifier">bjam</span> <span class="identifier">toolset</span><span class="special">=</span><span class="identifier">msvc</span> <span class="special">--</span><span class="identifier">verbose</span><span class="special">-</span><span class="identifier">test</span> <span class="identifier">test</span>
+</pre>
+<p>
+          and on Unix variants, perhaps,
+        </p>
+<pre class="programlisting"><span class="special">.../</span><span class="identifier">quickstart</span><span class="error">$</span> <span class="identifier">bjam</span> <span class="identifier">toolset</span><span class="special">=</span><span class="identifier">gcc</span> <span class="special">--</span><span class="identifier">verbose</span><span class="special">-</span><span class="identifier">test</span> <span class="identifier">test</span>
+</pre>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+            For the sake of concision, the rest of this guide will use unix-style
+            forward slashes in pathnames instead of the backslashes with which Windows
+            users may be more familiar. The forward slashes should work everywhere
+            except in <a href="http://www.boost.org/more/getting_started/windows.html#command-prompt" target="_top">Command
+            Prompt</a> windows, where you should use backslashes.
+          </p></td></tr>
+</table></div>
+<p>
+          If you followed this procedure successfully, you will have built an extension
+          module called <code class="computeroutput"><span class="identifier">extending</span></code>
+          and tested it by running a Python script called <code class="computeroutput"><span class="identifier">test_extending</span><span class="special">.</span><span class="identifier">py</span></code>.
+          You will also have built and run a simple application called <code class="computeroutput"><span class="identifier">embedding</span></code> that embeds python.
+        </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="building.no_install_quickstart.in_case_of_trouble"></a><a class="link" href="no_install_quickstart.html#building.no_install_quickstart.in_case_of_trouble" title="In Case of Trouble">In
+        Case of Trouble</a>
+</h4></div></div></div>
+<p>
+          If you're seeing lots of compiler and/or linker error messages, it's probably
+          because Boost.Build is having trouble finding your Python installation.
+          You might want to pass the <code class="computeroutput"><span class="special">--</span><span class="identifier">debug</span><span class="special">-</span><span class="identifier">configuration</span></code> option to <code class="computeroutput"><span class="identifier">bjam</span></code> the first few times you invoke it,
+          to make sure that Boost.Build is correctly locating all the parts of your
+          Python installation. If it isn't, consider <a class="link" href="configuring_boost_build.html" title="Configuring Boost.Build">Configuring
+          Boost.Build</a> as detailed below.
+        </p>
+<p>
+          If you're still having trouble, Someone on one of the following mailing
+          lists may be able to help:
+        </p>
+<div class="itemizedlist"><ul class="itemizedlist" type="disc">
+<li class="listitem">
+              The <a href="http://www.boost.org/more/mailing_lists.htm#jamboost" target="_top">Boost.Build
+              mailing list</a> for issues related to Boost.Build
+            </li>
+<li class="listitem">
+              The <a href="http://www.boost.org/more/mailing_lists.htm#cplussig" target="_top">Boost.Python
+              mailing list</a> for issues specifically related to Boost.Python
+            </li>
+</ul></div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="building.no_install_quickstart.in_case_everything_seemed_to_wor"></a><a class="link" href="no_install_quickstart.html#building.no_install_quickstart.in_case_everything_seemed_to_wor" title="In Case Everything Seemed to Work">In
+        Case Everything Seemed to Work</a>
+</h4></div></div></div>
+<p>
+          Rejoice! If you're new to Boost.Python, at this point it might be a good
+          idea to ignore build issues for a while and concentrate on learning the
+          library by going through the <a href="../tutorial/index.html" target="_top">Tutorial</a>
+          and perhaps some of the <a href="../reference/index.html" target="_top">Reference Manual</a>,
+          trying out what you've learned about the API by modifying the quickstart
+          project.
+        </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="building.no_install_quickstart.modifying_the_example_project"></a><a class="link" href="no_install_quickstart.html#building.no_install_quickstart.modifying_the_example_project" title="Modifying the Example Project">Modifying
+        the Example Project</a>
+</h4></div></div></div>
+<div class="toc"><dl>
+<dt><span class="section"><a href="no_install_quickstart.html#building.no_install_quickstart.modifying_the_example_project.relocate_the_project">Relocate
+          the Project</a></span></dt>
+<dt><span class="section"><a href="no_install_quickstart.html#building.no_install_quickstart.modifying_the_example_project.add_new_or_change_names_of_exist">Add
+          New or Change Names of Existing Source Files</a></span></dt>
+<dt><span class="section"><a href="no_install_quickstart.html#building.no_install_quickstart.modifying_the_example_project.change_the_name_of_your_extensio">Change
+          the Name of your Extension Module</a></span></dt>
+</dl></div>
+<p>
+          If you're content to keep your extension module forever in one source file
+          called <code class="computeroutput"><span class="identifier">extending</span><span class="special">.</span><span class="identifier">cpp</span></code>, inside your Boost.Python distribution,
+          and import it forever as <code class="computeroutput"><span class="identifier">extending</span></code>,
+          then you can stop here. However, it's likely that you will want to make
+          a few changes. There are a few things you can do without having to learn
+          <a href="http://www.boost.org/build" target="_top">Boost.Build</a> in depth.
+        </p>
+<p>
+          The project you just built is specified in two files in the current directory:
+          <code class="computeroutput"><span class="identifier">boost</span><span class="special">-</span><span class="identifier">build</span><span class="special">.</span><span class="identifier">jam</span></code>, which tells <code class="computeroutput"><span class="identifier">bjam</span></code>
+          where it can find the interpreted code of the Boost build system, and
+          <code class="computeroutput"><span class="identifier">Jamroot</span></code>, which describes
+          the targets you just built. These files are heavily commented, so they
+          should be easy to modify. Take care, however, to preserve whitespace. Punctuation
+          such as <code class="computeroutput"><span class="special">;</span></code> will not be recognized
+          as intended by <code class="computeroutput"><span class="identifier">bjam</span></code> if
+          it is not surrounded by whitespace.
+        </p>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="building.no_install_quickstart.modifying_the_example_project.relocate_the_project"></a><a class="link" href="no_install_quickstart.html#building.no_install_quickstart.modifying_the_example_project.relocate_the_project" title="Relocate the Project">Relocate
+          the Project</a>
+</h5></div></div></div>
+<p>
+            You'll probably want to copy this project elsewhere so you can change
+            it without modifying your Boost distribution. To do that, simply
+          </p>
+<p>
+            a. copy the entire <code class="computeroutput"><span class="identifier">example</span><span class="special">/</span><span class="identifier">quickstart</span><span class="special">/</span></code> directory into a new directory.
+          </p>
+<p>
+            b. In the new copies of <code class="computeroutput"><span class="identifier">boost</span><span class="special">-</span><span class="identifier">build</span><span class="special">.</span><span class="identifier">jam</span></code>
+            and <code class="computeroutput"><span class="identifier">Jamroot</span></code>, locate the
+            relative path near the top of the file that is clearly marked by a comment,
+            and edit that path so that it refers to the same directory your Boost
+            distribution as it referred to when the file was in its original location
+            in the <code class="computeroutput"><span class="identifier">example</span><span class="special">/</span><span class="identifier">quickstart</span><span class="special">/</span></code>
+            directory.
+          </p>
+<p>
+            For example, if you moved the project from <code class="computeroutput"><span class="special">/</span><span class="identifier">home</span><span class="special">/</span><span class="identifier">dave</span><span class="special">/</span><span class="identifier">boost_1_34_0</span><span class="special">/</span><span class="identifier">libs</span><span class="special">/</span><span class="identifier">python</span><span class="special">/</span><span class="identifier">example</span><span class="special">/</span><span class="identifier">quickstart</span></code> to <code class="computeroutput"><span class="special">/</span><span class="identifier">home</span><span class="special">/</span><span class="identifier">dave</span><span class="special">/</span><span class="identifier">my</span><span class="special">-</span><span class="identifier">project</span></code>, you could change the first
+            path in <code class="computeroutput"><span class="identifier">boost</span><span class="special">-</span><span class="identifier">build</span><span class="special">.</span><span class="identifier">jam</span></code> from
+          </p>
+<pre class="programlisting"><span class="special">../../../../</span><span class="identifier">tools</span><span class="special">/</span><span class="identifier">build</span><span class="special">/</span><span class="identifier">src</span>
+</pre>
+<p>
+            to
+          </p>
+<pre class="programlisting"><span class="special">/</span><span class="identifier">home</span><span class="special">/</span><span class="identifier">dave</span><span class="special">/</span><span class="identifier">boost_1_34_0</span><span class="special">/</span><span class="identifier">tools</span><span class="special">/</span><span class="identifier">build</span><span class="special">/</span><span class="identifier">src</span>
+</pre>
+<p>
+            and change the first path in <code class="computeroutput"><span class="identifier">Jamroot</span></code>
+            from
+          </p>
+<pre class="programlisting"><span class="special">../../../..</span>
+</pre>
+<p>
+            to
+          </p>
+<pre class="programlisting"><span class="special">/</span><span class="identifier">home</span><span class="special">/</span><span class="identifier">dave</span><span class="special">/</span><span class="identifier">boost_1_34_0</span>
+</pre>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="building.no_install_quickstart.modifying_the_example_project.add_new_or_change_names_of_exist"></a><a class="link" href="no_install_quickstart.html#building.no_install_quickstart.modifying_the_example_project.add_new_or_change_names_of_exist" title="Add New or Change Names of Existing Source Files">Add
+          New or Change Names of Existing Source Files</a>
+</h5></div></div></div>
+<p>
+            The names of additional source files involved in building your extension
+            module or embedding application can be listed in <code class="computeroutput"><span class="identifier">Jamroot</span></code>
+            right alongside <code class="computeroutput"><span class="identifier">extending</span><span class="special">.</span><span class="identifier">cpp</span></code>
+            or <code class="computeroutput"><span class="identifier">embedding</span><span class="special">.</span><span class="identifier">cpp</span></code> respectively. Just be sure to leave
+            whitespace around each filename:
+          </p>
+<pre class="programlisting"><span class="error">&#8230;</span> <span class="identifier">file1</span><span class="special">.</span><span class="identifier">cpp</span> <span class="identifier">file2</span><span class="special">.</span><span class="identifier">cpp</span> <span class="identifier">file3</span><span class="special">.</span><span class="identifier">cpp</span> <span class="error">&#8230;</span>
+</pre>
+<p>
+            Naturally, if you want to change the name of a source file you can tell
+            Boost.Build about it by editing the name in <code class="computeroutput"><span class="identifier">Jamroot</span></code>.
+          </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="building.no_install_quickstart.modifying_the_example_project.change_the_name_of_your_extensio"></a><a class="link" href="no_install_quickstart.html#building.no_install_quickstart.modifying_the_example_project.change_the_name_of_your_extensio" title="Change the Name of your Extension Module">Change
+          the Name of your Extension Module</a>
+</h5></div></div></div>
+<p>
+            The name of the extension module is determined by two things:
+          </p>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+                the name in <code class="computeroutput"><span class="identifier">Jamroot</span></code>
+                immediately following <code class="computeroutput"><span class="identifier">python</span><span class="special">-</span><span class="identifier">extension</span></code>,
+                and
+              </li>
+<li class="listitem">
+                the name passed to <code class="computeroutput"><span class="identifier">BOOST_PYTHON_MODULE</span></code>
+                in <code class="computeroutput"><span class="identifier">extending</span><span class="special">.</span><span class="identifier">cpp</span></code>.
+              </li>
+</ol></div>
+<p>
+            To change the name of the extension module from <code class="computeroutput"><span class="identifier">extending</span></code>
+            to <code class="computeroutput"><span class="identifier">hello</span></code>, you'd edit
+            <code class="computeroutput"><span class="identifier">Jamroot</span></code>, changing
+          </p>
+<pre class="programlisting"><span class="identifier">python</span><span class="special">-</span><span class="identifier">extension</span> <span class="identifier">extending</span> <span class="special">:</span> <span class="identifier">extending</span><span class="special">.</span><span class="identifier">cpp</span> <span class="special">;</span>
+</pre>
+<p>
+            to
+          </p>
+<pre class="programlisting"><span class="identifier">python</span><span class="special">-</span><span class="identifier">extension</span> <span class="identifier">hello</span> <span class="special">:</span> <span class="identifier">extending</span><span class="special">.</span><span class="identifier">cpp</span> <span class="special">;</span>
+</pre>
+<p>
+            and you'd edit extending.cpp, changing
+          </p>
+<pre class="programlisting"><span class="identifier">BOOST_PYTHON_MODULE</span><span class="special">(</span><span class="identifier">extending</span><span class="special">)</span>
+</pre>
+<p>
+            to
+          </p>
+<pre class="programlisting"><span class="identifier">BOOST_PYTHON_MODULE</span><span class="special">(</span><span class="identifier">hello</span><span class="special">)</span>
+</pre>
+</div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2002-2015 David
+      Abrahams, Stefan Seefeld<br>Copyright &#169; 2002-2015 David Abrahams, Stefan Seefeld<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="background.html"><img src="../images/prev.png" alt="Prev"></a><a accesskey="u" href="../building.html"><img src="../images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../images/home.png" alt="Home"></a><a accesskey="n" href="installing_boost_python_on_your_.html"><img src="../images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

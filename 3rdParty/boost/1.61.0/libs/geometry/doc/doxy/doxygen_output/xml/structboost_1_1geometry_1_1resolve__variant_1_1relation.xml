@@ -1,0 +1,51 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="structboost_1_1geometry_1_1resolve__variant_1_1relation" kind="struct" prot="public">
+    <compoundname>boost::geometry::resolve_variant::relation</compoundname>
+    <includes local="no">interface.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename Geometry1</type>
+      </param>
+      <param>
+        <type>typename Geometry2</type>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-static-func">
+      <memberdef kind="function" id="structboost_1_1geometry_1_1resolve__variant_1_1relation_1a275165c27f8f3b743d3adc6e6a8e316d" prot="public" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Matrix</type>
+          </param>
+        </templateparamlist>
+        <type>Matrix</type>
+        <definition>static Matrix boost::geometry::resolve_variant::relation&lt; Geometry1, Geometry2 &gt;::apply</definition>
+        <argsstring>(Geometry1 const &amp;geometry1, Geometry2 const &amp;geometry2)</argsstring>
+        <name>apply</name>
+        <param>
+          <type>Geometry1 const &amp;</type>
+          <declname>geometry1</declname>
+        </param>
+        <param>
+          <type>Geometry2 const &amp;</type>
+          <declname>geometry2</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/relation/interface.hpp" line="48" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/relation/interface.hpp" bodystart="46" bodyend="67"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/relation/interface.hpp" line="44" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/relation/interface.hpp" bodystart="43" bodyend="68"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1resolve__variant_1_1relation_1a275165c27f8f3b743d3adc6e6a8e316d" prot="public" virt="non-virtual"><scope>boost::geometry::resolve_variant::relation</scope><name>apply</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

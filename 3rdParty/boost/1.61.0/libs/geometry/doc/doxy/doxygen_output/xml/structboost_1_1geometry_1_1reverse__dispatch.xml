@@ -1,0 +1,22 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="structboost_1_1geometry_1_1reverse__dispatch" kind="struct" prot="public">
+    <compoundname>boost::geometry::reverse_dispatch</compoundname>
+    <includes local="no">reverse_dispatch.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename Geometry1</type>
+      </param>
+      <param>
+        <type>typename Geometry2</type>
+      </param>
+    </templateparamlist>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/core/reverse_dispatch.hpp" line="61" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/core/reverse_dispatch.hpp" bodystart="56" bodyend="61"/>
+    <listofallmembers>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

@@ -1,0 +1,19 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="structboost_1_1geometry_1_1dispatch_1_1envelope_3_01_geometry_00_01detail_1_1buffer_1_1buffered__ring__collection__tag_01_4" kind="struct" prot="public">
+    <compoundname>boost::geometry::dispatch::envelope&lt; Geometry, detail::buffer::buffered_ring_collection_tag &gt;</compoundname>
+    <includes local="no">buffered_ring.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename Geometry</type>
+      </param>
+    </templateparamlist>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/buffer/buffered_ring.hpp" line="236" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/buffer/buffered_ring.hpp" bodystart="231" bodyend="236"/>
+    <listofallmembers>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

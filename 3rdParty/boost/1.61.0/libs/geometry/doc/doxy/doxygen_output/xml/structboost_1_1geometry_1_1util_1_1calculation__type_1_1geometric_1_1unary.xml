@@ -1,0 +1,46 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="structboost_1_1geometry_1_1util_1_1calculation__type_1_1geometric_1_1unary" kind="struct" prot="public">
+    <compoundname>boost::geometry::util::calculation_type::geometric::unary</compoundname>
+    <includes local="no">calculation_type.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename Geometry</type>
+      </param>
+      <param>
+        <type>typename CalculationType</type>
+      </param>
+      <param>
+        <type>typename DefaultFloatingPointCalculationType</type>
+        <defval>double</defval>
+      </param>
+      <param>
+        <type>typename DefaultIntegralCalculationType</type>
+        <defval><ref refid="structboost_1_1geometry_1_1util_1_1detail_1_1default__integral_1a76a087133bfb8494906b619907cce465" kindref="member">detail::default_integral::type</ref></defval>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-type">
+      <memberdef kind="typedef" id="structboost_1_1geometry_1_1util_1_1calculation__type_1_1geometric_1_1unary_1aedc94a23c1cc5e874f05ed1c12c25640" prot="public" static="no">
+        <type><ref refid="structboost_1_1geometry_1_1util_1_1detail_1_1calculation__type" kindref="compound">detail::calculation_type</ref>&lt; typename <ref refid="structboost_1_1geometry_1_1coordinate__type" kindref="compound">geometry::coordinate_type</ref>&lt; Geometry &gt;::<ref refid="structboost_1_1geometry_1_1util_1_1calculation__type_1_1geometric_1_1unary_1aedc94a23c1cc5e874f05ed1c12c25640" kindref="member">type</ref>, CalculationType, DefaultFloatingPointCalculationType, DefaultIntegralCalculationType &gt;::<ref refid="structboost_1_1geometry_1_1util_1_1calculation__type_1_1geometric_1_1unary_1aedc94a23c1cc5e874f05ed1c12c25640" kindref="member">type</ref></type>
+        <definition>typedef detail::calculation_type&lt; typename geometry::coordinate_type&lt;Geometry&gt;::type, CalculationType, DefaultFloatingPointCalculationType, DefaultIntegralCalculationType &gt;::type boost::geometry::util::calculation_type::geometric::unary&lt; Geometry, CalculationType, DefaultFloatingPointCalculationType, DefaultIntegralCalculationType &gt;::type</definition>
+        <argsstring></argsstring>
+        <name>type</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/util/calculation_type.hpp" line="117" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/util/calculation_type.hpp" bodystart="117" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/util/calculation_type.hpp" line="110" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/util/calculation_type.hpp" bodystart="109" bodyend="118"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1util_1_1calculation__type_1_1geometric_1_1unary_1aedc94a23c1cc5e874f05ed1c12c25640" prot="public" virt="non-virtual"><scope>boost::geometry::util::calculation_type::geometric::unary</scope><name>type</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

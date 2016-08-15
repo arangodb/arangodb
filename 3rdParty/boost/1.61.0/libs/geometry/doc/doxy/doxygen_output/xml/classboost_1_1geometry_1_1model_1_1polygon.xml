@@ -1,0 +1,308 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="classboost_1_1geometry_1_1model_1_1polygon" kind="class" prot="public">
+    <compoundname>boost::geometry::model::polygon</compoundname>
+    <includes local="no">polygon.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename</type>
+        <declname>Point</declname>
+        <defname>Point</defname>
+      </param>
+      <param>
+        <type>bool</type>
+        <declname>ClockWise</declname>
+        <defname>ClockWise</defname>
+        <defval>true</defval>
+      </param>
+      <param>
+        <type>bool</type>
+        <declname>Closed</declname>
+        <defname>Closed</defname>
+        <defval>true</defval>
+      </param>
+      <param>
+        <type>template&lt; typename, typename &gt; class</type>
+        <declname>PointList</declname>
+        <defname>PointList</defname>
+        <defval>std::vector</defval>
+      </param>
+      <param>
+        <type>template&lt; typename, typename &gt; class</type>
+        <declname>RingList</declname>
+        <defname>RingList</defname>
+        <defval>std::vector</defval>
+      </param>
+      <param>
+        <type>template&lt; typename &gt; class</type>
+        <declname>PointAlloc</declname>
+        <defname>PointAlloc</defname>
+        <defval>std::allocator</defval>
+      </param>
+      <param>
+        <type>template&lt; typename &gt; class</type>
+        <declname>RingAlloc</declname>
+        <defname>RingAlloc</defname>
+        <defval>std::allocator</defval>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-type">
+      <memberdef kind="typedef" id="classboost_1_1geometry_1_1model_1_1polygon_1a3333b0b9de742667d84f94706a853ae7" prot="public" static="no">
+        <type>RingList&lt; <ref refid="classboost_1_1geometry_1_1model_1_1polygon_1a570d62b2dd33ac4269a0b559cb3b18fb" kindref="member">ring_type</ref>, RingAlloc&lt; <ref refid="classboost_1_1geometry_1_1model_1_1polygon_1a570d62b2dd33ac4269a0b559cb3b18fb" kindref="member">ring_type</ref> &gt; &gt;</type>
+        <definition>typedef RingList&lt;ring_type , RingAlloc&lt;ring_type &gt; &gt; boost::geometry::model::polygon&lt; Point, ClockWise, Closed, PointList, RingList, PointAlloc, RingAlloc &gt;::inner_container_type</definition>
+        <argsstring></argsstring>
+        <name>inner_container_type</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/polygon.hpp" line="85" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/polygon.hpp" bodystart="85" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="typedef" id="classboost_1_1geometry_1_1model_1_1polygon_1a2967e76f11d21ce2b51d5e7ba661ec98" prot="public" static="no">
+        <type>Point</type>
+        <definition>typedef Point boost::geometry::model::polygon&lt; Point, ClockWise, Closed, PointList, RingList, PointAlloc, RingAlloc &gt;::point_type</definition>
+        <argsstring></argsstring>
+        <name>point_type</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/polygon.hpp" line="83" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/polygon.hpp" bodystart="83" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="typedef" id="classboost_1_1geometry_1_1model_1_1polygon_1a570d62b2dd33ac4269a0b559cb3b18fb" prot="public" static="no">
+        <type><ref refid="classboost_1_1geometry_1_1model_1_1ring" kindref="compound">ring</ref>&lt; Point, ClockWise, Closed, <ref refid="class_point_list" kindref="compound">PointList</ref>, PointAlloc &gt;</type>
+        <definition>typedef ring&lt;Point, ClockWise, Closed, PointList, PointAlloc&gt; boost::geometry::model::polygon&lt; Point, ClockWise, Closed, PointList, RingList, PointAlloc, RingAlloc &gt;::ring_type</definition>
+        <argsstring></argsstring>
+        <name>ring_type</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/polygon.hpp" line="84" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/polygon.hpp" bodystart="84" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="private-attrib">
+      <memberdef kind="variable" id="classboost_1_1geometry_1_1model_1_1polygon_1a7ff03febfd9163687b5693a74cef028a" prot="private" static="no" mutable="no">
+        <type><ref refid="classboost_1_1geometry_1_1model_1_1polygon_1a3333b0b9de742667d84f94706a853ae7" kindref="member">inner_container_type</ref></type>
+        <definition>inner_container_type boost::geometry::model::polygon&lt; Point, ClockWise, Closed, PointList, RingList, PointAlloc, RingAlloc &gt;::m_inners</definition>
+        <argsstring></argsstring>
+        <name>m_inners</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/polygon.hpp" line="144" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/polygon.hpp" bodystart="144" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classboost_1_1geometry_1_1model_1_1polygon_1a92c39346305aa94c89627f771b38fce0" prot="private" static="no" mutable="no">
+        <type><ref refid="classboost_1_1geometry_1_1model_1_1polygon_1a570d62b2dd33ac4269a0b559cb3b18fb" kindref="member">ring_type</ref></type>
+        <definition>ring_type boost::geometry::model::polygon&lt; Point, ClockWise, Closed, PointList, RingList, PointAlloc, RingAlloc &gt;::m_outer</definition>
+        <argsstring></argsstring>
+        <name>m_outer</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/polygon.hpp" line="143" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/polygon.hpp" bodystart="143" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="private-func">
+      <memberdef kind="function" id="classboost_1_1geometry_1_1model_1_1polygon_1aa9566e0601305b7e162215c7a6d6dfe9" prot="private" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type></type>
+        <definition>boost::geometry::model::polygon&lt; Point, ClockWise, Closed, PointList, RingList, PointAlloc, RingAlloc &gt;::BOOST_CONCEPT_ASSERT</definition>
+        <argsstring>((concept::Point&lt; Point &gt;))</argsstring>
+        <name>BOOST_CONCEPT_ASSERT</name>
+        <param>
+          <type>(<ref refid="classboost_1_1geometry_1_1concept_1_1_point" kindref="compound">concept::Point</ref>&lt; Point &gt;)</type>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/polygon.hpp" line="78"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="classboost_1_1geometry_1_1model_1_1polygon_1aa1c33952047f12bed22862b634f885d8" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>void</type>
+        <definition>void boost::geometry::model::polygon&lt; Point, ClockWise, Closed, PointList, RingList, PointAlloc, RingAlloc &gt;::clear</definition>
+        <argsstring>()</argsstring>
+        <name>clear</name>
+        <briefdescription>
+<para>Utility method, clears outer and inner rings. </para>        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/polygon.hpp" line="136" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/polygon.hpp" bodystart="135" bodyend="139"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1model_1_1polygon_1a06c92c4750c01e9f1ca8994bd4b476ad" prot="public" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <type><ref refid="classboost_1_1geometry_1_1model_1_1polygon_1a3333b0b9de742667d84f94706a853ae7" kindref="member">inner_container_type</ref> const &amp;</type>
+        <definition>inner_container_type const&amp; boost::geometry::model::polygon&lt; Point, ClockWise, Closed, PointList, RingList, PointAlloc, RingAlloc &gt;::inners</definition>
+        <argsstring>() const </argsstring>
+        <name>inners</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/polygon.hpp" line="88" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/polygon.hpp" bodystart="88" bodyend="88"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1model_1_1polygon_1a9920acd7487ef19f594dabc8cbb575ed" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type><ref refid="classboost_1_1geometry_1_1model_1_1polygon_1a3333b0b9de742667d84f94706a853ae7" kindref="member">inner_container_type</ref> &amp;</type>
+        <definition>inner_container_type&amp; boost::geometry::model::polygon&lt; Point, ClockWise, Closed, PointList, RingList, PointAlloc, RingAlloc &gt;::inners</definition>
+        <argsstring>()</argsstring>
+        <name>inners</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/polygon.hpp" line="91" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/polygon.hpp" bodystart="91" bodyend="91"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1model_1_1polygon_1a277ecfada807f6fc82883ffd6e52c920" prot="public" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <type><ref refid="classboost_1_1geometry_1_1model_1_1polygon_1a570d62b2dd33ac4269a0b559cb3b18fb" kindref="member">ring_type</ref> const &amp;</type>
+        <definition>ring_type const&amp; boost::geometry::model::polygon&lt; Point, ClockWise, Closed, PointList, RingList, PointAlloc, RingAlloc &gt;::outer</definition>
+        <argsstring>() const </argsstring>
+        <name>outer</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/polygon.hpp" line="87" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/polygon.hpp" bodystart="87" bodyend="87"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1model_1_1polygon_1a85574defd31e3480021cb35dd8546dc3" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type><ref refid="classboost_1_1geometry_1_1model_1_1polygon_1a570d62b2dd33ac4269a0b559cb3b18fb" kindref="member">ring_type</ref> &amp;</type>
+        <definition>ring_type&amp; boost::geometry::model::polygon&lt; Point, ClockWise, Closed, PointList, RingList, PointAlloc, RingAlloc &gt;::outer</definition>
+        <argsstring>()</argsstring>
+        <name>outer</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/polygon.hpp" line="90" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/polygon.hpp" bodystart="90" bodyend="90"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1model_1_1polygon_1a089990a65e206011b56b8b8e2bad9fa1" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type></type>
+        <definition>boost::geometry::model::polygon&lt; Point, ClockWise, Closed, PointList, RingList, PointAlloc, RingAlloc &gt;::polygon</definition>
+        <argsstring>()</argsstring>
+        <name>polygon</name>
+        <briefdescription>
+<para>Default constructor, creating an empty \1. </para>        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/polygon.hpp" line="102" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/polygon.hpp" bodystart="99" bodyend="102"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1model_1_1polygon_1a9835cc906e4819930a9ae1ef55af3df1" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type></type>
+        <definition>boost::geometry::model::polygon&lt; Point, ClockWise, Closed, PointList, RingList, PointAlloc, RingAlloc &gt;::polygon</definition>
+        <argsstring>(std::initializer_list&lt; ring_type &gt; l)</argsstring>
+        <name>polygon</name>
+        <param>
+          <type>std::initializer_list&lt; <ref refid="classboost_1_1geometry_1_1model_1_1polygon_1a570d62b2dd33ac4269a0b559cb3b18fb" kindref="member">ring_type</ref> &gt;</type>
+          <declname>l</declname>
+        </param>
+        <briefdescription>
+<para>Constructor taking std::initializer_list, filling the \1. </para>        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/polygon.hpp" line="108" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/polygon.hpp" bodystart="105" bodyend="108"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+<para>The polygon contains an outer ring and zero or more inner rings. </para>    </briefdescription>
+    <detaileddescription>
+<para><parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>Point</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>point type </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>ClockWise</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>true for clockwise direction, false for CounterClockWise direction </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Closed</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>true for closed polygons (last point == first point), false open points </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>PointList</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>container type for points, for example std::vector, std::list, std::deque </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>RingList</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>container type for inner rings, for example std::vector, std::list, std::deque </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>PointAlloc</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>container-allocator-type, for the points </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>RingAlloc</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>container-allocator-type, for the rings </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="note"><para>The container collecting the points in the rings can be different from the container collecting the inner rings. They all default to vector.</para></simplesect>
+ <qbk>[include reference/geometries/polygon.qbk]</qbk>   <qbk.before.synopsis>
+[heading Model of]
+[link geometry.reference.concepts.concept_polygon Polygon Concept]
+</qbk.before.synopsis>  </para>    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/polygon.hpp" line="77" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/polygon.hpp" bodystart="76" bodyend="145"/>
+    <listofallmembers>
+      <member refid="classboost_1_1geometry_1_1model_1_1polygon_1aa9566e0601305b7e162215c7a6d6dfe9" prot="private" virt="non-virtual"><scope>boost::geometry::model::polygon</scope><name>BOOST_CONCEPT_ASSERT</name></member>
+      <member refid="classboost_1_1geometry_1_1model_1_1polygon_1aa1c33952047f12bed22862b634f885d8" prot="public" virt="non-virtual"><scope>boost::geometry::model::polygon</scope><name>clear</name></member>
+      <member refid="classboost_1_1geometry_1_1model_1_1polygon_1a3333b0b9de742667d84f94706a853ae7" prot="public" virt="non-virtual"><scope>boost::geometry::model::polygon</scope><name>inner_container_type</name></member>
+      <member refid="classboost_1_1geometry_1_1model_1_1polygon_1a06c92c4750c01e9f1ca8994bd4b476ad" prot="public" virt="non-virtual"><scope>boost::geometry::model::polygon</scope><name>inners</name></member>
+      <member refid="classboost_1_1geometry_1_1model_1_1polygon_1a9920acd7487ef19f594dabc8cbb575ed" prot="public" virt="non-virtual"><scope>boost::geometry::model::polygon</scope><name>inners</name></member>
+      <member refid="classboost_1_1geometry_1_1model_1_1polygon_1a7ff03febfd9163687b5693a74cef028a" prot="private" virt="non-virtual"><scope>boost::geometry::model::polygon</scope><name>m_inners</name></member>
+      <member refid="classboost_1_1geometry_1_1model_1_1polygon_1a92c39346305aa94c89627f771b38fce0" prot="private" virt="non-virtual"><scope>boost::geometry::model::polygon</scope><name>m_outer</name></member>
+      <member refid="classboost_1_1geometry_1_1model_1_1polygon_1a277ecfada807f6fc82883ffd6e52c920" prot="public" virt="non-virtual"><scope>boost::geometry::model::polygon</scope><name>outer</name></member>
+      <member refid="classboost_1_1geometry_1_1model_1_1polygon_1a85574defd31e3480021cb35dd8546dc3" prot="public" virt="non-virtual"><scope>boost::geometry::model::polygon</scope><name>outer</name></member>
+      <member refid="classboost_1_1geometry_1_1model_1_1polygon_1a2967e76f11d21ce2b51d5e7ba661ec98" prot="public" virt="non-virtual"><scope>boost::geometry::model::polygon</scope><name>point_type</name></member>
+      <member refid="classboost_1_1geometry_1_1model_1_1polygon_1a089990a65e206011b56b8b8e2bad9fa1" prot="public" virt="non-virtual"><scope>boost::geometry::model::polygon</scope><name>polygon</name></member>
+      <member refid="classboost_1_1geometry_1_1model_1_1polygon_1a9835cc906e4819930a9ae1ef55af3df1" prot="public" virt="non-virtual"><scope>boost::geometry::model::polygon</scope><name>polygon</name></member>
+      <member refid="classboost_1_1geometry_1_1model_1_1polygon_1a570d62b2dd33ac4269a0b559cb3b18fb" prot="public" virt="non-virtual"><scope>boost::geometry::model::polygon</scope><name>ring_type</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

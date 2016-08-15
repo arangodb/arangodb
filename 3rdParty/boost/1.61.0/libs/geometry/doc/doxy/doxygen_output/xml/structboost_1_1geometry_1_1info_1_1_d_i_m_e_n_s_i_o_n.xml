@@ -1,0 +1,21 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="structboost_1_1geometry_1_1info_1_1_d_i_m_e_n_s_i_o_n" kind="struct" prot="public">
+    <compoundname>boost::geometry::info::DIMENSION</compoundname>
+    <includes local="no">not_implemented.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>size_t</type>
+        <declname>D</declname>
+        <defname>D</defname>
+      </param>
+    </templateparamlist>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/not_implemented.hpp" line="46" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/not_implemented.hpp" bodystart="46" bodyend="46"/>
+    <listofallmembers>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

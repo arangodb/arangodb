@@ -1,0 +1,37 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="namespaceboost_1_1geometry_1_1strategy_1_1transform" kind="namespace">
+    <compoundname>boost::geometry::strategy::transform</compoundname>
+    <innerclass refid="structboost_1_1geometry_1_1strategy_1_1transform_1_1copy__direct" prot="public">boost::geometry::strategy::transform::copy_direct</innerclass>
+    <innerclass refid="structboost_1_1geometry_1_1strategy_1_1transform_1_1copy__per__coordinate" prot="public">boost::geometry::strategy::transform::copy_per_coordinate</innerclass>
+    <innerclass refid="structboost_1_1geometry_1_1strategy_1_1transform_1_1degree__radian__vv" prot="public">boost::geometry::strategy::transform::degree_radian_vv</innerclass>
+    <innerclass refid="structboost_1_1geometry_1_1strategy_1_1transform_1_1degree__radian__vv__3" prot="public">boost::geometry::strategy::transform::degree_radian_vv_3</innerclass>
+    <innerclass refid="structboost_1_1geometry_1_1strategy_1_1transform_1_1from__cartesian__3__to__spherical__equatorial__2" prot="public">boost::geometry::strategy::transform::from_cartesian_3_to_spherical_equatorial_2</innerclass>
+    <innerclass refid="structboost_1_1geometry_1_1strategy_1_1transform_1_1from__cartesian__3__to__spherical__equatorial__3" prot="public">boost::geometry::strategy::transform::from_cartesian_3_to_spherical_equatorial_3</innerclass>
+    <innerclass refid="structboost_1_1geometry_1_1strategy_1_1transform_1_1from__cartesian__3__to__spherical__polar__2" prot="public">boost::geometry::strategy::transform::from_cartesian_3_to_spherical_polar_2</innerclass>
+    <innerclass refid="structboost_1_1geometry_1_1strategy_1_1transform_1_1from__cartesian__3__to__spherical__polar__3" prot="public">boost::geometry::strategy::transform::from_cartesian_3_to_spherical_polar_3</innerclass>
+    <innerclass refid="structboost_1_1geometry_1_1strategy_1_1transform_1_1from__spherical__equatorial__2__to__cartesian__3" prot="public">boost::geometry::strategy::transform::from_spherical_equatorial_2_to_cartesian_3</innerclass>
+    <innerclass refid="structboost_1_1geometry_1_1strategy_1_1transform_1_1from__spherical__equatorial__3__to__cartesian__3" prot="public">boost::geometry::strategy::transform::from_spherical_equatorial_3_to_cartesian_3</innerclass>
+    <innerclass refid="structboost_1_1geometry_1_1strategy_1_1transform_1_1from__spherical__polar__2__to__cartesian__3" prot="public">boost::geometry::strategy::transform::from_spherical_polar_2_to_cartesian_3</innerclass>
+    <innerclass refid="structboost_1_1geometry_1_1strategy_1_1transform_1_1from__spherical__polar__3__to__cartesian__3" prot="public">boost::geometry::strategy::transform::from_spherical_polar_3_to_cartesian_3</innerclass>
+    <innerclass refid="classboost_1_1geometry_1_1strategy_1_1transform_1_1inverse__transformer" prot="public">boost::geometry::strategy::transform::inverse_transformer</innerclass>
+    <innerclass refid="classboost_1_1geometry_1_1strategy_1_1transform_1_1map__transformer" prot="public">boost::geometry::strategy::transform::map_transformer</innerclass>
+    <innerclass refid="classboost_1_1geometry_1_1strategy_1_1transform_1_1rotate__transformer" prot="public">boost::geometry::strategy::transform::rotate_transformer</innerclass>
+    <innerclass refid="classboost_1_1geometry_1_1strategy_1_1transform_1_1scale__transformer" prot="public">boost::geometry::strategy::transform::scale_transformer</innerclass>
+    <innerclass refid="classboost_1_1geometry_1_1strategy_1_1transform_1_1scale__transformer_3_01_calculation_type_00_012_00_012_01_4" prot="public">boost::geometry::strategy::transform::scale_transformer&lt; CalculationType, 2, 2 &gt;</innerclass>
+    <innerclass refid="classboost_1_1geometry_1_1strategy_1_1transform_1_1scale__transformer_3_01_calculation_type_00_013_00_013_01_4" prot="public">boost::geometry::strategy::transform::scale_transformer&lt; CalculationType, 3, 3 &gt;</innerclass>
+    <innerclass refid="classboost_1_1geometry_1_1strategy_1_1transform_1_1translate__transformer" prot="public">boost::geometry::strategy::transform::translate_transformer</innerclass>
+    <innerclass refid="classboost_1_1geometry_1_1strategy_1_1transform_1_1translate__transformer_3_01_calculation_type_00_012_00_012_01_4" prot="public">boost::geometry::strategy::transform::translate_transformer&lt; CalculationType, 2, 2 &gt;</innerclass>
+    <innerclass refid="classboost_1_1geometry_1_1strategy_1_1transform_1_1translate__transformer_3_01_calculation_type_00_013_00_013_01_4" prot="public">boost::geometry::strategy::transform::translate_transformer&lt; CalculationType, 3, 3 &gt;</innerclass>
+    <innerclass refid="classboost_1_1geometry_1_1strategy_1_1transform_1_1ublas__transformer" prot="public">boost::geometry::strategy::transform::ublas_transformer</innerclass>
+    <innerclass refid="classboost_1_1geometry_1_1strategy_1_1transform_1_1ublas__transformer_3_01_calculation_type_00_012_00_012_01_4" prot="public">boost::geometry::strategy::transform::ublas_transformer&lt; CalculationType, 2, 2 &gt;</innerclass>
+    <innerclass refid="classboost_1_1geometry_1_1strategy_1_1transform_1_1ublas__transformer_3_01_calculation_type_00_013_00_012_01_4" prot="public">boost::geometry::strategy::transform::ublas_transformer&lt; CalculationType, 3, 2 &gt;</innerclass>
+    <innerclass refid="classboost_1_1geometry_1_1strategy_1_1transform_1_1ublas__transformer_3_01_calculation_type_00_013_00_013_01_4" prot="public">boost::geometry::strategy::transform::ublas_transformer&lt; CalculationType, 3, 3 &gt;</innerclass>
+    <innernamespace refid="namespaceboost_1_1geometry_1_1strategy_1_1transform_1_1services">boost::geometry::strategy::transform::services</innernamespace>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/strategy_transform.hpp" line="43"/>
+  </compounddef>
+</doxygen>

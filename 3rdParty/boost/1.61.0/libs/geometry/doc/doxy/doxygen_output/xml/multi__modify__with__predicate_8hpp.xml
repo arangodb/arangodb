@@ -1,0 +1,25 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="multi__modify__with__predicate_8hpp" kind="file">
+    <compoundname>multi_modify_with_predicate.hpp</compoundname>
+    <includes local="no">boost/range.hpp</includes>
+    <incdepgraph>
+      <node id="25238">
+        <label>boost/range.hpp</label>
+      </node>
+      <node id="25237">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/multi_modify_with_predicate.hpp</label>
+        <link refid="multi_modify_with_predicate.hpp"/>
+        <childnode refid="25238" relation="include">
+        </childnode>
+      </node>
+    </incdepgraph>
+    <innernamespace refid="namespaceboost">boost</innernamespace>
+    <innernamespace refid="namespaceboost_1_1geometry">boost::geometry</innernamespace>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/multi_modify_with_predicate.hpp"/>
+  </compounddef>
+</doxygen>

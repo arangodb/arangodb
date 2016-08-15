@@ -1,0 +1,36 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="dir_f55ac20fb3e3255e57c57139f4ea1870" kind="dir">
+    <compoundname>/home/travis/build/boostorg/boost/boost/geometry/util/</compoundname>
+    <innerfile refid="add__const__if__c_8hpp">add_const_if_c.hpp</innerfile>
+    <innerfile refid="bare__type_8hpp">bare_type.hpp</innerfile>
+    <innerfile refid="calculation__type_8hpp">calculation_type.hpp</innerfile>
+    <innerfile refid="closure__as__bool_8hpp">closure_as_bool.hpp</innerfile>
+    <innerfile refid="combine__if_8hpp">combine_if.hpp</innerfile>
+    <innerfile refid="compress__variant_8hpp">compress_variant.hpp</innerfile>
+    <innerfile refid="condition_8hpp">condition.hpp</innerfile>
+    <innerfile refid="coordinate__cast_8hpp">coordinate_cast.hpp</innerfile>
+    <innerfile refid="for__each__coordinate_8hpp">for_each_coordinate.hpp</innerfile>
+    <innerfile refid="has__infinite__coordinate_8hpp">has_infinite_coordinate.hpp</innerfile>
+    <innerfile refid="has__nan__coordinate_8hpp">has_nan_coordinate.hpp</innerfile>
+    <innerfile refid="has__non__finite__coordinate_8hpp">has_non_finite_coordinate.hpp</innerfile>
+    <innerfile refid="math_8hpp">math.hpp</innerfile>
+    <innerfile refid="normalize__spheroidal__box__coordinates_8hpp">normalize_spheroidal_box_coordinates.hpp</innerfile>
+    <innerfile refid="normalize__spheroidal__coordinates_8hpp">normalize_spheroidal_coordinates.hpp</innerfile>
+    <innerfile refid="order__as__direction_8hpp">order_as_direction.hpp</innerfile>
+    <innerfile refid="parameter__type__of_8hpp">parameter_type_of.hpp</innerfile>
+    <innerfile refid="promote__floating__point_8hpp">promote_floating_point.hpp</innerfile>
+    <innerfile refid="promote__integral_8hpp">promote_integral.hpp</innerfile>
+    <innerfile refid="util_2range_8hpp">range.hpp</innerfile>
+    <innerfile refid="rational_8hpp">rational.hpp</innerfile>
+    <innerfile refid="select__calculation__type_8hpp">select_calculation_type.hpp</innerfile>
+    <innerfile refid="select__coordinate__type_8hpp">select_coordinate_type.hpp</innerfile>
+    <innerfile refid="select__most__precise_8hpp">select_most_precise.hpp</innerfile>
+    <innerfile refid="transform__variant_8hpp">transform_variant.hpp</innerfile>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/util/"/>
+  </compounddef>
+</doxygen>

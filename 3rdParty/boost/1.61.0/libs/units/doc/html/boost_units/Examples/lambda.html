@@ -1,0 +1,158 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Interoperability with Boost.Lambda</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../../index.html" title="Chapter&#160;1.&#160;Boost.Units 1.1.0">
+<link rel="up" href="../Examples.html" title="Examples">
+<link rel="prev" href="RuntimeUnits.html" title="Runtime Units">
+<link rel="next" href="../Utilities.html" title="Utilities">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="RuntimeUnits.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../Examples.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../Utilities.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_units.Examples.lambda"></a><a class="link" href="lambda.html" title="Interoperability with Boost.Lambda">Interoperability with Boost.Lambda</a>
+</h3></div></div></div>
+<p>
+        (<a href="../../../../libs/units/example/lambda.cpp" target="_top">lambda.cpp</a>)
+      </p>
+<p>
+        The header <code class="computeroutput"><a class="link" href="../Reference.html#header.boost.units.lambda_hpp" title="Header &lt;boost/units/lambda.hpp&gt;">boost/units/lambda.hpp</a></code>
+        provides overloads and specializations needed to make Boost.Units usable
+        with the Boost.Lambda library.
+      </p>
+<p>
+</p>
+<pre class="programlisting"><span class="keyword">int</span> <span class="identifier">main</span><span class="special">(</span><span class="keyword">int</span> <span class="identifier">argc</span><span class="special">,</span> <span class="keyword">char</span> <span class="special">**</span><span class="identifier">argv</span><span class="special">)</span> <span class="special">{</span>
+
+   <span class="keyword">using</span> <span class="keyword">namespace</span> <span class="identifier">std</span><span class="special">;</span>
+   <span class="keyword">namespace</span> <span class="identifier">bl</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">lambda</span><span class="special">;</span>
+   <span class="keyword">namespace</span> <span class="identifier">bu</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">units</span><span class="special">;</span>
+   <span class="keyword">namespace</span> <span class="identifier">si</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">units</span><span class="special">::</span><span class="identifier">si</span><span class="special">;</span>
+
+
+   <span class="comment">////////////////////////////////////////////////////////////////////////</span>
+   <span class="comment">// Mechanical example: linear accelerated movement</span>
+   <span class="comment">////////////////////////////////////////////////////////////////////////</span>
+
+   <span class="comment">// Initial condition variables for acceleration, speed, and displacement</span>
+   <span class="identifier">bu</span><span class="special">::</span><span class="identifier">quantity</span><span class="special">&lt;</span><span class="identifier">si</span><span class="special">::</span><span class="identifier">acceleration</span><span class="special">&gt;</span> <span class="identifier">a</span> <span class="special">=</span> <span class="number">2.0</span> <span class="special">*</span> <span class="identifier">si</span><span class="special">::</span><span class="identifier">meters_per_second_squared</span><span class="special">;</span>
+   <span class="identifier">bu</span><span class="special">::</span><span class="identifier">quantity</span><span class="special">&lt;</span><span class="identifier">si</span><span class="special">::</span><span class="identifier">velocity</span><span class="special">&gt;</span> <span class="identifier">v</span> <span class="special">=</span> <span class="number">1.0</span> <span class="special">*</span> <span class="identifier">si</span><span class="special">::</span><span class="identifier">meters_per_second</span><span class="special">;</span>
+   <span class="identifier">bu</span><span class="special">::</span><span class="identifier">quantity</span><span class="special">&lt;</span><span class="identifier">si</span><span class="special">::</span><span class="identifier">length</span><span class="special">&gt;</span> <span class="identifier">s0</span> <span class="special">=</span> <span class="number">0.5</span> <span class="special">*</span> <span class="identifier">si</span><span class="special">::</span><span class="identifier">meter</span><span class="special">;</span>
+
+   <span class="comment">// Displacement over time</span>
+   <span class="identifier">boost</span><span class="special">::</span><span class="identifier">function</span><span class="special">&lt;</span><span class="identifier">bu</span><span class="special">::</span><span class="identifier">quantity</span><span class="special">&lt;</span><span class="identifier">si</span><span class="special">::</span><span class="identifier">length</span><span class="special">&gt;</span> <span class="special">(</span><span class="identifier">bu</span><span class="special">::</span><span class="identifier">quantity</span><span class="special">&lt;</span><span class="identifier">si</span><span class="special">::</span><span class="identifier">time</span><span class="special">&gt;)</span> <span class="special">&gt;</span>
+       <span class="identifier">s</span> <span class="special">=</span> <span class="number">0.5</span> <span class="special">*</span> <span class="identifier">bl</span><span class="special">::</span><span class="identifier">var</span><span class="special">(</span><span class="identifier">a</span><span class="special">)</span> <span class="special">*</span> <span class="identifier">bl</span><span class="special">::</span><span class="identifier">_1</span> <span class="special">*</span> <span class="identifier">bl</span><span class="special">::</span><span class="identifier">_1</span>
+           <span class="special">+</span> <span class="identifier">bl</span><span class="special">::</span><span class="identifier">var</span><span class="special">(</span><span class="identifier">v</span><span class="special">)</span> <span class="special">*</span> <span class="identifier">bl</span><span class="special">::</span><span class="identifier">_1</span>
+           <span class="special">+</span> <span class="identifier">bl</span><span class="special">::</span><span class="identifier">var</span><span class="special">(</span><span class="identifier">s0</span><span class="special">);</span>
+
+   <span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"Linear accelerated movement:"</span> <span class="special">&lt;&lt;</span> <span class="identifier">endl</span>
+        <span class="special">&lt;&lt;</span> <span class="string">"a = "</span> <span class="special">&lt;&lt;</span> <span class="identifier">a</span> <span class="special">&lt;&lt;</span> <span class="string">", v = "</span> <span class="special">&lt;&lt;</span> <span class="identifier">v</span> <span class="special">&lt;&lt;</span> <span class="string">", s0 = "</span> <span class="special">&lt;&lt;</span> <span class="identifier">s0</span> <span class="special">&lt;&lt;</span> <span class="identifier">endl</span>
+        <span class="special">&lt;&lt;</span> <span class="string">"s(1.0 * si::second) = "</span> <span class="special">&lt;&lt;</span> <span class="identifier">s</span><span class="special">(</span><span class="number">1.0</span> <span class="special">*</span> <span class="identifier">si</span><span class="special">::</span><span class="identifier">second</span><span class="special">)</span> <span class="special">&lt;&lt;</span> <span class="identifier">endl</span>
+        <span class="special">&lt;&lt;</span> <span class="identifier">endl</span><span class="special">;</span>
+
+   <span class="comment">// Change initial conditions</span>
+   <span class="identifier">a</span> <span class="special">=</span> <span class="number">1.0</span> <span class="special">*</span> <span class="identifier">si</span><span class="special">::</span><span class="identifier">meters_per_second_squared</span><span class="special">;</span>
+   <span class="identifier">v</span> <span class="special">=</span> <span class="number">2.0</span> <span class="special">*</span> <span class="identifier">si</span><span class="special">::</span><span class="identifier">meters_per_second</span><span class="special">;</span>
+   <span class="identifier">s0</span> <span class="special">=</span> <span class="special">-</span><span class="number">1.5</span> <span class="special">*</span> <span class="identifier">si</span><span class="special">::</span><span class="identifier">meter</span><span class="special">;</span>
+
+   <span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"a = "</span> <span class="special">&lt;&lt;</span> <span class="identifier">a</span> <span class="special">&lt;&lt;</span> <span class="string">", v = "</span> <span class="special">&lt;&lt;</span> <span class="identifier">v</span> <span class="special">&lt;&lt;</span> <span class="string">", s0 = "</span> <span class="special">&lt;&lt;</span> <span class="identifier">s0</span> <span class="special">&lt;&lt;</span> <span class="identifier">endl</span>
+        <span class="special">&lt;&lt;</span> <span class="string">"s(1.0 * si::second) = "</span> <span class="special">&lt;&lt;</span> <span class="identifier">s</span><span class="special">(</span><span class="number">1.0</span> <span class="special">*</span> <span class="identifier">si</span><span class="special">::</span><span class="identifier">second</span><span class="special">)</span> <span class="special">&lt;&lt;</span> <span class="identifier">endl</span>
+        <span class="special">&lt;&lt;</span> <span class="identifier">endl</span><span class="special">;</span>
+
+
+   <span class="comment">////////////////////////////////////////////////////////////////////////</span>
+   <span class="comment">// Electrical example: oscillating current</span>
+   <span class="comment">////////////////////////////////////////////////////////////////////////</span>
+
+   <span class="comment">// Constants for the current amplitude, frequency, and offset current</span>
+   <span class="keyword">const</span> <span class="identifier">bu</span><span class="special">::</span><span class="identifier">quantity</span><span class="special">&lt;</span><span class="identifier">si</span><span class="special">::</span><span class="identifier">current</span><span class="special">&gt;</span> <span class="identifier">iamp</span> <span class="special">=</span> <span class="number">1.5</span> <span class="special">*</span> <span class="identifier">si</span><span class="special">::</span><span class="identifier">ampere</span><span class="special">;</span>
+   <span class="keyword">const</span> <span class="identifier">bu</span><span class="special">::</span><span class="identifier">quantity</span><span class="special">&lt;</span><span class="identifier">si</span><span class="special">::</span><span class="identifier">frequency</span><span class="special">&gt;</span> <span class="identifier">f</span> <span class="special">=</span> <span class="number">1.0e3</span> <span class="special">*</span> <span class="identifier">si</span><span class="special">::</span><span class="identifier">hertz</span><span class="special">;</span>
+   <span class="keyword">const</span> <span class="identifier">bu</span><span class="special">::</span><span class="identifier">quantity</span><span class="special">&lt;</span><span class="identifier">si</span><span class="special">::</span><span class="identifier">current</span><span class="special">&gt;</span> <span class="identifier">i0</span> <span class="special">=</span> <span class="number">0.5</span> <span class="special">*</span> <span class="identifier">si</span><span class="special">::</span><span class="identifier">ampere</span><span class="special">;</span>
+
+   <span class="comment">// The invocation of the sin function needs to be postponed using</span>
+   <span class="comment">// bind to specify the oscillation function. A lengthy static_cast</span>
+   <span class="comment">// to the function pointer referencing boost::units::sin() is needed</span>
+   <span class="comment">// to avoid an "unresolved overloaded function type" error.</span>
+   <span class="identifier">boost</span><span class="special">::</span><span class="identifier">function</span><span class="special">&lt;</span><span class="identifier">bu</span><span class="special">::</span><span class="identifier">quantity</span><span class="special">&lt;</span><span class="identifier">si</span><span class="special">::</span><span class="identifier">current</span><span class="special">&gt;</span> <span class="special">(</span><span class="identifier">bu</span><span class="special">::</span><span class="identifier">quantity</span><span class="special">&lt;</span><span class="identifier">si</span><span class="special">::</span><span class="identifier">time</span><span class="special">&gt;)</span> <span class="special">&gt;</span>
+       <span class="identifier">i</span> <span class="special">=</span> <span class="identifier">iamp</span>
+           <span class="special">*</span> <span class="identifier">bl</span><span class="special">::</span><span class="identifier">bind</span><span class="special">(</span><span class="keyword">static_cast</span><span class="special">&lt;</span><span class="identifier">bu</span><span class="special">::</span><span class="identifier">dimensionless_quantity</span><span class="special">&lt;</span><span class="identifier">si</span><span class="special">::</span><span class="identifier">system</span><span class="special">,</span> <span class="keyword">double</span><span class="special">&gt;::</span><span class="identifier">type</span> <span class="special">(*)(</span><span class="keyword">const</span> <span class="identifier">bu</span><span class="special">::</span><span class="identifier">quantity</span><span class="special">&lt;</span><span class="identifier">si</span><span class="special">::</span><span class="identifier">plane_angle</span><span class="special">&gt;&amp;)&gt;(</span><span class="identifier">bu</span><span class="special">::</span><span class="identifier">sin</span><span class="special">),</span>
+                      <span class="number">2.0</span> <span class="special">*</span> <span class="identifier">pi</span> <span class="special">*</span> <span class="identifier">si</span><span class="special">::</span><span class="identifier">radian</span> <span class="special">*</span> <span class="identifier">f</span> <span class="special">*</span> <span class="identifier">bl</span><span class="special">::</span><span class="identifier">_1</span><span class="special">)</span>
+           <span class="special">+</span> <span class="identifier">i0</span><span class="special">;</span>
+
+   <span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"Oscillating current:"</span> <span class="special">&lt;&lt;</span> <span class="identifier">endl</span>
+        <span class="special">&lt;&lt;</span> <span class="string">"iamp = "</span> <span class="special">&lt;&lt;</span> <span class="identifier">iamp</span> <span class="special">&lt;&lt;</span> <span class="string">", f = "</span> <span class="special">&lt;&lt;</span> <span class="identifier">f</span> <span class="special">&lt;&lt;</span> <span class="string">", i0 = "</span> <span class="special">&lt;&lt;</span> <span class="identifier">i0</span> <span class="special">&lt;&lt;</span> <span class="identifier">endl</span>
+        <span class="special">&lt;&lt;</span> <span class="string">"i(1.25e-3 * si::second) = "</span> <span class="special">&lt;&lt;</span> <span class="identifier">i</span><span class="special">(</span><span class="number">1.25e-3</span> <span class="special">*</span> <span class="identifier">si</span><span class="special">::</span><span class="identifier">second</span><span class="special">)</span> <span class="special">&lt;&lt;</span> <span class="identifier">endl</span>
+        <span class="special">&lt;&lt;</span> <span class="identifier">endl</span><span class="special">;</span>
+
+
+   <span class="comment">////////////////////////////////////////////////////////////////////////</span>
+   <span class="comment">// Geometric example: area calculation for a square</span>
+   <span class="comment">////////////////////////////////////////////////////////////////////////</span>
+
+   <span class="comment">// Length constant</span>
+   <span class="keyword">const</span> <span class="identifier">bu</span><span class="special">::</span><span class="identifier">quantity</span><span class="special">&lt;</span><span class="identifier">si</span><span class="special">::</span><span class="identifier">length</span><span class="special">&gt;</span> <span class="identifier">l</span> <span class="special">=</span> <span class="number">1.5</span> <span class="special">*</span> <span class="identifier">si</span><span class="special">::</span><span class="identifier">meter</span><span class="special">;</span>
+
+   <span class="comment">// Again an ugly static_cast is needed to bind pow&lt;2&gt; to the first</span>
+   <span class="comment">// function argument.</span>
+   <span class="identifier">boost</span><span class="special">::</span><span class="identifier">function</span><span class="special">&lt;</span><span class="identifier">bu</span><span class="special">::</span><span class="identifier">quantity</span><span class="special">&lt;</span><span class="identifier">si</span><span class="special">::</span><span class="identifier">area</span><span class="special">&gt;</span> <span class="special">(</span><span class="identifier">bu</span><span class="special">::</span><span class="identifier">quantity</span><span class="special">&lt;</span><span class="identifier">si</span><span class="special">::</span><span class="identifier">length</span><span class="special">&gt;)</span> <span class="special">&gt;</span>
+       <span class="identifier">A</span> <span class="special">=</span> <span class="identifier">bl</span><span class="special">::</span><span class="identifier">bind</span><span class="special">(</span><span class="keyword">static_cast</span><span class="special">&lt;</span><span class="identifier">bu</span><span class="special">::</span><span class="identifier">quantity</span><span class="special">&lt;</span><span class="identifier">si</span><span class="special">::</span><span class="identifier">area</span><span class="special">&gt;</span> <span class="special">(*)(</span><span class="keyword">const</span> <span class="identifier">bu</span><span class="special">::</span><span class="identifier">quantity</span><span class="special">&lt;</span><span class="identifier">si</span><span class="special">::</span><span class="identifier">length</span><span class="special">&gt;&amp;)&gt;(</span><span class="identifier">bu</span><span class="special">::</span><span class="identifier">pow</span><span class="special">&lt;</span><span class="number">2</span><span class="special">&gt;),</span>
+                    <span class="identifier">bl</span><span class="special">::</span><span class="identifier">_1</span><span class="special">);</span>
+
+   <span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"Area of a square:"</span> <span class="special">&lt;&lt;</span> <span class="identifier">endl</span>
+        <span class="special">&lt;&lt;</span> <span class="string">"A("</span> <span class="special">&lt;&lt;</span> <span class="identifier">l</span> <span class="special">&lt;&lt;</span><span class="string">") = "</span> <span class="special">&lt;&lt;</span> <span class="identifier">A</span><span class="special">(</span><span class="identifier">l</span><span class="special">)</span> <span class="special">&lt;&lt;</span> <span class="identifier">endl</span> <span class="special">&lt;&lt;</span> <span class="identifier">endl</span><span class="special">;</span>
+
+
+   <span class="comment">////////////////////////////////////////////////////////////////////////</span>
+   <span class="comment">// Thermal example: temperature difference of two absolute temperatures</span>
+   <span class="comment">////////////////////////////////////////////////////////////////////////</span>
+
+   <span class="comment">// Absolute temperature constants</span>
+   <span class="keyword">const</span> <span class="identifier">bu</span><span class="special">::</span><span class="identifier">quantity</span><span class="special">&lt;</span><span class="identifier">bu</span><span class="special">::</span><span class="identifier">absolute</span><span class="special">&lt;</span><span class="identifier">si</span><span class="special">::</span><span class="identifier">temperature</span><span class="special">&gt;</span> <span class="special">&gt;</span>
+       <span class="identifier">Tref</span> <span class="special">=</span> <span class="number">273.15</span> <span class="special">*</span> <span class="identifier">bu</span><span class="special">::</span><span class="identifier">absolute</span><span class="special">&lt;</span><span class="identifier">si</span><span class="special">::</span><span class="identifier">temperature</span><span class="special">&gt;();</span>
+   <span class="keyword">const</span> <span class="identifier">bu</span><span class="special">::</span><span class="identifier">quantity</span><span class="special">&lt;</span><span class="identifier">bu</span><span class="special">::</span><span class="identifier">absolute</span><span class="special">&lt;</span><span class="identifier">si</span><span class="special">::</span><span class="identifier">temperature</span><span class="special">&gt;</span> <span class="special">&gt;</span>
+       <span class="identifier">Tamb</span> <span class="special">=</span> <span class="number">300.00</span> <span class="special">*</span> <span class="identifier">bu</span><span class="special">::</span><span class="identifier">absolute</span><span class="special">&lt;</span><span class="identifier">si</span><span class="special">::</span><span class="identifier">temperature</span><span class="special">&gt;();</span>
+
+   <span class="identifier">boost</span><span class="special">::</span><span class="identifier">function</span><span class="special">&lt;</span><span class="identifier">bu</span><span class="special">::</span><span class="identifier">quantity</span><span class="special">&lt;</span><span class="identifier">si</span><span class="special">::</span><span class="identifier">temperature</span><span class="special">&gt;</span> <span class="special">(</span><span class="identifier">bu</span><span class="special">::</span><span class="identifier">quantity</span><span class="special">&lt;</span><span class="identifier">bu</span><span class="special">::</span><span class="identifier">absolute</span><span class="special">&lt;</span><span class="identifier">si</span><span class="special">::</span><span class="identifier">temperature</span><span class="special">&gt;</span> <span class="special">&gt;,</span>
+                                                  <span class="identifier">bu</span><span class="special">::</span><span class="identifier">quantity</span><span class="special">&lt;</span><span class="identifier">bu</span><span class="special">::</span><span class="identifier">absolute</span><span class="special">&lt;</span><span class="identifier">si</span><span class="special">::</span><span class="identifier">temperature</span><span class="special">&gt;</span> <span class="special">&gt;)&gt;</span>
+       <span class="identifier">dT</span> <span class="special">=</span> <span class="identifier">bl</span><span class="special">::</span><span class="identifier">_2</span> <span class="special">-</span> <span class="identifier">bl</span><span class="special">::</span><span class="identifier">_1</span><span class="special">;</span>
+
+   <span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"Temperature difference of two absolute temperatures:"</span> <span class="special">&lt;&lt;</span> <span class="identifier">endl</span>
+        <span class="special">&lt;&lt;</span> <span class="string">"dT("</span> <span class="special">&lt;&lt;</span> <span class="identifier">Tref</span> <span class="special">&lt;&lt;</span> <span class="string">", "</span> <span class="special">&lt;&lt;</span> <span class="identifier">Tamb</span> <span class="special">&lt;&lt;</span> <span class="string">") = "</span> <span class="special">&lt;&lt;</span> <span class="identifier">dT</span><span class="special">(</span><span class="identifier">Tref</span><span class="special">,</span> <span class="identifier">Tamb</span><span class="special">)</span> <span class="special">&lt;&lt;</span> <span class="identifier">endl</span>
+        <span class="special">&lt;&lt;</span> <span class="identifier">endl</span><span class="special">;</span>
+
+
+   <span class="keyword">return</span> <span class="number">0</span><span class="special">;</span>
+<span class="special">}</span>
+</pre>
+<p>
+      </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2008 Matthias Christian Schabel<br>Copyright &#169; 2007-2010 Steven
+      Watanabe<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="RuntimeUnits.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../Examples.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../Utilities.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

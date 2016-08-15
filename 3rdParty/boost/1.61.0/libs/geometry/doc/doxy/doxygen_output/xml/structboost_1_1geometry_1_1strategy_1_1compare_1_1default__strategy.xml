@@ -1,0 +1,14 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="structboost_1_1geometry_1_1strategy_1_1compare_1_1default__strategy" kind="struct" prot="public">
+    <compoundname>boost::geometry::strategy::compare::default_strategy</compoundname>
+    <includes local="no">compare.hpp</includes>
+    <briefdescription>
+<para>Default strategy, indicates the default strategy for comparisons. </para>    </briefdescription>
+    <detaileddescription>
+<para>The default strategy for comparisons defer in most cases to std::less (for ascending) and std::greater (for descending). However, if a spherical coordinate system is used, and comparison is done on longitude, it will take another strategy handling circular </para>    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/compare.hpp" line="114" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/compare.hpp" bodystart="114" bodyend="114"/>
+    <listofallmembers>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

@@ -1,0 +1,32 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="structboost_1_1geometry_1_1single__tag__of_3_01detail_1_1buffer_1_1buffered__ring__collection__tag_01_4" kind="struct" prot="public">
+    <compoundname>boost::geometry::single_tag_of&lt; detail::buffer::buffered_ring_collection_tag &gt;</compoundname>
+    <includes local="no">buffered_ring.hpp</includes>
+    <templateparamlist>
+    </templateparamlist>
+      <sectiondef kind="public-type">
+      <memberdef kind="typedef" id="structboost_1_1geometry_1_1single__tag__of_3_01detail_1_1buffer_1_1buffered__ring__collection__tag_01_4_1a4c8849899e7f57a06bbb15b555e8cb24" prot="public" static="no">
+        <type><ref refid="structboost_1_1geometry_1_1ring__tag" kindref="compound">ring_tag</ref></type>
+        <definition>typedef ring_tag boost::geometry::single_tag_of&lt; detail::buffer::buffered_ring_collection_tag &gt;::type</definition>
+        <argsstring></argsstring>
+        <name>type</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/buffer/buffered_ring.hpp" line="156" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/buffer/buffered_ring.hpp" bodystart="156" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/buffer/buffered_ring.hpp" line="155" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/buffer/buffered_ring.hpp" bodystart="154" bodyend="157"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1single__tag__of_3_01detail_1_1buffer_1_1buffered__ring__collection__tag_01_4_1a4c8849899e7f57a06bbb15b555e8cb24" prot="public" virt="non-virtual"><scope>boost::geometry::single_tag_of&lt; detail::buffer::buffered_ring_collection_tag &gt;</scope><name>type</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

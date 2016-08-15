@@ -1,0 +1,284 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>xpressive vs. Boost.Regex with Visual C++</title>
+<link rel="stylesheet" href="../../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../../../index.html" title="Chapter&#160;1.&#160;Boost.Xpressive">
+<link rel="up" href="../perf.html" title="Appendix 4: Performance Comparison">
+<link rel="prev" href="../perf.html" title="Appendix 4: Performance Comparison">
+<link rel="next" href="../../../xpressive/appendices/appendix_5__implementation_notes.html" title="Appendix 5: Implementation Notes">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../perf.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../perf.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../../../xpressive/appendices/appendix_5__implementation_notes.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="boost_xpressive.appendices.perf.perf_msvc"></a><a class="link" href="perf_msvc.html" title="xpressive vs. Boost.Regex with Visual C++">xpressive
+        vs. Boost.Regex with Visual C++</a>
+</h4></div></div></div>
+<p>
+          Below are the results of a performance comparison between:
+        </p>
+<div class="itemizedlist"><ul class="itemizedlist" type="disc">
+<li class="listitem">
+              static xpressive
+            </li>
+<li class="listitem">
+              dynamic xpressive
+            </li>
+<li class="listitem">
+              <a href="../../../../../libs/regex" target="_top">Boost.Regex</a>
+            </li>
+</ul></div>
+<div class="variablelist">
+<p class="title"><b>Test Specifications</b></p>
+<dl>
+<dt><span class="term">Hardware:</span></dt>
+<dd><p>
+                hyper-threaded 3GHz Xeon with 1Gb RAM
+              </p></dd>
+<dt><span class="term">Operating System:</span></dt>
+<dd><p>
+                Windows XP Pro
+              </p></dd>
+<dt><span class="term">Compiler:</span></dt>
+<dd><p>
+                Visual C++ .NET 2003 (7.1)
+              </p></dd>
+<dt><span class="term">C++ Standard Library:</span></dt>
+<dd><p>
+                Dinkumware, version 313
+              </p></dd>
+<dt><span class="term"><a href="../../../../../libs/regex" target="_top">Boost.Regex</a> Version:</span></dt>
+<dd><p>
+                1.33+, BOOST_REGEX_USE_CPP_LOCALE, BOOST_REGEX_RECURSIVE
+              </p></dd>
+<dt><span class="term">xpressive Version:</span></dt>
+<dd><p>
+                0.9.6a
+              </p></dd>
+</dl>
+</div>
+<h3>
+<a name="boost_xpressive.appendices.perf.perf_msvc.h0"></a>
+          <span><a name="boost_xpressive.appendices.perf.perf_msvc.comparison_1__short_matches"></a></span><a class="link" href="perf_msvc.html#boost_xpressive.appendices.perf.perf_msvc.comparison_1__short_matches">Comparison
+          1: Short Matches</a>
+        </h3>
+<p>
+          The following tests evaluate the time taken to match the expression to
+          the input string. For each result, the top number has been normalized relative
+          to the fastest time, so 1.0 is as good as it gets. The bottom number (in
+          parentheses) is the actual time in seconds. The best time has been marked
+          in green.
+        </p>
+<div class="informaltable">
+<h5>
+<a name="idp78709488"></a><span class="table-title">Short Matches</span>
+</h5>
+<table class="table">
+<colgroup>
+<col>
+<col>
+<col>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>static xpressive</th>
+<th>dynamic xpressive</th>
+<th>Boost</th>
+<th>Text</th>
+<th>Expression</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><span class="highlight">1<p></p>(3.2e&#8209;007s)</span></td>
+<td>1.37<p></p>(4.4e&#8209;007s)</td>
+<td>2.38<p></p>(7.6e&#8209;007s)</td>
+<td>100- this is a line of ftp response which contains a message string</td>
+<td><code class="literal">^([0-9]+)(\-| |$)(.*)$</code></td>
+</tr>
+<tr>
+<td><span class="highlight">1<p></p>(6.4e&#8209;007s)</span></td>
+<td>1.12<p></p>(7.15e&#8209;007s)</td>
+<td>1.72<p></p>(1.1e&#8209;006s)</td>
+<td>1234-5678-1234-456</td>
+<td><code class="literal">([[:digit:]]{4}[- ]){3}[[:digit:]]{3,4}</code></td>
+</tr>
+<tr>
+<td><span class="highlight">1<p></p>(9.82e&#8209;007s)</span></td>
+<td>1.3<p></p>(1.28e&#8209;006s)</td>
+<td>1.61<p></p>(1.58e&#8209;006s)</td>
+<td>john_maddock@compuserve.com</td>
+<td><code class="literal">^([a-zA-Z0-9_\-\.]+)@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.)|(([a-zA-Z0-9\-]+\.)+))([a-zA-Z]{2,4}|[0-9]{1,3})(\]?)$</code></td>
+</tr>
+<tr>
+<td><span class="highlight">1<p></p>(8.94e&#8209;007s)</span></td>
+<td>1.3<p></p>(1.16e&#8209;006s)</td>
+<td>1.7<p></p>(1.52e&#8209;006s)</td>
+<td>foo12@foo.edu</td>
+<td><code class="literal">^([a-zA-Z0-9_\-\.]+)@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.)|(([a-zA-Z0-9\-]+\.)+))([a-zA-Z]{2,4}|[0-9]{1,3})(\]?)$</code></td>
+</tr>
+<tr>
+<td><span class="highlight">1<p></p>(9.09e&#8209;007s)</span></td>
+<td>1.28<p></p>(1.16e&#8209;006s)</td>
+<td>1.67<p></p>(1.52e&#8209;006s)</td>
+<td>bob.smith@foo.tv</td>
+<td><code class="literal">^([a-zA-Z0-9_\-\.]+)@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.)|(([a-zA-Z0-9\-]+\.)+))([a-zA-Z]{2,4}|[0-9]{1,3})(\]?)$</code></td>
+</tr>
+<tr>
+<td><span class="highlight">1<p></p>(3.06e&#8209;007s)</span></td>
+<td><span class="highlight">1.07<p></p>(3.28e&#8209;007s)</span></td>
+<td>1.95<p></p>(5.96e&#8209;007s)</td>
+<td>EH10 2QQ</td>
+<td><code class="literal">^[a-zA-Z]{1,2}[0-9][0-9A-Za-z]{0,1} {0,1}[0-9][A-Za-z]{2}$</code></td>
+</tr>
+<tr>
+<td><span class="highlight">1<p></p>(3.13e&#8209;007s)</span></td>
+<td><span class="highlight">1.09<p></p>(3.42e&#8209;007s)</span></td>
+<td>1.86<p></p>(5.81e&#8209;007s)</td>
+<td>G1 1AA</td>
+<td><code class="literal">^[a-zA-Z]{1,2}[0-9][0-9A-Za-z]{0,1} {0,1}[0-9][A-Za-z]{2}$</code></td>
+</tr>
+<tr>
+<td><span class="highlight">1<p></p>(3.2e&#8209;007s)</span></td>
+<td><span class="highlight">1.09<p></p>(3.5e&#8209;007s)</span></td>
+<td>1.86<p></p>(5.96e&#8209;007s)</td>
+<td>SW1 1ZZ</td>
+<td><code class="literal">^[a-zA-Z]{1,2}[0-9][0-9A-Za-z]{0,1} {0,1}[0-9][A-Za-z]{2}$</code></td>
+</tr>
+<tr>
+<td><span class="highlight">1<p></p>(2.68e&#8209;007s)</span></td>
+<td>1.22<p></p>(3.28e&#8209;007s)</td>
+<td>2<p></p>(5.36e&#8209;007s)</td>
+<td>4/1/2001</td>
+<td><code class="literal">^[[:digit:]]{1,2}/[[:digit:]]{1,2}/[[:digit:]]{4}$</code></td>
+</tr>
+<tr>
+<td><span class="highlight">1<p></p>(2.76e&#8209;007s)</span></td>
+<td>1.16<p></p>(3.2e&#8209;007s)</td>
+<td>1.94<p></p>(5.36e&#8209;007s)</td>
+<td>12/12/2001</td>
+<td><code class="literal">^[[:digit:]]{1,2}/[[:digit:]]{1,2}/[[:digit:]]{4}$</code></td>
+</tr>
+<tr>
+<td><span class="highlight">1<p></p>(2.98e&#8209;007s)</span></td>
+<td><span class="highlight">1.03<p></p>(3.06e&#8209;007s)</span></td>
+<td>1.85<p></p>(5.51e&#8209;007s)</td>
+<td>123</td>
+<td><code class="literal">^[-+]?[[:digit:]]*\.?[[:digit:]]*$</code></td>
+</tr>
+<tr>
+<td><span class="highlight">1<p></p>(3.2e&#8209;007s)</span></td>
+<td>1.12<p></p>(3.58e&#8209;007s)</td>
+<td>1.81<p></p>(5.81e&#8209;007s)</td>
+<td>+3.14159</td>
+<td><code class="literal">^[-+]?[[:digit:]]*\.?[[:digit:]]*$</code></td>
+</tr>
+<tr>
+<td><span class="highlight">1<p></p>(3.28e&#8209;007s)</span></td>
+<td>1.11<p></p>(3.65e&#8209;007s)</td>
+<td>1.77<p></p>(5.81e&#8209;007s)</td>
+<td>-3.14159</td>
+<td><code class="literal">^[-+]?[[:digit:]]*\.?[[:digit:]]*$</code></td>
+</tr>
+</tbody>
+</table>
+</div>
+<h3>
+<a name="boost_xpressive.appendices.perf.perf_msvc.h1"></a>
+          <span><a name="boost_xpressive.appendices.perf.perf_msvc.comparison_2__long_searches"></a></span><a class="link" href="perf_msvc.html#boost_xpressive.appendices.perf.perf_msvc.comparison_2__long_searches">Comparison
+          2: Long Searches</a>
+        </h3>
+<p>
+          The next test measures the time to find <span class="emphasis"><em>all</em></span> matches
+          in a long English text. The text is the <a href="http://www.gutenberg.org/dirs/3/2/0/3200/3200.zip" target="_top">complete
+          works of Mark Twain</a>, from <a href="http://promo.net/pg/" target="_top">Project
+          Gutenberg</a>. The text is 19Mb long. As above, the top number is the
+          normalized time and the bottom number is the actual time. The best time
+          is in green.
+        </p>
+<div class="informaltable">
+<h5>
+<a name="idp78769696"></a><span class="table-title">Long Searches</span>
+</h5>
+<table class="table">
+<colgroup>
+<col>
+<col>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>static xpressive</th>
+<th>dynamic xpressive</th>
+<th>Boost</th>
+<th>Expression</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><span class="highlight">1<p></p>(0.019s)</span></td>
+<td><span class="highlight">1<p></p>(0.019s)</span></td>
+<td>2.98<p></p>(0.0566s)</td>
+<td><code class="literal">Twain</code></td>
+</tr>
+<tr>
+<td><span class="highlight">1<p></p>(0.0176s)</span></td>
+<td><span class="highlight">1<p></p>(0.0176s)</span></td>
+<td>3.17<p></p>(0.0556s)</td>
+<td><code class="literal">Huck[[:alpha:]]+</code></td>
+</tr>
+<tr>
+<td>3.62<p></p>(1.78s)</td>
+<td>3.97<p></p>(1.95s)</td>
+<td><span class="highlight">1<p></p>(0.492s)</span></td>
+<td><code class="literal">[[:alpha:]]+ing</code></td>
+</tr>
+<tr>
+<td>2.32<p></p>(0.344s)</td>
+<td>3.06<p></p>(0.453s)</td>
+<td><span class="highlight">1<p></p>(0.148s)</span></td>
+<td><code class="literal">^[^
+]*?Twain</code></td>
+</tr>
+<tr>
+<td><span class="highlight">1<p></p>(0.0576s)</span></td>
+<td><span class="highlight">1.05<p></p>(0.0606s)</span></td>
+<td>1.15<p></p>(0.0664s)</td>
+<td><code class="literal">Tom|Sawyer|Huckleberry|Finn</code></td>
+</tr>
+<tr>
+<td>1.24<p></p>(0.164s)</td>
+<td>1.44<p></p>(0.191s)</td>
+<td><span class="highlight">1<p></p>(0.133s)</span></td>
+<td><code class="literal">(Tom|Sawyer|Huckleberry|Finn).{0,30}river|river.{0,30}(Tom|Sawyer|Huckleberry|Finn)</code></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2007 Eric Niebler<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../perf.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../perf.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../../../xpressive/appendices/appendix_5__implementation_notes.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

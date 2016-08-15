@@ -1,0 +1,70 @@
+[/
+    Boost.Optional
+
+    Copyright (c) 2015, 2016 Andrzej Krzemienski
+
+    Distributed under the Boost Software License, Version 1.0.
+    (See accompanying file LICENSE_1_0.txt or copy at
+    http://www.boost.org/LICENSE_1_0.txt)
+]
+
+
+[section:relnotes Release Notes]
+
+
+[heading Boost Release 1.61]
+
+* Now `boost::optional` is specialized for reference parameters. This addresses a couple of issues:
+  * the `sizeof` of optional reference is that of a pointer,
+  * some bugs connected to copying optional references are gone,
+  * all run-time bugs caused by incorrect reference binding on some compilers are now turned into compile-time errors,
+  * you can swap optional references: it is like swapping pointers: shalow, underlying objects are not affected,
+  * optional references to abstract types work.
+* Documented nested typedefs ([@https://svn.boost.org/trac/boost/ticket/5193 Trac #5193]).
+* Made the perfect-forwarding constructor SFINAE-friendly, which fixes [@https://svn.boost.org/trac/boost/ticket/12002 Trac #12002]. However, this only works in the newer platforms that correctly implement C++11 `<type_traits>`.
+* Fixed [@https://svn.boost.org/trac/boost/ticket/10445 Trac #10445].
+
+
+[heading Boost Release 1.60]
+
+* Changed the implementation of `boost::none` again. Now it is a const object with internal linkage (as any other tag). This fixes [@https://svn.boost.org/trac/boost/ticket/11203 Trac #11203].
+
+
+[heading Boost Release 1.59]
+
+* For C++03 compilers, added 0-argument overload for member function `emplace()`, and therewith removed the dependency on `<boost/utility/in_place_factory.hpp>`.
+* Fixed [@https://svn.boost.org/trac/boost/ticket/11241 Trac #11241].
+
+[heading Boost Release 1.58]
+
+* `boost::none_t` is no longer convertible from literal `0`. This avoids a bug where `optional<rational<int>> oi = 0;` would initialize an optional object with no contained value.
+* Improved the trick that prevents streaming out `optional` without header `optional_io.hpp` by using safe-bool idiom. This addresses [@https://svn.boost.org/trac/boost/ticket/10825 Trac #10825].
+* IOStream operators are now mentioned in documentation.
+* Added a way to manually disable move semantics: just define macro `BOOST_OPTIONAL_CONFIG_NO_RVALUE_REFERENCES`. This can be used to work around [@https://svn.boost.org/trac/boost/ticket/10399 Trac #10399].
+* It is no longer possible to assign `optional<U>` to `optional<T>` when `U` is not assignable or convertible to `T` ([@https://svn.boost.org/trac/boost/ticket/11087 Trac #11087]).
+* Value accessors now work correctly on rvalues of `optional<T&>` ([@https://svn.boost.org/trac/boost/ticket/10839 Trac #10839]).  
+
+
+[heading Boost Release 1.57]
+
+* [@https://github.com/boostorg/optional/pull/9 Git pull #9]: ['"Supply `<string>` to fix C++03 compile error on `logic_error("...")`"].
+
+
+[heading Boost Release 1.56]
+
+* Added support for rvalue references. Now `optional<T>` works with moveable but non-copyable `T`'s,
+* Improved `swap` (now uses move operations),
+* Added function `emplace()`. This is the last of the requests from [@https://svn.boost.org/trac/boost/ticket/1841 Trac #1841],
+* `optional` is moveable, including conditional `noexcept` specifications, which make it `move_if_noexcept`-friendly,
+* Using explicit operator bool() on platforms that support it ([@https://svn.boost.org/trac/boost/ticket/4227 Trac #4227]) (breaking change),
+* Forward declaration of `operator<<(ostream&, optional const&)` to prevent inadvertent incorrect serialization of optional objects,
+* Removed deprecated function `reset()` from examples ([@https://svn.boost.org/trac/boost/ticket/9005 Trac #9005]),
+* Equality comparison with `boost::none` does not require that `T` be EqualityComparable,
+* Optional rvalue references are explicitly disallowed,
+* Binding temporaries to optional references is explicitly disallowed (breaking change),
+* More ways to access the contained value, functions `value()`, `value_or()`, `value_or_eval()`,
+* Updated and reorganized documentation, added tutorial and quick guide sections.
+
+
+
+[endsect][/ relnotes]

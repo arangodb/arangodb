@@ -1,0 +1,103 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Test module's entry point</title>
+<link rel="stylesheet" href="../../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../../index.html" title="Boost.Test">
+<link rel="up" href="../adv_scenarios.html" title="Advanced Usage Scenarios">
+<link rel="prev" href="build_utf.html" title="Building the Unit Test Framework">
+<link rel="next" href="test_module_init_overview.html" title="Test module's initialization">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="build_utf.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../adv_scenarios.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="test_module_init_overview.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_test.adv_scenarios.entry_point_overview"></a><a class="link" href="entry_point_overview.html" title="Test module's entry point">Test module's
+      entry point</a>
+</h3></div></div></div>
+<p>
+        Typically, every C++ program contains exactly one definition of function
+        <code class="computeroutput"><span class="identifier">main</span></code>: the program's <span class="emphasis"><em>entry
+        point</em></span>. When using the <span class="emphasis"><em>Unit Test Framework</em></span>
+        you do not have to define one. Function <code class="computeroutput"><span class="identifier">main</span></code>
+        will be generated for you by the framework. The only thing you are required
+        to do in case your program consists of more than one translation unit (<code class="computeroutput"><span class="identifier">cpp</span></code> file) is to indicate to the framework
+        in which of the files it is supposed to generate function <code class="computeroutput"><span class="identifier">main</span></code>.
+        You do it by defining macro <a class="link" href="../utf_reference/link_references/link_boost_test_module_macro.html" title="BOOST_TEST_MODULE"><code class="computeroutput"><span class="identifier">BOOST_TEST_MODULE</span></code></a> before the inclusion
+        of any of the framework files. The value of this macro is used as a name
+        of the <a class="link" href="../section_glossary.html#ref_test_module">test module</a> as well as the
+        <a class="link" href="../tests_organization/test_suite/master_test_suite.html" title="Master Test Suite">master
+        test suite</a>.
+      </p>
+<p>
+        The reason for defining function <code class="computeroutput"><span class="identifier">main</span></code>
+        for you is twofold:
+      </p>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+            This allows the <span class="emphasis"><em>Unit Test Framework</em></span> to perform some
+            custom <a class="link" href="test_module_init_overview.html" title="Test module's initialization"><span class="emphasis"><em>test
+            module initialization</em></span></a>.
+          </li>
+<li class="listitem">
+            This prevents you defining <code class="computeroutput"><span class="identifier">main</span></code>,
+            and accidentally forgetting to run all the test (in which case running
+            the program would incorrectly indicate a clean run).
+          </li>
+</ol></div>
+<p>
+        By default, the test module's entry point is defined with signature:
+      </p>
+<pre class="programlisting"><span class="keyword">int</span> <span class="identifier">main</span><span class="special">(</span><span class="keyword">int</span> <span class="identifier">argc</span><span class="special">,</span> <span class="keyword">char</span><span class="special">*</span> <span class="identifier">argv</span><span class="special">[]);</span>
+</pre>
+<p>
+        It calls <a class="link" href="test_module_init_overview.html" title="Test module's initialization"><span class="emphasis"><em>test
+        module initialization</em></span></a> function, then calls the <a class="link" href="test_module_runner_overview.html" title="Test module runner"><span class="emphasis"><em>test
+        module runner</em></span></a> and forwards its return value to environment.
+      </p>
+<p>
+        The default entry point is sufficient in most of the cases. Occasionally,
+        a need may arise to declare an entry point with a different name or signature.
+        For overriding the definition of the default test module's entry point:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" type="disc">
+<li class="listitem">
+            <a class="link" href="single_header_customizations/entry_point.html" title="Customizing the module's entry point">see
+            here</a>, for single header usage variant,
+          </li>
+<li class="listitem">
+            <a class="link" href="static_lib_customizations/entry_point.html" title="Customizing the module's entry point">see
+            here</a>, for static library usage variant,
+          </li>
+<li class="listitem">
+            <a class="link" href="shared_lib_customizations/entry_point.html" title="Customizing the module's entry point">see
+            here</a>, for shared library usage variant.
+          </li>
+</ul></div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2001-2016 Boost.Test contributors<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="build_utf.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../adv_scenarios.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="test_module_init_overview.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

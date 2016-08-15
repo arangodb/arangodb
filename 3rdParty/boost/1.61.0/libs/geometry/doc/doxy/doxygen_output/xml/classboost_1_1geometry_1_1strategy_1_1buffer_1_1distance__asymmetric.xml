@@ -1,0 +1,104 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="classboost_1_1geometry_1_1strategy_1_1buffer_1_1distance__asymmetric" kind="class" prot="public">
+    <compoundname>boost::geometry::strategy::buffer::distance_asymmetric</compoundname>
+    <includes local="no">buffer_distance_asymmetric.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename NumericType</type>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="private-attrib">
+      <memberdef kind="variable" id="classboost_1_1geometry_1_1strategy_1_1buffer_1_1distance__asymmetric_1a2dd968090ea62eec07933c34ee78e84d" prot="private" static="no" mutable="no">
+        <type>NumericType</type>
+        <definition>NumericType boost::geometry::strategy::buffer::distance_asymmetric&lt; NumericType &gt;::m_left</definition>
+        <argsstring></argsstring>
+        <name>m_left</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/buffer_distance_asymmetric.hpp" line="104" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/buffer_distance_asymmetric.hpp" bodystart="104" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classboost_1_1geometry_1_1strategy_1_1buffer_1_1distance__asymmetric_1a6dd85e562afe94c08df5e047e399b6bb" prot="private" static="no" mutable="no">
+        <type>NumericType</type>
+        <definition>NumericType boost::geometry::strategy::buffer::distance_asymmetric&lt; NumericType &gt;::m_right</definition>
+        <argsstring></argsstring>
+        <name>m_right</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/buffer_distance_asymmetric.hpp" line="105" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/buffer_distance_asymmetric.hpp" bodystart="105" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="classboost_1_1geometry_1_1strategy_1_1buffer_1_1distance__asymmetric_1aae9a067157b46964e87039c494603dba" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type></type>
+        <definition>boost::geometry::strategy::buffer::distance_asymmetric&lt; NumericType &gt;::distance_asymmetric</definition>
+        <argsstring>(NumericType const &amp;left, NumericType const &amp;right)</argsstring>
+        <name>distance_asymmetric</name>
+        <param>
+          <type>NumericType const &amp;</type>
+          <declname>left</declname>
+        </param>
+        <param>
+          <type>NumericType const &amp;</type>
+          <declname>right</declname>
+        </param>
+        <briefdescription>
+<para>Constructs the strategy, two distances must be specified. </para>        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>left</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>The distance (or radius) of the buffer on the left side </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>right</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>The distance on the right side </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/buffer_distance_asymmetric.hpp" line="55" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/buffer_distance_asymmetric.hpp" bodystart="51" bodyend="55"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+<para>Let the buffer for linestrings be asymmetric. </para>    </briefdescription>
+    <detaileddescription>
+<para><parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>NumericType</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>numerical type (int, double, ttmath, ...)</para></parameterdescription>
+</parameteritem>
+</parameterlist>
+This strategy can be used as DistanceStrategy for the buffer algorithm. It can be applied for (multi)linestrings. It uses a (potentially) different distances for left and for right. This means the (multi)linestrings are interpreted having a direction.</para><para> <qbk>
+[heading Example]
+[buffer_distance_asymmetric]
+[heading Output]
+[$img/strategies/buffer_distance_asymmetric.png]
+[heading See also]
+\* [link geometry.reference.algorithms.buffer.buffer_7_with_strategies buffer (with strategies)]
+\* [link geometry.reference.strategies.strategy_buffer_distance_symmetric distance_symmetric]
+</qbk>  </para>    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/buffer_distance_asymmetric.hpp" line="46" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/buffer_distance_asymmetric.hpp" bodystart="45" bodyend="106"/>
+    <listofallmembers>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1buffer_1_1distance__asymmetric_1aae9a067157b46964e87039c494603dba" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::buffer::distance_asymmetric</scope><name>distance_asymmetric</name></member>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1buffer_1_1distance__asymmetric_1a2dd968090ea62eec07933c34ee78e84d" prot="private" virt="non-virtual"><scope>boost::geometry::strategy::buffer::distance_asymmetric</scope><name>m_left</name></member>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1buffer_1_1distance__asymmetric_1a6dd85e562afe94c08df5e047e399b6bb" prot="private" virt="non-virtual"><scope>boost::geometry::strategy::buffer::distance_asymmetric</scope><name>m_right</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

@@ -1,0 +1,20 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="classstd_1_1exception" kind="class" prot="public">
+    <compoundname>std::exception</compoundname>
+    <derivedcompoundref refid="classstd_1_1bad__alloc" prot="public" virt="non-virtual">std::bad_alloc</derivedcompoundref>
+    <derivedcompoundref refid="classstd_1_1bad__cast" prot="public" virt="non-virtual">std::bad_cast</derivedcompoundref>
+    <derivedcompoundref refid="classstd_1_1bad__exception" prot="public" virt="non-virtual">std::bad_exception</derivedcompoundref>
+    <derivedcompoundref refid="classstd_1_1bad__typeid" prot="public" virt="non-virtual">std::bad_typeid</derivedcompoundref>
+    <derivedcompoundref refid="classstd_1_1ios__base_1_1failure" prot="public" virt="non-virtual">std::ios_base::failure</derivedcompoundref>
+    <derivedcompoundref refid="classstd_1_1logic__error" prot="public" virt="non-virtual">std::logic_error</derivedcompoundref>
+    <derivedcompoundref refid="classstd_1_1runtime__error" prot="public" virt="non-virtual">std::runtime_error</derivedcompoundref>
+    <briefdescription>
+<para>STL class. </para>    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="[STL]" line="1"/>
+    <listofallmembers>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

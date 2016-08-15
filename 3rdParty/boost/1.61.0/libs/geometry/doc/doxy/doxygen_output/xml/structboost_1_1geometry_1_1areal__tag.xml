@@ -1,0 +1,52 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="structboost_1_1geometry_1_1areal__tag" kind="struct" prot="public">
+    <compoundname>boost::geometry::areal_tag</compoundname>
+    <derivedcompoundref refid="structboost_1_1geometry_1_1box__tag" prot="public" virt="non-virtual">boost::geometry::box_tag</derivedcompoundref>
+    <derivedcompoundref refid="structboost_1_1geometry_1_1polygonal__tag" prot="public" virt="non-virtual">boost::geometry::polygonal_tag</derivedcompoundref>
+    <includes local="no">tags.hpp</includes>
+    <briefdescription>
+<para>For areal types (polygon, multi_polygon, box, ring) </para>    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <inheritancegraph>
+      <node id="7">
+        <label>boost::geometry::ring_tag</label>
+        <link refid="structboost_1_1geometry_1_1ring__tag"/>
+        <childnode refid="4" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="6">
+        <label>boost::geometry::polygon_tag</label>
+        <link refid="structboost_1_1geometry_1_1polygon__tag"/>
+        <childnode refid="4" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="2">
+        <label>boost::geometry::areal_tag</label>
+        <link refid="structboost_1_1geometry_1_1areal__tag"/>
+      </node>
+      <node id="4">
+        <label>boost::geometry::polygonal_tag</label>
+        <link refid="structboost_1_1geometry_1_1polygonal__tag"/>
+        <childnode refid="2" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="3">
+        <label>boost::geometry::box_tag</label>
+        <link refid="structboost_1_1geometry_1_1box__tag"/>
+        <childnode refid="2" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="5">
+        <label>boost::geometry::multi_polygon_tag</label>
+        <link refid="structboost_1_1geometry_1_1multi__polygon__tag"/>
+        <childnode refid="4" relation="public-inheritance">
+        </childnode>
+      </node>
+    </inheritancegraph>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/core/tags.hpp" line="70" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/core/tags.hpp" bodystart="70" bodyend="70"/>
+    <listofallmembers>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

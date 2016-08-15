@@ -1,0 +1,106 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>boost/python/pointee.hpp</title>
+<link rel="stylesheet" href="../../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../index.html" title="Boost.Python Reference Manual">
+<link rel="up" href="../utility_and_infrastructure.html" title="Chapter&#160;7.&#160;Utility and Infrastructure">
+<link rel="prev" href="boost_python_instance_holder_hpp.html" title="boost/python/instance_holder.hpp">
+<link rel="next" href="boost_python_handle_hpp.html" title="boost/python/handle.hpp">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr><td valign="top"><img alt="" width="" height="" src="../../images/boost.png"></td></tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="boost_python_instance_holder_hpp.html"><img src="../../images/prev.png" alt="Prev"></a><a accesskey="u" href="../utility_and_infrastructure.html"><img src="../../images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../images/home.png" alt="Home"></a><a accesskey="n" href="boost_python_handle_hpp.html"><img src="../../images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="utility_and_infrastructure.boost_python_pointee_hpp"></a><a class="link" href="boost_python_pointee_hpp.html" title="boost/python/pointee.hpp">boost/python/pointee.hpp</a>
+</h2></div></div></div>
+<div class="toc"><dl>
+<dt><span class="section"><a href="boost_python_pointee_hpp.html#utility_and_infrastructure.boost_python_pointee_hpp.introduction">Introduction</a></span></dt>
+<dt><span class="section"><a href="boost_python_pointee_hpp.html#utility_and_infrastructure.boost_python_pointee_hpp.class_template_pointee">Class
+        template <code class="computeroutput"><span class="identifier">pointee</span></code></a></span></dt>
+<dt><span class="section"><a href="boost_python_pointee_hpp.html#utility_and_infrastructure.boost_python_pointee_hpp.examples">Examples</a></span></dt>
+</dl></div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="utility_and_infrastructure.boost_python_pointee_hpp.introduction"></a><a class="link" href="boost_python_pointee_hpp.html#utility_and_infrastructure.boost_python_pointee_hpp.introduction" title="Introduction">Introduction</a>
+</h3></div></div></div>
+<p>
+          &lt;boost/python/pointee.hpp&gt; introduces a traits metafunction <code class="computeroutput"><span class="keyword">template</span> <span class="identifier">pointee</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;</span></code> that can be used to extract the "pointed-to"
+          type from the type of a pointer or smart pointer.
+        </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="utility_and_infrastructure.boost_python_pointee_hpp.class_template_pointee"></a><a class="link" href="boost_python_pointee_hpp.html#utility_and_infrastructure.boost_python_pointee_hpp.class_template_pointee" title="Class template pointee">Class
+        template <code class="computeroutput"><span class="identifier">pointee</span></code></a>
+</h3></div></div></div>
+<p>
+          <code class="computeroutput"><span class="identifier">pointee</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;</span></code>
+          is used by the <a class="link" href="../high_level_components.html#high_level_components.boost_python_class_hpp.class_template_class_t_bases_hel" title="Class template class_&lt;T, Bases, HeldType, NonCopyable&gt;"><code class="computeroutput"><span class="identifier">class_</span><span class="special">&lt;...&gt;</span></code></a>
+          template to deduce the type being held when a pointer or smart pointer
+          type is used as its HeldType argument.
+        </p>
+<pre class="programlisting"><span class="keyword">namespace</span> <span class="identifier">boost</span> <span class="special">{</span> <span class="keyword">namespace</span> <span class="identifier">python</span>
+<span class="special">{</span>
+   <span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">&gt;</span> <span class="keyword">struct</span> <span class="identifier">pointee</span>
+   <span class="special">{</span>
+      <span class="keyword">typedef</span> <span class="identifier">T</span><span class="special">::</span><span class="identifier">element_type</span> <span class="identifier">type</span><span class="special">;</span>
+   <span class="special">};</span>
+
+   <span class="comment">// specialization for pointers</span>
+   <span class="keyword">template</span> <span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;</span> <span class="keyword">struct</span> <span class="identifier">pointee</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">*&gt;</span>
+   <span class="special">{</span>
+      <span class="keyword">typedef</span> <span class="identifier">T</span> <span class="identifier">type</span><span class="special">;</span>
+   <span class="special">};</span>
+<span class="special">}</span>
+</pre>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="utility_and_infrastructure.boost_python_pointee_hpp.examples"></a><a class="link" href="boost_python_pointee_hpp.html#utility_and_infrastructure.boost_python_pointee_hpp.examples" title="Examples">Examples</a>
+</h3></div></div></div>
+<p>
+          Given a 3rd-party smart pointer type <code class="computeroutput"><span class="identifier">smart_pointer</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;</span></code>, one might partially specialize <code class="computeroutput"><span class="identifier">pointee</span><span class="special">&lt;</span><span class="identifier">smart_pointer</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;</span> <span class="special">&gt;</span></code> so that it can be used as the HeldType
+          for a class wrapper:
+        </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">python</span><span class="special">/</span><span class="identifier">pointee</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">python</span><span class="special">/</span><span class="keyword">class</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">third_party_lib</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="keyword">namespace</span> <span class="identifier">boost</span> <span class="special">{</span> <span class="keyword">namespace</span> <span class="identifier">python</span>
+<span class="special">{</span>
+  <span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">&gt;</span> <span class="keyword">struct</span> <span class="identifier">pointee</span><span class="special">&lt;</span><span class="identifier">smart_pointer</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;</span> <span class="special">&gt;</span>
+  <span class="special">{</span>
+     <span class="keyword">typedef</span> <span class="identifier">T</span> <span class="identifier">type</span><span class="special">;</span>
+  <span class="special">};</span>
+<span class="special">}}</span>
+
+<span class="identifier">BOOST_PYTHON_MODULE</span><span class="special">(</span><span class="identifier">pointee_demo</span><span class="special">)</span>
+<span class="special">{</span>
+   <span class="identifier">class_</span><span class="special">&lt;</span><span class="identifier">third_party_class</span><span class="special">,</span> <span class="identifier">smart_pointer</span><span class="special">&lt;</span><span class="identifier">third_party_class</span><span class="special">&gt;</span> <span class="special">&gt;(</span><span class="string">"third_party_class"</span><span class="special">)</span>
+      <span class="special">.</span><span class="identifier">def</span><span class="special">(...)</span>
+      <span class="special">...</span>
+      <span class="special">;</span>
+<span class="special">}</span>
+</pre>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2002-2005, 2015 David Abrahams, Stefan Seefeld<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="boost_python_instance_holder_hpp.html"><img src="../../images/prev.png" alt="Prev"></a><a accesskey="u" href="../utility_and_infrastructure.html"><img src="../../images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../images/home.png" alt="Home"></a><a accesskey="n" href="boost_python_handle_hpp.html"><img src="../../images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

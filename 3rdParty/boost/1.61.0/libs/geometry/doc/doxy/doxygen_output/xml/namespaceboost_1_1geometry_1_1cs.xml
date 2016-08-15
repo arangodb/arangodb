@@ -1,0 +1,16 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="namespaceboost_1_1geometry_1_1cs" kind="namespace">
+    <compoundname>boost::geometry::cs</compoundname>
+    <innerclass refid="structboost_1_1geometry_1_1cs_1_1cartesian" prot="public">boost::geometry::cs::cartesian</innerclass>
+    <innerclass refid="structboost_1_1geometry_1_1cs_1_1geographic" prot="public">boost::geometry::cs::geographic</innerclass>
+    <innerclass refid="structboost_1_1geometry_1_1cs_1_1polar" prot="public">boost::geometry::cs::polar</innerclass>
+    <innerclass refid="structboost_1_1geometry_1_1cs_1_1spherical" prot="public">boost::geometry::cs::spherical</innerclass>
+    <innerclass refid="structboost_1_1geometry_1_1cs_1_1spherical__equatorial" prot="public">boost::geometry::cs::spherical_equatorial</innerclass>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/core/cs.hpp" line="84"/>
+  </compounddef>
+</doxygen>

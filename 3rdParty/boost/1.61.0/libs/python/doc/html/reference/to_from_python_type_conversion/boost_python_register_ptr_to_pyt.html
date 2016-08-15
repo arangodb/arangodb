@@ -1,0 +1,166 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>boost/python/register_ptr_to_python.hpp</title>
+<link rel="stylesheet" href="../../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../index.html" title="Boost.Python Reference Manual">
+<link rel="up" href="../to_from_python_type_conversion.html" title="Chapter&#160;5.&#160;To/From Python Type Conversion">
+<link rel="prev" href="boost_python_to_python_converter.html" title="boost/python/to_python_converter.hpp">
+<link rel="next" href="../embedding.html" title="Chapter&#160;6.&#160;Embedding">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr><td valign="top"><img alt="" width="" height="" src="../../images/boost.png"></td></tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="boost_python_to_python_converter.html"><img src="../../images/prev.png" alt="Prev"></a><a accesskey="u" href="../to_from_python_type_conversion.html"><img src="../../images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../images/home.png" alt="Home"></a><a accesskey="n" href="../embedding.html"><img src="../../images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="to_from_python_type_conversion.boost_python_register_ptr_to_pyt"></a><a class="link" href="boost_python_register_ptr_to_pyt.html" title="boost/python/register_ptr_to_python.hpp">boost/python/register_ptr_to_python.hpp</a>
+</h2></div></div></div>
+<div class="toc"><dl>
+<dt><span class="section"><a href="boost_python_register_ptr_to_pyt.html#to_from_python_type_conversion.boost_python_register_ptr_to_pyt.introduction">Introduction</a></span></dt>
+<dt><span class="section"><a href="boost_python_register_ptr_to_pyt.html#to_from_python_type_conversion.boost_python_register_ptr_to_pyt.function_register_ptr_to_python">Function
+        <code class="computeroutput"><span class="identifier">register_ptr_to_python</span></code></a></span></dt>
+<dt><span class="section"><a href="boost_python_register_ptr_to_pyt.html#to_from_python_type_conversion.boost_python_register_ptr_to_pyt.example">Example</a></span></dt>
+</dl></div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="to_from_python_type_conversion.boost_python_register_ptr_to_pyt.introduction"></a><a class="link" href="boost_python_register_ptr_to_pyt.html#to_from_python_type_conversion.boost_python_register_ptr_to_pyt.introduction" title="Introduction">Introduction</a>
+</h3></div></div></div>
+<p>
+          &lt;boost/python/register_ptr_to_python.hpp&gt; supplies <code class="computeroutput"><span class="identifier">register_ptr_to_python</span></code>, a function template
+          which registers a conversion for smart pointers to Python. The resulting
+          Python object holds a copy of the converted smart pointer, but behaves
+          as though it were a wrapped copy of the pointee. If the pointee type has
+          virtual functions and the class representing its dynamic (most-derived)
+          type has been wrapped, the Python object will be an instance of the wrapper
+          for the most-derived type. More than one smart pointer type for a pointee's
+          class can be registered.
+        </p>
+<p>
+          Note that in order to convert a Python <code class="computeroutput"><span class="identifier">X</span></code>
+          object to a <code class="computeroutput"><span class="identifier">smart_ptr</span><span class="special">&lt;</span><span class="identifier">X</span><span class="special">&gt;&amp;</span></code>
+          (non-const reference), the embedded C++ object must be held by <code class="computeroutput"><span class="identifier">smart_ptr</span><span class="special">&lt;</span><span class="identifier">X</span><span class="special">&gt;</span></code>,
+          and that when wrapped objects are created by calling the constructor from
+          Python, how they are held is determined by the HeldType parameter to <code class="computeroutput"><span class="identifier">class_</span><span class="special">&lt;...&gt;</span></code>
+          instances.
+        </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="to_from_python_type_conversion.boost_python_register_ptr_to_pyt.function_register_ptr_to_python"></a><a class="link" href="boost_python_register_ptr_to_pyt.html#to_from_python_type_conversion.boost_python_register_ptr_to_pyt.function_register_ptr_to_python" title="Function register_ptr_to_python">Function
+        <code class="computeroutput"><span class="identifier">register_ptr_to_python</span></code></a>
+</h3></div></div></div>
+<pre class="programlisting"><span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">P</span><span class="special">&gt;</span>
+<span class="keyword">void</span> <span class="identifier">register_ptr_to_python</span><span class="special">()</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl>
+<dt><span class="term">Requires</span></dt>
+<dd><p>
+                <code class="computeroutput"><span class="identifier">P</span></code> is <a class="link" href="../concepts/dereferenceable.html" title="Dereferenceable">Dereferenceable</a>.
+              </p></dd>
+<dt><span class="term">Effects</span></dt>
+<dd><p>
+                Allows conversions to-python of P instances.
+              </p></dd>
+</dl>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="to_from_python_type_conversion.boost_python_register_ptr_to_pyt.example"></a><a class="link" href="boost_python_register_ptr_to_pyt.html#to_from_python_type_conversion.boost_python_register_ptr_to_pyt.example" title="Example">Example</a>
+</h3></div></div></div>
+<p>
+          Here is an example of a module that contains a class A with virtual functions
+          and some functions that work with boost::shared_ptr&lt;A&gt;.
+        </p>
+<p>
+          In C++:
+        </p>
+<pre class="programlisting"><span class="keyword">struct</span> <span class="identifier">A</span>
+<span class="special">{</span>
+    <span class="keyword">virtual</span> <span class="keyword">int</span> <span class="identifier">f</span><span class="special">()</span> <span class="special">{</span> <span class="keyword">return</span> <span class="number">0</span><span class="special">;</span> <span class="special">}</span>
+<span class="special">};</span>
+
+<span class="identifier">shared_ptr</span><span class="special">&lt;</span><span class="identifier">A</span><span class="special">&gt;</span> <span class="identifier">New</span><span class="special">()</span> <span class="special">{</span> <span class="keyword">return</span> <span class="identifier">shared_ptr</span><span class="special">&lt;</span><span class="identifier">A</span><span class="special">&gt;(</span> <span class="keyword">new</span> <span class="identifier">A</span><span class="special">()</span> <span class="special">);</span> <span class="special">}</span>
+
+<span class="keyword">int</span> <span class="identifier">Ok</span><span class="special">(</span> <span class="keyword">const</span> <span class="identifier">shared_ptr</span><span class="special">&lt;</span><span class="identifier">A</span><span class="special">&gt;&amp;</span> <span class="identifier">a</span> <span class="special">)</span> <span class="special">{</span> <span class="keyword">return</span> <span class="identifier">a</span><span class="special">-&gt;</span><span class="identifier">f</span><span class="special">();</span> <span class="special">}</span>
+
+<span class="keyword">int</span> <span class="identifier">Fail</span><span class="special">(</span> <span class="identifier">shared_ptr</span><span class="special">&lt;</span><span class="identifier">A</span><span class="special">&gt;&amp;</span> <span class="identifier">a</span> <span class="special">)</span> <span class="special">{</span> <span class="keyword">return</span> <span class="identifier">a</span><span class="special">-&gt;</span><span class="identifier">f</span><span class="special">();</span> <span class="special">}</span>
+
+<span class="keyword">struct</span> <span class="identifier">A_Wrapper</span><span class="special">:</span> <span class="identifier">A</span>
+<span class="special">{</span>
+    <span class="identifier">A_Wrapper</span><span class="special">(</span><span class="identifier">PyObject</span><span class="special">*</span> <span class="identifier">self_</span><span class="special">):</span> <span class="identifier">self</span><span class="special">(</span><span class="identifier">self_</span><span class="special">)</span> <span class="special">{}</span>
+    <span class="keyword">int</span> <span class="identifier">f</span><span class="special">()</span> <span class="special">{</span> <span class="keyword">return</span> <span class="identifier">call_method</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;(</span><span class="identifier">self</span><span class="special">,</span> <span class="string">"f"</span><span class="special">);</span> <span class="special">}</span>
+    <span class="keyword">int</span> <span class="identifier">default_f</span><span class="special">()</span> <span class="special">{</span> <span class="keyword">return</span> <span class="identifier">A</span><span class="special">::</span><span class="identifier">f</span><span class="special">();</span> <span class="special">}</span>
+    <span class="identifier">PyObject</span><span class="special">*</span> <span class="identifier">self</span><span class="special">;</span>
+<span class="special">};</span>
+
+<span class="identifier">BOOST_PYTHON_MODULE</span><span class="special">(</span><span class="identifier">register_ptr</span><span class="special">)</span>
+<span class="special">{</span>
+    <span class="identifier">class_</span><span class="special">&lt;</span><span class="identifier">A</span><span class="special">,</span> <span class="identifier">A_Wrapper</span><span class="special">&gt;(</span><span class="string">"A"</span><span class="special">)</span>
+        <span class="special">.</span><span class="identifier">def</span><span class="special">(</span><span class="string">"f"</span><span class="special">,</span> <span class="special">&amp;</span><span class="identifier">A</span><span class="special">::</span><span class="identifier">f</span><span class="special">,</span> <span class="special">&amp;</span><span class="identifier">A_Wrapper</span><span class="special">::</span><span class="identifier">default_f</span><span class="special">)</span>
+    <span class="special">;</span>
+
+    <span class="identifier">def</span><span class="special">(</span><span class="string">"New"</span><span class="special">,</span> <span class="special">&amp;</span><span class="identifier">New</span><span class="special">);</span>
+    <span class="identifier">def</span><span class="special">(</span><span class="string">"Ok"</span><span class="special">,</span> <span class="special">&amp;</span><span class="identifier">Call</span><span class="special">);</span>
+    <span class="identifier">def</span><span class="special">(</span><span class="string">"Fail"</span><span class="special">,</span> <span class="special">&amp;</span><span class="identifier">Fail</span><span class="special">);</span>
+
+    <span class="identifier">register_ptr_to_python</span><span class="special">&lt;</span> <span class="identifier">shared_ptr</span><span class="special">&lt;</span><span class="identifier">A</span><span class="special">&gt;</span> <span class="special">&gt;();</span>
+<span class="special">}</span>
+</pre>
+<p>
+          In Python:
+        </p>
+<pre class="programlisting"><span class="special">&gt;&gt;&gt;</span> <span class="identifier">from</span> <span class="identifier">register_ptr</span> <span class="identifier">import</span> <span class="special">*</span>
+<span class="special">&gt;&gt;&gt;</span> <span class="identifier">a</span> <span class="special">=</span> <span class="identifier">A</span><span class="special">()</span>
+<span class="special">&gt;&gt;&gt;</span> <span class="identifier">Ok</span><span class="special">(</span><span class="identifier">a</span><span class="special">)</span>     <span class="special">#</span> <span class="identifier">ok</span><span class="special">,</span> <span class="identifier">passed</span> <span class="identifier">as</span> <span class="identifier">shared_ptr</span><span class="special">&lt;</span><span class="identifier">A</span><span class="special">&gt;</span>
+<span class="number">0</span>
+<span class="special">&gt;&gt;&gt;</span> <span class="identifier">Fail</span><span class="special">(</span><span class="identifier">a</span><span class="special">)</span>   <span class="special">#</span> <span class="identifier">passed</span> <span class="identifier">as</span> <span class="identifier">shared_ptr</span><span class="special">&lt;</span><span class="identifier">A</span><span class="special">&gt;&amp;,</span> <span class="keyword">and</span> <span class="identifier">was</span> <span class="identifier">created</span> <span class="identifier">in</span> <span class="identifier">Python</span><span class="special">!</span>
+<span class="identifier">Traceback</span> <span class="special">(</span><span class="identifier">most</span> <span class="identifier">recent</span> <span class="identifier">call</span> <span class="identifier">last</span><span class="special">):</span>
+  <span class="identifier">File</span> <span class="string">"&lt;stdin&gt;"</span><span class="special">,</span> <span class="identifier">line</span> <span class="number">1</span><span class="special">,</span> <span class="identifier">in</span> <span class="special">?</span>
+<span class="identifier">TypeError</span><span class="special">:</span> <span class="identifier">bad</span> <span class="identifier">argument</span> <span class="identifier">type</span> <span class="keyword">for</span> <span class="identifier">built</span><span class="special">-</span><span class="identifier">in</span> <span class="identifier">operation</span>
+<span class="special">&gt;&gt;&gt;</span>
+<span class="special">&gt;&gt;&gt;</span> <span class="identifier">na</span> <span class="special">=</span> <span class="identifier">New</span><span class="special">()</span>   <span class="special">#</span> <span class="identifier">now</span> <span class="string">"na"</span> <span class="identifier">is</span> <span class="identifier">actually</span> <span class="identifier">a</span> <span class="identifier">shared_ptr</span><span class="special">&lt;</span><span class="identifier">A</span><span class="special">&gt;</span>
+<span class="special">&gt;&gt;&gt;</span> <span class="identifier">Ok</span><span class="special">(</span><span class="identifier">a</span><span class="special">)</span>
+<span class="number">0</span>
+<span class="special">&gt;&gt;&gt;</span> <span class="identifier">Fail</span><span class="special">(</span><span class="identifier">a</span><span class="special">)</span>
+<span class="number">0</span>
+<span class="special">&gt;&gt;&gt;</span>
+</pre>
+<p>
+          If shared_ptr&lt;A&gt; is registered as follows:
+        </p>
+<pre class="programlisting"><span class="identifier">class_</span><span class="special">&lt;</span><span class="identifier">A</span><span class="special">,</span> <span class="identifier">A_Wrapper</span><span class="special">,</span> <span class="identifier">shared_ptr</span><span class="special">&lt;</span><span class="identifier">A</span><span class="special">&gt;</span> <span class="special">&gt;(</span><span class="string">"A"</span><span class="special">)</span>
+    <span class="special">.</span><span class="identifier">def</span><span class="special">(</span><span class="string">"f"</span><span class="special">,</span> <span class="special">&amp;</span><span class="identifier">A</span><span class="special">::</span><span class="identifier">f</span><span class="special">,</span> <span class="special">&amp;</span><span class="identifier">A_Wrapper</span><span class="special">::</span><span class="identifier">default_f</span><span class="special">)</span>
+<span class="special">;</span>
+</pre>
+<p>
+          There will be an error when trying to convert shared_ptr&lt;A&gt; to shared_ptr&lt;A_Wrapper&gt;:
+        </p>
+<pre class="programlisting"><span class="special">&gt;&gt;&gt;</span> <span class="identifier">a</span> <span class="special">=</span> <span class="identifier">New</span><span class="special">()</span>
+<span class="identifier">Traceback</span> <span class="special">(</span><span class="identifier">most</span> <span class="identifier">recent</span> <span class="identifier">call</span> <span class="identifier">last</span><span class="special">):</span>
+<span class="identifier">File</span> <span class="string">"&lt;stdin&gt;"</span><span class="special">,</span> <span class="identifier">line</span> <span class="number">1</span><span class="special">,</span> <span class="identifier">in</span> <span class="special">?</span>
+<span class="identifier">TypeError</span><span class="special">:</span> <span class="identifier">No</span> <span class="identifier">to_python</span> <span class="special">(</span><span class="identifier">by</span><span class="special">-</span><span class="identifier">value</span><span class="special">)</span> <span class="identifier">converter</span> <span class="identifier">found</span> <span class="keyword">for</span> <span class="identifier">C</span><span class="special">++</span> <span class="identifier">type</span><span class="special">:</span> <span class="keyword">class</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">shared_ptr</span><span class="special">&lt;</span><span class="keyword">struct</span> <span class="identifier">A</span><span class="special">&gt;</span>
+<span class="special">&gt;&gt;&gt;</span>
+</pre>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2002-2005, 2015 David Abrahams, Stefan Seefeld<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="boost_python_to_python_converter.html"><img src="../../images/prev.png" alt="Prev"></a><a accesskey="u" href="../to_from_python_type_conversion.html"><img src="../../images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../images/home.png" alt="Home"></a><a accesskey="n" href="../embedding.html"><img src="../../images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

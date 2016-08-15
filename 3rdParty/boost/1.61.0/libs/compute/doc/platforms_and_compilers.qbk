@@ -1,0 +1,48 @@
+[/===========================================================================
+ Copyright (c) 2013-2015 Kyle Lutz <kyle.r.lutz@gmail.com>
+
+ Distributed under the Boost Software License, Version 1.0
+ See accompanying file LICENSE_1_0.txt or copy at
+ http://www.boost.org/LICENSE_1_0.txt
+=============================================================================/]
+
+[section:platforms_and_compilers Platforms and Compilers]
+
+Boost.Compute has been tested on the following:
+
+[section Compilers]
+
+* GCC (>= 4.6)
+* Clang (>= 3.0)
+* MSVC (>= 2010)
+
+Boost.Compute requires variadic macro support. Variadic macros are supported by
+most modern C++98 compilers and all C++11 compilers.
+
+To explicitly enable variadic support for Boost.Preprocessor add
+`-DBOOST_PP_VARIADICS=1` to your compiler flags.
+
+[endsect]
+
+[section Platforms]
+
+* Linux
+* Mac OSX
+* Windows
+
+[endsect]
+
+[section OpenCL Implementations]
+
+* NVIDIA (NVIDIA GPUs only)
+* AMD (CPUs and AMD GPUs)
+* Intel (CPUs only)
+* POCL (CPUs only)
+* Beignet (Intel GPUs only)
+
+[endsect]
+
+If you have an additional platform you would like to see supported please
+[@https://github.com/boostorg/compute/issues/new submit] a bug-report.
+
+[endsect]

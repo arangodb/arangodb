@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE chapter PUBLIC "-//Boost//DTD BoostBook XML V1.0//EN"
+  "http://www.boost.org/tools/boostbook/dtd/boostbook.dtd">
+
+  <dedication id="bbv2.howto">
+
+    <title>How to use this document</title>
+
+    <para>
+      Want to learn about Boost.Build features? Start with <xref linkend=
+      "bbv2.tutorial"/> and continue with <xref
+      linkend="bbv2.overview"/>. When you're ready to try Boost.Build
+      in practice, go to <xref linkend="bbv2.installation"/>.
+    </para>
+
+    <para>
+      Building a project with Boost.Build? See <xref
+      linkend="bbv2.installation"/> and 
+      then read <xref linkend="bbv2.overview.invocation"/>.
+    </para>
+
+    <para>
+      Setting up Boost.Build on your project? Take a look at <xref
+      linkend="bbv2.overview"/> and <xref linkend="bbv2.extender"/>.
+    </para>
+
+    <para>
+      If there's anything you find unclear in this documentation, report the
+      problem directly in the <ulink
+      url="https://github.com/boostorg/build/issues">issue tracker</ulink>.
+      For more general questions, please post them to our mailing list (<ulink
+      url="http://boost.org/more/mailing_lists.htm#jamboost"/>). The mailing list is
+      also mirrored to the newsgroup <ulink url="news://news.gmane.org/gmane.comp.lib.boost.build"/>.
+    </para>
+
+    <para role="copyright">
+      Copyright 2006, 2014 <ulink url="http://vladimirprus.com">Vladimir
+      Prus</ulink>. Distributed under the Boost Software License, Version 1.0.
+      (See accompanying file <filename>LICENSE_1_0.txt</filename> or copy at 
+      <ulink
+      url="http://www.boost.org/LICENSE_1_0.txt">http://www.boost.org/LICENSE_1_0.txt</ulink>)
+    </para>
+
+  </dedication>

@@ -1,0 +1,15 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="dir_70223ecaef5d80d63353dbb0510f117c" kind="dir">
+    <compoundname>/home/travis/build/boostorg/boost/boost/geometry/policies/relate/</compoundname>
+    <innerfile refid="direction_8hpp">direction.hpp</innerfile>
+    <innerfile refid="intersection__points_8hpp">intersection_points.hpp</innerfile>
+    <innerfile refid="intersection__ratios_8hpp">intersection_ratios.hpp</innerfile>
+    <innerfile refid="tupled_8hpp">tupled.hpp</innerfile>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/policies/relate/"/>
+  </compounddef>
+</doxygen>

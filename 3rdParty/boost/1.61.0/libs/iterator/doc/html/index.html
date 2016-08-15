@@ -1,0 +1,296 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Chapter&#160;1.&#160;Boost.Iterator</title>
+<link rel="stylesheet" href="../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="index.html" title="Chapter&#160;1.&#160;Boost.Iterator">
+<link rel="next" href="iterator/concepts.html" title="Iterator Concepts">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../boost.png"></td>
+<td align="center"><a href="../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav"><a accesskey="n" href="iterator/concepts.html"><img src="../../../../doc/src/images/next.png" alt="Next"></a></div>
+<div class="chapter">
+<div class="titlepage"><div>
+<div><h2 class="title">
+<a name="iterator"></a>Chapter&#160;1.&#160;Boost.Iterator</h2></div>
+<div><div class="author"><h3 class="author">
+<span class="firstname">David</span> <span class="surname">Abrahams</span>
+</h3></div></div>
+<div><div class="author"><h3 class="author">
+<span class="firstname">Jeremy</span> <span class="surname">Siek</span>
+</h3></div></div>
+<div><div class="author"><h3 class="author">
+<span class="firstname">Thomas</span> <span class="surname">Witt</span>
+</h3></div></div>
+<div><p class="copyright">Copyright &#169; 2003, 2005 David Abrahams Jeremy Siek Thomas
+      Witt</p></div>
+<div><div class="legalnotice">
+<a name="iterator.legal"></a><p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at &lt;ulink url="http://www.boost.org/LICENSE_1_0.txt"&gt;
+        http://www.boost.org/LICENSE_1_0.txt &lt;/ulink&gt;)
+      </p>
+</div></div>
+</div></div>
+<div class="toc">
+<p><b>Table of Contents</b></p>
+<dl>
+<dt><span class="section"><a href="index.html#iterator.intro">Introduction</a></span></dt>
+<dt><span class="section"><a href="iterator/concepts.html">Iterator Concepts</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="iterator/concepts.html#iterator.concepts.concepts_access">Access</a></span></dt>
+<dt><span class="section"><a href="iterator/concepts/concepts_traversal.html">Traversal</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="iterator/generic.html">Generic Iterators</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="iterator/generic.html#iterator.generic.facade">Iterator Facade</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="iterator/generic.html#iterator.generic.facade.facade_reference">Reference</a></span></dt>
+<dt><span class="section"><a href="iterator/generic.html#iterator.generic.facade.facade_tutorial">Tutorial</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="iterator/generic/adaptor.html">Iterator Adaptor</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="iterator/generic/adaptor.html#iterator.generic.adaptor.adaptor_reference">Reference</a></span></dt>
+<dt><span class="section"><a href="iterator/generic/adaptor/adaptor_tutorial.html">Tutorial</a></span></dt>
+</dl></dd>
+</dl></dd>
+<dt><span class="section"><a href="iterator/specialized.html">Specialized Adaptors</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="iterator/specialized.html#iterator.specialized.counting">Counting Iterator</a></span></dt>
+<dt><span class="section"><a href="iterator/specialized/filter.html">Filter Iterator</a></span></dt>
+<dt><span class="section"><a href="iterator/specialized/function_output.html">Function Output
+      Iterator</a></span></dt>
+<dt><span class="section"><a href="iterator/specialized/indirect.html">Indirect Iterator</a></span></dt>
+<dt><span class="section"><a href="iterator/specialized/permutation.html">Permutation Iterator</a></span></dt>
+<dt><span class="section"><a href="iterator/specialized/reverse.html">Reverse Iterator</a></span></dt>
+<dt><span class="section"><a href="iterator/specialized/shared_container.html">Shared Container
+      Iterator</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="iterator/specialized/shared_container.html#iterator.specialized.shared_container.shared_container_type">The
+        Shared Container Iterator Type</a></span></dt>
+<dt><span class="section"><a href="iterator/specialized/shared_container/shared_container_object_generator.html">The
+        Shared Container Iterator Object Generator</a></span></dt>
+<dt><span class="section"><a href="iterator/specialized/shared_container/shared_container_generator.html">The
+        Shared Container Iterator Range Generator</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="iterator/specialized/transform.html">Transform Iterator</a></span></dt>
+<dt><span class="section"><a href="iterator/specialized/zip.html">Zip Iterator</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="iterator/specialized/zip.html#iterator.specialized.zip.zip_example">Example</a></span></dt>
+<dt><span class="section"><a href="iterator/specialized/zip/zip_reference.html">Reference</a></span></dt>
+</dl></dd>
+</dl></dd>
+<dt><span class="section"><a href="iterator/utilities.html">Utilities</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="iterator/utilities.html#iterator.utilities.archetypes">Iterator Archetypes</a></span></dt>
+<dt><span class="section"><a href="iterator/utilities/concept_checking.html">Concept Checking</a></span></dt>
+<dt><span class="section"><a href="iterator/utilities/traits.html">Iterator Traits</a></span></dt>
+<dt><span class="section"><a href="iterator/utilities/utilities.html">Iterator Utilities</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="iterator/utilities/utilities.html#iterator.utilities.utilities.utilities_traits">Traits</a></span></dt>
+<dt><span class="section"><a href="iterator/utilities/utilities/utilities_testing.html">Testing
+        and Concept Checking</a></span></dt>
+</dl></dd>
+</dl></dd>
+<dt><span class="section"><a href="iterator/upgrading.html">Upgrading from the old Boost Iterator
+    Adaptor Library</a></span></dt>
+<dt><span class="section"><a href="iterator/history.html">History</a></span></dt>
+</dl>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="iterator.intro"></a><a class="link" href="index.html#iterator.intro" title="Introduction">Introduction</a>
+</h2></div></div></div>
+<p>
+      The Boost Iterator Library contains two parts. The first is a system of <a href="http://www.boost.org/more/generic_programming.html#concept" target="_top">concepts</a>
+      which extend the C++ standard iterator requirements. The second is a framework
+      of components for building iterators based on these extended concepts and includes
+      several useful iterator adaptors. The extended iterator concepts have been
+      carefully designed so that old-style iterators can fit in the new concepts
+      and so that new-style iterators will be compatible with old-style algorithms,
+      though algorithms may need to be updated if they want to take full advantage
+      of the new-style iterator capabilities. Several components of this library
+      have been accepted into the C++ standard technical report. The components of
+      the Boost Iterator Library replace the older Boost Iterator Adaptor Library.
+    </p>
+<h3>
+<a name="iterator.intro.h0"></a>
+      <span><a name="iterator.intro.new_style_iterators"></a></span><a class="link" href="index.html#iterator.intro.new_style_iterators">New-Style
+      Iterators</a>
+    </h3>
+<p>
+      The iterator categories defined in C++98 are extremely limiting because they
+      bind together two orthogonal concepts: traversal and element access. For example,
+      because a random access iterator is required to return a reference (and not
+      a proxy) when dereferenced, it is impossible to capture the capabilities of
+      <code class="computeroutput"><span class="identifier">vector</span><span class="special">&lt;</span><span class="keyword">bool</span><span class="special">&gt;::</span><span class="identifier">iterator</span></code>
+      using the C++98 categories. This is the infamous "<code class="computeroutput"><span class="identifier">vector</span><span class="special">&lt;</span><span class="keyword">bool</span><span class="special">&gt;</span></code>
+      is not a container, and its iterators aren't random access iterators",
+      debacle about which Herb Sutter wrote two papers for the standards comittee
+      (<a href="http://www.gotw.ca/publications/N1185.pdf" target="_top">N1185</a> and
+      <a href="http://www.gotw.ca/publications/N1211.pdf" target="_top">N1211</a>), and
+      a <a href="http://www.gotw.ca/gotw/050.htm" target="_top">Guru of the Week</a>. New-style
+      iterators go well beyond patching up <code class="computeroutput"><span class="identifier">vector</span><span class="special">&lt;</span><span class="keyword">bool</span><span class="special">&gt;</span></code>,
+      though: there are lots of other iterators already in use which can't be adequately
+      represented by the existing concepts. For details about the new iterator concepts,
+      see our <a href="./new-iter-concepts.html" target="_top">Standard Proposal for New-Style
+      Iterators</a>.
+    </p>
+<h3>
+<a name="iterator.intro.h1"></a>
+      <span><a name="iterator.intro.iterator_facade_and_adaptor"></a></span><a class="link" href="index.html#iterator.intro.iterator_facade_and_adaptor">Iterator
+      Facade and Adaptor</a>
+    </h3>
+<p>
+      Writing standard-conforming iterators is tricky, but the need comes up often.
+      In order to ease the implementation of new iterators, the Boost.Iterator library
+      provides the <a href="./iterator_facade.html" target="_top">facade</a> class template,
+      which implements many useful defaults and compile-time checks designed to help
+      the iterator author ensure that his iterator is correct.
+    </p>
+<p>
+      It is also common to define a new iterator that is similar to some underlying
+      iterator or iterator-like type, but that modifies some aspect of the underlying
+      type's behavior. For that purpose, the library supplies the <a href="./iterator_adaptor.html" target="_top">adaptor</a>
+      class template, which is specially designed to take advantage of as much of
+      the underlying type's behavior as possible.
+    </p>
+<p>
+      Both <a href="./iterator_facade.html" target="_top">facade</a> and <a href="./iterator_adaptor.html" target="_top">adaptor</a>
+      as well as many of the <code class="computeroutput"><span class="identifier">specialized</span>
+      <span class="identifier">adaptors</span></code>_ mentioned below have been
+      proposed for standardization (<a href="./facade-and-adaptor.html" target="_top">Standard
+      Proposal For Iterator Facade and Adaptor</a>).
+    </p>
+<h3>
+<a name="iterator.intro.h2"></a>
+      <span><a name="iterator.intro.specialized_adaptors"></a></span><a class="link" href="index.html#iterator.intro.specialized_adaptors">Specialized
+      Adaptors</a>
+    </h3>
+<p>
+      The iterator library supplies a useful suite of standard-conforming iterator
+      templates based on the Boost <a class="link" href="index.html#iterator.intro.iterator_facade_and_adaptor">iterator
+      facade and adaptor</a> templates.
+    </p>
+<div class="itemizedlist"><ul class="itemizedlist" type="disc">
+<li class="listitem">
+          <a href="./counting_iterator.html" target="_top"><code class="computeroutput"><span class="identifier">counting_iterator</span></code></a>:
+          an iterator over a sequence of consecutive values. Implements a "lazy
+          sequence"
+        </li>
+<li class="listitem">
+          <a href="./filter_iterator.html" target="_top"><code class="computeroutput"><span class="identifier">filter_iterator</span></code></a>:
+          an iterator over the subset of elements of some sequence which satisfy
+          a given predicate
+        </li>
+<li class="listitem">
+          <a href="./function_output_iterator.html" target="_top"><code class="computeroutput"><span class="identifier">function_output_iterator</span></code></a>:
+          an output iterator wrapping a unary function object; each time an element
+          is written into the dereferenced iterator, it is passed as a parameter
+          to the function object.
+        </li>
+<li class="listitem">
+          <a href="./indirect_iterator.html" target="_top"><code class="computeroutput"><span class="identifier">indirect_iterator</span></code></a>:
+          an iterator over the objects <span class="bold"><strong>pointed-to</strong></span>
+          by the elements of some sequence.
+        </li>
+<li class="listitem">
+          <a href="./permutation_iterator.html" target="_top"><code class="computeroutput"><span class="identifier">permutation_iterator</span></code></a>:
+          an iterator over the elements of some random-access sequence, rearranged
+          according to some sequence of integer indices.
+        </li>
+<li class="listitem">
+<p class="simpara">
+          <a href="./reverse_iterator.html" target="_top"><code class="computeroutput"><span class="identifier">reverse_iterator</span></code></a>:
+          an iterator which traverses the elements of some bidirectional sequence
+          in reverse. Corrects many of the shortcomings of C++98's
+        </p>
+<pre class="programlisting"><span class="identifier">std</span><span class="special">::</span><span class="identifier">reverse_iterator</span></pre>
+<p class="simpara">
+          .
+        </p>
+</li>
+<li class="listitem">
+          <a href="./shared_container_iterator.html" target="_top"><code class="computeroutput"><span class="identifier">shared_container_iterator</span></code></a>:
+          an iterator over elements of a container whose lifetime is maintained by
+          a <a href="../../smart_ptr/shared_ptr.htm" target="_top"><code class="computeroutput"><span class="identifier">shared_ptr</span></code></a>
+          stored in the iterator.
+        </li>
+<li class="listitem">
+<p class="simpara">
+          <a href="./transform_iterator.html" target="_top"><code class="computeroutput"><span class="identifier">transform_iterator</span></code></a>:
+          an iterator over elements which are the result of applying some functional
+          transformation to the elements of an underlying sequence. This component
+          also replaces the old
+        </p>
+<pre class="programlisting"><span class="identifier">projection_iterator_adaptor</span></pre>
+<p class="simpara">
+          .
+        </p>
+</li>
+<li class="listitem">
+          <a href="./zip_iterator.html" target="_top"><code class="computeroutput"><span class="identifier">zip_iterator</span></code></a>:
+          an iterator over tuples of the elements at corresponding positions of heterogeneous
+          underlying iterators.
+        </li>
+</ul></div>
+<h3>
+<a name="iterator.intro.h3"></a>
+      <span><a name="iterator.intro.iterator_utilities"></a></span><a class="link" href="index.html#iterator.intro.iterator_utilities">Iterator
+      Utilities</a>
+    </h3>
+<h4>
+<a name="iterator.intro.h4"></a>
+      <span><a name="iterator.intro.traits"></a></span><a class="link" href="index.html#iterator.intro.traits">Traits</a>
+    </h4>
+<div class="itemizedlist"><ul class="itemizedlist" type="disc">
+<li class="listitem">
+          <a href="./pointee.html" target="_top"><code class="computeroutput"><span class="identifier">pointee</span><span class="special">.</span><span class="identifier">hpp</span></code></a>:
+          Provides the capability to deduce the referent types of pointers, smart
+          pointers and iterators in generic code. Used in <a href="./indirect_iterator.html" target="_top"><code class="computeroutput"><span class="identifier">indirect_iterator</span></code></a>.
+        </li>
+<li class="listitem">
+          <a href="./iterator_traits.html" target="_top"><code class="computeroutput"><span class="identifier">iterator_traits</span><span class="special">.</span><span class="identifier">hpp</span></code></a>:
+          Provides <a href="../../mpl/doc/index.html" target="_top"><span class="bold"><strong>MPL</strong></span></a>
+          compatible metafunctions which retrieve an iterator's traits. Also corrects
+          for the deficiencies of broken implementations of <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">iterator_traits</span></code>.
+        </li>
+</ul></div>
+<p>
+      [* |interoperable|_ (PDF__): Provides an <a href="../../mpl/doc/index.html" target="_top"><span class="bold"><strong>MPL</strong></span></a> compatible metafunction for testing iterator
+      interoperability ]
+    </p>
+<h4>
+<a name="iterator.intro.h5"></a>
+      <span><a name="iterator.intro.testing_and_concept_checking"></a></span><a class="link" href="index.html#iterator.intro.testing_and_concept_checking">Testing
+      and Concept Checking</a>
+    </h4>
+<div class="itemizedlist"><ul class="itemizedlist" type="disc">
+<li class="listitem">
+          <a href="./iterator_concepts.html" target="_top"><code class="computeroutput"><span class="identifier">iterator_concepts</span><span class="special">.</span><span class="identifier">hpp</span></code></a>:
+          Concept checking classes for the new iterator concepts.
+        </li>
+<li class="listitem">
+          <a href="./iterator_archetypes.html" target="_top"><code class="computeroutput"><span class="identifier">iterator_archetypes</span><span class="special">.</span><span class="identifier">hpp</span></code></a>:
+          Concept archetype classes for the new iterators concepts.
+        </li>
+</ul></div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"><p><small>Last revised: May 05, 2016 at 21:32:51 GMT</small></p></td>
+<td align="right"><div class="copyright-footer"></div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav"><a accesskey="n" href="iterator/concepts.html"><img src="../../../../doc/src/images/next.png" alt="Next"></a></div>
+</body>
+</html>

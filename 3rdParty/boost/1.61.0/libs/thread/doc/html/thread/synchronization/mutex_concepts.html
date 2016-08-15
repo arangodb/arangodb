@@ -1,0 +1,1962 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Mutex Concepts</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../../index.html" title="Chapter&#160;1.&#160;Thread 4.7.0">
+<link rel="up" href="../synchronization.html" title="Synchronization">
+<link rel="prev" href="tutorial.html" title="Tutorial">
+<link rel="next" href="lock_option.html" title="Lock Options">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="tutorial.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../synchronization.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="lock_option.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="thread.synchronization.mutex_concepts"></a><a class="link" href="mutex_concepts.html" title="Mutex Concepts">Mutex Concepts</a>
+</h3></div></div></div>
+<div class="toc"><dl>
+<dt><span class="section"><a href="mutex_concepts.html#thread.synchronization.mutex_concepts.basic_lockable"><code class="computeroutput"><span class="identifier">BasicLockable</span></code> Concept</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="mutex_concepts.html#thread.synchronization.mutex_concepts.basic_lockable.lock"><code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><span class="identifier">lock</span><span class="special">();</span></code></a></span></dt>
+<dt><span class="section"><a href="mutex_concepts.html#thread.synchronization.mutex_concepts.basic_lockable.unlock"><code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><span class="identifier">unlock</span><span class="special">();</span></code></a></span></dt>
+<dt><span class="section"><a href="mutex_concepts.html#thread.synchronization.mutex_concepts.basic_lockable.is_basic_lockable"><code class="computeroutput"><span class="identifier">is_basic_lockable</span></code> trait -- EXTENSION</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="mutex_concepts.html#thread.synchronization.mutex_concepts.lockable"><code class="computeroutput"><span class="identifier">Lockable</span></code> Concept</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="mutex_concepts.html#thread.synchronization.mutex_concepts.lockable.try_lock"><code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><span class="identifier">try_lock</span><span class="special">()</span></code></a></span></dt>
+<dt><span class="section"><a href="mutex_concepts.html#thread.synchronization.mutex_concepts.lockable.is_lockable"><code class="computeroutput"><span class="identifier">is_lockable</span></code> trait -- EXTENSION</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="mutex_concepts.html#thread.synchronization.mutex_concepts.recursive">Recursive
+        Lockable Concept</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="mutex_concepts.html#thread.synchronization.mutex_concepts.recursive.is_recursive_mutex_sur_parole"><code class="computeroutput"><span class="identifier">is_recursive_mutex_sur_parole</span></code> trait --
+          EXTENSION</a></span></dt>
+<dt><span class="section"><a href="mutex_concepts.html#thread.synchronization.mutex_concepts.recursive.is_recursive_basic_lockable"><code class="computeroutput"><span class="identifier">is_recursive_basic_lockable</span></code> trait --
+          EXTENSION</a></span></dt>
+<dt><span class="section"><a href="mutex_concepts.html#thread.synchronization.mutex_concepts.recursive.is_recursive_lockable"><code class="computeroutput"><span class="identifier">is_recursive_lockable</span></code> trait -- EXTENSION</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="mutex_concepts.html#thread.synchronization.mutex_concepts.timed_lockable"><code class="computeroutput"><span class="identifier">TimedLockable</span></code> Concept</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="mutex_concepts.html#thread.synchronization.mutex_concepts.timed_lockable.try_lock_until"><code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><span class="identifier">try_lock_until</span><span class="special">(</span><span class="identifier">abs_time</span><span class="special">)</span></code></a></span></dt>
+<dt><span class="section"><a href="mutex_concepts.html#thread.synchronization.mutex_concepts.timed_lockable.try_lock_for"><code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><span class="identifier">try_lock_for</span><span class="special">(</span><span class="identifier">rel_time</span><span class="special">)</span></code></a></span></dt>
+<dt><span class="section"><a href="mutex_concepts.html#thread.synchronization.mutex_concepts.timed_lockable.timed_lock"><code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><span class="identifier">timed_lock</span><span class="special">(</span><span class="identifier">abs_time</span><span class="special">)</span></code></a></span></dt>
+<dt><span class="section"><a href="mutex_concepts.html#thread.synchronization.mutex_concepts.timed_lockable.timed_lock_duration"><code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><span class="identifier">timed_lock</span><span class="special">(</span><span class="identifier">rel_time</span><span class="special">)</span></code></a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="mutex_concepts.html#thread.synchronization.mutex_concepts.shared_lockable"><code class="computeroutput"><span class="identifier">SharedLockable</span></code> Concept -- C++14</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="mutex_concepts.html#thread.synchronization.mutex_concepts.shared_lockable.lock_shared"><code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><span class="identifier">lock_shared</span><span class="special">()</span></code></a></span></dt>
+<dt><span class="section"><a href="mutex_concepts.html#thread.synchronization.mutex_concepts.shared_lockable.try_lock_shared"><code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><span class="identifier">try_lock_shared</span><span class="special">()</span></code></a></span></dt>
+<dt><span class="section"><a href="mutex_concepts.html#thread.synchronization.mutex_concepts.shared_lockable.try_lock_shared_for"><code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><span class="identifier">try_lock_shared_for</span><span class="special">(</span><span class="identifier">rel_time</span><span class="special">)</span></code></a></span></dt>
+<dt><span class="section"><a href="mutex_concepts.html#thread.synchronization.mutex_concepts.shared_lockable.try_lock_shared_until"><code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><span class="identifier">try_lock_shared_until</span><span class="special">(</span><span class="identifier">abs_time</span><span class="special">))</span></code></a></span></dt>
+<dt><span class="section"><a href="mutex_concepts.html#thread.synchronization.mutex_concepts.shared_lockable.unlock_shared"><code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><span class="identifier">unlock_shared</span><span class="special">()</span></code></a></span></dt>
+<dt><span class="section"><a href="mutex_concepts.html#thread.synchronization.mutex_concepts.shared_lockable.timed_lock_shared"><code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><span class="identifier">timed_lock_shared</span><span class="special">(</span><span class="identifier">abs_time</span><span class="special">)</span></code></a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="mutex_concepts.html#thread.synchronization.mutex_concepts.upgrade_lockable"><code class="computeroutput"><span class="identifier">UpgradeLockable</span></code> Concept -- EXTENSION</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="mutex_concepts.html#thread.synchronization.mutex_concepts.upgrade_lockable.lock_upgrade"><code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><span class="identifier">lock_upgrade</span><span class="special">()</span></code></a></span></dt>
+<dt><span class="section"><a href="mutex_concepts.html#thread.synchronization.mutex_concepts.upgrade_lockable.unlock_upgrade"><code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><span class="identifier">unlock_upgrade</span><span class="special">()</span></code></a></span></dt>
+<dt><span class="section"><a href="mutex_concepts.html#thread.synchronization.mutex_concepts.upgrade_lockable.try_lock_upgrade"><code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><span class="identifier">try_lock_upgrade</span><span class="special">()</span></code></a></span></dt>
+<dt><span class="section"><a href="mutex_concepts.html#thread.synchronization.mutex_concepts.upgrade_lockable.try_lock_upgrade_for"><code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><span class="identifier">try_lock_upgrade_for</span><span class="special">(</span><span class="identifier">rel_time</span><span class="special">)</span></code></a></span></dt>
+<dt><span class="section"><a href="mutex_concepts.html#thread.synchronization.mutex_concepts.upgrade_lockable.try_lock_upgrade_until"><code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><span class="identifier">try_lock_upgrade_until</span><span class="special">(</span><span class="identifier">abs_time</span><span class="special">)</span></code></a></span></dt>
+<dt><span class="section"><a href="mutex_concepts.html#thread.synchronization.mutex_concepts.upgrade_lockable.try_unlock_shared_and_lock"><code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><span class="identifier">try_unlock_shared_and_lock</span><span class="special">()</span></code></a></span></dt>
+<dt><span class="section"><a href="mutex_concepts.html#thread.synchronization.mutex_concepts.upgrade_lockable.try_unlock_shared_and_lock_for"><code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><span class="identifier">try_unlock_shared_and_lock_for</span><span class="special">(</span><span class="identifier">rel_time</span><span class="special">)</span></code></a></span></dt>
+<dt><span class="section"><a href="mutex_concepts.html#thread.synchronization.mutex_concepts.upgrade_lockable.try_unlock_shared_and_lock_until"><code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><span class="identifier">try_unlock_shared_and_lock_until</span><span class="special">(</span><span class="identifier">abs_time</span><span class="special">)</span></code></a></span></dt>
+<dt><span class="section"><a href="mutex_concepts.html#thread.synchronization.mutex_concepts.upgrade_lockable.unlock_and_lock_shared"><code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><span class="identifier">unlock_and_lock_shared</span><span class="special">()</span></code></a></span></dt>
+<dt><span class="section"><a href="mutex_concepts.html#thread.synchronization.mutex_concepts.upgrade_lockable.try_unlock_shared_and_lock_upgrade"><code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><span class="identifier">try_unlock_shared_and_lock_upgrade</span><span class="special">()</span></code></a></span></dt>
+<dt><span class="section"><a href="mutex_concepts.html#thread.synchronization.mutex_concepts.upgrade_lockable.try_unlock_shared_and_lock_upgrade_for"><code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><span class="identifier">try_unlock_shared_and_lock_upgrade_for</span><span class="special">(</span><span class="identifier">rel_time</span><span class="special">)</span></code></a></span></dt>
+<dt><span class="section"><a href="mutex_concepts.html#thread.synchronization.mutex_concepts.upgrade_lockable.try_unlock_shared_and_lock_upgrade_until"><code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><span class="identifier">try_unlock_shared_and_lock_upgrade_until</span><span class="special">(</span><span class="identifier">abs_time</span><span class="special">)</span></code></a></span></dt>
+<dt><span class="section"><a href="mutex_concepts.html#thread.synchronization.mutex_concepts.upgrade_lockable.unlock_and_lock_upgrade"><code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><span class="identifier">unlock_and_lock_upgrade</span><span class="special">()</span></code></a></span></dt>
+<dt><span class="section"><a href="mutex_concepts.html#thread.synchronization.mutex_concepts.upgrade_lockable.unlock_upgrade_and_lock"><code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><span class="identifier">unlock_upgrade_and_lock</span><span class="special">()</span></code></a></span></dt>
+<dt><span class="section"><a href="mutex_concepts.html#thread.synchronization.mutex_concepts.upgrade_lockable.try_unlock_upgrade_and_lock"><code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><span class="identifier">try_unlock_upgrade_and_lock</span><span class="special">()</span></code></a></span></dt>
+<dt><span class="section"><a href="mutex_concepts.html#thread.synchronization.mutex_concepts.upgrade_lockable.try_unlock_upgrade_and_lock_for"><code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><span class="identifier">try_unlock_upgrade_and_lock_for</span><span class="special">(</span><span class="identifier">rel_time</span><span class="special">)</span></code></a></span></dt>
+<dt><span class="section"><a href="mutex_concepts.html#thread.synchronization.mutex_concepts.upgrade_lockable.try_unlock_upgrade_and_lock_until"><code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><span class="identifier">try_unlock_upgrade_and_lock_until</span><span class="special">(</span><span class="identifier">abs_time</span><span class="special">)</span></code></a></span></dt>
+<dt><span class="section"><a href="mutex_concepts.html#thread.synchronization.mutex_concepts.upgrade_lockable.unlock_upgrade_and_lock_shared"><code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><span class="identifier">unlock_upgrade_and_lock_shared</span><span class="special">()</span></code></a></span></dt>
+</dl></dd>
+</dl></div>
+<p>
+        A mutex object facilitates protection against data races and allows thread-safe
+        synchronization of data between threads. A thread obtains ownership of a
+        mutex object by calling one of the lock functions and relinquishes ownership
+        by calling the corresponding unlock function. Mutexes may be either recursive
+        or non-recursive, and may grant simultaneous ownership to one or many threads.
+        <span class="bold"><strong>Boost.Thread</strong></span> supplies recursive and non-recursive
+        mutexes with exclusive ownership semantics, along with a shared ownership
+        (multiple-reader / single-writer) mutex.
+      </p>
+<p>
+        <span class="bold"><strong>Boost.Thread</strong></span> supports four basic concepts
+        for lockable objects: <a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.lockable" title="Lockable Concept"><code class="computeroutput"><span class="identifier">Lockable</span></code></a>, <a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.timed_lockable" title="TimedLockable Concept"><code class="computeroutput"><span class="identifier">TimedLockable</span></code></a>, <a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.shared_lockable" title="SharedLockable Concept -- C++14"><code class="computeroutput"><span class="identifier">SharedLockable</span></code></a> and <a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.upgrade_lockable" title="UpgradeLockable Concept -- EXTENSION"><code class="computeroutput"><span class="identifier">UpgradeLockable</span></code></a>. Each mutex type
+        implements one or more of these concepts, as do the various lock types.
+      </p>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="thread.synchronization.mutex_concepts.basic_lockable"></a><a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.basic_lockable" title="BasicLockable Concept"><code class="computeroutput"><span class="identifier">BasicLockable</span></code> Concept</a>
+</h4></div></div></div>
+<div class="toc"><dl>
+<dt><span class="section"><a href="mutex_concepts.html#thread.synchronization.mutex_concepts.basic_lockable.lock"><code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><span class="identifier">lock</span><span class="special">();</span></code></a></span></dt>
+<dt><span class="section"><a href="mutex_concepts.html#thread.synchronization.mutex_concepts.basic_lockable.unlock"><code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><span class="identifier">unlock</span><span class="special">();</span></code></a></span></dt>
+<dt><span class="section"><a href="mutex_concepts.html#thread.synchronization.mutex_concepts.basic_lockable.is_basic_lockable"><code class="computeroutput"><span class="identifier">is_basic_lockable</span></code> trait -- EXTENSION</a></span></dt>
+</dl></div>
+<pre class="programlisting"><span class="comment">// #include &lt;boost/thread/lockable_concepts.hpp&gt; </span>
+
+<span class="keyword">namespace</span> <span class="identifier">boost</span>
+<span class="special">{</span>
+
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">L</span><span class="special">&gt;</span>
+  <span class="keyword">class</span> <span class="identifier">BasicLockable</span><span class="special">;</span> <span class="comment">// EXTENSION</span>
+<span class="special">}</span>
+</pre>
+<p>
+          The <a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.basic_lockable" title="BasicLockable Concept"><code class="computeroutput"><span class="identifier">BasicLockable</span></code></a> concept models exclusive
+          ownership. A type <code class="computeroutput"><span class="identifier">L</span></code> meets
+          the <a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.basic_lockable" title="BasicLockable Concept"><code class="computeroutput"><span class="identifier">BasicLockable</span></code></a> requirements if
+          the following expressions are well-formed and have the specified semantics
+          (<code class="computeroutput"><span class="identifier">m</span></code> denotes a value of type
+          <code class="computeroutput"><span class="identifier">L</span></code>):
+        </p>
+<div class="itemizedlist"><ul class="itemizedlist" type="disc">
+<li class="listitem">
+              <code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.basic_lockable.lock" title="m.lock();"><code class="computeroutput"><span class="identifier">lock</span></code></a><span class="special">();</span></code>
+            </li>
+<li class="listitem">
+              <code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.basic_lockable.unlock" title="m.unlock();"><code class="computeroutput"><span class="identifier">unlock</span></code></a><span class="special">();</span></code>
+            </li>
+</ul></div>
+<p>
+          Lock ownership acquired through a call to <a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.basic_lockable.lock" title="m.lock();"><code class="computeroutput"><span class="identifier">lock</span><span class="special">()</span></code></a>
+          must be released through a call to <a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.basic_lockable.unlock" title="m.unlock();"><code class="computeroutput"><span class="identifier">unlock</span><span class="special">()</span></code></a>.
+        </p>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="thread.synchronization.mutex_concepts.basic_lockable.lock"></a><a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.basic_lockable.lock" title="m.lock();"><code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><span class="identifier">lock</span><span class="special">();</span></code></a>
+</h5></div></div></div>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl>
+<dt><span class="term">Requires:</span></dt>
+<dd><p>
+                  The calling thread doesn't owns the mutex if the mutex is not recursive.
+                </p></dd>
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+                  The current thread blocks until ownership can be obtained for the
+                  current thread.
+                </p></dd>
+<dt><span class="term">Synchronization:</span></dt>
+<dd><p>
+                  Prior <code class="computeroutput"><span class="identifier">unlock</span><span class="special">()</span></code>
+                  operations on the same object synchronizes with this operation.
+                </p></dd>
+<dt><span class="term">Postcondition:</span></dt>
+<dd><p>
+                  The current thread owns <code class="computeroutput"><span class="identifier">m</span></code>.
+                </p></dd>
+<dt><span class="term">Return type:</span></dt>
+<dd><p>
+                  <code class="computeroutput"><span class="keyword">void</span></code>.
+                </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+                  <code class="computeroutput"><span class="identifier">lock_error</span></code> if an
+                  error occurs.
+                </p></dd>
+<dt><span class="term">Error Conditions:</span></dt>
+<dd>
+<p>
+                  <span class="bold"><strong>operation_not_permitted</strong></span>: if the
+                  thread does not have the privilege to perform the operation.
+                </p>
+<p>
+                  <span class="bold"><strong>resource_deadlock_would_occur</strong></span>:
+                  if the implementation detects that a deadlock would occur.
+                </p>
+<p>
+                  <span class="bold"><strong>device_or_resource_busy</strong></span>: if the
+                  mutex is already locked and blocking is not possible.
+                </p>
+</dd>
+<dt><span class="term">Thread safety:</span></dt>
+<dd><p>
+                  If an exception is thrown then a lock shall not have been acquired
+                  for the current thread.
+                </p></dd>
+</dl>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="thread.synchronization.mutex_concepts.basic_lockable.unlock"></a><a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.basic_lockable.unlock" title="m.unlock();"><code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><span class="identifier">unlock</span><span class="special">();</span></code></a>
+</h5></div></div></div>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl>
+<dt><span class="term">Requires:</span></dt>
+<dd><p>
+                  The current thread owns <code class="computeroutput"><span class="identifier">m</span></code>.
+                </p></dd>
+<dt><span class="term">Synchronization:</span></dt>
+<dd><p>
+                  This operation synchronizes with subsequent lock operations that
+                  obtain ownership on the same object.
+                </p></dd>
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+                  Releases a lock on <code class="computeroutput"><span class="identifier">m</span></code>
+                  by the current thread.
+                </p></dd>
+<dt><span class="term">Return type:</span></dt>
+<dd><p>
+                  <code class="computeroutput"><span class="keyword">void</span></code>.
+                </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+                  Nothing.
+                </p></dd>
+</dl>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="thread.synchronization.mutex_concepts.basic_lockable.is_basic_lockable"></a><a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.basic_lockable.is_basic_lockable" title="is_basic_lockable trait -- EXTENSION"><code class="computeroutput"><span class="identifier">is_basic_lockable</span></code> trait -- EXTENSION</a>
+</h5></div></div></div>
+<pre class="programlisting"><span class="comment">// #include &lt;boost/thread/lockable_traits.hpp&gt; </span>
+
+<span class="keyword">namespace</span> <span class="identifier">boost</span>
+<span class="special">{</span>
+  <span class="keyword">namespace</span> <span class="identifier">sync</span>
+  <span class="special">{</span>
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">L</span><span class="special">&gt;</span>
+    <span class="keyword">class</span> <span class="identifier">is_basic_lockable</span><span class="special">;//</span> <span class="identifier">EXTENSION</span>
+  <span class="special">}</span>
+<span class="special">}</span>
+</pre>
+<p>
+            Some of the algorithms on mutexes use this trait via SFINAE.
+          </p>
+<p>
+            This trait is true_type if the parameter L meets the <a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.lockable" title="Lockable Concept"><code class="computeroutput"><span class="identifier">Lockable</span></code></a> requirements.
+          </p>
+<div class="warning"><table border="0" summary="Warning">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Warning]" src="../../../../../../doc/src/images/warning.png"></td>
+<th align="left">Warning</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+              If BOOST_THREAD_NO_AUTO_DETECT_MUTEX_TYPES is defined you will need
+              to specialize this traits for the models of BasicLockable you could
+              build.
+            </p></td></tr>
+</table></div>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="thread.synchronization.mutex_concepts.lockable"></a><a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.lockable" title="Lockable Concept"><code class="computeroutput"><span class="identifier">Lockable</span></code> Concept</a>
+</h4></div></div></div>
+<div class="toc"><dl>
+<dt><span class="section"><a href="mutex_concepts.html#thread.synchronization.mutex_concepts.lockable.try_lock"><code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><span class="identifier">try_lock</span><span class="special">()</span></code></a></span></dt>
+<dt><span class="section"><a href="mutex_concepts.html#thread.synchronization.mutex_concepts.lockable.is_lockable"><code class="computeroutput"><span class="identifier">is_lockable</span></code> trait -- EXTENSION</a></span></dt>
+</dl></div>
+<pre class="programlisting"><span class="comment">// #include &lt;boost/thread/lockable_concepts.hpp&gt; </span>
+<span class="keyword">namespace</span> <span class="identifier">boost</span>
+<span class="special">{</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">L</span><span class="special">&gt;</span>
+  <span class="keyword">class</span> <span class="identifier">Lockable</span><span class="special">;</span>
+<span class="special">}</span>
+</pre>
+<p>
+          A type <code class="computeroutput"><span class="identifier">L</span></code> meets the <a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.lockable" title="Lockable Concept"><code class="computeroutput"><span class="identifier">Lockable</span></code></a> requirements if it meets
+          the <a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.basic_lockable" title="BasicLockable Concept"><code class="computeroutput"><span class="identifier">BasicLockable</span></code></a> requirements and
+          the following expressions are well-formed and have the specified semantics
+          (<code class="computeroutput"><span class="identifier">m</span></code> denotes a value of type
+          <code class="computeroutput"><span class="identifier">L</span></code>):
+        </p>
+<div class="itemizedlist"><ul class="itemizedlist" type="disc"><li class="listitem">
+              <code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.lockable.try_lock" title="m.try_lock()"><code class="computeroutput"><span class="identifier">try_lock</span></code></a><span class="special">()</span></code>
+            </li></ul></div>
+<p>
+          Lock ownership acquired through a call to <a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.lockable.try_lock" title="m.try_lock()"><code class="computeroutput"><span class="identifier">try_lock</span><span class="special">()</span></code></a>
+          must be released through a call to <a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.basic_lockable.unlock" title="m.unlock();"><code class="computeroutput"><span class="identifier">unlock</span><span class="special">()</span></code></a>.
+        </p>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="thread.synchronization.mutex_concepts.lockable.try_lock"></a><a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.lockable.try_lock" title="m.try_lock()"><code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><span class="identifier">try_lock</span><span class="special">()</span></code></a>
+</h5></div></div></div>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl>
+<dt><span class="term">Requires:</span></dt>
+<dd><p>
+                  The calling thread doesn't owns the mutex if the mutex is not recursive.
+                </p></dd>
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+                  Attempt to obtain ownership for the current thread without blocking.
+                </p></dd>
+<dt><span class="term">Synchronization:</span></dt>
+<dd><p>
+                  If <code class="computeroutput"><span class="identifier">try_lock</span><span class="special">()</span></code>
+                  returns true, prior <code class="computeroutput"><span class="identifier">unlock</span><span class="special">()</span></code> operations on the same object
+                  synchronize with this operation.
+                </p></dd>
+<dt><span class="term">Note:</span></dt>
+<dd><p>
+                  Since <code class="computeroutput"><span class="identifier">lock</span><span class="special">()</span></code>
+                  does not synchronize with a failed subsequent <code class="computeroutput"><span class="identifier">try_lock</span><span class="special">()</span></code>, the visibility rules are weak
+                  enough that little would be known about the state after a failure,
+                  even in the absence of spurious failures.
+                </p></dd>
+<dt><span class="term">Return type:</span></dt>
+<dd><p>
+                  <code class="computeroutput"><span class="keyword">bool</span></code>.
+                </p></dd>
+<dt><span class="term">Returns:</span></dt>
+<dd><p>
+                  <code class="computeroutput"><span class="keyword">true</span></code> if ownership
+                  was obtained for the current thread, <code class="computeroutput"><span class="keyword">false</span></code>
+                  otherwise.
+                </p></dd>
+<dt><span class="term">Postcondition:</span></dt>
+<dd><p>
+                  If the call returns <code class="computeroutput"><span class="keyword">true</span></code>,
+                  the current thread owns the <code class="computeroutput"><span class="identifier">m</span></code>.
+                </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+                  Nothing.
+                </p></dd>
+</dl>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="thread.synchronization.mutex_concepts.lockable.is_lockable"></a><a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.lockable.is_lockable" title="is_lockable trait -- EXTENSION"><code class="computeroutput"><span class="identifier">is_lockable</span></code> trait -- EXTENSION</a>
+</h5></div></div></div>
+<pre class="programlisting"><span class="comment">// #include &lt;boost/thread/lockable_traits.hpp&gt; </span>
+<span class="keyword">namespace</span> <span class="identifier">boost</span>
+<span class="special">{</span>
+  <span class="keyword">namespace</span> <span class="identifier">sync</span>
+  <span class="special">{</span>
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">L</span><span class="special">&gt;</span>
+    <span class="keyword">class</span> <span class="identifier">is_lockable</span><span class="special">;//</span> <span class="identifier">EXTENSION</span>
+  <span class="special">}</span>
+<span class="special">}</span>
+</pre>
+<p>
+            Some of the algorithms on mutexes use this trait via SFINAE.
+          </p>
+<p>
+            This trait is true_type if the parameter L meets the <a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.lockable" title="Lockable Concept"><code class="computeroutput"><span class="identifier">Lockable</span></code></a> requirements.
+          </p>
+<div class="warning"><table border="0" summary="Warning">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Warning]" src="../../../../../../doc/src/images/warning.png"></td>
+<th align="left">Warning</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+              If BOOST_THREAD_NO_AUTO_DETECT_MUTEX_TYPES is defined you will need
+              to specialize this traits for the models of Lockable you could build.
+            </p></td></tr>
+</table></div>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="thread.synchronization.mutex_concepts.recursive"></a><a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.recursive" title="Recursive Lockable Concept">Recursive
+        Lockable Concept</a>
+</h4></div></div></div>
+<div class="toc"><dl>
+<dt><span class="section"><a href="mutex_concepts.html#thread.synchronization.mutex_concepts.recursive.is_recursive_mutex_sur_parole"><code class="computeroutput"><span class="identifier">is_recursive_mutex_sur_parole</span></code> trait --
+          EXTENSION</a></span></dt>
+<dt><span class="section"><a href="mutex_concepts.html#thread.synchronization.mutex_concepts.recursive.is_recursive_basic_lockable"><code class="computeroutput"><span class="identifier">is_recursive_basic_lockable</span></code> trait --
+          EXTENSION</a></span></dt>
+<dt><span class="section"><a href="mutex_concepts.html#thread.synchronization.mutex_concepts.recursive.is_recursive_lockable"><code class="computeroutput"><span class="identifier">is_recursive_lockable</span></code> trait -- EXTENSION</a></span></dt>
+</dl></div>
+<p>
+          The user could require that the mutex passed to an algorithm is a recursive
+          one. Whether a lockable is recursive or not can not be checked using template
+          meta-programming. This is the motivation for the following trait.
+        </p>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="thread.synchronization.mutex_concepts.recursive.is_recursive_mutex_sur_parole"></a><a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.recursive.is_recursive_mutex_sur_parole" title="is_recursive_mutex_sur_parole trait -- EXTENSION"><code class="computeroutput"><span class="identifier">is_recursive_mutex_sur_parole</span></code> trait --
+          EXTENSION</a>
+</h5></div></div></div>
+<pre class="programlisting"><span class="comment">// #include &lt;boost/thread/lockable_traits.hpp&gt; </span>
+
+<span class="keyword">namespace</span> <span class="identifier">boost</span>
+<span class="special">{</span>
+  <span class="keyword">namespace</span> <span class="identifier">sync</span>
+  <span class="special">{</span>
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">L</span><span class="special">&gt;</span>
+    <span class="keyword">class</span> <span class="identifier">is_recursive_mutex_sur_parole</span><span class="special">:</span> <span class="identifier">false_type</span><span class="special">;</span> <span class="comment">// EXTENSION</span>
+    <span class="keyword">template</span><span class="special">&lt;&gt;</span>
+    <span class="keyword">class</span> <span class="identifier">is_recursive_mutex_sur_parole</span><span class="special">&lt;</span><span class="identifier">recursive_mutex</span><span class="special">&gt;:</span> <span class="identifier">true_type</span><span class="special">;</span> <span class="comment">// EXTENSION</span>
+    <span class="keyword">template</span><span class="special">&lt;&gt;</span>
+    <span class="keyword">class</span> <span class="identifier">is_recursive_mutex_sur_parole</span><span class="special">&lt;</span><span class="identifier">timed_recursive_mutex</span><span class="special">&gt;:</span> <span class="identifier">true_type</span><span class="special">;</span> <span class="comment">// EXTENSION</span>
+  <span class="special">}</span>
+<span class="special">}</span>
+</pre>
+<p>
+            The trait <code class="computeroutput"><span class="identifier">is_recursive_mutex_sur_parole</span></code>
+            is <code class="computeroutput"><span class="identifier">false_type</span></code> by default
+            and is specialized for the provide <code class="computeroutput"><span class="identifier">recursive_mutex</span></code>
+            and <code class="computeroutput"><span class="identifier">timed_recursive_mutex</span></code>.
+          </p>
+<p>
+            It should be specialized by the user providing other model of recursive
+            lockable.
+          </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="thread.synchronization.mutex_concepts.recursive.is_recursive_basic_lockable"></a><a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.recursive.is_recursive_basic_lockable" title="is_recursive_basic_lockable trait -- EXTENSION"><code class="computeroutput"><span class="identifier">is_recursive_basic_lockable</span></code> trait --
+          EXTENSION</a>
+</h5></div></div></div>
+<pre class="programlisting"><span class="comment">// #include &lt;boost/thread/lockable_traits.hpp&gt; </span>
+<span class="keyword">namespace</span> <span class="identifier">boost</span>
+<span class="special">{</span>
+  <span class="keyword">namespace</span> <span class="identifier">sync</span>
+  <span class="special">{</span>
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">L</span><span class="special">&gt;</span>
+    <span class="keyword">class</span> <span class="identifier">is_recursive_basic_lockable</span><span class="special">;//</span> <span class="identifier">EXTENSION</span>
+  <span class="special">}</span>
+<span class="special">}</span>
+</pre>
+<p>
+            This traits is true_type if is_basic_lockable and is_recursive_mutex_sur_parole.
+          </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="thread.synchronization.mutex_concepts.recursive.is_recursive_lockable"></a><a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.recursive.is_recursive_lockable" title="is_recursive_lockable trait -- EXTENSION"><code class="computeroutput"><span class="identifier">is_recursive_lockable</span></code> trait -- EXTENSION</a>
+</h5></div></div></div>
+<pre class="programlisting"><span class="comment">// #include &lt;boost/thread/lockable_traits.hpp&gt; </span>
+<span class="keyword">namespace</span> <span class="identifier">boost</span>
+<span class="special">{</span>
+  <span class="keyword">namespace</span> <span class="identifier">sync</span>
+  <span class="special">{</span>
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">L</span><span class="special">&gt;</span>
+    <span class="keyword">class</span> <span class="identifier">is_recursive_lockable</span><span class="special">;//</span> <span class="identifier">EXTENSION</span>
+  <span class="special">}</span>
+<span class="special">}</span>
+</pre>
+<p>
+            This traits is true_type if is_lockable and is_recursive_mutex_sur_parole.
+          </p>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="thread.synchronization.mutex_concepts.timed_lockable"></a><a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.timed_lockable" title="TimedLockable Concept"><code class="computeroutput"><span class="identifier">TimedLockable</span></code> Concept</a>
+</h4></div></div></div>
+<div class="toc"><dl>
+<dt><span class="section"><a href="mutex_concepts.html#thread.synchronization.mutex_concepts.timed_lockable.try_lock_until"><code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><span class="identifier">try_lock_until</span><span class="special">(</span><span class="identifier">abs_time</span><span class="special">)</span></code></a></span></dt>
+<dt><span class="section"><a href="mutex_concepts.html#thread.synchronization.mutex_concepts.timed_lockable.try_lock_for"><code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><span class="identifier">try_lock_for</span><span class="special">(</span><span class="identifier">rel_time</span><span class="special">)</span></code></a></span></dt>
+<dt><span class="section"><a href="mutex_concepts.html#thread.synchronization.mutex_concepts.timed_lockable.timed_lock"><code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><span class="identifier">timed_lock</span><span class="special">(</span><span class="identifier">abs_time</span><span class="special">)</span></code></a></span></dt>
+<dt><span class="section"><a href="mutex_concepts.html#thread.synchronization.mutex_concepts.timed_lockable.timed_lock_duration"><code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><span class="identifier">timed_lock</span><span class="special">(</span><span class="identifier">rel_time</span><span class="special">)</span></code></a></span></dt>
+</dl></div>
+<pre class="programlisting"><span class="comment">// #include &lt;boost/thread/lockable_concepts.hpp&gt; </span>
+
+<span class="keyword">namespace</span> <span class="identifier">boost</span>
+<span class="special">{</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">L</span><span class="special">&gt;</span>
+  <span class="keyword">class</span> <span class="identifier">TimedLockable</span><span class="special">;</span> <span class="comment">// EXTENSION</span>
+<span class="special">}</span>
+</pre>
+<p>
+          The <a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.timed_lockable" title="TimedLockable Concept"><code class="computeroutput"><span class="identifier">TimedLockable</span></code> concept</a> refines
+          the <a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.lockable" title="Lockable Concept"><code class="computeroutput"><span class="identifier">Lockable</span></code> concept</a> to add support
+          for timeouts when trying to acquire the lock.
+        </p>
+<p>
+          A type <code class="computeroutput"><span class="identifier">L</span></code> meets the <a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.timed_lockable" title="TimedLockable Concept"><code class="computeroutput"><span class="identifier">TimedLockable</span></code></a> requirements if
+          it meets the <a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.lockable" title="Lockable Concept"><code class="computeroutput"><span class="identifier">Lockable</span></code></a> requirements and the
+          following expressions are well-formed and have the specified semantics.
+        </p>
+<p>
+          <span class="bold"><strong>Variables:</strong></span>
+        </p>
+<div class="itemizedlist"><ul class="itemizedlist" type="disc">
+<li class="listitem">
+              <code class="computeroutput"><span class="identifier">m</span></code> denotes a value of
+              type <code class="computeroutput"><span class="identifier">L</span></code>,
+            </li>
+<li class="listitem">
+              <code class="computeroutput"><span class="identifier">rel_time</span></code> denotes a
+              value of an instantiation of <code class="computeroutput"><span class="identifier">chrono</span><span class="special">::</span><span class="identifier">duration</span></code>,
+              and
+            </li>
+<li class="listitem">
+              <code class="computeroutput"><span class="identifier">abs_time</span></code> denotes a
+              value of an instantiation of <code class="computeroutput"><span class="identifier">chrono</span><span class="special">::</span><span class="identifier">time_point</span></code>:
+            </li>
+</ul></div>
+<p>
+          <span class="bold"><strong>Expressions:</strong></span>
+        </p>
+<div class="itemizedlist"><ul class="itemizedlist" type="disc">
+<li class="listitem">
+              <code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.timed_lockable.try_lock_for" title="m.try_lock_for(rel_time)"><code class="computeroutput"><span class="identifier">try_lock_for</span></code></a><span class="special">(</span><span class="identifier">rel_time</span><span class="special">)</span></code>
+            </li>
+<li class="listitem">
+              <code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.timed_lockable.try_lock_until" title="m.try_lock_until(abs_time)"><code class="computeroutput"><span class="identifier">try_lock_until</span></code></a><span class="special">(</span><span class="identifier">abs_time</span><span class="special">)</span></code>
+            </li>
+</ul></div>
+<p>
+          Lock ownership acquired through a call to <a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.timed_lockable.try_lock_for" title="m.try_lock_for(rel_time)"><code class="computeroutput"><span class="identifier">try_lock_for</span></code></a> or <a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.timed_lockable.try_lock_until" title="m.try_lock_until(abs_time)"><code class="computeroutput"><span class="identifier">try_lock_until</span></code></a> must be released
+          through a call to <a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.basic_lockable.unlock" title="m.unlock();"><code class="computeroutput"><span class="identifier">unlock</span></code></a>.
+        </p>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="thread.synchronization.mutex_concepts.timed_lockable.try_lock_until"></a><a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.timed_lockable.try_lock_until" title="m.try_lock_until(abs_time)"><code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><span class="identifier">try_lock_until</span><span class="special">(</span><span class="identifier">abs_time</span><span class="special">)</span></code></a>
+</h5></div></div></div>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl>
+<dt><span class="term">Requires:</span></dt>
+<dd><p>
+                  The calling thread doesn't owns the mutex if the mutex is not recursive.
+                </p></dd>
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+                  Attempt to obtain ownership for the current thread. Blocks until
+                  ownership can be obtained, or the specified time is reached. If
+                  the specified time has already passed, behaves as <a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.lockable.try_lock" title="m.try_lock()"><code class="computeroutput"><span class="identifier">try_lock</span><span class="special">()</span></code></a>.
+                </p></dd>
+<dt><span class="term">Synchronization:</span></dt>
+<dd><p>
+                  If <code class="computeroutput"><span class="identifier">try_lock_until</span><span class="special">()</span></code> returns true, prior <code class="computeroutput"><span class="identifier">unlock</span><span class="special">()</span></code>
+                  operations on the same object synchronize with this operation.
+                </p></dd>
+<dt><span class="term">Return type:</span></dt>
+<dd><p>
+                  <code class="computeroutput"><span class="keyword">bool</span></code>.
+                </p></dd>
+<dt><span class="term">Returns:</span></dt>
+<dd><p>
+                  <code class="computeroutput"><span class="keyword">true</span></code> if ownership
+                  was obtained for the current thread, <code class="computeroutput"><span class="keyword">false</span></code>
+                  otherwise.
+                </p></dd>
+<dt><span class="term">Postcondition:</span></dt>
+<dd><p>
+                  If the call returns <code class="computeroutput"><span class="keyword">true</span></code>,
+                  the current thread owns <code class="computeroutput"><span class="identifier">m</span></code>.
+                </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+                  Nothing.
+                </p></dd>
+</dl>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="thread.synchronization.mutex_concepts.timed_lockable.try_lock_for"></a><a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.timed_lockable.try_lock_for" title="m.try_lock_for(rel_time)"><code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><span class="identifier">try_lock_for</span><span class="special">(</span><span class="identifier">rel_time</span><span class="special">)</span></code></a>
+</h5></div></div></div>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl>
+<dt><span class="term">Requires:</span></dt>
+<dd><p>
+                  The calling thread doesn't owns the mutex if the mutex is not recursive.
+                </p></dd>
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+                  As-if <code class="computeroutput"><a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.timed_lockable.try_lock_until" title="m.try_lock_until(abs_time)"><code class="computeroutput"><span class="identifier">try_lock_until</span></code></a><span class="special">(</span><span class="identifier">chrono</span><span class="special">::</span><span class="identifier">steady_clock</span><span class="special">::</span><span class="identifier">now</span><span class="special">()</span> <span class="special">+</span> <span class="identifier">rel_time</span><span class="special">)</span></code>.
+                </p></dd>
+<dt><span class="term">Synchronization:</span></dt>
+<dd><p>
+                  If <code class="computeroutput"><span class="identifier">try_lock_for</span><span class="special">()</span></code> returns true, prior <code class="computeroutput"><span class="identifier">unlock</span><span class="special">()</span></code>
+                  operations on the same object synchronize with this operation.
+                </p></dd>
+</dl>
+</div>
+</div>
+<div class="warning"><table border="0" summary="Warning">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Warning]" src="../../../../../../doc/src/images/warning.png"></td>
+<th align="left">Warning</th>
+</tr>
+<tr><td align="left" valign="top">
+<p>
+            DEPRECATED since 4.00. The following expressions were required on version
+            2, but are now deprecated.
+          </p>
+<p>
+            Use instead <a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.timed_lockable.try_lock_for" title="m.try_lock_for(rel_time)"><code class="computeroutput"><span class="identifier">try_lock_for</span></code></a>, <a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.timed_lockable.try_lock_until" title="m.try_lock_until(abs_time)"><code class="computeroutput"><span class="identifier">try_lock_until</span></code></a>.
+          </p>
+</td></tr>
+</table></div>
+<p>
+          <span class="bold"><strong>Variables:</strong></span>
+        </p>
+<div class="itemizedlist"><ul class="itemizedlist" type="disc">
+<li class="listitem">
+              <code class="computeroutput"><span class="identifier">rel_time</span></code> denotes a
+              value of an instantiation of an unspecified <code class="computeroutput"><span class="identifier">DurationType</span></code>
+              arithmetic compatible with <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">system_time</span></code>,
+              and
+            </li>
+<li class="listitem">
+              <code class="computeroutput"><span class="identifier">abs_time</span></code> denotes a
+              value of an instantiation of <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">system_time</span></code>:
+            </li>
+</ul></div>
+<p>
+          <span class="bold"><strong>Expressions:</strong></span>
+        </p>
+<div class="itemizedlist"><ul class="itemizedlist" type="disc">
+<li class="listitem">
+              <code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.timed_lockable.timed_lock_duration" title="m.timed_lock(rel_time)"><code class="computeroutput"><span class="identifier">timed_lock</span></code></a><span class="special">(</span><span class="identifier">rel_time</span><span class="special">)</span></code>
+            </li>
+<li class="listitem">
+              <code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.timed_lockable.timed_lock" title="m.timed_lock(abs_time)"><code class="computeroutput"><span class="identifier">timed_lock</span></code></a><span class="special">(</span><span class="identifier">abs_time</span><span class="special">)</span></code>
+            </li>
+</ul></div>
+<p>
+          Lock ownership acquired through a call to <a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.timed_lockable.timed_lock" title="m.timed_lock(abs_time)"><code class="computeroutput"><span class="identifier">timed_lock</span><span class="special">()</span></code></a>
+          must be released through a call to <a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.basic_lockable.unlock" title="m.unlock();"><code class="computeroutput"><span class="identifier">unlock</span><span class="special">()</span></code></a>.
+        </p>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="thread.synchronization.mutex_concepts.timed_lockable.timed_lock"></a><a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.timed_lockable.timed_lock" title="m.timed_lock(abs_time)"><code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><span class="identifier">timed_lock</span><span class="special">(</span><span class="identifier">abs_time</span><span class="special">)</span></code></a>
+</h5></div></div></div>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl>
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+                  Attempt to obtain ownership for the current thread. Blocks until
+                  ownership can be obtained, or the specified time is reached. If
+                  the specified time has already passed, behaves as <a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.lockable.try_lock" title="m.try_lock()"><code class="computeroutput"><span class="identifier">try_lock</span><span class="special">()</span></code></a>.
+                </p></dd>
+<dt><span class="term">Returns:</span></dt>
+<dd><p>
+                  <code class="computeroutput"><span class="keyword">true</span></code> if ownership
+                  was obtained for the current thread, <code class="computeroutput"><span class="keyword">false</span></code>
+                  otherwise.
+                </p></dd>
+<dt><span class="term">Postcondition:</span></dt>
+<dd><p>
+                  If the call returns <code class="computeroutput"><span class="keyword">true</span></code>,
+                  the current thread owns <code class="computeroutput"><span class="identifier">m</span></code>.
+                </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+                  <code class="computeroutput"><span class="identifier">lock_error</span></code> if an
+                  error occurs.
+                </p></dd>
+</dl>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="thread.synchronization.mutex_concepts.timed_lockable.timed_lock_duration"></a><a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.timed_lockable.timed_lock_duration" title="m.timed_lock(rel_time)"><code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><span class="identifier">timed_lock</span><span class="special">(</span><span class="identifier">rel_time</span><span class="special">)</span></code></a>
+</h5></div></div></div>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl>
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+                  As-if <a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.timed_lockable.timed_lock" title="m.timed_lock(abs_time)"><code class="computeroutput"><span class="identifier">timed_lock</span><span class="special">(</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">get_system_time</span><span class="special">()+</span><span class="identifier">rel_time</span><span class="special">)</span></code></a>.
+                </p></dd>
+</dl>
+</div>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="thread.synchronization.mutex_concepts.shared_lockable"></a><a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.shared_lockable" title="SharedLockable Concept -- C++14"><code class="computeroutput"><span class="identifier">SharedLockable</span></code> Concept -- C++14</a>
+</h4></div></div></div>
+<div class="toc"><dl>
+<dt><span class="section"><a href="mutex_concepts.html#thread.synchronization.mutex_concepts.shared_lockable.lock_shared"><code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><span class="identifier">lock_shared</span><span class="special">()</span></code></a></span></dt>
+<dt><span class="section"><a href="mutex_concepts.html#thread.synchronization.mutex_concepts.shared_lockable.try_lock_shared"><code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><span class="identifier">try_lock_shared</span><span class="special">()</span></code></a></span></dt>
+<dt><span class="section"><a href="mutex_concepts.html#thread.synchronization.mutex_concepts.shared_lockable.try_lock_shared_for"><code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><span class="identifier">try_lock_shared_for</span><span class="special">(</span><span class="identifier">rel_time</span><span class="special">)</span></code></a></span></dt>
+<dt><span class="section"><a href="mutex_concepts.html#thread.synchronization.mutex_concepts.shared_lockable.try_lock_shared_until"><code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><span class="identifier">try_lock_shared_until</span><span class="special">(</span><span class="identifier">abs_time</span><span class="special">))</span></code></a></span></dt>
+<dt><span class="section"><a href="mutex_concepts.html#thread.synchronization.mutex_concepts.shared_lockable.unlock_shared"><code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><span class="identifier">unlock_shared</span><span class="special">()</span></code></a></span></dt>
+<dt><span class="section"><a href="mutex_concepts.html#thread.synchronization.mutex_concepts.shared_lockable.timed_lock_shared"><code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><span class="identifier">timed_lock_shared</span><span class="special">(</span><span class="identifier">abs_time</span><span class="special">)</span></code></a></span></dt>
+</dl></div>
+<pre class="programlisting"><span class="comment">// #include &lt;boost/thread/lockable_concepts.hpp&gt; </span>
+
+<span class="keyword">namespace</span> <span class="identifier">boost</span>
+<span class="special">{</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">L</span><span class="special">&gt;</span>
+  <span class="keyword">class</span> <span class="identifier">SharedLockable</span><span class="special">;</span>  <span class="comment">// C++14</span>
+<span class="special">}</span>
+</pre>
+<p>
+          The <a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.shared_lockable" title="SharedLockable Concept -- C++14"><code class="computeroutput"><span class="identifier">SharedLockable</span></code> concept</a> is a refinement
+          of the <a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.timed_lockable" title="TimedLockable Concept"><code class="computeroutput"><span class="identifier">TimedLockable</span></code> concept</a> that allows
+          for <span class="emphasis"><em>shared ownership</em></span> as well as <span class="emphasis"><em>exclusive
+          ownership</em></span>. This is the standard multiple-reader / single-write
+          model: at most one thread can have exclusive ownership, and if any thread
+          does have exclusive ownership, no other threads can have shared or exclusive
+          ownership. Alternatively, many threads may have shared ownership.
+        </p>
+<p>
+          A type <code class="computeroutput"><span class="identifier">L</span></code> meets the <a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.shared_lockable" title="SharedLockable Concept -- C++14"><code class="computeroutput"><span class="identifier">SharedLockable</span></code></a> requirements if
+          it meets the <a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.timed_lockable" title="TimedLockable Concept"><code class="computeroutput"><span class="identifier">TimedLockable</span></code></a> requirements and
+          the following expressions are well-formed and have the specified semantics.
+        </p>
+<p>
+          <span class="bold"><strong>Variables:</strong></span>
+        </p>
+<div class="itemizedlist"><ul class="itemizedlist" type="disc">
+<li class="listitem">
+              <code class="computeroutput"><span class="identifier">m</span></code> denotes a value of
+              type <code class="computeroutput"><span class="identifier">L</span></code>,
+            </li>
+<li class="listitem">
+              <code class="computeroutput"><span class="identifier">rel_time</span></code> denotes a
+              value of an instantiation of <code class="computeroutput"><span class="identifier">chrono</span><span class="special">::</span><span class="identifier">duration</span></code>,
+              and
+            </li>
+<li class="listitem">
+              <code class="computeroutput"><span class="identifier">abs_time</span></code> denotes a
+              value of an instantiation of <code class="computeroutput"><span class="identifier">chrono</span><span class="special">::</span><span class="identifier">time_point</span></code>:
+            </li>
+</ul></div>
+<p>
+          <span class="bold"><strong>Expressions:</strong></span>
+        </p>
+<div class="itemizedlist"><ul class="itemizedlist" type="disc">
+<li class="listitem">
+              <code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.shared_lockable.lock_shared" title="m.lock_shared()"><code class="computeroutput"><span class="identifier">lock_shared</span><span class="special">()</span></code></a><span class="special">();</span></code>
+            </li>
+<li class="listitem">
+              <code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.shared_lockable.try_lock_shared" title="m.try_lock_shared()"><code class="computeroutput"><span class="identifier">try_lock_shared</span></code></a><span class="special">()</span></code>
+            </li>
+<li class="listitem">
+              <code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.shared_lockable.try_lock_shared_for" title="m.try_lock_shared_for(rel_time)"><code class="computeroutput"><span class="identifier">try_lock_shared_for</span></code></a><span class="special">(</span><span class="identifier">rel_time</span><span class="special">)</span></code>
+            </li>
+<li class="listitem">
+              <code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.shared_lockable.try_lock_shared_until" title="m.try_lock_shared_until(abs_time))"><code class="computeroutput"><span class="identifier">try_lock_shared_until</span></code></a><span class="special">(</span><span class="identifier">abs_time</span><span class="special">)</span></code>
+            </li>
+<li class="listitem">
+              <code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.shared_lockable.unlock_shared" title="m.unlock_shared()"><code class="computeroutput"><span class="identifier">unlock_shared</span><span class="special">()</span></code></a><span class="special">();</span></code>
+            </li>
+</ul></div>
+<p>
+          Lock ownership acquired through a call to <a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.shared_lockable.lock_shared" title="m.lock_shared()"><code class="computeroutput"><span class="identifier">lock_shared</span><span class="special">()</span></code></a>,
+          <a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.shared_lockable.try_lock_shared" title="m.try_lock_shared()"><code class="computeroutput"><span class="identifier">try_lock_shared</span><span class="special">()</span></code></a>,
+          <a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.shared_lockable.try_lock_shared_for" title="m.try_lock_shared_for(rel_time)"><code class="computeroutput"><span class="identifier">try_lock_shared_for</span></code></a> or <a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.shared_lockable.try_lock_shared_until" title="m.try_lock_shared_until(abs_time))"><code class="computeroutput"><span class="identifier">try_lock_shared_until</span></code></a> must be
+          released through a call to <a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.shared_lockable.unlock_shared" title="m.unlock_shared()"><code class="computeroutput"><span class="identifier">unlock_shared</span><span class="special">()</span></code></a>.
+        </p>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="thread.synchronization.mutex_concepts.shared_lockable.lock_shared"></a><a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.shared_lockable.lock_shared" title="m.lock_shared()"><code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><span class="identifier">lock_shared</span><span class="special">()</span></code></a>
+</h5></div></div></div>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl>
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+                  The current thread blocks until shared ownership can be obtained
+                  for the current thread.
+                </p></dd>
+<dt><span class="term">Postcondition:</span></dt>
+<dd><p>
+                  The current thread has shared ownership of <code class="computeroutput"><span class="identifier">m</span></code>.
+                </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+                  <code class="computeroutput"><span class="identifier">lock_error</span></code> if an
+                  error occurs.
+                </p></dd>
+</dl>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="thread.synchronization.mutex_concepts.shared_lockable.try_lock_shared"></a><a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.shared_lockable.try_lock_shared" title="m.try_lock_shared()"><code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><span class="identifier">try_lock_shared</span><span class="special">()</span></code></a>
+</h5></div></div></div>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl>
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+                  Attempt to obtain shared ownership for the current thread without
+                  blocking.
+                </p></dd>
+<dt><span class="term">Returns:</span></dt>
+<dd><p>
+                  <code class="computeroutput"><span class="keyword">true</span></code> if shared ownership
+                  was obtained for the current thread, <code class="computeroutput"><span class="keyword">false</span></code>
+                  otherwise.
+                </p></dd>
+<dt><span class="term">Postcondition:</span></dt>
+<dd><p>
+                  If the call returns <code class="computeroutput"><span class="keyword">true</span></code>,
+                  the current thread has shared ownership of <code class="computeroutput"><span class="identifier">m</span></code>.
+                </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+                  <code class="computeroutput"><span class="identifier">lock_error</span></code> if an
+                  error occurs.
+                </p></dd>
+</dl>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="thread.synchronization.mutex_concepts.shared_lockable.try_lock_shared_for"></a><a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.shared_lockable.try_lock_shared_for" title="m.try_lock_shared_for(rel_time)"><code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><span class="identifier">try_lock_shared_for</span><span class="special">(</span><span class="identifier">rel_time</span><span class="special">)</span></code></a>
+</h5></div></div></div>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl>
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+                  Attempt to obtain shared ownership for the current thread. Blocks
+                  until shared ownership can be obtained, or the specified duration
+                  is elapsed. If the specified duration is already elapsed, behaves
+                  as <a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.shared_lockable.try_lock_shared" title="m.try_lock_shared()"><code class="computeroutput"><span class="identifier">try_lock_shared</span><span class="special">()</span></code></a>.
+                </p></dd>
+<dt><span class="term">Returns:</span></dt>
+<dd><p>
+                  <code class="computeroutput"><span class="keyword">true</span></code> if shared ownership
+                  was acquired for the current thread, <code class="computeroutput"><span class="keyword">false</span></code>
+                  otherwise.
+                </p></dd>
+<dt><span class="term">Postcondition:</span></dt>
+<dd><p>
+                  If the call returns <code class="computeroutput"><span class="keyword">true</span></code>,
+                  the current thread has shared ownership of <code class="computeroutput"><span class="identifier">m</span></code>.
+                </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+                  <code class="computeroutput"><span class="identifier">lock_error</span></code> if an
+                  error occurs.
+                </p></dd>
+</dl>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="thread.synchronization.mutex_concepts.shared_lockable.try_lock_shared_until"></a><a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.shared_lockable.try_lock_shared_until" title="m.try_lock_shared_until(abs_time))"><code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><span class="identifier">try_lock_shared_until</span><span class="special">(</span><span class="identifier">abs_time</span><span class="special">))</span></code></a>
+</h5></div></div></div>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl>
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+                  Attempt to obtain shared ownership for the current thread. Blocks
+                  until shared ownership can be obtained, or the specified time is
+                  reached. If the specified time has already passed, behaves as
+                  <a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.shared_lockable.try_lock_shared" title="m.try_lock_shared()"><code class="computeroutput"><span class="identifier">try_lock_shared</span><span class="special">()</span></code></a>.
+                </p></dd>
+<dt><span class="term">Returns:</span></dt>
+<dd><p>
+                  <code class="computeroutput"><span class="keyword">true</span></code> if shared ownership
+                  was acquired for the current thread, <code class="computeroutput"><span class="keyword">false</span></code>
+                  otherwise.
+                </p></dd>
+<dt><span class="term">Postcondition:</span></dt>
+<dd><p>
+                  If the call returns <code class="computeroutput"><span class="keyword">true</span></code>,
+                  the current thread has shared ownership of <code class="computeroutput"><span class="identifier">m</span></code>.
+                </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+                  <code class="computeroutput"><span class="identifier">lock_error</span></code> if an
+                  error occurs.
+                </p></dd>
+</dl>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="thread.synchronization.mutex_concepts.shared_lockable.unlock_shared"></a><a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.shared_lockable.unlock_shared" title="m.unlock_shared()"><code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><span class="identifier">unlock_shared</span><span class="special">()</span></code></a>
+</h5></div></div></div>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl>
+<dt><span class="term">Precondition:</span></dt>
+<dd><p>
+                  The current thread has shared ownership of <code class="computeroutput"><span class="identifier">m</span></code>.
+                </p></dd>
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+                  Releases shared ownership of <code class="computeroutput"><span class="identifier">m</span></code>
+                  by the current thread.
+                </p></dd>
+<dt><span class="term">Postcondition:</span></dt>
+<dd><p>
+                  The current thread no longer has shared ownership of <code class="computeroutput"><span class="identifier">m</span></code>.
+                </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+                  Nothing
+                </p></dd>
+</dl>
+</div>
+</div>
+<div class="warning"><table border="0" summary="Warning">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Warning]" src="../../../../../../doc/src/images/warning.png"></td>
+<th align="left">Warning</th>
+</tr>
+<tr><td align="left" valign="top">
+<p>
+            DEPRECATED since 3.00. The following expressions were required on version
+            2, but are now deprecated.
+          </p>
+<p>
+            Use instead <a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.shared_lockable.try_lock_shared_for" title="m.try_lock_shared_for(rel_time)"><code class="computeroutput"><span class="identifier">try_lock_shared_for</span></code></a>, <a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.shared_lockable.try_lock_shared_until" title="m.try_lock_shared_until(abs_time))"><code class="computeroutput"><span class="identifier">try_lock_shared_until</span></code></a>.
+          </p>
+</td></tr>
+</table></div>
+<p>
+          <span class="bold"><strong>Variables:</strong></span>
+        </p>
+<div class="itemizedlist"><ul class="itemizedlist" type="disc"><li class="listitem">
+              <code class="computeroutput"><span class="identifier">abs_time</span></code> denotes a
+              value of an instantiation of <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">system_time</span></code>:
+            </li></ul></div>
+<p>
+          <span class="bold"><strong>Expressions:</strong></span>
+        </p>
+<div class="itemizedlist"><ul class="itemizedlist" type="disc"><li class="listitem">
+              <code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><span class="identifier">timed_lock_shared</span><span class="special">(</span><span class="identifier">abs_time</span><span class="special">);</span></code>
+            </li></ul></div>
+<p>
+          Lock ownership acquired through a call to <a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.shared_lockable.timed_lock_shared" title="m.timed_lock_shared(abs_time)"><code class="computeroutput"><span class="identifier">timed_lock_shared</span><span class="special">()</span></code></a>
+          must be released through a call to <a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.shared_lockable.unlock_shared" title="m.unlock_shared()"><code class="computeroutput"><span class="identifier">unlock_shared</span><span class="special">()</span></code></a>.
+        </p>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="thread.synchronization.mutex_concepts.shared_lockable.timed_lock_shared"></a><a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.shared_lockable.timed_lock_shared" title="m.timed_lock_shared(abs_time)"><code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><span class="identifier">timed_lock_shared</span><span class="special">(</span><span class="identifier">abs_time</span><span class="special">)</span></code></a>
+</h5></div></div></div>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl>
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+                  Attempt to obtain shared ownership for the current thread. Blocks
+                  until shared ownership can be obtained, or the specified time is
+                  reached. If the specified time has already passed, behaves as
+                  <a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.shared_lockable.try_lock_shared" title="m.try_lock_shared()"><code class="computeroutput"><span class="identifier">try_lock_shared</span><span class="special">()</span></code></a>.
+                </p></dd>
+<dt><span class="term">Returns:</span></dt>
+<dd><p>
+                  <code class="computeroutput"><span class="keyword">true</span></code> if shared ownership
+                  was acquired for the current thread, <code class="computeroutput"><span class="keyword">false</span></code>
+                  otherwise.
+                </p></dd>
+<dt><span class="term">Postcondition:</span></dt>
+<dd><p>
+                  If the call returns <code class="computeroutput"><span class="keyword">true</span></code>,
+                  the current thread has shared ownership of <code class="computeroutput"><span class="identifier">m</span></code>.
+                </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+                  <code class="computeroutput"><span class="identifier">lock_error</span></code> if an
+                  error occurs.
+                </p></dd>
+</dl>
+</div>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="thread.synchronization.mutex_concepts.upgrade_lockable"></a><a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.upgrade_lockable" title="UpgradeLockable Concept -- EXTENSION"><code class="computeroutput"><span class="identifier">UpgradeLockable</span></code> Concept -- EXTENSION</a>
+</h4></div></div></div>
+<div class="toc"><dl>
+<dt><span class="section"><a href="mutex_concepts.html#thread.synchronization.mutex_concepts.upgrade_lockable.lock_upgrade"><code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><span class="identifier">lock_upgrade</span><span class="special">()</span></code></a></span></dt>
+<dt><span class="section"><a href="mutex_concepts.html#thread.synchronization.mutex_concepts.upgrade_lockable.unlock_upgrade"><code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><span class="identifier">unlock_upgrade</span><span class="special">()</span></code></a></span></dt>
+<dt><span class="section"><a href="mutex_concepts.html#thread.synchronization.mutex_concepts.upgrade_lockable.try_lock_upgrade"><code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><span class="identifier">try_lock_upgrade</span><span class="special">()</span></code></a></span></dt>
+<dt><span class="section"><a href="mutex_concepts.html#thread.synchronization.mutex_concepts.upgrade_lockable.try_lock_upgrade_for"><code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><span class="identifier">try_lock_upgrade_for</span><span class="special">(</span><span class="identifier">rel_time</span><span class="special">)</span></code></a></span></dt>
+<dt><span class="section"><a href="mutex_concepts.html#thread.synchronization.mutex_concepts.upgrade_lockable.try_lock_upgrade_until"><code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><span class="identifier">try_lock_upgrade_until</span><span class="special">(</span><span class="identifier">abs_time</span><span class="special">)</span></code></a></span></dt>
+<dt><span class="section"><a href="mutex_concepts.html#thread.synchronization.mutex_concepts.upgrade_lockable.try_unlock_shared_and_lock"><code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><span class="identifier">try_unlock_shared_and_lock</span><span class="special">()</span></code></a></span></dt>
+<dt><span class="section"><a href="mutex_concepts.html#thread.synchronization.mutex_concepts.upgrade_lockable.try_unlock_shared_and_lock_for"><code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><span class="identifier">try_unlock_shared_and_lock_for</span><span class="special">(</span><span class="identifier">rel_time</span><span class="special">)</span></code></a></span></dt>
+<dt><span class="section"><a href="mutex_concepts.html#thread.synchronization.mutex_concepts.upgrade_lockable.try_unlock_shared_and_lock_until"><code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><span class="identifier">try_unlock_shared_and_lock_until</span><span class="special">(</span><span class="identifier">abs_time</span><span class="special">)</span></code></a></span></dt>
+<dt><span class="section"><a href="mutex_concepts.html#thread.synchronization.mutex_concepts.upgrade_lockable.unlock_and_lock_shared"><code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><span class="identifier">unlock_and_lock_shared</span><span class="special">()</span></code></a></span></dt>
+<dt><span class="section"><a href="mutex_concepts.html#thread.synchronization.mutex_concepts.upgrade_lockable.try_unlock_shared_and_lock_upgrade"><code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><span class="identifier">try_unlock_shared_and_lock_upgrade</span><span class="special">()</span></code></a></span></dt>
+<dt><span class="section"><a href="mutex_concepts.html#thread.synchronization.mutex_concepts.upgrade_lockable.try_unlock_shared_and_lock_upgrade_for"><code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><span class="identifier">try_unlock_shared_and_lock_upgrade_for</span><span class="special">(</span><span class="identifier">rel_time</span><span class="special">)</span></code></a></span></dt>
+<dt><span class="section"><a href="mutex_concepts.html#thread.synchronization.mutex_concepts.upgrade_lockable.try_unlock_shared_and_lock_upgrade_until"><code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><span class="identifier">try_unlock_shared_and_lock_upgrade_until</span><span class="special">(</span><span class="identifier">abs_time</span><span class="special">)</span></code></a></span></dt>
+<dt><span class="section"><a href="mutex_concepts.html#thread.synchronization.mutex_concepts.upgrade_lockable.unlock_and_lock_upgrade"><code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><span class="identifier">unlock_and_lock_upgrade</span><span class="special">()</span></code></a></span></dt>
+<dt><span class="section"><a href="mutex_concepts.html#thread.synchronization.mutex_concepts.upgrade_lockable.unlock_upgrade_and_lock"><code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><span class="identifier">unlock_upgrade_and_lock</span><span class="special">()</span></code></a></span></dt>
+<dt><span class="section"><a href="mutex_concepts.html#thread.synchronization.mutex_concepts.upgrade_lockable.try_unlock_upgrade_and_lock"><code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><span class="identifier">try_unlock_upgrade_and_lock</span><span class="special">()</span></code></a></span></dt>
+<dt><span class="section"><a href="mutex_concepts.html#thread.synchronization.mutex_concepts.upgrade_lockable.try_unlock_upgrade_and_lock_for"><code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><span class="identifier">try_unlock_upgrade_and_lock_for</span><span class="special">(</span><span class="identifier">rel_time</span><span class="special">)</span></code></a></span></dt>
+<dt><span class="section"><a href="mutex_concepts.html#thread.synchronization.mutex_concepts.upgrade_lockable.try_unlock_upgrade_and_lock_until"><code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><span class="identifier">try_unlock_upgrade_and_lock_until</span><span class="special">(</span><span class="identifier">abs_time</span><span class="special">)</span></code></a></span></dt>
+<dt><span class="section"><a href="mutex_concepts.html#thread.synchronization.mutex_concepts.upgrade_lockable.unlock_upgrade_and_lock_shared"><code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><span class="identifier">unlock_upgrade_and_lock_shared</span><span class="special">()</span></code></a></span></dt>
+</dl></div>
+<pre class="programlisting"><span class="comment">// #include &lt;boost/thread/lockable_concepts.hpp&gt; </span>
+
+<span class="keyword">namespace</span> <span class="identifier">boost</span>
+<span class="special">{</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">L</span><span class="special">&gt;</span>
+  <span class="keyword">class</span> <span class="identifier">UpgradeLockable</span><span class="special">;</span> <span class="comment">// EXTENSION</span>
+<span class="special">}</span>
+</pre>
+<p>
+          The <a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.upgrade_lockable" title="UpgradeLockable Concept -- EXTENSION"><code class="computeroutput"><span class="identifier">UpgradeLockable</span></code> concept</a> is a refinement
+          of the <a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.shared_lockable" title="SharedLockable Concept -- C++14"><code class="computeroutput"><span class="identifier">SharedLockable</span></code> concept</a> that allows
+          for <span class="emphasis"><em>upgradable ownership</em></span> as well as <span class="emphasis"><em>shared
+          ownership</em></span> and <span class="emphasis"><em>exclusive ownership</em></span>. This
+          is an extension to the multiple-reader / single-write model provided by
+          the <a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.shared_lockable" title="SharedLockable Concept -- C++14"><code class="computeroutput"><span class="identifier">SharedLockable</span></code> concept</a>: a single
+          thread may have <span class="emphasis"><em>upgradable ownership</em></span> at the same time
+          as others have <span class="emphasis"><em>shared ownership</em></span>. The thread with
+          <span class="emphasis"><em>upgradable ownership</em></span> may at any time attempt to upgrade
+          that ownership to <span class="emphasis"><em>exclusive ownership</em></span>. If no other
+          threads have shared ownership, the upgrade is completed immediately, and
+          the thread now has <span class="emphasis"><em>exclusive ownership</em></span>, which must
+          be relinquished by a call to <a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.basic_lockable.unlock" title="m.unlock();"><code class="computeroutput"><span class="identifier">unlock</span><span class="special">()</span></code></a>,
+          just as if it had been acquired by a call to <a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.basic_lockable.lock" title="m.lock();"><code class="computeroutput"><span class="identifier">lock</span><span class="special">()</span></code></a>.
+        </p>
+<p>
+          If a thread with <span class="emphasis"><em>upgradable ownership</em></span> tries to upgrade
+          whilst other threads have <span class="emphasis"><em>shared ownership</em></span>, the attempt
+          will fail and the thread will block until <span class="emphasis"><em>exclusive ownership</em></span>
+          can be acquired.
+        </p>
+<p>
+          Ownership can also be <span class="emphasis"><em>downgraded</em></span> as well as <span class="emphasis"><em>upgraded</em></span>:
+          exclusive ownership of an implementation of the <a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.upgrade_lockable" title="UpgradeLockable Concept -- EXTENSION"><code class="computeroutput"><span class="identifier">UpgradeLockable</span></code> concept</a> can be
+          downgraded to upgradable ownership or shared ownership, and upgradable
+          ownership can be downgraded to plain shared ownership.
+        </p>
+<p>
+          A type <code class="computeroutput"><span class="identifier">L</span></code> meets the <a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.upgrade_lockable" title="UpgradeLockable Concept -- EXTENSION"><code class="computeroutput"><span class="identifier">UpgradeLockable</span></code></a> requirements if
+          it meets the <a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.shared_lockable" title="SharedLockable Concept -- C++14"><code class="computeroutput"><span class="identifier">SharedLockable</span></code></a> requirements and
+          the following expressions are well-formed and have the specified semantics.
+        </p>
+<p>
+          <span class="bold"><strong>Variables:</strong></span>
+        </p>
+<div class="itemizedlist"><ul class="itemizedlist" type="disc">
+<li class="listitem">
+              <code class="computeroutput"><span class="identifier">m</span></code> denotes a value of
+              type <code class="computeroutput"><span class="identifier">L</span></code>,
+            </li>
+<li class="listitem">
+              <code class="computeroutput"><span class="identifier">rel_time</span></code> denotes a
+              value of an instantiation of <code class="computeroutput"><span class="identifier">chrono</span><span class="special">::</span><span class="identifier">duration</span></code>,
+              and
+            </li>
+<li class="listitem">
+              <code class="computeroutput"><span class="identifier">abs_time</span></code> denotes a
+              value of an instantiation of <code class="computeroutput"><span class="identifier">chrono</span><span class="special">::</span><span class="identifier">time_point</span></code>:
+            </li>
+</ul></div>
+<p>
+          <span class="bold"><strong>Expressions:</strong></span>
+        </p>
+<div class="itemizedlist"><ul class="itemizedlist" type="disc">
+<li class="listitem">
+              <code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.upgrade_lockable.lock_upgrade" title="m.lock_upgrade()"><code class="computeroutput"><span class="identifier">lock_upgrade</span></code></a><span class="special">();</span></code>
+            </li>
+<li class="listitem">
+              <code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.upgrade_lockable.unlock_upgrade" title="m.unlock_upgrade()"><code class="computeroutput"><span class="identifier">unlock_upgrade</span></code></a><span class="special">()</span></code>
+            </li>
+<li class="listitem">
+              <code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.upgrade_lockable.try_lock_upgrade" title="m.try_lock_upgrade()"><code class="computeroutput"><span class="identifier">try_lock_upgrade</span></code></a><span class="special">()</span></code>
+            </li>
+<li class="listitem">
+              <code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.upgrade_lockable.try_lock_upgrade_for" title="m.try_lock_upgrade_for(rel_time)"><code class="computeroutput"><span class="identifier">try_lock_upgrade_for</span></code></a><span class="special">(</span><span class="identifier">rel_time</span><span class="special">)</span></code>
+            </li>
+<li class="listitem">
+              <code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.upgrade_lockable.try_lock_upgrade_until" title="m.try_lock_upgrade_until(abs_time)"><code class="computeroutput"><span class="identifier">try_lock_upgrade_until</span></code></a><span class="special">(</span><span class="identifier">abs_time</span><span class="special">)</span></code>
+            </li>
+<li class="listitem">
+              <code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.upgrade_lockable.unlock_and_lock_shared" title="m.unlock_and_lock_shared()"><code class="computeroutput"><span class="identifier">unlock_and_lock_shared</span></code></a><span class="special">()</span></code>
+            </li>
+<li class="listitem">
+              <code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.upgrade_lockable.unlock_and_lock_upgrade" title="m.unlock_and_lock_upgrade()"><code class="computeroutput"><span class="identifier">unlock_and_lock_upgrade</span></code></a><span class="special">();</span></code>
+            </li>
+<li class="listitem">
+              <code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.upgrade_lockable.unlock_upgrade_and_lock" title="m.unlock_upgrade_and_lock()"><code class="computeroutput"><span class="identifier">unlock_upgrade_and_lock</span></code></a><span class="special">();</span></code>
+            </li>
+<li class="listitem">
+              <code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.upgrade_lockable.try_unlock_upgrade_and_lock" title="m.try_unlock_upgrade_and_lock()"><code class="computeroutput"><span class="identifier">try_unlock_upgrade_and_lock</span></code></a><span class="special">()</span></code>
+            </li>
+<li class="listitem">
+              <code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.upgrade_lockable.try_unlock_upgrade_and_lock_for" title="m.try_unlock_upgrade_and_lock_for(rel_time)"><code class="computeroutput"><span class="identifier">try_unlock_upgrade_and_lock_for</span></code></a><span class="special">(</span><span class="identifier">rel_time</span><span class="special">)</span></code>
+            </li>
+<li class="listitem">
+              <code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.upgrade_lockable.try_unlock_upgrade_and_lock_until" title="m.try_unlock_upgrade_and_lock_until(abs_time)"><code class="computeroutput"><span class="identifier">try_unlock_upgrade_and_lock_until</span></code></a><span class="special">(</span><span class="identifier">abs_time</span><span class="special">)</span></code>
+            </li>
+<li class="listitem">
+              <code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.upgrade_lockable.unlock_upgrade_and_lock_shared" title="m.unlock_upgrade_and_lock_shared()"><code class="computeroutput"><span class="identifier">unlock_upgrade_and_lock_shared</span></code></a><span class="special">();</span></code>
+            </li>
+</ul></div>
+<p>
+          If `BOOST_THREAD_PROVIDES_SHARED_MUTEX_UPWARDS_CONVERSION is defined the
+          following expressions are also required:
+        </p>
+<div class="itemizedlist"><ul class="itemizedlist" type="disc">
+<li class="listitem">
+              <code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.upgrade_lockable.try_unlock_shared_and_lock" title="m.try_unlock_shared_and_lock()"><code class="computeroutput"><span class="identifier">try_unlock_shared_and_lock</span></code></a><span class="special">();</span></code>
+            </li>
+<li class="listitem">
+              <code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.upgrade_lockable.try_unlock_shared_and_lock_for" title="m.try_unlock_shared_and_lock_for(rel_time)"><code class="computeroutput"><span class="identifier">try_unlock_shared_and_lock_for</span></code></a><span class="special">(</span><span class="identifier">rel_time</span><span class="special">);</span></code>
+            </li>
+<li class="listitem">
+              <code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.upgrade_lockable.try_unlock_shared_and_lock_until" title="m.try_unlock_shared_and_lock_until(abs_time)"><code class="computeroutput"><span class="identifier">try_unlock_shared_and_lock_until</span></code></a><span class="special">(</span><span class="identifier">abs_time</span><span class="special">);</span></code>
+            </li>
+<li class="listitem">
+              <code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.upgrade_lockable.try_unlock_shared_and_lock_upgrade" title="m.try_unlock_shared_and_lock_upgrade()"><code class="computeroutput"><span class="identifier">try_unlock_shared_and_lock_upgrade</span></code></a><span class="special">();</span></code>
+            </li>
+<li class="listitem">
+              <code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.upgrade_lockable.try_unlock_shared_and_lock_upgrade_for" title="m.try_unlock_shared_and_lock_upgrade_for(rel_time)"><code class="computeroutput"><span class="identifier">try_unlock_shared_and_lock_upgrade_for</span></code></a><span class="special">(</span><span class="identifier">rel_time</span><span class="special">);</span></code>
+            </li>
+<li class="listitem">
+              <code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.upgrade_lockable.try_unlock_shared_and_lock_upgrade_until" title="m.try_unlock_shared_and_lock_upgrade_until(abs_time)"><code class="computeroutput"><span class="identifier">try_unlock_shared_and_lock_upgrade_until</span></code></a><span class="special">(</span><span class="identifier">abs_time</span><span class="special">);</span></code>
+            </li>
+</ul></div>
+<p>
+          Lock ownership acquired through a call to <a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.upgrade_lockable.lock_upgrade" title="m.lock_upgrade()"><code class="computeroutput"><span class="identifier">lock_upgrade</span><span class="special">()</span></code></a>
+          must be released through a call to <a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.upgrade_lockable.unlock_upgrade" title="m.unlock_upgrade()"><code class="computeroutput"><span class="identifier">unlock_upgrade</span><span class="special">()</span></code></a>.
+          If the ownership type is changed through a call to one of the <code class="computeroutput"><span class="identifier">unlock_xxx_and_lock_yyy</span><span class="special">()</span></code>
+          functions, ownership must be released through a call to the unlock function
+          corresponding to the new level of ownership.
+        </p>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="thread.synchronization.mutex_concepts.upgrade_lockable.lock_upgrade"></a><a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.upgrade_lockable.lock_upgrade" title="m.lock_upgrade()"><code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><span class="identifier">lock_upgrade</span><span class="special">()</span></code></a>
+</h5></div></div></div>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl>
+<dt><span class="term">Precondition:</span></dt>
+<dd><p>
+                  The calling thread has no ownership of the mutex.
+                </p></dd>
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+                  The current thread blocks until upgrade ownership can be obtained
+                  for the current thread.
+                </p></dd>
+<dt><span class="term">Postcondition:</span></dt>
+<dd><p>
+                  The current thread has upgrade ownership of <code class="computeroutput"><span class="identifier">m</span></code>.
+                </p></dd>
+<dt><span class="term">Synchronization:</span></dt>
+<dd><p>
+                  Prior <code class="computeroutput"><a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.upgrade_lockable.unlock_upgrade" title="m.unlock_upgrade()"><code class="computeroutput"><span class="identifier">unlock_upgrade</span></code></a><span class="special">()</span></code> operations on the same object
+                  synchronize with this operation.
+                </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+                  <code class="computeroutput"><span class="identifier">lock_error</span></code> if an
+                  error occurs.
+                </p></dd>
+</dl>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="thread.synchronization.mutex_concepts.upgrade_lockable.unlock_upgrade"></a><a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.upgrade_lockable.unlock_upgrade" title="m.unlock_upgrade()"><code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><span class="identifier">unlock_upgrade</span><span class="special">()</span></code></a>
+</h5></div></div></div>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl>
+<dt><span class="term">Precondition:</span></dt>
+<dd><p>
+                  The current thread has upgrade ownership of <code class="computeroutput"><span class="identifier">m</span></code>.
+                </p></dd>
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+                  Releases upgrade ownership of <code class="computeroutput"><span class="identifier">m</span></code>
+                  by the current thread.
+                </p></dd>
+<dt><span class="term">Postcondition:</span></dt>
+<dd><p>
+                  The current thread no longer has upgrade ownership of <code class="computeroutput"><span class="identifier">m</span></code>.
+                </p></dd>
+<dt><span class="term">Synchronization:</span></dt>
+<dd><p>
+                  This operation synchronizes with subsequent lock operations that
+                  obtain ownership on the same object.
+                </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+                  Nothing
+                </p></dd>
+</dl>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="thread.synchronization.mutex_concepts.upgrade_lockable.try_lock_upgrade"></a><a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.upgrade_lockable.try_lock_upgrade" title="m.try_lock_upgrade()"><code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><span class="identifier">try_lock_upgrade</span><span class="special">()</span></code></a>
+</h5></div></div></div>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl>
+<dt><span class="term">Precondition:</span></dt>
+<dd><p>
+                  The calling thread has no ownership of the mutex.
+                </p></dd>
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+                  Attempts to obtain upgrade ownership of the mutex for the calling
+                  thread without blocking. If upgrade ownership is not obtained,
+                  there is no effect and try_lock_upgrade() immediately returns.
+                </p></dd>
+<dt><span class="term">Returns:</span></dt>
+<dd><p>
+                  <code class="computeroutput"><span class="keyword">true</span></code> if upgrade ownership
+                  was acquired for the current thread, <code class="computeroutput"><span class="keyword">false</span></code>
+                  otherwise.
+                </p></dd>
+<dt><span class="term">Postcondition:</span></dt>
+<dd><p>
+                  If the call returns <code class="computeroutput"><span class="keyword">true</span></code>,
+                  the current thread has upgrade ownership of <code class="computeroutput"><span class="identifier">m</span></code>.
+                </p></dd>
+<dt><span class="term">Synchronization:</span></dt>
+<dd><p>
+                  If <code class="computeroutput"><a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.upgrade_lockable.try_lock_upgrade" title="m.try_lock_upgrade()"><code class="computeroutput"><span class="identifier">try_lock_upgrade</span></code></a><span class="special">()</span></code> returns true, prior <code class="computeroutput"><a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.upgrade_lockable.unlock_upgrade" title="m.unlock_upgrade()"><code class="computeroutput"><span class="identifier">unlock_upgrade</span></code></a><span class="special">()</span></code> operations on the same object
+                  synchronize with this operation.
+                </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+                  Nothing
+                </p></dd>
+</dl>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="thread.synchronization.mutex_concepts.upgrade_lockable.try_lock_upgrade_for"></a><a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.upgrade_lockable.try_lock_upgrade_for" title="m.try_lock_upgrade_for(rel_time)"><code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><span class="identifier">try_lock_upgrade_for</span><span class="special">(</span><span class="identifier">rel_time</span><span class="special">)</span></code></a>
+</h5></div></div></div>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl>
+<dt><span class="term">Precondition:</span></dt>
+<dd><p>
+                  The calling thread has no ownership of the mutex.
+                </p></dd>
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+                  If the tick period of <code class="computeroutput"><span class="identifier">rel_time</span></code>
+                  is not exactly convertible to the native tick period, the duration
+                  shall be rounded up to the nearest native tick period. Attempts
+                  to obtain upgrade lock ownership for the calling thread within
+                  the relative timeout specified by <code class="computeroutput"><span class="identifier">rel_time</span></code>.
+                  If the time specified by <code class="computeroutput"><span class="identifier">rel_time</span></code>
+                  is less than or equal to <code class="computeroutput"><span class="identifier">rel_time</span><span class="special">.</span><span class="identifier">zero</span><span class="special">()</span></code>, the function attempts to obtain
+                  ownership without blocking (as if by calling <code class="computeroutput"><a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.upgrade_lockable.try_lock_upgrade" title="m.try_lock_upgrade()"><code class="computeroutput"><span class="identifier">try_lock_upgrade</span></code></a><span class="special">()</span></code>). The function returns within
+                  the timeout specified by <code class="computeroutput"><span class="identifier">rel_time</span></code>
+                  only if it has obtained upgrade ownership of the mutex object.
+                </p></dd>
+<dt><span class="term">Returns:</span></dt>
+<dd><p>
+                  <code class="computeroutput"><span class="keyword">true</span></code> if upgrade ownership
+                  was acquired for the current thread, <code class="computeroutput"><span class="keyword">false</span></code>
+                  otherwise.
+                </p></dd>
+<dt><span class="term">Postcondition:</span></dt>
+<dd><p>
+                  If the call returns <code class="computeroutput"><span class="keyword">true</span></code>,
+                  the current thread has upgrade ownership of <code class="computeroutput"><span class="identifier">m</span></code>.
+                </p></dd>
+<dt><span class="term">Synchronization:</span></dt>
+<dd><p>
+                  If <code class="computeroutput"><a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.upgrade_lockable.try_lock_upgrade_for" title="m.try_lock_upgrade_for(rel_time)"><code class="computeroutput"><span class="identifier">try_lock_upgrade_for</span></code></a><span class="special">(</span><span class="identifier">rel_time</span><span class="special">)</span></code> returns true, prior <code class="computeroutput"><a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.upgrade_lockable.unlock_upgrade" title="m.unlock_upgrade()"><code class="computeroutput"><span class="identifier">unlock_upgrade</span></code></a><span class="special">()</span></code> operations on the same object
+                  synchronize with this operation.
+                </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+                  Nothing
+                </p></dd>
+<dt><span class="term">Notes:</span></dt>
+<dd><p>
+                  Available only if <code class="computeroutput"><span class="identifier">BOOST_THREAD_PROVIDES_GENERIC_SHARED_MUTEX_ON_WIN</span></code>
+                  is defined on Windows platform
+                </p></dd>
+</dl>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="thread.synchronization.mutex_concepts.upgrade_lockable.try_lock_upgrade_until"></a><a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.upgrade_lockable.try_lock_upgrade_until" title="m.try_lock_upgrade_until(abs_time)"><code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><span class="identifier">try_lock_upgrade_until</span><span class="special">(</span><span class="identifier">abs_time</span><span class="special">)</span></code></a>
+</h5></div></div></div>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl>
+<dt><span class="term">Precondition:</span></dt>
+<dd><p>
+                  The calling thread has no ownership of the mutex.
+                </p></dd>
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+                  The function attempts to obtain upgrade ownership of the mutex.
+                  If <code class="computeroutput"><span class="identifier">abs_time</span></code> has
+                  already passed, the function attempts to obtain upgrade ownership
+                  without blocking (as if by calling <code class="computeroutput"><a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.upgrade_lockable.try_lock_upgrade" title="m.try_lock_upgrade()"><code class="computeroutput"><span class="identifier">try_lock_upgrade</span></code></a><span class="special">()</span></code>). The function returns before
+                  the absolute timeout specified by <code class="computeroutput"><span class="identifier">abs_time</span></code>
+                  only if it has obtained upgrade ownership of the mutex object.
+                </p></dd>
+<dt><span class="term">Returns:</span></dt>
+<dd><p>
+                  <code class="computeroutput"><span class="keyword">true</span></code> if upgrade ownership
+                  was acquired for the current thread, <code class="computeroutput"><span class="keyword">false</span></code>
+                  otherwise.
+                </p></dd>
+<dt><span class="term">Postcondition:</span></dt>
+<dd><p>
+                  If the call returns <code class="computeroutput"><span class="keyword">true</span></code>,
+                  the current thread has upgrade ownership of <code class="computeroutput"><span class="identifier">m</span></code>.
+                </p></dd>
+<dt><span class="term">Synchronization:</span></dt>
+<dd><p>
+                  If <code class="computeroutput"><a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.upgrade_lockable.try_lock_upgrade_until" title="m.try_lock_upgrade_until(abs_time)"><code class="computeroutput"><span class="identifier">try_lock_upgrade_until</span></code></a><span class="special">(</span><span class="identifier">abs_time</span><span class="special">)</span></code> returns true, prior <code class="computeroutput"><a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.upgrade_lockable.unlock_upgrade" title="m.unlock_upgrade()"><code class="computeroutput"><span class="identifier">unlock_upgrade</span></code></a><span class="special">()</span></code> operations on the same object
+                  synchronize with this operation.
+                </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+                  Nothing
+                </p></dd>
+<dt><span class="term">Notes:</span></dt>
+<dd><p>
+                  Available only if <code class="computeroutput"><span class="identifier">BOOST_THREAD_PROVIDES_GENERIC_SHARED_MUTEX_ON_WIN</span></code>
+                  is defined on Windows platform
+                </p></dd>
+</dl>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="thread.synchronization.mutex_concepts.upgrade_lockable.try_unlock_shared_and_lock"></a><a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.upgrade_lockable.try_unlock_shared_and_lock" title="m.try_unlock_shared_and_lock()"><code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><span class="identifier">try_unlock_shared_and_lock</span><span class="special">()</span></code></a>
+</h5></div></div></div>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl>
+<dt><span class="term">Precondition:</span></dt>
+<dd><p>
+                  The calling thread must hold a shared lock on the mutex.
+                </p></dd>
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+                  The function attempts to atomically convert the ownership from
+                  shared to exclusive for the calling thread without blocking. For
+                  this conversion to be successful, this thread must be the only
+                  thread holding any ownership of the lock. If the conversion is
+                  not successful, the shared ownership of m is retained.
+                </p></dd>
+<dt><span class="term">Returns:</span></dt>
+<dd><p>
+                  <code class="computeroutput"><span class="keyword">true</span></code> if exclusive
+                  ownership was acquired for the current thread, <code class="computeroutput"><span class="keyword">false</span></code>
+                  otherwise.
+                </p></dd>
+<dt><span class="term">Postcondition:</span></dt>
+<dd><p>
+                  If the call returns <code class="computeroutput"><span class="keyword">true</span></code>,
+                  the current thread has exclusive ownership of <code class="computeroutput"><span class="identifier">m</span></code>.
+                </p></dd>
+<dt><span class="term">Synchronization:</span></dt>
+<dd><p>
+                  If <code class="computeroutput"><a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.upgrade_lockable.try_unlock_shared_and_lock" title="m.try_unlock_shared_and_lock()"><code class="computeroutput"><span class="identifier">try_unlock_shared_and_lock</span></code></a><span class="special">()</span></code> returns true, prior <code class="computeroutput"><a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.basic_lockable.unlock" title="m.unlock();"><code class="computeroutput"><span class="identifier">unlock</span></code></a><span class="special">()</span></code>
+                  and subsequent lock operations on the same object synchronize with
+                  this operation.
+                </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+                  Nothing
+                </p></dd>
+<dt><span class="term">Notes:</span></dt>
+<dd><p>
+                  Available only if <code class="computeroutput"><span class="identifier">BOOST_THREAD_PROVIDES_SHARED_MUTEX_UPWARDS_CONVERSION</span></code>
+                  and <code class="computeroutput"><span class="identifier">BOOST_THREAD_PROVIDES_GENERIC_SHARED_MUTEX_ON_WIN</span></code>
+                  is defined on Windows platform
+                </p></dd>
+</dl>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="thread.synchronization.mutex_concepts.upgrade_lockable.try_unlock_shared_and_lock_for"></a><a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.upgrade_lockable.try_unlock_shared_and_lock_for" title="m.try_unlock_shared_and_lock_for(rel_time)"><code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><span class="identifier">try_unlock_shared_and_lock_for</span><span class="special">(</span><span class="identifier">rel_time</span><span class="special">)</span></code></a>
+</h5></div></div></div>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl>
+<dt><span class="term">Precondition:</span></dt>
+<dd><p>
+                  The calling thread shall hold a shared lock on the mutex.
+                </p></dd>
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+                  If the tick period of <code class="computeroutput"><span class="identifier">rel_time</span></code>
+                  is not exactly convertible to the native tick period, the duration
+                  shall be rounded up to the nearest native tick period. The function
+                  attempts to atomically convert the ownership from shared to exclusive
+                  for the calling thread within the relative timeout specified by
+                  <code class="computeroutput"><span class="identifier">rel_time</span></code>. If the
+                  time specified by <code class="computeroutput"><span class="identifier">rel_time</span></code>
+                  is less than or equal to <code class="computeroutput"><span class="identifier">rel_time</span><span class="special">.</span><span class="identifier">zero</span><span class="special">()</span></code>, the function attempts to obtain
+                  exclusive ownership without blocking (as if by calling <code class="computeroutput"><span class="identifier">try_unlock_shared_and_lock</span><span class="special">()</span></code>).
+                  The function shall return within the timeout specified by <code class="computeroutput"><span class="identifier">rel_time</span></code> only if it has obtained
+                  exclusive ownership of the mutex object. For this conversion to
+                  be successful, this thread must be the only thread holding any
+                  ownership of the lock at the moment of conversion. If the conversion
+                  is not successful, the shared ownership of the mutex is retained.
+                </p></dd>
+<dt><span class="term">Returns:</span></dt>
+<dd><p>
+                  <code class="computeroutput"><span class="keyword">true</span></code> if exclusive
+                  ownership was acquired for the current thread, <code class="computeroutput"><span class="keyword">false</span></code>
+                  otherwise.
+                </p></dd>
+<dt><span class="term">Postcondition:</span></dt>
+<dd><p>
+                  If the call returns <code class="computeroutput"><span class="keyword">true</span></code>,
+                  the current thread has exclusive ownership of <code class="computeroutput"><span class="identifier">m</span></code>.
+                </p></dd>
+<dt><span class="term">Synchronization:</span></dt>
+<dd><p>
+                  If <code class="computeroutput"><a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.upgrade_lockable.try_unlock_shared_and_lock_for" title="m.try_unlock_shared_and_lock_for(rel_time)"><code class="computeroutput"><span class="identifier">try_unlock_shared_and_lock_for</span></code></a><span class="special">(</span><span class="identifier">rel_time</span><span class="special">)</span></code> returns true, prior <code class="computeroutput"><a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.basic_lockable.unlock" title="m.unlock();"><code class="computeroutput"><span class="identifier">unlock</span></code></a><span class="special">()</span></code>
+                  and subsequent lock operations on the same object synchronize with
+                  this operation.
+                </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+                  Nothing
+                </p></dd>
+<dt><span class="term">Notes:</span></dt>
+<dd><p>
+                  Available only if <code class="computeroutput"><span class="identifier">BOOST_THREAD_PROVIDES_SHARED_MUTEX_UPWARDS_CONVERSION</span></code>
+                  and <code class="computeroutput"><span class="identifier">BOOST_THREAD_PROVIDES_GENERIC_SHARED_MUTEX_ON_WIN</span></code>
+                  is defined on Windows platform
+                </p></dd>
+</dl>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="thread.synchronization.mutex_concepts.upgrade_lockable.try_unlock_shared_and_lock_until"></a><a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.upgrade_lockable.try_unlock_shared_and_lock_until" title="m.try_unlock_shared_and_lock_until(abs_time)"><code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><span class="identifier">try_unlock_shared_and_lock_until</span><span class="special">(</span><span class="identifier">abs_time</span><span class="special">)</span></code></a>
+</h5></div></div></div>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl>
+<dt><span class="term">Precondition:</span></dt>
+<dd><p>
+                  The calling thread shall hold a shared lock on the mutex.
+                </p></dd>
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+                  The function attempts to atomically convert the ownership from
+                  shared to exclusive for the calling thread within the absolute
+                  timeout specified by <code class="computeroutput"><span class="identifier">abs_time</span></code>.
+                  If <code class="computeroutput"><span class="identifier">abs_time</span></code> has
+                  already passed, the function attempts to obtain exclusive ownership
+                  without blocking (as if by calling <code class="computeroutput"><span class="identifier">try_unlock_shared_and_lock</span><span class="special">()</span></code>). The function shall return before
+                  the absolute timeout specified by <code class="computeroutput"><span class="identifier">abs_time</span></code>
+                  only if it has obtained exclusive ownership of the mutex object.
+                  For this conversion to be successful, this thread must be the only
+                  thread holding any ownership of the lock at the moment of conversion.
+                  If the conversion is not successful, the shared ownership of the
+                  mutex is retained.
+                </p></dd>
+<dt><span class="term">Returns:</span></dt>
+<dd><p>
+                  <code class="computeroutput"><span class="keyword">true</span></code> if exclusive
+                  ownership was acquired for the current thread, <code class="computeroutput"><span class="keyword">false</span></code>
+                  otherwise.
+                </p></dd>
+<dt><span class="term">Postcondition:</span></dt>
+<dd><p>
+                  If the call returns <code class="computeroutput"><span class="keyword">true</span></code>,
+                  the current thread has exclusive ownership of <code class="computeroutput"><span class="identifier">m</span></code>.
+                </p></dd>
+<dt><span class="term">Synchronization:</span></dt>
+<dd><p>
+                  If <code class="computeroutput"><a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.upgrade_lockable.try_unlock_shared_and_lock_until" title="m.try_unlock_shared_and_lock_until(abs_time)"><code class="computeroutput"><span class="identifier">try_unlock_shared_and_lock_until</span></code></a><span class="special">(</span><span class="identifier">rel_time</span><span class="special">)</span></code> returns true, prior <code class="computeroutput"><a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.basic_lockable.unlock" title="m.unlock();"><code class="computeroutput"><span class="identifier">unlock</span></code></a><span class="special">()</span></code>
+                  and subsequent lock operations on the same object synchronize with
+                  this operation.
+                </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+                  Nothing
+                </p></dd>
+<dt><span class="term">Notes:</span></dt>
+<dd><p>
+                  Available only if <code class="computeroutput"><span class="identifier">BOOST_THREAD_PROVIDES_SHARED_MUTEX_UPWARDS_CONVERSION</span></code>
+                  and <code class="computeroutput"><span class="identifier">BOOST_THREAD_PROVIDES_GENERIC_SHARED_MUTEX_ON_WIN</span></code>
+                  is defined on Windows platform
+                </p></dd>
+</dl>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="thread.synchronization.mutex_concepts.upgrade_lockable.unlock_and_lock_shared"></a><a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.upgrade_lockable.unlock_and_lock_shared" title="m.unlock_and_lock_shared()"><code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><span class="identifier">unlock_and_lock_shared</span><span class="special">()</span></code></a>
+</h5></div></div></div>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl>
+<dt><span class="term">Precondition:</span></dt>
+<dd><p>
+                  The calling thread shall hold an exclusive lock on <code class="computeroutput"><span class="identifier">m</span></code>.
+                </p></dd>
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+                  Atomically converts the ownership from exclusive to shared for
+                  the calling thread.
+                </p></dd>
+<dt><span class="term">Postcondition:</span></dt>
+<dd><p>
+                  The current thread has shared ownership of <code class="computeroutput"><span class="identifier">m</span></code>.
+                </p></dd>
+<dt><span class="term">Synchronization:</span></dt>
+<dd><p>
+                  This operation synchronizes with subsequent lock operations that
+                  obtain ownership of the same object.
+                </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+                  Nothing
+                </p></dd>
+</dl>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="thread.synchronization.mutex_concepts.upgrade_lockable.try_unlock_shared_and_lock_upgrade"></a><a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.upgrade_lockable.try_unlock_shared_and_lock_upgrade" title="m.try_unlock_shared_and_lock_upgrade()"><code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><span class="identifier">try_unlock_shared_and_lock_upgrade</span><span class="special">()</span></code></a>
+</h5></div></div></div>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl>
+<dt><span class="term">Precondition:</span></dt>
+<dd><p>
+                  The calling thread shall hold a shared lock on the mutex.
+                </p></dd>
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+                  The function attempts to atomically convert the ownership from
+                  shared to upgrade for the calling thread without blocking. For
+                  this conversion to be successful, there must be no thread holding
+                  upgrade ownership of this object. If the conversion is not successful,
+                  the shared ownership of the mutex is retained.
+                </p></dd>
+<dt><span class="term">Returns:</span></dt>
+<dd><p>
+                  <code class="computeroutput"><span class="keyword">true</span></code> if upgrade ownership
+                  was acquired for the current thread, <code class="computeroutput"><span class="keyword">false</span></code>
+                  otherwise.
+                </p></dd>
+<dt><span class="term">Postcondition:</span></dt>
+<dd><p>
+                  If the call returns <code class="computeroutput"><span class="keyword">true</span></code>,
+                  the current thread has upgrade ownership of <code class="computeroutput"><span class="identifier">m</span></code>.
+                </p></dd>
+<dt><span class="term">Synchronization:</span></dt>
+<dd><p>
+                  If <code class="computeroutput"><a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.upgrade_lockable.try_unlock_shared_and_lock_upgrade" title="m.try_unlock_shared_and_lock_upgrade()"><code class="computeroutput"><span class="identifier">try_unlock_shared_and_lock_upgrade</span></code></a><span class="special">()</span></code> returns true, prior <code class="computeroutput"><a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.upgrade_lockable.unlock_upgrade" title="m.unlock_upgrade()"><code class="computeroutput"><span class="identifier">unlock_upgrade</span></code></a><span class="special">()</span></code> and subsequent lock operations
+                  on the same object synchronize with this operation.
+                </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+                  Nothing
+                </p></dd>
+<dt><span class="term">Notes:</span></dt>
+<dd><p>
+                  Available only if <code class="computeroutput"><span class="identifier">BOOST_THREAD_PROVIDES_SHARED_MUTEX_UPWARDS_CONVERSION</span></code>
+                  and <code class="computeroutput"><span class="identifier">BOOST_THREAD_PROVIDES_GENERIC_SHARED_MUTEX_ON_WIN</span></code>
+                  is defined on Windows platform
+                </p></dd>
+</dl>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="thread.synchronization.mutex_concepts.upgrade_lockable.try_unlock_shared_and_lock_upgrade_for"></a><a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.upgrade_lockable.try_unlock_shared_and_lock_upgrade_for" title="m.try_unlock_shared_and_lock_upgrade_for(rel_time)"><code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><span class="identifier">try_unlock_shared_and_lock_upgrade_for</span><span class="special">(</span><span class="identifier">rel_time</span><span class="special">)</span></code></a>
+</h5></div></div></div>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl>
+<dt><span class="term">Precondition:</span></dt>
+<dd><p>
+                  The calling thread shall hold a shared lock on the mutex.
+                </p></dd>
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+                  If the tick period of <code class="computeroutput"><span class="identifier">rel_time</span></code>
+                  is not exactly convertible to the native tick period, the duration
+                  shall be rounded up to the nearest native tick period. The function
+                  attempts to atomically convert the ownership from shared to upgrade
+                  for the calling thread within the relative timeout specified by
+                  <code class="computeroutput"><span class="identifier">rel_time</span></code>. If the
+                  time specified by <code class="computeroutput"><span class="identifier">rel_time</span></code>
+                  is less than or equal to <code class="computeroutput"><span class="identifier">rel_time</span><span class="special">.</span><span class="identifier">zero</span><span class="special">()</span></code>, the function attempts to obtain
+                  upgrade ownership without blocking (as if by calling <code class="computeroutput"><a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.upgrade_lockable.try_unlock_shared_and_lock_upgrade" title="m.try_unlock_shared_and_lock_upgrade()"><code class="computeroutput"><span class="identifier">try_unlock_shared_and_lock_upgrade</span></code></a><span class="special">()</span></code>). The function shall return within
+                  the timeout specified by <code class="computeroutput"><span class="identifier">rel_time</span></code>
+                  only if it has obtained exclusive ownership of the mutex object.
+                  For this conversion to be successful, there must be no thread holding
+                  upgrade ownership of this object at the moment of conversion. If
+                  the conversion is not successful, the shared ownership of m is
+                  retained.
+                </p></dd>
+<dt><span class="term">Returns:</span></dt>
+<dd><p>
+                  <code class="computeroutput"><span class="keyword">true</span></code> if upgrade ownership
+                  was acquired for the current thread, <code class="computeroutput"><span class="keyword">false</span></code>
+                  otherwise.
+                </p></dd>
+<dt><span class="term">Postcondition:</span></dt>
+<dd><p>
+                  If the call returns <code class="computeroutput"><span class="keyword">true</span></code>,
+                  the current thread has upgrade ownership of <code class="computeroutput"><span class="identifier">m</span></code>.
+                </p></dd>
+<dt><span class="term">Synchronization:</span></dt>
+<dd><p>
+                  If <code class="computeroutput"><a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.upgrade_lockable.try_unlock_shared_and_lock_upgrade_for" title="m.try_unlock_shared_and_lock_upgrade_for(rel_time)"><code class="computeroutput"><span class="identifier">try_unlock_shared_and_lock_upgrade_for</span></code></a><span class="special">(</span><span class="identifier">rel_time</span><span class="special">)</span></code> returns true, prior <code class="computeroutput"><a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.upgrade_lockable.unlock_upgrade" title="m.unlock_upgrade()"><code class="computeroutput"><span class="identifier">unlock_upgrade</span></code></a><span class="special">()</span></code> and subsequent lock operations
+                  on the same object synchronize with this operation.
+                </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+                  Nothing
+                </p></dd>
+<dt><span class="term">Notes:</span></dt>
+<dd><p>
+                  Available only if <code class="computeroutput"><span class="identifier">BOOST_THREAD_PROVIDES_SHARED_MUTEX_UPWARDS_CONVERSION</span></code>
+                  and <code class="computeroutput"><span class="identifier">BOOST_THREAD_PROVIDES_GENERIC_SHARED_MUTEX_ON_WIN</span></code>
+                  is defined on Windows platform
+                </p></dd>
+</dl>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="thread.synchronization.mutex_concepts.upgrade_lockable.try_unlock_shared_and_lock_upgrade_until"></a><a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.upgrade_lockable.try_unlock_shared_and_lock_upgrade_until" title="m.try_unlock_shared_and_lock_upgrade_until(abs_time)"><code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><span class="identifier">try_unlock_shared_and_lock_upgrade_until</span><span class="special">(</span><span class="identifier">abs_time</span><span class="special">)</span></code></a>
+</h5></div></div></div>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl>
+<dt><span class="term">Precondition:</span></dt>
+<dd><p>
+                  The calling thread shall hold a shared lock on the mutex.
+                </p></dd>
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+                  The function attempts to atomically convert the ownership from
+                  shared to upgrade for the calling thread within the absolute timeout
+                  specified by <code class="computeroutput"><span class="identifier">abs_time</span></code>.
+                  If <code class="computeroutput"><span class="identifier">abs_time</span></code> has
+                  already passed, the function attempts to obtain upgrade ownership
+                  without blocking (as if by calling <code class="computeroutput"><a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.upgrade_lockable.try_unlock_shared_and_lock_upgrade" title="m.try_unlock_shared_and_lock_upgrade()"><code class="computeroutput"><span class="identifier">try_unlock_shared_and_lock_upgrade</span></code></a><span class="special">()</span></code>). The function shall return before
+                  the absolute timeout specified by <code class="computeroutput"><span class="identifier">abs_time</span></code>
+                  only if it has obtained upgrade ownership of the mutex object.
+                  For this conversion to be successful, there must be no thread holding
+                  upgrade ownership of this object at the moment of conversion. If
+                  the conversion is not successful, the shared ownership of the mutex
+                  is retained.
+                </p></dd>
+<dt><span class="term">Returns:</span></dt>
+<dd><p>
+                  <code class="computeroutput"><span class="keyword">true</span></code> if upgrade ownership
+                  was acquired for the current thread, <code class="computeroutput"><span class="keyword">false</span></code>
+                  otherwise.
+                </p></dd>
+<dt><span class="term">Postcondition:</span></dt>
+<dd><p>
+                  If the call returns <code class="computeroutput"><span class="keyword">true</span></code>,
+                  the current thread has upgrade ownership of <code class="computeroutput"><span class="identifier">m</span></code>.
+                </p></dd>
+<dt><span class="term">Synchronization:</span></dt>
+<dd><p>
+                  If <code class="computeroutput"><a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.upgrade_lockable.try_unlock_shared_and_lock_upgrade_until" title="m.try_unlock_shared_and_lock_upgrade_until(abs_time)"><code class="computeroutput"><span class="identifier">try_unlock_shared_and_lock_upgrade_until</span></code></a><span class="special">(</span><span class="identifier">rel_time</span><span class="special">)</span></code> returns true, prior <code class="computeroutput"><a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.upgrade_lockable.unlock_upgrade" title="m.unlock_upgrade()"><code class="computeroutput"><span class="identifier">unlock_upgrade</span></code></a><span class="special">()</span></code> and subsequent lock operations
+                  on the same object synchronize with this operation.
+                </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+                  Nothing
+                </p></dd>
+<dt><span class="term">Notes:</span></dt>
+<dd><p>
+                  Available only if <code class="computeroutput"><span class="identifier">BOOST_THREAD_PROVIDES_SHARED_MUTEX_UPWARDS_CONVERSION</span></code>
+                  and <code class="computeroutput"><span class="identifier">BOOST_THREAD_PROVIDES_GENERIC_SHARED_MUTEX_ON_WIN</span></code>
+                  is defined on Windows platform
+                </p></dd>
+</dl>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="thread.synchronization.mutex_concepts.upgrade_lockable.unlock_and_lock_upgrade"></a><a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.upgrade_lockable.unlock_and_lock_upgrade" title="m.unlock_and_lock_upgrade()"><code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><span class="identifier">unlock_and_lock_upgrade</span><span class="special">()</span></code></a>
+</h5></div></div></div>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl>
+<dt><span class="term">Precondition:</span></dt>
+<dd><p>
+                  The current thread has exclusive ownership of <code class="computeroutput"><span class="identifier">m</span></code>.
+                </p></dd>
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+                  Atomically releases exclusive ownership of <code class="computeroutput"><span class="identifier">m</span></code>
+                  by the current thread and acquires upgrade ownership of <code class="computeroutput"><span class="identifier">m</span></code> without blocking.
+                </p></dd>
+<dt><span class="term">Postcondition:</span></dt>
+<dd><p>
+                  The current thread has upgrade ownership of <code class="computeroutput"><span class="identifier">m</span></code>.
+                </p></dd>
+<dt><span class="term">Synchronization:</span></dt>
+<dd><p>
+                  This operation synchronizes with subsequent lock operations that
+                  obtain ownership of the same object.
+                </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+                  Nothing
+                </p></dd>
+</dl>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="thread.synchronization.mutex_concepts.upgrade_lockable.unlock_upgrade_and_lock"></a><a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.upgrade_lockable.unlock_upgrade_and_lock" title="m.unlock_upgrade_and_lock()"><code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><span class="identifier">unlock_upgrade_and_lock</span><span class="special">()</span></code></a>
+</h5></div></div></div>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl>
+<dt><span class="term">Precondition:</span></dt>
+<dd><p>
+                  The current thread has upgrade ownership of <code class="computeroutput"><span class="identifier">m</span></code>.
+                </p></dd>
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+                  Atomically releases upgrade ownership of <code class="computeroutput"><span class="identifier">m</span></code>
+                  by the current thread and acquires exclusive ownership of <code class="computeroutput"><span class="identifier">m</span></code>. If any other threads have
+                  shared ownership, blocks until exclusive ownership can be acquired.
+                </p></dd>
+<dt><span class="term">Postcondition:</span></dt>
+<dd><p>
+                  The current thread has exclusive ownership of <code class="computeroutput"><span class="identifier">m</span></code>.
+                </p></dd>
+<dt><span class="term">Synchronization:</span></dt>
+<dd><p>
+                  This operation synchronizes with prior <code class="computeroutput"><a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.shared_lockable.unlock_shared" title="m.unlock_shared()"><code class="computeroutput"><span class="identifier">unlock_shared</span><span class="special">()</span></code></a><span class="special">()</span></code> and subsequent lock operations
+                  that obtain ownership of the same object.
+                </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+                  Nothing
+                </p></dd>
+</dl>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="thread.synchronization.mutex_concepts.upgrade_lockable.try_unlock_upgrade_and_lock"></a><a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.upgrade_lockable.try_unlock_upgrade_and_lock" title="m.try_unlock_upgrade_and_lock()"><code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><span class="identifier">try_unlock_upgrade_and_lock</span><span class="special">()</span></code></a>
+</h5></div></div></div>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl>
+<dt><span class="term">Precondition:</span></dt>
+<dd><p>
+                  The calling thread shall hold an upgrade lock on the mutex.
+                </p></dd>
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+                  The function attempts to atomically convert the ownership from
+                  upgrade to exclusive for the calling thread without blocking. For
+                  this conversion to be successful, this thread must be the only
+                  thread holding any ownership of the lock. If the conversion is
+                  not successful, the upgrade ownership of m is retained.
+                </p></dd>
+<dt><span class="term">Returns:</span></dt>
+<dd><p>
+                  <code class="computeroutput"><span class="keyword">true</span></code> if exclusive
+                  ownership was acquired for the current thread, <code class="computeroutput"><span class="keyword">false</span></code>
+                  otherwise.
+                </p></dd>
+<dt><span class="term">Postcondition:</span></dt>
+<dd><p>
+                  If the call returns <code class="computeroutput"><span class="keyword">true</span></code>,
+                  the current thread has exclusive ownership of <code class="computeroutput"><span class="identifier">m</span></code>.
+                </p></dd>
+<dt><span class="term">Synchronization:</span></dt>
+<dd><p>
+                  If <code class="computeroutput"><a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.upgrade_lockable.try_unlock_upgrade_and_lock" title="m.try_unlock_upgrade_and_lock()"><code class="computeroutput"><span class="identifier">try_unlock_upgrade_and_lock</span></code></a><span class="special">()</span></code> returns true, prior <code class="computeroutput"><a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.basic_lockable.unlock" title="m.unlock();"><code class="computeroutput"><span class="identifier">unlock</span></code></a><span class="special">()</span></code>
+                  and subsequent lock operations on the same object synchronize with
+                  this operation.
+                </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+                  Nothing
+                </p></dd>
+<dt><span class="term">Notes:</span></dt>
+<dd><p>
+                  Available only if <code class="computeroutput"><span class="identifier">BOOST_THREAD_PROVIDES_GENERIC_SHARED_MUTEX_ON_WIN</span></code>
+                  is defined on Windows platform
+                </p></dd>
+</dl>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="thread.synchronization.mutex_concepts.upgrade_lockable.try_unlock_upgrade_and_lock_for"></a><a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.upgrade_lockable.try_unlock_upgrade_and_lock_for" title="m.try_unlock_upgrade_and_lock_for(rel_time)"><code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><span class="identifier">try_unlock_upgrade_and_lock_for</span><span class="special">(</span><span class="identifier">rel_time</span><span class="special">)</span></code></a>
+</h5></div></div></div>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl>
+<dt><span class="term">Precondition:</span></dt>
+<dd><p>
+                  The calling thread shall hold an upgrade lock on the mutex.
+                </p></dd>
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+                  If the tick period of <code class="computeroutput"><span class="identifier">rel_time</span></code>
+                  is not exactly convertible to the native tick period, the duration
+                  shall be rounded up to the nearest native tick period. The function
+                  attempts to atomically convert the ownership from upgrade to exclusive
+                  for the calling thread within the relative timeout specified by
+                  <code class="computeroutput"><span class="identifier">rel_time</span></code>. If the
+                  time specified by <code class="computeroutput"><span class="identifier">rel_time</span></code>
+                  is less than or equal to <code class="computeroutput"><span class="identifier">rel_time</span><span class="special">.</span><span class="identifier">zero</span><span class="special">()</span></code>, the function attempts to obtain
+                  exclusive ownership without blocking (as if by calling <code class="computeroutput"><a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.upgrade_lockable.try_unlock_upgrade_and_lock" title="m.try_unlock_upgrade_and_lock()"><code class="computeroutput"><span class="identifier">try_unlock_upgrade_and_lock</span></code></a><span class="special">()</span></code>). The function shall return within
+                  the timeout specified by <code class="computeroutput"><span class="identifier">rel_time</span></code>
+                  only if it has obtained exclusive ownership of the mutex object.
+                  For this conversion to be successful, this thread shall be the
+                  only thread holding any ownership of the lock at the moment of
+                  conversion. If the conversion is not successful, the upgrade ownership
+                  of m is retained.
+                </p></dd>
+<dt><span class="term">Returns:</span></dt>
+<dd><p>
+                  <code class="computeroutput"><span class="keyword">true</span></code> if exclusive
+                  ownership was acquired for the current thread, <code class="computeroutput"><span class="keyword">false</span></code>
+                  otherwise.
+                </p></dd>
+<dt><span class="term">Postcondition:</span></dt>
+<dd><p>
+                  If the call returns <code class="computeroutput"><span class="keyword">true</span></code>,
+                  the current thread has exclusive ownership of <code class="computeroutput"><span class="identifier">m</span></code>.
+                </p></dd>
+<dt><span class="term">Synchronization:</span></dt>
+<dd><p>
+                  If <code class="computeroutput"><a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.upgrade_lockable.try_unlock_upgrade_and_lock_for" title="m.try_unlock_upgrade_and_lock_for(rel_time)"><code class="computeroutput"><span class="identifier">try_unlock_upgrade_and_lock_for</span></code></a><span class="special">(</span><span class="identifier">rel_time</span><span class="special">)</span></code> returns true, prior <code class="computeroutput"><a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.basic_lockable.unlock" title="m.unlock();"><code class="computeroutput"><span class="identifier">unlock</span></code></a><span class="special">()</span></code>
+                  and subsequent lock operations on the same object synchronize with
+                  this operation.
+                </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+                  Nothing
+                </p></dd>
+<dt><span class="term">Notes:</span></dt>
+<dd><p>
+                  Available only if <code class="computeroutput"><span class="identifier">BOOST_THREAD_PROVIDES_GENERIC_SHARED_MUTEX_ON_WIN</span></code>
+                  is defined on Windows platform
+                </p></dd>
+</dl>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="thread.synchronization.mutex_concepts.upgrade_lockable.try_unlock_upgrade_and_lock_until"></a><a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.upgrade_lockable.try_unlock_upgrade_and_lock_until" title="m.try_unlock_upgrade_and_lock_until(abs_time)"><code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><span class="identifier">try_unlock_upgrade_and_lock_until</span><span class="special">(</span><span class="identifier">abs_time</span><span class="special">)</span></code></a>
+</h5></div></div></div>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl>
+<dt><span class="term">Precondition:</span></dt>
+<dd><p>
+                  The calling thread shall hold an upgrade lock on the mutex.
+                </p></dd>
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+                  The function attempts to atomically convert the ownership from
+                  upgrade to exclusive for the calling thread within the absolute
+                  timeout specified by <code class="computeroutput"><span class="identifier">abs_time</span></code>.
+                  If <code class="computeroutput"><span class="identifier">abs_time</span></code> has
+                  already passed, the function attempts to obtain exclusive ownership
+                  without blocking (as if by calling <code class="computeroutput"><a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.upgrade_lockable.try_unlock_upgrade_and_lock" title="m.try_unlock_upgrade_and_lock()"><code class="computeroutput"><span class="identifier">try_unlock_upgrade_and_lock</span></code></a><span class="special">()</span></code>). The function shall return before
+                  the absolute timeout specified by <code class="computeroutput"><span class="identifier">abs_time</span></code>
+                  only if it has obtained exclusive ownership of the mutex object.
+                  For this conversion to be successful, this thread shall be the
+                  only thread holding any ownership of the lock at the moment of
+                  conversion. If the conversion is not successful, the upgrade ownership
+                  of m is retained.
+                </p></dd>
+<dt><span class="term">Returns:</span></dt>
+<dd><p>
+                  <code class="computeroutput"><span class="keyword">true</span></code> if exclusive
+                  ownership was acquired for the current thread, <code class="computeroutput"><span class="keyword">false</span></code>
+                  otherwise.
+                </p></dd>
+<dt><span class="term">Postcondition:</span></dt>
+<dd><p>
+                  If the call returns <code class="computeroutput"><span class="keyword">true</span></code>,
+                  the current thread has exclusive ownership of <code class="computeroutput"><span class="identifier">m</span></code>.
+                </p></dd>
+<dt><span class="term">Synchronization:</span></dt>
+<dd><p>
+                  If <code class="computeroutput"><a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.upgrade_lockable.try_unlock_upgrade_and_lock_for" title="m.try_unlock_upgrade_and_lock_for(rel_time)"><code class="computeroutput"><span class="identifier">try_unlock_upgrade_and_lock_for</span></code></a><span class="special">(</span><span class="identifier">rel_time</span><span class="special">)</span></code> returns true, prior <code class="computeroutput"><a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.basic_lockable.unlock" title="m.unlock();"><code class="computeroutput"><span class="identifier">unlock</span></code></a><span class="special">()</span></code>
+                  and subsequent lock operations on the same object synchronize with
+                  this operation.
+                </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+                  Nothing
+                </p></dd>
+<dt><span class="term">Notes:</span></dt>
+<dd><p>
+                  Available only if <code class="computeroutput"><span class="identifier">BOOST_THREAD_PROVIDES_GENERIC_SHARED_MUTEX_ON_WIN</span></code>
+                  is defined on Windows platform
+                </p></dd>
+</dl>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="thread.synchronization.mutex_concepts.upgrade_lockable.unlock_upgrade_and_lock_shared"></a><a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.upgrade_lockable.unlock_upgrade_and_lock_shared" title="m.unlock_upgrade_and_lock_shared()"><code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><span class="identifier">unlock_upgrade_and_lock_shared</span><span class="special">()</span></code></a>
+</h5></div></div></div>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl>
+<dt><span class="term">Precondition:</span></dt>
+<dd><p>
+                  The current thread has upgrade ownership of <code class="computeroutput"><span class="identifier">m</span></code>.
+                </p></dd>
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+                  Atomically releases upgrade ownership of <code class="computeroutput"><span class="identifier">m</span></code>
+                  by the current thread and acquires shared ownership of <code class="computeroutput"><span class="identifier">m</span></code> without blocking.
+                </p></dd>
+<dt><span class="term">Postcondition:</span></dt>
+<dd><p>
+                  The current thread has shared ownership of <code class="computeroutput"><span class="identifier">m</span></code>.
+                </p></dd>
+<dt><span class="term">Synchronization:</span></dt>
+<dd><p>
+                  This operation synchronizes with prior <code class="computeroutput"><span class="identifier">unlock_shared</span><span class="special">()</span></code> and subsequent lock operations
+                  that obtain ownership of the same object.
+                </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+                  Nothing
+                </p></dd>
+</dl>
+</div>
+</div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2007 -11 Anthony Williams<br>Copyright &#169; 2011 -15 Vicente J. Botet Escriba<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="tutorial.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../synchronization.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="lock_option.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

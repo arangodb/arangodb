@@ -1,0 +1,102 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Function symbol_location</title>
+<link rel="stylesheet" href="http://www.boost.org/doc/libs/1_60_0/doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../../index.html" title="Chapter&#160;1.&#160;Boost.DLL">
+<link rel="up" href="../../boost_dll/reference.html#header.boost.dll.runtime_symbol_info_hpp" title="Header &lt;boost/dll/runtime_symbol_info.hpp&gt;">
+<link rel="prev" href="library_info.html" title="Class library_info">
+<link rel="next" href="this_line_location.html" title="Function this_line_location">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="http://www.boost.org/doc/libs/1_60_0/boost.png"></td>
+<td align="center"><a href="http://www.boost.org/doc/libs/1_60_0/index.html">Home</a></td>
+<td align="center"><a href="http://www.boost.org/doc/libs/1_60_0/libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="http://www.boost.org/doc/libs/1_60_0/more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="library_info.html"><img src="http://www.boost.org/doc/libs/1_60_0/doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../boost_dll/reference.html#header.boost.dll.runtime_symbol_info_hpp"><img src="http://www.boost.org/doc/libs/1_60_0/doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="http://www.boost.org/doc/libs/1_60_0/doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="this_line_location.html"><img src="http://www.boost.org/doc/libs/1_60_0/doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="refentry">
+<a name="boost.dll.symbol_location"></a><div class="titlepage"></div>
+<div class="refnamediv">
+<h2><span class="refentrytitle">Function symbol_location</span></h2>
+<p>boost::dll::symbol_location</p>
+</div>
+<h2 xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv-title">Synopsis</h2>
+<div xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv"><pre class="synopsis"><span class="comment">// In header: &lt;<a class="link" href="../../boost_dll/reference.html#header.boost.dll.runtime_symbol_info_hpp" title="Header &lt;boost/dll/runtime_symbol_info.hpp&gt;">boost/dll/runtime_symbol_info.hpp</a>&gt;
+
+</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> T<span class="special">&gt;</span> 
+  <span class="identifier">boost</span><span class="special">::</span><span class="identifier">filesystem</span><span class="special">::</span><span class="identifier">path</span> 
+  <span class="identifier">symbol_location</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">T</span> <span class="special">&amp;</span> symbol<span class="special">,</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">system</span><span class="special">::</span><span class="identifier">error_code</span> <span class="special">&amp;</span> ec<span class="special">)</span><span class="special">;</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> T<span class="special">&gt;</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">filesystem</span><span class="special">::</span><span class="identifier">path</span> <span class="identifier">symbol_location</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">T</span> <span class="special">&amp;</span> symbol<span class="special">)</span><span class="special">;</span></pre></div>
+<div class="refsect1">
+<a name="idp64692496"></a><h2>Description</h2>
+<p>On success returns full path and name of the binary object that holds symbol. 
+
+
+
+<span class="bold"><strong>Examples:</strong></span> </p>
+<pre class="programlisting"> <span class="keyword">int</span> <span class="identifier">var</span><span class="special">;</span>
+ <span class="keyword">void</span> <span class="identifier">foo</span><span class="special">(</span><span class="special">)</span> <span class="special">{</span><span class="special">}</span>
+
+ <span class="keyword">int</span> <span class="identifier">main</span><span class="special">(</span><span class="special">)</span> <span class="special">{</span>
+    <span class="identifier">dll</span><span class="special">::</span><span class="identifier">symbol_location</span><span class="special">(</span><span class="identifier">var</span><span class="special">)</span><span class="special">;</span>                     <span class="comment">// returns program location</span>
+    <span class="identifier">dll</span><span class="special">::</span><span class="identifier">symbol_location</span><span class="special">(</span><span class="identifier">foo</span><span class="special">)</span><span class="special">;</span>                     <span class="comment">// returns program location</span>
+    <span class="identifier">dll</span><span class="special">::</span><span class="identifier">symbol_location</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">cerr</span><span class="special">)</span><span class="special">;</span>               <span class="comment">// returns location of libstdc++: "/usr/lib/x86_64-linux-gnu/libstdc++.so.6"</span>
+    <span class="identifier">dll</span><span class="special">::</span><span class="identifier">symbol_location</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">placeholders</span><span class="special">::</span><span class="identifier">_1</span><span class="special">)</span><span class="special">;</span>   <span class="comment">// returns location of libstdc++: "/usr/lib/x86_64-linux-gnu/libstdc++.so.6"</span>
+    <span class="identifier">dll</span><span class="special">::</span><span class="identifier">symbol_location</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">puts</span><span class="special">)</span><span class="special">;</span>               <span class="comment">// returns location of libc: "/lib/x86_64-linux-gnu/libc.so.6"</span>
+ <span class="special">}</span>
+</pre>
+<p> </p>
+<div class="variablelist"><table border="0">
+<col align="left" valign="top">
+<tbody>
+<tr>
+<td><p><span class="term">Parameters:</span></p></td>
+<td><div class="variablelist"><table border="0">
+<col align="left" valign="top">
+<tbody>
+<tr>
+<td><p><span class="term"><code class="computeroutput">ec</code></span></p></td>
+<td><p>Variable that will be set to the result of the operation. </p></td>
+</tr>
+<tr>
+<td><p><span class="term"><code class="computeroutput">symbol</code></span></p></td>
+<td><p>Symbol which location is to be determined. </p></td>
+</tr>
+</tbody>
+</table></div></td>
+</tr>
+<tr>
+<td><p><span class="term">Returns:</span></p></td>
+<td><p>Path to the binary object that holds symbol or empty path in case error. </p></td>
+</tr>
+<tr>
+<td><p><span class="term">Throws:</span></p></td>
+<td>std::bad_alloc in case of insufficient memory. Overload that does not accept boost::system::error_code also throws boost::system::system_error.</td>
+</tr>
+</tbody>
+</table></div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2014 Renato Tegon Forti, Antony Polukhin<br>Copyright &#169; 2015, 2016 Antony Polukhin<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="library_info.html"><img src="http://www.boost.org/doc/libs/1_60_0/doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../boost_dll/reference.html#header.boost.dll.runtime_symbol_info_hpp"><img src="http://www.boost.org/doc/libs/1_60_0/doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="http://www.boost.org/doc/libs/1_60_0/doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="this_line_location.html"><img src="http://www.boost.org/doc/libs/1_60_0/doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

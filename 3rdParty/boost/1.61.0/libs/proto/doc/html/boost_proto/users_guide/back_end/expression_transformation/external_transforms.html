@@ -1,0 +1,295 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Separating Grammars And Transforms</title>
+<link rel="stylesheet" href="../../../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../../../../index.html" title="Chapter&#160;1.&#160;Boost.Proto">
+<link rel="up" href="../expression_transformation.html" title="Expression Transformation: Semantic Actions">
+<link rel="prev" href="unpacking_expressions.html" title="Unpacking Expressions">
+<link rel="next" href="canned_transforms.html" title="Proto's Built-In Transforms">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="unpacking_expressions.html"><img src="../../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../expression_transformation.html"><img src="../../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../../index.html"><img src="../../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="canned_transforms.html"><img src="../../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="boost_proto.users_guide.back_end.expression_transformation.external_transforms"></a><a class="link" href="external_transforms.html" title="Separating Grammars And Transforms">Separating
+          Grammars And Transforms</a>
+</h5></div></div></div>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+              This is an advanced topic that is only necessary for people defining
+              large EDSLs. Feel free to skip this if you're just getting started
+              with Proto.
+            </p></td></tr>
+</table></div>
+<p>
+            So far, we've seen examples of grammars with embedded transforms. In
+            practice, grammars can get pretty large, and you may want to use them
+            to drive several different computations. For instance, you may have a
+            grammar for a linear algebra domain, and you may want to use it to compute
+            the shape of the result (vector or matrix?) and also to compute the result
+            optimally. You don't want to have to copy and paste the whole shebang
+            just to tweak one of the embedded transforms. What you want instead is
+            to define the grammar once, and specify the transforms later when you're
+            ready to evaluate an expression. For that, you use <span class="emphasis"><em>external
+            transforms</em></span>. The pattern you'll use is this: replace one or
+            more of the transforms in your grammar with the special placeholder
+            <code class="computeroutput"><a class="link" href="../../../../boost/proto/external_transform.html" title="Struct external_transform">proto::external_transform</a></code>.
+            Then, you'll create a bundle of transforms that you will pass to the
+            grammar in the data parameter (the 3rd parameter after the expression
+            and state) when evaluating it.
+          </p>
+<p>
+            To illustrate external transforms, we'll build a calculator evaluator
+            that can be configured to throw an exception on division by zero. Here
+            is a bare-bones front end that defines a domain, a grammar, an expression
+            wrapper, and some placeholder terminals.
+          </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">assert</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">mpl</span><span class="special">/</span><span class="keyword">int</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">fusion</span><span class="special">/</span><span class="identifier">container</span><span class="special">/</span><span class="identifier">vector</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">fusion</span><span class="special">/</span><span class="identifier">container</span><span class="special">/</span><span class="identifier">generation</span><span class="special">/</span><span class="identifier">make_vector</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">proto</span><span class="special">/</span><span class="identifier">proto</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="keyword">namespace</span> <span class="identifier">mpl</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">mpl</span><span class="special">;</span>
+<span class="keyword">namespace</span> <span class="identifier">proto</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">proto</span><span class="special">;</span>
+<span class="keyword">namespace</span> <span class="identifier">fusion</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">fusion</span><span class="special">;</span>
+
+<span class="comment">// The argument placeholder type</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">I</span><span class="special">&gt;</span> <span class="keyword">struct</span> <span class="identifier">placeholder</span> <span class="special">:</span> <span class="identifier">I</span> <span class="special">{};</span>
+
+<span class="comment">// The grammar for valid calculator expressions</span>
+<span class="keyword">struct</span> <span class="identifier">calc_grammar</span>
+  <span class="special">:</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">or_</span><span class="special">&lt;</span>
+        <span class="identifier">proto</span><span class="special">::</span><span class="identifier">terminal</span><span class="special">&lt;</span><span class="identifier">placeholder</span><span class="special">&lt;</span><span class="identifier">proto</span><span class="special">::</span><span class="identifier">_</span><span class="special">&gt;</span> <span class="special">&gt;</span>
+      <span class="special">,</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">terminal</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;</span>
+      <span class="special">,</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">plus</span><span class="special">&lt;</span><span class="identifier">calc_grammar</span><span class="special">,</span> <span class="identifier">calc_grammar</span><span class="special">&gt;</span>
+      <span class="special">,</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">minus</span><span class="special">&lt;</span><span class="identifier">calc_grammar</span><span class="special">,</span> <span class="identifier">calc_grammar</span><span class="special">&gt;</span>
+      <span class="special">,</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">multiplies</span><span class="special">&lt;</span><span class="identifier">calc_grammar</span><span class="special">,</span> <span class="identifier">calc_grammar</span><span class="special">&gt;</span>
+      <span class="special">,</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">divides</span><span class="special">&lt;</span><span class="identifier">calc_grammar</span><span class="special">,</span> <span class="identifier">calc_grammar</span><span class="special">&gt;</span>
+    <span class="special">&gt;</span>
+<span class="special">{};</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">E</span><span class="special">&gt;</span> <span class="keyword">struct</span> <span class="identifier">calc_expr</span><span class="special">;</span>
+<span class="keyword">struct</span> <span class="identifier">calc_domain</span> <span class="special">:</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">domain</span><span class="special">&lt;</span><span class="identifier">proto</span><span class="special">::</span><span class="identifier">generator</span><span class="special">&lt;</span><span class="identifier">calc_expr</span><span class="special">&gt;</span> <span class="special">&gt;</span> <span class="special">{};</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">E</span><span class="special">&gt;</span>
+<span class="keyword">struct</span> <span class="identifier">calc_expr</span>
+  <span class="special">:</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">extends</span><span class="special">&lt;</span><span class="identifier">E</span><span class="special">,</span> <span class="identifier">calc_expr</span><span class="special">&lt;</span><span class="identifier">E</span><span class="special">&gt;,</span> <span class="identifier">calc_domain</span><span class="special">&gt;</span>
+<span class="special">{</span>
+    <span class="identifier">calc_expr</span><span class="special">(</span><span class="identifier">E</span> <span class="keyword">const</span> <span class="special">&amp;</span><span class="identifier">e</span> <span class="special">=</span> <span class="identifier">E</span><span class="special">())</span> <span class="special">:</span> <span class="identifier">calc_expr</span><span class="special">::</span><span class="identifier">proto_extends</span><span class="special">(</span><span class="identifier">e</span><span class="special">)</span> <span class="special">{}</span>
+<span class="special">};</span>
+
+<span class="identifier">calc_expr</span><span class="special">&lt;</span><span class="identifier">proto</span><span class="special">::</span><span class="identifier">terminal</span><span class="special">&lt;</span><span class="identifier">placeholder</span><span class="special">&lt;</span><span class="identifier">mpl</span><span class="special">::</span><span class="identifier">int_</span><span class="special">&lt;</span><span class="number">0</span><span class="special">&gt;</span> <span class="special">&gt;</span> <span class="special">&gt;::</span><span class="identifier">type</span><span class="special">&gt;</span> <span class="identifier">_1</span><span class="special">;</span>
+<span class="identifier">calc_expr</span><span class="special">&lt;</span><span class="identifier">proto</span><span class="special">::</span><span class="identifier">terminal</span><span class="special">&lt;</span><span class="identifier">placeholder</span><span class="special">&lt;</span><span class="identifier">mpl</span><span class="special">::</span><span class="identifier">int_</span><span class="special">&lt;</span><span class="number">1</span><span class="special">&gt;</span> <span class="special">&gt;</span> <span class="special">&gt;::</span><span class="identifier">type</span><span class="special">&gt;</span> <span class="identifier">_2</span><span class="special">;</span>
+
+<span class="keyword">int</span> <span class="identifier">main</span><span class="special">()</span>
+<span class="special">{</span>
+    <span class="comment">// Build a calculator expression, and do nothing with it.</span>
+    <span class="special">(</span><span class="identifier">_1</span> <span class="special">+</span> <span class="identifier">_2</span><span class="special">);</span>
+<span class="special">}</span>
+</pre>
+<p>
+            Now, let's embed transforms into <code class="computeroutput"><span class="identifier">calc_grammar</span></code>
+            so that we can use it to evaluate calculator expressions:
+          </p>
+<pre class="programlisting"><span class="comment">// The calculator grammar with embedded transforms for evaluating expression.</span>
+<span class="keyword">struct</span> <span class="identifier">calc_grammar</span>
+  <span class="special">:</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">or_</span><span class="special">&lt;</span>
+        <span class="identifier">proto</span><span class="special">::</span><span class="identifier">when</span><span class="special">&lt;</span>
+            <span class="identifier">proto</span><span class="special">::</span><span class="identifier">terminal</span><span class="special">&lt;</span><span class="identifier">placeholder</span><span class="special">&lt;</span><span class="identifier">proto</span><span class="special">::</span><span class="identifier">_</span><span class="special">&gt;</span> <span class="special">&gt;</span>
+          <span class="special">,</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">functional</span><span class="special">::</span><span class="identifier">at</span><span class="special">(</span><span class="identifier">proto</span><span class="special">::</span><span class="identifier">_state</span><span class="special">,</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">_value</span><span class="special">)</span>
+        <span class="special">&gt;</span>
+      <span class="special">,</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">when</span><span class="special">&lt;</span>
+            <span class="identifier">proto</span><span class="special">::</span><span class="identifier">terminal</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;</span>
+          <span class="special">,</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">_value</span>
+        <span class="special">&gt;</span>
+      <span class="special">,</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">when</span><span class="special">&lt;</span>
+            <span class="identifier">proto</span><span class="special">::</span><span class="identifier">plus</span><span class="special">&lt;</span><span class="identifier">calc_grammar</span><span class="special">,</span> <span class="identifier">calc_grammar</span><span class="special">&gt;</span>
+          <span class="special">,</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">_default</span><span class="special">&lt;</span><span class="identifier">calc_grammar</span><span class="special">&gt;</span>
+        <span class="special">&gt;</span>
+      <span class="special">,</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">when</span><span class="special">&lt;</span>
+            <span class="identifier">proto</span><span class="special">::</span><span class="identifier">minus</span><span class="special">&lt;</span><span class="identifier">calc_grammar</span><span class="special">,</span> <span class="identifier">calc_grammar</span><span class="special">&gt;</span>
+          <span class="special">,</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">_default</span><span class="special">&lt;</span><span class="identifier">calc_grammar</span><span class="special">&gt;</span>
+        <span class="special">&gt;</span>
+      <span class="special">,</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">when</span><span class="special">&lt;</span>
+            <span class="identifier">proto</span><span class="special">::</span><span class="identifier">multiplies</span><span class="special">&lt;</span><span class="identifier">calc_grammar</span><span class="special">,</span> <span class="identifier">calc_grammar</span><span class="special">&gt;</span>
+          <span class="special">,</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">_default</span><span class="special">&lt;</span><span class="identifier">calc_grammar</span><span class="special">&gt;</span>
+        <span class="special">&gt;</span>
+      <span class="special">,</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">when</span><span class="special">&lt;</span>
+            <span class="identifier">proto</span><span class="special">::</span><span class="identifier">divides</span><span class="special">&lt;</span><span class="identifier">calc_grammar</span><span class="special">,</span> <span class="identifier">calc_grammar</span><span class="special">&gt;</span>
+          <span class="special">,</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">_default</span><span class="special">&lt;</span><span class="identifier">calc_grammar</span><span class="special">&gt;</span>
+        <span class="special">&gt;</span>
+    <span class="special">&gt;</span>
+<span class="special">{};</span>
+</pre>
+<p>
+            With this definition of <code class="computeroutput"><span class="identifier">calc_grammar</span></code>
+            we can evaluate expressions by passing along a Fusion vector containing
+            the values to use for the <code class="computeroutput"><span class="identifier">_1</span></code>
+            and <code class="computeroutput"><span class="identifier">_2</span></code> placeholders:
+          </p>
+<pre class="programlisting"><span class="keyword">int</span> <span class="identifier">result</span> <span class="special">=</span> <span class="identifier">calc_grammar</span><span class="special">()(</span><span class="identifier">_1</span> <span class="special">+</span> <span class="identifier">_2</span><span class="special">,</span> <span class="identifier">fusion</span><span class="special">::</span><span class="identifier">make_vector</span><span class="special">(</span><span class="number">3</span><span class="special">,</span> <span class="number">4</span><span class="special">));</span>
+<span class="identifier">BOOST_ASSERT</span><span class="special">(</span><span class="identifier">result</span> <span class="special">==</span> <span class="number">7</span><span class="special">);</span>
+</pre>
+<p>
+            We also want an alternative evaluation strategy that checks for division
+            by zero and throws an exception. Just how ridiculous would it be to copy
+            the entire <code class="computeroutput"><span class="identifier">calc_grammar</span></code>
+            just to change the one line that transforms division expressions?! External
+            transforms are ideally suited to this problem.
+          </p>
+<p>
+            First, we give the division rule in our grammar a "name"; that
+            is, we make it a struct. We'll use this unique type later to dispatch
+            to the right transforms.
+          </p>
+<pre class="programlisting"><span class="keyword">struct</span> <span class="identifier">calc_grammar</span><span class="special">;</span>
+<span class="keyword">struct</span> <span class="identifier">divides_rule</span> <span class="special">:</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">divides</span><span class="special">&lt;</span><span class="identifier">calc_grammar</span><span class="special">,</span> <span class="identifier">calc_grammar</span><span class="special">&gt;</span> <span class="special">{};</span>
+</pre>
+<p>
+            Next, we change <code class="computeroutput"><span class="identifier">calc_grammar</span></code>
+            to make the handling of division expressions external.
+          </p>
+<pre class="programlisting"><span class="comment">// The calculator grammar with an external transform for evaluating</span>
+<span class="comment">// division expressions.</span>
+<span class="keyword">struct</span> <span class="identifier">calc_grammar</span>
+  <span class="special">:</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">or_</span><span class="special">&lt;</span>
+        <span class="comment">/* ... as before ... */</span>
+      <span class="special">,</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">when</span><span class="special">&lt;</span>
+            <span class="identifier">divides_rule</span>
+          <span class="special">,</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">external_transform</span>
+        <span class="special">&gt;</span>
+    <span class="special">&gt;</span>
+<span class="special">{};</span>
+</pre>
+<p>
+            The use of <code class="computeroutput"><a class="link" href="../../../../boost/proto/external_transform.html" title="Struct external_transform">proto::external_transform</a></code> above
+            makes the handling of division expressions externally parameterizeable.
+          </p>
+<p>
+            Next, we use <code class="computeroutput"><a class="link" href="../../../../boost/proto/external_transforms.html" title="Struct template external_transforms">proto::external_transforms&lt;&gt;</a></code>
+            (note the trailing 's') to capture our evaluation strategy in a bundle
+            that we can pass along to the transform in the data parameter. Read on
+            for the explanation.
+          </p>
+<pre class="programlisting"><span class="comment">// Evaluate division nodes as before</span>
+<span class="keyword">struct</span> <span class="identifier">non_checked_division</span>
+  <span class="special">:</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">external_transforms</span><span class="special">&lt;</span>
+        <span class="identifier">proto</span><span class="special">::</span><span class="identifier">when</span><span class="special">&lt;</span> <span class="identifier">divides_rule</span><span class="special">,</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">_default</span><span class="special">&lt;</span><span class="identifier">calc_grammar</span><span class="special">&gt;</span> <span class="special">&gt;</span>
+    <span class="special">&gt;</span>
+<span class="special">{};</span>
+
+<span class="comment">/* ... */</span>
+
+<span class="identifier">non_checked_division</span> <span class="identifier">non_checked</span><span class="special">;</span>
+<span class="keyword">int</span> <span class="identifier">result2</span> <span class="special">=</span> <span class="identifier">calc_grammar</span><span class="special">()(</span><span class="identifier">_1</span> <span class="special">/</span> <span class="identifier">_2</span><span class="special">,</span> <span class="identifier">fusion</span><span class="special">::</span><span class="identifier">make_vector</span><span class="special">(</span><span class="number">6</span><span class="special">,</span> <span class="number">2</span><span class="special">),</span> <span class="identifier">non_checked</span><span class="special">);</span>
+</pre>
+<p>
+            The struct <code class="computeroutput"><span class="identifier">non_cecked_division</span></code>
+            associates the transform <code class="computeroutput"><span class="identifier">proto</span><span class="special">::</span><span class="identifier">_default</span><span class="special">&lt;</span><span class="identifier">calc_grammar</span><span class="special">&gt;</span></code> with the <code class="computeroutput"><span class="identifier">divides_rule</span></code>
+            grammar rule. An instance of that struct is passed along as the third
+            parameter when invoking <code class="computeroutput"><span class="identifier">calc_grammar</span></code>.
+          </p>
+<p>
+            Now, let's implement checked division. The rest should be unsurprising.
+          </p>
+<pre class="programlisting"><span class="keyword">struct</span> <span class="identifier">division_by_zero</span> <span class="special">:</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">exception</span> <span class="special">{};</span>
+
+<span class="keyword">struct</span> <span class="identifier">do_checked_divide</span> <span class="special">:</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">callable</span>
+<span class="special">{</span>
+    <span class="keyword">typedef</span> <span class="keyword">int</span> <span class="identifier">result_type</span><span class="special">;</span>
+    <span class="keyword">int</span> <span class="keyword">operator</span><span class="special">()(</span><span class="keyword">int</span> <span class="identifier">left</span><span class="special">,</span> <span class="keyword">int</span> <span class="identifier">right</span><span class="special">)</span> <span class="keyword">const</span>
+    <span class="special">{</span>
+        <span class="keyword">if</span> <span class="special">(</span><span class="identifier">right</span> <span class="special">==</span> <span class="number">0</span><span class="special">)</span> <span class="keyword">throw</span> <span class="identifier">division_by_zero</span><span class="special">();</span>
+        <span class="keyword">return</span> <span class="identifier">left</span> <span class="special">/</span> <span class="identifier">right</span><span class="special">;</span>
+    <span class="special">}</span>
+<span class="special">};</span>
+
+<span class="keyword">struct</span> <span class="identifier">checked_division</span>
+  <span class="special">:</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">external_transforms</span><span class="special">&lt;</span>
+        <span class="identifier">proto</span><span class="special">::</span><span class="identifier">when</span><span class="special">&lt;</span>
+            <span class="identifier">divides_rule</span>
+          <span class="special">,</span> <span class="identifier">do_checked_divide</span><span class="special">(</span><span class="identifier">calc_grammar</span><span class="special">(</span><span class="identifier">proto</span><span class="special">::</span><span class="identifier">_left</span><span class="special">),</span> <span class="identifier">calc_grammar</span><span class="special">(</span><span class="identifier">proto</span><span class="special">::</span><span class="identifier">_right</span><span class="special">))</span>
+        <span class="special">&gt;</span>
+    <span class="special">&gt;</span>
+<span class="special">{};</span>
+
+<span class="comment">/* ... */</span>
+
+<span class="keyword">try</span>
+<span class="special">{</span>
+    <span class="identifier">checked_division</span> <span class="identifier">checked</span><span class="special">;</span>
+    <span class="keyword">int</span> <span class="identifier">result3</span> <span class="special">=</span> <span class="identifier">calc_grammar_extern</span><span class="special">()(</span><span class="identifier">_1</span> <span class="special">/</span> <span class="identifier">_2</span><span class="special">,</span> <span class="identifier">fusion</span><span class="special">::</span><span class="identifier">make_vector</span><span class="special">(</span><span class="number">6</span><span class="special">,</span> <span class="number">0</span><span class="special">),</span> <span class="identifier">checked</span><span class="special">);</span>
+<span class="special">}</span>
+<span class="keyword">catch</span><span class="special">(</span><span class="identifier">division_by_zero</span><span class="special">)</span>
+<span class="special">{</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"caught division by zero!\n"</span><span class="special">;</span>
+<span class="special">}</span>
+</pre>
+<p>
+            The above code demonstrates how a single grammar can be used with different
+            transforms specified externally. This makes it possible to reuse a grammar
+            to drive several different computations.
+          </p>
+<h6>
+<a name="boost_proto.users_guide.back_end.expression_transformation.external_transforms.h0"></a>
+            <span><a name="boost_proto.users_guide.back_end.expression_transformation.external_transforms.separating_data_from_external_transforms"></a></span><a class="link" href="external_transforms.html#boost_proto.users_guide.back_end.expression_transformation.external_transforms.separating_data_from_external_transforms">Separating
+            Data From External Transforms</a>
+          </h6>
+<p>
+            As described above, the external transforms feature usurps the data parameter,
+            which is intended to be a place where you can pass arbitrary data, and
+            gives it a specific meaning. But what if you are already using the data
+            parameter for something else? The answer is to use a transform environment.
+            By associating your external transforms with the <code class="computeroutput"><span class="identifier">proto</span><span class="special">::</span><span class="identifier">transforms</span></code>
+            key, you are free to pass arbitrary data in other slots.
+          </p>
+<p>
+            To continue the above example, what if we also needed to pass a piece
+            of data into our transform along with the external transforms? It would
+            look like this:
+          </p>
+<pre class="programlisting"><span class="keyword">int</span> <span class="identifier">result3</span> <span class="special">=</span> <span class="identifier">calc_grammar_extern</span><span class="special">()(</span>
+    <span class="identifier">_1</span> <span class="special">/</span> <span class="identifier">_2</span>
+  <span class="special">,</span> <span class="identifier">fusion</span><span class="special">::</span><span class="identifier">make_vector</span><span class="special">(</span><span class="number">6</span><span class="special">,</span> <span class="number">0</span><span class="special">)</span>
+  <span class="special">,</span> <span class="special">(</span><span class="identifier">proto</span><span class="special">::</span><span class="identifier">data</span> <span class="special">=</span> <span class="number">42</span><span class="special">,</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">transforms</span> <span class="special">=</span> <span class="identifier">checked</span><span class="special">)</span>
+<span class="special">);</span>
+</pre>
+<p>
+            In the above invocation of the <code class="computeroutput"><span class="identifier">calc_grammar_extern</span></code>
+            algorithm, the map of external transforms is associated with the <code class="computeroutput"><span class="identifier">proto</span><span class="special">::</span><span class="identifier">transforms</span></code> key and passed to the algorithm
+            in a transform environment. Also in the transform environment is a key/value
+            pair that associates the value <code class="computeroutput"><span class="number">42</span></code>
+            with the <code class="computeroutput"><span class="identifier">proto</span><span class="special">::</span><span class="identifier">data</span></code> key.
+          </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2008 Eric Niebler<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="unpacking_expressions.html"><img src="../../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../expression_transformation.html"><img src="../../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../../index.html"><img src="../../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="canned_transforms.html"><img src="../../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

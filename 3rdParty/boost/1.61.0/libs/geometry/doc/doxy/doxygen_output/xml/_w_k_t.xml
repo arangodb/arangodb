@@ -1,0 +1,9 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="_w_k_t" kind="page">
+    <compoundname>WKT</compoundname>
+    <title>WKT (Well-Known Text)</title>
+    <detaileddescription>
+<para>WKT is a textual representation of a geometry, explained here: <ulink url="http://en.wikipedia.org/wiki/Well-known_text">http://en.wikipedia.org/wiki/Well-known_text</ulink> WKT can represent a point, a linestring, a polygon, or multi versions of those.</para><para>It is currently just a utility in the library, used in samples and tests, to get some textual output of a geometry. </para>    </detaileddescription>
+  </compounddef>
+</doxygen>

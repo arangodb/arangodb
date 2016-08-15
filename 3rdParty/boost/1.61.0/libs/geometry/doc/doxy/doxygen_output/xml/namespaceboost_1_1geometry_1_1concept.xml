@@ -1,0 +1,81 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="namespaceboost_1_1geometry_1_1concept" kind="namespace">
+    <compoundname>boost::geometry::concept</compoundname>
+    <innerclass refid="classboost_1_1geometry_1_1concept_1_1_area_strategy" prot="public">boost::geometry::concept::AreaStrategy</innerclass>
+    <innerclass refid="classboost_1_1geometry_1_1concept_1_1_box" prot="public">boost::geometry::concept::Box</innerclass>
+    <innerclass refid="classboost_1_1geometry_1_1concept_1_1_centroid_strategy" prot="public">boost::geometry::concept::CentroidStrategy</innerclass>
+    <innerclass refid="classboost_1_1geometry_1_1concept_1_1_const_box" prot="public">boost::geometry::concept::ConstBox</innerclass>
+    <innerclass refid="classboost_1_1geometry_1_1concept_1_1_const_linestring" prot="public">boost::geometry::concept::ConstLinestring</innerclass>
+    <innerclass refid="classboost_1_1geometry_1_1concept_1_1_const_multi_linestring" prot="public">boost::geometry::concept::ConstMultiLinestring</innerclass>
+    <innerclass refid="classboost_1_1geometry_1_1concept_1_1_const_multi_point" prot="public">boost::geometry::concept::ConstMultiPoint</innerclass>
+    <innerclass refid="classboost_1_1geometry_1_1concept_1_1_const_multi_polygon" prot="public">boost::geometry::concept::ConstMultiPolygon</innerclass>
+    <innerclass refid="classboost_1_1geometry_1_1concept_1_1_const_point" prot="public">boost::geometry::concept::ConstPoint</innerclass>
+    <innerclass refid="classboost_1_1geometry_1_1concept_1_1_const_polygon" prot="public">boost::geometry::concept::ConstPolygon</innerclass>
+    <innerclass refid="classboost_1_1geometry_1_1concept_1_1_const_ring" prot="public">boost::geometry::concept::ConstRing</innerclass>
+    <innerclass refid="classboost_1_1geometry_1_1concept_1_1_const_segment" prot="public">boost::geometry::concept::ConstSegment</innerclass>
+    <innerclass refid="classboost_1_1geometry_1_1concept_1_1_convex_hull_strategy" prot="public">boost::geometry::concept::ConvexHullStrategy</innerclass>
+    <innerclass refid="classboost_1_1geometry_1_1concept_1_1_linestring" prot="public">boost::geometry::concept::Linestring</innerclass>
+    <innerclass refid="classboost_1_1geometry_1_1concept_1_1_multi_linestring" prot="public">boost::geometry::concept::MultiLinestring</innerclass>
+    <innerclass refid="classboost_1_1geometry_1_1concept_1_1_multi_point" prot="public">boost::geometry::concept::MultiPoint</innerclass>
+    <innerclass refid="classboost_1_1geometry_1_1concept_1_1_multi_polygon" prot="public">boost::geometry::concept::MultiPolygon</innerclass>
+    <innerclass refid="classboost_1_1geometry_1_1concept_1_1_point" prot="public">boost::geometry::concept::Point</innerclass>
+    <innerclass refid="structboost_1_1geometry_1_1concept_1_1_point_distance_strategy" prot="public">boost::geometry::concept::PointDistanceStrategy</innerclass>
+    <innerclass refid="structboost_1_1geometry_1_1concept_1_1_point_segment_distance_strategy" prot="public">boost::geometry::concept::PointSegmentDistanceStrategy</innerclass>
+    <innerclass refid="classboost_1_1geometry_1_1concept_1_1_polygon" prot="public">boost::geometry::concept::Polygon</innerclass>
+    <innerclass refid="classboost_1_1geometry_1_1concept_1_1_ring" prot="public">boost::geometry::concept::Ring</innerclass>
+    <innerclass refid="classboost_1_1geometry_1_1concept_1_1_segment" prot="public">boost::geometry::concept::Segment</innerclass>
+    <innerclass refid="classboost_1_1geometry_1_1concept_1_1_segment_intersect_strategy" prot="public">boost::geometry::concept::SegmentIntersectStrategy</innerclass>
+    <innerclass refid="structboost_1_1geometry_1_1concept_1_1_simplify_strategy" prot="public">boost::geometry::concept::SimplifyStrategy</innerclass>
+    <innerclass refid="classboost_1_1geometry_1_1concept_1_1_within_strategy_box_box" prot="public">boost::geometry::concept::WithinStrategyBoxBox</innerclass>
+    <innerclass refid="classboost_1_1geometry_1_1concept_1_1_within_strategy_point_box" prot="public">boost::geometry::concept::WithinStrategyPointBox</innerclass>
+    <innerclass refid="classboost_1_1geometry_1_1concept_1_1_within_strategy_polygonal" prot="public">boost::geometry::concept::WithinStrategyPolygonal</innerclass>
+    <innernamespace refid="namespaceboost_1_1geometry_1_1concept_1_1within">boost::geometry::concept::within</innernamespace>
+      <sectiondef kind="func">
+      <memberdef kind="function" id="group__concepts_1gafe2c2fe2b2fcdabd1c2b860d529e08b5" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Geometry</type>
+          </param>
+        </templateparamlist>
+        <type>void</type>
+        <definition>void boost::geometry::concept::check</definition>
+        <argsstring>()</argsstring>
+        <name>check</name>
+        <briefdescription>
+<para>Checks, in compile-time, the concept of any geometry. </para>        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/concepts/check.hpp" line="217" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/concepts/check.hpp" bodystart="216" bodyend="220"/>
+      </memberdef>
+      <memberdef kind="function" id="group__concepts_1ga72a1211ac80fc47bb5aa8b7f85e5c1d1" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Geometry1</type>
+          </param>
+          <param>
+            <type>typename Geometry2</type>
+          </param>
+        </templateparamlist>
+        <type>void</type>
+        <definition>void boost::geometry::concept::check_concepts_and_equal_dimensions</definition>
+        <argsstring>()</argsstring>
+        <name>check_concepts_and_equal_dimensions</name>
+        <briefdescription>
+<para>Checks, in compile-time, the concept of two geometries, and if they have equal dimensions. </para>        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/concepts/check.hpp" line="230" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/concepts/check.hpp" bodystart="229" bodyend="234"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/concepts/box_concept.hpp" line="30"/>
+  </compounddef>
+</doxygen>

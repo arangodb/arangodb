@@ -1,0 +1,33 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="structboost_1_1geometry_1_1closure__as__bool_3_01closed_01_4" kind="struct" prot="public">
+    <compoundname>boost::geometry::closure_as_bool&lt; closed &gt;</compoundname>
+    <includes local="no">closure_as_bool.hpp</includes>
+    <templateparamlist>
+    </templateparamlist>
+      <sectiondef kind="public-static-attrib">
+      <memberdef kind="variable" id="structboost_1_1geometry_1_1closure__as__bool_3_01closed_01_4_1a05f0c811e5b108e3d006bdeeebdb7038" prot="public" static="yes" mutable="no">
+        <type>const bool</type>
+        <definition>const bool boost::geometry::closure_as_bool&lt; closed &gt;::value</definition>
+        <argsstring></argsstring>
+        <name>value</name>
+        <initializer> true</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/util/closure_as_bool.hpp" line="32" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/util/closure_as_bool.hpp" bodystart="32" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/util/closure_as_bool.hpp" line="31" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/util/closure_as_bool.hpp" bodystart="30" bodyend="33"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1closure__as__bool_3_01closed_01_4_1a05f0c811e5b108e3d006bdeeebdb7038" prot="public" virt="non-virtual"><scope>boost::geometry::closure_as_bool&lt; closed &gt;</scope><name>value</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

@@ -1,0 +1,17 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="namespaceboost_1_1geometry_1_1strategy_1_1distance_1_1services" kind="namespace">
+    <compoundname>boost::geometry::strategy::distance::services</compoundname>
+    <innerclass refid="structboost_1_1geometry_1_1strategy_1_1distance_1_1services_1_1comparable__type" prot="public">boost::geometry::strategy::distance::services::comparable_type</innerclass>
+    <innerclass refid="structboost_1_1geometry_1_1strategy_1_1distance_1_1services_1_1default__strategy" prot="public">boost::geometry::strategy::distance::services::default_strategy</innerclass>
+    <innerclass refid="structboost_1_1geometry_1_1strategy_1_1distance_1_1services_1_1get__comparable" prot="public">boost::geometry::strategy::distance::services::get_comparable</innerclass>
+    <innerclass refid="structboost_1_1geometry_1_1strategy_1_1distance_1_1services_1_1result__from__distance" prot="public">boost::geometry::strategy::distance::services::result_from_distance</innerclass>
+    <innerclass refid="structboost_1_1geometry_1_1strategy_1_1distance_1_1services_1_1return__type" prot="public">boost::geometry::strategy::distance::services::return_type</innerclass>
+    <innerclass refid="structboost_1_1geometry_1_1strategy_1_1distance_1_1services_1_1tag" prot="public">boost::geometry::strategy::distance::services::tag</innerclass>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/distance.hpp" line="34"/>
+  </compounddef>
+</doxygen>

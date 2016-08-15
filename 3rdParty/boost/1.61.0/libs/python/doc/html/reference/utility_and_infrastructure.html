@@ -1,0 +1,240 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Chapter&#160;7.&#160;Utility and Infrastructure</title>
+<link rel="stylesheet" href="../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="index.html" title="Boost.Python Reference Manual">
+<link rel="up" href="index.html" title="Boost.Python Reference Manual">
+<link rel="prev" href="embedding/boost_python_import_hpp.html" title="boost/python/import.hpp">
+<link rel="next" href="utility_and_infrastructure/boost_python_instance_holder_hpp.html" title="boost/python/instance_holder.hpp">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr><td valign="top"><img alt="" width="" height="" src="../images/boost.png"></td></tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="embedding/boost_python_import_hpp.html"><img src="../images/prev.png" alt="Prev"></a><a accesskey="u" href="index.html"><img src="../images/up.png" alt="Up"></a><a accesskey="h" href="index.html"><img src="../images/home.png" alt="Home"></a><a accesskey="n" href="utility_and_infrastructure/boost_python_instance_holder_hpp.html"><img src="../images/next.png" alt="Next"></a>
+</div>
+<div class="chapter">
+<div class="titlepage"><div><div><h2 class="title">
+<a name="utility_and_infrastructure"></a>Chapter&#160;7.&#160;Utility and Infrastructure</h2></div></div></div>
+<div class="toc">
+<p><b>Table of Contents</b></p>
+<dl>
+<dt><span class="section"><a href="utility_and_infrastructure.html#utility_and_infrastructure.boost_python_has_back_reference_">boost/python/has_back_reference.hpp</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="utility_and_infrastructure.html#utility_and_infrastructure.boost_python_has_back_reference_.introduction">Introduction</a></span></dt>
+<dt><span class="section"><a href="utility_and_infrastructure.html#utility_and_infrastructure.boost_python_has_back_reference_.class_template_has_back_referenc">Class
+        template <code class="computeroutput"><span class="identifier">has_back_reference</span></code></a></span></dt>
+<dt><span class="section"><a href="utility_and_infrastructure.html#utility_and_infrastructure.boost_python_has_back_reference_.examples">Examples</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="utility_and_infrastructure/boost_python_instance_holder_hpp.html">boost/python/instance_holder.hpp</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="utility_and_infrastructure/boost_python_instance_holder_hpp.html#utility_and_infrastructure.boost_python_instance_holder_hpp.introduction">Introduction</a></span></dt>
+<dt><span class="section"><a href="utility_and_infrastructure/boost_python_instance_holder_hpp.html#utility_and_infrastructure.boost_python_instance_holder_hpp.class_template_instance_holder">Class
+        template <code class="computeroutput"><span class="identifier">instance_holder</span></code></a></span></dt>
+<dt><span class="section"><a href="utility_and_infrastructure/boost_python_instance_holder_hpp.html#utility_and_infrastructure.boost_python_instance_holder_hpp.examples">Examples</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="utility_and_infrastructure/boost_python_pointee_hpp.html">boost/python/pointee.hpp</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="utility_and_infrastructure/boost_python_pointee_hpp.html#utility_and_infrastructure.boost_python_pointee_hpp.introduction">Introduction</a></span></dt>
+<dt><span class="section"><a href="utility_and_infrastructure/boost_python_pointee_hpp.html#utility_and_infrastructure.boost_python_pointee_hpp.class_template_pointee">Class
+        template <code class="computeroutput"><span class="identifier">pointee</span></code></a></span></dt>
+<dt><span class="section"><a href="utility_and_infrastructure/boost_python_pointee_hpp.html#utility_and_infrastructure.boost_python_pointee_hpp.examples">Examples</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="utility_and_infrastructure/boost_python_handle_hpp.html">boost/python/handle.hpp</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="utility_and_infrastructure/boost_python_handle_hpp.html#utility_and_infrastructure.boost_python_handle_hpp.introduction">Introduction</a></span></dt>
+<dt><span class="section"><a href="utility_and_infrastructure/boost_python_handle_hpp.html#utility_and_infrastructure.boost_python_handle_hpp.class_template_handle">Class
+        template <code class="computeroutput"><span class="identifier">handle</span></code></a></span></dt>
+<dt><span class="section"><a href="utility_and_infrastructure/boost_python_handle_hpp.html#utility_and_infrastructure.boost_python_handle_hpp.function_borrowed">Function
+        <code class="computeroutput"><span class="identifier">borrowed</span></code></a></span></dt>
+<dt><span class="section"><a href="utility_and_infrastructure/boost_python_handle_hpp.html#utility_and_infrastructure.boost_python_handle_hpp.function_allow_null">Function
+        <code class="computeroutput"><span class="identifier">allow_null</span></code></a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="utility_and_infrastructure/boost_python_type_id_hpp.html">boost/python/type_id.hpp</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="utility_and_infrastructure/boost_python_type_id_hpp.html#utility_and_infrastructure.boost_python_type_id_hpp.introduction">Introduction</a></span></dt>
+<dt><span class="section"><a href="utility_and_infrastructure/boost_python_type_id_hpp.html#utility_and_infrastructure.boost_python_type_id_hpp.class_template_type_info">Class
+        template <code class="computeroutput"><span class="identifier">type_info</span></code></a></span></dt>
+<dt><span class="section"><a href="utility_and_infrastructure/boost_python_type_id_hpp.html#utility_and_infrastructure.boost_python_type_id_hpp.functions">Functions</a></span></dt>
+<dt><span class="section"><a href="utility_and_infrastructure/boost_python_type_id_hpp.html#utility_and_infrastructure.boost_python_type_id_hpp.example">Example</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="utility_and_infrastructure/boost_python_ssize_t_hpp.html">boost/python/ssize_t.hpp</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="utility_and_infrastructure/boost_python_ssize_t_hpp.html#utility_and_infrastructure.boost_python_ssize_t_hpp.introduction">Introduction</a></span></dt>
+<dt><span class="section"><a href="utility_and_infrastructure/boost_python_ssize_t_hpp.html#utility_and_infrastructure.boost_python_ssize_t_hpp.typedefs">Typedefs</a></span></dt>
+<dt><span class="section"><a href="utility_and_infrastructure/boost_python_ssize_t_hpp.html#utility_and_infrastructure.boost_python_ssize_t_hpp.constants">Constants</a></span></dt>
+</dl></dd>
+</dl>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="utility_and_infrastructure.boost_python_has_back_reference_"></a><a class="link" href="utility_and_infrastructure.html#utility_and_infrastructure.boost_python_has_back_reference_" title="boost/python/has_back_reference.hpp">boost/python/has_back_reference.hpp</a>
+</h2></div></div></div>
+<div class="toc"><dl>
+<dt><span class="section"><a href="utility_and_infrastructure.html#utility_and_infrastructure.boost_python_has_back_reference_.introduction">Introduction</a></span></dt>
+<dt><span class="section"><a href="utility_and_infrastructure.html#utility_and_infrastructure.boost_python_has_back_reference_.class_template_has_back_referenc">Class
+        template <code class="computeroutput"><span class="identifier">has_back_reference</span></code></a></span></dt>
+<dt><span class="section"><a href="utility_and_infrastructure.html#utility_and_infrastructure.boost_python_has_back_reference_.examples">Examples</a></span></dt>
+</dl></div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="utility_and_infrastructure.boost_python_has_back_reference_.introduction"></a><a class="link" href="utility_and_infrastructure.html#utility_and_infrastructure.boost_python_has_back_reference_.introduction" title="Introduction">Introduction</a>
+</h3></div></div></div>
+<p>
+          &lt;boost/python/has_back_reference.hpp&gt; defines the predicate metafunction
+          <code class="computeroutput"><span class="identifier">has_back_reference</span><span class="special">&lt;&gt;</span></code>,
+          which can be specialized by the user to indicate that a wrapped class instance
+          holds a <code class="computeroutput"><span class="identifier">PyObject</span><span class="special">*</span></code>
+          corresponding to a Python object.
+        </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="utility_and_infrastructure.boost_python_has_back_reference_.class_template_has_back_referenc"></a><a class="link" href="utility_and_infrastructure.html#utility_and_infrastructure.boost_python_has_back_reference_.class_template_has_back_referenc" title="Class template has_back_reference">Class
+        template <code class="computeroutput"><span class="identifier">has_back_reference</span></code></a>
+</h3></div></div></div>
+<p>
+          A unary metafunction whose value is true iff its argument is a <code class="computeroutput"><span class="identifier">pointer_wrapper</span><span class="special">&lt;&gt;</span></code>.
+        </p>
+<pre class="programlisting"><span class="keyword">namespace</span> <span class="identifier">boost</span> <span class="special">{</span> <span class="keyword">namespace</span> <span class="identifier">python</span>
+<span class="special">{</span>
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">WrappedClass</span><span class="special">&gt;</span> <span class="keyword">class</span> <span class="identifier">has_back_reference</span>
+    <span class="special">{</span>
+        <span class="keyword">typedef</span> <span class="identifier">mpl</span><span class="special">::</span><span class="identifier">false_</span> <span class="identifier">type</span><span class="special">;</span>
+    <span class="special">};</span>
+<span class="special">}}</span>
+</pre>
+<p>
+          A metafunction that is inspected by Boost.Python to determine how wrapped
+          classes can be constructed.
+        </p>
+<p>
+          <code class="computeroutput"><span class="identifier">type</span><span class="special">::</span><span class="identifier">value</span></code> is an integral constant convertible
+          to bool of unspecified type. Specializations may substitute a true-valued
+          integral constant wrapper for type iff for each invocation of <code class="computeroutput"><span class="identifier">class_</span><span class="special">&lt;</span><span class="identifier">WrappedClass</span><span class="special">&gt;::</span><span class="identifier">def</span><span class="special">(</span><span class="identifier">init</span><span class="special">&lt;</span> <span class="identifier">type</span><span class="special">-</span><span class="identifier">sequence</span><span class="special">...&gt;())</span></code>
+          and the implicitly wrapped copy constructor (unless it is noncopyable),
+          there exists a corresponding constructor <code class="computeroutput"><span class="identifier">WrappedClass</span><span class="special">::</span><span class="identifier">WrappedClass</span><span class="special">(</span><span class="identifier">PyObject</span><span class="special">*,</span> <span class="identifier">type</span><span class="special">-</span><span class="identifier">sequence</span><span class="special">...)</span></code>. If such a specialization exists, the
+          WrappedClass constructors will be called with a "back reference"
+          pointer to the corresponding Python object whenever they are invoked from
+          Python. The easiest way to provide this nested type is to derive the specialization
+          from <code class="computeroutput"><span class="identifier">mpl</span><span class="special">::</span><span class="identifier">true_</span></code>.
+        </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="utility_and_infrastructure.boost_python_has_back_reference_.examples"></a><a class="link" href="utility_and_infrastructure.html#utility_and_infrastructure.boost_python_has_back_reference_.examples" title="Examples">Examples</a>
+</h3></div></div></div>
+<p>
+          In C++:
+        </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">python</span><span class="special">/</span><span class="keyword">class</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">python</span><span class="special">/</span><span class="identifier">module</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">python</span><span class="special">/</span><span class="identifier">has_back_reference</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">python</span><span class="special">/</span><span class="identifier">handle</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">shared_ptr</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="keyword">using</span> <span class="keyword">namespace</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">python</span><span class="special">;</span>
+<span class="keyword">using</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">shared_ptr</span><span class="special">;</span>
+
+<span class="keyword">struct</span> <span class="identifier">X</span>
+<span class="special">{</span>
+    <span class="identifier">X</span><span class="special">(</span><span class="identifier">PyObject</span><span class="special">*</span> <span class="identifier">self</span><span class="special">)</span> <span class="special">:</span> <span class="identifier">m_self</span><span class="special">(</span><span class="identifier">self</span><span class="special">),</span> <span class="identifier">m_x</span><span class="special">(</span><span class="number">0</span><span class="special">)</span> <span class="special">{}</span>
+    <span class="identifier">X</span><span class="special">(</span><span class="identifier">PyObject</span><span class="special">*</span> <span class="identifier">self</span><span class="special">,</span> <span class="keyword">int</span> <span class="identifier">x</span><span class="special">)</span> <span class="special">:</span> <span class="identifier">m_self</span><span class="special">(</span><span class="identifier">self</span><span class="special">),</span> <span class="identifier">m_x</span><span class="special">(</span><span class="identifier">x</span><span class="special">)</span> <span class="special">{}</span>
+    <span class="identifier">X</span><span class="special">(</span><span class="identifier">PyObject</span><span class="special">*</span> <span class="identifier">self</span><span class="special">,</span> <span class="identifier">X</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">other</span><span class="special">)</span> <span class="special">:</span> <span class="identifier">m_self</span><span class="special">(</span><span class="identifier">self</span><span class="special">),</span> <span class="identifier">m_x</span><span class="special">(</span><span class="identifier">other</span><span class="special">.</span><span class="identifier">m_x</span><span class="special">)</span> <span class="special">{}</span>
+
+    <span class="identifier">handle</span><span class="special">&lt;&gt;</span> <span class="identifier">self</span><span class="special">()</span> <span class="special">{</span> <span class="keyword">return</span> <span class="identifier">handle</span><span class="special">&lt;&gt;(</span><span class="identifier">borrowed</span><span class="special">(</span><span class="identifier">m_self</span><span class="special">));</span> <span class="special">}</span>
+    <span class="keyword">int</span> <span class="identifier">get</span><span class="special">()</span> <span class="special">{</span> <span class="keyword">return</span> <span class="identifier">m_x</span><span class="special">;</span> <span class="special">}</span>
+    <span class="keyword">void</span> <span class="identifier">set</span><span class="special">(</span><span class="keyword">int</span> <span class="identifier">x</span><span class="special">)</span> <span class="special">{</span> <span class="identifier">m_x</span> <span class="special">=</span> <span class="identifier">x</span><span class="special">;</span> <span class="special">}</span>
+
+    <span class="identifier">PyObject</span><span class="special">*</span> <span class="identifier">m_self</span><span class="special">;</span>
+    <span class="keyword">int</span> <span class="identifier">m_x</span><span class="special">;</span>
+<span class="special">};</span>
+
+<span class="comment">// specialize has_back_reference for X</span>
+<span class="keyword">namespace</span> <span class="identifier">boost</span> <span class="special">{</span> <span class="keyword">namespace</span> <span class="identifier">python</span>
+<span class="special">{</span>
+  <span class="keyword">template</span> <span class="special">&lt;&gt;</span>
+  <span class="keyword">struct</span> <span class="identifier">has_back_reference</span><span class="special">&lt;</span><span class="identifier">X</span><span class="special">&gt;</span>
+    <span class="special">:</span> <span class="identifier">mpl</span><span class="special">::</span><span class="identifier">true_</span>
+  <span class="special">{};</span>
+<span class="special">}}</span>
+
+<span class="keyword">struct</span> <span class="identifier">Y</span>
+<span class="special">{</span>
+    <span class="identifier">Y</span><span class="special">()</span> <span class="special">:</span> <span class="identifier">m_x</span><span class="special">(</span><span class="number">0</span><span class="special">)</span> <span class="special">{}</span>
+    <span class="identifier">Y</span><span class="special">(</span><span class="keyword">int</span> <span class="identifier">x</span><span class="special">)</span> <span class="special">:</span> <span class="identifier">m_x</span><span class="special">(</span><span class="identifier">x</span><span class="special">)</span> <span class="special">{}</span>
+    <span class="keyword">int</span> <span class="identifier">get</span><span class="special">()</span> <span class="special">{</span> <span class="keyword">return</span> <span class="identifier">m_x</span><span class="special">;</span> <span class="special">}</span>
+    <span class="keyword">void</span> <span class="identifier">set</span><span class="special">(</span><span class="keyword">int</span> <span class="identifier">x</span><span class="special">)</span> <span class="special">{</span> <span class="identifier">m_x</span> <span class="special">=</span> <span class="identifier">x</span><span class="special">;</span> <span class="special">}</span>
+
+    <span class="keyword">int</span> <span class="identifier">m_x</span><span class="special">;</span>
+<span class="special">};</span>
+
+<span class="identifier">shared_ptr</span><span class="special">&lt;</span><span class="identifier">Y</span><span class="special">&gt;</span>
+<span class="identifier">Y_self</span><span class="special">(</span><span class="identifier">shared_ptr</span><span class="special">&lt;</span><span class="identifier">Y</span><span class="special">&gt;</span> <span class="identifier">self</span><span class="special">)</span> <span class="special">{</span> <span class="keyword">return</span> <span class="identifier">self</span><span class="special">;</span> <span class="special">}</span>
+
+<span class="identifier">BOOST_PYTHON_MODULE</span><span class="special">(</span><span class="identifier">back_references</span><span class="special">)</span>
+<span class="special">{</span>
+    <span class="identifier">class_</span><span class="special">&lt;</span><span class="identifier">X</span><span class="special">&gt;(</span><span class="string">"X"</span><span class="special">)</span>
+       <span class="special">.</span><span class="identifier">def</span><span class="special">(</span><span class="identifier">init</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;())</span>
+       <span class="special">.</span><span class="identifier">def</span><span class="special">(</span><span class="string">"self"</span><span class="special">,</span> <span class="special">&amp;</span><span class="identifier">X</span><span class="special">::</span><span class="identifier">self</span><span class="special">)</span>
+       <span class="special">.</span><span class="identifier">def</span><span class="special">(</span><span class="string">"get"</span><span class="special">,</span> <span class="special">&amp;</span><span class="identifier">X</span><span class="special">::</span><span class="identifier">get</span><span class="special">)</span>
+       <span class="special">.</span><span class="identifier">def</span><span class="special">(</span><span class="string">"set"</span><span class="special">,</span> <span class="special">&amp;</span><span class="identifier">X</span><span class="special">::</span><span class="identifier">set</span><span class="special">)</span>
+       <span class="special">;</span>
+
+    <span class="identifier">class_</span><span class="special">&lt;</span><span class="identifier">Y</span><span class="special">,</span> <span class="identifier">shared_ptr</span><span class="special">&lt;</span><span class="identifier">Y</span><span class="special">&gt;</span> <span class="special">&gt;(</span><span class="string">"Y"</span><span class="special">)</span>
+       <span class="special">.</span><span class="identifier">def</span><span class="special">(</span><span class="identifier">init</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;())</span>
+       <span class="special">.</span><span class="identifier">def</span><span class="special">(</span><span class="string">"get"</span><span class="special">,</span> <span class="special">&amp;</span><span class="identifier">Y</span><span class="special">::</span><span class="identifier">get</span><span class="special">)</span>
+       <span class="special">.</span><span class="identifier">def</span><span class="special">(</span><span class="string">"set"</span><span class="special">,</span> <span class="special">&amp;</span><span class="identifier">Y</span><span class="special">::</span><span class="identifier">set</span><span class="special">)</span>
+       <span class="special">.</span><span class="identifier">def</span><span class="special">(</span><span class="string">"self"</span><span class="special">,</span> <span class="identifier">Y_self</span><span class="special">)</span>
+       <span class="special">;</span>
+<span class="special">}</span>
+</pre>
+<p>
+          The following Python session illustrates that x.self() returns the same
+          Python object on which it is invoked, while y.self() must create a new
+          Python object which refers to the same Y instance.
+        </p>
+<p>
+          In Python:
+        </p>
+<pre class="programlisting"><span class="special">&gt;&gt;&gt;</span> <span class="identifier">from</span> <span class="identifier">back_references</span> <span class="identifier">import</span> <span class="special">*</span>
+<span class="special">&gt;&gt;&gt;</span> <span class="identifier">x</span> <span class="special">=</span> <span class="identifier">X</span><span class="special">(</span><span class="number">1</span><span class="special">)</span>
+<span class="special">&gt;&gt;&gt;</span> <span class="identifier">x2</span> <span class="special">=</span> <span class="identifier">x</span><span class="special">.</span><span class="identifier">self</span><span class="special">()</span>
+<span class="special">&gt;&gt;&gt;</span> <span class="identifier">x2</span> <span class="identifier">is</span> <span class="identifier">x</span>
+<span class="number">1</span>
+<span class="special">&gt;&gt;&gt;</span> <span class="special">(</span><span class="identifier">x</span><span class="special">.</span><span class="identifier">get</span><span class="special">(),</span> <span class="identifier">x2</span><span class="special">.</span><span class="identifier">get</span><span class="special">())</span>
+<span class="special">(</span><span class="number">1</span><span class="special">,</span> <span class="number">1</span><span class="special">)</span>
+<span class="special">&gt;&gt;&gt;</span> <span class="identifier">x</span><span class="special">.</span><span class="identifier">set</span><span class="special">(</span><span class="number">10</span><span class="special">)</span>
+<span class="special">&gt;&gt;&gt;</span> <span class="special">(</span><span class="identifier">x</span><span class="special">.</span><span class="identifier">get</span><span class="special">(),</span> <span class="identifier">x2</span><span class="special">.</span><span class="identifier">get</span><span class="special">())</span>
+<span class="special">(</span><span class="number">10</span><span class="special">,</span> <span class="number">10</span><span class="special">)</span>
+<span class="special">&gt;&gt;&gt;</span>
+<span class="special">&gt;&gt;&gt;</span>
+<span class="special">&gt;&gt;&gt;</span> <span class="identifier">y</span> <span class="special">=</span> <span class="identifier">Y</span><span class="special">(</span><span class="number">2</span><span class="special">)</span>
+<span class="special">&gt;&gt;&gt;</span> <span class="identifier">y2</span> <span class="special">=</span> <span class="identifier">y</span><span class="special">.</span><span class="identifier">self</span><span class="special">()</span>
+<span class="special">&gt;&gt;&gt;</span> <span class="identifier">y2</span> <span class="identifier">is</span> <span class="identifier">y</span>
+<span class="number">0</span>
+<span class="special">&gt;&gt;&gt;</span> <span class="special">(</span><span class="identifier">y</span><span class="special">.</span><span class="identifier">get</span><span class="special">(),</span> <span class="identifier">y2</span><span class="special">.</span><span class="identifier">get</span><span class="special">())</span>
+<span class="special">(</span><span class="number">2</span><span class="special">,</span> <span class="number">2</span><span class="special">)</span>
+<span class="special">&gt;&gt;&gt;</span> <span class="identifier">y</span><span class="special">.</span><span class="identifier">set</span><span class="special">(</span><span class="number">20</span><span class="special">)</span>
+<span class="special">&gt;&gt;&gt;</span> <span class="special">(</span><span class="identifier">y</span><span class="special">.</span><span class="identifier">get</span><span class="special">(),</span> <span class="identifier">y2</span><span class="special">.</span><span class="identifier">get</span><span class="special">())</span>
+<span class="special">(</span><span class="number">20</span><span class="special">,</span> <span class="number">20</span><span class="special">)</span>
+</pre>
+</div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2002-2005, 2015 David Abrahams, Stefan Seefeld<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="embedding/boost_python_import_hpp.html"><img src="../images/prev.png" alt="Prev"></a><a accesskey="u" href="index.html"><img src="../images/up.png" alt="Up"></a><a accesskey="h" href="index.html"><img src="../images/home.png" alt="Home"></a><a accesskey="n" href="utility_and_infrastructure/boost_python_instance_holder_hpp.html"><img src="../images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

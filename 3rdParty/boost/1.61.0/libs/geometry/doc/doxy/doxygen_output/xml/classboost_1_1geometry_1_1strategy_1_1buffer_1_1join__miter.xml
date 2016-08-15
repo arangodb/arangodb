@@ -1,0 +1,87 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="classboost_1_1geometry_1_1strategy_1_1buffer_1_1join__miter" kind="class" prot="public">
+    <compoundname>boost::geometry::strategy::buffer::join_miter</compoundname>
+    <includes local="no">buffer_join_miter.hpp</includes>
+      <sectiondef kind="private-attrib">
+      <memberdef kind="variable" id="classboost_1_1geometry_1_1strategy_1_1buffer_1_1join__miter_1a6d6b01904a6b6b19576d257ae55411b5" prot="private" static="no" mutable="no">
+        <type>double</type>
+        <definition>double boost::geometry::strategy::buffer::join_miter::m_miter_limit</definition>
+        <argsstring></argsstring>
+        <name>m_miter_limit</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/buffer_join_miter.hpp" line="134" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/buffer_join_miter.hpp" bodystart="134" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="classboost_1_1geometry_1_1strategy_1_1buffer_1_1join__miter_1a6436c74ddb7fb02a86ee5770146d58f7" prot="public" static="no" const="no" explicit="yes" inline="yes" virt="non-virtual">
+        <type></type>
+        <definition>boost::geometry::strategy::buffer::join_miter::join_miter</definition>
+        <argsstring>(double miter_limit=5.0)</argsstring>
+        <name>join_miter</name>
+        <param>
+          <type>double</type>
+          <declname>miter_limit</declname>
+          <defval>5.0</defval>
+        </param>
+        <briefdescription>
+<para>Constructs the strategy. </para>        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>miter_limit</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>The miter limit, to avoid excessively long miters around sharp corners </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/buffer_join_miter.hpp" line="60" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/buffer_join_miter.hpp" bodystart="58" bodyend="60"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="private-func">
+      <memberdef kind="function" id="classboost_1_1geometry_1_1strategy_1_1buffer_1_1join__miter_1a3f2ff1e89ff1a5be45fd3388243c54b7" prot="private" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <type>double</type>
+        <definition>double boost::geometry::strategy::buffer::join_miter::valid_limit</definition>
+        <argsstring>(double miter_limit) const </argsstring>
+        <name>valid_limit</name>
+        <param>
+          <type>double</type>
+          <declname>miter_limit</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/buffer_join_miter.hpp" line="125" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/buffer_join_miter.hpp" bodystart="124" bodyend="132"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+<para>Let the buffer create sharp corners. </para>    </briefdescription>
+    <detaileddescription>
+<para>This strategy can be used as JoinStrategy for the buffer algorithm. It creates a sharp corners around each convex vertex. It can be applied for (multi)linestrings and (multi)polygons. If corners are sharp by themselves, the miters might become very long. Therefore there is a limit (miter_limit), in terms of the used distance, which limits their length. The miter is not changed to a bevel form (as done in some other software), it is just adapted to the specified miter_limit but keeps its miter form. If the buffer distance is 5.0, and the miter limit is 2.0, generated points will be located at a distance of at most 10.0 (2*5) units. This strategy is only applicable for Cartesian coordinate systems.</para><para> <qbk>
+[heading Example]
+[buffer_join_miter]
+[heading Output]
+[$img/strategies/buffer_join_miter.png]
+[heading See also]
+\* [link geometry.reference.algorithms.buffer.buffer_7_with_strategies buffer (with strategies)]
+\* [link geometry.reference.strategies.strategy_buffer_join_round join_round]
+</qbk>  </para>    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/buffer_join_miter.hpp" line="53" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/buffer_join_miter.hpp" bodystart="52" bodyend="135"/>
+    <listofallmembers>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1buffer_1_1join__miter_1a6436c74ddb7fb02a86ee5770146d58f7" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::buffer::join_miter</scope><name>join_miter</name></member>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1buffer_1_1join__miter_1a6d6b01904a6b6b19576d257ae55411b5" prot="private" virt="non-virtual"><scope>boost::geometry::strategy::buffer::join_miter</scope><name>m_miter_limit</name></member>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1buffer_1_1join__miter_1a3f2ff1e89ff1a5be45fd3388243c54b7" prot="private" virt="non-virtual"><scope>boost::geometry::strategy::buffer::join_miter</scope><name>valid_limit</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

@@ -1,0 +1,123 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="classboost_1_1geometry_1_1detail_1_1is__valid_1_1complement__graph__vertex" kind="class" prot="public">
+    <compoundname>boost::geometry::detail::is_valid::complement_graph_vertex</compoundname>
+    <includes local="no">complement_graph.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename TurnPoint</type>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="private-attrib">
+      <memberdef kind="variable" id="classboost_1_1geometry_1_1detail_1_1is__valid_1_1complement__graph__vertex_1a5b525c0d932366f51816f3c14200f3f2" prot="private" static="no" mutable="no">
+        <type>std::size_t</type>
+        <definition>std::size_t boost::geometry::detail::is_valid::complement_graph_vertex&lt; TurnPoint &gt;::m_id</definition>
+        <argsstring></argsstring>
+        <name>m_id</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/is_valid/complement_graph.hpp" line="71" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/is_valid/complement_graph.hpp" bodystart="71" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classboost_1_1geometry_1_1detail_1_1is__valid_1_1complement__graph__vertex_1aed0b62c84306bdc3ae995eee0b293ad2" prot="private" static="no" mutable="no">
+        <type>TurnPoint const *</type>
+        <definition>TurnPoint const* boost::geometry::detail::is_valid::complement_graph_vertex&lt; TurnPoint &gt;::m_turn_point</definition>
+        <argsstring></argsstring>
+        <name>m_turn_point</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/is_valid/complement_graph.hpp" line="72" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/is_valid/complement_graph.hpp" bodystart="72" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="classboost_1_1geometry_1_1detail_1_1is__valid_1_1complement__graph__vertex_1a3281d316ed0580296a6d2c7bb9671fb1" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type></type>
+        <definition>boost::geometry::detail::is_valid::complement_graph_vertex&lt; TurnPoint &gt;::complement_graph_vertex</definition>
+        <argsstring>(std::size_t id)</argsstring>
+        <name>complement_graph_vertex</name>
+        <param>
+          <type>std::size_t</type>
+          <declname>id</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/is_valid/complement_graph.hpp" line="40" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/is_valid/complement_graph.hpp" bodystart="37" bodyend="40"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1detail_1_1is__valid_1_1complement__graph__vertex_1ab08bee844ec4bb1058597b0f4897d249" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type></type>
+        <definition>boost::geometry::detail::is_valid::complement_graph_vertex&lt; TurnPoint &gt;::complement_graph_vertex</definition>
+        <argsstring>(TurnPoint const *turn_point, std::size_t expected_id)</argsstring>
+        <name>complement_graph_vertex</name>
+        <param>
+          <type>TurnPoint const *</type>
+          <declname>turn_point</declname>
+        </param>
+        <param>
+          <type>std::size_t</type>
+          <declname>expected_id</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/is_valid/complement_graph.hpp" line="46" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/is_valid/complement_graph.hpp" bodystart="42" bodyend="46"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1detail_1_1is__valid_1_1complement__graph__vertex_1ae7fcc3cf950c2109c46ab2839dd4c790" prot="public" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <type>std::size_t</type>
+        <definition>std::size_t boost::geometry::detail::is_valid::complement_graph_vertex&lt; TurnPoint &gt;::id</definition>
+        <argsstring>() const </argsstring>
+        <name>id</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/is_valid/complement_graph.hpp" line="48" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/is_valid/complement_graph.hpp" bodystart="48" bodyend="48"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1detail_1_1is__valid_1_1complement__graph__vertex_1a2abf691d7575d98891fee5c370d21028" prot="public" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <type>bool</type>
+        <definition>bool boost::geometry::detail::is_valid::complement_graph_vertex&lt; TurnPoint &gt;::operator&lt;</definition>
+        <argsstring>(complement_graph_vertex const &amp;other) const </argsstring>
+        <name>operator&lt;</name>
+        <param>
+          <type><ref refid="classboost_1_1geometry_1_1detail_1_1is__valid_1_1complement__graph__vertex" kindref="compound">complement_graph_vertex</ref> const &amp;</type>
+          <declname>other</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/is_valid/complement_graph.hpp" line="51" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/is_valid/complement_graph.hpp" bodystart="50" bodyend="64"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/is_valid/complement_graph.hpp" line="35" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/is_valid/complement_graph.hpp" bodystart="34" bodyend="73"/>
+    <listofallmembers>
+      <member refid="classboost_1_1geometry_1_1detail_1_1is__valid_1_1complement__graph__vertex_1a3281d316ed0580296a6d2c7bb9671fb1" prot="public" virt="non-virtual"><scope>boost::geometry::detail::is_valid::complement_graph_vertex</scope><name>complement_graph_vertex</name></member>
+      <member refid="classboost_1_1geometry_1_1detail_1_1is__valid_1_1complement__graph__vertex_1ab08bee844ec4bb1058597b0f4897d249" prot="public" virt="non-virtual"><scope>boost::geometry::detail::is_valid::complement_graph_vertex</scope><name>complement_graph_vertex</name></member>
+      <member refid="classboost_1_1geometry_1_1detail_1_1is__valid_1_1complement__graph__vertex_1ae7fcc3cf950c2109c46ab2839dd4c790" prot="public" virt="non-virtual"><scope>boost::geometry::detail::is_valid::complement_graph_vertex</scope><name>id</name></member>
+      <member refid="classboost_1_1geometry_1_1detail_1_1is__valid_1_1complement__graph__vertex_1a5b525c0d932366f51816f3c14200f3f2" prot="private" virt="non-virtual"><scope>boost::geometry::detail::is_valid::complement_graph_vertex</scope><name>m_id</name></member>
+      <member refid="classboost_1_1geometry_1_1detail_1_1is__valid_1_1complement__graph__vertex_1aed0b62c84306bdc3ae995eee0b293ad2" prot="private" virt="non-virtual"><scope>boost::geometry::detail::is_valid::complement_graph_vertex</scope><name>m_turn_point</name></member>
+      <member refid="classboost_1_1geometry_1_1detail_1_1is__valid_1_1complement__graph__vertex_1a2abf691d7575d98891fee5c370d21028" prot="public" virt="non-virtual"><scope>boost::geometry::detail::is_valid::complement_graph_vertex</scope><name>operator&lt;</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

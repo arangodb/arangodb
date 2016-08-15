@@ -1,0 +1,16 @@
+﻿[/============================================================================
+  Boost.Geometry Index
+
+  Copyright (c) 2011-2014 Adam Wulkiewicz.
+
+  Use, modification and distribution is subject to the Boost Software License,
+  Version 1.0. (See accompanying file LICENSE_1_0.txt or copy at
+  http://www.boost.org/LICENSE_1_0.txt)
+=============================================================================/]
+
+ POINT(5 5), distance= 0.141421
+ POINT(6 6), distance= 1.27279
+ POINT(4 4), distance= 1.55563
+ POINT(7 7), distance= 2.68701
+ break!
+

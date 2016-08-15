@@ -1,0 +1,160 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Boost PP re-entrant versions</title>
+<link rel="stylesheet" href="../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../index.html" title="Chapter&#160;1.&#160;The Variadic Macro Data Library 1.9">
+<link rel="up" href="../index.html" title="Chapter&#160;1.&#160;The Variadic Macro Data Library 1.9">
+<link rel="prev" href="vmd_internal_macros.html" title="Controlling internal usage">
+<link rel="next" href="vmd_dynamic_typing.html" title="Input as dynamic types">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="vmd_internal_macros.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="vmd_dynamic_typing.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="variadic_macro_data.vmd_reentrant"></a><a class="link" href="vmd_reentrant.html" title="Boost PP re-entrant versions">Boost PP re-entrant
+    versions</a>
+</h2></div></div></div>
+<p>
+      Nearly all macros in VMD have equivalent reentrant versions which are meant
+      to be used in a BOOST_PP_WHILE loop. These are versions which have an underscore
+      D suffix, take the next available BOOST_PP_WHILE iteration as their first parameter,
+      and then have the exact same functionality as their unsuffixed equivalents.
+      They can be used in BOOST_PP_WHILE loops to provide slightly quicker preprocessing
+      but, as the documentation for BOOST_PP_WHILE and BOOST_PP_WHILE_##d explain,
+      they do not have to be used.
+    </p>
+<p>
+      These macros are:
+    </p>
+<p>
+      Arrays
+    </p>
+<div class="itemizedlist"><ul class="itemizedlist" type="disc">
+<li class="listitem">
+          BOOST_VMD_IS_ARRAY_D
+        </li>
+<li class="listitem">
+          BOOST_VMD_IS_EMPTY_ARRAY_D
+        </li>
+<li class="listitem">
+          BOOST_VMD_ASSERT_IS_ARRAY_D
+        </li>
+</ul></div>
+<p>
+      Identifiers
+    </p>
+<div class="itemizedlist"><ul class="itemizedlist" type="disc">
+<li class="listitem">
+          BOOST_VMD_IS_IDENTIFIER_D
+        </li>
+<li class="listitem">
+          BOOST_VMD_ASSERT_IS_IDENTIFIER_D
+        </li>
+</ul></div>
+<p>
+      Lists
+    </p>
+<div class="itemizedlist"><ul class="itemizedlist" type="disc">
+<li class="listitem">
+          BOOST_VMD_IS_LIST_D
+        </li>
+<li class="listitem">
+          BOOST_VMD_IS_EMPTY_LIST_D
+        </li>
+<li class="listitem">
+          BOOST_VMD_ASSERT_IS_LIST_D
+        </li>
+</ul></div>
+<p>
+      Sequences
+    </p>
+<div class="itemizedlist"><ul class="itemizedlist" type="disc">
+<li class="listitem">
+          BOOST_VMD_ELEM_D
+        </li>
+<li class="listitem">
+          BOOST_VMD_ENUM_D
+        </li>
+<li class="listitem">
+          BOOST_VMD_EQUAL_D
+        </li>
+<li class="listitem">
+          BOOST_VMD_GET_TYPE_D
+        </li>
+<li class="listitem">
+          BOOST_VMD_IS_MULTI_D
+        </li>
+<li class="listitem">
+          BOOST_VMD_IS_UNARY_D
+        </li>
+<li class="listitem">
+          BOOST_VMD_NOT_EQUAL_D
+        </li>
+<li class="listitem">
+          BOOST_VMD_SIZE_D
+        </li>
+<li class="listitem">
+          BOOST_VMD_TO_ARRAY_D
+        </li>
+<li class="listitem">
+          BOOST_VMD_TO_LIST_D
+        </li>
+<li class="listitem">
+          BOOST_VMD_TO_SEQ_D
+        </li>
+<li class="listitem">
+          BOOST_VMD_TO_TUPLE_D
+        </li>
+</ul></div>
+<p>
+      Seqs
+    </p>
+<div class="itemizedlist"><ul class="itemizedlist" type="disc">
+<li class="listitem">
+          BOOST_VMD_IS_SEQ_D
+        </li>
+<li class="listitem">
+          BOOST_VMD_ASSERT_IS_SEQ_D
+        </li>
+</ul></div>
+<p>
+      Types
+    </p>
+<div class="itemizedlist"><ul class="itemizedlist" type="disc">
+<li class="listitem">
+          BOOST_VMD_IS_TYPE_D
+        </li>
+<li class="listitem">
+          BOOST_VMD_ASSERT_IS_TYPE_D
+        </li>
+</ul></div>
+<p>
+      Other
+    </p>
+<div class="itemizedlist"><ul class="itemizedlist" type="disc"><li class="listitem">
+          BOOST_VMD_IS_PARENS_EMPTY_D
+        </li></ul></div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2010-2015 Tropic Software East Inc</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="vmd_internal_macros.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="vmd_dynamic_typing.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

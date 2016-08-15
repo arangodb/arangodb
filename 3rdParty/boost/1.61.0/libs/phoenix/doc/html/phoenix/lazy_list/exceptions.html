@@ -1,0 +1,101 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Exceptions</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../../index.html" title="Chapter&#160;1.&#160;Phoenix 3.2.0">
+<link rel="up" href="../lazy_list.html" title="Lazy List">
+<link rel="prev" href="tutorial_with_examples/list_generation.html" title="List Generation">
+<link rel="next" href="implementation_details.html" title="Implementation Details">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="tutorial_with_examples/list_generation.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../lazy_list.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="implementation_details.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="phoenix.lazy_list.exceptions"></a><a class="link" href="exceptions.html" title="Exceptions">Exceptions</a>
+</h3></div></div></div>
+<p>
+        Exceptions are used when there is a danger of a runaway or illegal operations
+        on an empty list.
+      </p>
+<p>
+        The key example is to take the length of a non-terminating list, e.g.
+      </p>
+<pre class="programlisting"><span class="identifier">length</span><span class="special">(</span><span class="identifier">enum_from</span><span class="special">(</span><span class="number">1</span><span class="special">))</span>
+</pre>
+<p>
+        This is protected using an exception:
+      </p>
+<pre class="programlisting"><span class="identifier">lazy_exception</span>
+</pre>
+<p>
+        Note that this is implemented such that defining
+      </p>
+<pre class="programlisting"><span class="identifier">BOOST_PHOENIX_NO_LAZY_EXCEPTIONS</span>
+</pre>
+<p>
+        will enable the user to turn off the exceptions at their own risk.
+      </p>
+<pre class="programlisting"><span class="identifier">BOOST_PHOENIX_FUNCTION_MAX_LAZY_LIST_LENGTH</span>
+</pre>
+<p>
+        is currently defined as 1000 and again the user can define their own value.
+      </p>
+<p>
+        In the length function this how it is implemented:
+      </p>
+<pre class="programlisting">        <span class="keyword">struct</span> <span class="identifier">Length</span> <span class="special">{</span>
+          <span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">Sig</span><span class="special">&gt;</span> <span class="keyword">struct</span> <span class="identifier">result</span><span class="special">;</span>
+
+          <span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">This</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">L</span><span class="special">&gt;</span>
+          <span class="keyword">struct</span> <span class="identifier">result</span><span class="special">&lt;</span><span class="identifier">This</span><span class="special">(</span><span class="identifier">L</span><span class="special">)&gt;</span>
+          <span class="special">{</span>
+             <span class="keyword">typedef</span> <span class="identifier">size_t</span> <span class="identifier">type</span><span class="special">;</span>
+          <span class="special">};</span>
+
+          <span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">L</span><span class="special">&gt;</span>
+          <span class="identifier">size_t</span> <span class="keyword">operator</span><span class="special">()(</span> <span class="keyword">const</span> <span class="identifier">L</span><span class="special">&amp;</span> <span class="identifier">ll</span> <span class="special">)</span> <span class="keyword">const</span> <span class="special">{</span>
+            <span class="keyword">typename</span> <span class="identifier">L</span><span class="special">::</span><span class="identifier">delay_result_type</span> <span class="identifier">l</span> <span class="special">=</span> <span class="identifier">delay</span><span class="special">(</span><span class="identifier">ll</span><span class="special">);</span>
+            <span class="identifier">size_t</span> <span class="identifier">x</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span>
+            <span class="keyword">while</span><span class="special">(</span> <span class="special">!</span><span class="identifier">null</span><span class="special">(</span><span class="identifier">l</span><span class="special">)()</span> <span class="special">)</span> <span class="special">{</span>
+                <span class="identifier">l</span> <span class="special">=</span> <span class="identifier">tail</span><span class="special">(</span><span class="identifier">l</span><span class="special">);</span>
+                <span class="special">++</span><span class="identifier">x</span><span class="special">;</span>
+                <span class="keyword">if</span> <span class="special">(</span><span class="identifier">x</span> <span class="special">&gt;</span> <span class="identifier">BOOST_PHOENIX_FUNCTION_MAX_LAZY_LIST_LENGTH</span><span class="special">)</span>
+                   <span class="keyword">break</span><span class="special">;</span>
+            <span class="special">}</span>
+<span class="preprocessor">#ifndef</span> <span class="identifier">BOOST_PHOENIX_NO_LAZY_EXCEPTIONS</span>
+            <span class="keyword">if</span> <span class="special">(</span><span class="identifier">x</span> <span class="special">&gt;</span> <span class="identifier">BOOST_PHOENIX_FUNCTION_MAX_LAZY_LIST_LENGTH</span><span class="special">)</span>
+                 <span class="keyword">throw</span> <span class="identifier">lazy_exception</span><span class="special">(</span><span class="string">"Your list is too long!!"</span><span class="special">);</span>
+<span class="preprocessor">#endif</span>
+            <span class="keyword">return</span> <span class="identifier">x</span><span class="special">;</span>
+          <span class="special">}</span>
+        <span class="special">};</span>
+</pre>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2002-2005, 2010, 2014, 2015 Joel de Guzman, Dan Marsden, Thomas
+      Heller, John Fletcher<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="tutorial_with_examples/list_generation.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../lazy_list.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="implementation_details.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

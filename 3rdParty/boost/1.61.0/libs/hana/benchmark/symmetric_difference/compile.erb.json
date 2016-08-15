@@ -1,0 +1,15 @@
+<%
+  hana = (0...50).step(5).to_a
+%>
+
+{
+  "title": {
+    "text": "Compile-time behavior of symmetric_difference"
+  },
+  "series": [
+    {
+      "name": "hana::set",
+      "data": <%= time_compilation('compile.hana.set.erb.cpp', hana) %>
+    }
+  ]
+}

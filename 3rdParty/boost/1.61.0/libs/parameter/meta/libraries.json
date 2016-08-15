@@ -1,0 +1,17 @@
+{
+    "key": "parameter",
+    "name": "Parameter",
+    "authors": [
+        "David Abrahams",
+        "Daniel Wallin"
+    ],
+    "description": "Boost.Parameter Library - Write functions that accept arguments by name.",
+    "category": [
+        "Emulation",
+        "Programming"
+    ],
+    "maintainers": [
+        "David Abrahams <dave -at- boost-consulting.com>",
+        "Daniel Wallin <daniel -at- boostpro.com>"
+    ]
+}

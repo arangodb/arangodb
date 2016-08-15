@@ -1,0 +1,425 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Advanced Topics</title>
+<link rel="stylesheet" href="../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../index.html" title="Chapter&#160;1.&#160;Boost.Compute">
+<link rel="up" href="../index.html" title="Chapter&#160;1.&#160;Boost.Compute">
+<link rel="prev" href="tutorial.html" title="Tutorial">
+<link rel="next" href="interop.html" title="Interoperability">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="tutorial.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="interop.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="boost_compute.advanced_topics"></a><a class="link" href="advanced_topics.html" title="Advanced Topics">Advanced Topics</a>
+</h2></div></div></div>
+<div class="toc"><dl>
+<dt><span class="section"><a href="advanced_topics.html#boost_compute.advanced_topics.vector_data_types">Vector
+      Data Types</a></span></dt>
+<dt><span class="section"><a href="advanced_topics.html#boost_compute.advanced_topics.custom_functions">Custom
+      Functions</a></span></dt>
+<dt><span class="section"><a href="advanced_topics.html#boost_compute.advanced_topics.custom_types">Custom Types</a></span></dt>
+<dt><span class="section"><a href="advanced_topics.html#boost_compute.advanced_topics.complex_values">Complex
+      Values</a></span></dt>
+<dt><span class="section"><a href="advanced_topics.html#boost_compute.advanced_topics.lambda_expressions">Lambda
+      Expressions</a></span></dt>
+<dt><span class="section"><a href="advanced_topics.html#boost_compute.advanced_topics.asynchronous_operations">Asynchronous
+      Operations</a></span></dt>
+<dt><span class="section"><a href="advanced_topics.html#boost_compute.advanced_topics.performance_timing">Performance
+      Timing</a></span></dt>
+<dt><span class="section"><a href="advanced_topics.html#boost_compute.advanced_topics.opencl_api_interoperability">OpenCL
+      API Interoperability</a></span></dt>
+</dl></div>
+<p>
+      The following topics show advanced features of the Boost Compute library.
+    </p>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_compute.advanced_topics.vector_data_types"></a><a class="link" href="advanced_topics.html#boost_compute.advanced_topics.vector_data_types" title="Vector Data Types">Vector
+      Data Types</a>
+</h3></div></div></div>
+<p>
+        In addition to the built-in scalar types (e.g. <code class="computeroutput"><span class="keyword">int</span></code>
+        and <code class="computeroutput"><span class="keyword">float</span></code>), OpenCL also provides
+        vector data types (e.g. <code class="computeroutput"><span class="identifier">int2</span></code>
+        and <code class="computeroutput"><span class="identifier">vector4</span></code>). These can be
+        used with the Boost Compute library on both the host and device.
+      </p>
+<p>
+        Boost.Compute provides typedefs for these types which take the form: <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">compute</span><span class="special">::</span><span class="identifier">scalarN_</span></code> where <code class="computeroutput"><span class="identifier">scalar</span></code>
+        is a scalar data type (e.g. <code class="computeroutput"><span class="keyword">int</span></code>,
+        <code class="computeroutput"><span class="keyword">float</span></code>, <code class="computeroutput"><span class="keyword">char</span></code>)
+        and <code class="computeroutput"><span class="identifier">N</span></code> is the size of the
+        vector. Supported vector sizes are: 2, 4, 8, and 16.
+      </p>
+<p>
+        The following example shows how to transfer a set of 3D points stored as
+        an array of <code class="computeroutput"><span class="keyword">float</span></code>s on the host
+        the device and then calculate the sum of the point coordinates using the
+        <code class="computeroutput"><a class="link" href="../boost/compute/accumulate.html" title="Function accumulate">accumulate()</a></code>
+        function. The sum is transferred to the host and the centroid computed by
+        dividing by the total number of points.
+      </p>
+<p>
+        Note that even though the points are in 3D, they are stored as <code class="computeroutput"><span class="identifier">float4</span></code> due to OpenCL's alignment requirements.
+      </p>
+<p>
+</p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">iostream</span><span class="special">&gt;</span>
+
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">compute</span><span class="special">/</span><span class="identifier">algorithm</span><span class="special">/</span><span class="identifier">copy</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">compute</span><span class="special">/</span><span class="identifier">algorithm</span><span class="special">/</span><span class="identifier">accumulate</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">compute</span><span class="special">/</span><span class="identifier">container</span><span class="special">/</span><span class="identifier">vector</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">compute</span><span class="special">/</span><span class="identifier">types</span><span class="special">/</span><span class="identifier">fundamental</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="keyword">namespace</span> <span class="identifier">compute</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">compute</span><span class="special">;</span>
+
+<span class="comment">// the point centroid example calculates and displays the</span>
+<span class="comment">// centroid of a set of 3D points stored as float4's</span>
+<span class="keyword">int</span> <span class="identifier">main</span><span class="special">()</span>
+<span class="special">{</span>
+    <span class="keyword">using</span> <span class="identifier">compute</span><span class="special">::</span><span class="identifier">float4_</span><span class="special">;</span>
+
+    <span class="comment">// get default device and setup context</span>
+    <span class="identifier">compute</span><span class="special">::</span><span class="identifier">device</span> <span class="identifier">device</span> <span class="special">=</span> <span class="identifier">compute</span><span class="special">::</span><span class="identifier">system</span><span class="special">::</span><span class="identifier">default_device</span><span class="special">();</span>
+    <span class="identifier">compute</span><span class="special">::</span><span class="identifier">context</span> <span class="identifier">context</span><span class="special">(</span><span class="identifier">device</span><span class="special">);</span>
+    <span class="identifier">compute</span><span class="special">::</span><span class="identifier">command_queue</span> <span class="identifier">queue</span><span class="special">(</span><span class="identifier">context</span><span class="special">,</span> <span class="identifier">device</span><span class="special">);</span>
+
+    <span class="comment">// point coordinates</span>
+    <span class="keyword">float</span> <span class="identifier">points</span><span class="special">[]</span> <span class="special">=</span> <span class="special">{</span> <span class="number">1.0f</span><span class="special">,</span> <span class="number">2.0f</span><span class="special">,</span> <span class="number">3.0f</span><span class="special">,</span> <span class="number">0.0f</span><span class="special">,</span>
+                       <span class="special">-</span><span class="number">2.0f</span><span class="special">,</span> <span class="special">-</span><span class="number">3.0f</span><span class="special">,</span> <span class="number">4.0f</span><span class="special">,</span> <span class="number">0.0f</span><span class="special">,</span>
+                       <span class="number">1.0f</span><span class="special">,</span> <span class="special">-</span><span class="number">2.0f</span><span class="special">,</span> <span class="number">2.5f</span><span class="special">,</span> <span class="number">0.0f</span><span class="special">,</span>
+                       <span class="special">-</span><span class="number">7.0f</span><span class="special">,</span> <span class="special">-</span><span class="number">3.0f</span><span class="special">,</span> <span class="special">-</span><span class="number">2.0f</span><span class="special">,</span> <span class="number">0.0f</span><span class="special">,</span>
+                       <span class="number">3.0f</span><span class="special">,</span> <span class="number">4.0f</span><span class="special">,</span> <span class="special">-</span><span class="number">5.0f</span><span class="special">,</span> <span class="number">0.0f</span> <span class="special">};</span>
+
+    <span class="comment">// create vector for five points</span>
+    <span class="identifier">compute</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span><span class="identifier">float4_</span><span class="special">&gt;</span> <span class="identifier">vector</span><span class="special">(</span><span class="number">5</span><span class="special">,</span> <span class="identifier">context</span><span class="special">);</span>
+
+    <span class="comment">// copy point data to the device</span>
+    <span class="identifier">compute</span><span class="special">::</span><span class="identifier">copy</span><span class="special">(</span>
+        <span class="keyword">reinterpret_cast</span><span class="special">&lt;</span><span class="identifier">float4_</span> <span class="special">*&gt;(</span><span class="identifier">points</span><span class="special">),</span>
+        <span class="keyword">reinterpret_cast</span><span class="special">&lt;</span><span class="identifier">float4_</span> <span class="special">*&gt;(</span><span class="identifier">points</span><span class="special">)</span> <span class="special">+</span> <span class="number">5</span><span class="special">,</span>
+        <span class="identifier">vector</span><span class="special">.</span><span class="identifier">begin</span><span class="special">(),</span>
+        <span class="identifier">queue</span>
+    <span class="special">);</span>
+
+    <span class="comment">// calculate sum</span>
+    <span class="identifier">float4_</span> <span class="identifier">sum</span> <span class="special">=</span> <span class="identifier">compute</span><span class="special">::</span><span class="identifier">accumulate</span><span class="special">(</span>
+        <span class="identifier">vector</span><span class="special">.</span><span class="identifier">begin</span><span class="special">(),</span> <span class="identifier">vector</span><span class="special">.</span><span class="identifier">end</span><span class="special">(),</span> <span class="identifier">float4_</span><span class="special">(</span><span class="number">0</span><span class="special">,</span> <span class="number">0</span><span class="special">,</span> <span class="number">0</span><span class="special">,</span> <span class="number">0</span><span class="special">),</span> <span class="identifier">queue</span>
+    <span class="special">);</span>
+
+    <span class="comment">// calculate centroid</span>
+    <span class="identifier">float4_</span> <span class="identifier">centroid</span><span class="special">;</span>
+    <span class="keyword">for</span><span class="special">(</span><span class="identifier">size_t</span> <span class="identifier">i</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span> <span class="identifier">i</span> <span class="special">&lt;</span> <span class="number">3</span><span class="special">;</span> <span class="identifier">i</span><span class="special">++){</span>
+        <span class="identifier">centroid</span><span class="special">[</span><span class="identifier">i</span><span class="special">]</span> <span class="special">=</span> <span class="identifier">sum</span><span class="special">[</span><span class="identifier">i</span><span class="special">]</span> <span class="special">/</span> <span class="number">5.0f</span><span class="special">;</span>
+    <span class="special">}</span>
+
+    <span class="comment">// print centroid</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"centroid: "</span> <span class="special">&lt;&lt;</span> <span class="identifier">centroid</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+
+    <span class="keyword">return</span> <span class="number">0</span><span class="special">;</span>
+<span class="special">}</span>
+</pre>
+<p>
+      </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_compute.advanced_topics.custom_functions"></a><a class="link" href="advanced_topics.html#boost_compute.advanced_topics.custom_functions" title="Custom Functions">Custom
+      Functions</a>
+</h3></div></div></div>
+<p>
+        The OpenCL runtime and the Boost Compute library provide a number of built-in
+        functions such as sqrt() and dot() but many times these are not sufficient
+        for solving the problem at hand.
+      </p>
+<p>
+        The Boost Compute library provides a few different ways to create custom
+        functions that can be passed to the provided algorithms such as <code class="computeroutput"><a class="link" href="../boost/compute/transform.html" title="Function transform">transform()</a></code> and <code class="computeroutput"><a class="link" href="../boost/compute/reduce.html" title="Function reduce">reduce()</a></code>.
+      </p>
+<p>
+        The most basic method is to provide the raw source code for a function:
+      </p>
+<p>
+</p>
+<pre class="programlisting"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">compute</span><span class="special">::</span><span class="identifier">function</span><span class="special">&lt;</span><span class="keyword">int</span> <span class="special">(</span><span class="keyword">int</span><span class="special">)&gt;</span> <span class="identifier">add_four</span> <span class="special">=</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">compute</span><span class="special">::</span><span class="identifier">make_function_from_source</span><span class="special">&lt;</span><span class="keyword">int</span> <span class="special">(</span><span class="keyword">int</span><span class="special">)&gt;(</span>
+        <span class="string">"add_four"</span><span class="special">,</span>
+        <span class="string">"int add_four(int x) { return x + 4; }"</span>
+    <span class="special">);</span>
+
+<span class="identifier">boost</span><span class="special">::</span><span class="identifier">compute</span><span class="special">::</span><span class="identifier">transform</span><span class="special">(</span><span class="identifier">input</span><span class="special">.</span><span class="identifier">begin</span><span class="special">(),</span> <span class="identifier">input</span><span class="special">.</span><span class="identifier">end</span><span class="special">(),</span> <span class="identifier">output</span><span class="special">.</span><span class="identifier">begin</span><span class="special">(),</span> <span class="identifier">add_four</span><span class="special">,</span> <span class="identifier">queue</span><span class="special">);</span>
+</pre>
+<p>
+      </p>
+<p>
+        This can also be done more succinctly using the <code class="computeroutput">BOOST_COMPUTE_FUNCTION</code>
+        macro:
+</p>
+<pre class="programlisting"><span class="identifier">BOOST_COMPUTE_FUNCTION</span><span class="special">(</span><span class="keyword">int</span><span class="special">,</span> <span class="identifier">add_four</span><span class="special">,</span> <span class="special">(</span><span class="keyword">int</span> <span class="identifier">x</span><span class="special">),</span>
+<span class="special">{</span>
+    <span class="keyword">return</span> <span class="identifier">x</span> <span class="special">+</span> <span class="number">4</span><span class="special">;</span>
+<span class="special">});</span>
+
+<span class="identifier">boost</span><span class="special">::</span><span class="identifier">compute</span><span class="special">::</span><span class="identifier">transform</span><span class="special">(</span><span class="identifier">input</span><span class="special">.</span><span class="identifier">begin</span><span class="special">(),</span> <span class="identifier">input</span><span class="special">.</span><span class="identifier">end</span><span class="special">(),</span> <span class="identifier">output</span><span class="special">.</span><span class="identifier">begin</span><span class="special">(),</span> <span class="identifier">add_four</span><span class="special">,</span> <span class="identifier">queue</span><span class="special">);</span>
+</pre>
+<p>
+      </p>
+<p>
+        Also see <a href="http://kylelutz.blogspot.com/2014/03/custom-opencl-functions-in-c-with.html" target="_top">"Custom
+        OpenCL functions in C++ with Boost.Compute"</a> for more details.
+      </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_compute.advanced_topics.custom_types"></a><a class="link" href="advanced_topics.html#boost_compute.advanced_topics.custom_types" title="Custom Types">Custom Types</a>
+</h3></div></div></div>
+<p>
+        Boost.Compute provides the <code class="computeroutput">BOOST_COMPUTE_ADAPT_STRUCT</code>
+        macro which allows a C++ struct/class to be wrapped and used in OpenCL.
+      </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_compute.advanced_topics.complex_values"></a><a class="link" href="advanced_topics.html#boost_compute.advanced_topics.complex_values" title="Complex Values">Complex
+      Values</a>
+</h3></div></div></div>
+<p>
+        While OpenCL itself doesn't natively support complex data types, the Boost
+        Compute library provides them.
+      </p>
+<p>
+        To use complex values first include the following header:
+      </p>
+<p>
+</p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">compute</span><span class="special">/</span><span class="identifier">types</span><span class="special">/</span><span class="identifier">complex</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+</pre>
+<p>
+      </p>
+<p>
+        A vector of complex values can be created like so:
+      </p>
+<p>
+</p>
+<pre class="programlisting"><span class="comment">// create vector on device</span>
+<span class="identifier">boost</span><span class="special">::</span><span class="identifier">compute</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">complex</span><span class="special">&lt;</span><span class="keyword">float</span><span class="special">&gt;</span> <span class="special">&gt;</span> <span class="identifier">vector</span><span class="special">;</span>
+
+<span class="comment">// insert two complex values</span>
+<span class="identifier">vector</span><span class="special">.</span><span class="identifier">push_back</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">complex</span><span class="special">&lt;</span><span class="keyword">float</span><span class="special">&gt;(</span><span class="number">1.0f</span><span class="special">,</span> <span class="number">3.0f</span><span class="special">));</span>
+<span class="identifier">vector</span><span class="special">.</span><span class="identifier">push_back</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">complex</span><span class="special">&lt;</span><span class="keyword">float</span><span class="special">&gt;(</span><span class="number">2.0f</span><span class="special">,</span> <span class="number">4.0f</span><span class="special">));</span>
+</pre>
+<p>
+      </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_compute.advanced_topics.lambda_expressions"></a><a class="link" href="advanced_topics.html#boost_compute.advanced_topics.lambda_expressions" title="Lambda Expressions">Lambda
+      Expressions</a>
+</h3></div></div></div>
+<p>
+        The lambda expression framework allows for functions and predicates to be
+        defined at the call-site of an algorithm.
+      </p>
+<p>
+        Lambda expressions use the placeholders <code class="computeroutput"><span class="identifier">_1</span></code>
+        and <code class="computeroutput"><span class="identifier">_2</span></code> to indicate the arguments.
+        The following declarations will bring the lambda placeholders into the current
+        scope:
+      </p>
+<p>
+</p>
+<pre class="programlisting"><span class="keyword">using</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">compute</span><span class="special">::</span><span class="identifier">lambda</span><span class="special">::</span><span class="identifier">_1</span><span class="special">;</span>
+<span class="keyword">using</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">compute</span><span class="special">::</span><span class="identifier">lambda</span><span class="special">::</span><span class="identifier">_2</span><span class="special">;</span>
+</pre>
+<p>
+      </p>
+<p>
+        The following examples show how to use lambda expressions along with the
+        Boost.Compute algorithms to perform more complex operations on the device.
+      </p>
+<p>
+        To count the number of odd values in a vector:
+      </p>
+<p>
+</p>
+<pre class="programlisting"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">compute</span><span class="special">::</span><span class="identifier">count_if</span><span class="special">(</span><span class="identifier">vector</span><span class="special">.</span><span class="identifier">begin</span><span class="special">(),</span> <span class="identifier">vector</span><span class="special">.</span><span class="identifier">end</span><span class="special">(),</span> <span class="identifier">_1</span> <span class="special">%</span> <span class="number">2</span> <span class="special">==</span> <span class="number">1</span><span class="special">,</span> <span class="identifier">queue</span><span class="special">);</span>
+</pre>
+<p>
+      </p>
+<p>
+        To multiply each value in a vector by three and subtract four:
+      </p>
+<p>
+</p>
+<pre class="programlisting"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">compute</span><span class="special">::</span><span class="identifier">transform</span><span class="special">(</span><span class="identifier">vector</span><span class="special">.</span><span class="identifier">begin</span><span class="special">(),</span> <span class="identifier">vector</span><span class="special">.</span><span class="identifier">end</span><span class="special">(),</span> <span class="identifier">vector</span><span class="special">.</span><span class="identifier">begin</span><span class="special">(),</span> <span class="identifier">_1</span> <span class="special">*</span> <span class="number">3</span> <span class="special">-</span> <span class="number">4</span><span class="special">,</span> <span class="identifier">queue</span><span class="special">);</span>
+</pre>
+<p>
+      </p>
+<p>
+        Lambda expressions can also be used to create function&lt;&gt; objects:
+      </p>
+<p>
+</p>
+<pre class="programlisting"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">compute</span><span class="special">::</span><span class="identifier">function</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">(</span><span class="keyword">int</span><span class="special">)&gt;</span> <span class="identifier">add_four</span> <span class="special">=</span> <span class="identifier">_1</span> <span class="special">+</span> <span class="number">4</span><span class="special">;</span>
+</pre>
+<p>
+      </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_compute.advanced_topics.asynchronous_operations"></a><a class="link" href="advanced_topics.html#boost_compute.advanced_topics.asynchronous_operations" title="Asynchronous Operations">Asynchronous
+      Operations</a>
+</h3></div></div></div>
+<p>
+        A major performance bottleneck in GPGPU applications is memory transfer.
+        This can be alleviated by overlapping memory transfer with computation. The
+        Boost Compute library provides the <code class="computeroutput"><a class="link" href="../boost/compute/copy_async.html" title="Function template copy_async">copy_async()</a></code>
+        function which performs an asynchronous memory transfers between the host
+        and the device.
+      </p>
+<p>
+        For example, to initiate a copy from the host to the device and then perform
+        other actions:
+      </p>
+<p>
+</p>
+<pre class="programlisting"><span class="comment">// data on the host</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span><span class="keyword">float</span><span class="special">&gt;</span> <span class="identifier">host_vector</span> <span class="special">=</span> <span class="special">...</span>
+
+<span class="comment">// create a vector on the device</span>
+<span class="identifier">boost</span><span class="special">::</span><span class="identifier">compute</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span><span class="keyword">float</span><span class="special">&gt;</span> <span class="identifier">device_vector</span><span class="special">(</span><span class="identifier">host_vector</span><span class="special">.</span><span class="identifier">size</span><span class="special">(),</span> <span class="identifier">context</span><span class="special">);</span>
+
+<span class="comment">// copy data to the device asynchronously</span>
+<span class="identifier">boost</span><span class="special">::</span><span class="identifier">compute</span><span class="special">::</span><span class="identifier">future</span><span class="special">&lt;</span><span class="keyword">void</span><span class="special">&gt;</span> <span class="identifier">f</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">compute</span><span class="special">::</span><span class="identifier">copy_async</span><span class="special">(</span>
+    <span class="identifier">host_vector</span><span class="special">.</span><span class="identifier">begin</span><span class="special">(),</span> <span class="identifier">host_vector</span><span class="special">.</span><span class="identifier">end</span><span class="special">(),</span> <span class="identifier">device_vector</span><span class="special">.</span><span class="identifier">begin</span><span class="special">(),</span> <span class="identifier">queue</span>
+<span class="special">);</span>
+
+<span class="comment">// perform other work on the host or device</span>
+<span class="comment">// ...</span>
+
+<span class="comment">// ensure the copy is completed</span>
+<span class="identifier">f</span><span class="special">.</span><span class="identifier">wait</span><span class="special">();</span>
+
+<span class="comment">// use data on the device (e.g. sort)</span>
+<span class="identifier">boost</span><span class="special">::</span><span class="identifier">compute</span><span class="special">::</span><span class="identifier">sort</span><span class="special">(</span><span class="identifier">device_vector</span><span class="special">.</span><span class="identifier">begin</span><span class="special">(),</span> <span class="identifier">device_vector</span><span class="special">.</span><span class="identifier">end</span><span class="special">(),</span> <span class="identifier">queue</span><span class="special">);</span>
+</pre>
+<p>
+      </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_compute.advanced_topics.performance_timing"></a><a class="link" href="advanced_topics.html#boost_compute.advanced_topics.performance_timing" title="Performance Timing">Performance
+      Timing</a>
+</h3></div></div></div>
+<p>
+        For example, to measure the time to copy a vector of data from the host to
+        the device:
+      </p>
+<p>
+</p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">vector</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">cstdlib</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">iostream</span><span class="special">&gt;</span>
+
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">compute</span><span class="special">/</span><span class="identifier">event</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">compute</span><span class="special">/</span><span class="identifier">system</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">compute</span><span class="special">/</span><span class="identifier">algorithm</span><span class="special">/</span><span class="identifier">copy</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">compute</span><span class="special">/</span><span class="identifier">async</span><span class="special">/</span><span class="identifier">future</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">compute</span><span class="special">/</span><span class="identifier">container</span><span class="special">/</span><span class="identifier">vector</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="keyword">namespace</span> <span class="identifier">compute</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">compute</span><span class="special">;</span>
+
+<span class="keyword">int</span> <span class="identifier">main</span><span class="special">()</span>
+<span class="special">{</span>
+    <span class="comment">// get the default device</span>
+    <span class="identifier">compute</span><span class="special">::</span><span class="identifier">device</span> <span class="identifier">gpu</span> <span class="special">=</span> <span class="identifier">compute</span><span class="special">::</span><span class="identifier">system</span><span class="special">::</span><span class="identifier">default_device</span><span class="special">();</span>
+
+    <span class="comment">// create context for default device</span>
+    <span class="identifier">compute</span><span class="special">::</span><span class="identifier">context</span> <span class="identifier">context</span><span class="special">(</span><span class="identifier">gpu</span><span class="special">);</span>
+
+    <span class="comment">// create command queue with profiling enabled</span>
+    <span class="identifier">compute</span><span class="special">::</span><span class="identifier">command_queue</span> <span class="identifier">queue</span><span class="special">(</span>
+        <span class="identifier">context</span><span class="special">,</span> <span class="identifier">gpu</span><span class="special">,</span> <span class="identifier">compute</span><span class="special">::</span><span class="identifier">command_queue</span><span class="special">::</span><span class="identifier">enable_profiling</span>
+    <span class="special">);</span>
+
+    <span class="comment">// generate random data on the host</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;</span> <span class="identifier">host_vector</span><span class="special">(</span><span class="number">16000000</span><span class="special">);</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">generate</span><span class="special">(</span><span class="identifier">host_vector</span><span class="special">.</span><span class="identifier">begin</span><span class="special">(),</span> <span class="identifier">host_vector</span><span class="special">.</span><span class="identifier">end</span><span class="special">(),</span> <span class="identifier">rand</span><span class="special">);</span>
+
+    <span class="comment">// create a vector on the device</span>
+    <span class="identifier">compute</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;</span> <span class="identifier">device_vector</span><span class="special">(</span><span class="identifier">host_vector</span><span class="special">.</span><span class="identifier">size</span><span class="special">(),</span> <span class="identifier">context</span><span class="special">);</span>
+
+    <span class="comment">// copy data from the host to the device</span>
+    <span class="identifier">compute</span><span class="special">::</span><span class="identifier">future</span><span class="special">&lt;</span><span class="keyword">void</span><span class="special">&gt;</span> <span class="identifier">future</span> <span class="special">=</span> <span class="identifier">compute</span><span class="special">::</span><span class="identifier">copy_async</span><span class="special">(</span>
+        <span class="identifier">host_vector</span><span class="special">.</span><span class="identifier">begin</span><span class="special">(),</span> <span class="identifier">host_vector</span><span class="special">.</span><span class="identifier">end</span><span class="special">(),</span> <span class="identifier">device_vector</span><span class="special">.</span><span class="identifier">begin</span><span class="special">(),</span> <span class="identifier">queue</span>
+    <span class="special">);</span>
+
+    <span class="comment">// wait for copy to finish</span>
+    <span class="identifier">future</span><span class="special">.</span><span class="identifier">wait</span><span class="special">();</span>
+
+    <span class="comment">// get elapsed time from event profiling information</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">chrono</span><span class="special">::</span><span class="identifier">milliseconds</span> <span class="identifier">duration</span> <span class="special">=</span>
+        <span class="identifier">future</span><span class="special">.</span><span class="identifier">get_event</span><span class="special">().</span><span class="identifier">duration</span><span class="special">&lt;</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">chrono</span><span class="special">::</span><span class="identifier">milliseconds</span><span class="special">&gt;();</span>
+
+    <span class="comment">// print elapsed time in milliseconds</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"time: "</span> <span class="special">&lt;&lt;</span> <span class="identifier">duration</span><span class="special">.</span><span class="identifier">count</span><span class="special">()</span> <span class="special">&lt;&lt;</span> <span class="string">" ms"</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+
+    <span class="keyword">return</span> <span class="number">0</span><span class="special">;</span>
+<span class="special">}</span>
+</pre>
+<p>
+      </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_compute.advanced_topics.opencl_api_interoperability"></a><a class="link" href="advanced_topics.html#boost_compute.advanced_topics.opencl_api_interoperability" title="OpenCL API Interoperability">OpenCL
+      API Interoperability</a>
+</h3></div></div></div>
+<p>
+        The Boost Compute library is designed to easily interoperate with the OpenCL
+        API. All of the wrapped classes have conversion operators to their underlying
+        OpenCL types which allows them to be passed directly to the OpenCL functions.
+      </p>
+<p>
+        For example,
+</p>
+<pre class="programlisting"><span class="comment">// create context object</span>
+<span class="identifier">boost</span><span class="special">::</span><span class="identifier">compute</span><span class="special">::</span><span class="identifier">context</span> <span class="identifier">ctx</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">compute</span><span class="special">::</span><span class="identifier">default_context</span><span class="special">();</span>
+
+<span class="comment">// query number of devices using the OpenCL API</span>
+<span class="identifier">cl_uint</span> <span class="identifier">num_devices</span><span class="special">;</span>
+<span class="identifier">clGetContextInfo</span><span class="special">(</span><span class="identifier">ctx</span><span class="special">,</span> <span class="identifier">CL_CONTEXT_NUM_DEVICES</span><span class="special">,</span> <span class="keyword">sizeof</span><span class="special">(</span><span class="identifier">cl_uint</span><span class="special">),</span> <span class="special">&amp;</span><span class="identifier">num_devices</span><span class="special">,</span> <span class="number">0</span><span class="special">);</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"num_devices: "</span> <span class="special">&lt;&lt;</span> <span class="identifier">num_devices</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+</pre>
+<p>
+      </p>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2013, 2014 Kyle Lutz<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="tutorial.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="interop.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

@@ -1,0 +1,136 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Deprecated</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../../index.html" title="Chapter&#160;1.&#160;Thread 4.7.0">
+<link rel="up" href="../time.html" title="Time Requirements">
+<link rel="prev" href="../time.html" title="Time Requirements">
+<link rel="next" href="../emulations.html" title="Emulations">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../time.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../time.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../emulations.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="thread.time.deprecated"></a><a class="link" href="deprecated.html" title="Deprecated">Deprecated</a>
+</h3></div></div></div>
+<div class="toc"><dl>
+<dt><span class="section"><a href="deprecated.html#thread.time.deprecated.system_time">Typedef <code class="computeroutput"><span class="identifier">system_time</span></code></a></span></dt>
+<dt><span class="section"><a href="deprecated.html#thread.time.deprecated.get_system_time">Non-member
+        function <code class="computeroutput"><span class="identifier">get_system_time</span><span class="special">()</span></code></a></span></dt>
+</dl></div>
+<p>
+        The time related functions introduced in Boost 1.35.0, using the <a class="link" href="../../">Boost.Date_Time</a>
+        library are deprecated. These include (but are not limited to):
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" type="disc">
+<li class="listitem">
+            <a class="link" href="../thread_management/this_thread.html#thread.thread_management.this_thread.sleep" title="Non-member function sleep() DEPRECATED"><code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">this_thread</span><span class="special">::</span><span class="identifier">sleep</span><span class="special">()</span></code></a>
+          </li>
+<li class="listitem">
+            <a class="link" href="../thread_management/thread.html#thread.thread_management.thread.timed_join" title="Member function timed_join() DEPRECATED"><code class="computeroutput"><span class="identifier">timed_join</span><span class="special">()</span></code></a>
+          </li>
+<li class="listitem">
+            <a class="link" href="../synchronization/condvar_ref.html#thread.synchronization.condvar_ref.condition_variable.timed_wait" title="bool timed_wait(boost::unique_lock&lt;boost::mutex&gt;&amp; lock,boost::system_time const&amp; abs_time)"><code class="computeroutput"><span class="identifier">timed_wait</span><span class="special">()</span></code></a>
+          </li>
+<li class="listitem">
+            <a class="link" href="../synchronization/mutex_concepts.html#thread.synchronization.mutex_concepts.timed_lockable.timed_lock" title="m.timed_lock(abs_time)"><code class="computeroutput"><span class="identifier">timed_lock</span><span class="special">()</span></code></a>
+          </li>
+</ul></div>
+<p>
+        For the overloads that accept an absolute time parameter, an object of type
+        <a class="link" href="deprecated.html#thread.time.deprecated.system_time" title="Typedef system_time"><code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">system_time</span></code></a>
+        is required. Typically, this will be obtained by adding a duration to the
+        current time, obtained with a call to <a class="link" href="deprecated.html#thread.time.deprecated.get_system_time" title="Non-member function get_system_time()"><code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">get_system_time</span><span class="special">()</span></code></a>.
+        e.g.
+      </p>
+<pre class="programlisting"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">system_time</span> <span class="keyword">const</span> <span class="identifier">timeout</span><span class="special">=</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">get_system_time</span><span class="special">()</span> <span class="special">+</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">posix_time</span><span class="special">::</span><span class="identifier">milliseconds</span><span class="special">(</span><span class="number">500</span><span class="special">);</span>
+
+<span class="keyword">extern</span> <span class="keyword">bool</span> <span class="identifier">done</span><span class="special">;</span>
+<span class="keyword">extern</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">mutex</span> <span class="identifier">m</span><span class="special">;</span>
+<span class="keyword">extern</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">condition_variable</span> <span class="identifier">cond</span><span class="special">;</span>
+
+<span class="identifier">boost</span><span class="special">::</span><span class="identifier">unique_lock</span><span class="special">&lt;</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">mutex</span><span class="special">&gt;</span> <span class="identifier">lk</span><span class="special">(</span><span class="identifier">m</span><span class="special">);</span>
+<span class="keyword">while</span><span class="special">(!</span><span class="identifier">done</span><span class="special">)</span>
+<span class="special">{</span>
+    <span class="keyword">if</span><span class="special">(!</span><span class="identifier">cond</span><span class="special">.</span><span class="identifier">timed_wait</span><span class="special">(</span><span class="identifier">lk</span><span class="special">,</span><span class="identifier">timeout</span><span class="special">))</span>
+    <span class="special">{</span>
+        <span class="keyword">throw</span> <span class="string">"timed out"</span><span class="special">;</span>
+    <span class="special">}</span>
+<span class="special">}</span>
+</pre>
+<p>
+        For the overloads that accept a <span class="emphasis"><em>TimeDuration</em></span> parameter,
+        an object of any type that meets the <a class="link" href="../../">Boost.Date_Time
+        Time Duration requirements</a> can be used, e.g.
+      </p>
+<pre class="programlisting"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">this_thread</span><span class="special">::</span><span class="identifier">sleep</span><span class="special">(</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">posix_time</span><span class="special">::</span><span class="identifier">milliseconds</span><span class="special">(</span><span class="number">25</span><span class="special">));</span>
+
+<span class="identifier">boost</span><span class="special">::</span><span class="identifier">mutex</span> <span class="identifier">m</span><span class="special">;</span>
+<span class="keyword">if</span><span class="special">(</span><span class="identifier">m</span><span class="special">.</span><span class="identifier">timed_lock</span><span class="special">(</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">posix_time</span><span class="special">::</span><span class="identifier">nanoseconds</span><span class="special">(</span><span class="number">100</span><span class="special">)))</span>
+<span class="special">{</span>
+    <span class="comment">//  ...</span>
+<span class="special">}</span>
+</pre>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="thread.time.deprecated.system_time"></a><a class="link" href="deprecated.html#thread.time.deprecated.system_time" title="Typedef system_time">Typedef <code class="computeroutput"><span class="identifier">system_time</span></code></a>
+</h4></div></div></div>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">thread</span><span class="special">/</span><span class="identifier">thread_time</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="keyword">typedef</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">posix_time</span><span class="special">::</span><span class="identifier">ptime</span> <span class="identifier">system_time</span><span class="special">;</span>
+</pre>
+<p>
+          See the documentation for <a class="link" href="../../"><code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">posix_time</span><span class="special">::</span><span class="identifier">ptime</span></code></a> in the Boost.Date_Time library.
+        </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="thread.time.deprecated.get_system_time"></a><a class="link" href="deprecated.html#thread.time.deprecated.get_system_time" title="Non-member function get_system_time()">Non-member
+        function <code class="computeroutput"><span class="identifier">get_system_time</span><span class="special">()</span></code></a>
+</h4></div></div></div>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">thread</span><span class="special">/</span><span class="identifier">thread_time</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="identifier">system_time</span> <span class="identifier">get_system_time</span><span class="special">();</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl>
+<dt><span class="term">Returns:</span></dt>
+<dd><p>
+                The current time.
+              </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+                Nothing.
+              </p></dd>
+</dl>
+</div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2007 -11 Anthony Williams<br>Copyright &#169; 2011 -15 Vicente J. Botet Escriba<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../time.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../time.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../emulations.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

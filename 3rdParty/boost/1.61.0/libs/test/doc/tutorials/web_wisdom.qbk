@@ -1,0 +1,55 @@
+[/
+ / Copyright (c) 2015 Boost.Test contributors 
+ /
+ / Distributed under the Boost Software License, Version 1.0. (See accompanying
+ / file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+ /]
+
+[section:web_wisdom Web Wisdom]
+
+If you can't find answer to the question you have on these pages, it is quite possible someone already faced an issue similar to yours 
+and posted about this online. This page gathers a few of the additional materials you may review.
+
+[note The following material is provided "as is". The views, implementation or methods expressed are their respective authors and 
+      do not necessarily represent positions of the Boost.Test contributors, and might be outdated.]
+
+* [@http://stackoverflow.com/search?q=boost+test Stack overflow Boost.Test related questions]
+* [@http://www.ibm.com/developerworks/aix/library/au-ctools1_boost/?S_TACT=105AGY20&S_CMP=HP Get to know the Boost unit test framework (from IBM)]
+* [@http://www.alittlemadness.com/2009/03/31/c-unit-testing-with-boosttest/ C++ Unit Testing With Boost.Test]
+* [@http://www.beroux.com/english/articles/boost_unit_testing/ C++ Unit Testing Framework: A Boost Test Tutorial]
+* [@http://praveen.kumar.in/2010/04/30/introduction-to-test-driven-development-in-c-using-boost-test-library/ 
+   Introduction to Test-Driven Development in C++ using Boost Test Library]
+* C++ Unit Tests With Boost.Test: 
+  [@https://legalizeadulthood.wordpress.com/2009/07/04/c-unit-tests-with-boost-test-part-1/ part 1],
+  [@https://legalizeadulthood.wordpress.com/2009/07/05/c-unit-tests-with-boost-test-part-2/ part 2],
+  [@https://legalizeadulthood.wordpress.com/2009/07/05/c-unit-tests-with-boost-test-part-3/ part 3],
+  [@https://legalizeadulthood.wordpress.com/2009/07/05/c-unit-tests-with-boost-test-part-4/ part 4],
+  [@https://legalizeadulthood.wordpress.com/2009/07/05/c-unit-tests-with-boost-test-part-5/ part 5]  
+* [@http://alexott.net/en/cpp/CppTestingIntro.html Test-driven development and unit testing with examples in C++]
+* [@http://www.hpfsc.de/default.php?url=./boosttest/index.html How to use Boost Test for automated testing]
+* [@http://www.abauchu.net/blog/post/2009/12/02/Unit-tests-with-BoostTest Unit tests with Boost.Test]
+
+* [@http://richarddingwall.name/2008/06/08/boost-how-do-i-write-a-unit-test-for-a-signal/ 
+   Boost: How do I write a unit test for a signal?]
+* [@https://chuckaknight.wordpress.com/2013/04/18/testing-using-the-boost-unit-test-framework
+   Testing Using the Boost Unit Test Framework]
+* [@https://sanecpp.wordpress.com/2014/10/08/introduction-to-unit-testing/ Introduction to unit testing]
+* [@http://www.alittlemadness.com/2009/12/04/using-boost-test-with-boost-build/ Using Boost.Test with Boost.Build]
+* [@http://www.alittlemadness.com/2009/12/10/boost-test-xml-reports-with-boost-build/ Boost.Test XML Reports with Boost.Build]
+* [@http://edn.embarcadero.com/article/32703 Boost Unit Testing with C++BuilderX]
+* [@http://www.sharprobotica.com/2010/04/including-boost-test-in-your-c-project/ Including Boost.Test in Your C++ Project]
+* [@http://bitten.edgewall.org/wiki/BoostTest Using Boost.Test in Bitten]
+* [@http://seandenigris.com/blog/?p=187 Automate acceptance/unit testing C++ in Xcode (using Boost.Test)]
+* [@http://www.codeproject.com/Articles/368966/Automation-of-running-Boost-Test-with-Visual-Studi 
+   Automation of running Boost.Test with Visual Studio macros]
+* [@http://richarddingwall.name/2008/06/01/using-the-boost-unit-test-framework-with-xcode-3/ Using the Boost Unit Test Framework with Xcode 3]
+* [@http://www.lonecpluspluscoder.com/2014/09/some-boost-test-notes/ Some Boost.Test notes]
+* [@http://www.devexp.ru/2010/01/boost-test-yunit-testirovanie-i-cmake/ Boost.Test tutorial (in Russian)]
+* Boost Test. Setup and usage ([@http://blog.yastrebkov.com/2009/07/boost-test.html Russian],
+  [@http://blog.yastrebkov.com/2010/07/boost-test-setup-and-usage.html English])
+* [@http://www.ncbi.nlm.nih.gov/toolkit/doc/book/ch_boost/ Using the Boost Unit Test Framework]
+* [@http://endl.ch/content/gallio-adapter-boosttest Gallio adapter for Boost.Test]
+* [@http://sindicollo.blogspot.com/2008/11/boosttest.html Russian translation of small tutorial to Boost.Test]
+* [@http://www.eld.leidenuniv.nl/~moene/Home/projects/testdox/boosttest/ Customizing the output log and report format]
+
+[endsect] [/section:web_wisdom]

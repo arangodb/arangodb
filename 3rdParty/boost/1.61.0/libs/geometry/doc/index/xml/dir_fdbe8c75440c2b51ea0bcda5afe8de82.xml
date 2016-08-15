@@ -1,0 +1,19 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="dir_fdbe8c75440c2b51ea0bcda5afe8de82" kind="dir">
+    <compoundname>/home/travis/build/boostorg/boost/boost/geometry/index/</compoundname>
+    <innerdir refid="dir_0d70c6d27e6ac49e78cf999cef868997">/home/travis/build/boostorg/boost/boost/geometry/index/adaptors/</innerdir>
+    <innerfile refid="distance__predicates_8hpp">distance_predicates.hpp</innerfile>
+    <innerfile refid="equal__to_8hpp">equal_to.hpp</innerfile>
+    <innerfile refid="indexable_8hpp">indexable.hpp</innerfile>
+    <innerfile refid="inserter_8hpp">inserter.hpp</innerfile>
+    <innerfile refid="parameters_8hpp">parameters.hpp</innerfile>
+    <innerfile refid="predicates_8hpp">predicates.hpp</innerfile>
+    <innerfile refid="rtree_8hpp">rtree.hpp</innerfile>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/index/"/>
+  </compounddef>
+</doxygen>

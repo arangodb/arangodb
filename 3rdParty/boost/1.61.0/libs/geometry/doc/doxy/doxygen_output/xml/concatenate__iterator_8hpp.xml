@@ -1,0 +1,50 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="concatenate__iterator_8hpp" kind="file">
+    <compoundname>concatenate_iterator.hpp</compoundname>
+    <includes local="no">boost/mpl/assert.hpp</includes>
+    <includes local="no">boost/type_traits/is_convertible.hpp</includes>
+    <includes local="no">boost/iterator.hpp</includes>
+    <includes local="no">boost/iterator/iterator_facade.hpp</includes>
+    <includes local="no">boost/iterator/iterator_categories.hpp</includes>
+    <incdepgraph>
+      <node id="54705">
+        <label>boost/iterator/iterator_facade.hpp</label>
+      </node>
+      <node id="54702">
+        <label>boost/mpl/assert.hpp</label>
+      </node>
+      <node id="54703">
+        <label>boost/type_traits/is_convertible.hpp</label>
+      </node>
+      <node id="54706">
+        <label>boost/iterator/iterator_categories.hpp</label>
+      </node>
+      <node id="54704">
+        <label>boost/iterator.hpp</label>
+      </node>
+      <node id="54701">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/iterators/concatenate_iterator.hpp</label>
+        <link refid="concatenate_iterator.hpp"/>
+        <childnode refid="54702" relation="include">
+        </childnode>
+        <childnode refid="54703" relation="include">
+        </childnode>
+        <childnode refid="54704" relation="include">
+        </childnode>
+        <childnode refid="54705" relation="include">
+        </childnode>
+        <childnode refid="54706" relation="include">
+        </childnode>
+      </node>
+    </incdepgraph>
+    <innerclass refid="classboost_1_1geometry_1_1concatenate__iterator" prot="public">boost::geometry::concatenate_iterator</innerclass>
+    <innernamespace refid="namespaceboost">boost</innernamespace>
+    <innernamespace refid="namespaceboost_1_1geometry">boost::geometry</innernamespace>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/iterators/concatenate_iterator.hpp"/>
+  </compounddef>
+</doxygen>

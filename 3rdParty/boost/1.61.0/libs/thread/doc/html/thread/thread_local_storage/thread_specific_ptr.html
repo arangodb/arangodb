@@ -1,0 +1,293 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Class thread_specific_ptr</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../../index.html" title="Chapter&#160;1.&#160;Thread 4.7.0">
+<link rel="up" href="../thread_local_storage.html" title="Thread Local Storage">
+<link rel="prev" href="../thread_local_storage.html" title="Thread Local Storage">
+<link rel="next" href="../sds.html" title="Synchronized Data Structures">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../thread_local_storage.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../thread_local_storage.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../sds.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="thread.thread_local_storage.thread_specific_ptr"></a><a class="link" href="thread_specific_ptr.html" title="Class thread_specific_ptr">Class
+      <code class="computeroutput"><span class="identifier">thread_specific_ptr</span></code></a>
+</h3></div></div></div>
+<div class="toc"><dl>
+<dt><span class="section"><a href="thread_specific_ptr.html#thread.thread_local_storage.thread_specific_ptr.default_constructor"><code class="computeroutput"><span class="identifier">thread_specific_ptr</span><span class="special">();</span></code></a></span></dt>
+<dt><span class="section"><a href="thread_specific_ptr.html#thread.thread_local_storage.thread_specific_ptr.constructor_with_custom_cleanup"><code class="computeroutput"><span class="keyword">explicit</span> <span class="identifier">thread_specific_ptr</span><span class="special">(</span><span class="keyword">void</span> <span class="special">(*</span><span class="identifier">cleanup_function</span><span class="special">)(</span><span class="identifier">T</span><span class="special">*));</span></code></a></span></dt>
+<dt><span class="section"><a href="thread_specific_ptr.html#thread.thread_local_storage.thread_specific_ptr.destructor"><code class="computeroutput"><span class="special">~</span><span class="identifier">thread_specific_ptr</span><span class="special">();</span></code></a></span></dt>
+<dt><span class="section"><a href="thread_specific_ptr.html#thread.thread_local_storage.thread_specific_ptr.get"><code class="computeroutput"><span class="identifier">T</span><span class="special">*</span> <span class="identifier">get</span><span class="special">()</span> <span class="keyword">const</span><span class="special">;</span></code></a></span></dt>
+<dt><span class="section"><a href="thread_specific_ptr.html#thread.thread_local_storage.thread_specific_ptr.operator_arrow"><code class="computeroutput"><span class="identifier">T</span><span class="special">*</span> <span class="keyword">operator</span><span class="special">-&gt;()</span> <span class="keyword">const</span><span class="special">;</span></code></a></span></dt>
+<dt><span class="section"><a href="thread_specific_ptr.html#thread.thread_local_storage.thread_specific_ptr.operator_star"><code class="computeroutput"><span class="identifier">T</span><span class="special">&amp;</span> <span class="keyword">operator</span><span class="special">*()</span> <span class="keyword">const</span><span class="special">;</span></code></a></span></dt>
+<dt><span class="section"><a href="thread_specific_ptr.html#thread.thread_local_storage.thread_specific_ptr.reset"><code class="computeroutput"><span class="keyword">void</span> <span class="identifier">reset</span><span class="special">(</span><span class="identifier">T</span><span class="special">*</span>
+        <span class="identifier">new_value</span><span class="special">=</span><span class="number">0</span><span class="special">);</span></code></a></span></dt>
+<dt><span class="section"><a href="thread_specific_ptr.html#thread.thread_local_storage.thread_specific_ptr.release"><code class="computeroutput"><span class="identifier">T</span><span class="special">*</span> <span class="identifier">release</span><span class="special">();</span></code></a></span></dt>
+</dl></div>
+<pre class="programlisting"><span class="comment">//  #include &lt;boost/thread/tss.hpp&gt;</span>
+
+<span class="keyword">namespace</span> <span class="identifier">boost</span>
+<span class="special">{</span>
+  <span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">T</span><span class="special">&gt;</span>
+  <span class="keyword">class</span> <span class="identifier">thread_specific_ptr</span>
+  <span class="special">{</span>
+  <span class="keyword">public</span><span class="special">:</span>
+      <span class="identifier">thread_specific_ptr</span><span class="special">();</span>
+      <span class="keyword">explicit</span> <span class="identifier">thread_specific_ptr</span><span class="special">(</span><span class="keyword">void</span> <span class="special">(*</span><span class="identifier">cleanup_function</span><span class="special">)(</span><span class="identifier">T</span><span class="special">*));</span>
+      <span class="special">~</span><span class="identifier">thread_specific_ptr</span><span class="special">();</span>
+
+      <span class="identifier">T</span><span class="special">*</span> <span class="identifier">get</span><span class="special">()</span> <span class="keyword">const</span><span class="special">;</span>
+      <span class="identifier">T</span><span class="special">*</span> <span class="keyword">operator</span><span class="special">-&gt;()</span> <span class="keyword">const</span><span class="special">;</span>
+      <span class="identifier">T</span><span class="special">&amp;</span> <span class="keyword">operator</span><span class="special">*()</span> <span class="keyword">const</span><span class="special">;</span>
+
+      <span class="identifier">T</span><span class="special">*</span> <span class="identifier">release</span><span class="special">();</span>
+      <span class="keyword">void</span> <span class="identifier">reset</span><span class="special">(</span><span class="identifier">T</span><span class="special">*</span> <span class="identifier">new_value</span><span class="special">=</span><span class="number">0</span><span class="special">);</span>
+  <span class="special">};</span>
+<span class="special">}</span>
+</pre>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="thread.thread_local_storage.thread_specific_ptr.default_constructor"></a><a class="link" href="thread_specific_ptr.html#thread.thread_local_storage.thread_specific_ptr.default_constructor" title="thread_specific_ptr();"><code class="computeroutput"><span class="identifier">thread_specific_ptr</span><span class="special">();</span></code></a>
+</h4></div></div></div>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl>
+<dt><span class="term">Requires:</span></dt>
+<dd><p>
+                <code class="computeroutput"><span class="keyword">delete</span> <span class="keyword">this</span><span class="special">-&gt;</span><span class="identifier">get</span><span class="special">()</span></code> is well-formed.
+              </p></dd>
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+                Construct a <code class="computeroutput"><span class="identifier">thread_specific_ptr</span></code>
+                object for storing a pointer to an object of type <code class="computeroutput"><span class="identifier">T</span></code>
+                specific to each thread. The default <code class="computeroutput"><span class="keyword">delete</span></code>-based
+                cleanup function will be used to destroy any thread-local objects
+                when <code class="computeroutput"><span class="identifier">reset</span><span class="special">()</span></code>
+                is called, or the thread exits.
+              </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+                <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">thread_resource_error</span></code> if an error
+                occurs.
+              </p></dd>
+</dl>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="thread.thread_local_storage.thread_specific_ptr.constructor_with_custom_cleanup"></a><a class="link" href="thread_specific_ptr.html#thread.thread_local_storage.thread_specific_ptr.constructor_with_custom_cleanup" title="explicit thread_specific_ptr(void (*cleanup_function)(T*));"><code class="computeroutput"><span class="keyword">explicit</span> <span class="identifier">thread_specific_ptr</span><span class="special">(</span><span class="keyword">void</span> <span class="special">(*</span><span class="identifier">cleanup_function</span><span class="special">)(</span><span class="identifier">T</span><span class="special">*));</span></code></a>
+</h4></div></div></div>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl>
+<dt><span class="term">Requires:</span></dt>
+<dd><p>
+                <code class="computeroutput"><span class="identifier">cleanup_function</span><span class="special">(</span><span class="keyword">this</span><span class="special">-&gt;</span><span class="identifier">get</span><span class="special">())</span></code> does not throw any exceptions.
+              </p></dd>
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+                Construct a <code class="computeroutput"><span class="identifier">thread_specific_ptr</span></code>
+                object for storing a pointer to an object of type <code class="computeroutput"><span class="identifier">T</span></code>
+                specific to each thread. The supplied <code class="computeroutput"><span class="identifier">cleanup_function</span></code>
+                will be used to destroy any thread-local objects when <code class="computeroutput"><span class="identifier">reset</span><span class="special">()</span></code>
+                is called, or the thread exits.
+              </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+                <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">thread_resource_error</span></code> if an error
+                occurs.
+              </p></dd>
+</dl>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="thread.thread_local_storage.thread_specific_ptr.destructor"></a><a class="link" href="thread_specific_ptr.html#thread.thread_local_storage.thread_specific_ptr.destructor" title="~thread_specific_ptr();"><code class="computeroutput"><span class="special">~</span><span class="identifier">thread_specific_ptr</span><span class="special">();</span></code></a>
+</h4></div></div></div>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl>
+<dt><span class="term">Requires:</span></dt>
+<dd><p>
+                All the thread specific instances associated to this thread_specific_ptr
+                (except maybe the one associated to this thread) must be null.
+              </p></dd>
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+                Calls <code class="computeroutput"><span class="keyword">this</span><span class="special">-&gt;</span><span class="identifier">reset</span><span class="special">()</span></code>
+                to clean up the associated value for the current thread, and destroys
+                <code class="computeroutput"><span class="special">*</span><span class="keyword">this</span></code>.
+              </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+                Nothing.
+              </p></dd>
+<dt><span class="term">Remarks:</span></dt>
+<dd><p>
+                The requirement is due to the fact that in order to delete all these
+                instances, the implementation should be forced to maintain a list
+                of all the threads having an associated specific ptr, which is against
+                the goal of thread specific data.
+              </p></dd>
+</dl>
+</div>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+            Care needs to be taken to ensure that any threads still running after
+            an instance of <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">thread_specific_ptr</span></code>
+            has been destroyed do not call any member functions on that instance.
+          </p></td></tr>
+</table></div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="thread.thread_local_storage.thread_specific_ptr.get"></a><a class="link" href="thread_specific_ptr.html#thread.thread_local_storage.thread_specific_ptr.get" title="T* get() const;"><code class="computeroutput"><span class="identifier">T</span><span class="special">*</span> <span class="identifier">get</span><span class="special">()</span> <span class="keyword">const</span><span class="special">;</span></code></a>
+</h4></div></div></div>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl>
+<dt><span class="term">Returns:</span></dt>
+<dd><p>
+                The pointer associated with the current thread.
+              </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+                Nothing.
+              </p></dd>
+</dl>
+</div>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+            The initial value associated with an instance of <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">thread_specific_ptr</span></code>
+            is <code class="computeroutput"><span class="identifier">NULL</span></code> for each thread.
+          </p></td></tr>
+</table></div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="thread.thread_local_storage.thread_specific_ptr.operator_arrow"></a><a class="link" href="thread_specific_ptr.html#thread.thread_local_storage.thread_specific_ptr.operator_arrow" title="T* operator-&gt;() const;"><code class="computeroutput"><span class="identifier">T</span><span class="special">*</span> <span class="keyword">operator</span><span class="special">-&gt;()</span> <span class="keyword">const</span><span class="special">;</span></code></a>
+</h4></div></div></div>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl>
+<dt><span class="term">Returns:</span></dt>
+<dd><p>
+                <code class="computeroutput"><span class="keyword">this</span><span class="special">-&gt;</span><span class="identifier">get</span><span class="special">()</span></code>
+              </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+                Nothing.
+              </p></dd>
+</dl>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="thread.thread_local_storage.thread_specific_ptr.operator_star"></a><a class="link" href="thread_specific_ptr.html#thread.thread_local_storage.thread_specific_ptr.operator_star" title="T&amp; operator*() const;"><code class="computeroutput"><span class="identifier">T</span><span class="special">&amp;</span> <span class="keyword">operator</span><span class="special">*()</span> <span class="keyword">const</span><span class="special">;</span></code></a>
+</h4></div></div></div>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl>
+<dt><span class="term">Requires:</span></dt>
+<dd><p>
+                <code class="computeroutput"><span class="keyword">this</span><span class="special">-&gt;</span><span class="identifier">get</span></code> is not <code class="computeroutput"><span class="identifier">NULL</span></code>.
+              </p></dd>
+<dt><span class="term">Returns:</span></dt>
+<dd><p>
+                <code class="computeroutput"><span class="special">*(</span><span class="keyword">this</span><span class="special">-&gt;</span><span class="identifier">get</span><span class="special">())</span></code>
+              </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+                Nothing.
+              </p></dd>
+</dl>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="thread.thread_local_storage.thread_specific_ptr.reset"></a><a class="link" href="thread_specific_ptr.html#thread.thread_local_storage.thread_specific_ptr.reset" title="void reset(T* new_value=0);"><code class="computeroutput"><span class="keyword">void</span> <span class="identifier">reset</span><span class="special">(</span><span class="identifier">T</span><span class="special">*</span>
+        <span class="identifier">new_value</span><span class="special">=</span><span class="number">0</span><span class="special">);</span></code></a>
+</h4></div></div></div>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl>
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+                If <code class="computeroutput"><span class="keyword">this</span><span class="special">-&gt;</span><span class="identifier">get</span><span class="special">()!=</span><span class="identifier">new_value</span></code> and <code class="computeroutput"><span class="keyword">this</span><span class="special">-&gt;</span><span class="identifier">get</span><span class="special">()</span></code> is non-<code class="computeroutput"><span class="identifier">NULL</span></code>,
+                invoke <code class="computeroutput"><span class="keyword">delete</span> <span class="keyword">this</span><span class="special">-&gt;</span><span class="identifier">get</span><span class="special">()</span></code> or <code class="computeroutput"><span class="identifier">cleanup_function</span><span class="special">(</span><span class="keyword">this</span><span class="special">-&gt;</span><span class="identifier">get</span><span class="special">())</span></code> as appropriate. Store <code class="computeroutput"><span class="identifier">new_value</span></code> as the pointer associated
+                with the current thread.
+              </p></dd>
+<dt><span class="term">Postcondition:</span></dt>
+<dd><p>
+                <code class="computeroutput"><span class="keyword">this</span><span class="special">-&gt;</span><span class="identifier">get</span><span class="special">()==</span><span class="identifier">new_value</span></code>
+              </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+                <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">thread_resource_error</span></code> if an error
+                occurs.
+              </p></dd>
+</dl>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="thread.thread_local_storage.thread_specific_ptr.release"></a><a class="link" href="thread_specific_ptr.html#thread.thread_local_storage.thread_specific_ptr.release" title="T* release();"><code class="computeroutput"><span class="identifier">T</span><span class="special">*</span> <span class="identifier">release</span><span class="special">();</span></code></a>
+</h4></div></div></div>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl>
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+                Return <code class="computeroutput"><span class="keyword">this</span><span class="special">-&gt;</span><span class="identifier">get</span><span class="special">()</span></code>
+                and store <code class="computeroutput"><span class="identifier">NULL</span></code> as
+                the pointer associated with the current thread without invoking the
+                cleanup function.
+              </p></dd>
+<dt><span class="term">Postcondition:</span></dt>
+<dd><p>
+                <code class="computeroutput"><span class="keyword">this</span><span class="special">-&gt;</span><span class="identifier">get</span><span class="special">()==</span><span class="number">0</span></code>
+              </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+                Nothing.
+              </p></dd>
+</dl>
+</div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2007 -11 Anthony Williams<br>Copyright &#169; 2011 -15 Vicente J. Botet Escriba<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../thread_local_storage.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../thread_local_storage.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../sds.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

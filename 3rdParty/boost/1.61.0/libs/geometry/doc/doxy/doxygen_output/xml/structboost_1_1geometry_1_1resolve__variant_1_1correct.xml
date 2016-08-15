@@ -1,0 +1,39 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="structboost_1_1geometry_1_1resolve__variant_1_1correct" kind="struct" prot="public">
+    <compoundname>boost::geometry::resolve_variant::correct</compoundname>
+    <includes local="no">correct.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename Geometry</type>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-static-func">
+      <memberdef kind="function" id="structboost_1_1geometry_1_1resolve__variant_1_1correct_1ae0a9084e73651c26d0ba72e8217fbab5" prot="public" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>void</type>
+        <definition>static void boost::geometry::resolve_variant::correct&lt; Geometry &gt;::apply</definition>
+        <argsstring>(Geometry &amp;geometry)</argsstring>
+        <name>apply</name>
+        <param>
+          <type>Geometry &amp;</type>
+          <declname>geometry</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/correct.hpp" line="285" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/correct.hpp" bodystart="284" bodyend="288"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/correct.hpp" line="283" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/correct.hpp" bodystart="282" bodyend="289"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1resolve__variant_1_1correct_1ae0a9084e73651c26d0ba72e8217fbab5" prot="public" virt="non-virtual"><scope>boost::geometry::resolve_variant::correct</scope><name>apply</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

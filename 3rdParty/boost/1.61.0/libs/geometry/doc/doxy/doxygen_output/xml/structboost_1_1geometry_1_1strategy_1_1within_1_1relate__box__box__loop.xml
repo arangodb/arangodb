@@ -1,0 +1,61 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="structboost_1_1geometry_1_1strategy_1_1within_1_1relate__box__box__loop" kind="struct" prot="public">
+    <compoundname>boost::geometry::strategy::within::relate_box_box_loop</compoundname>
+    <includes local="no">box_in_box.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>template&lt; typename, std::size_t, typename &gt; class</type>
+        <declname>SubStrategy</declname>
+        <defname>SubStrategy</defname>
+      </param>
+      <param>
+        <type>typename Box1</type>
+      </param>
+      <param>
+        <type>typename Box2</type>
+      </param>
+      <param>
+        <type>std::size_t</type>
+        <declname>Dimension</declname>
+        <defname>Dimension</defname>
+      </param>
+      <param>
+        <type>std::size_t</type>
+        <declname>DimensionCount</declname>
+        <defname>DimensionCount</defname>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-static-func">
+      <memberdef kind="function" id="structboost_1_1geometry_1_1strategy_1_1within_1_1relate__box__box__loop_1a7b8e78007d7a1bf429396527de6d31db" prot="public" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>bool</type>
+        <definition>static bool boost::geometry::strategy::within::relate_box_box_loop&lt; SubStrategy, Box1, Box2, Dimension, DimensionCount &gt;::apply</definition>
+        <argsstring>(Box1 const &amp;b_contained, Box2 const &amp;b_containing)</argsstring>
+        <name>apply</name>
+        <param>
+          <type>Box1 const &amp;</type>
+          <declname>b_contained</declname>
+        </param>
+        <param>
+          <type>Box2 const &amp;</type>
+          <declname>b_containing</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/box_in_box.hpp" line="154" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/box_in_box.hpp" bodystart="153" bodyend="175"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/box_in_box.hpp" line="152" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/box_in_box.hpp" bodystart="151" bodyend="176"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1strategy_1_1within_1_1relate__box__box__loop_1a7b8e78007d7a1bf429396527de6d31db" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::within::relate_box_box_loop</scope><name>apply</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

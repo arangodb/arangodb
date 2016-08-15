@@ -1,0 +1,193 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Missuses</title>
+<link rel="stylesheet" href="../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../index.html" title="The Boost C++ Libraries BoostBook Documentation Subset">
+<link rel="up" href="../boost_dll.html" title="Chapter&#160;10.&#160;Boost.DLL">
+<link rel="prev" href="tutorial.html" title="Tutorial">
+<link rel="next" href="reference.html" title="Reference">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../boost.png"></td>
+<td align="center"><a href="../../../index.html">Home</a></td>
+<td align="center"><a href="../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="tutorial.html"><img src="../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../boost_dll.html"><img src="../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="reference.html"><img src="../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="boost_dll.missuses"></a><a class="link" href="missuses.html" title="Missuses">Missuses</a>
+</h2></div></div></div>
+<div class="warning"><table border="0" summary="Warning">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Warning]" src="../../../doc/src/images/warning.png"></td>
+<th align="left">Warning</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+        Typical errors and missuses are located in this section. Please read carefully,
+        this will save a lot of debugging time!
+      </p></td></tr>
+</table></div>
+<div class="itemizedlist"><ul class="itemizedlist" type="disc">
+<li class="listitem">
+          <span class="bold"><strong>Issue:</strong></span> Program crashes on <code class="computeroutput"><span class="keyword">delete</span></code> or <code class="computeroutput"><span class="identifier">free</span><span class="special">()</span></code>.
+        </li>
+<li class="listitem">
+          <span class="bold"><strong>Fix:</strong></span> Your plugin and program must use
+          the same Standard C++ and C libraries, both must be linked dynamically.
+          For Visual Studio use <a href="https://msdn.microsoft.com/library/2kzt1wy3%28v=vs.110%29.aspx" target="_top">/MD
+          or /MDd compiler switches</a>.
+        </li>
+</ul></div>
+<pre class="programlisting"></pre>
+<div class="itemizedlist"><ul class="itemizedlist" type="disc">
+<li class="listitem">
+          <span class="bold"><strong>Issue:</strong></span> Program crashes in <code class="computeroutput"><span class="keyword">catch</span><span class="special">(...)</span></code>
+          block.
+        </li>
+<li class="listitem">
+          <span class="bold"><strong>Example:</strong></span>
+<pre class="programlisting"><span class="keyword">try</span> <span class="special">{</span>
+    <span class="keyword">auto</span> <span class="identifier">f</span> <span class="special">=</span> <span class="identifier">dll</span><span class="special">::</span><span class="identifier">import</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">()&gt;(</span><span class="identifier">path_to_pugin</span><span class="special">,</span> <span class="string">"function"</span><span class="special">);</span>
+    <span class="identifier">f</span><span class="special">();</span>
+    <span class="comment">// `f` goes out of scope</span>
+<span class="special">}</span> <span class="keyword">catch</span> <span class="special">(</span><span class="keyword">const</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">exception</span><span class="special">&amp;</span> <span class="identifier">e</span><span class="special">)</span> <span class="special">{</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cerr</span> <span class="special">&lt;&lt;</span> <span class="identifier">e</span><span class="special">.</span><span class="identifier">what</span><span class="special">();</span>
+<span class="special">}</span>
+</pre>
+        </li>
+<li class="listitem">
+          <span class="bold"><strong>Fix:</strong></span> Exception was generated inside the
+          plugin, so it refers to the exception code in plugin. When <code class="computeroutput"><span class="identifier">f</span></code> goes out of scope, the plugin gets
+          unloaded and the reference to the exception code is broken. Any attempt
+          to use the exception variable may use the dangling reference, leading to
+          a segmentation fault. Fix your code:
+<pre class="programlisting"><span class="keyword">auto</span> <span class="identifier">f</span> <span class="special">=</span> <span class="identifier">dll</span><span class="special">::</span><span class="identifier">import</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">()&gt;(</span><span class="identifier">path_to_pugin</span><span class="special">,</span> <span class="string">"function"</span><span class="special">);</span>
+<span class="keyword">try</span> <span class="special">{</span>
+    <span class="identifier">f</span><span class="special">();</span>
+    <span class="comment">// `f` goes out of scope</span>
+<span class="special">}</span> <span class="keyword">catch</span> <span class="special">(</span><span class="keyword">const</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">exception</span><span class="special">&amp;</span> <span class="identifier">e</span><span class="special">)</span> <span class="special">{</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cerr</span> <span class="special">&lt;&lt;</span> <span class="identifier">e</span><span class="special">.</span><span class="identifier">what</span><span class="special">();</span>
+<span class="special">}</span>
+</pre>
+        </li>
+</ul></div>
+<pre class="programlisting"></pre>
+<div class="itemizedlist"><ul class="itemizedlist" type="disc">
+<li class="listitem">
+          <span class="bold"><strong>Issue:</strong></span> Thread local storage seems to be
+          corrupted.
+        </li>
+<li class="listitem">
+          <span class="bold"><strong>Fix:</strong></span> Some platforms have no out-of-the-box
+          support for plugins that use TLS, for example <a href="https://support.microsoft.com/en-us/kb/118816" target="_top">Windows</a>.
+          Use platform specific workarounds or just do not use TLS in plugins.
+        </li>
+</ul></div>
+<pre class="programlisting"></pre>
+<div class="itemizedlist"><ul class="itemizedlist" type="disc">
+<li class="listitem">
+          <span class="bold"><strong>Issue:</strong></span> Attempt to call a loaded function
+          crashes or function returns incorrect result.
+        </li>
+<li class="listitem">
+          <span class="bold"><strong>Fix:</strong></span> Boost.DLL does not guarantee ABI
+          stability. If you compile plugin and program with different compilers or
+          different compiler switches the function ABI may change and you'll end
+          up with incorrect code.
+        </li>
+</ul></div>
+<pre class="programlisting"></pre>
+<div class="itemizedlist"><ul class="itemizedlist" type="disc">
+<li class="listitem">
+          <span class="bold"><strong>Issue:</strong></span> Program crashes after plugin unload.
+        </li>
+<li class="listitem">
+          <span class="bold"><strong>Example:</strong></span>
+<pre class="programlisting"><span class="keyword">void</span> <span class="identifier">foo</span><span class="special">()</span> <span class="special">{</span>
+    <span class="identifier">shared_ptr</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;</span> <span class="identifier">p</span><span class="special">;</span>
+    <span class="keyword">try</span> <span class="special">{</span>
+        <span class="keyword">auto</span> <span class="identifier">f</span> <span class="special">=</span> <span class="identifier">dll</span><span class="special">::</span><span class="identifier">import</span><span class="special">&lt;</span><span class="identifier">shared_ptr</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;()&gt;(</span><span class="identifier">path_to_pugin</span><span class="special">,</span> <span class="string">"function"</span><span class="special">);</span>
+        <span class="identifier">p</span> <span class="special">=</span> <span class="identifier">f</span><span class="special">();</span>
+        <span class="comment">// `f` goes out of scope</span>
+    <span class="special">}</span> <span class="keyword">catch</span> <span class="special">(</span><span class="keyword">const</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">exception</span><span class="special">&amp;</span> <span class="identifier">e</span><span class="special">)</span> <span class="special">{</span>
+        <span class="identifier">std</span><span class="special">::</span><span class="identifier">cerr</span> <span class="special">&lt;&lt;</span> <span class="identifier">e</span><span class="special">.</span><span class="identifier">what</span><span class="special">();</span>
+    <span class="special">}</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="special">*</span><span class="identifier">p</span><span class="special">;</span>
+    <span class="comment">// crashes here</span>
+<span class="special">}</span>
+</pre>
+        </li>
+<li class="listitem">
+          <span class="bold"><strong>Fix:</strong></span> In that particular example the problem
+          is within <code class="computeroutput"><span class="identifier">shared_ptr</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;</span></code>.
+          It keeps a type erased deleter, code for that deleter is located in plugin.
+          On destruction of <code class="computeroutput"><span class="identifier">p</span></code>, <code class="computeroutput"><span class="identifier">shared_ptr</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;</span></code>
+          attempts to call that deleter, however the plugin was already unloaded
+          and the code for deleter is not available any more.
+        </li>
+<li class="listitem">
+          <span class="bold"><strong>Rule of thumb:</strong></span>: if your plugin method
+          returns any C++ class variable, then make sure that the plugin is loaded
+          until that variable and any of its copies are in scope.
+        </li>
+<li class="listitem">
+          <span class="bold"><strong>Typical classes that cause such errors are:</strong></span>
+          <div class="itemizedlist"><ul class="itemizedlist" type="circle">
+<li class="listitem">
+                <code class="computeroutput"><span class="identifier">any</span></code>
+              </li>
+<li class="listitem">
+                <code class="computeroutput"><span class="identifier">function</span></code>
+              </li>
+<li class="listitem">
+                <code class="computeroutput"><span class="identifier">shared_ptr</span></code>
+              </li>
+<li class="listitem">
+                any container with polymorphic allocator
+              </li>
+<li class="listitem">
+                <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">type_index</span></code>
+              </li>
+<li class="listitem">
+                <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">type_info</span></code>
+              </li>
+<li class="listitem">
+                <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">exception_ptr</span></code>
+              </li>
+<li class="listitem">
+                <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">unique_ptr</span><span class="special">&lt;</span><span class="identifier">Base</span><span class="special">&gt;</span></code>
+                holding a <code class="computeroutput"><span class="identifier">Derived</span></code>
+                type from plugin
+              </li>
+<li class="listitem">
+                exception classes thrown from plugin
+              </li>
+</ul></div>
+        </li>
+</ul></div>
+<pre class="programlisting"></pre>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2014 Renato Tegon Forti, Antony Polukhin<br>Copyright &#169; 2015, 2016 Antony Polukhin<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="tutorial.html"><img src="../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../boost_dll.html"><img src="../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="reference.html"><img src="../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

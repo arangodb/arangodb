@@ -1,0 +1,57 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Function set_default_resource</title>
+<link rel="stylesheet" href="../../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../../../index.html" title="Chapter&#160;1.&#160;Boost.Container">
+<link rel="up" href="../../../boost_container_header_reference.html#header.boost.container.pmr.global_resource_hpp" title="Header &lt;boost/container/pmr/global_resource.hpp&gt;">
+<link rel="prev" href="null_memory_resource.html" title="Function null_memory_resource">
+<link rel="next" href="get_default_resource.html" title="Function get_default_resource">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="null_memory_resource.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../../boost_container_header_reference.html#header.boost.container.pmr.global_resource_hpp"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="get_default_resource.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="refentry">
+<a name="boost.container.pmr.set_default_resource"></a><div class="titlepage"></div>
+<div class="refnamediv">
+<h2><span class="refentrytitle">Function set_default_resource</span></h2>
+<p>boost::container::pmr::set_default_resource</p>
+</div>
+<h2 xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv-title">Synopsis</h2>
+<div xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv"><pre class="synopsis"><span class="comment">// In header: &lt;<a class="link" href="../../../boost_container_header_reference.html#header.boost.container.pmr.global_resource_hpp" title="Header &lt;boost/container/pmr/global_resource.hpp&gt;">boost/container/pmr/global_resource.hpp</a>&gt;
+
+</span>
+<a class="link" href="memory_resource.html" title="Class memory_resource">memory_resource</a> <span class="special">*</span> <span class="identifier">set_default_resource</span><span class="special">(</span><a class="link" href="memory_resource.html" title="Class memory_resource">memory_resource</a> <span class="special">*</span> r<span class="special">)</span><span class="special">;</span></pre></div>
+<div class="refsect1">
+<a name="idp23161216"></a><h2>Description</h2>
+<p><span class="bold"><strong>Effects</strong></span>: If r is non-null, sets the value of the default memory resource pointer to r, otherwise sets the default memory resource pointer to new_delete_resource().</p>
+<p><span class="bold"><strong>Postconditions</strong></span>: get_default_resource() == r.</p>
+<p><span class="bold"><strong>Returns</strong></span>: The previous value of the default memory resource pointer.</p>
+<p><span class="bold"><strong>Remarks</strong></span>: Calling the set_default_resource and get_default_resource functions shall not incur a data race. A call to the set_default_resource function shall synchronize with subsequent calls to the set_default_resource and get_default_resource functions. </p>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2009-2015 Ion Gaztanaga<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="null_memory_resource.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../../boost_container_header_reference.html#header.boost.container.pmr.global_resource_hpp"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="get_default_resource.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

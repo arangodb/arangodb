@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE article PUBLIC "-//Boost//DTD BoostBook XML V1.0//EN" "http://www.boost.org/tools/boostbook/dtd/boostbook.dtd">
+<article id="template_include_test" last-revision="DEBUG MODE Date: 2000/12/20 12:00:00 $"
+ xmlns:xi="http://www.w3.org/2001/XInclude">
+  <title>Template include test</title>
+  <bridgehead renderas="sect2" id="template_include_test.h0">
+    <phrase id="template_include_test.simple_include"/><link linkend="template_include_test.simple_include">Simple
+    include</link>
+  </bridgehead>
+<programlisting><phrase role="keyword">void</phrase> <phrase role="identifier">main</phrase><phrase role="special">()</phrase> <phrase role="special">{}</phrase>
+</programlisting>
+</article>

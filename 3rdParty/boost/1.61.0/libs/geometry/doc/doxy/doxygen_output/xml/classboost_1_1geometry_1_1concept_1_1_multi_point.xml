@@ -1,0 +1,22 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="classboost_1_1geometry_1_1concept_1_1_multi_point" kind="class" prot="public">
+    <compoundname>boost::geometry::concept::MultiPoint</compoundname>
+    <includes local="no">multi_point_concept.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename Geometry</type>
+      </param>
+    </templateparamlist>
+    <briefdescription>
+<para><ref refid="classboost_1_1geometry_1_1concept_1_1_multi_point" kindref="compound">MultiPoint</ref> concept. </para>    </briefdescription>
+    <detaileddescription>
+<para><simplesect kind="par"><title>Formal definition:</title><para>The multi point concept is defined as following:<itemizedlist>
+<listitem><para>there must be a specialization of <ref refid="structboost_1_1geometry_1_1traits_1_1tag" kindref="compound">traits::tag</ref> defining <ref refid="structboost_1_1geometry_1_1multi__point__tag" kindref="compound">multi_point_tag</ref> as type</para></listitem><listitem><para>it must behave like a Boost.Range</para></listitem><listitem><para>its range value must fulfil the <ref refid="classboost_1_1geometry_1_1concept_1_1_point" kindref="compound">Point</ref> concept </para></listitem></itemizedlist>
+</para></simplesect>
+</para>    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/concepts/multi_point_concept.hpp" line="43" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/concepts/multi_point_concept.hpp" bodystart="42" bodyend="62"/>
+    <listofallmembers>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

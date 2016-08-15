@@ -1,0 +1,75 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="classboost_1_1geometry_1_1strategy_1_1centroid_1_1average_1_1sum" kind="class" prot="private">
+    <compoundname>boost::geometry::strategy::centroid::average::sum</compoundname>
+      <sectiondef kind="friend">
+      <memberdef kind="friend" id="classboost_1_1geometry_1_1strategy_1_1centroid_1_1average_1_1sum_1a4d8774974caa4b415205d00d8f7cc7b0" prot="private" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>friend class</type>
+        <definition>friend class average</definition>
+        <argsstring></argsstring>
+        <name>average</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/centroid_average.hpp" line="55" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/centroid_average.hpp" bodystart="55" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="private-attrib">
+      <memberdef kind="variable" id="classboost_1_1geometry_1_1strategy_1_1centroid_1_1average_1_1sum_1a1bde46d9863284cf5574855dd99810d3" prot="private" static="no" mutable="no">
+        <type>PointCentroid</type>
+        <definition>PointCentroid boost::geometry::strategy::centroid::average&lt; PointCentroid, Point &gt;::sum::centroid</definition>
+        <argsstring></argsstring>
+        <name>centroid</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/centroid_average.hpp" line="57" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/centroid_average.hpp" bodystart="57" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classboost_1_1geometry_1_1strategy_1_1centroid_1_1average_1_1sum_1a2d50fc92ab68638796481b363b8d151e" prot="private" static="no" mutable="no">
+        <type>std::size_t</type>
+        <definition>std::size_t boost::geometry::strategy::centroid::average&lt; PointCentroid, Point &gt;::sum::count</definition>
+        <argsstring></argsstring>
+        <name>count</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/centroid_average.hpp" line="56" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/centroid_average.hpp" bodystart="56" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="classboost_1_1geometry_1_1strategy_1_1centroid_1_1average_1_1sum_1a51339ea23040d5abda85c3f8a75745c7" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type></type>
+        <definition>boost::geometry::strategy::centroid::average&lt; PointCentroid, Point &gt;::sum::sum</definition>
+        <argsstring>()</argsstring>
+        <name>sum</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/centroid_average.hpp" line="62" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/centroid_average.hpp" bodystart="60" bodyend="64"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+<para>subclass to keep state </para>    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/centroid_average.hpp" line="54" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/centroid_average.hpp" bodystart="53" bodyend="65"/>
+    <listofallmembers>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1centroid_1_1average_1_1sum_1a4d8774974caa4b415205d00d8f7cc7b0" prot="private" virt="non-virtual"><scope>boost::geometry::strategy::centroid::average::sum</scope><name>average</name></member>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1centroid_1_1average_1_1sum_1a1bde46d9863284cf5574855dd99810d3" prot="private" virt="non-virtual"><scope>boost::geometry::strategy::centroid::average::sum</scope><name>centroid</name></member>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1centroid_1_1average_1_1sum_1a2d50fc92ab68638796481b363b8d151e" prot="private" virt="non-virtual"><scope>boost::geometry::strategy::centroid::average::sum</scope><name>count</name></member>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1centroid_1_1average_1_1sum_1a51339ea23040d5abda85c3f8a75745c7" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::centroid::average::sum</scope><name>sum</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

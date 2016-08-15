@@ -1,0 +1,474 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Grammars and Nested Matches</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../../index.html" title="Chapter&#160;1.&#160;Boost.Xpressive">
+<link rel="up" href="../../xpressive/user_s_guide.html" title="User's Guide">
+<link rel="prev" href="named_captures.html" title="Named Captures">
+<link rel="next" href="semantic_actions_and_user_defined_assertions.html" title="Semantic Actions and User-Defined Assertions">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="named_captures.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../xpressive/user_s_guide.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="semantic_actions_and_user_defined_assertions.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_xpressive.user_s_guide.grammars_and_nested_matches"></a><a class="link" href="grammars_and_nested_matches.html" title="Grammars and Nested Matches">Grammars
+      and Nested Matches</a>
+</h3></div></div></div>
+<h3>
+<a name="boost_xpressive.user_s_guide.grammars_and_nested_matches.h0"></a>
+        <span><a name="boost_xpressive.user_s_guide.grammars_and_nested_matches.overview"></a></span><a class="link" href="grammars_and_nested_matches.html#boost_xpressive.user_s_guide.grammars_and_nested_matches.overview">Overview</a>
+      </h3>
+<p>
+        One of the key benefits of representing regexes as C++ expressions is the
+        ability to easily refer to other C++ code and data from within the regex.
+        This enables programming idioms that are not possible with other regular
+        expression libraries. Of particular note is the ability for one regex to
+        refer to another regex, allowing you to build grammars out of regular expressions.
+        This section describes how to embed one regex in another by value and by
+        reference, how regex objects behave when they refer to other regexes, and
+        how to access the tree of results after a successful parse.
+      </p>
+<h3>
+<a name="boost_xpressive.user_s_guide.grammars_and_nested_matches.h1"></a>
+        <span><a name="boost_xpressive.user_s_guide.grammars_and_nested_matches.embedding_a_regex_by_value"></a></span><a class="link" href="grammars_and_nested_matches.html#boost_xpressive.user_s_guide.grammars_and_nested_matches.embedding_a_regex_by_value">Embedding
+        a Regex by Value</a>
+      </h3>
+<p>
+        The <code class="literal"><code class="computeroutput"><a class="link" href="../../boost/xpressive/basic_regex.html" title="Struct template basic_regex">basic_regex&lt;&gt;</a></code></code>
+        object has value semantics. When a regex object appears on the right-hand
+        side in the definition of another regex, it is as if the regex were embedded
+        by value; that is, a copy of the nested regex is stored by the enclosing
+        regex. The inner regex is invoked by the outer regex during pattern matching.
+        The inner regex participates fully in the match, back-tracking as needed
+        to make the match succeed.
+      </p>
+<p>
+        Consider a text editor that has a regex-find feature with a whole-word option.
+        You can implement this with xpressive as follows:
+      </p>
+<pre class="programlisting"><span class="identifier">find_dialog</span> <span class="identifier">dlg</span><span class="special">;</span>
+<span class="keyword">if</span><span class="special">(</span> <span class="identifier">dialog_ok</span> <span class="special">==</span> <span class="identifier">dlg</span><span class="special">.</span><span class="identifier">do_modal</span><span class="special">()</span> <span class="special">)</span>
+<span class="special">{</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="identifier">pattern</span> <span class="special">=</span> <span class="identifier">dlg</span><span class="special">.</span><span class="identifier">get_text</span><span class="special">();</span>          <span class="comment">// the pattern the user entered</span>
+    <span class="keyword">bool</span> <span class="identifier">whole_word</span> <span class="special">=</span> <span class="identifier">dlg</span><span class="special">.</span><span class="identifier">whole_word</span><span class="special">.</span><span class="identifier">is_checked</span><span class="special">();</span> <span class="comment">// did the user select the whole-word option?</span>
+
+    <span class="identifier">sregex</span> <span class="identifier">re</span> <span class="special">=</span> <span class="identifier">sregex</span><span class="special">::</span><span class="identifier">compile</span><span class="special">(</span> <span class="identifier">pattern</span> <span class="special">);</span>        <span class="comment">// try to compile the pattern</span>
+
+    <span class="keyword">if</span><span class="special">(</span> <span class="identifier">whole_word</span> <span class="special">)</span>
+    <span class="special">{</span>
+        <span class="comment">// wrap the regex in begin-word / end-word assertions</span>
+        <span class="identifier">re</span> <span class="special">=</span> <span class="identifier">bow</span> <span class="special">&gt;&gt;</span> <span class="identifier">re</span> <span class="special">&gt;&gt;</span> <span class="identifier">eow</span><span class="special">;</span>
+    <span class="special">}</span>
+
+    <span class="comment">// ... use re ...</span>
+<span class="special">}</span>
+</pre>
+<p>
+        Look closely at this line:
+      </p>
+<pre class="programlisting"><span class="comment">// wrap the regex in begin-word / end-word assertions</span>
+<span class="identifier">re</span> <span class="special">=</span> <span class="identifier">bow</span> <span class="special">&gt;&gt;</span> <span class="identifier">re</span> <span class="special">&gt;&gt;</span> <span class="identifier">eow</span><span class="special">;</span>
+</pre>
+<p>
+        This line creates a new regex that embeds the old regex by value. Then, the
+        new regex is assigned back to the original regex. Since a copy of the old
+        regex was made on the right-hand side, this works as you might expect: the
+        new regex has the behavior of the old regex wrapped in begin- and end-word
+        assertions.
+      </p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+          Note that <code class="computeroutput"><span class="identifier">re</span> <span class="special">=</span>
+          <span class="identifier">bow</span> <span class="special">&gt;&gt;</span>
+          <span class="identifier">re</span> <span class="special">&gt;&gt;</span>
+          <span class="identifier">eow</span></code> does <span class="emphasis"><em>not</em></span>
+          define a recursive regular expression, since regex objects embed by value
+          by default. The next section shows how to define a recursive regular expression
+          by embedding a regex by reference.
+        </p></td></tr>
+</table></div>
+<h3>
+<a name="boost_xpressive.user_s_guide.grammars_and_nested_matches.h2"></a>
+        <span><a name="boost_xpressive.user_s_guide.grammars_and_nested_matches.embedding_a_regex_by_reference"></a></span><a class="link" href="grammars_and_nested_matches.html#boost_xpressive.user_s_guide.grammars_and_nested_matches.embedding_a_regex_by_reference">Embedding
+        a Regex by Reference</a>
+      </h3>
+<p>
+        If you want to be able to build recursive regular expressions and context-free
+        grammars, embedding a regex by value is not enough. You need to be able to
+        make your regular expressions self-referential. Most regular expression engines
+        don't give you that power, but xpressive does.
+      </p>
+<div class="tip"><table border="0" summary="Tip">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Tip]" src="../../../../../../doc/src/images/tip.png"></td>
+<th align="left">Tip</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+          The theoretical computer scientists out there will correctly point out
+          that a self-referential regular expression is not "regular",
+          so in the strict sense, xpressive isn't really a <span class="emphasis"><em>regular</em></span>
+          expression engine at all. But as Larry Wall once said, "the term [regular expression] has
+          grown with the capabilities of our pattern matching engines, so I'm not
+          going to try to fight linguistic necessity here."
+        </p></td></tr>
+</table></div>
+<p>
+        Consider the following code, which uses the <code class="computeroutput"><span class="identifier">by_ref</span><span class="special">()</span></code> helper to define a recursive regular expression
+        that matches balanced, nested parentheses:
+      </p>
+<pre class="programlisting"><span class="identifier">sregex</span> <span class="identifier">parentheses</span><span class="special">;</span>
+<span class="identifier">parentheses</span>                          <span class="comment">// A balanced set of parentheses ...</span>
+    <span class="special">=</span> <span class="char">'('</span>                            <span class="comment">// is an opening parenthesis ...</span>
+        <span class="special">&gt;&gt;</span>                           <span class="comment">// followed by ...</span>
+         <span class="special">*(</span>                          <span class="comment">// zero or more ...</span>
+            <span class="identifier">keep</span><span class="special">(</span> <span class="special">+~(</span><span class="identifier">set</span><span class="special">=</span><span class="char">'('</span><span class="special">,</span><span class="char">')'</span><span class="special">)</span> <span class="special">)</span>  <span class="comment">// of a bunch of things that are not parentheses ...</span>
+          <span class="special">|</span>                          <span class="comment">// or ...</span>
+            <span class="identifier">by_ref</span><span class="special">(</span><span class="identifier">parentheses</span><span class="special">)</span>      <span class="comment">// a balanced set of parentheses</span>
+          <span class="special">)</span>                          <span class="comment">//   (ooh, recursion!) ...</span>
+        <span class="special">&gt;&gt;</span>                           <span class="comment">// followed by ...</span>
+      <span class="char">')'</span>                            <span class="comment">// a closing parenthesis</span>
+    <span class="special">;</span>
+</pre>
+<p>
+        Matching balanced, nested tags is an important text processing task, and
+        it is one that "classic" regular expressions cannot do. The <code class="computeroutput"><span class="identifier">by_ref</span><span class="special">()</span></code>
+        helper makes it possible. It allows one regex object to be embedded in another
+        <span class="emphasis"><em>by reference</em></span>. Since the right-hand side holds <code class="computeroutput"><span class="identifier">parentheses</span></code> by reference, assigning the
+        right-hand side back to <code class="computeroutput"><span class="identifier">parentheses</span></code>
+        creates a cycle, which will execute recursively.
+      </p>
+<h3>
+<a name="boost_xpressive.user_s_guide.grammars_and_nested_matches.h3"></a>
+        <span><a name="boost_xpressive.user_s_guide.grammars_and_nested_matches.building_a_grammar"></a></span><a class="link" href="grammars_and_nested_matches.html#boost_xpressive.user_s_guide.grammars_and_nested_matches.building_a_grammar">Building
+        a Grammar</a>
+      </h3>
+<p>
+        Once we allow self-reference in our regular expressions, the genie is out
+        of the bottle and all manner of fun things are possible. In particular, we
+        can now build grammars out of regular expressions. Let's have a look at the
+        text-book grammar example: the humble calculator.
+      </p>
+<pre class="programlisting"><span class="identifier">sregex</span> <span class="identifier">group</span><span class="special">,</span> <span class="identifier">factor</span><span class="special">,</span> <span class="identifier">term</span><span class="special">,</span> <span class="identifier">expression</span><span class="special">;</span>
+
+<span class="identifier">group</span>       <span class="special">=</span> <span class="char">'('</span> <span class="special">&gt;&gt;</span> <span class="identifier">by_ref</span><span class="special">(</span><span class="identifier">expression</span><span class="special">)</span> <span class="special">&gt;&gt;</span> <span class="char">')'</span><span class="special">;</span>
+<span class="identifier">factor</span>      <span class="special">=</span> <span class="special">+</span><span class="identifier">_d</span> <span class="special">|</span> <span class="identifier">group</span><span class="special">;</span>
+<span class="identifier">term</span>        <span class="special">=</span> <span class="identifier">factor</span> <span class="special">&gt;&gt;</span> <span class="special">*((</span><span class="char">'*'</span> <span class="special">&gt;&gt;</span> <span class="identifier">factor</span><span class="special">)</span> <span class="special">|</span> <span class="special">(</span><span class="char">'/'</span> <span class="special">&gt;&gt;</span> <span class="identifier">factor</span><span class="special">));</span>
+<span class="identifier">expression</span>  <span class="special">=</span> <span class="identifier">term</span> <span class="special">&gt;&gt;</span> <span class="special">*((</span><span class="char">'+'</span> <span class="special">&gt;&gt;</span> <span class="identifier">term</span><span class="special">)</span> <span class="special">|</span> <span class="special">(</span><span class="char">'-'</span> <span class="special">&gt;&gt;</span> <span class="identifier">term</span><span class="special">));</span>
+</pre>
+<p>
+        The regex <code class="computeroutput"><span class="identifier">expression</span></code> defined
+        above does something rather remarkable for a regular expression: it matches
+        mathematical expressions. For example, if the input string were <code class="computeroutput"><span class="string">"foo 9*(10+3) bar"</span></code>, this pattern
+        would match <code class="computeroutput"><span class="string">"9*(10+3)"</span></code>.
+        It only matches well-formed mathematical expressions, where the parentheses
+        are balanced and the infix operators have two arguments each. Don't try this
+        with just any regular expression engine!
+      </p>
+<p>
+        Let's take a closer look at this regular expression grammar. Notice that
+        it is cyclic: <code class="computeroutput"><span class="identifier">expression</span></code>
+        is implemented in terms of <code class="computeroutput"><span class="identifier">term</span></code>,
+        which is implemented in terms of <code class="computeroutput"><span class="identifier">factor</span></code>,
+        which is implemented in terms of <code class="computeroutput"><span class="identifier">group</span></code>,
+        which is implemented in terms of <code class="computeroutput"><span class="identifier">expression</span></code>,
+        closing the loop. In general, the way to define a cyclic grammar is to forward-declare
+        the regex objects and embed by reference those regular expressions that have
+        not yet been initialized. In the above grammar, there is only one place where
+        we need to reference a regex object that has not yet been initialized: the
+        definition of <code class="computeroutput"><span class="identifier">group</span></code>. In that
+        place, we use <code class="computeroutput"><span class="identifier">by_ref</span><span class="special">()</span></code>
+        to embed <code class="computeroutput"><span class="identifier">expression</span></code> by reference.
+        In all other places, it is sufficient to embed the other regex objects by
+        value, since they have already been initialized and their values will not
+        change.
+      </p>
+<div class="tip"><table border="0" summary="Tip">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Tip]" src="../../../../../../doc/src/images/tip.png"></td>
+<th align="left">Tip</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+          <span class="bold"><strong>Embed by value if possible</strong></span> <br> <br>
+          In general, prefer embedding regular expressions by value rather than by
+          reference. It involves one less indirection, making your patterns match
+          a little faster. Besides, value semantics are simpler and will make your
+          grammars easier to reason about. Don't worry about the expense of "copying"
+          a regex. Each regex object shares its implementation with all of its copies.
+        </p></td></tr>
+</table></div>
+<h3>
+<a name="boost_xpressive.user_s_guide.grammars_and_nested_matches.h4"></a>
+        <span><a name="boost_xpressive.user_s_guide.grammars_and_nested_matches.dynamic_regex_grammars"></a></span><a class="link" href="grammars_and_nested_matches.html#boost_xpressive.user_s_guide.grammars_and_nested_matches.dynamic_regex_grammars">Dynamic
+        Regex Grammars</a>
+      </h3>
+<p>
+        Using <code class="literal"><code class="computeroutput"><a class="link" href="../../boost/xpressive/regex_compiler.html" title="Struct template regex_compiler">regex_compiler&lt;&gt;</a></code></code>,
+        you can also build grammars out of dynamic regular expressions. You do that
+        by creating named regexes, and referring to other regexes by name. Each
+        <code class="literal"><code class="computeroutput"><a class="link" href="../../boost/xpressive/regex_compiler.html" title="Struct template regex_compiler">regex_compiler&lt;&gt;</a></code></code>
+        instance keeps a mapping from names to regexes that have been created with
+        it.
+      </p>
+<p>
+        You can create a named dynamic regex by prefacing your regex with <code class="computeroutput"><span class="string">"(?$name=)"</span></code>, where <span class="emphasis"><em>name</em></span>
+        is the name of the regex. You can refer to a named regex from another regex
+        with <code class="computeroutput"><span class="string">"(?$name)"</span></code>. The
+        named regex does not need to exist yet at the time it is referenced in another
+        regex, but it must exist by the time you use the regex.
+      </p>
+<p>
+        Below is a code fragment that uses dynamic regex grammars to implement the
+        calculator example from above.
+      </p>
+<pre class="programlisting"><span class="keyword">using</span> <span class="keyword">namespace</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">xpressive</span><span class="special">;</span>
+<span class="keyword">using</span> <span class="keyword">namespace</span> <span class="identifier">regex_constants</span><span class="special">;</span>
+
+<span class="identifier">sregex</span> <span class="identifier">expr</span><span class="special">;</span>
+
+<span class="special">{</span>
+     <span class="identifier">sregex_compiler</span> <span class="identifier">compiler</span><span class="special">;</span>
+     <span class="identifier">syntax_option_type</span> <span class="identifier">x</span> <span class="special">=</span> <span class="identifier">ignore_white_space</span><span class="special">;</span>
+
+            <span class="identifier">compiler</span><span class="special">.</span><span class="identifier">compile</span><span class="special">(</span><span class="string">"(? $group  = ) \\( (? $expr ) \\) "</span><span class="special">,</span> <span class="identifier">x</span><span class="special">);</span>
+            <span class="identifier">compiler</span><span class="special">.</span><span class="identifier">compile</span><span class="special">(</span><span class="string">"(? $factor = ) \\d+ | (? $group ) "</span><span class="special">,</span> <span class="identifier">x</span><span class="special">);</span>
+            <span class="identifier">compiler</span><span class="special">.</span><span class="identifier">compile</span><span class="special">(</span><span class="string">"(? $term   = ) (? $factor )"</span>
+                             <span class="string">" ( \\* (? $factor ) | / (? $factor ) )* "</span><span class="special">,</span> <span class="identifier">x</span><span class="special">);</span>
+     <span class="identifier">expr</span> <span class="special">=</span> <span class="identifier">compiler</span><span class="special">.</span><span class="identifier">compile</span><span class="special">(</span><span class="string">"(? $expr   = ) (? $term )"</span>
+                             <span class="string">"   ( \\+ (? $term ) | - (? $term )   )* "</span><span class="special">,</span> <span class="identifier">x</span><span class="special">);</span>
+<span class="special">}</span>
+
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="identifier">str</span><span class="special">(</span><span class="string">"foo 9*(10+3) bar"</span><span class="special">);</span>
+<span class="identifier">smatch</span> <span class="identifier">what</span><span class="special">;</span>
+
+<span class="keyword">if</span><span class="special">(</span><span class="identifier">regex_search</span><span class="special">(</span><span class="identifier">str</span><span class="special">,</span> <span class="identifier">what</span><span class="special">,</span> <span class="identifier">expr</span><span class="special">))</span>
+<span class="special">{</span>
+     <span class="comment">// This prints "9*(10+3)":</span>
+     <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">what</span><span class="special">[</span><span class="number">0</span><span class="special">]</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+<span class="special">}</span>
+</pre>
+<p>
+        As with static regex grammars, nested regex invocations create nested match
+        results (see <span class="emphasis"><em>Nested Results</em></span> below). The result is a
+        complete parse tree for string that matched. Unlike static regexes, dynamic
+        regexes are always embedded by reference, not by value.
+      </p>
+<h3>
+<a name="boost_xpressive.user_s_guide.grammars_and_nested_matches.h5"></a>
+        <span><a name="boost_xpressive.user_s_guide.grammars_and_nested_matches.cyclic_patterns__copying_and_memory_management__oh_my_"></a></span><a class="link" href="grammars_and_nested_matches.html#boost_xpressive.user_s_guide.grammars_and_nested_matches.cyclic_patterns__copying_and_memory_management__oh_my_">Cyclic
+        Patterns, Copying and Memory Management, Oh My!</a>
+      </h3>
+<p>
+        The calculator examples above raises a number of very complicated memory-management
+        issues. Each of the four regex objects refer to each other, some directly
+        and some indirectly, some by value and some by reference. What if we were
+        to return one of them from a function and let the others go out of scope?
+        What becomes of the references? The answer is that the regex objects are
+        internally reference counted, such that they keep their referenced regex
+        objects alive as long as they need them. So passing a regex object by value
+        is never a problem, even if it refers to other regex objects that have gone
+        out of scope.
+      </p>
+<p>
+        Those of you who have dealt with reference counting are probably familiar
+        with its Achilles Heel: cyclic references. If regex objects are reference
+        counted, what happens to cycles like the one created in the calculator examples?
+        Are they leaked? The answer is no, they are not leaked. The <code class="literal"><code class="computeroutput"><a class="link" href="../../boost/xpressive/basic_regex.html" title="Struct template basic_regex">basic_regex&lt;&gt;</a></code></code>
+        object has some tricky reference tracking code that ensures that even cyclic
+        regex grammars are cleaned up when the last external reference goes away.
+        So don't worry about it. Create cyclic grammars, pass your regex objects
+        around and copy them all you want. It is fast and efficient and guaranteed
+        not to leak or result in dangling references.
+      </p>
+<h3>
+<a name="boost_xpressive.user_s_guide.grammars_and_nested_matches.h6"></a>
+        <span><a name="boost_xpressive.user_s_guide.grammars_and_nested_matches.nested_regexes_and_sub_match_scoping"></a></span><a class="link" href="grammars_and_nested_matches.html#boost_xpressive.user_s_guide.grammars_and_nested_matches.nested_regexes_and_sub_match_scoping">Nested
+        Regexes and Sub-Match Scoping</a>
+      </h3>
+<p>
+        Nested regular expressions raise the issue of sub-match scoping. If both
+        the inner and outer regex write to and read from the same sub-match vector,
+        chaos would ensue. The inner regex would stomp on the sub-matches written
+        by the outer regex. For example, what does this do?
+      </p>
+<pre class="programlisting"><span class="identifier">sregex</span> <span class="identifier">inner</span> <span class="special">=</span> <span class="identifier">sregex</span><span class="special">::</span><span class="identifier">compile</span><span class="special">(</span> <span class="string">"(.)\\1"</span> <span class="special">);</span>
+<span class="identifier">sregex</span> <span class="identifier">outer</span> <span class="special">=</span> <span class="special">(</span><span class="identifier">s1</span><span class="special">=</span> <span class="identifier">_</span><span class="special">)</span> <span class="special">&gt;&gt;</span> <span class="identifier">inner</span> <span class="special">&gt;&gt;</span> <span class="identifier">s1</span><span class="special">;</span>
+</pre>
+<p>
+        The author probably didn't intend for the inner regex to overwrite the sub-match
+        written by the outer regex. The problem is particularly acute when the inner
+        regex is accepted from the user as input. The author has no way of knowing
+        whether the inner regex will stomp the sub-match vector or not. This is clearly
+        not acceptable.
+      </p>
+<p>
+        Instead, what actually happens is that each invocation of a nested regex
+        gets its own scope. Sub-matches belong to that scope. That is, each nested
+        regex invocation gets its own copy of the sub-match vector to play with,
+        so there is no way for an inner regex to stomp on the sub-matches of an outer
+        regex. So, for example, the regex <code class="computeroutput"><span class="identifier">outer</span></code>
+        defined above would match <code class="computeroutput"><span class="string">"ABBA"</span></code>,
+        as it should.
+      </p>
+<h3>
+<a name="boost_xpressive.user_s_guide.grammars_and_nested_matches.h7"></a>
+        <span><a name="boost_xpressive.user_s_guide.grammars_and_nested_matches.nested_results"></a></span><a class="link" href="grammars_and_nested_matches.html#boost_xpressive.user_s_guide.grammars_and_nested_matches.nested_results">Nested
+        Results</a>
+      </h3>
+<p>
+        If nested regexes have their own sub-matches, there should be a way to access
+        them after a successful match. In fact, there is. After a <code class="literal"><code class="computeroutput"><a class="link" href="../../boost/xpressive/regex_match.html" title="Function regex_match">regex_match()</a></code></code>
+        or <code class="literal"><code class="computeroutput"><a class="link" href="../../boost/xpressive/regex_search.html" title="Function regex_search">regex_search()</a></code></code>,
+        the <code class="literal"><code class="computeroutput"><a class="link" href="../../boost/xpressive/match_results.html" title="Struct template match_results">match_results&lt;&gt;</a></code></code>
+        struct behaves like the head of a tree of nested results. The <code class="literal"><code class="computeroutput"><a class="link" href="../../boost/xpressive/match_results.html" title="Struct template match_results">match_results&lt;&gt;</a></code></code>
+        class provides a <code class="computeroutput"><span class="identifier">nested_results</span><span class="special">()</span></code> member function that returns an ordered
+        sequence of <code class="literal"><code class="computeroutput"><a class="link" href="../../boost/xpressive/match_results.html" title="Struct template match_results">match_results&lt;&gt;</a></code></code>
+        structures, representing the results of the nested regexes. The order of
+        the nested results is the same as the order in which the nested regex objects
+        matched.
+      </p>
+<p>
+        Take as an example the regex for balanced, nested parentheses we saw earlier:
+      </p>
+<pre class="programlisting"><span class="identifier">sregex</span> <span class="identifier">parentheses</span><span class="special">;</span>
+<span class="identifier">parentheses</span> <span class="special">=</span> <span class="char">'('</span> <span class="special">&gt;&gt;</span> <span class="special">*(</span> <span class="identifier">keep</span><span class="special">(</span> <span class="special">+~(</span><span class="identifier">set</span><span class="special">=</span><span class="char">'('</span><span class="special">,</span><span class="char">')'</span><span class="special">)</span> <span class="special">)</span> <span class="special">|</span> <span class="identifier">by_ref</span><span class="special">(</span><span class="identifier">parentheses</span><span class="special">)</span> <span class="special">)</span> <span class="special">&gt;&gt;</span> <span class="char">')'</span><span class="special">;</span>
+
+<span class="identifier">smatch</span> <span class="identifier">what</span><span class="special">;</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="identifier">str</span><span class="special">(</span> <span class="string">"blah blah( a(b)c (c(e)f (g)h )i (j)6 )blah"</span> <span class="special">);</span>
+
+<span class="keyword">if</span><span class="special">(</span> <span class="identifier">regex_search</span><span class="special">(</span> <span class="identifier">str</span><span class="special">,</span> <span class="identifier">what</span><span class="special">,</span> <span class="identifier">parentheses</span> <span class="special">)</span> <span class="special">)</span>
+<span class="special">{</span>
+    <span class="comment">// display the whole match</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">what</span><span class="special">[</span><span class="number">0</span><span class="special">]</span> <span class="special">&lt;&lt;</span> <span class="char">'\n'</span><span class="special">;</span>
+
+    <span class="comment">// display the nested results</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">for_each</span><span class="special">(</span>
+        <span class="identifier">what</span><span class="special">.</span><span class="identifier">nested_results</span><span class="special">().</span><span class="identifier">begin</span><span class="special">(),</span>
+        <span class="identifier">what</span><span class="special">.</span><span class="identifier">nested_results</span><span class="special">().</span><span class="identifier">end</span><span class="special">(),</span>
+        <span class="identifier">output_nested_results</span><span class="special">()</span> <span class="special">);</span>
+<span class="special">}</span>
+</pre>
+<p>
+        This program displays the following:
+      </p>
+<pre class="programlisting">( a(b)c (c(e)f (g)h )i (j)6 )
+    (b)
+    (c(e)f (g)h )
+        (e)
+        (g)
+    (j)
+</pre>
+<p>
+        Here you can see how the results are nested and that they are stored in the
+        order in which they are found.
+      </p>
+<div class="tip"><table border="0" summary="Tip">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Tip]" src="../../../../../../doc/src/images/tip.png"></td>
+<th align="left">Tip</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+          See the definition of <a class="link" href="examples.html#boost_xpressive.user_s_guide.examples.display_a_tree_of_nested_results">output_nested_results</a>
+          in the <a class="link" href="examples.html" title="Examples">Examples</a>
+          section.
+        </p></td></tr>
+</table></div>
+<h3>
+<a name="boost_xpressive.user_s_guide.grammars_and_nested_matches.h8"></a>
+        <span><a name="boost_xpressive.user_s_guide.grammars_and_nested_matches.filtering_nested_results"></a></span><a class="link" href="grammars_and_nested_matches.html#boost_xpressive.user_s_guide.grammars_and_nested_matches.filtering_nested_results">Filtering
+        Nested Results</a>
+      </h3>
+<p>
+        Sometimes a regex will have several nested regex objects, and you want to
+        know which result corresponds to which regex object. That's where <code class="computeroutput"><span class="identifier">basic_regex</span><span class="special">&lt;&gt;::</span><span class="identifier">regex_id</span><span class="special">()</span></code>
+        and <code class="computeroutput"><span class="identifier">match_results</span><span class="special">&lt;&gt;::</span><span class="identifier">regex_id</span><span class="special">()</span></code>
+        come in handy. When iterating over the nested results, you can compare the
+        regex id from the results to the id of the regex object you're interested
+        in.
+      </p>
+<p>
+        To make this a bit easier, xpressive provides a predicate to make it simple
+        to iterate over just the results that correspond to a certain nested regex.
+        It is called <code class="computeroutput"><span class="identifier">regex_id_filter_predicate</span></code>,
+        and it is intended to be used with <a href="../../../../libs/iterator/doc/index.html" target="_top">Boost.Iterator</a>.
+        You can use it as follows:
+      </p>
+<pre class="programlisting"><span class="identifier">sregex</span> <span class="identifier">name</span> <span class="special">=</span> <span class="special">+</span><span class="identifier">alpha</span><span class="special">;</span>
+<span class="identifier">sregex</span> <span class="identifier">integer</span> <span class="special">=</span> <span class="special">+</span><span class="identifier">_d</span><span class="special">;</span>
+<span class="identifier">sregex</span> <span class="identifier">re</span> <span class="special">=</span> <span class="special">*(</span> <span class="special">*</span><span class="identifier">_s</span> <span class="special">&gt;&gt;</span> <span class="special">(</span> <span class="identifier">name</span> <span class="special">|</span> <span class="identifier">integer</span> <span class="special">)</span> <span class="special">);</span>
+
+<span class="identifier">smatch</span> <span class="identifier">what</span><span class="special">;</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="identifier">str</span><span class="special">(</span> <span class="string">"marsha 123 jan 456 cindy 789"</span> <span class="special">);</span>
+
+<span class="keyword">if</span><span class="special">(</span> <span class="identifier">regex_match</span><span class="special">(</span> <span class="identifier">str</span><span class="special">,</span> <span class="identifier">what</span><span class="special">,</span> <span class="identifier">re</span> <span class="special">)</span> <span class="special">)</span>
+<span class="special">{</span>
+    <span class="identifier">smatch</span><span class="special">::</span><span class="identifier">nested_results_type</span><span class="special">::</span><span class="identifier">const_iterator</span> <span class="identifier">begin</span> <span class="special">=</span> <span class="identifier">what</span><span class="special">.</span><span class="identifier">nested_results</span><span class="special">().</span><span class="identifier">begin</span><span class="special">();</span>
+    <span class="identifier">smatch</span><span class="special">::</span><span class="identifier">nested_results_type</span><span class="special">::</span><span class="identifier">const_iterator</span> <span class="identifier">end</span>   <span class="special">=</span> <span class="identifier">what</span><span class="special">.</span><span class="identifier">nested_results</span><span class="special">().</span><span class="identifier">end</span><span class="special">();</span>
+
+    <span class="comment">// declare filter predicates to select just the names or the integers</span>
+    <span class="identifier">sregex_id_filter_predicate</span> <span class="identifier">name_id</span><span class="special">(</span> <span class="identifier">name</span><span class="special">.</span><span class="identifier">regex_id</span><span class="special">()</span> <span class="special">);</span>
+    <span class="identifier">sregex_id_filter_predicate</span> <span class="identifier">integer_id</span><span class="special">(</span> <span class="identifier">integer</span><span class="special">.</span><span class="identifier">regex_id</span><span class="special">()</span> <span class="special">);</span>
+
+    <span class="comment">// iterate over only the results from the name regex</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">for_each</span><span class="special">(</span>
+        <span class="identifier">boost</span><span class="special">::</span><span class="identifier">make_filter_iterator</span><span class="special">(</span> <span class="identifier">name_id</span><span class="special">,</span> <span class="identifier">begin</span><span class="special">,</span> <span class="identifier">end</span> <span class="special">),</span>
+        <span class="identifier">boost</span><span class="special">::</span><span class="identifier">make_filter_iterator</span><span class="special">(</span> <span class="identifier">name_id</span><span class="special">,</span> <span class="identifier">end</span><span class="special">,</span> <span class="identifier">end</span> <span class="special">),</span>
+        <span class="identifier">output_result</span>
+        <span class="special">);</span>
+
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="char">'\n'</span><span class="special">;</span>
+
+    <span class="comment">// iterate over only the results from the integer regex</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">for_each</span><span class="special">(</span>
+        <span class="identifier">boost</span><span class="special">::</span><span class="identifier">make_filter_iterator</span><span class="special">(</span> <span class="identifier">integer_id</span><span class="special">,</span> <span class="identifier">begin</span><span class="special">,</span> <span class="identifier">end</span> <span class="special">),</span>
+        <span class="identifier">boost</span><span class="special">::</span><span class="identifier">make_filter_iterator</span><span class="special">(</span> <span class="identifier">integer_id</span><span class="special">,</span> <span class="identifier">end</span><span class="special">,</span> <span class="identifier">end</span> <span class="special">),</span>
+        <span class="identifier">output_result</span>
+        <span class="special">);</span>
+<span class="special">}</span>
+</pre>
+<p>
+        where <code class="computeroutput"><span class="identifier">output_results</span></code> is a
+        simple function that takes a <code class="computeroutput"><span class="identifier">smatch</span></code>
+        and displays the full match. Notice how we use the <code class="computeroutput"><span class="identifier">regex_id_filter_predicate</span></code>
+        together with <code class="computeroutput"><span class="identifier">basic_regex</span><span class="special">&lt;&gt;::</span><span class="identifier">regex_id</span><span class="special">()</span></code> and <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">make_filter_iterator</span><span class="special">()</span></code> from the <a href="../../../../libs/iterator/doc/index.html" target="_top">Boost.Iterator</a>
+        to select only those results corresponding to a particular nested regex.
+        This program displays the following:
+      </p>
+<pre class="programlisting">marsha
+jan
+cindy
+123
+456
+789
+</pre>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2007 Eric Niebler<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="named_captures.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../xpressive/user_s_guide.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="semantic_actions_and_user_defined_assertions.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

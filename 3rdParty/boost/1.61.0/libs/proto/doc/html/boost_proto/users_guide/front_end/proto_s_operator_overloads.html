@@ -1,0 +1,140 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Proto's Operator Overloads</title>
+<link rel="stylesheet" href="../../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../../../index.html" title="Chapter&#160;1.&#160;Boost.Proto">
+<link rel="up" href="../front_end.html" title="Fronts Ends: Defining Terminals and Non-Terminals of Your EDSL">
+<link rel="prev" href="making_terminals.html" title="Making Terminals">
+<link rel="next" href="making_lazy_functions.html" title="Making Lazy Functions">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="making_terminals.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../front_end.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="making_lazy_functions.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="boost_proto.users_guide.front_end.proto_s_operator_overloads"></a><a class="link" href="proto_s_operator_overloads.html" title="Proto's Operator Overloads">Proto's
+        Operator Overloads</a>
+</h4></div></div></div>
+<p>
+          Once we have some Proto terminals, expressions involving those terminals
+          build expression trees for us. Proto defines overloads for each of C++'s
+          overloadable operators in the <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">proto</span></code>
+          namespace. As long as one operand is a Proto expression, the result of
+          the operation is a tree node representing that operation.
+        </p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+            Proto's operator overloads live in the <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">proto</span></code>
+            namespace and are found via ADL (argument-dependent lookup). That is
+            why expressions must be "tainted" with Proto-ness for Proto
+            to be able to build trees out of expressions.
+          </p></td></tr>
+</table></div>
+<p>
+          As a result of Proto's operator overloads, we can say:
+        </p>
+<pre class="programlisting"><span class="special">-</span><span class="identifier">_1</span><span class="special">;</span>        <span class="comment">// OK, build a unary-negate tree node</span>
+<span class="identifier">_1</span> <span class="special">+</span> <span class="number">42</span><span class="special">;</span>    <span class="comment">// OK, build a binary-plus tree node</span>
+</pre>
+<p>
+          For the most part, this Just Works and you don't need to think about it,
+          but a few operators are special and it can be helpful to know how Proto
+          handles them.
+        </p>
+<h6>
+<a name="boost_proto.users_guide.front_end.proto_s_operator_overloads.h0"></a>
+          <span><a name="boost_proto.users_guide.front_end.proto_s_operator_overloads.assignment__subscript__and_function_call_operators"></a></span><a class="link" href="proto_s_operator_overloads.html#boost_proto.users_guide.front_end.proto_s_operator_overloads.assignment__subscript__and_function_call_operators">Assignment,
+          Subscript, and Function Call Operators</a>
+        </h6>
+<p>
+          Proto also overloads <code class="computeroutput"><span class="keyword">operator</span><span class="special">=</span></code>, <code class="computeroutput"><span class="keyword">operator</span><span class="special">[]</span></code>, and <code class="computeroutput"><span class="keyword">operator</span><span class="special">()</span></code>, but these operators are member functions
+          of the expression template rather than free functions in Proto's namespace.
+          The following are valid Proto expressions:
+        </p>
+<pre class="programlisting"><span class="identifier">_1</span> <span class="special">=</span> <span class="number">5</span><span class="special">;</span>     <span class="comment">// OK, builds a binary assign tree node</span>
+<span class="identifier">_1</span><span class="special">[</span><span class="number">6</span><span class="special">];</span>      <span class="comment">// OK, builds a binary subscript tree node</span>
+<span class="identifier">_1</span><span class="special">();</span>       <span class="comment">// OK, builds a unary function tree node</span>
+<span class="identifier">_1</span><span class="special">(</span><span class="number">7</span><span class="special">);</span>      <span class="comment">// OK, builds a binary function tree node</span>
+<span class="identifier">_1</span><span class="special">(</span><span class="number">8</span><span class="special">,</span><span class="number">9</span><span class="special">);</span>    <span class="comment">// OK, builds a ternary function tree node</span>
+<span class="comment">// ... etc.</span>
+</pre>
+<p>
+          For the first two lines, assignment and subscript, it should be fairly
+          unsurprising that the resulting expression node should be binary. After
+          all, there are two operands in each expression. It may be surprising at
+          first that what appears to be a function call with no arguments, <code class="computeroutput"><span class="identifier">_1</span><span class="special">()</span></code>,
+          actually creates an expression node with one child. The child is <code class="computeroutput"><span class="identifier">_1</span></code> itself. Likewise, the expression
+          <code class="computeroutput"><span class="identifier">_1</span><span class="special">(</span><span class="number">7</span><span class="special">)</span></code> has two
+          children: <code class="computeroutput"><span class="identifier">_1</span></code> and <code class="computeroutput"><span class="number">7</span></code>.
+        </p>
+<p>
+          Because these operators can only be defined as member functions, the following
+          expressions are invalid:
+        </p>
+<pre class="programlisting"><span class="keyword">int</span> <span class="identifier">i</span><span class="special">;</span>
+<span class="identifier">i</span> <span class="special">=</span> <span class="identifier">_1</span><span class="special">;</span>         <span class="comment">// ERROR: cannot assign _1 to an int</span>
+
+<span class="keyword">int</span> <span class="special">*</span><span class="identifier">p</span><span class="special">;</span>
+<span class="identifier">p</span><span class="special">[</span><span class="identifier">_1</span><span class="special">];</span>          <span class="comment">// ERROR: cannot use _1 as an index</span>
+
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">sin</span><span class="special">(</span><span class="identifier">_1</span><span class="special">);</span>   <span class="comment">// ERROR: cannot call std::sin() with _1</span>
+</pre>
+<p>
+          Also, C++ has special rules for overloads of <code class="computeroutput"><span class="keyword">operator</span><span class="special">-&gt;</span></code> that make it useless for building
+          expression templates, so Proto does not overload it.
+        </p>
+<h6>
+<a name="boost_proto.users_guide.front_end.proto_s_operator_overloads.h1"></a>
+          <span><a name="boost_proto.users_guide.front_end.proto_s_operator_overloads.the_address_of_operator"></a></span><a class="link" href="proto_s_operator_overloads.html#boost_proto.users_guide.front_end.proto_s_operator_overloads.the_address_of_operator">The
+          Address-Of Operator</a>
+        </h6>
+<p>
+          Proto overloads the address-of operator for expression types, so that the
+          following code creates a new unary address-of tree node:
+        </p>
+<pre class="programlisting"><span class="special">&amp;</span><span class="identifier">_1</span><span class="special">;</span>    <span class="comment">// OK, creates a unary address-of tree node</span>
+</pre>
+<p>
+          It does <span class="emphasis"><em>not</em></span> return the address of the <code class="computeroutput"><span class="identifier">_1</span></code> object. However, there is special
+          code in Proto such that a unary address-of node is implicitly convertible
+          to a pointer to its child. In other words, the following code works and
+          does what you might expect, but not in the obvious way:
+        </p>
+<pre class="programlisting"><span class="keyword">typedef</span>
+    <span class="identifier">proto</span><span class="special">::</span><span class="identifier">terminal</span><span class="special">&lt;</span> <span class="identifier">placeholder</span><span class="special">&lt;</span><span class="number">0</span><span class="special">&gt;</span> <span class="special">&gt;::</span><span class="identifier">type</span>
+<span class="identifier">_1_type</span><span class="special">;</span>
+
+<span class="identifier">_1_type</span> <span class="keyword">const</span> <span class="identifier">_1</span> <span class="special">=</span> <span class="special">{{}};</span>
+<span class="identifier">_1_type</span> <span class="keyword">const</span> <span class="special">*</span> <span class="identifier">p</span> <span class="special">=</span> <span class="special">&amp;</span><span class="identifier">_1</span><span class="special">;</span> <span class="comment">// OK, &amp;_1 implicitly converted</span>
+</pre>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2008 Eric Niebler<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="making_terminals.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../front_end.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="making_lazy_functions.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

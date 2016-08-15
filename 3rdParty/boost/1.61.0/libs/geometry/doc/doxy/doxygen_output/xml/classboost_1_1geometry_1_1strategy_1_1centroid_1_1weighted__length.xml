@@ -1,0 +1,106 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="classboost_1_1geometry_1_1strategy_1_1centroid_1_1weighted__length" kind="class" prot="public">
+    <compoundname>boost::geometry::strategy::centroid::weighted_length</compoundname>
+    <includes local="no">centroid_weighted_length.hpp</includes>
+    <innerclass refid="structboost_1_1geometry_1_1strategy_1_1centroid_1_1weighted__length_1_1set__sum__div__length" prot="public">boost::geometry::strategy::centroid::weighted_length::set_sum_div_length</innerclass>
+    <templateparamlist>
+      <param>
+        <type>typename Point</type>
+      </param>
+      <param>
+        <type>typename PointOfSegment</type>
+        <defval>Point</defval>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="private-type">
+      <memberdef kind="typedef" id="classboost_1_1geometry_1_1strategy_1_1centroid_1_1weighted__length_1ae246dcd2ff3958f9128f5f68bf798abb" prot="private" static="no">
+        <type><ref refid="structboost_1_1geometry_1_1select__most__precise" kindref="compound">select_most_precise</ref>&lt; typename <ref refid="structboost_1_1geometry_1_1default__distance__result" kindref="compound">default_distance_result</ref>&lt; Point &gt;::type, typename <ref refid="structboost_1_1geometry_1_1default__distance__result" kindref="compound">default_distance_result</ref>&lt; PointOfSegment &gt;::type &gt;::type</type>
+        <definition>typedef select_most_precise&lt; typename default_distance_result&lt;Point&gt;::type, typename default_distance_result&lt;PointOfSegment&gt;::type &gt;::type boost::geometry::strategy::centroid::weighted_length&lt; Point, PointOfSegment &gt;::distance_type</definition>
+        <argsstring></argsstring>
+        <name>distance_type</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/centroid_weighted_length.hpp" line="77" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/centroid_weighted_length.hpp" bodystart="77" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-type">
+      <memberdef kind="typedef" id="classboost_1_1geometry_1_1strategy_1_1centroid_1_1weighted__length_1aac1f35c9c83c933a40202e23a9418f2c" prot="public" static="no">
+        <type><ref refid="structboost_1_1geometry_1_1strategy_1_1centroid_1_1detail_1_1weighted__length__sums" kindref="compound">detail::weighted_length_sums</ref>&lt; distance_type, <ref refid="structboost_1_1geometry_1_1dimension" kindref="compound">geometry::dimension</ref>&lt; Point &gt;::type::value &gt;</type>
+        <definition>typedef detail::weighted_length_sums&lt; distance_type, geometry::dimension&lt;Point&gt;::type::value &gt; boost::geometry::strategy::centroid::weighted_length&lt; Point, PointOfSegment &gt;::state_type</definition>
+        <argsstring></argsstring>
+        <name>state_type</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/centroid_weighted_length.hpp" line="84" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/centroid_weighted_length.hpp" bodystart="84" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-static-func">
+      <memberdef kind="function" id="classboost_1_1geometry_1_1strategy_1_1centroid_1_1weighted__length_1a88072336c19996936c8f676b3a8480b1" prot="public" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>void</type>
+        <definition>static void boost::geometry::strategy::centroid::weighted_length&lt; Point, PointOfSegment &gt;::apply</definition>
+        <argsstring>(PointOfSegment const &amp;p1, PointOfSegment const &amp;p2, state_type &amp;state)</argsstring>
+        <name>apply</name>
+        <param>
+          <type>PointOfSegment const &amp;</type>
+          <declname>p1</declname>
+        </param>
+        <param>
+          <type>PointOfSegment const &amp;</type>
+          <declname>p2</declname>
+        </param>
+        <param>
+          <type><ref refid="classboost_1_1geometry_1_1strategy_1_1centroid_1_1weighted__length_1aac1f35c9c83c933a40202e23a9418f2c" kindref="member">state_type</ref> &amp;</type>
+          <declname>state</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/centroid_weighted_length.hpp" line="88" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/centroid_weighted_length.hpp" bodystart="86" bodyend="98"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1strategy_1_1centroid_1_1weighted__length_1a35ba59aa37dbb453157076e152fb65fb" prot="public" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>bool</type>
+        <definition>static bool boost::geometry::strategy::centroid::weighted_length&lt; Point, PointOfSegment &gt;::result</definition>
+        <argsstring>(state_type const &amp;state, Point &amp;centroid)</argsstring>
+        <name>result</name>
+        <param>
+          <type><ref refid="classboost_1_1geometry_1_1strategy_1_1centroid_1_1weighted__length_1aac1f35c9c83c933a40202e23a9418f2c" kindref="member">state_type</ref> const &amp;</type>
+          <declname>state</declname>
+        </param>
+        <param>
+          <type>Point &amp;</type>
+          <declname>centroid</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/centroid_weighted_length.hpp" line="101" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/centroid_weighted_length.hpp" bodystart="100" bodyend="114"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/centroid_weighted_length.hpp" line="71" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/centroid_weighted_length.hpp" bodystart="70" bodyend="134"/>
+    <listofallmembers>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1centroid_1_1weighted__length_1a88072336c19996936c8f676b3a8480b1" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::centroid::weighted_length</scope><name>apply</name></member>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1centroid_1_1weighted__length_1ae246dcd2ff3958f9128f5f68bf798abb" prot="private" virt="non-virtual"><scope>boost::geometry::strategy::centroid::weighted_length</scope><name>distance_type</name></member>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1centroid_1_1weighted__length_1a35ba59aa37dbb453157076e152fb65fb" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::centroid::weighted_length</scope><name>result</name></member>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1centroid_1_1weighted__length_1aac1f35c9c83c933a40202e23a9418f2c" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::centroid::weighted_length</scope><name>state_type</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

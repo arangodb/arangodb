@@ -1,0 +1,42 @@
+notifications:
+  - provider: Email
+    to:
+      - grafikrobot@gmail.com
+    on_build_status_changed: true
+
+environment:
+  matrix:
+  - TOOLSET: vs-2008
+    platform: 32
+  - TOOLSET: vs-2010
+    platform: 32
+  - TOOLSET: vs-2012
+    platform: 32
+  - TOOLSET: vs-2013
+    platform: 32
+  - TOOLSET: vs-2013
+    platform: 64
+  - TOOLSET: vs-2015
+    platform: 32
+  - TOOLSET: vs-2015
+    platform: 64
+
+configuration:
+  - debug
+  - release
+
+init:
+  - cd %APPVEYOR_BUILD_FOLDER%/..
+  - appveyor DownloadFile "https://raw.githubusercontent.com/boostorg/regression/develop/ci/src/script.py"
+  - dir
+  - cd %APPVEYOR_BUILD_FOLDER%
+install: python ../script.py install
+before_build: python ../script.py before_build
+build_script: python ../script.py build_script
+after_build: python ../script.py after_build
+before_test: python ../script.py before_test
+test_script: python ../script.py test_script
+after_test: python ../script.py after_test
+on_success: python ../script.py on_success
+on_failure: python ../script.py on_failure
+on_finish: python ../script.py on_finish

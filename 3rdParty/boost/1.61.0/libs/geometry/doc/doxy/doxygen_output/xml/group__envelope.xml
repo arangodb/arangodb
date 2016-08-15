@@ -1,0 +1,127 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="group__envelope" kind="group">
+    <compoundname>envelope</compoundname>
+    <title>envelope: calculate envelope (minimum bounding rectangle) of a geometry</title>
+      <sectiondef kind="func">
+      <memberdef kind="function" id="group__envelope_1gac1f1865a7b36047d44949e17266d8f5a" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Geometry</type>
+          </param>
+          <param>
+            <type>typename Box</type>
+          </param>
+        </templateparamlist>
+        <type>void</type>
+        <definition>void boost::geometry::envelope</definition>
+        <argsstring>(Geometry const &amp;geometry, Box &amp;mbr)</argsstring>
+        <name>envelope</name>
+        <param>
+          <type>Geometry const &amp;</type>
+          <declname>geometry</declname>
+        </param>
+        <param>
+          <type>Box &amp;</type>
+          <declname>mbr</declname>
+        </param>
+        <briefdescription>
+<para>Calculates the envelope of a geometry. </para>        </briefdescription>
+        <detaileddescription>
+<para>The free function envelope calculates the envelope (also known as axis aligned bounding box, aabb, or minimum bounding rectangle, mbr) of a geometry. <parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>Geometry</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Any type fulfilling a Geometry Concept </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Box</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Any type fulfilling a Box Concept </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>geometry</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>A model of the specified concept </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>mbr</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>A model of the specified Box Concept which is set to the \1</para></parameterdescription>
+</parameteritem>
+</parameterlist>
+ <qbk>[include reference/algorithms/envelope.qbk]</qbk>   <qbk>
+[heading Example]
+[envelope] [envelope_output]
+</qbk>  </para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/envelope/interface.hpp" line="96" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/envelope/interface.hpp" bodystart="95" bodyend="98"/>
+      </memberdef>
+      <memberdef kind="function" id="group__envelope_1ga4afb45ba6fb41e732a008a9e1e104347" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Box</type>
+          </param>
+          <param>
+            <type>typename Geometry</type>
+          </param>
+        </templateparamlist>
+        <type>Box</type>
+        <definition>Box boost::geometry::return_envelope</definition>
+        <argsstring>(Geometry const &amp;geometry)</argsstring>
+        <name>return_envelope</name>
+        <param>
+          <type>Geometry const &amp;</type>
+          <declname>geometry</declname>
+        </param>
+        <briefdescription>
+<para>Calculates the envelope of a geometry. </para>        </briefdescription>
+        <detaileddescription>
+<para>The free function return_envelope calculates the envelope (also known as axis aligned bounding box, aabb, or minimum bounding rectangle, mbr) of a geometry. This version with the return_ prefix returns the envelope, and a template parameter must therefore be specified in the call. <parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>Box</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Any type fulfilling a Box Concept </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Geometry</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Any type fulfilling a Geometry Concept </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>geometry</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>A model of the specified concept </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>The calculated \1</para></simplesect>
+ <qbk>[include reference/algorithms/envelope.qbk]</qbk>   <qbk>
+[heading Example]
+[return_envelope] [return_envelope_output]
+</qbk>  </para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/envelope/interface.hpp" line="118" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/envelope/interface.hpp" bodystart="117" bodyend="122"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+  </compounddef>
+</doxygen>

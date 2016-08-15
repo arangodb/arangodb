@@ -1,0 +1,64 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="06_a_transformation_example_8cpp-example" kind="example">
+    <compoundname>06_a_transformation_example.cpp</compoundname>
+    <detaileddescription>
+<para>This sample demonstrates the usage of transformations in the Generic Geometry Library. Behind the screens this is done using with the uBLAS matrix/vector library. <programlisting><codeline><highlight class="comment">//<sp/>Boost.Geometry<sp/>(aka<sp/>GGL,<sp/>Generic<sp/>Geometry<sp/>Library)</highlight><highlight class="normal"></highlight></codeline>
+<codeline><highlight class="normal"></highlight></codeline>
+<codeline><highlight class="normal"></highlight><highlight class="comment">//<sp/>Copyright<sp/>(c)<sp/>2007-2012<sp/>Barend<sp/>Gehrels,<sp/>Amsterdam,<sp/>the<sp/>Netherlands.</highlight><highlight class="normal"></highlight></codeline>
+<codeline><highlight class="normal"></highlight><highlight class="comment">//<sp/>Copyright<sp/>(c)<sp/>2008-2012<sp/>Bruno<sp/>Lalande,<sp/>Paris,<sp/>France.</highlight><highlight class="normal"></highlight></codeline>
+<codeline><highlight class="normal"></highlight><highlight class="comment">//<sp/>Copyright<sp/>(c)<sp/>2009-2012<sp/>Mateusz<sp/>Loskot,<sp/>London,<sp/>UK.</highlight><highlight class="normal"></highlight></codeline>
+<codeline><highlight class="normal"></highlight></codeline>
+<codeline><highlight class="normal"></highlight><highlight class="comment">//<sp/>Use,<sp/>modification<sp/>and<sp/>distribution<sp/>is<sp/>subject<sp/>to<sp/>the<sp/>Boost<sp/>Software<sp/>License,</highlight><highlight class="normal"></highlight></codeline>
+<codeline><highlight class="normal"></highlight><highlight class="comment">//<sp/>Version<sp/>1.0.<sp/>(See<sp/>accompanying<sp/>file<sp/>LICENSE_1_0.txt<sp/>or<sp/>copy<sp/>at</highlight><highlight class="normal"></highlight></codeline>
+<codeline><highlight class="normal"></highlight><highlight class="comment">//<sp/>http://www.boost.org/LICENSE_1_0.txt)</highlight><highlight class="normal"></highlight></codeline>
+<codeline><highlight class="normal"></highlight><highlight class="comment">//</highlight><highlight class="normal"></highlight></codeline>
+<codeline><highlight class="normal"></highlight><highlight class="comment">//<sp/>Transformation<sp/>Example</highlight><highlight class="normal"></highlight></codeline>
+<codeline><highlight class="normal"></highlight></codeline>
+<codeline><highlight class="normal"></highlight><highlight class="preprocessor">#include<sp/>&lt;iostream&gt;</highlight><highlight class="normal"></highlight></codeline>
+<codeline><highlight class="normal"></highlight></codeline>
+<codeline><highlight class="normal"></highlight><highlight class="preprocessor">#include<sp/>&lt;boost/geometry/geometry.hpp&gt;</highlight><highlight class="normal"></highlight></codeline>
+<codeline><highlight class="normal"></highlight><highlight class="preprocessor">#include<sp/>&lt;<ref refid="point__xy_8hpp" kindref="compound">boost/geometry/geometries/point_xy.hpp</ref>&gt;</highlight><highlight class="normal"></highlight></codeline>
+<codeline><highlight class="normal"></highlight><highlight class="preprocessor">#include<sp/>&lt;<ref refid="geometries_2polygon_8hpp" kindref="compound">boost/geometry/geometries/polygon.hpp</ref>&gt;</highlight><highlight class="normal"></highlight></codeline>
+<codeline><highlight class="normal"></highlight><highlight class="preprocessor">#include<sp/>&lt;<ref refid="c__array_8hpp" kindref="compound">boost/geometry/geometries/adapted/c_array.hpp</ref>&gt;</highlight><highlight class="normal"></highlight></codeline>
+<codeline><highlight class="normal"></highlight></codeline>
+<codeline><highlight class="normal"><ref refid="c__array_8hpp_1a815278dd46c0e0cbb9188150ef5305a9" kindref="member">BOOST_GEOMETRY_REGISTER_C_ARRAY_CS</ref>(cs::cartesian)</highlight></codeline>
+<codeline><highlight class="normal"></highlight></codeline>
+<codeline><highlight class="normal"></highlight></codeline>
+<codeline><highlight class="normal">int<sp/>main()</highlight></codeline>
+<codeline><highlight class="normal">{</highlight></codeline>
+<codeline><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">using<sp/>namespace<sp/></highlight><highlight class="normal">boost::geometry;</highlight></codeline>
+<codeline><highlight class="normal"></highlight></codeline>
+<codeline><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">typedef</highlight><highlight class="normal"><sp/><ref refid="classboost_1_1geometry_1_1model_1_1d2_1_1point__xy" kindref="compound" tooltip="2D point in Cartesian coordinate system">model::d2::point_xy&lt;double&gt;</ref><sp/>point_2d;</highlight></codeline>
+<codeline><highlight class="normal"><sp/><sp/><sp/><sp/>point_2d<sp/>p(1,<sp/>1);</highlight></codeline>
+<codeline><highlight class="normal"><sp/><sp/><sp/><sp/>point_2d<sp/>p2;</highlight></codeline>
+<codeline><highlight class="normal"></highlight></codeline>
+<codeline><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="comment">//<sp/>Example:<sp/>translate<sp/>a<sp/>point<sp/>over<sp/>(5,5)</highlight><highlight class="normal"></highlight></codeline>
+<codeline><highlight class="normal"><sp/><sp/><sp/><sp/><ref refid="classboost_1_1geometry_1_1strategy_1_1transform_1_1translate__transformer" kindref="compound" tooltip="Strategy of translate transformation in Cartesian system.">strategy::transform::translate_transformer&lt;double, 2, 2&gt;</ref><sp/>translate(5,<sp/>5);</highlight></codeline>
+<codeline><highlight class="normal"></highlight></codeline>
+<codeline><highlight class="normal"><sp/><sp/><sp/><sp/><ref refid="group__transform_1ga396a7207dc2e9dbc3c15c1c174e0e5a0" kindref="member" tooltip="Transforms from one geometry to another geometry using the specified strategy.">transform</ref>(p,<sp/>p2,<sp/>translate);</highlight></codeline>
+<codeline><highlight class="normal"><sp/><sp/><sp/><sp/>std::cout<sp/>&lt;&lt;<sp/></highlight><highlight class="stringliteral">&quot;transformed<sp/>point<sp/>&quot;</highlight><highlight class="normal"><sp/>&lt;&lt;<sp/>boost::geometry::dsv(p2)<sp/>&lt;&lt;<sp/>std::endl;</highlight></codeline>
+<codeline><highlight class="normal"></highlight></codeline>
+<codeline><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="comment">//<sp/>Transform<sp/>a<sp/>polygon</highlight><highlight class="normal"></highlight></codeline>
+<codeline><highlight class="normal"><sp/><sp/><sp/><sp/><ref refid="classboost_1_1geometry_1_1model_1_1polygon" kindref="compound" tooltip="The polygon contains an outer ring and zero or more inner rings.">model::polygon&lt;point_2d&gt;</ref><sp/>poly,<sp/>poly2;</highlight></codeline>
+<codeline><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/>coor[][2]<sp/>=<sp/>{<sp/>{0,<sp/>0},<sp/>{0,<sp/>7},<sp/>{2,<sp/>2},<sp/>{2,<sp/>0},<sp/>{0,<sp/>0}<sp/>};</highlight></codeline>
+<codeline><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="comment">//<sp/>note<sp/>that<sp/>for<sp/>this<sp/>syntax<sp/>you<sp/>have<sp/>to<sp/>include<sp/>the<sp/>two</highlight><highlight class="normal"></highlight></codeline>
+<codeline><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="comment">//<sp/>include<sp/>files<sp/>above<sp/>(c_array.hpp)</highlight><highlight class="normal"></highlight></codeline>
+<codeline><highlight class="normal"><sp/><sp/><sp/><sp/><ref refid="group__assign_1ga1fdbc43645872ba459c455318706a925" kindref="member" tooltip="Assign a range of points to a linestring, ring or polygon.">assign_points</ref>(poly,<sp/>coor);</highlight></codeline>
+<codeline><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="comment">//read_wkt(&quot;POLYGON((0<sp/>0,0<sp/>7,4<sp/>2,2<sp/>0,0<sp/>0))&quot;,<sp/>poly);</highlight><highlight class="normal"></highlight></codeline>
+<codeline><highlight class="normal"><sp/><sp/><sp/><sp/><ref refid="group__transform_1ga396a7207dc2e9dbc3c15c1c174e0e5a0" kindref="member" tooltip="Transforms from one geometry to another geometry using the specified strategy.">transform</ref>(poly,<sp/>poly2,<sp/>translate);</highlight></codeline>
+<codeline><highlight class="normal"></highlight></codeline>
+<codeline><highlight class="normal"><sp/><sp/><sp/><sp/>std::cout<sp/>&lt;&lt;<sp/></highlight><highlight class="stringliteral">&quot;source<sp/><sp/><sp/><sp/><sp/><sp/>polygon<sp/>&quot;</highlight><highlight class="normal"><sp/>&lt;&lt;<sp/>boost::geometry::dsv(poly)<sp/>&lt;&lt;<sp/>std::endl;</highlight></codeline>
+<codeline><highlight class="normal"><sp/><sp/><sp/><sp/>std::cout<sp/>&lt;&lt;<sp/></highlight><highlight class="stringliteral">&quot;transformed<sp/>polygon<sp/>&quot;</highlight><highlight class="normal"><sp/>&lt;&lt;<sp/>boost::geometry::dsv(poly2)<sp/>&lt;&lt;<sp/>std::endl;</highlight></codeline>
+<codeline><highlight class="normal"></highlight></codeline>
+<codeline><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="comment">//<sp/>Many<sp/>more<sp/>transformations<sp/>are<sp/>possible:</highlight><highlight class="normal"></highlight></codeline>
+<codeline><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="comment">//<sp/>-<sp/>from<sp/>Cartesian<sp/>to<sp/>Spherical<sp/>coordinate<sp/>systems<sp/>and<sp/>back</highlight><highlight class="normal"></highlight></codeline>
+<codeline><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="comment">//<sp/>-<sp/>from<sp/>Cartesian<sp/>to<sp/>Cartesian<sp/>(mapping,<sp/>affine<sp/>transformations)<sp/>and<sp/>back<sp/>(inverse)</highlight><highlight class="normal"></highlight></codeline>
+<codeline><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="comment">//<sp/>-<sp/>Map<sp/>Projections</highlight><highlight class="normal"></highlight></codeline>
+<codeline><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="comment">//<sp/>-<sp/>from<sp/>Degree<sp/>to<sp/>Radian<sp/>and<sp/>back<sp/>in<sp/>spherical_equatorial<sp/>or<sp/>geographic<sp/>coordinate<sp/>systems</highlight><highlight class="normal"></highlight></codeline>
+<codeline><highlight class="normal"></highlight></codeline>
+<codeline><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">return</highlight><highlight class="normal"><sp/>0;</highlight></codeline>
+<codeline><highlight class="normal">}</highlight></codeline>
+</programlisting> </para>    </detaileddescription>
+  </compounddef>
+</doxygen>

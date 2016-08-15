@@ -1,0 +1,15 @@
+{
+    "key": "date_time",
+    "name": "Date Time",
+    "authors": [
+        "Jeff Garland"
+    ],
+    "description": "A set of date-time libraries based on generic programming concepts.",
+    "category": [
+        "Domain",
+        "System"
+    ],
+    "maintainers": [
+        "Jeff Garland <jeff -at- crystalclearsoftware.com>"
+    ]
+}

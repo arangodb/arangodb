@@ -1,0 +1,243 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Appendix: Implementation Notes</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../../index.html" title="Chapter&#160;1.&#160;Boost.Chrono 2.0.5">
+<link rel="up" href="../appendices.html" title="Appendices">
+<link rel="prev" href="rationale.html" title="Appendix: Rationale">
+<link rel="next" href="faq.html" title="Appendix: FAQ">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="rationale.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../appendices.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="faq.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="chrono.appendices.implementation"></a><a class="link" href="implementation.html" title="Appendix: Implementation Notes">Appendix: Implementation
+      Notes</a>
+</h3></div></div></div>
+<h5>
+<a name="chrono.appendices.implementation.h0"></a>
+        <span><a name="chrono.appendices.implementation.which_apis_have_been_chosen_to_implement_each_clock_on_each_platform_"></a></span><a class="link" href="implementation.html#chrono.appendices.implementation.which_apis_have_been_chosen_to_implement_each_clock_on_each_platform_">Which
+        APIs have been chosen to implement each clock on each platform?</a>
+      </h5>
+<p>
+        The following table presents a resume of which API is used for each clock
+        on each platform
+      </p>
+<div class="table">
+<a name="chrono.appendices.implementation.clock_api_correspondence"></a><p class="title"><b>Table&#160;1.4.&#160;Clock API correspondence</b></p>
+<div class="table-contents"><table class="table" summary="Clock API correspondence">
+<colgroup>
+<col>
+<col>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Clock
+                </p>
+              </th>
+<th>
+                <p>
+                  Windows Platform
+                </p>
+              </th>
+<th>
+                <p>
+                  Posix Platform
+                </p>
+              </th>
+<th>
+                <p>
+                  Mac Platform
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../reference/cpp0x.html#chrono.reference.cpp0x.system_clocks_hpp.system_clock" title="Class system_clock"><code class="computeroutput"><span class="identifier">system_clock</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  GetSystemTimeAsFileTime
+                </p>
+              </td>
+<td>
+                <p>
+                  clock_gettime( CLOCK_REALTIME)
+                </p>
+              </td>
+<td>
+                <p>
+                  gettimeofday
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../reference/cpp0x.html#chrono.reference.cpp0x.system_clocks_hpp.steady_clock" title="Class steady_clock"><code class="computeroutput"><span class="identifier">steady_clock</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  QueryPerformanceCounter and QueryPerformanceFrequency
+                </p>
+              </td>
+<td>
+                <p>
+                  clock_gettime( CLOCK_STEADY)
+                </p>
+              </td>
+<td>
+                <p>
+                  mach_timebase_info,mach_absolute_time
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../reference/other_clocks.html#chrono.reference.other_clocks.process_cpu_clocks_hpp.process_real_cpu_clock" title="Class process_real_cpu_clock"><code class="computeroutput"><span class="identifier">process_real_cpu_clock</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  GetProcessTimes
+                </p>
+              </td>
+<td>
+                <p>
+                  times
+                </p>
+              </td>
+<td>
+                <p>
+                  times
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../reference/other_clocks.html#chrono.reference.other_clocks.process_cpu_clocks_hpp.process_system_cpu_clock" title="Class process_system_cpu_clock"><code class="computeroutput"><span class="identifier">process_system_cpu_clock</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  GetProcessTimes
+                </p>
+              </td>
+<td>
+                <p>
+                  times
+                </p>
+              </td>
+<td>
+                <p>
+                  times
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../reference/other_clocks.html#chrono.reference.other_clocks.process_cpu_clocks_hpp.process_user_cpu_clock" title="Class process_user_cpu_clock"><code class="computeroutput"><span class="identifier">process_user_cpu_clock</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  GetProcessTimes
+                </p>
+              </td>
+<td>
+                <p>
+                  times
+                </p>
+              </td>
+<td>
+                <p>
+                  times
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../reference/other_clocks.html#chrono.reference.other_clocks.process_cpu_clocks_hpp.process_cpu_clock" title="Class process_cpu_clock"><code class="computeroutput"><span class="identifier">process_cpu_clock</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  GetProcessTimes
+                </p>
+              </td>
+<td>
+                <p>
+                  times
+                </p>
+              </td>
+<td>
+                <p>
+                  times
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../reference/other_clocks.html#chrono.reference.other_clocks.thread_clock_hpp.thread_clock" title="Class thread_clock"><code class="computeroutput"><span class="identifier">thread_clock</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  GetThreadTimes
+                </p>
+              </td>
+<td>
+                <p>
+                  clock_gettime(pthread_getcpuclockid)
+                </p>
+              </td>
+<td>
+                <p>
+                  clock_gettime(pthread_getcpuclockid)
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<br class="table-break">
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2008 Howard Hinnant<br>Copyright &#169; 2006, 2008 Beman Dawes<br>Copyright &#169; 2009-2013 Vicente J. Botet Escriba<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="rationale.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../appendices.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="faq.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

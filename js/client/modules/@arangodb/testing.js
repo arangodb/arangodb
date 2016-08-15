@@ -897,8 +897,6 @@ function executeArangod (cmd, args, options) {
       testfn += '_';
     }
 
-    testfn += valgrindTest;
-
     if (valgrindOpts.xml === 'yes') {
       valgrindOpts['xml-file'] = testfn + '.%p.xml';
     }
@@ -1055,7 +1053,7 @@ function runInArangosh (options, instanceInfo, file, addArgs) {
 function createArangoshRunner(args) {
   let runner = function(options, instanceInfo, file) {
     return runInArangosh(options, instanceInfo, file, args);
-  }
+  };
   runner.info = 'arangosh';
   return runner;
 }
@@ -1195,7 +1193,7 @@ function shutdownInstance (instanceInfo, options) {
   const n = instanceInfo.arangods.length;
 
   let nonagencies = instanceInfo.arangods
-    .filter(arangod => arangod.role != 'agent');
+    .filter(arangod => arangod.role !== 'agent');
   nonagencies.forEach(arangod => shutdownArangod(arangod, options)
   );
 
@@ -1219,7 +1217,7 @@ function shutdownInstance (instanceInfo, options) {
     // are agents:
     if (!agentsKilled && nrAgents > 0 && toShutdown.length === nrAgents) {
       instanceInfo.arangods
-        .filter(arangod => arangod.role == 'agent')
+        .filter(arangod => arangod.role === 'agent')
         .forEach(arangod => shutdownArangod(arangod, options));
       agentsKilled = true;
     }

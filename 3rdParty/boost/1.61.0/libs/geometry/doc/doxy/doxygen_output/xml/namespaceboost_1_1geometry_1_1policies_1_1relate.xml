@@ -1,0 +1,16 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="namespaceboost_1_1geometry_1_1policies_1_1relate" kind="namespace">
+    <compoundname>boost::geometry::policies::relate</compoundname>
+    <innerclass refid="structboost_1_1geometry_1_1policies_1_1relate_1_1direction__type" prot="public">boost::geometry::policies::relate::direction_type</innerclass>
+    <innerclass refid="structboost_1_1geometry_1_1policies_1_1relate_1_1segments__direction" prot="public">boost::geometry::policies::relate::segments_direction</innerclass>
+    <innerclass refid="structboost_1_1geometry_1_1policies_1_1relate_1_1segments__intersection__points" prot="public">boost::geometry::policies::relate::segments_intersection_points</innerclass>
+    <innerclass refid="structboost_1_1geometry_1_1policies_1_1relate_1_1segments__intersection__ratios" prot="public">boost::geometry::policies::relate::segments_intersection_ratios</innerclass>
+    <innerclass refid="structboost_1_1geometry_1_1policies_1_1relate_1_1segments__tupled" prot="public">boost::geometry::policies::relate::segments_tupled</innerclass>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/policies/relate/direction.hpp" line="31"/>
+  </compounddef>
+</doxygen>

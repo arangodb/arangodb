@@ -1,0 +1,257 @@
+[/
+ / Copyright (c) 2003 Boost.Test contributors 
+ /
+ / Distributed under the Boost Software License, Version 1.0. (See accompanying
+ / file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+ /]
+
+ 
+[section:test_unit_filtering Test unit filtering]
+
+The __UTF__ offers a number of ways to run only a subset of all test cases registered in the test tree.
+
+[#ref_default_run_status][h3 Default run status]
+
+Each test unit (either test case or test suite) has an associated ['default run status]. It can assume one of the three values:
+
+# ['true] -- this means that, unless some runtime parameters specify otherwise, the test unit is designated to be run.
+# ['false] -- this means that, unless some runtime parameters specify otherwise, the test unit is designated ['not] to be run.
+# ['inherit] -- this means that the test unit's default run status is the same as that of its immediate parent test unit. This is applied recursively.
+
+Initially, the master test suite has default run status set to ['true]. All other test units have default run status set to ['inherit]. This implies that, unless any additional configuration is applied, all tests are designated to be run.
+
+You can set a different default run status in any test unit by using [link boost_test.tests_organization.decorators decorators]: 
+__decorator_disabled__, __decorator_enabled__ and __decorator_enable_if__. The default run status is set once, upon testing program 
+initialization, and cannot be changed. The disabled tests are not executed by default, but are still present in the test tree, 
+and are listed along with other tests when you use command-line argument 
+[link boost_test.utf_reference.rt_param_reference.list_content `list_content`]. 
+
+[bt_example decorator_20..default run status..run-fail]
+
+[#ref_dynamic_test_dependency][h3 Dynamic test dependencies]
+
+Additionally, it is possible to statically associate a test unit with a condition. This associated condition is evaluated immediately before executing the test unit. If the condition is met, the test unit is executed. Otherwise, the test unit is ['skipped]. It is possible to add two dependencies:
+
+# Upon another test unit. In this case the decorated test case is skipped if the test unit specified in the dependency is either failed or skipped or disabled. This can be declared with decorator __decorator_depends_on__.
+# Upon an arbitrary predicate. This can be declared with decorator __decorator_precondition__.
+
+[#ref_command_line_control][h3 Command-line control]
+
+Static configuration of the test-case filtering is used by default, unless command-line filtering is applied. With command-line argument 
+__param_run_test__ it is possible to alter the static pre-set in a number of ways:
+
+# Ignore the static configuration and manually specify test cases to be run.
+# Augment the statically defined set by enabling the disabled test cases.
+# Shrink the statically defined set by disabling some of the enabled test cases.
+
+[#ref_command_line_control_absolute][h4 Absolute specification]
+
+Term 'absolute' in this context means that the default run status of the test units, which has been statically set up, 
+is completely ignored and the tests to be run are specified manually from scratch. First, in order to learn what test 
+units are registered in the test tree the user needs to use command-line argument 
+[link boost_test.utf_reference.rt_param_reference.list_content `list_content`].
+Next, in order to specify a set of test cases, the user needs to use command-line argument 
+__param_run_test__ with absolute value:
+
+```
+> test_program --__param_run_test__=<test_set>
+```
+
+The format of `<test_set>` value can assume a number of forms. Given the following program:
+
+```
+#define __BOOST_TEST_MODULE__ example
+#include <boost/test/included/unit_test.hpp>
+
+using boost::unit_test::__decorator_label__;
+
+__BOOST_AUTO_TEST_CASE__(test_1, *label("L1")) {}
+BOOST_AUTO_TEST_CASE(test_2, *label("L1")) {}
+
+__BOOST_AUTO_TEST_SUITE__(suite_1)
+
+  BOOST_AUTO_TEST_SUITE(suite_1)
+    BOOST_AUTO_TEST_CASE(test_1) {}
+    BOOST_AUTO_TEST_CASE(test_2) {}
+  BOOST_AUTO_TEST_SUITE_END()
+  
+  BOOST_AUTO_TEST_SUITE(suite_2)
+    BOOST_AUTO_TEST_CASE(test_1, *label("L2")) {}
+    BOOST_AUTO_TEST_CASE(test_2, *label("L2")) {}
+  BOOST_AUTO_TEST_SUITE_END()
+
+  BOOST_AUTO_TEST_CASE(test_1, *label("L1")) {}
+  BOOST_AUTO_TEST_CASE(test_2) {}
+  BOOST_AUTO_TEST_CASE(test_2A) {}
+
+BOOST_AUTO_TEST_SUITE_END()
+```
+
+The following table illustrates how different values of `<test_set>` control which test cases ware run.
+
+[table
+  [
+    [Description]
+    [Parameter value]
+    [Test cases run]
+  ]
+ 
+  [
+    [Run single top-level test case by name]
+    [[pre __param_run_test__=test_1]]
+    [
+[pre
+test_1
+]
+    ]
+  ]
+  
+  [
+    [Run single nested test case by name]
+    [[pre __param_run_test__=suite_1/suite_1/test_1]]
+    [
+[pre
+suite_1/suite_1/test_1
+]
+    ]
+  ]
+  
+  [
+    [Run single test suite by name]
+    [
+[pre __param_run_test__=suite_1/suite_2
+__param_run_test__=suite_1/suite_2/*
+]
+    ]
+    [
+[pre
+suite_1/suite_2/test_1
+suite_1/suite_2/test_2
+]
+    ]
+  ]
+  
+  [
+    [Run multiple test units residing in the same test suite]
+    [[pre __param_run_test__=suite_1/test_1,suite_2]]
+    [
+[pre
+suite_1/suite_2/test_1
+suite_1/suite_2/test_2
+suite_1/test_1
+]
+    ]
+  ]
+      
+  [
+    [Run all tests matching to a given label]
+    [[pre __param_run_test__=@L1]]
+    [
+[pre
+test_1
+test_2
+suite_1/test_1
+]
+    ]
+  ]
+    
+  [
+    [Run every test case in the test tree]
+    [[pre __param_run_test__=*]]
+    [
+[pre
+test_1
+test_2
+suite_1/suite_1/test_1
+suite_1/suite_1/test_2
+suite_1/suite_2/test_1
+suite_1/suite_2/test_2
+suite_1/test_1
+suite_1/test_2
+suite_1/test_2A
+]
+    ]
+  ]
+  
+     
+  [
+    [Run every test unit in a given suite with a given prefix]
+    [[pre __param_run_test__=suite_1/test*]]
+    [
+[pre
+suite_1/test_1
+suite_1/test_2
+suite_1/test_2A
+]
+    ]
+  ]
+       
+  [
+    [Run every test unit in a given suite with a given suffix]
+    [[pre __param_run_test__=suite_1/*_1]]
+    [
+[pre
+suite_1/suite_1/test_1
+suite_1/suite_1/test_2
+suite_1/test_1
+]
+    ]
+  ]
+  
+         
+  [
+    [Run every test unit in a given suite with a given infix]
+    [[pre __param_run_test__=suite_1/\*_2\*]]
+    [
+[pre
+suite_1/suite_2/test_1
+suite_1/suite_2/test_2
+suite_1/test_2
+suite_1/test_2A
+]
+    ]
+  ]
+  
+         
+  [
+    [Run test(s) with given name in any N-level suite]
+    [[pre __param_run_test__=\*/\*/test_2]]
+    [
+[pre
+suite_1/suite_1/test_2
+suite_1/suite_2/test_2
+]
+    ]
+  ]
+]
+
+For the syntax productions describing the structure of `<test_set>` value see [link boost_test.utf_reference.rt_param_reference.run_test here].
+
+While using manual absolute test case specification ignores the default run status, it does not ignore the dynamic test dependencies. If test unit `B` depends on test unit `A` and test `B` is specified to be run by __param_run_test__, `A` is also run, even if it is not specified, and its failure may cause the execution of `B` to be skipped. Similarly, the failed check of the __decorator_precondition__ may cause the test selected test to be skipped.
+
+[bt_example decorator_21..run_test and dynamic dependencies..run-fail]
+
+
+[#ref_command_line_control_enablers][h4 Relative specification]
+
+Term 'relative' in this context means that the configuration is based on either the default run status of the test units or by the command-line override specified by the ['absolute specification]; and atop of this, we additionally either enable some disabled test units or disable some enabled tests units. The relative specification is controlled by command-line argument __param_run_test__, with the value using similar syntax as in the absolute specification, but preceded with either character `'!'` for disabling enabled test units or with character `'+'` for enabling the disabled test units. this can be summarized with the following table:
+
+[table
+ [ [command][specification type][semantics] ]
+ [ [[pre > test_program --__param_run_test__=!<absolute_spec>]][disabler][Enabled test units that match `<absolute_spec>` become disabled.] ]
+ [ [[pre > test_program --__param_run_test__=+<absolute_spec>]][enabler][Disabled test units that match `<absolute_spec>` as well as their upstream dependencies become enabled.] ]
+]
+
+The ['enabler] specification is used to enable a set of test units which are initially disabled.
+[bt_example decorator_22..command-line enabler..run]
+
+Conversely, the ['disabler] specification is used to disable a set of test units which are initially enabled.
+[bt_example decorator_23..command-line disabler..run]
+
+If there are both an enabler and disabler on one command line that specify the same test, the test becomes disabled. I.e., the disabler takes the precedence over the enabler. 
+
+[note While enabler additionally enables the upstream dependencies (introduced with decorator __decorator_depends_on__), disabler does not disable them. Therefore when you enable and then disable the same test, you do not disable its upstream dependencies.]
+
+[/----------------------------------------------]
+
+[endsect] [/ section:test_unit_filtering]

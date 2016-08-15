@@ -1,0 +1,42 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="structboost_1_1geometry_1_1detail_1_1is__valid_1_1debug__validity__phase" kind="struct" prot="public">
+    <compoundname>boost::geometry::detail::is_valid::debug_validity_phase</compoundname>
+    <includes local="no">debug_validity_phase.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename Geometry</type>
+      </param>
+      <param>
+        <type>typename Tag</type>
+        <defval>typename <ref refid="structboost_1_1geometry_1_1tag" kindref="compound">tag</ref>&lt;Geometry&gt;::type</defval>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-static-func">
+      <memberdef kind="function" id="structboost_1_1geometry_1_1detail_1_1is__valid_1_1debug__validity__phase_1a48d072ad02e7a62dfa5342954e40a2fe" prot="public" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>void</type>
+        <definition>static void boost::geometry::detail::is_valid::debug_validity_phase&lt; Geometry, Tag &gt;::apply</definition>
+        <argsstring>(int)</argsstring>
+        <name>apply</name>
+        <param>
+          <type>int</type>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/is_valid/debug_validity_phase.hpp" line="31" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/is_valid/debug_validity_phase.hpp" bodystart="30" bodyend="32"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/is_valid/debug_validity_phase.hpp" line="29" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/is_valid/debug_validity_phase.hpp" bodystart="28" bodyend="33"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1detail_1_1is__valid_1_1debug__validity__phase_1a48d072ad02e7a62dfa5342954e40a2fe" prot="public" virt="non-virtual"><scope>boost::geometry::detail::is_valid::debug_validity_phase</scope><name>apply</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

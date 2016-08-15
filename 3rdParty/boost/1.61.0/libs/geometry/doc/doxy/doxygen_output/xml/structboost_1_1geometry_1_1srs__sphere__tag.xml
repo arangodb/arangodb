@@ -1,0 +1,39 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="structboost_1_1geometry_1_1srs__sphere__tag" kind="struct" prot="public">
+    <compoundname>boost::geometry::srs_sphere_tag</compoundname>
+    <basecompoundref refid="structboost_1_1geometry_1_1srs__spheroid__tag" prot="public" virt="non-virtual">boost::geometry::srs_spheroid_tag</basecompoundref>
+    <includes local="no">tags.hpp</includes>
+    <briefdescription>
+<para>For reference sphere defining parameters of spherical coordinate system. </para>    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <inheritancegraph>
+      <node id="1135">
+        <label>boost::geometry::srs_sphere_tag</label>
+        <link refid="structboost_1_1geometry_1_1srs__sphere__tag"/>
+        <childnode refid="1136" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="1136">
+        <label>boost::geometry::srs_spheroid_tag</label>
+        <link refid="structboost_1_1geometry_1_1srs__spheroid__tag"/>
+      </node>
+    </inheritancegraph>
+    <collaborationgraph>
+      <node id="1137">
+        <label>boost::geometry::srs_sphere_tag</label>
+        <link refid="structboost_1_1geometry_1_1srs__sphere__tag"/>
+        <childnode refid="1138" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="1138">
+        <label>boost::geometry::srs_spheroid_tag</label>
+        <link refid="structboost_1_1geometry_1_1srs__spheroid__tag"/>
+      </node>
+    </collaborationgraph>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/core/tags.hpp" line="51" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/core/tags.hpp" bodystart="51" bodyend="51"/>
+    <listofallmembers>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

@@ -1,0 +1,109 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="structboost_1_1geometry_1_1strategy_1_1distance_1_1services_1_1default__strategy" kind="struct" prot="public">
+    <compoundname>boost::geometry::strategy::distance::services::default_strategy</compoundname>
+    <includes local="no">distance.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename GeometryTag1</type>
+      </param>
+      <param>
+        <type>typename GeometryTag2</type>
+      </param>
+      <param>
+        <type>typename Point1</type>
+      </param>
+      <param>
+        <type>typename Point2</type>
+        <defval>Point1</defval>
+      </param>
+      <param>
+        <type>typename CsTag1</type>
+        <defval>typename <ref refid="structboost_1_1geometry_1_1cs__tag" kindref="compound">cs_tag</ref>&lt;Point1&gt;::type</defval>
+      </param>
+      <param>
+        <type>typename CsTag2</type>
+        <defval>typename <ref refid="structboost_1_1geometry_1_1cs__tag" kindref="compound">cs_tag</ref>&lt;Point2&gt;::type</defval>
+      </param>
+      <param>
+        <type>typename UnderlyingStrategy</type>
+        <defval>void</defval>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="structboost_1_1geometry_1_1strategy_1_1distance_1_1services_1_1default__strategy_1a4bb0e4afed10ea5e1b71e52f46ed21b0" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type></type>
+        <definition>boost::geometry::strategy::distance::services::default_strategy&lt; GeometryTag1, GeometryTag2, Point1, Point2, CsTag1, CsTag2, UnderlyingStrategy &gt;::BOOST_MPL_ASSERT_MSG</definition>
+        <argsstring>(false, NOT_IMPLEMENTED_FOR_THIS_POINT_TYPE_COMBINATION,(types&lt; Point1, Point2, CsTag1, CsTag2 &gt;))</argsstring>
+        <name>BOOST_MPL_ASSERT_MSG</name>
+        <param>
+          <type>false</type>
+        </param>
+        <param>
+          <type>NOT_IMPLEMENTED_FOR_THIS_POINT_TYPE_COMBINATION</type>
+        </param>
+        <param>
+          <type>(types&lt; Point1, Point2, CsTag1, CsTag2 &gt;)</type>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/distance.hpp" line="101"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+<para>Traits class binding a default strategy for distance to one (or possibly two) coordinate system(s) </para>    </briefdescription>
+    <detaileddescription>
+<para><parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>GeometryTag1</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>tag (point/segment/box) for which this strategy is the default </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>GeometryTag2</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>tag (point/segment/box) for which this strategy is the default </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Point1</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>first point-type </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Point2</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>second point-type </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>CsTag1</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>tag of coordinate system of first point type </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>CsTag2</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>tag of coordinate system of second point type </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/distance.hpp" line="96" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/distance.hpp" bodystart="95" bodyend="102"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1strategy_1_1distance_1_1services_1_1default__strategy_1a4bb0e4afed10ea5e1b71e52f46ed21b0" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::distance::services::default_strategy</scope><name>BOOST_MPL_ASSERT_MSG</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

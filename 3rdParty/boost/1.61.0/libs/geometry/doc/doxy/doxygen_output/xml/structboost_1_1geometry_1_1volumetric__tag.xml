@@ -1,0 +1,14 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="structboost_1_1geometry_1_1volumetric__tag" kind="struct" prot="public">
+    <compoundname>boost::geometry::volumetric_tag</compoundname>
+    <includes local="no">tags.hpp</includes>
+    <briefdescription>
+<para>For volume types (also box (?), polyhedron) </para>    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/core/tags.hpp" line="76" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/core/tags.hpp" bodystart="76" bodyend="76"/>
+    <listofallmembers>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

@@ -1,0 +1,139 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Performance</title>
+<link rel="stylesheet" href="../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../index.html" title="Chapter&#160;1.&#160;Boost.Compute">
+<link rel="up" href="../index.html" title="Chapter&#160;1.&#160;Boost.Compute">
+<link rel="prev" href="../boost/compute/wait_list.html" title="Class wait_list">
+<link rel="next" href="faq.html" title="Frequently Asked Questions">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../boost/compute/wait_list.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="faq.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="boost_compute.performance"></a><a class="link" href="performance.html" title="Performance">Performance</a>
+</h2></div></div></div>
+<p>
+      The following tests were run with an NVIDIA Tesla K40c GPU on a system with
+      an Intel Core i7 920 2.67GHz CPU.
+    </p>
+<p>
+      Source code for the benchmarks can be found under the <a href="https://github.com/boostorg/compute/tree/master/perf" target="_top">perf</a>
+      directory. All benchmarks were compiled with optimizations enabled (i.e. "gcc
+      -O3").
+    </p>
+<h4>
+<a name="boost_compute.performance.h0"></a>
+      <span><a name="boost_compute.performance.accumulate"></a></span><a class="link" href="performance.html#boost_compute.performance.accumulate">Accumulate</a>
+    </h4>
+<p>
+      <span class="inlinemediaobject"><img src="../images/perf/accumulate_time_plot.png" align="middle" width="850" alt="accumulate_time_plot"></span>
+    </p>
+<h4>
+<a name="boost_compute.performance.h1"></a>
+      <span><a name="boost_compute.performance.count"></a></span><a class="link" href="performance.html#boost_compute.performance.count">Count</a>
+    </h4>
+<p>
+      <span class="inlinemediaobject"><img src="../images/perf/count_time_plot.png" align="middle" width="850" alt="count_time_plot"></span>
+    </p>
+<h4>
+<a name="boost_compute.performance.h2"></a>
+      <span><a name="boost_compute.performance.inner_product"></a></span><a class="link" href="performance.html#boost_compute.performance.inner_product">Inner
+      Product</a>
+    </h4>
+<p>
+      <span class="inlinemediaobject"><img src="../images/perf/inner_product_time_plot.png" align="middle" width="850" alt="inner_product_time_plot"></span>
+    </p>
+<h4>
+<a name="boost_compute.performance.h3"></a>
+      <span><a name="boost_compute.performance.merge"></a></span><a class="link" href="performance.html#boost_compute.performance.merge">Merge</a>
+    </h4>
+<p>
+      <span class="inlinemediaobject"><img src="../images/perf/merge_time_plot.png" align="middle" width="850" alt="merge_time_plot"></span>
+    </p>
+<h4>
+<a name="boost_compute.performance.h4"></a>
+      <span><a name="boost_compute.performance.partial_sum"></a></span><a class="link" href="performance.html#boost_compute.performance.partial_sum">Partial
+      Sum</a>
+    </h4>
+<p>
+      <span class="inlinemediaobject"><img src="../images/perf/partial_sum_time_plot.png" align="middle" width="850" alt="partial_sum_time_plot"></span>
+    </p>
+<h4>
+<a name="boost_compute.performance.h5"></a>
+      <span><a name="boost_compute.performance.partition"></a></span><a class="link" href="performance.html#boost_compute.performance.partition">Partition</a>
+    </h4>
+<p>
+      <span class="inlinemediaobject"><img src="../images/perf/partition_time_plot.png" align="middle" width="850" alt="partition_time_plot"></span>
+    </p>
+<h4>
+<a name="boost_compute.performance.h6"></a>
+      <span><a name="boost_compute.performance.reverse"></a></span><a class="link" href="performance.html#boost_compute.performance.reverse">Reverse</a>
+    </h4>
+<p>
+      <span class="inlinemediaobject"><img src="../images/perf/reverse_time_plot.png" align="middle" width="850" alt="reverse_time_plot"></span>
+    </p>
+<h4>
+<a name="boost_compute.performance.h7"></a>
+      <span><a name="boost_compute.performance.rotate"></a></span><a class="link" href="performance.html#boost_compute.performance.rotate">Rotate</a>
+    </h4>
+<p>
+      <span class="inlinemediaobject"><img src="../images/perf/rotate_time_plot.png" align="middle" width="850" alt="rotate_time_plot"></span>
+    </p>
+<h4>
+<a name="boost_compute.performance.h8"></a>
+      <span><a name="boost_compute.performance.set_difference"></a></span><a class="link" href="performance.html#boost_compute.performance.set_difference">Set
+      Difference</a>
+    </h4>
+<p>
+      <span class="inlinemediaobject"><img src="../images/perf/set_difference_time_plot.png" align="middle" width="850" alt="set_difference_time_plot"></span>
+    </p>
+<h4>
+<a name="boost_compute.performance.h9"></a>
+      <span><a name="boost_compute.performance.sort"></a></span><a class="link" href="performance.html#boost_compute.performance.sort">Sort</a>
+    </h4>
+<p>
+      <span class="inlinemediaobject"><img src="../images/perf/sort_time_plot.png" align="middle" width="850" alt="sort_time_plot"></span>
+    </p>
+<h4>
+<a name="boost_compute.performance.h10"></a>
+      <span><a name="boost_compute.performance.transform"></a></span><a class="link" href="performance.html#boost_compute.performance.transform">Transform</a>
+    </h4>
+<p>
+      <span class="inlinemediaobject"><img src="../images/perf/saxpy_time_plot.png" align="middle" width="850" alt="saxpy_time_plot"></span>
+    </p>
+<h4>
+<a name="boost_compute.performance.h11"></a>
+      <span><a name="boost_compute.performance.unique"></a></span><a class="link" href="performance.html#boost_compute.performance.unique">Unique</a>
+    </h4>
+<p>
+      <span class="inlinemediaobject"><img src="../images/perf/unique_time_plot.png" align="middle" width="850" alt="unique_time_plot"></span>
+    </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2013, 2014 Kyle Lutz<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../boost/compute/wait_list.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="faq.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

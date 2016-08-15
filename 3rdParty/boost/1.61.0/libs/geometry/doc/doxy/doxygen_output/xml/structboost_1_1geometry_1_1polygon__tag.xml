@@ -1,0 +1,64 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="structboost_1_1geometry_1_1polygon__tag" kind="struct" prot="public">
+    <compoundname>boost::geometry::polygon_tag</compoundname>
+    <basecompoundref refid="structboost_1_1geometry_1_1single__tag" prot="public" virt="non-virtual">boost::geometry::single_tag</basecompoundref>
+    <basecompoundref refid="structboost_1_1geometry_1_1polygonal__tag" prot="public" virt="non-virtual">boost::geometry::polygonal_tag</basecompoundref>
+    <includes local="no">tags.hpp</includes>
+    <briefdescription>
+<para>OGC Polygon identifying tag. </para>    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <inheritancegraph>
+      <node id="577">
+        <label>boost::geometry::polygon_tag</label>
+        <link refid="structboost_1_1geometry_1_1polygon__tag"/>
+        <childnode refid="578" relation="public-inheritance">
+        </childnode>
+        <childnode refid="579" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="580">
+        <label>boost::geometry::areal_tag</label>
+        <link refid="structboost_1_1geometry_1_1areal__tag"/>
+      </node>
+      <node id="578">
+        <label>boost::geometry::single_tag</label>
+        <link refid="structboost_1_1geometry_1_1single__tag"/>
+      </node>
+      <node id="579">
+        <label>boost::geometry::polygonal_tag</label>
+        <link refid="structboost_1_1geometry_1_1polygonal__tag"/>
+        <childnode refid="580" relation="public-inheritance">
+        </childnode>
+      </node>
+    </inheritancegraph>
+    <collaborationgraph>
+      <node id="581">
+        <label>boost::geometry::polygon_tag</label>
+        <link refid="structboost_1_1geometry_1_1polygon__tag"/>
+        <childnode refid="582" relation="public-inheritance">
+        </childnode>
+        <childnode refid="583" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="584">
+        <label>boost::geometry::areal_tag</label>
+        <link refid="structboost_1_1geometry_1_1areal__tag"/>
+      </node>
+      <node id="582">
+        <label>boost::geometry::single_tag</label>
+        <link refid="structboost_1_1geometry_1_1single__tag"/>
+      </node>
+      <node id="583">
+        <label>boost::geometry::polygonal_tag</label>
+        <link refid="structboost_1_1geometry_1_1polygonal__tag"/>
+        <childnode refid="584" relation="public-inheritance">
+        </childnode>
+      </node>
+    </collaborationgraph>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/core/tags.hpp" line="92" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/core/tags.hpp" bodystart="92" bodyend="92"/>
+    <listofallmembers>
+    </listofallmembers>
+  </compounddef>
+</doxygen>
