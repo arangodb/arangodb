@@ -1,0 +1,112 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Object Transforms</title>
+<link rel="stylesheet" href="../../../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../../../../index.html" title="Chapter&#160;1.&#160;Boost.Proto">
+<link rel="up" href="../expression_transformation.html" title="Expression Transformation: Semantic Actions">
+<link rel="prev" href="callable_transforms.html" title="Callable Transforms">
+<link rel="next" href="example__calculator_arity.html" title="Example: Calculator Arity">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="callable_transforms.html"><img src="../../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../expression_transformation.html"><img src="../../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../../index.html"><img src="../../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="example__calculator_arity.html"><img src="../../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="boost_proto.users_guide.back_end.expression_transformation.object_transforms"></a><a class="link" href="object_transforms.html" title="Object Transforms">Object
+          Transforms</a>
+</h5></div></div></div>
+<p>
+            The very first transform we looked at simply extracted the value of terminals.
+            Let's do the same thing, but this time we'll promote all ints to longs
+            first. (Please forgive the contrived-ness of the examples so far; they
+            get more interesting later.) Here's the grammar:
+          </p>
+<pre class="programlisting"><span class="comment">// A simple Proto grammar that matches all terminals,</span>
+<span class="comment">// and a function object that extracts the value from</span>
+<span class="comment">// the terminal, promoting ints to longs:</span>
+<span class="keyword">struct</span> <span class="identifier">ValueWithPomote</span>
+  <span class="special">:</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">or_</span><span class="special">&lt;</span>
+        <span class="identifier">proto</span><span class="special">::</span><span class="identifier">when</span><span class="special">&lt;</span>
+            <span class="identifier">proto</span><span class="special">::</span><span class="identifier">terminal</span><span class="special">&lt;</span> <span class="keyword">int</span> <span class="special">&gt;</span>
+          <span class="special">,</span> <span class="keyword">long</span><span class="special">(</span><span class="identifier">proto</span><span class="special">::</span><span class="identifier">_value</span><span class="special">)</span>     <span class="comment">// &lt;-- an "object" transform</span>
+        <span class="special">&gt;</span>
+      <span class="special">,</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">when</span><span class="special">&lt;</span>
+            <span class="identifier">proto</span><span class="special">::</span><span class="identifier">terminal</span><span class="special">&lt;</span> <span class="identifier">_</span> <span class="special">&gt;</span>
+          <span class="special">,</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">_value</span>
+        <span class="special">&gt;</span>
+    <span class="special">&gt;</span>
+<span class="special">{};</span>
+</pre>
+<p>
+            You can read the above grammar as follows: when you match an int terminal,
+            extract the value from the terminal and use it to initialize a long;
+            otherwise, when you match another kind of terminal, just extract the
+            value. The type <code class="computeroutput"><span class="keyword">long</span><span class="special">(</span><span class="identifier">proto</span><span class="special">::</span><span class="identifier">_value</span><span class="special">)</span></code>
+            is a so-called <span class="emphasis"><em>object</em></span> transform. It looks like the
+            creation of a temporary long, but it's really a function type. Just as
+            a callable transform is a function type that represents a function to
+            call and its arguments, an object transforms is a function type that
+            represents an object to construct and the arguments to its constructor.
+          </p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top">
+<p>
+              <span class="bold"><strong>Object Transforms vs. Callable Transforms</strong></span>
+            </p>
+<p>
+              When using function types as Proto transforms, they can either represent
+              an object to construct or a function to call. It is similar to "normal"
+              C++ where the syntax <code class="computeroutput"><span class="identifier">foo</span><span class="special">(</span><span class="string">"arg"</span><span class="special">)</span></code> can either be interpreted as an object
+              to construct or a function to call, depending on whether <code class="computeroutput"><span class="identifier">foo</span></code> is a type or a function. But
+              consider two of the transforms we've seen so far:
+            </p>
+<p>
+</p>
+<pre class="programlisting"><span class="identifier">LeftmostLeaf</span><span class="special">(</span><span class="identifier">proto</span><span class="special">::</span><span class="identifier">_child0</span><span class="special">)</span>  <span class="comment">// &lt;-- a callable transform</span>
+<span class="keyword">long</span><span class="special">(</span><span class="identifier">proto</span><span class="special">::</span><span class="identifier">_value</span><span class="special">)</span>           <span class="comment">// &lt;-- an object transform</span>
+</pre>
+<p>
+            </p>
+<p>
+              Proto can't know in general which is which, so it uses a trait, <code class="computeroutput"><span class="identifier">proto</span><span class="special">::</span><span class="identifier">is_callable</span><span class="special">&lt;&gt;</span></code>,
+              to differentiate. <code class="computeroutput"><span class="identifier">is_callable</span><span class="special">&lt;</span> <span class="keyword">long</span>
+              <span class="special">&gt;::</span><span class="identifier">value</span></code>
+              is false so <code class="computeroutput"><span class="keyword">long</span><span class="special">(</span><span class="identifier">proto</span><span class="special">::</span><span class="identifier">_value</span><span class="special">)</span></code>
+              is an object to construct, but <code class="computeroutput"><span class="identifier">is_callable</span><span class="special">&lt;</span> <span class="identifier">LeftmostLeaf</span>
+              <span class="special">&gt;::</span><span class="identifier">value</span></code>
+              is true so <code class="computeroutput"><span class="identifier">LeftmostLeaf</span><span class="special">(</span><span class="identifier">proto</span><span class="special">::</span><span class="identifier">_child0</span><span class="special">)</span></code> is a function to call. Later on, we'll
+              see how Proto recognizes a type as "callable".
+            </p>
+</td></tr>
+</table></div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2008 Eric Niebler<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="callable_transforms.html"><img src="../../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../expression_transformation.html"><img src="../../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../../index.html"><img src="../../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="example__calculator_arity.html"><img src="../../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

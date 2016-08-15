@@ -1,0 +1,48 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="structboost_1_1geometry_1_1resolve__variant_1_1is__valid" kind="struct" prot="public">
+    <compoundname>boost::geometry::resolve_variant::is_valid</compoundname>
+    <includes local="no">interface.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename Geometry</type>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-static-func">
+      <memberdef kind="function" id="structboost_1_1geometry_1_1resolve__variant_1_1is__valid_1a7438b25b63c044259f42750c96b148dc" prot="public" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename VisitPolicy</type>
+          </param>
+        </templateparamlist>
+        <type>bool</type>
+        <definition>static bool boost::geometry::resolve_variant::is_valid&lt; Geometry &gt;::apply</definition>
+        <argsstring>(Geometry const &amp;geometry, VisitPolicy &amp;visitor)</argsstring>
+        <name>apply</name>
+        <param>
+          <type>Geometry const &amp;</type>
+          <declname>geometry</declname>
+        </param>
+        <param>
+          <type>VisitPolicy &amp;</type>
+          <declname>visitor</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/is_valid/interface.hpp" line="39" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/is_valid/interface.hpp" bodystart="38" bodyend="42"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/is_valid/interface.hpp" line="36" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/is_valid/interface.hpp" bodystart="35" bodyend="43"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1resolve__variant_1_1is__valid_1a7438b25b63c044259f42750c96b148dc" prot="public" virt="non-virtual"><scope>boost::geometry::resolve_variant::is_valid</scope><name>apply</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

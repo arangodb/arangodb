@@ -1,0 +1,43 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="structboost_1_1geometry_1_1detail_1_1turns_1_1filter__continue__turns" kind="struct" prot="public">
+    <compoundname>boost::geometry::detail::turns::filter_continue_turns</compoundname>
+    <includes local="no">filter_continue_turns.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename Turns</type>
+      </param>
+      <param>
+        <type>bool</type>
+        <declname>Enable</declname>
+        <defname>Enable</defname>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-static-func">
+      <memberdef kind="function" id="structboost_1_1geometry_1_1detail_1_1turns_1_1filter__continue__turns_1a02e1643da8ceb136cd8ffc2ae3d39834" prot="public" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>void</type>
+        <definition>static void boost::geometry::detail::turns::filter_continue_turns&lt; Turns, Enable &gt;::apply</definition>
+        <argsstring>(Turns &amp;)</argsstring>
+        <name>apply</name>
+        <param>
+          <type>Turns &amp;</type>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/turns/filter_continue_turns.hpp" line="27" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/turns/filter_continue_turns.hpp" bodystart="27" bodyend="27"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/turns/filter_continue_turns.hpp" line="26" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/turns/filter_continue_turns.hpp" bodystart="25" bodyend="28"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1detail_1_1turns_1_1filter__continue__turns_1a02e1643da8ceb136cd8ffc2ae3d39834" prot="public" virt="non-virtual"><scope>boost::geometry::detail::turns::filter_continue_turns</scope><name>apply</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

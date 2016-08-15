@@ -1,0 +1,108 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="register_2multi__polygon_8hpp" kind="file">
+    <compoundname>multi_polygon.hpp</compoundname>
+    <includes refid="tag_8hpp" local="no">boost/geometry/core/tag.hpp</includes>
+    <includes refid="core_2tags_8hpp" local="no">boost/geometry/core/tags.hpp</includes>
+    <incdepgraph>
+      <node id="53324">
+        <label>boost/type_traits/remove_const.hpp</label>
+      </node>
+      <node id="53326">
+        <label>boost/type_traits/remove_reference.hpp</label>
+      </node>
+      <node id="53322">
+        <label>boost/geometry/core/tags.hpp</label>
+        <link refid="core_2tags_8hpp"/>
+      </node>
+      <node id="53320">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/geometries/register/multi_polygon.hpp</label>
+        <link refid="register/multi_polygon.hpp"/>
+        <childnode refid="53321" relation="include">
+        </childnode>
+        <childnode refid="53322" relation="include">
+        </childnode>
+      </node>
+      <node id="53321">
+        <label>boost/geometry/core/tag.hpp</label>
+        <link refid="tag_8hpp"/>
+        <childnode refid="53322" relation="include">
+        </childnode>
+        <childnode refid="53323" relation="include">
+        </childnode>
+      </node>
+      <node id="53323">
+        <label>boost/geometry/util/bare_type.hpp</label>
+        <link refid="bare__type_8hpp"/>
+        <childnode refid="53324" relation="include">
+        </childnode>
+        <childnode refid="53325" relation="include">
+        </childnode>
+        <childnode refid="53326" relation="include">
+        </childnode>
+      </node>
+      <node id="53325">
+        <label>boost/type_traits/remove_pointer.hpp</label>
+      </node>
+    </incdepgraph>
+      <sectiondef kind="define">
+      <memberdef kind="define" id="group__register_1gac464d3e7b8f908820b9e8fc2a3e7ec1a" prot="public" static="no">
+        <name>BOOST_GEOMETRY_REGISTER_MULTI_POLYGON</name>
+        <param><defname>MultiPolygon</defname></param>
+        <initializer>namespace boost { namespace geometry { namespace traits {  \
+    template&lt;&gt; struct tag&lt;MultiPolygon&gt; { typedef multi_polygon_tag type; }; \
+}}}</initializer>
+        <briefdescription>
+<para>Macro to register a \1. </para>        </briefdescription>
+        <detaileddescription>
+<para>The macro BOOST_GEOMETRY_REGISTER_MULTI_POLYGON registers a multi_polygon such that it is recognized by Boost.Geometry and that Boost.Geometry functionality can used with the specified type. The multi_polygon may contain template parameters, which must be specified then. <parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>MultiPolygon</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>multi_polygon type to be registered</para></parameterdescription>
+</parameteritem>
+</parameterlist>
+ <qbk>
+[heading Example]
+[register_multi_polygon]
+[register_multi_polygon_output]
+</qbk>  </para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/register/multi_polygon.hpp" line="37" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/register/multi_polygon.hpp" bodystart="34" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="define" id="group__register_1gad9d2c263a4b8d43db7d2894041cbd6a0" prot="public" static="no">
+        <name>BOOST_GEOMETRY_REGISTER_MULTI_POLYGON_TEMPLATED</name>
+        <param><defname>MultiPolygon</defname></param>
+        <initializer>namespace boost { namespace geometry { namespace traits {  \
+    template&lt;typename Polygon&gt; struct tag&lt; MultiPolygon&lt;Polygon&gt; &gt; { typedef multi_polygon_tag type; }; \
+}}}</initializer>
+        <briefdescription>
+<para>Macro to register a \1. </para>        </briefdescription>
+        <detaileddescription>
+<para>The macro BOOST_GEOMETRY_REGISTER_MULTI_POLYGON_TEMPLATED registers a templated multi_polygon such that it is recognized by Boost.Geometry and that Boost.Geometry functionality can used with the specified type. The type must have one template parameter, which should be a polygon type, and should not be specified. Boost.Geometry takes care of inserting the template parameter. Hence all types of this templated multi_polygon are registered, regardless of their point type. <parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>MultiPolygon</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>multi_polygon (without template parameters) type to be registered</para></parameterdescription>
+</parameteritem>
+</parameterlist>
+ <qbk>
+[heading Example]
+[register_multi_polygon_templated]
+[register_multi_polygon_templated_output]
+</qbk>  </para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/register/multi_polygon.hpp" line="56" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/register/multi_polygon.hpp" bodystart="53" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/register/multi_polygon.hpp"/>
+  </compounddef>
+</doxygen>

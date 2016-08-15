@@ -1,0 +1,3891 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Conformance and Extension</title>
+<link rel="stylesheet" href="../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../index.html" title="The Boost C++ Libraries BoostBook Documentation Subset">
+<link rel="up" href="../thread.html" title="Chapter&#160;33.&#160;Thread 4.7.0">
+<link rel="prev" href="acknowledgements.html" title="Acknowledgments">
+<link rel="next" href="../boost_tr1.html" title="Chapter&#160;34.&#160;Boost.TR1">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../boost.png"></td>
+<td align="center"><a href="../../../index.html">Home</a></td>
+<td align="center"><a href="../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="acknowledgements.html"><img src="../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../thread.html"><img src="../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../boost_tr1.html"><img src="../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="thread.compliance"></a><a class="link" href="compliance.html" title="Conformance and Extension">Conformance and Extension</a>
+</h2></div></div></div>
+<div class="toc"><dl>
+<dt><span class="section"><a href="compliance.html#thread.compliance.cpp11">C++11 standard Thread library</a></span></dt>
+<dt><span class="section"><a href="compliance.html#thread.compliance.cxx14">C++14 standard Thread library
+      - accepted changes</a></span></dt>
+<dt><span class="section"><a href="compliance.html#thread.compliance.cxx1y">C++14 TS Extensions for Concurrency
+      V1 </a></span></dt>
+<dt><span class="section"><a href="compliance.html#thread.compliance.cxx1y0">C++1z TS Concurrency - On going
+      proposals</a></span></dt>
+</dl></div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="thread.compliance.cpp11"></a><a class="link" href="compliance.html#thread.compliance.cpp11" title="C++11 standard Thread library">C++11 standard Thread library</a>
+</h3></div></div></div>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+          <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2012/n3376.html" target="_top">C++11
+          - Standard for Programming Language C++</a>
+        </p></td></tr>
+</table></div>
+<p>
+        ]
+      </p>
+<div class="table">
+<a name="thread.compliance.cpp11.c__11_standard_conformance"></a><p class="title"><b>Table&#160;33.2.&#160;C++11 standard Conformance</b></p>
+<div class="table-contents"><table class="table" summary="C++11 standard Conformance">
+<colgroup>
+<col>
+<col>
+<col>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Section
+                </p>
+              </th>
+<th>
+                <p>
+                  Description
+                </p>
+              </th>
+<th>
+                <p>
+                  Status
+                </p>
+              </th>
+<th>
+                <p>
+                  Comments
+                </p>
+              </th>
+<th>
+                <p>
+                  Ticket
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  30
+                </p>
+              </td>
+<td>
+                <p>
+                  Thread support library
+                </p>
+              </td>
+<td>
+                <p>
+                  Yes
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  30.1
+                </p>
+              </td>
+<td>
+                <p>
+                  General
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  30.2
+                </p>
+              </td>
+<td>
+                <p>
+                  Requirements
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  30.2.1
+                </p>
+              </td>
+<td>
+                <p>
+                  Template parameter names
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  30.2.2
+                </p>
+              </td>
+<td>
+                <p>
+                  Exceptions
+                </p>
+              </td>
+<td>
+                <p>
+                  Yes
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  30.2.3
+                </p>
+              </td>
+<td>
+                <p>
+                  Native handles
+                </p>
+              </td>
+<td>
+                <p>
+                  Yes
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  30.2.4
+                </p>
+              </td>
+<td>
+                <p>
+                  Timing specifications
+                </p>
+              </td>
+<td>
+                <p>
+                  Yes
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  30.2.5
+                </p>
+              </td>
+<td>
+                <p>
+                  Requirements for Lockable types
+                </p>
+              </td>
+<td>
+                <p>
+                  Yes
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  30.2.5.1
+                </p>
+              </td>
+<td>
+                <p>
+                  In general
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  30.2.5.2
+                </p>
+              </td>
+<td>
+                <p>
+                  BasicLockable requirements
+                </p>
+              </td>
+<td>
+                <p>
+                  Yes
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  30.2.5.3
+                </p>
+              </td>
+<td>
+                <p>
+                  Lockable requirements
+                </p>
+              </td>
+<td>
+                <p>
+                  yes
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  30.2.5.4
+                </p>
+              </td>
+<td>
+                <p>
+                  TimedLockable requirements
+                </p>
+              </td>
+<td>
+                <p>
+                  Yes
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  30.2.6
+                </p>
+              </td>
+<td>
+                <p>
+                  decay_copy
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  30.3
+                </p>
+              </td>
+<td>
+                <p>
+                  Threads
+                </p>
+              </td>
+<td>
+                <p>
+                  Yes
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  30.3.1
+                </p>
+              </td>
+<td>
+                <p>
+                  Class thread
+                </p>
+              </td>
+<td>
+                <p>
+                  Yes
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  30.3.1.1
+                </p>
+              </td>
+<td>
+                <p>
+                  Class thread::id
+                </p>
+              </td>
+<td>
+                <p>
+                  Yes
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  30.3.1.2
+                </p>
+              </td>
+<td>
+                <p>
+                  thread constructors
+                </p>
+              </td>
+<td>
+                <p>
+                  Partial
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  30.3.1.3
+                </p>
+              </td>
+<td>
+                <p>
+                  thread destructor
+                </p>
+              </td>
+<td>
+                <p>
+                  Yes
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  30.3.1.4
+                </p>
+              </td>
+<td>
+                <p>
+                  thread assignment
+                </p>
+              </td>
+<td>
+                <p>
+                  Yes
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  30.3.1.5
+                </p>
+              </td>
+<td>
+                <p>
+                  thread members
+                </p>
+              </td>
+<td>
+                <p>
+                  Yes
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  30.3.1.6
+                </p>
+              </td>
+<td>
+                <p>
+                  thread static members
+                </p>
+              </td>
+<td>
+                <p>
+                  Yes
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  30.3.1.7
+                </p>
+              </td>
+<td>
+                <p>
+                  thread specialized algorithms
+                </p>
+              </td>
+<td>
+                <p>
+                  Yes
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  30.3.2
+                </p>
+              </td>
+<td>
+                <p>
+                  Namespace this_thread
+                </p>
+              </td>
+<td>
+                <p>
+                  Yes
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  30.4
+                </p>
+              </td>
+<td>
+                <p>
+                  Mutual exclusion
+                </p>
+              </td>
+<td>
+                <p>
+                  Partial
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  30.4.1
+                </p>
+              </td>
+<td>
+                <p>
+                  Mutex requirements
+                </p>
+              </td>
+<td>
+                <p>
+                  Yes
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  30.4.1.1
+                </p>
+              </td>
+<td>
+                <p>
+                  In general
+                </p>
+              </td>
+<td>
+                <p>
+                  Yes
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  30.4.1.2
+                </p>
+              </td>
+<td>
+                <p>
+                  Mutex types
+                </p>
+              </td>
+<td>
+                <p>
+                  Yes
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  30.4.1.2.1
+                </p>
+              </td>
+<td>
+                <p>
+                  Class mutex
+                </p>
+              </td>
+<td>
+                <p>
+                  Yes
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  30.4.1.2.2
+                </p>
+              </td>
+<td>
+                <p>
+                  Class recursive_mutex
+                </p>
+              </td>
+<td>
+                <p>
+                  Yes
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  30.4.1.3
+                </p>
+              </td>
+<td>
+                <p>
+                  Timed mutex types
+                </p>
+              </td>
+<td>
+                <p>
+                  Yes
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  30.4.1.3.1
+                </p>
+              </td>
+<td>
+                <p>
+                  Class timed_mutex
+                </p>
+              </td>
+<td>
+                <p>
+                  Yes
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  30.4.1.3.1
+                </p>
+              </td>
+<td>
+                <p>
+                  Class recursive_timed_mutex
+                </p>
+              </td>
+<td>
+                <p>
+                  Yes
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  30.4.2
+                </p>
+              </td>
+<td>
+                <p>
+                  Locks
+                </p>
+              </td>
+<td>
+                <p>
+                  Yes
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  30.4.2.1
+                </p>
+              </td>
+<td>
+                <p>
+                  Class template lock_guard
+                </p>
+              </td>
+<td>
+                <p>
+                  Yes
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  30.4.2.2
+                </p>
+              </td>
+<td>
+                <p>
+                  Class template unique_lock
+                </p>
+              </td>
+<td>
+                <p>
+                  Yes
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  30.4.2.2.1
+                </p>
+              </td>
+<td>
+                <p>
+                  unique_lock constructors, destructor, and assignment
+                </p>
+              </td>
+<td>
+                <p>
+                  Yes
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  30.4.2.2.2
+                </p>
+              </td>
+<td>
+                <p>
+                  unique_lock locking
+                </p>
+              </td>
+<td>
+                <p>
+                  Yes
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  30.4.2.2.3
+                </p>
+              </td>
+<td>
+                <p>
+                  unique_lock modifiers
+                </p>
+              </td>
+<td>
+                <p>
+                  Yes
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  30.4.2.2.4
+                </p>
+              </td>
+<td>
+                <p>
+                  unique_lock observers
+                </p>
+              </td>
+<td>
+                <p>
+                  Yes
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  30.4.3
+                </p>
+              </td>
+<td>
+                <p>
+                  Generic locking algorithms
+                </p>
+              </td>
+<td>
+                <p>
+                  Partial
+                </p>
+              </td>
+<td>
+                <p>
+                  variadic
+                </p>
+              </td>
+<td>
+                <p>
+                  #6227
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  30.4.4
+                </p>
+              </td>
+<td>
+                <p>
+                  Call once
+                </p>
+              </td>
+<td>
+                <p>
+                  Yes
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  30.4.4.1
+                </p>
+              </td>
+<td>
+                <p>
+                  Struct once_flag
+                </p>
+              </td>
+<td>
+                <p>
+                  Yes
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  30.4.4.2
+                </p>
+              </td>
+<td>
+                <p>
+                  Function call_once
+                </p>
+              </td>
+<td>
+                <p>
+                  Yes
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  30.5
+                </p>
+              </td>
+<td>
+                <p>
+                  Condition variables
+                </p>
+              </td>
+<td>
+                <p>
+                  Yes
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  30.5.1
+                </p>
+              </td>
+<td>
+                <p>
+                  Class condition_variable
+                </p>
+              </td>
+<td>
+                <p>
+                  Yes
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  30.5.2
+                </p>
+              </td>
+<td>
+                <p>
+                  Class condition_variable_any
+                </p>
+              </td>
+<td>
+                <p>
+                  Yes
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  30.6
+                </p>
+              </td>
+<td>
+                <p>
+                  Futures
+                </p>
+              </td>
+<td>
+                <p>
+                  Yes
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  30.6.1
+                </p>
+              </td>
+<td>
+                <p>
+                  Overview
+                </p>
+              </td>
+<td>
+                <p>
+                  Partial
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  30.6.2
+                </p>
+              </td>
+<td>
+                <p>
+                  Error handling
+                </p>
+              </td>
+<td>
+                <p>
+                  Yes
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  30.6.3
+                </p>
+              </td>
+<td>
+                <p>
+                  Class future_error
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  30.6.4
+                </p>
+              </td>
+<td>
+                <p>
+                  Shared state
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  30.6.5
+                </p>
+              </td>
+<td>
+                <p>
+                  Class template promise
+                </p>
+              </td>
+<td>
+                <p>
+                  Yes
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  30.6.6
+                </p>
+              </td>
+<td>
+                <p>
+                  Class template future
+                </p>
+              </td>
+<td>
+                <p>
+                  Yes
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  30.6.7
+                </p>
+              </td>
+<td>
+                <p>
+                  Class template shared_future
+                </p>
+              </td>
+<td>
+                <p>
+                  Yes
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  30.6.8
+                </p>
+              </td>
+<td>
+                <p>
+                  Function template async
+                </p>
+              </td>
+<td>
+                <p>
+                  Yes
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  30.6.9
+                </p>
+              </td>
+<td>
+                <p>
+                  Class template packaged_task
+                </p>
+              </td>
+<td>
+                <p>
+                  Yes
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<br class="table-break"><div class="table">
+<a name="thread.compliance.cpp11.extension"></a><p class="title"><b>Table&#160;33.3.&#160;Extension</b></p>
+<div class="table-contents"><table class="table" summary="Extension">
+<colgroup>
+<col>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Section
+                </p>
+              </th>
+<th>
+                <p>
+                  Description
+                </p>
+              </th>
+<th>
+                <p>
+                  Comments
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  30.3.1.5.x
+                </p>
+              </td>
+<td>
+                <p>
+                  interrupt
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  30.3.2.x
+                </p>
+              </td>
+<td>
+                <p>
+                  Interruption
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  30.3.2.y
+                </p>
+              </td>
+<td>
+                <p>
+                  at_thread_exit
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  30.4.3.x
+                </p>
+              </td>
+<td>
+                <p>
+                  Generic locking algorithms begin/end
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<br class="table-break">
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="thread.compliance.cxx14"></a><a class="link" href="compliance.html#thread.compliance.cxx14" title="C++14 standard Thread library - accepted changes">C++14 standard Thread library
+      - accepted changes</a>
+</h3></div></div></div>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+          <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2013/n3797.html" target="_top">Working
+          Draft, Standard for Programming Language C++</a>
+        </p></td></tr>
+</table></div>
+<div class="table">
+<a name="thread.compliance.cxx14.__http___isocpp_org_files_papers_n3659_html_n3659_shared_locking_in_c___revision_2__conformance"></a><p class="title"><b>Table&#160;33.4.&#160;[@http://isocpp.org/files/papers/N3659.html N3659 Shared locking in
+        C++ revision 2] Conformance</b></p>
+<div class="table-contents"><table class="table" summary="[@http://isocpp.org/files/papers/N3659.html N3659 Shared locking in
+        C++ revision 2] Conformance">
+<colgroup>
+<col>
+<col>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Section
+                </p>
+              </th>
+<th>
+                <p>
+                  Description
+                </p>
+              </th>
+<th>
+                <p>
+                  Status
+                </p>
+              </th>
+<th>
+                <p>
+                  Comments
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  30.4.1.4
+                </p>
+              </td>
+<td>
+                <p>
+                  Shared Lockables Types
+                </p>
+              </td>
+<td>
+                <p>
+                  Yes
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  30.4.1.4.1
+                </p>
+              </td>
+<td>
+                <p>
+                  shared_mutex class
+                </p>
+              </td>
+<td>
+                <p>
+                  Yes
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  30.4.2.3
+                </p>
+              </td>
+<td>
+                <p>
+                  Class template shared_lock
+                </p>
+              </td>
+<td>
+                <p>
+                  Yes
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<br class="table-break">
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="thread.compliance.cxx1y"></a><a class="link" href="compliance.html#thread.compliance.cxx1y" title="C++14 TS Extensions for Concurrency V1">C++14 TS Extensions for Concurrency
+      V1 </a>
+</h3></div></div></div>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+          <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n4107.html" target="_top">N4107-Extensions
+          for Concurrency</a>
+        </p></td></tr>
+</table></div>
+<div class="table">
+<a name="thread.compliance.cxx1y.improvements_to_std__future_t__and_related_apis_"></a><p class="title"><b>Table&#160;33.5.&#160;Improvements to std::future&lt;T&gt; and related APIs]</b></p>
+<div class="table-contents"><table class="table" summary="Improvements to std::future&lt;T&gt; and related APIs]">
+<colgroup>
+<col>
+<col>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Section
+                </p>
+              </th>
+<th>
+                <p>
+                  Description
+                </p>
+              </th>
+<th>
+                <p>
+                  Status
+                </p>
+              </th>
+<th>
+                <p>
+                  Comments
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  2.1
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  2.2
+                </p>
+              </td>
+<td>
+                <p>
+                  Class template future
+                </p>
+              </td>
+<td>
+                <p>
+                  Partial
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  2.2
+                </p>
+              </td>
+<td>
+                <p>
+                  then
+                </p>
+              </td>
+<td>
+                <p>
+                  Partial
+                </p>
+              </td>
+<td>
+                <p>
+                  without implicit unwrapping #10550 and blocking #10551
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  2.2
+                </p>
+              </td>
+<td>
+                <p>
+                  is_ready
+                </p>
+              </td>
+<td>
+                <p>
+                  Yes
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  2.3
+                </p>
+              </td>
+<td>
+                <p>
+                  Class template shared_future
+                </p>
+              </td>
+<td>
+                <p>
+                  Partial
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  2.3
+                </p>
+              </td>
+<td>
+                <p>
+                  then
+                </p>
+              </td>
+<td>
+                <p>
+                  Partial
+                </p>
+              </td>
+<td>
+                <p>
+                  Without implicit unwrapping #10550 and blocking #10551
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  2.3
+                </p>
+              </td>
+<td>
+                <p>
+                  is_ready
+                </p>
+              </td>
+<td>
+                <p>
+                  Yes
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  2.4
+                </p>
+              </td>
+<td>
+                <p>
+                  Function template when_all
+                </p>
+              </td>
+<td>
+                <p>
+                  Partial
+                </p>
+              </td>
+<td>
+                <p>
+                  interface not complete #10426 and blocking #10551
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  2.5
+                </p>
+              </td>
+<td>
+                <p>
+                  Function template when_any
+                </p>
+              </td>
+<td>
+                <p>
+                  Partial
+                </p>
+              </td>
+<td>
+                <p>
+                  interface not complete #10427 and blocking #10551
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  2.6
+                </p>
+              </td>
+<td>
+                <p>
+                  Function template when_any_back
+                </p>
+              </td>
+<td>
+                <p>
+                  No
+                </p>
+              </td>
+<td>
+                <p>
+                  #XXXX
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  2.7
+                </p>
+              </td>
+<td>
+                <p>
+                  Function template make_ready_future
+                </p>
+              </td>
+<td>
+                <p>
+                  Yes
+                </p>
+              </td>
+<td>
+                <p>
+                  -
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<br class="table-break">
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="thread.compliance.cxx1y0"></a><a class="link" href="compliance.html#thread.compliance.cxx1y0" title="C++1z TS Concurrency - On going proposals">C++1z TS Concurrency - On going
+      proposals</a>
+</h3></div></div></div>
+<div class="toc"><dl>
+<dt><span class="section"><a href="compliance.html#thread.compliance.cxx1y.latch">C++ Latches and Barriers</a></span></dt>
+<dt><span class="section"><a href="compliance.html#thread.compliance.cxx1y.queue">C++ Concurrent Queues</a></span></dt>
+<dt><span class="section"><a href="compliance.html#thread.compliance.cxx1y.executors">Executors and Schedulers</a></span></dt>
+</dl></div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="thread.compliance.cxx1y.latch"></a><a class="link" href="compliance.html#thread.compliance.cxx1y.latch" title="C++ Latches and Barriers">C++ Latches and Barriers</a>
+</h4></div></div></div>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+            <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2013/n3600.html" target="_top">N3600
+            C++ Latches and Barriers</a>
+          </p></td></tr>
+</table></div>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+            <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2013/n3817.html" target="_top">N3817
+            C++ Latches and Barriers</a>
+          </p></td></tr>
+</table></div>
+<div class="table">
+<a name="thread.compliance.cxx1y.latch.c___latches_and_barriers_conformance"></a><p class="title"><b>Table&#160;33.6.&#160;C++ Latches and Barriers Conformance</b></p>
+<div class="table-contents"><table class="table" summary="C++ Latches and Barriers Conformance">
+<colgroup>
+<col>
+<col>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                  <p>
+                    Section
+                  </p>
+                </th>
+<th>
+                  <p>
+                    Description
+                  </p>
+                </th>
+<th>
+                  <p>
+                    Status
+                  </p>
+                </th>
+<th>
+                  <p>
+                    Comments
+                  </p>
+                </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                  <p>
+                    X.1
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Class latch
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Partial
+                  </p>
+                </td>
+<td>
+                  <p>
+                    A new class latch has been added. The interface is a super set
+                    of the one of the proposal, taking some of the functions of the
+                    class barrier.
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    X.2
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Class barrier
+                  </p>
+                </td>
+<td>
+                  <p>
+                    No
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Even if Boost.Thread has a class boost:barrier it doesn't provides
+                    the same kind of services. There is an experimental completion_latch
+                    that could be used instead.
+                  </p>
+                </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<br class="table-break">
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="thread.compliance.cxx1y.queue"></a><a class="link" href="compliance.html#thread.compliance.cxx1y.queue" title="C++ Concurrent Queues">C++ Concurrent Queues</a>
+</h4></div></div></div>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+            <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2013/n3533.html" target="_top">N3533
+            C++ Concurrent Queues</a>
+          </p></td></tr>
+</table></div>
+<div class="table">
+<a name="thread.compliance.cxx1y.queue.c___concurrent_queues_conformance"></a><p class="title"><b>Table&#160;33.7.&#160;C++ Concurrent Queues Conformance</b></p>
+<div class="table-contents"><table class="table" summary="C++ Concurrent Queues Conformance">
+<colgroup>
+<col>
+<col>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                  <p>
+                    Section
+                  </p>
+                </th>
+<th>
+                  <p>
+                    Description
+                  </p>
+                </th>
+<th>
+                  <p>
+                    Status
+                  </p>
+                </th>
+<th>
+                  <p>
+                    Comments
+                  </p>
+                </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                  <p>
+                    X.1
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Conceptual interface
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Partial
+                  </p>
+                </td>
+<td>
+                  <p>
+                    The interface provided has some differences respect to this proposal.
+                    All the functions having a queue_op_status are not provided.
+                    No lock-free concrete classes
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    X.1.1
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Basic Operations
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Partial
+                  </p>
+                </td>
+<td>
+                  <p>
+                    -
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    X.1.1.1
+                  </p>
+                </td>
+<td>
+                  <p>
+                    push
+                  </p>
+                </td>
+<td>
+                  <p>
+                    yes
+                  </p>
+                </td>
+<td>
+                  <p>
+                    renamed push_back.
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    X.1.1.2
+                  </p>
+                </td>
+<td>
+                  <p>
+                    value_pop
+                  </p>
+                </td>
+<td>
+                  <p>
+                    no
+                  </p>
+                </td>
+<td>
+                  <p>
+                    renamed pull_front with two flavors.
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    X.1.2
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Non-waiting operations
+                  </p>
+                </td>
+<td>
+                  <p>
+                    -
+                  </p>
+                </td>
+<td>
+                  <p>
+                    -
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    X.1.2.1
+                  </p>
+                </td>
+<td>
+                  <p>
+                    try_push
+                  </p>
+                </td>
+<td>
+                  <p>
+                    yes
+                  </p>
+                </td>
+<td>
+                  <p>
+                    renamed try_push_back
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    X.1.2.2
+                  </p>
+                </td>
+<td>
+                  <p>
+                    try_pop
+                  </p>
+                </td>
+<td>
+                  <p>
+                    yes
+                  </p>
+                </td>
+<td>
+                  <p>
+                    renamed try_pull_back
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    X.1.3
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Non-blocking operations
+                  </p>
+                </td>
+<td>
+                  <p>
+                    -
+                  </p>
+                </td>
+<td>
+                  <p>
+                    -
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    X.1.3.1
+                  </p>
+                </td>
+<td>
+                  <p>
+                    nonblocking_push
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Yes
+                  </p>
+                </td>
+<td>
+                  <p>
+                    renamed nonblocking_push_back
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    X.1.3.2
+                  </p>
+                </td>
+<td>
+                  <p>
+                    nonblocking_pop
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Yes
+                  </p>
+                </td>
+<td>
+                  <p>
+                    renamed nonblocking_pull_front
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    X.1.4
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Push-front operations
+                  </p>
+                </td>
+<td>
+                  <p>
+                    No
+                  </p>
+                </td>
+<td>
+                  <p>
+                    -
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    X.1.5
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Closed queues
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Partial
+                  </p>
+                </td>
+<td>
+                  <p>
+                    -
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    X.1.5.1
+                  </p>
+                </td>
+<td>
+                  <p>
+                    close
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Yes
+                  </p>
+                </td>
+<td>
+                  <p>
+                    -
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    X.1.5.2
+                  </p>
+                </td>
+<td>
+                  <p>
+                    is_closed
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Yes
+                  </p>
+                </td>
+<td>
+                  <p>
+                    renamed closed
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    X.1.5.3
+                  </p>
+                </td>
+<td>
+                  <p>
+                    wait_push
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Yes
+                  </p>
+                </td>
+<td>
+                  <p>
+                    renamed wait_push_back
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    X.1.5.4
+                  </p>
+                </td>
+<td>
+                  <p>
+                    wait_pop
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Yes
+                  </p>
+                </td>
+<td>
+                  <p>
+                    renamed wait_pull_front
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    X.1.5.5
+                  </p>
+                </td>
+<td>
+                  <p>
+                    wait_push_front
+                  </p>
+                </td>
+<td>
+                  <p>
+                    no
+                  </p>
+                </td>
+<td>
+                  <p>
+                    -
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    X.1.5.6
+                  </p>
+                </td>
+<td>
+                  <p>
+                    wait_pop_back
+                  </p>
+                </td>
+<td>
+                  <p>
+                    no
+                  </p>
+                </td>
+<td>
+                  <p>
+                    -
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    X.1.5.6
+                  </p>
+                </td>
+<td>
+                  <p>
+                    open
+                  </p>
+                </td>
+<td>
+                  <p>
+                    no
+                  </p>
+                </td>
+<td>
+                  <p>
+                    -
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    X.1.6
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Empty and Full Queues
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Yes
+                  </p>
+                </td>
+<td>
+                  <p>
+                    -
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    X.1.6.1
+                  </p>
+                </td>
+<td>
+                  <p>
+                    is_empty
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Yes
+                  </p>
+                </td>
+<td>
+                  <p>
+                    -
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    X.1.6.2
+                  </p>
+                </td>
+<td>
+                  <p>
+                    is_full
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Yes
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Added capacity
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    X.1.7
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Queue Names
+                  </p>
+                </td>
+<td>
+                  <p>
+                    No
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Not considered a must for the time been.
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    X.1.8
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Element Type Requirements
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Yes?
+                  </p>
+                </td>
+<td>
+                  <p>
+                    -
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    X.1.9
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Exception Handling
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Yes?
+                  </p>
+                </td>
+<td>
+                  <p>
+                    -
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    X.1.10
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Queue Ordering
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Yes?
+                  </p>
+                </td>
+<td>
+                  <p>
+                    -
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    X.1.11
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Lock-Free Implementations
+                  </p>
+                </td>
+<td>
+                  <p>
+                    No
+                  </p>
+                </td>
+<td>
+                  <p>
+                    waiting to stabilize the lock-based interface. Will use Boost.LockFree
+                    once it is Boost.Move aware.
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    X.2
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Concrete queues
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Partial
+                  </p>
+                </td>
+<td>
+                  <p>
+                    -
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    X.2.1
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Locking Buffer Queue
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Partial
+                  </p>
+                </td>
+<td>
+                  <p>
+                    classes sync_queue and a sync_bounded_queue.
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    X.2.1
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Lock-Free Buffer Queue
+                  </p>
+                </td>
+<td>
+                  <p>
+                    No
+                  </p>
+                </td>
+<td>
+                  <p>
+                    waiting to stabilize the lock-based interface. Will use Boost.LockFree
+                    once it is Boost.Move aware.
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    X.3
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Additional Conceptual Tools
+                  </p>
+                </td>
+<td>
+                  <p>
+                    No
+                  </p>
+                </td>
+<td>
+                  <p>
+                    -
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    X.3.1
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Fronts and Backs
+                  </p>
+                </td>
+<td>
+                  <p>
+                    No
+                  </p>
+                </td>
+<td>
+                  <p>
+                    -
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    X.3.2
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Streaming Iterators
+                  </p>
+                </td>
+<td>
+                  <p>
+                    No
+                  </p>
+                </td>
+<td>
+                  <p>
+                    -
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    X.3.3
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Storage Iterators
+                  </p>
+                </td>
+<td>
+                  <p>
+                    No
+                  </p>
+                </td>
+<td>
+                  <p>
+                    -
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    X.3.4
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Binary Interfaces
+                  </p>
+                </td>
+<td>
+                  <p>
+                    No
+                  </p>
+                </td>
+<td>
+                  <p>
+                    -
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    X.3.4
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Managed Indirection
+                  </p>
+                </td>
+<td>
+                  <p>
+                    No
+                  </p>
+                </td>
+<td>
+                  <p>
+                    -
+                  </p>
+                </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<br class="table-break">
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="thread.compliance.cxx1y.executors"></a><a class="link" href="compliance.html#thread.compliance.cxx1y.executors" title="Executors and Schedulers">Executors and Schedulers</a>
+</h4></div></div></div>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+            <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2013/n3785.pdf" target="_top">N3785
+            Executors and Schedulers</a>
+          </p></td></tr>
+</table></div>
+<div class="table">
+<a name="thread.compliance.cxx1y.executors.executors_and_schedulers"></a><p class="title"><b>Table&#160;33.8.&#160;Executors and Schedulers</b></p>
+<div class="table-contents"><table class="table" summary="Executors and Schedulers">
+<colgroup>
+<col>
+<col>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                  <p>
+                    Section
+                  </p>
+                </th>
+<th>
+                  <p>
+                    Description
+                  </p>
+                </th>
+<th>
+                  <p>
+                    Status
+                  </p>
+                </th>
+<th>
+                  <p>
+                    Comments
+                  </p>
+                </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                  <p>
+                    V.1.1
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Class <code class="computeroutput"><span class="identifier">executor</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Yes
+                  </p>
+                </td>
+<td>
+                  <p>
+                    -
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    V.1.1
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">add</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Yes
+                  </p>
+                </td>
+<td>
+                  <p>
+                    renamed with a function template <code class="computeroutput"><span class="identifier">submit</span></code>
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    V.1.1
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">num_of_pendin_closures</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    No
+                  </p>
+                </td>
+<td>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    V.1.2
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Class sceduled_executor
+                  </p>
+                </td>
+<td>
+                  <p>
+                    No
+                  </p>
+                </td>
+<td>
+                  <p>
+                    -
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    V.1.2
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">add_at</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    No
+                  </p>
+                </td>
+<td>
+                  <p>
+                    renamed with a function template <code class="computeroutput"><span class="identifier">scheduler</span><span class="special">::</span><span class="identifier">submit_at</span></code>
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    V.1.2
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">add_after</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    No
+                  </p>
+                </td>
+<td>
+                  <p>
+                    renamed with a function template <code class="computeroutput"><span class="identifier">scheduler</span><span class="special">::</span><span class="identifier">submit_after</span></code>
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    V.2
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Concrete executor classes
+                  </p>
+                </td>
+<td>
+                  <p>
+                    No
+                  </p>
+                </td>
+<td>
+                  <p>
+                    -
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    V.2.1
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">thread_pool</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Yes
+                  </p>
+                </td>
+<td>
+                  <p>
+                    static version <code class="computeroutput"><span class="identifier">basic_thread_pool</span></code>,
+                    dynamic one <code class="computeroutput"><span class="identifier">execduler_adaptor</span><span class="special">&lt;</span><span class="identifier">basic_thread_pool</span><span class="special">&gt;</span></code>
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    V.2.2
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">serial_executor</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    yes
+                  </p>
+                </td>
+<td>
+                  <p>
+                    -
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    V.2.3
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">loop_executor</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Yes
+                  </p>
+                </td>
+<td>
+                  <p>
+                    static version loop_scheduler, dynamic one <code class="computeroutput"><span class="identifier">execduler_adaptor</span><span class="special">&lt;</span><span class="identifier">loop_scheduler</span><span class="special">&gt;</span></code>
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    V.2.4
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">inline_executor</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Yes
+                  </p>
+                </td>
+<td>
+                  <p>
+                    static version <code class="computeroutput"><span class="identifier">inline_executor</span></code>,
+                    dynamic one <code class="computeroutput"><span class="identifier">execduler_adaptor</span><span class="special">&lt;</span><span class="identifier">inline_executor</span><span class="special">&gt;</span></code>
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    V.2.5
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">thread_executor</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Yes
+                  </p>
+                </td>
+<td>
+                  <p>
+                    static version <code class="computeroutput"><span class="identifier">thread_executor</span></code>,
+                    dynamic one <code class="computeroutput"><span class="identifier">execduler_adaptor</span><span class="special">&lt;</span><span class="identifier">thread_executor</span><span class="special">&gt;</span></code>
+                  </p>
+                </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<br class="table-break"><div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+            <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2013/n3784.pdf" target="_top">N3784-Improvements
+            to `std::future&lt;T&gt; and Related APIs</a>
+          </p></td></tr>
+</table></div>
+<div class="table">
+<a name="thread.compliance.cxx1y.executors._async__future_shared_future__then_and_executors"></a><p class="title"><b>Table&#160;33.9.&#160;`async, future/shared_future::then`and Executors</b></p>
+<div class="table-contents"><table class="table" summary="`async, future/shared_future::then`and Executors">
+<colgroup>
+<col>
+<col>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                  <p>
+                    Section
+                  </p>
+                </th>
+<th>
+                  <p>
+                    Description
+                  </p>
+                </th>
+<th>
+                  <p>
+                    Status
+                  </p>
+                </th>
+<th>
+                  <p>
+                    Comments
+                  </p>
+                </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                  <p>
+                    30.6.6
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">future</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;::</span><span class="identifier">then</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Yes
+                  </p>
+                </td>
+<td>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    30.6.7
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">shared_future</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;::</span><span class="identifier">then</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Yes
+                  </p>
+                </td>
+<td>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    30.6.8
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">async</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Yes
+                  </p>
+                </td>
+<td>
+                  <p>
+                    -
+                  </p>
+                </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<br class="table-break"><div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+            <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n4143.pdf" target="_top">N4143-Executors
+            and schedulers, revision 4</a>
+          </p></td></tr>
+</table></div>
+<div class="table">
+<a name="thread.compliance.cxx1y.executors.executors_and_schedulers___revision_4"></a><p class="title"><b>Table&#160;33.10.&#160;Executors and Schedulers - revision 4</b></p>
+<div class="table-contents"><table class="table" summary="Executors and Schedulers - revision 4">
+<colgroup>
+<col>
+<col>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                  <p>
+                    Section
+                  </p>
+                </th>
+<th>
+                  <p>
+                    Description
+                  </p>
+                </th>
+<th>
+                  <p>
+                    Status
+                  </p>
+                </th>
+<th>
+                  <p>
+                    Comments
+                  </p>
+                </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                  <p>
+                    VI.A
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Executor Concept
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Yes
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">wrapper_type</span></code>
+                    renamed by <code class="computeroutput"><span class="identifier">work</span></code>
+                    and <code class="computeroutput"><span class="identifier">spawn</span> <span class="identifier">by</span>
+                    </code>submit<code class="computeroutput"> <span class="special">]]</span> <span class="special">[[</span><span class="identifier">VI</span><span class="special">.</span><span class="identifier">A</span><span class="special">.</span><span class="number">1</span><span class="special">]</span> <span class="special">[</span></code>thread_per_task_executor
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Yes
+                  </p>
+                </td>
+<td>
+                  <p>
+                    renamed <code class="computeroutput"><span class="identifier">thread_executor</span></code>
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    VI.A.2
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">thread_pool_executor</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Yes
+                  </p>
+                </td>
+<td>
+                  <p>
+                    renamed <code class="computeroutput"><span class="identifier">basic_thread_pool</span></code>
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    VI.A.3
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">system_executor</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    No
+                  </p>
+                </td>
+<td>
+                  <p>
+                    -
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    VI.A.4
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">loop_executor</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Yes
+                  </p>
+                </td>
+<td>
+                  <p>
+                    -
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    VI.A.5
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">serial_executor</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    yes
+                  </p>
+                </td>
+<td>
+                  <p>
+                    -
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    VI.B
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">executor_ref</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    yes
+                  </p>
+                </td>
+<td>
+                  <p>
+                    -
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    VI.C
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">executor</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    yes
+                  </p>
+                </td>
+<td>
+                  <p>
+                    renamed <code class="computeroutput"><span class="identifier">gen_executor_ref</span></code>
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    VI.D
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Free Functions and Helper Objects
+                  </p>
+                </td>
+<td>
+                  <p>
+                    partial
+                  </p>
+                </td>
+<td>
+                  <p>
+                    -
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    VI.D
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">make_package</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    No
+                  </p>
+                </td>
+<td>
+                  <p>
+                    -
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    VI.D
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">spawn_future</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    No
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">async</span><span class="special">(</span><span class="identifier">Ex</span><span class="special">&amp;,</span>
+                    <span class="special">...)</span></code> is similar but returns
+                    a blocking future.
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    VI.D
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">spawn</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    No
+                  </p>
+                </td>
+<td>
+                  <p>
+                    -
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    VI.D
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">task_wrapper</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    No
+                  </p>
+                </td>
+<td>
+                  <p>
+                    renamed <code class="computeroutput"><span class="identifier">resubmitter</span></code>
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    VI.D
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">set_executor</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    No
+                  </p>
+                </td>
+<td>
+                  <p>
+                    renamed <code class="computeroutput"><span class="identifier">resubmit</span></code>
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    VI.D
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">function_wrapper</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Partial
+                  </p>
+                </td>
+<td>
+                  <p>
+                    renamed <code class="computeroutput"><span class="identifier">work</span></code>
+                  </p>
+                </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<br class="table-break">
+</div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2007 -11 Anthony Williams<br>Copyright &#169; 2011 -15 Vicente J. Botet Escriba<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="acknowledgements.html"><img src="../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../thread.html"><img src="../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../boost_tr1.html"><img src="../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

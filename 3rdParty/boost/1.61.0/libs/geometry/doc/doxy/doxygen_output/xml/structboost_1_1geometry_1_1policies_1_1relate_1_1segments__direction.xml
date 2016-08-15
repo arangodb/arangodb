@@ -1,0 +1,475 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="structboost_1_1geometry_1_1policies_1_1relate_1_1segments__direction" kind="struct" prot="public">
+    <compoundname>boost::geometry::policies::relate::segments_direction</compoundname>
+    <includes local="no">direction.hpp</includes>
+      <sectiondef kind="public-type">
+      <memberdef kind="typedef" id="structboost_1_1geometry_1_1policies_1_1relate_1_1segments__direction_1a8528ffb431a1eddba2d6443b04d486c2" prot="public" static="no">
+        <type><ref refid="structboost_1_1geometry_1_1policies_1_1relate_1_1direction__type" kindref="compound">direction_type</ref></type>
+        <definition>typedef direction_type boost::geometry::policies::relate::segments_direction::return_type</definition>
+        <argsstring></argsstring>
+        <name>return_type</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/policies/relate/direction.hpp" line="116" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/policies/relate/direction.hpp" bodystart="116" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-static-func">
+      <memberdef kind="function" id="structboost_1_1geometry_1_1policies_1_1relate_1_1segments__direction_1ae34c73353ff10696d2564b261673cd64" prot="public" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>void</type>
+        <definition>static void boost::geometry::policies::relate::segments_direction::analyse_position_value</definition>
+        <argsstring>(int pos_val, int &amp;in_segment_count, int &amp;on_end_count, int &amp;outside_segment_count)</argsstring>
+        <name>analyse_position_value</name>
+        <param>
+          <type>int</type>
+          <declname>pos_val</declname>
+        </param>
+        <param>
+          <type>int &amp;</type>
+          <declname>in_segment_count</declname>
+        </param>
+        <param>
+          <type>int &amp;</type>
+          <declname>on_end_count</declname>
+        </param>
+        <param>
+          <type>int &amp;</type>
+          <declname>outside_segment_count</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/policies/relate/direction.hpp" line="226" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/policies/relate/direction.hpp" bodystart="222" bodyend="239"/>
+      </memberdef>
+      <memberdef kind="function" id="structboost_1_1geometry_1_1policies_1_1relate_1_1segments__direction_1a31123e2d681715bba0821450e24f7311" prot="public" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Ratio</type>
+          </param>
+        </templateparamlist>
+        <type>void</type>
+        <definition>static void boost::geometry::policies::relate::segments_direction::analyze</definition>
+        <argsstring>(Ratio const &amp;r, int &amp;in_segment_count, int &amp;on_end_count, int &amp;outside_segment_count)</argsstring>
+        <name>analyze</name>
+        <param>
+          <type>Ratio const &amp;</type>
+          <declname>r</declname>
+        </param>
+        <param>
+          <type>int &amp;</type>
+          <declname>in_segment_count</declname>
+        </param>
+        <param>
+          <type>int &amp;</type>
+          <declname>on_end_count</declname>
+        </param>
+        <param>
+          <type>int &amp;</type>
+          <declname>outside_segment_count</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/policies/relate/direction.hpp" line="194" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/policies/relate/direction.hpp" bodystart="190" bodyend="207"/>
+      </memberdef>
+      <memberdef kind="function" id="structboost_1_1geometry_1_1policies_1_1relate_1_1segments__direction_1a45b9540f0f183af09ba85c352749d676" prot="public" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>int</type>
+        <definition>static int boost::geometry::policies::relate::segments_direction::arrival_from_position_value</definition>
+        <argsstring>(int, int v_to)</argsstring>
+        <name>arrival_from_position_value</name>
+        <param>
+          <type>int</type>
+        </param>
+        <param>
+          <type>int</type>
+          <declname>v_to</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/policies/relate/direction.hpp" line="210" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/policies/relate/direction.hpp" bodystart="209" bodyend="220"/>
+      </memberdef>
+      <memberdef kind="function" id="structboost_1_1geometry_1_1policies_1_1relate_1_1segments__direction_1af461301291f99376fc320a402e0fe177" prot="public" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Ratio</type>
+          </param>
+        </templateparamlist>
+        <type>int</type>
+        <definition>static int boost::geometry::policies::relate::segments_direction::arrival_value</definition>
+        <argsstring>(Ratio const &amp;r_from, Ratio const &amp;r_to)</argsstring>
+        <name>arrival_value</name>
+        <param>
+          <type>Ratio const &amp;</type>
+          <declname>r_from</declname>
+        </param>
+        <param>
+          <type>Ratio const &amp;</type>
+          <declname>r_to</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/policies/relate/direction.hpp" line="168" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/policies/relate/direction.hpp" bodystart="167" bodyend="187"/>
+      </memberdef>
+      <memberdef kind="function" id="structboost_1_1geometry_1_1policies_1_1relate_1_1segments__direction_1afba0805e7b89ab213071c099ed62d1e3" prot="public" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Segment</type>
+          </param>
+        </templateparamlist>
+        <type><ref refid="structboost_1_1geometry_1_1policies_1_1relate_1_1segments__direction_1a8528ffb431a1eddba2d6443b04d486c2" kindref="member">return_type</ref></type>
+        <definition>static return_type boost::geometry::policies::relate::segments_direction::degenerate</definition>
+        <argsstring>(Segment const &amp;, bool)</argsstring>
+        <name>degenerate</name>
+        <param>
+          <type>Segment const &amp;</type>
+        </param>
+        <param>
+          <type>bool</type>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/policies/relate/direction.hpp" line="301" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/policies/relate/direction.hpp" bodystart="300" bodyend="303"/>
+      </memberdef>
+      <memberdef kind="function" id="structboost_1_1geometry_1_1policies_1_1relate_1_1segments__direction_1aa2847709a5292e17d778c192806b9701" prot="public" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type><ref refid="structboost_1_1geometry_1_1policies_1_1relate_1_1segments__direction_1a8528ffb431a1eddba2d6443b04d486c2" kindref="member">return_type</ref></type>
+        <definition>static return_type boost::geometry::policies::relate::segments_direction::disjoint</definition>
+        <argsstring>()</argsstring>
+        <name>disjoint</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/policies/relate/direction.hpp" line="315" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/policies/relate/direction.hpp" bodystart="314" bodyend="317"/>
+      </memberdef>
+      <memberdef kind="function" id="structboost_1_1geometry_1_1policies_1_1relate_1_1segments__direction_1a531d1a71f155880555797881c2be0b2c" prot="public" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type><ref refid="structboost_1_1geometry_1_1policies_1_1relate_1_1segments__direction_1a8528ffb431a1eddba2d6443b04d486c2" kindref="member">return_type</ref></type>
+        <definition>static return_type boost::geometry::policies::relate::segments_direction::error</definition>
+        <argsstring>(std::string const &amp;)</argsstring>
+        <name>error</name>
+        <param>
+          <type>std::string const &amp;</type>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/policies/relate/direction.hpp" line="320" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/policies/relate/direction.hpp" bodystart="319" bodyend="325"/>
+      </memberdef>
+      <memberdef kind="function" id="structboost_1_1geometry_1_1policies_1_1relate_1_1segments__direction_1a362860bad75d5cc0b558d317c595414e" prot="public" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Segment</type>
+          </param>
+          <param>
+            <type>typename Ratio</type>
+          </param>
+        </templateparamlist>
+        <type><ref refid="structboost_1_1geometry_1_1policies_1_1relate_1_1segments__direction_1a8528ffb431a1eddba2d6443b04d486c2" kindref="member">return_type</ref></type>
+        <definition>static return_type boost::geometry::policies::relate::segments_direction::one_degenerate</definition>
+        <argsstring>(Segment const &amp;, Ratio const &amp;, bool)</argsstring>
+        <name>one_degenerate</name>
+        <param>
+          <type>Segment const &amp;</type>
+        </param>
+        <param>
+          <type>Ratio const &amp;</type>
+        </param>
+        <param>
+          <type>bool</type>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/policies/relate/direction.hpp" line="309" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/policies/relate/direction.hpp" bodystart="306" bodyend="312"/>
+      </memberdef>
+      <memberdef kind="function" id="structboost_1_1geometry_1_1policies_1_1relate_1_1segments__direction_1ae4c4981966314de2eef081a12baf54d7" prot="public" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Segment1</type>
+          </param>
+          <param>
+            <type>typename Segment2</type>
+          </param>
+          <param>
+            <type>typename Ratio</type>
+          </param>
+        </templateparamlist>
+        <type><ref refid="structboost_1_1geometry_1_1policies_1_1relate_1_1segments__direction_1a8528ffb431a1eddba2d6443b04d486c2" kindref="member">return_type</ref></type>
+        <definition>static return_type boost::geometry::policies::relate::segments_direction::segments_collinear</definition>
+        <argsstring>(Segment1 const &amp;, Segment2 const &amp;, bool opposite, int a1_wrt_b, int a2_wrt_b, int b1_wrt_a, int b2_wrt_a, Ratio const &amp;, Ratio const &amp;, Ratio const &amp;, Ratio const &amp;)</argsstring>
+        <name>segments_collinear</name>
+        <param>
+          <type>Segment1 const &amp;</type>
+        </param>
+        <param>
+          <type>Segment2 const &amp;</type>
+        </param>
+        <param>
+          <type>bool</type>
+          <declname>opposite</declname>
+        </param>
+        <param>
+          <type>int</type>
+          <declname>a1_wrt_b</declname>
+        </param>
+        <param>
+          <type>int</type>
+          <declname>a2_wrt_b</declname>
+        </param>
+        <param>
+          <type>int</type>
+          <declname>b1_wrt_a</declname>
+        </param>
+        <param>
+          <type>int</type>
+          <declname>b2_wrt_a</declname>
+        </param>
+        <param>
+          <type>Ratio const &amp;</type>
+        </param>
+        <param>
+          <type>Ratio const &amp;</type>
+        </param>
+        <param>
+          <type>Ratio const &amp;</type>
+        </param>
+        <param>
+          <type>Ratio const &amp;</type>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/policies/relate/direction.hpp" line="247" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/policies/relate/direction.hpp" bodystart="242" bodyend="297"/>
+      </memberdef>
+      <memberdef kind="function" id="structboost_1_1geometry_1_1policies_1_1relate_1_1segments__direction_1a36597ac97e524652961c46df84c0200c" prot="public" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Segment1</type>
+          </param>
+          <param>
+            <type>typename Segment2</type>
+          </param>
+          <param>
+            <type>typename SegmentIntersectionInfo</type>
+          </param>
+        </templateparamlist>
+        <type><ref refid="structboost_1_1geometry_1_1policies_1_1relate_1_1segments__direction_1a8528ffb431a1eddba2d6443b04d486c2" kindref="member">return_type</ref></type>
+        <definition>static return_type boost::geometry::policies::relate::segments_direction::segments_crosses</definition>
+        <argsstring>(side_info const &amp;sides, SegmentIntersectionInfo const &amp;, Segment1 const &amp;, Segment2 const &amp;)</argsstring>
+        <name>segments_crosses</name>
+        <param>
+          <type><ref refid="classboost_1_1geometry_1_1side__info" kindref="compound">side_info</ref> const &amp;</type>
+          <declname>sides</declname>
+        </param>
+        <param>
+          <type>SegmentIntersectionInfo const &amp;</type>
+        </param>
+        <param>
+          <type>Segment1 const &amp;</type>
+        </param>
+        <param>
+          <type>Segment2 const &amp;</type>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/policies/relate/direction.hpp" line="127" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/policies/relate/direction.hpp" bodystart="124" bodyend="164"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="private-static-func">
+      <memberdef kind="function" id="structboost_1_1geometry_1_1policies_1_1relate_1_1segments__direction_1a9bbc86201d229b6a38ba4196247ddef1" prot="private" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type><ref refid="structboost_1_1geometry_1_1policies_1_1relate_1_1segments__direction_1a8528ffb431a1eddba2d6443b04d486c2" kindref="member">return_type</ref></type>
+        <definition>static return_type boost::geometry::policies::relate::segments_direction::a_ends_at_middle</definition>
+        <argsstring>(side_info const &amp;sides)</argsstring>
+        <name>a_ends_at_middle</name>
+        <param>
+          <type><ref refid="classboost_1_1geometry_1_1side__info" kindref="compound">side_info</ref> const &amp;</type>
+          <declname>sides</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/policies/relate/direction.hpp" line="371" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/policies/relate/direction.hpp" bodystart="370" bodyend="376"/>
+      </memberdef>
+      <memberdef kind="function" id="structboost_1_1geometry_1_1policies_1_1relate_1_1segments__direction_1ae482105c2d6f0a9fb4fee6851b02a876" prot="private" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>std::size_t</type>
+            <declname>I</declname>
+            <defname>I</defname>
+          </param>
+        </templateparamlist>
+        <type><ref refid="structboost_1_1geometry_1_1policies_1_1relate_1_1segments__direction_1a8528ffb431a1eddba2d6443b04d486c2" kindref="member">return_type</ref></type>
+        <definition>static return_type boost::geometry::policies::relate::segments_direction::angle</definition>
+        <argsstring>(side_info const &amp;sides, char how, int how_a, int how_b)</argsstring>
+        <name>angle</name>
+        <param>
+          <type><ref refid="classboost_1_1geometry_1_1side__info" kindref="compound">side_info</ref> const &amp;</type>
+          <declname>sides</declname>
+        </param>
+        <param>
+          <type>char</type>
+          <declname>how</declname>
+        </param>
+        <param>
+          <type>int</type>
+          <declname>how_a</declname>
+        </param>
+        <param>
+          <type>int</type>
+          <declname>how_b</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/policies/relate/direction.hpp" line="340" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/policies/relate/direction.hpp" bodystart="338" bodyend="343"/>
+      </memberdef>
+      <memberdef kind="function" id="structboost_1_1geometry_1_1policies_1_1relate_1_1segments__direction_1a91bdcc641f27e3d0c12de05d57dbcd97" prot="private" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type><ref refid="structboost_1_1geometry_1_1policies_1_1relate_1_1segments__direction_1a8528ffb431a1eddba2d6443b04d486c2" kindref="member">return_type</ref></type>
+        <definition>static return_type boost::geometry::policies::relate::segments_direction::b_ends_at_middle</definition>
+        <argsstring>(side_info const &amp;sides)</argsstring>
+        <name>b_ends_at_middle</name>
+        <param>
+          <type><ref refid="classboost_1_1geometry_1_1side__info" kindref="compound">side_info</ref> const &amp;</type>
+          <declname>sides</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/policies/relate/direction.hpp" line="380" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/policies/relate/direction.hpp" bodystart="379" bodyend="383"/>
+      </memberdef>
+      <memberdef kind="function" id="structboost_1_1geometry_1_1policies_1_1relate_1_1segments__direction_1aeaa58a78d9d5965fed0a044cd5a0dd8e" prot="private" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>std::size_t</type>
+            <declname>I</declname>
+            <defname>I</defname>
+          </param>
+        </templateparamlist>
+        <type><ref refid="structboost_1_1geometry_1_1policies_1_1relate_1_1segments__direction_1a8528ffb431a1eddba2d6443b04d486c2" kindref="member">return_type</ref></type>
+        <definition>static return_type boost::geometry::policies::relate::segments_direction::calculate_side</definition>
+        <argsstring>(side_info const &amp;sides, char how, int how_a, int how_b)</argsstring>
+        <name>calculate_side</name>
+        <param>
+          <type><ref refid="classboost_1_1geometry_1_1side__info" kindref="compound">side_info</ref> const &amp;</type>
+          <declname>sides</declname>
+        </param>
+        <param>
+          <type>char</type>
+          <declname>how</declname>
+        </param>
+        <param>
+          <type>int</type>
+          <declname>how_a</declname>
+        </param>
+        <param>
+          <type>int</type>
+          <declname>how_b</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/policies/relate/direction.hpp" line="332" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/policies/relate/direction.hpp" bodystart="330" bodyend="335"/>
+      </memberdef>
+      <memberdef kind="function" id="structboost_1_1geometry_1_1policies_1_1relate_1_1segments__direction_1a8f09f8ca3345ca971a759d7460af38f1" prot="private" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type><ref refid="structboost_1_1geometry_1_1policies_1_1relate_1_1segments__direction_1a8528ffb431a1eddba2d6443b04d486c2" kindref="member">return_type</ref></type>
+        <definition>static return_type boost::geometry::policies::relate::segments_direction::starts_from_middle</definition>
+        <argsstring>(side_info const &amp;sides, char which, int how_a, int how_b)</argsstring>
+        <name>starts_from_middle</name>
+        <param>
+          <type><ref refid="classboost_1_1geometry_1_1side__info" kindref="compound">side_info</ref> const &amp;</type>
+          <declname>sides</declname>
+        </param>
+        <param>
+          <type>char</type>
+          <declname>which</declname>
+        </param>
+        <param>
+          <type>int</type>
+          <declname>how_a</declname>
+        </param>
+        <param>
+          <type>int</type>
+          <declname>how_b</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/policies/relate/direction.hpp" line="349" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/policies/relate/direction.hpp" bodystart="346" bodyend="365"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/policies/relate/direction.hpp" line="115" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/policies/relate/direction.hpp" bodystart="114" bodyend="385"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1policies_1_1relate_1_1segments__direction_1a9bbc86201d229b6a38ba4196247ddef1" prot="private" virt="non-virtual"><scope>boost::geometry::policies::relate::segments_direction</scope><name>a_ends_at_middle</name></member>
+      <member refid="structboost_1_1geometry_1_1policies_1_1relate_1_1segments__direction_1ae34c73353ff10696d2564b261673cd64" prot="public" virt="non-virtual"><scope>boost::geometry::policies::relate::segments_direction</scope><name>analyse_position_value</name></member>
+      <member refid="structboost_1_1geometry_1_1policies_1_1relate_1_1segments__direction_1a31123e2d681715bba0821450e24f7311" prot="public" virt="non-virtual"><scope>boost::geometry::policies::relate::segments_direction</scope><name>analyze</name></member>
+      <member refid="structboost_1_1geometry_1_1policies_1_1relate_1_1segments__direction_1ae482105c2d6f0a9fb4fee6851b02a876" prot="private" virt="non-virtual"><scope>boost::geometry::policies::relate::segments_direction</scope><name>angle</name></member>
+      <member refid="structboost_1_1geometry_1_1policies_1_1relate_1_1segments__direction_1a45b9540f0f183af09ba85c352749d676" prot="public" virt="non-virtual"><scope>boost::geometry::policies::relate::segments_direction</scope><name>arrival_from_position_value</name></member>
+      <member refid="structboost_1_1geometry_1_1policies_1_1relate_1_1segments__direction_1af461301291f99376fc320a402e0fe177" prot="public" virt="non-virtual"><scope>boost::geometry::policies::relate::segments_direction</scope><name>arrival_value</name></member>
+      <member refid="structboost_1_1geometry_1_1policies_1_1relate_1_1segments__direction_1a91bdcc641f27e3d0c12de05d57dbcd97" prot="private" virt="non-virtual"><scope>boost::geometry::policies::relate::segments_direction</scope><name>b_ends_at_middle</name></member>
+      <member refid="structboost_1_1geometry_1_1policies_1_1relate_1_1segments__direction_1aeaa58a78d9d5965fed0a044cd5a0dd8e" prot="private" virt="non-virtual"><scope>boost::geometry::policies::relate::segments_direction</scope><name>calculate_side</name></member>
+      <member refid="structboost_1_1geometry_1_1policies_1_1relate_1_1segments__direction_1afba0805e7b89ab213071c099ed62d1e3" prot="public" virt="non-virtual"><scope>boost::geometry::policies::relate::segments_direction</scope><name>degenerate</name></member>
+      <member refid="structboost_1_1geometry_1_1policies_1_1relate_1_1segments__direction_1aa2847709a5292e17d778c192806b9701" prot="public" virt="non-virtual"><scope>boost::geometry::policies::relate::segments_direction</scope><name>disjoint</name></member>
+      <member refid="structboost_1_1geometry_1_1policies_1_1relate_1_1segments__direction_1a531d1a71f155880555797881c2be0b2c" prot="public" virt="non-virtual"><scope>boost::geometry::policies::relate::segments_direction</scope><name>error</name></member>
+      <member refid="structboost_1_1geometry_1_1policies_1_1relate_1_1segments__direction_1a362860bad75d5cc0b558d317c595414e" prot="public" virt="non-virtual"><scope>boost::geometry::policies::relate::segments_direction</scope><name>one_degenerate</name></member>
+      <member refid="structboost_1_1geometry_1_1policies_1_1relate_1_1segments__direction_1a8528ffb431a1eddba2d6443b04d486c2" prot="public" virt="non-virtual"><scope>boost::geometry::policies::relate::segments_direction</scope><name>return_type</name></member>
+      <member refid="structboost_1_1geometry_1_1policies_1_1relate_1_1segments__direction_1ae4c4981966314de2eef081a12baf54d7" prot="public" virt="non-virtual"><scope>boost::geometry::policies::relate::segments_direction</scope><name>segments_collinear</name></member>
+      <member refid="structboost_1_1geometry_1_1policies_1_1relate_1_1segments__direction_1a36597ac97e524652961c46df84c0200c" prot="public" virt="non-virtual"><scope>boost::geometry::policies::relate::segments_direction</scope><name>segments_crosses</name></member>
+      <member refid="structboost_1_1geometry_1_1policies_1_1relate_1_1segments__direction_1a8f09f8ca3345ca971a759d7460af38f1" prot="private" virt="non-virtual"><scope>boost::geometry::policies::relate::segments_direction</scope><name>starts_from_middle</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

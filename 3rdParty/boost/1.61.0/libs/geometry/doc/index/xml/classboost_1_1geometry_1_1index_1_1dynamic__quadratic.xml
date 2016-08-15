@@ -1,0 +1,112 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="classboost_1_1geometry_1_1index_1_1dynamic__quadratic" kind="class" prot="public">
+    <compoundname>boost::geometry::index::dynamic_quadratic</compoundname>
+    <includes refid="parameters_8hpp" local="no">parameters.hpp</includes>
+      <sectiondef kind="private-attrib">
+      <memberdef kind="variable" id="classboost_1_1geometry_1_1index_1_1dynamic__quadratic_1a0251388f2b11ec68bc17a1146f5f8e77" prot="private" static="no" mutable="no">
+        <type>size_t</type>
+        <definition>size_t boost::geometry::index::dynamic_quadratic::m_max_elements</definition>
+        <argsstring></argsstring>
+        <name>m_max_elements</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/parameters.hpp" line="201" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/parameters.hpp" bodystart="201" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classboost_1_1geometry_1_1index_1_1dynamic__quadratic_1a8a51ad23cb443573fdb0c115a8006af1" prot="private" static="no" mutable="no">
+        <type>size_t</type>
+        <definition>size_t boost::geometry::index::dynamic_quadratic::m_min_elements</definition>
+        <argsstring></argsstring>
+        <name>m_min_elements</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/parameters.hpp" line="202" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/parameters.hpp" bodystart="202" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="classboost_1_1geometry_1_1index_1_1dynamic__quadratic_1a84a1db438cd93666082b7ff736a2189d" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type></type>
+        <definition>boost::geometry::index::dynamic_quadratic::dynamic_quadratic</definition>
+        <argsstring>(size_t max_elements, size_t min_elements=detail::default_min_elements_d())</argsstring>
+        <name>dynamic_quadratic</name>
+        <param>
+          <type>size_t</type>
+          <declname>max_elements</declname>
+        </param>
+        <param>
+          <type>size_t</type>
+          <declname>min_elements</declname>
+          <defval>detail::default_min_elements_d()</defval>
+        </param>
+        <briefdescription>
+<para>The constructor. </para>        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>max_elements</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Maximum number of elements in nodes. </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>min_elements</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Minimum number of elements in nodes. Default: 0.3*Max. </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/parameters.hpp" line="192" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/parameters.hpp" bodystart="188" bodyend="195"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1index_1_1dynamic__quadratic_1a23d1392e9667550cf0015ae67c64e80c" prot="public" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <type>size_t</type>
+        <definition>size_t boost::geometry::index::dynamic_quadratic::get_max_elements</definition>
+        <argsstring>() const </argsstring>
+        <name>get_max_elements</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/parameters.hpp" line="197" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/parameters.hpp" bodystart="197" bodyend="197"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1index_1_1dynamic__quadratic_1aee2d6c976ad9c212d8151f4c3250afc3" prot="public" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <type>size_t</type>
+        <definition>size_t boost::geometry::index::dynamic_quadratic::get_min_elements</definition>
+        <argsstring>() const </argsstring>
+        <name>get_min_elements</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/parameters.hpp" line="198" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/parameters.hpp" bodystart="198" bodyend="198"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+<para>Quadratic r-tree creation algorithm parameters - run-time version. </para>    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/index/parameters.hpp" line="180" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/parameters.hpp" bodystart="179" bodyend="203"/>
+    <listofallmembers>
+      <member refid="classboost_1_1geometry_1_1index_1_1dynamic__quadratic_1a84a1db438cd93666082b7ff736a2189d" prot="public" virt="non-virtual"><scope>boost::geometry::index::dynamic_quadratic</scope><name>dynamic_quadratic</name></member>
+      <member refid="classboost_1_1geometry_1_1index_1_1dynamic__quadratic_1a23d1392e9667550cf0015ae67c64e80c" prot="public" virt="non-virtual"><scope>boost::geometry::index::dynamic_quadratic</scope><name>get_max_elements</name></member>
+      <member refid="classboost_1_1geometry_1_1index_1_1dynamic__quadratic_1aee2d6c976ad9c212d8151f4c3250afc3" prot="public" virt="non-virtual"><scope>boost::geometry::index::dynamic_quadratic</scope><name>get_min_elements</name></member>
+      <member refid="classboost_1_1geometry_1_1index_1_1dynamic__quadratic_1a0251388f2b11ec68bc17a1146f5f8e77" prot="private" virt="non-virtual"><scope>boost::geometry::index::dynamic_quadratic</scope><name>m_max_elements</name></member>
+      <member refid="classboost_1_1geometry_1_1index_1_1dynamic__quadratic_1a8a51ad23cb443573fdb0c115a8006af1" prot="private" virt="non-virtual"><scope>boost::geometry::index::dynamic_quadratic</scope><name>m_min_elements</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

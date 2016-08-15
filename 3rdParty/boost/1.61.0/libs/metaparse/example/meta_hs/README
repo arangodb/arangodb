@@ -1,0 +1,4 @@
+Haskell-like functional EDSL for template metafunctions.
+This example contains two programs. Both of them define and execute a few
+template metaprograms. One of the do it by using Boost.MPL directly, while the
+other one defines the template metaprograms using the EDSL.

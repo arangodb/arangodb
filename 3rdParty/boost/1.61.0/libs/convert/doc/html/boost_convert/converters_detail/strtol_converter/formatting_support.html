@@ -1,0 +1,93 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Formatting Support</title>
+<link rel="stylesheet" href="../../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../../../index.html" title="Chapter&#160;1.&#160;Boost.Convert 2.0">
+<link rel="up" href="../strtol_converter.html" title="boost::cnv::strtol Converter">
+<link rel="prev" href="../strtol_converter.html" title="boost::cnv::strtol Converter">
+<link rel="next" href="formatting_support/field_width__fill_character_and_adjustment.html" title="Field Width, Fill Character and Adjustment">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../strtol_converter.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../strtol_converter.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="formatting_support/field_width__fill_character_and_adjustment.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="boost_convert.converters_detail.strtol_converter.formatting_support"></a><a class="link" href="formatting_support.html" title="Formatting Support">Formatting
+        Support</a>
+</h4></div></div></div>
+<div class="toc"><dl>
+<dt><span class="section"><a href="formatting_support.html#boost_convert.converters_detail.strtol_converter.formatting_support.numeric_base__bin__oct__dec__hex_">Numeric
+          Base (bin, oct, dec, hex)</a></span></dt>
+<dt><span class="section"><a href="formatting_support/field_width__fill_character_and_adjustment.html">Field
+          Width, Fill Character and Adjustment</a></span></dt>
+<dt><span class="section"><a href="formatting_support/leading_whitespace_characters.html">Leading
+          Whitespace Characters</a></span></dt>
+<dt><span class="section"><a href="formatting_support/floating_point_precision.html">Floating-Point
+          Precision</a></span></dt>
+</dl></div>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="boost_convert.converters_detail.strtol_converter.formatting_support.numeric_base__bin__oct__dec__hex_"></a><a class="link" href="formatting_support.html#boost_convert.converters_detail.strtol_converter.formatting_support.numeric_base__bin__oct__dec__hex_" title="Numeric Base (bin, oct, dec, hex)">Numeric
+          Base (bin, oct, dec, hex)</a>
+</h5></div></div></div>
+<p>
+</p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">convert</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">convert</span><span class="special">/</span><span class="identifier">strtol</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="keyword">using</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span><span class="special">;</span>
+<span class="keyword">using</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">wstring</span><span class="special">;</span>
+<span class="keyword">using</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">convert</span><span class="special">;</span>
+
+<span class="keyword">namespace</span> <span class="identifier">cnv</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">cnv</span><span class="special">;</span>
+<span class="keyword">namespace</span> <span class="identifier">arg</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">cnv</span><span class="special">::</span><span class="identifier">parameter</span><span class="special">;</span>
+</pre>
+<p>
+          </p>
+<p>
+</p>
+<pre class="programlisting"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">cnv</span><span class="special">::</span><span class="identifier">strtol</span> <span class="identifier">cnv</span><span class="special">;</span>
+
+<span class="identifier">BOOST_TEST</span><span class="special">(</span> <span class="string">"11111110"</span> <span class="special">==</span> <span class="identifier">convert</span><span class="special">&lt;</span> <span class="identifier">string</span><span class="special">&gt;(</span><span class="number">254</span><span class="special">,</span> <span class="identifier">cnv</span><span class="special">(</span><span class="identifier">arg</span><span class="special">::</span><span class="identifier">base</span> <span class="special">=</span> <span class="identifier">cnv</span><span class="special">::</span><span class="identifier">base</span><span class="special">::</span><span class="identifier">bin</span><span class="special">)).</span><span class="identifier">value</span><span class="special">());</span>
+<span class="identifier">BOOST_TEST</span><span class="special">(</span>      <span class="string">"254"</span> <span class="special">==</span> <span class="identifier">convert</span><span class="special">&lt;</span> <span class="identifier">string</span><span class="special">&gt;(</span><span class="number">254</span><span class="special">,</span> <span class="identifier">cnv</span><span class="special">(</span><span class="identifier">arg</span><span class="special">::</span><span class="identifier">base</span> <span class="special">=</span> <span class="identifier">cnv</span><span class="special">::</span><span class="identifier">base</span><span class="special">::</span><span class="identifier">dec</span><span class="special">)).</span><span class="identifier">value</span><span class="special">());</span>
+<span class="identifier">BOOST_TEST</span><span class="special">(</span>       <span class="string">"FE"</span> <span class="special">==</span> <span class="identifier">convert</span><span class="special">&lt;</span> <span class="identifier">string</span><span class="special">&gt;(</span><span class="number">254</span><span class="special">,</span> <span class="identifier">cnv</span><span class="special">(</span><span class="identifier">arg</span><span class="special">::</span><span class="identifier">base</span> <span class="special">=</span> <span class="identifier">cnv</span><span class="special">::</span><span class="identifier">base</span><span class="special">::</span><span class="identifier">hex</span><span class="special">)).</span><span class="identifier">value</span><span class="special">());</span>
+<span class="identifier">BOOST_TEST</span><span class="special">(</span>      <span class="string">"376"</span> <span class="special">==</span> <span class="identifier">convert</span><span class="special">&lt;</span> <span class="identifier">string</span><span class="special">&gt;(</span><span class="number">254</span><span class="special">,</span> <span class="identifier">cnv</span><span class="special">(</span><span class="identifier">arg</span><span class="special">::</span><span class="identifier">base</span> <span class="special">=</span> <span class="identifier">cnv</span><span class="special">::</span><span class="identifier">base</span><span class="special">::</span><span class="identifier">oct</span><span class="special">)).</span><span class="identifier">value</span><span class="special">());</span>
+</pre>
+<p>
+          </p>
+<p>
+</p>
+<pre class="programlisting"><span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="identifier">L</span><span class="string">"11111110"</span> <span class="special">==</span> <span class="identifier">convert</span><span class="special">&lt;</span><span class="identifier">wstring</span><span class="special">&gt;(</span><span class="number">254</span><span class="special">,</span> <span class="identifier">cnv</span><span class="special">(</span><span class="identifier">arg</span><span class="special">::</span><span class="identifier">base</span> <span class="special">=</span> <span class="identifier">cnv</span><span class="special">::</span><span class="identifier">base</span><span class="special">::</span><span class="identifier">bin</span><span class="special">)).</span><span class="identifier">value</span><span class="special">());</span>
+<span class="identifier">BOOST_TEST</span><span class="special">(</span>     <span class="identifier">L</span><span class="string">"254"</span> <span class="special">==</span> <span class="identifier">convert</span><span class="special">&lt;</span><span class="identifier">wstring</span><span class="special">&gt;(</span><span class="number">254</span><span class="special">,</span> <span class="identifier">cnv</span><span class="special">(</span><span class="identifier">arg</span><span class="special">::</span><span class="identifier">base</span> <span class="special">=</span> <span class="identifier">cnv</span><span class="special">::</span><span class="identifier">base</span><span class="special">::</span><span class="identifier">dec</span><span class="special">)).</span><span class="identifier">value</span><span class="special">());</span>
+<span class="identifier">BOOST_TEST</span><span class="special">(</span>      <span class="identifier">L</span><span class="string">"FE"</span> <span class="special">==</span> <span class="identifier">convert</span><span class="special">&lt;</span><span class="identifier">wstring</span><span class="special">&gt;(</span><span class="number">254</span><span class="special">,</span> <span class="identifier">cnv</span><span class="special">(</span><span class="identifier">arg</span><span class="special">::</span><span class="identifier">base</span> <span class="special">=</span> <span class="identifier">cnv</span><span class="special">::</span><span class="identifier">base</span><span class="special">::</span><span class="identifier">hex</span><span class="special">)).</span><span class="identifier">value</span><span class="special">());</span>
+<span class="identifier">BOOST_TEST</span><span class="special">(</span>     <span class="identifier">L</span><span class="string">"376"</span> <span class="special">==</span> <span class="identifier">convert</span><span class="special">&lt;</span><span class="identifier">wstring</span><span class="special">&gt;(</span><span class="number">254</span><span class="special">,</span> <span class="identifier">cnv</span><span class="special">(</span><span class="identifier">arg</span><span class="special">::</span><span class="identifier">base</span> <span class="special">=</span> <span class="identifier">cnv</span><span class="special">::</span><span class="identifier">base</span><span class="special">::</span><span class="identifier">oct</span><span class="special">)).</span><span class="identifier">value</span><span class="special">());</span>
+</pre>
+<p>
+          </p>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2009-2014 Vladimir Batov<p>
+        Distributed under the Boost Software License, Version 1.0. See copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>.
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../strtol_converter.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../strtol_converter.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="formatting_support/field_width__fill_character_and_adjustment.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

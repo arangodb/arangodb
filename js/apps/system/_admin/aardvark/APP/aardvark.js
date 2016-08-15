@@ -374,10 +374,20 @@ authRouter.get('/graph/:name', function (req, res) {
     if (config.query) {
       aqlQuery = config.query;
     } else {
+      var limit = 0;
+      if (config.limit !== undefined) {
+        if (config.limit.length > 0 && config.limit !== '0') {
+          limit = config.limit;
+        }
+      }
+
       aqlQuery =
-       'FOR v, e, p IN 1..' + (config.depth || '2') + ' ANY "' + startVertex._id + '" GRAPH "' + name + '"' +
-       'RETURN p'
-      ;
+        'FOR v, e, p IN 1..' + (config.depth || '2') + ' ANY "' + startVertex._id + '" GRAPH "' + name + '"';
+
+      if (limit !== 0) {
+        aqlQuery += ' LIMIT ' + limit;
+      }
+      aqlQuery += ' RETURN p';
     }
 
     var getAttributeByKey = function (o, s) {
@@ -402,6 +412,8 @@ authRouter.get('/graph/:name', function (req, res) {
     var nodeNames = {};
     var edgesObj = {};
     var edgesArr = [];
+    var nodeEdgesCount = {};
+    var handledEdges = {};
 
     var tmpObjEdges = {};
     var tmpObjNodes = {};
@@ -432,6 +444,24 @@ authRouter.get('/graph/:name', function (req, res) {
 
             if (!edgeLabel) {
               edgeLabel = 'attribute ' + config.edgeLabel + ' not found';
+            }
+          }
+
+          if (config.nodeSizeByEdges === 'true') {
+            if (handledEdges[edge._id] === undefined) {
+              handledEdges[edge._id] = true;
+
+              if (nodeEdgesCount[edge._from] === undefined) {
+                nodeEdgesCount[edge._from] = 1;
+              } else {
+                nodeEdgesCount[edge._from] += 1;
+              }
+
+              if (nodeEdgesCount[edge._to] === undefined) {
+                nodeEdgesCount[edge._to] = 1;
+              } else {
+                nodeEdgesCount[edge._to] += 1;
+              }
             }
           }
 
@@ -495,14 +525,14 @@ authRouter.get('/graph/:name', function (req, res) {
             nodeLabel = JSON.stringify(nodeLabel);
           }
 
-          if (config.nodeSize) {
+          if (config.nodeSize && config.nodeSizeByEdges === 'false') {
             nodeSize = node[config.nodeSize];
           }
 
           nodeObj = {
             id: node._id,
             label: nodeLabel,
-            size: nodeSize || 10,
+            size: nodeSize || 3,
             color: config.nodeColor || '#2ecc71',
             x: Math.random(),
             y: Math.random()
@@ -534,6 +564,10 @@ authRouter.get('/graph/:name', function (req, res) {
     });
 
     _.each(nodesObj, function (node) {
+      if (config.nodeSizeByEdges === 'true') {
+        // + 10 visual adjustment sigma
+        node.size = nodeEdgesCount[node.id] + 10;
+      }
       nodesArr.push(node);
     });
 

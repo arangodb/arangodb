@@ -1,0 +1,160 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Glossary</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../../index.html" title="Chapter&#160;1.&#160;Boost.Proto">
+<link rel="up" href="../../proto/users_guide.html" title="Users' Guide">
+<link rel="prev" href="resources.html" title="Background and Resources">
+<link rel="next" href="../../proto/reference.html" title="Reference">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="resources.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../proto/users_guide.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../../proto/reference.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_proto.users_guide.glossary"></a><a class="link" href="glossary.html" title="Glossary">Glossary</a>
+</h3></div></div></div>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl>
+<dt><span class="term"> <a name="boost_proto.users_guide.glossary.callable_transform"></a> callable transform</span></dt>
+<dd><p>
+              A transform of the form <code class="computeroutput"><span class="identifier">R</span><span class="special">(</span><span class="identifier">A0</span><span class="special">,</span><span class="identifier">A1</span><span class="special">,...)</span></code> (i.e., a function type) where
+              <code class="computeroutput"><span class="identifier">proto</span><span class="special">::</span><span class="identifier">is_callable</span><span class="special">&lt;</span><span class="identifier">R</span><span class="special">&gt;::</span><span class="identifier">value</span></code> is <code class="computeroutput"><span class="keyword">true</span></code>.
+              <code class="computeroutput"><span class="identifier">R</span></code> is treated as a polymorphic
+              function object and the arguments are treated as transforms that yield
+              the arguments to the function object.
+            </p></dd>
+<dt><span class="term"> <a name="boost_proto.users_guide.glossary.context"></a> context</span></dt>
+<dd><p>
+              In Proto, the term <span class="emphasis"><em>context</em></span> refers to an object
+              that can be passed, along with an expression to evaluate, to the <code class="computeroutput"><span class="identifier">proto</span><span class="special">::</span><span class="identifier">eval</span><span class="special">()</span></code>
+              function. The context determines how the expression is evaluated. All
+              context structs define a nested <code class="computeroutput"><span class="identifier">eval</span><span class="special">&lt;&gt;</span></code> template that, when instantiated
+              with a node tag type (e.g., <code class="computeroutput"><span class="identifier">proto</span><span class="special">::</span><span class="identifier">tag</span><span class="special">::</span><span class="identifier">plus</span></code>),
+              is a binary polymorphic function object that accepts an expression
+              of that type and the context object. In this way, contexts associate
+              behaviors with expression nodes.
+            </p></dd>
+<dt><span class="term"> <a name="boost_proto.users_guide.glossary.domain"></a> domain</span></dt>
+<dd><p>
+              In Proto, the term <span class="emphasis"><em>domain</em></span> refers to a type that
+              associates expressions within that domain with a <span class="emphasis"><em>generator</em></span>
+              for that domain and optionally a <span class="emphasis"><em>grammar</em></span> for the
+              domain. Domains are used primarily to imbue expressions within that
+              domain with additional members and to restrict Proto's operator overloads
+              such that expressions not conforming to the domain's grammar are never
+              created. Domains are empty structs that inherit from <code class="computeroutput"><span class="identifier">proto</span><span class="special">::</span><span class="identifier">domain</span><span class="special">&lt;&gt;</span></code>.
+            </p></dd>
+<dt><span class="term"> <a name="boost_proto.users_guide.glossary.dsl"></a> domain-specific language</span></dt>
+<dd><p>
+              A programming language that targets a particular problem space by providing
+              programming idioms, abstractions and constructs that match the constructs
+              within that problem space.
+            </p></dd>
+<dt><span class="term"> <a name="boost_proto.users_guide.glossary.edsl"></a> embedded domain-specific language</span></dt>
+<dd><p>
+              A domain-specific language implemented as a library. The language in
+              which the library is written is called the "host" language,
+              and the language implemented by the library is called the "embedded"
+              language.
+            </p></dd>
+<dt><span class="term"> <a name="boost_proto.users_guide.glossary.expression"></a> expression</span></dt>
+<dd><p>
+              In Proto, an <span class="emphasis"><em>expression</em></span> is a heterogeneous tree
+              where each node is either an instantiation of <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">proto</span><span class="special">::</span><span class="identifier">expr</span><span class="special">&lt;&gt;</span></code>, <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">proto</span><span class="special">::</span><span class="identifier">basic_expr</span><span class="special">&lt;&gt;</span></code> or some type that is an extension
+              (via <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">proto</span><span class="special">::</span><span class="identifier">extends</span><span class="special">&lt;&gt;</span></code>
+              or <code class="computeroutput"><span class="identifier">BOOST_PROTO_EXTENDS</span><span class="special">()</span></code>) of such an instantiation.
+            </p></dd>
+<dt><span class="term"> <a name="boost_proto.users_guide.glossary.expression_template"></a> expression template</span></dt>
+<dd><p>
+              A C++ technique using templates and operator overloading to cause expressions
+              to build trees that represent the expression for lazy evaluation later,
+              rather than evaluating the expression eagerly. Some C++ libraries use
+              expression templates to build embedded domain-specific languages.
+            </p></dd>
+<dt><span class="term"> <a name="boost_proto.users_guide.glossary.generator"></a> generator</span></dt>
+<dd><p>
+              In Proto, a <span class="emphasis"><em>generator</em></span> is a unary polymorphic function
+              object that you specify when defining a <span class="emphasis"><em>domain</em></span>.
+              After constructing a new expression, Proto passes the expression to
+              your domain's generator for further processing. Often, the generator
+              wraps the expression in an extension wrapper that adds additional members
+              to it.
+            </p></dd>
+<dt><span class="term"> <a name="boost_proto.users_guide.glossary.grammar"></a> grammar</span></dt>
+<dd><p>
+              In Proto, a <span class="emphasis"><em>grammar</em></span> is a type that describes a
+              subset of Proto expression types. Expressions in a domain must conform
+              to that domain's grammar. The <code class="computeroutput"><span class="identifier">proto</span><span class="special">::</span><span class="identifier">matches</span><span class="special">&lt;&gt;</span></code> metafunction evaluates whether
+              an expression type matches a grammar. Grammars are either primitives
+              such as <code class="computeroutput"><span class="identifier">proto</span><span class="special">::</span><span class="identifier">_</span></code>, composites such as <code class="computeroutput"><span class="identifier">proto</span><span class="special">::</span><span class="identifier">plus</span><span class="special">&lt;&gt;</span></code>,
+              control structures such as <code class="computeroutput"><span class="identifier">proto</span><span class="special">::</span><span class="identifier">or_</span><span class="special">&lt;&gt;</span></code>, or some type derived from
+              a grammar.
+            </p></dd>
+<dt><span class="term"> <a name="boost_proto.users_guide.glossary.object_transform"></a> object transform</span></dt>
+<dd><p>
+              A transform of the form <code class="computeroutput"><span class="identifier">R</span><span class="special">(</span><span class="identifier">A0</span><span class="special">,</span><span class="identifier">A1</span><span class="special">,...)</span></code> (i.e., a function type) where
+              <code class="computeroutput"><span class="identifier">proto</span><span class="special">::</span><span class="identifier">is_callable</span><span class="special">&lt;</span><span class="identifier">R</span><span class="special">&gt;::</span><span class="identifier">value</span></code> is <code class="computeroutput"><span class="keyword">false</span></code>.
+              <code class="computeroutput"><span class="identifier">R</span></code> is treated as the
+              type of an object to construct and the arguments are treated as transforms
+              that yield the parameters to the constructor.
+            </p></dd>
+<dt><span class="term"> <a name="boost_proto.users_guide.glossary.polymorphic_function_object"></a> polymorphic function object</span></dt>
+<dd><p>
+              An instance of a class type with an overloaded function call operator
+              and a nested <code class="computeroutput"><span class="identifier">result_type</span></code>
+              typedef or <code class="computeroutput"><span class="identifier">result</span><span class="special">&lt;&gt;</span></code>
+              template for calculating the return type of the function call operator.
+            </p></dd>
+<dt><span class="term"> <a name="boost_proto.users_guide.glossary.primitive_transform"></a> primitive transform</span></dt>
+<dd><p>
+              A type that defines a kind of polymorphic function object that takes
+              three arguments: expression, state, and data. Primitive transforms
+              can be used to compose callable transforms and object transforms.
+            </p></dd>
+<dt><span class="term"> <a name="boost_proto.users_guide.glossary.subdomain"></a> sub-domain</span></dt>
+<dd><p>
+              A sub-domain is a domain that declares another domain as its super-domain.
+              Expressions in sub-domains can be combined with expressions in the
+              super-domain, and the resulting expression is in the super-domain.
+            </p></dd>
+<dt><span class="term"> <a name="boost_proto.users_guide.glossary.transform"></a> transform</span></dt>
+<dd><p>
+              Transforms are used to manipulate expression trees. They come in three
+              flavors: primitive transforms, callable transforms, or object transforms.
+              A transform <code class="computeroutput"><em class="replaceable"><code>T</code></em></code> can be made into
+              a ternary polymorphic function object with <code class="computeroutput"><span class="identifier">proto</span><span class="special">::</span><span class="identifier">when</span><span class="special">&lt;&gt;</span></code>, as in <code class="computeroutput"><span class="identifier">proto</span><span class="special">::</span><span class="identifier">when</span><span class="special">&lt;</span><span class="identifier">proto</span><span class="special">::</span><span class="identifier">_</span><span class="special">,</span> <em class="replaceable"><code>T</code></em><span class="special">&gt;</span></code>.
+              Such a function object accepts <span class="emphasis"><em>expression</em></span>, <span class="emphasis"><em>state</em></span>,
+              and <span class="emphasis"><em>data</em></span> parameters, and computes a result from
+              them.
+            </p></dd>
+</dl>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2008 Eric Niebler<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="resources.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../proto/users_guide.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../../proto/reference.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

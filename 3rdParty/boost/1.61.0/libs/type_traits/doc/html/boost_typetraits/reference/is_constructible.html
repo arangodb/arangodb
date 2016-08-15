@@ -1,0 +1,98 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>is_constructible</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../../index.html" title="Chapter&#160;1.&#160;Boost.TypeTraits">
+<link rel="up" href="../reference.html" title="Alphabetical Reference">
+<link rel="prev" href="is_const.html" title="is_const">
+<link rel="next" href="is_convertible.html" title="is_convertible">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="is_const.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../reference.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="is_convertible.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_typetraits.reference.is_constructible"></a><a class="link" href="is_constructible.html" title="is_constructible">is_constructible</a>
+</h3></div></div></div>
+<pre class="programlisting"><span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">,</span> <span class="keyword">class</span><span class="special">...</span> <span class="identifier">Args</span><span class="special">&gt;</span>
+<span class="keyword">struct</span> <span class="identifier">is_constructible</span> <span class="special">:</span> <span class="keyword">public</span> <em class="replaceable"><code><a class="link" href="integral_constant.html" title="integral_constant">true_type</a>-or-<a class="link" href="integral_constant.html" title="integral_constant">false_type</a></code></em> <span class="special">{};</span>
+</pre>
+<p>
+        <span class="bold"><strong>Inherits:</strong></span> If <code class="computeroutput"><span class="identifier">T</span></code>
+        can be constructed from <code class="computeroutput"><span class="identifier">Args</span></code>,
+        then inherits from <a class="link" href="integral_constant.html" title="integral_constant">true_type</a>,
+        otherwise inherits from <a class="link" href="integral_constant.html" title="integral_constant">false_type</a>.
+        Type <code class="computeroutput"><span class="identifier">T</span></code> must be a complete
+        type.
+      </p>
+<p>
+        Formally the trait answers the question, is the expression:
+      </p>
+<pre class="programlisting"><span class="identifier">T</span> <span class="identifier">t</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">declval</span><span class="special">&lt;</span><span class="identifier">Args</span><span class="special">&gt;()...);</span>
+</pre>
+<p>
+        valid?
+      </p>
+<p>
+        There are a number of important special cases for this trait:
+      </p>
+<pre class="programlisting"><span class="identifier">is_constructible</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;::</span><span class="identifier">value</span>
+</pre>
+<p>
+        Indicates whether <code class="computeroutput"><span class="identifier">T</span></code> is default
+        constructible, while:
+      </p>
+<pre class="programlisting"><span class="identifier">is_constructible</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">,</span> <span class="keyword">const</span> <span class="identifier">T</span><span class="special">&amp;&gt;::</span><span class="identifier">value</span>
+</pre>
+<p>
+        Indicates whether <code class="computeroutput"><span class="identifier">T</span></code> is copy-constructible,
+        and:
+      </p>
+<pre class="programlisting"><span class="identifier">is_constructible</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">,</span> <span class="identifier">T</span><span class="special">&gt;::</span><span class="identifier">value</span>
+</pre>
+<p>
+        Indicates whether <code class="computeroutput"><span class="identifier">T</span></code> is move-constructible.
+      </p>
+<p>
+        <span class="bold"><strong>Compiler Compatibility:</strong></span> This trait requires
+        the C++11 features <code class="computeroutput"><span class="keyword">decltype</span></code>
+        variadic templates and SFINAE-expression support for full support. While
+        there is some fallback code for cases where this is not the case, the trait
+        should really be considered broken in that case.
+      </p>
+<p>
+        <span class="bold"><strong>Header:</strong></span> <code class="computeroutput"> <span class="preprocessor">#include</span>
+        <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">type_traits</span><span class="special">/</span><span class="identifier">is_copy_constructible</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span></code>
+        or <code class="computeroutput"> <span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">type_traits</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span></code>
+      </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2000, 2011 Adobe Systems Inc, David Abrahams,
+      Frederic Bron, Steve Cleary, Beman Dawes, Aleksey Gurtovoy, Howard Hinnant,
+      Jesse Jones, Mat Marcus, Itay Maman, John Maddock, Alexander Nasonov, Thorsten
+      Ottosen, Roman Perepelitsa, Robert Ramey, Jeremy Siek, Robert Stewart and Steven
+      Watanabe<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="is_const.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../reference.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="is_convertible.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

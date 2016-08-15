@@ -1,0 +1,143 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="classboost_1_1geometry_1_1promote__integral" kind="class" prot="public">
+    <compoundname>boost::geometry::promote_integral</compoundname>
+    <includes local="no">promote_integral.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename T</type>
+      </param>
+      <param>
+        <type>bool</type>
+        <declname>PromoteUnsignedToUnsigned</declname>
+        <defname>PromoteUnsignedToUnsigned</defname>
+        <defval>false</defval>
+      </param>
+      <param>
+        <type>bool</type>
+        <declname>UseCheckedInteger</declname>
+        <defname>UseCheckedInteger</defname>
+        <defval>false</defval>
+      </param>
+      <param>
+        <type>bool</type>
+        <declname>IsIntegral</declname>
+        <defname>IsIntegral</defname>
+        <defval>boost::is_integral&lt;T&gt;::type::value</defval>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="private-type">
+      <memberdef kind="typedef" id="classboost_1_1geometry_1_1promote__integral_1a63a687d80e8c9f5b9167361edfdf38b7" prot="private" static="no">
+        <type>detail::promote_integral::bit_size&lt; T &gt;</type>
+        <definition>typedef detail::promote_integral::bit_size&lt;T&gt; boost::geometry::promote_integral&lt; T, PromoteUnsignedToUnsigned, UseCheckedInteger, IsIntegral &gt;::bit_size_type</definition>
+        <argsstring></argsstring>
+        <name>bit_size_type</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/util/promote_integral.hpp" line="183" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/util/promote_integral.hpp" bodystart="183" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="typedef" id="classboost_1_1geometry_1_1promote__integral_1a32a9600fa03bbd313d3a3174e7ba2fd7" prot="private" static="no">
+        <type>boost::mpl::if_c&lt; (is_unsigned &amp;&amp;PromoteUnsignedToUnsigned), unsigned_integral_types, signed_integral_types &gt;::<ref refid="classboost_1_1geometry_1_1promote__integral_1a0a9ae762a12d2f9126c45036243c7156" kindref="member">type</ref></type>
+        <definition>typedef boost::mpl::if_c&lt; (is_unsigned &amp;&amp; PromoteUnsignedToUnsigned), unsigned_integral_types, signed_integral_types &gt;::type boost::geometry::promote_integral&lt; T, PromoteUnsignedToUnsigned, UseCheckedInteger, IsIntegral &gt;::integral_types</definition>
+        <argsstring></argsstring>
+        <name>integral_types</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/util/promote_integral.hpp" line="292" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/util/promote_integral.hpp" bodystart="292" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="typedef" id="classboost_1_1geometry_1_1promote__integral_1a3717061a0e84c75868eb6d48c0bf4f1f" prot="private" static="no">
+        <type>boost::mpl::if_c&lt; (PromoteUnsignedToUnsigned &amp;&amp;is_unsigned), boost::mpl::size_t&lt;(2 *bit_size_type::value)&gt;, typename boost::mpl::if_c&lt; is_unsigned, boost::mpl::size_t&lt;(2 *bit_size_type::value+1)&gt;, boost::mpl::size_t&lt;(2 *bit_size_type::value-1)&gt; &gt;::<ref refid="classboost_1_1geometry_1_1promote__integral_1a0a9ae762a12d2f9126c45036243c7156" kindref="member">type</ref> &gt;::typ</type>
+        <definition>typedef boost::mpl::if_c&lt; (PromoteUnsignedToUnsigned &amp;&amp; is_unsigned), boost::mpl::size_t&lt;(2 * bit_size_type::value)&gt;, typename boost::mpl::if_c &lt; is_unsigned, boost::mpl::size_t&lt;(2 * bit_size_type::value + 1)&gt;, boost::mpl::size_t&lt;(2 * bit_size_type::value - 1)&gt; &gt;::type &gt;::typ boost::geometry::promote_integral&lt; T, PromoteUnsignedToUnsigned, UseCheckedInteger, IsIntegral &gt;::min_bit_size_type)</definition>
+        <argsstring>)</argsstring>
+        <name>min_bit_size_type</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/util/promote_integral.hpp" line="242" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/util/promote_integral.hpp" bodystart="242" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="typedef" id="classboost_1_1geometry_1_1promote__integral_1aed04f656ccafd0e1aa93ee007063e800" prot="private" static="no">
+        <type>boost::mpl::list&lt; short, int, long &gt;</type>
+        <definition>typedef boost::mpl::list&lt; short, int, long &gt; boost::geometry::promote_integral&lt; T, PromoteUnsignedToUnsigned, UseCheckedInteger, IsIntegral &gt;::signed_integral_types</definition>
+        <argsstring></argsstring>
+        <name>signed_integral_types</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/util/promote_integral.hpp" line="262" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/util/promote_integral.hpp" bodystart="262" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="typedef" id="classboost_1_1geometry_1_1promote__integral_1a5380bee7fe1342f0944eaa5ba1ef8bbe" prot="private" static="no">
+        <type>boost::mpl::list&lt; unsigned short, unsigned int, unsigned long, std::size_t &gt;</type>
+        <definition>typedef boost::mpl::list&lt; unsigned short, unsigned int, unsigned long, std::size_t &gt; boost::geometry::promote_integral&lt; T, PromoteUnsignedToUnsigned, UseCheckedInteger, IsIntegral &gt;::unsigned_integral_types</definition>
+        <argsstring></argsstring>
+        <name>unsigned_integral_types</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/util/promote_integral.hpp" line="282" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/util/promote_integral.hpp" bodystart="282" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-type">
+      <memberdef kind="typedef" id="classboost_1_1geometry_1_1promote__integral_1a0a9ae762a12d2f9126c45036243c7156" prot="public" static="no">
+        <type>detail::promote_integral::promote_to_larger&lt; T, typename boost::mpl::begin&lt; integral_types &gt;::<ref refid="classboost_1_1geometry_1_1promote__integral_1a0a9ae762a12d2f9126c45036243c7156" kindref="member">type</ref>, typename boost::mpl::end&lt; integral_types &gt;::<ref refid="classboost_1_1geometry_1_1promote__integral_1a0a9ae762a12d2f9126c45036243c7156" kindref="member">type</ref>, min_bit_size_type::value &gt;::<ref refid="classboost_1_1geometry_1_1promote__integral_1a0a9ae762a12d2f9126c45036243c7156" kindref="member">type</ref></type>
+        <definition>typedef detail::promote_integral::promote_to_larger&lt; T, typename boost::mpl::begin&lt;integral_types&gt;::type, typename boost::mpl::end&lt;integral_types&gt;::type, min_bit_size_type::value &gt;::type boost::geometry::promote_integral&lt; T, PromoteUnsignedToUnsigned, UseCheckedInteger, IsIntegral &gt;::type</definition>
+        <argsstring></argsstring>
+        <name>type</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/util/promote_integral.hpp" line="301" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/util/promote_integral.hpp" bodystart="301" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="private-static-attrib">
+      <memberdef kind="variable" id="classboost_1_1geometry_1_1promote__integral_1a3e3b4f828b75dd0b7368d2b47959a010" prot="private" static="yes" mutable="no">
+        <type>bool const</type>
+        <definition>bool const boost::geometry::promote_integral&lt; T, PromoteUnsignedToUnsigned, UseCheckedInteger, IsIntegral &gt;::is_unsigned</definition>
+        <argsstring></argsstring>
+        <name>is_unsigned</name>
+        <initializer> boost::is_unsigned&lt;T&gt;::type::value</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/util/promote_integral.hpp" line="181" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/util/promote_integral.hpp" bodystart="181" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+<para>Meta-function to define an integral type with size than is (roughly) twice the bit size of T. </para>    </briefdescription>
+    <detaileddescription>
+<para>This meta-function tries to promote the fundamental integral type T to a another integral type with size (roughly) twice the bit size of T.</para><para>To do this, two times the bit size of T is tested against the bit sizes of: short, int, long, boost::long_long_type, boost::int128_t and the one that first matches is chosen.</para><para>For unsigned types the bit size of T is tested against the bit sizes of the types above, if T is promoted to a signed type, or the bit sizes of unsigned short, unsigned int, unsigned long, std::size_t, boost::ulong_long_type, boost::uint128_t if T is promoted to an unsigned type.</para><para>By default an unsigned type is promoted to a signed type. This behavior is controlled by the PromoteUnsignedToUnsigned boolean template parameter, whose default value is &quot;false&quot;. To promote an unsigned type to an unsigned type set the value of this template parameter to &quot;true&quot;.</para><para>If the macro BOOST_GEOMETRY_NO_MULTIPRECISION_INTEGER is not defined, boost&apos;s multiprecision integer cpp_int&lt;&gt; is used as a last resort.</para><para>If BOOST_GEOMETRY_NO_MULTIPRECISION_INTEGER is defined and an appropriate type cannot be detected, the input type is returned as is.</para><para>Finally, if the passed type is either a floating-point type or a user-defined type it is returned as is.</para><para><simplesect kind="note"><para>boost::long_long_type and boost::ulong_long_type are considered only if the macro BOOST_HAS_LONG_LONG is defined</para><simplesectsep/><para>boost::int128_type and boost::uint128_type are considered only if the macros BOOST_HAS_INT128 and BOOST_GEOMETRY_ENABLE_INT128 are defined </para></simplesect>
+</para>    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/util/promote_integral.hpp" line="179" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/util/promote_integral.hpp" bodystart="178" bodyend="302"/>
+    <listofallmembers>
+      <member refid="classboost_1_1geometry_1_1promote__integral_1a63a687d80e8c9f5b9167361edfdf38b7" prot="private" virt="non-virtual"><scope>boost::geometry::promote_integral</scope><name>bit_size_type</name></member>
+      <member refid="classboost_1_1geometry_1_1promote__integral_1a32a9600fa03bbd313d3a3174e7ba2fd7" prot="private" virt="non-virtual"><scope>boost::geometry::promote_integral</scope><name>integral_types</name></member>
+      <member refid="classboost_1_1geometry_1_1promote__integral_1a3e3b4f828b75dd0b7368d2b47959a010" prot="private" virt="non-virtual"><scope>boost::geometry::promote_integral</scope><name>is_unsigned</name></member>
+      <member refid="classboost_1_1geometry_1_1promote__integral_1a3717061a0e84c75868eb6d48c0bf4f1f" prot="private" virt="non-virtual"><scope>boost::geometry::promote_integral</scope><name>min_bit_size_type</name></member>
+      <member refid="classboost_1_1geometry_1_1promote__integral_1aed04f656ccafd0e1aa93ee007063e800" prot="private" virt="non-virtual"><scope>boost::geometry::promote_integral</scope><name>signed_integral_types</name></member>
+      <member refid="classboost_1_1geometry_1_1promote__integral_1a0a9ae762a12d2f9126c45036243c7156" prot="public" virt="non-virtual"><scope>boost::geometry::promote_integral</scope><name>type</name></member>
+      <member refid="classboost_1_1geometry_1_1promote__integral_1a5380bee7fe1342f0944eaa5ba1ef8bbe" prot="private" virt="non-virtual"><scope>boost::geometry::promote_integral</scope><name>unsigned_integral_types</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

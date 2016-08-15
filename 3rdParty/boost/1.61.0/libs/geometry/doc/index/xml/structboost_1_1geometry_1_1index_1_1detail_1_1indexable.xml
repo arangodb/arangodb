@@ -1,0 +1,112 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="structboost_1_1geometry_1_1index_1_1detail_1_1indexable" kind="struct" prot="public">
+    <compoundname>boost::geometry::index::detail::indexable</compoundname>
+    <includes refid="indexable_8hpp" local="no">indexable.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename</type>
+        <declname>Value</declname>
+        <defname>Value</defname>
+      </param>
+      <param>
+        <type>bool</type>
+        <declname>IsIndexable</declname>
+        <defname>IsIndexable</defname>
+        <defval>is_indexable&lt;Value&gt;::value</defval>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-type">
+      <memberdef kind="typedef" id="structboost_1_1geometry_1_1index_1_1detail_1_1indexable_1a5d9b0405e7f8a0d7596b73bf5fcf7ce9" prot="public" static="no">
+        <type>Value const &amp;</type>
+        <definition>typedef Value const&amp; boost::geometry::index::detail::indexable&lt; Value, IsIndexable &gt;::result_type</definition>
+        <argsstring></argsstring>
+        <name>result_type</name>
+        <reimplementedby refid="structboost_1_1geometry_1_1index_1_1indexable_1af6f21324f6484330b9deb0ee0629f4b4">result_type</reimplementedby>
+        <briefdescription>
+<para>The type of result returned by function object. </para>        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/indexable.hpp" line="38" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/indexable.hpp" bodystart="38" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="structboost_1_1geometry_1_1index_1_1detail_1_1indexable_1a6bc3d13759253370873ca5b39457eac6" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type></type>
+        <definition>boost::geometry::index::detail::indexable&lt; Value, IsIndexable &gt;::BOOST_MPL_ASSERT_MSG</definition>
+        <argsstring>((detail::is_indexable&lt; Value &gt;::value), NOT_VALID_INDEXABLE_TYPE,(Value))</argsstring>
+        <name>BOOST_MPL_ASSERT_MSG</name>
+        <param>
+          <type>(detail::is_indexable&lt; Value &gt;::value)</type>
+        </param>
+        <param>
+          <type>NOT_VALID_INDEXABLE_TYPE</type>
+        </param>
+        <param>
+          <type>(Value)</type>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/indexable.hpp" line="35"/>
+      </memberdef>
+      <memberdef kind="function" id="structboost_1_1geometry_1_1index_1_1detail_1_1indexable_1ae3140efa415e00f13a57e17b3438f30c" prot="public" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <type><ref refid="structboost_1_1geometry_1_1index_1_1detail_1_1indexable_1a5d9b0405e7f8a0d7596b73bf5fcf7ce9" kindref="member">result_type</ref></type>
+        <definition>result_type boost::geometry::index::detail::indexable&lt; Value, IsIndexable &gt;::operator()</definition>
+        <argsstring>(Value const &amp;v) const </argsstring>
+        <name>operator()</name>
+        <reimplementedby refid="structboost_1_1geometry_1_1index_1_1indexable_1afa5f2cdc3390a6f1f394890e479df794">operator()</reimplementedby>
+        <param>
+          <type>Value const &amp;</type>
+          <declname>v</declname>
+        </param>
+        <briefdescription>
+<para>Return indexable extracted from the value. </para>        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>v</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>The value. </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>The indexable. </para></simplesect>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/indexable.hpp" line="47" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/indexable.hpp" bodystart="46" bodyend="49"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+<para>The function object extracting Indexable from Value. </para>    </briefdescription>
+    <detaileddescription>
+<para>It translates Value object to Indexable object. The default version handles Values which are Indexables. This template is also specialized for std::pair&lt;Indexable, T2&gt;, boost::tuple&lt;Indexable, ...&gt; and std::tuple&lt;Indexable, ...&gt;.</para><para><parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>Value</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>The Value type which may be translated directly to the Indexable. </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>IsIndexable</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>If true, the const reference to Value is returned. </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/index/indexable.hpp" line="30" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/indexable.hpp" bodystart="29" bodyend="50"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1index_1_1detail_1_1indexable_1a6bc3d13759253370873ca5b39457eac6" prot="public" virt="non-virtual"><scope>boost::geometry::index::detail::indexable</scope><name>BOOST_MPL_ASSERT_MSG</name></member>
+      <member refid="structboost_1_1geometry_1_1index_1_1detail_1_1indexable_1ae3140efa415e00f13a57e17b3438f30c" prot="public" virt="non-virtual"><scope>boost::geometry::index::detail::indexable</scope><name>operator()</name></member>
+      <member refid="structboost_1_1geometry_1_1index_1_1detail_1_1indexable_1a5d9b0405e7f8a0d7596b73bf5fcf7ce9" prot="public" virt="non-virtual"><scope>boost::geometry::index::detail::indexable</scope><name>result_type</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

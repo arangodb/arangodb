@@ -1,0 +1,119 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>JSON Parser</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../../index.html" title="Chapter&#160;1.&#160;Boost.PropertyTree">
+<link rel="up" href="../parsers.html" title="How to Populate a Property Tree">
+<link rel="prev" href="../parsers.html" title="How to Populate a Property Tree">
+<link rel="next" href="ini_parser.html" title="INI Parser">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../parsers.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../parsers.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="ini_parser.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="property_tree.parsers.json_parser"></a><a class="link" href="json_parser.html" title="JSON Parser">JSON Parser</a>
+</h3></div></div></div>
+<p>
+        The <a href="http://en.wikipedia.org/wiki/JSON" target="_top">JSON format</a> is
+        a data interchange format derived from the object literal notation of JavaScript.
+        (JSON stands for JavaScript Object Notation.) JSON is a simple, compact format
+        for loosely structured node trees of any depth, very similar to the property
+        tree dataset. It is less structured than XML and has no schema support, but
+        has the advantage of being simpler, smaller and typed without the need for
+        a complex schema.
+      </p>
+<p>
+        The property tree dataset is not typed, and does not support arrays as such.
+        Thus, the following JSON / property tree mapping is used:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" type="disc">
+<li class="listitem">
+            JSON objects are mapped to nodes. Each property is a child node.
+          </li>
+<li class="listitem">
+            JSON arrays are mapped to nodes. Each element is a child node with an
+            empty name. If a node has both named and unnamed child nodes, it cannot
+            be mapped to a JSON representation.
+          </li>
+<li class="listitem">
+            JSON values are mapped to nodes containing the value. However, all type
+            information is lost; numbers, as well as the literals "null",
+            "true" and "false" are simply mapped to their string
+            form.
+          </li>
+<li class="listitem">
+            Property tree nodes containing both child nodes and data cannot be mapped.
+          </li>
+</ul></div>
+<p>
+        JSON round-trips, except for the type information loss.
+      </p>
+<p>
+        For example this JSON:
+      </p>
+<pre class="programlisting"><span class="special">{</span>
+   <span class="string">"menu"</span><span class="special">:</span>
+   <span class="special">{</span>
+      <span class="string">"foo"</span><span class="special">:</span> <span class="keyword">true</span><span class="special">,</span>
+      <span class="string">"bar"</span><span class="special">:</span> <span class="string">"true"</span><span class="special">,</span>
+      <span class="string">"value"</span><span class="special">:</span> <span class="number">102.3E+06</span><span class="special">,</span>
+      <span class="string">"popup"</span><span class="special">:</span>
+      <span class="special">[</span>
+         <span class="special">{</span><span class="string">"value"</span><span class="special">:</span> <span class="string">"New"</span><span class="special">,</span> <span class="string">"onclick"</span><span class="special">:</span> <span class="string">"CreateNewDoc()"</span><span class="special">},</span>
+         <span class="special">{</span><span class="string">"value"</span><span class="special">:</span> <span class="string">"Open"</span><span class="special">,</span> <span class="string">"onclick"</span><span class="special">:</span> <span class="string">"OpenDoc()"</span><span class="special">},</span>
+      <span class="special">]</span>
+   <span class="special">}</span>
+<span class="special">}</span>
+</pre>
+<p>
+        will be translated into the following property tree:
+      </p>
+<pre class="programlisting"><span class="identifier">menu</span>
+<span class="special">{</span>
+   <span class="identifier">foo</span> <span class="keyword">true</span>
+   <span class="identifier">bar</span> <span class="keyword">true</span>
+   <span class="identifier">value</span> <span class="number">102.3E+06</span>
+   <span class="identifier">popup</span>
+   <span class="special">{</span>
+      <span class="string">""</span>
+      <span class="special">{</span>
+         <span class="identifier">value</span> <span class="identifier">New</span>
+         <span class="identifier">onclick</span> <span class="identifier">CreateNewDoc</span><span class="special">()</span>
+      <span class="special">}</span>
+      <span class="string">""</span>
+      <span class="special">{</span>
+         <span class="identifier">value</span> <span class="identifier">Open</span>
+         <span class="identifier">onclick</span> <span class="identifier">OpenDoc</span><span class="special">()</span>
+      <span class="special">}</span>
+   <span class="special">}</span>
+<span class="special">}</span>
+</pre>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2008-2010 Marcin Kalicinski<br>Copyright &#169; 2010-2013 Sebastian
+      Redl<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../parsers.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../parsers.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="ini_parser.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

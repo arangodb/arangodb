@@ -1,0 +1,81 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="classboost_1_1geometry_1_1overlay__invalid__input__exception" kind="class" prot="public">
+    <compoundname>boost::geometry::overlay_invalid_input_exception</compoundname>
+    <basecompoundref refid="classboost_1_1geometry_1_1exception" prot="public" virt="non-virtual">boost::geometry::exception</basecompoundref>
+    <includes local="no">has_self_intersections.hpp</includes>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="classboost_1_1geometry_1_1overlay__invalid__input__exception_1a88b968d8688ee7f1b9d8b6bb713f1217" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type></type>
+        <definition>boost::geometry::overlay_invalid_input_exception::overlay_invalid_input_exception</definition>
+        <argsstring>()</argsstring>
+        <name>overlay_invalid_input_exception</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/has_self_intersections.hpp" line="46" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/has_self_intersections.hpp" bodystart="46" bodyend="46"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1overlay__invalid__input__exception_1a376bbc4f7511c341686cf90b26ad04dd" prot="public" static="no" const="yes" explicit="no" inline="yes" virt="virtual">
+        <type>char const *</type>
+        <definition>virtual char const* boost::geometry::overlay_invalid_input_exception::what</definition>
+        <argsstring>() const </argsstring>
+        <name>what</name>
+        <reimplements refid="classboost_1_1geometry_1_1exception_1ad9081ff7bda60a00da3de2ae4ff4ba7d">what</reimplements>
+        <exceptions> throw ()</exceptions>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/has_self_intersections.hpp" line="49" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/has_self_intersections.hpp" bodystart="48" bodyend="51"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+<para>Overlay Invalid Input Exception. </para>    </briefdescription>
+    <detaileddescription>
+<para>The <ref refid="classboost_1_1geometry_1_1overlay__invalid__input__exception" kindref="compound">overlay_invalid_input_exception</ref> is thrown at invalid input </para>    </detaileddescription>
+    <inheritancegraph>
+      <node id="535">
+        <label>boost::geometry::exception</label>
+        <link refid="classboost_1_1geometry_1_1exception"/>
+        <childnode refid="536" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="536">
+        <label>std::exception</label>
+      </node>
+      <node id="534">
+        <label>boost::geometry::overlay_invalid_input_exception</label>
+        <link refid="classboost_1_1geometry_1_1overlay__invalid__input__exception"/>
+        <childnode refid="535" relation="public-inheritance">
+        </childnode>
+      </node>
+    </inheritancegraph>
+    <collaborationgraph>
+      <node id="538">
+        <label>boost::geometry::exception</label>
+        <link refid="classboost_1_1geometry_1_1exception"/>
+        <childnode refid="539" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="539">
+        <label>std::exception</label>
+      </node>
+      <node id="537">
+        <label>boost::geometry::overlay_invalid_input_exception</label>
+        <link refid="classboost_1_1geometry_1_1overlay__invalid__input__exception"/>
+        <childnode refid="538" relation="public-inheritance">
+        </childnode>
+      </node>
+    </collaborationgraph>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/has_self_intersections.hpp" line="43" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/has_self_intersections.hpp" bodystart="42" bodyend="52"/>
+    <listofallmembers>
+      <member refid="classboost_1_1geometry_1_1overlay__invalid__input__exception_1a88b968d8688ee7f1b9d8b6bb713f1217" prot="public" virt="non-virtual"><scope>boost::geometry::overlay_invalid_input_exception</scope><name>overlay_invalid_input_exception</name></member>
+      <member refid="classboost_1_1geometry_1_1overlay__invalid__input__exception_1a376bbc4f7511c341686cf90b26ad04dd" prot="public" virt="virtual"><scope>boost::geometry::overlay_invalid_input_exception</scope><name>what</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

@@ -1,0 +1,20 @@
+<% exec = (1..50).step(2).to_a %>
+
+{
+  "title": {
+    "text": "Runtime behavior of fold_right"
+  },
+  "series": [
+    {
+      "name": "hana::tuple",
+      "data": <%= time_execution('execute.hana.tuple.erb.cpp', exec) %>
+    }
+
+    <% if cmake_bool("@Boost_FOUND@") %>
+    , {
+      "name": "fusion::vector",
+      "data": <%= time_execution('execute.fusion.vector.erb.cpp', exec) %>
+    }
+    <% end %>
+  ]
+}

@@ -1,0 +1,130 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Installing xpressive</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../../index.html" title="Chapter&#160;1.&#160;Boost.Xpressive">
+<link rel="up" href="../../xpressive/user_s_guide.html" title="User's Guide">
+<link rel="prev" href="../../xpressive/user_s_guide.html" title="User's Guide">
+<link rel="next" href="quick_start.html" title="Quick Start">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../../xpressive/user_s_guide.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../xpressive/user_s_guide.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="quick_start.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_xpressive.user_s_guide.installing_xpressive"></a><a class="link" href="installing_xpressive.html" title="Installing xpressive">Installing
+      xpressive</a>
+</h3></div></div></div>
+<h3>
+<a name="boost_xpressive.user_s_guide.installing_xpressive.h0"></a>
+        <span><a name="boost_xpressive.user_s_guide.installing_xpressive.getting_xpressive"></a></span><a class="link" href="installing_xpressive.html#boost_xpressive.user_s_guide.installing_xpressive.getting_xpressive">Getting
+        xpressive</a>
+      </h3>
+<p>
+        There are two ways to get xpressive. The first and simplest is to download
+        the latest version of Boost. Just go to <a href="http://sf.net/projects/boost" target="_top">http://sf.net/projects/boost</a>
+        and follow the <span class="quote">&#8220;<span class="quote">Download</span>&#8221;</span> link.
+      </p>
+<p>
+        The second way is by directly accessing the Boost Subversion repository.
+        Just go to <a href="http://svn.boost.org/trac/boost/" target="_top">http://svn.boost.org/trac/boost/</a>
+        and follow the instructions there for anonymous Subversion access. The version
+        in Boost Subversion is unstable.
+      </p>
+<h3>
+<a name="boost_xpressive.user_s_guide.installing_xpressive.h1"></a>
+        <span><a name="boost_xpressive.user_s_guide.installing_xpressive.building_with_xpressive"></a></span><a class="link" href="installing_xpressive.html#boost_xpressive.user_s_guide.installing_xpressive.building_with_xpressive">Building
+        with xpressive</a>
+      </h3>
+<p>
+        Xpressive is a header-only template library, which means you don't need to
+        alter your build scripts or link to any separate lib file to use it. All
+        you need to do is <code class="computeroutput"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">xpressive</span><span class="special">/</span><span class="identifier">xpressive</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span></code>.
+        If you are only using static regexes, you can improve compile times by only
+        including <code class="computeroutput"><span class="identifier">xpressive_static</span><span class="special">.</span><span class="identifier">hpp</span></code>. Likewise,
+        you can include <code class="computeroutput"><span class="identifier">xpressive_dynamic</span><span class="special">.</span><span class="identifier">hpp</span></code> if
+        you only plan on using dynamic regexes.
+      </p>
+<p>
+        If you would also like to use semantic actions or custom assertions with
+        your static regexes, you will need to additionally include <code class="computeroutput"><span class="identifier">regex_actions</span><span class="special">.</span><span class="identifier">hpp</span></code>.
+      </p>
+<h3>
+<a name="boost_xpressive.user_s_guide.installing_xpressive.h2"></a>
+        <span><a name="boost_xpressive.user_s_guide.installing_xpressive.requirements"></a></span><a class="link" href="installing_xpressive.html#boost_xpressive.user_s_guide.installing_xpressive.requirements">Requirements</a>
+      </h3>
+<p>
+        Xpressive requires Boost version 1.34.1 or higher.
+      </p>
+<h3>
+<a name="boost_xpressive.user_s_guide.installing_xpressive.h3"></a>
+        <span><a name="boost_xpressive.user_s_guide.installing_xpressive.supported_compilers"></a></span><a class="link" href="installing_xpressive.html#boost_xpressive.user_s_guide.installing_xpressive.supported_compilers">Supported
+        Compilers</a>
+      </h3>
+<p>
+        Currently, Boost.Xpressive is known to work on the following compilers:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" type="disc">
+<li class="listitem">
+            Visual C++ 7.1 and higher
+          </li>
+<li class="listitem">
+            GNU C++ 3.4 and higher
+          </li>
+<li class="listitem">
+            Intel for Linux 8.1 and higher
+          </li>
+<li class="listitem">
+            Intel for Windows 10 and higher
+          </li>
+<li class="listitem">
+            tru64cxx 71 and higher
+          </li>
+<li class="listitem">
+            MinGW 3.4 and higher
+          </li>
+<li class="listitem">
+            HP C/aC++ A.06.14
+          </li>
+</ul></div>
+<p>
+        Check the latest tests results at Boost's <a href="http://beta.boost.org/development/tests/trunk/developer/xpressive.html" target="_top">Regression
+        Results Page</a>.
+      </p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+          Please send any questions, comments and bug reports to eric &lt;at&gt;
+          boost-consulting &lt;dot&gt; com.
+        </p></td></tr>
+</table></div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2007 Eric Niebler<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../../xpressive/user_s_guide.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../xpressive/user_s_guide.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="quick_start.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

@@ -1,0 +1,230 @@
+#  (C) Copyright Edward Diener 2010-2015
+#  Use, modification and distribution are subject to the Boost Software License,
+#  Version 1.0. (See accompanying file LICENSE_1_0.txt or copy at
+#  http://www.boost.org/LICENSE_1_0.txt).
+#
+# VariadicMacroData testing Jamfile
+#
+
+import testing ;
+import ../../predef/check/predef
+    : check require
+    : predef-check predef-require ;
+
+project variadic_macro_data_tests : requirements <warnings>on
+                                                 <test-info>always_show_run_output
+                                                 <toolset>msvc:<warnings>all
+                                                 <toolset>msvc:<cxxflags>-wd4003
+                                                 <toolset>intel-linux:<cxxflags>-std=c++11
+                                                 <toolset>clang-linux:<cxxflags>-std=c++11
+                                                 <toolset>clang-linux:<cxxflags>-pedantic-errors
+                                                 <toolset>gcc:<warnings>all
+                                                 <toolset>gcc:<cxxflags>-pedantic-errors
+                                                 [ predef-check "BOOST_COMP_GNUC >= 4.7.4" : : <cxxflags>-ftrack-macro-expansion=0 ]
+                                                 [ predef-check "BOOST_COMP_GNUC >= 4.3.0" : : <cxxflags>-Wno-variadic-macros ]
+                                                 <toolset>gcc-4.3.0:<cxxflags>-U__STRICT_ANSI__
+                                                 <toolset>gcc-4.4.0:<cxxflags>-U__STRICT_ANSI__
+                                                 <toolset>gcc-4.5.0:<linkflags>"-Wl,--enable-auto-import"
+                                                 <target-os>android:<cxxflags>-std=c++0x
+                                                 ;
+                                                 
+local l_gcc_c11 = [ predef-check "BOOST_COMP_GNUC >= 4.3" "BOOST_OS_QNX == 0" : : <cxxflags>-std=c++0x ] ;
+
+test-suite variadic_macro_data
+    : 
+       [ run test_after_array_elem.cpp : : : $(l_gcc_c11) ]
+       [ run test_after_identifier_elem.cpp : : : $(l_gcc_c11) ]
+       [ run test_after_list_elem.cpp : : : $(l_gcc_c11) ]
+       [ run test_after_number_elem.cpp : : : $(l_gcc_c11) ]
+       [ run test_after_seq_elem.cpp : : : $(l_gcc_c11) ]
+       [ run test_android.cpp : : : [ predef-check "BOOST_OS_QNX == 0" : : <cxxflags>-std=c++0x ] ]
+       [ run test_after_tuple_elem.cpp : : : $(l_gcc_c11) ]
+       [ run test_after_type_elem.cpp : : : $(l_gcc_c11) ]
+       [ run test_array_elem.cpp : : : $(l_gcc_c11) ]
+       [ run test_array_empty.cpp : : : $(l_gcc_c11) ]
+       [ run test_array_equal.cpp : : : $(l_gcc_c11) ]
+       [ run test_array_to_seq.cpp : : : $(l_gcc_c11) ]
+       [ run test_array_to_tuple.cpp : : : $(l_gcc_c11) ]
+       [ run test_ary.cpp : : : $(l_gcc_c11) ]
+       [ compile test_assert.cpp : $(l_gcc_c11) ]
+       [ compile-fail test_assert_fail.cpp : $(l_gcc_c11) ]
+       [ compile-fail test_assert_fail_array.cpp : $(l_gcc_c11) ]
+       [ compile-fail test_assert_fail_identifier.cpp : $(l_gcc_c11) ]
+       [ compile-fail test_assert_fail_is_empty.cpp : $(l_gcc_c11) ]
+       [ compile-fail test_assert_fail_is_identifier.cpp : $(l_gcc_c11) ]
+       [ compile-fail test_assert_fail_is_number.cpp : $(l_gcc_c11) ]
+       [ compile-fail test_assert_fail_list.cpp : $(l_gcc_c11) ]
+       [ compile-fail test_assert_fail_number.cpp : $(l_gcc_c11) ]
+       [ compile-fail test_assert_fail_seq.cpp : $(l_gcc_c11) ]
+       [ compile-fail test_assert_fail_tuple.cpp : $(l_gcc_c11) ]
+       [ compile-fail test_assert_fail_vcstring.cpp : $(l_gcc_c11) ]
+       [ compile test_assert_is_array.cpp :
+         <define>BOOST_VMD_ASSERT_DATA=1 $(l_gcc_c11) ]
+       [ compile-fail test_assert_is_array_fail.cpp :
+         <define>BOOST_VMD_ASSERT_DATA=1 $(l_gcc_c11) ]
+       [ compile-fail test_assert_is_array_fail2.cpp :
+         <define>BOOST_VMD_ASSERT_DATA=1 $(l_gcc_c11) ]
+       [ compile-fail test_assert_is_array_fail3.cpp :
+         <define>BOOST_VMD_ASSERT_DATA=1 $(l_gcc_c11) ]
+       [ compile-fail test_assert_is_array_fail4.cpp :
+         <define>BOOST_VMD_ASSERT_DATA=1 $(l_gcc_c11) ]
+       [ compile test_assert_is_empty.cpp :
+         <define>BOOST_VMD_ASSERT_DATA=1 $(l_gcc_c11) ]
+       [ compile-fail test_assert_is_empty_fail.cpp :
+         <define>BOOST_VMD_ASSERT_DATA=1 $(l_gcc_c11) ]
+       [ compile-fail test_assert_is_empty_fail2.cpp :
+         <define>BOOST_VMD_ASSERT_DATA=1 $(l_gcc_c11) ]
+       [ compile-fail test_assert_is_empty_fail3.cpp :
+         <define>BOOST_VMD_ASSERT_DATA=1 $(l_gcc_c11) ]
+       [ compile test_assert_is_identifier.cpp :
+         <define>BOOST_VMD_ASSERT_DATA=1 $(l_gcc_c11) ]
+       [ compile-fail test_assert_is_identifier_fail.cpp :
+         <define>BOOST_VMD_ASSERT_DATA=1 $(l_gcc_c11) ]
+       [ compile test_assert_is_list.cpp :
+         <define>BOOST_VMD_ASSERT_DATA=1 $(l_gcc_c11) ]
+       [ compile-fail test_assert_is_list_fail.cpp :
+         <define>BOOST_VMD_ASSERT_DATA=1 $(l_gcc_c11) ]
+       [ compile-fail test_assert_is_list_fail2.cpp :
+         <define>BOOST_VMD_ASSERT_DATA=1 $(l_gcc_c11) ]
+       [ compile-fail test_assert_is_list_fail3.cpp :
+         <define>BOOST_VMD_ASSERT_DATA=1 $(l_gcc_c11) ]
+       [ compile-fail test_assert_is_list_fail4.cpp :
+         <define>BOOST_VMD_ASSERT_DATA=1 $(l_gcc_c11) ]
+       [ compile test_assert_is_number.cpp :
+         <define>BOOST_VMD_ASSERT_DATA=1 $(l_gcc_c11) ]
+       [ compile-fail test_assert_is_number_fail.cpp :
+         <define>BOOST_VMD_ASSERT_DATA=1 $(l_gcc_c11) ]
+       [ compile test_assert_is_seq.cpp :
+         <define>BOOST_VMD_ASSERT_DATA=1 $(l_gcc_c11) ]
+       [ compile-fail test_assert_is_seq_fail.cpp :
+         <define>BOOST_VMD_ASSERT_DATA=1 $(l_gcc_c11) ]
+       [ compile-fail test_assert_is_seq_fail2.cpp :
+         <define>BOOST_VMD_ASSERT_DATA=1 $(l_gcc_c11) ]
+       [ compile-fail test_assert_is_seq_fail3.cpp :
+         <define>BOOST_VMD_ASSERT_DATA=1 $(l_gcc_c11) ]
+       [ compile-fail test_assert_is_seq_fail4.cpp :
+         <define>BOOST_VMD_ASSERT_DATA=1 $(l_gcc_c11) ]
+       [ compile test_assert_is_tuple.cpp :
+         <define>BOOST_VMD_ASSERT_DATA=1 $(l_gcc_c11) ]
+       [ compile-fail test_assert_is_tuple_fail.cpp :
+         <define>BOOST_VMD_ASSERT_DATA=1 $(l_gcc_c11) ]
+       [ compile-fail test_assert_is_tuple_fail2.cpp :
+         <define>BOOST_VMD_ASSERT_DATA=1 $(l_gcc_c11) ]
+       [ compile-fail test_assert_is_tuple_fail3.cpp :
+         <define>BOOST_VMD_ASSERT_DATA=1 $(l_gcc_c11) ]
+       [ compile-fail test_assert_is_tuple_fail4.cpp :
+         <define>BOOST_VMD_ASSERT_DATA=1 $(l_gcc_c11) ]
+       [ compile test_assert_is_type.cpp :
+         <define>BOOST_VMD_ASSERT_DATA=1 $(l_gcc_c11) ]
+       [ compile-fail test_assert_is_type_fail.cpp :
+         <define>BOOST_VMD_ASSERT_DATA=1 $(l_gcc_c11) ]
+       [ compile test_doc_assert.cpp :
+         <define>BOOST_VMD_ASSERT_DATA=1 $(l_gcc_c11) ]
+       [ compile-fail test_doc_assert_fail.cpp :
+         <define>BOOST_VMD_ASSERT_DATA=1 $(l_gcc_c11) ]
+       [ run test_doc_empty.cpp : : : $(l_gcc_c11) ]
+       [ compile-fail test_doc_empty_fail.cpp : $(l_gcc_c11) ]
+       [ compile-fail test_doc_empty_fail2.cpp : $(l_gcc_c11) ]
+       [ compile-fail test_doc_empty_fail3.cpp : $(l_gcc_c11) ]
+       [ compile-fail test_doc_empty_fail4.cpp : $(l_gcc_c11) ]
+       [ compile-fail test_doc_empty_fail6.cpp : $(l_gcc_c11) ]
+       [ compile-fail test_doc_empty_fail7.cpp : $(l_gcc_c11) ]
+       [ compile-fail test_doc_empty_fail8.cpp : $(l_gcc_c11) ]
+       [ run test_doc_equality.cpp : : : $(l_gcc_c11) ]
+       [ run test_doc_example_switch.cpp : : : $(l_gcc_c11) ]
+       [ run test_doc_get_type.cpp : : : $(l_gcc_c11) ]
+       [ run test_doc_identifier.cpp : : : $(l_gcc_c11) ]
+       [ run test_doc_identifier_subtyping.cpp : : : $(l_gcc_c11) ]
+       [ run test_doc_modifiers_filter.cpp : : : $(l_gcc_c11) ]
+       [ run test_doc_modifiers_identifier.cpp : : : $(l_gcc_c11) ]
+       [ run test_doc_modifiers_index.cpp : : : $(l_gcc_c11) ]
+       [ run test_doc_modifiers_return_type.cpp : : : $(l_gcc_c11) ]
+       [ run test_doc_modifiers_splitting.cpp : : : $(l_gcc_c11) ]
+       [ run test_doc_number.cpp : : : $(l_gcc_c11) ]
+       [ run test_doc_type.cpp : : : $(l_gcc_c11) ]
+       [ run test_doc_pp_data_types.cpp : : : $(l_gcc_c11) ]
+       [ run test_doc_sequence.cpp : : : $(l_gcc_c11) ]
+       [ run test_doc_sequence_access.cpp : : : $(l_gcc_c11) ]
+       [ run test_doc_sequence_convert.cpp : : : $(l_gcc_c11) ]
+       [ run test_doc_whyhow.cpp : : : $(l_gcc_c11) ]
+       [ run test_equal.cpp : : : $(l_gcc_c11) ]
+       [ run test_equal_array.cpp : : : $(l_gcc_c11) ]
+       [ run test_equal_identifier.cpp : : : $(l_gcc_c11) ]
+       [ run test_equal_list.cpp : : : $(l_gcc_c11) ]
+       [ run test_equal_multi.cpp : : : $(l_gcc_c11) ]
+       [ run test_equal_number.cpp : : : $(l_gcc_c11) ]
+       [ run test_equal_seq.cpp : : : $(l_gcc_c11) ]
+       [ run test_equal_tuple.cpp : : : $(l_gcc_c11) ]
+       [ run test_equal_type.cpp : : : $(l_gcc_c11) ]
+       [ run test_identifier_elem.cpp : : : $(l_gcc_c11) ]
+       [ run test_identifier_equal.cpp : : : $(l_gcc_c11) ]
+       [ run test_is_array.cpp : : : $(l_gcc_c11) ]
+       [ run-fail test_is_array_fail.cpp : : : $(l_gcc_c11) ]
+       [ run-fail test_is_array_fail2.cpp : : : $(l_gcc_c11) ]
+       [ run-fail test_is_array_fail3.cpp : : : $(l_gcc_c11) ]
+       [ run-fail test_is_array_fail4.cpp : : : $(l_gcc_c11) ]
+       [ run test_is_empty.cpp : : : $(l_gcc_c11) ]
+       [ compile-fail test_is_empty_fail.cpp : $(l_gcc_c11) ]
+       [ run test_is_identifier.cpp : : : $(l_gcc_c11) ]
+       [ run test_is_list.cpp : : : $(l_gcc_c11) ]
+       [ run-fail test_is_list_fail.cpp : : : $(l_gcc_c11) ]
+       [ run-fail test_is_list_fail2.cpp : : : $(l_gcc_c11) ]
+       [ run-fail test_is_list_fail3.cpp : : : $(l_gcc_c11) ]
+       [ run-fail test_is_list_fail4.cpp : : : $(l_gcc_c11) ]
+       [ run test_is_number.cpp : : : $(l_gcc_c11) ]
+       [ run test_is_parens_empty.cpp : : : $(l_gcc_c11) ]
+       [ run test_is_seq.cpp : : : $(l_gcc_c11) ]
+       [ run-fail test_is_seq_fail.cpp : : : $(l_gcc_c11) ]
+       [ run-fail test_is_seq_fail2.cpp : : : $(l_gcc_c11) ]
+       [ run-fail test_is_seq_fail3.cpp : : : $(l_gcc_c11) ]
+       [ run-fail test_is_seq_fail4.cpp : : : $(l_gcc_c11) ]
+       [ run test_is_tuple.cpp : : : $(l_gcc_c11) ]
+       [ run-fail test_is_tuple_fail.cpp : : : $(l_gcc_c11) ]
+       [ run-fail test_is_tuple_fail2.cpp : : : $(l_gcc_c11) ]
+       [ run-fail test_is_tuple_fail3.cpp : : : $(l_gcc_c11) ]
+       [ run-fail test_is_tuple_fail4.cpp : : : $(l_gcc_c11) ]
+       [ run test_is_type.cpp : : : $(l_gcc_c11) ]
+       [ run test_is_vmd_seq.cpp : : : $(l_gcc_c11) ]
+       [ run test_is_vmd_tuple.cpp : : : $(l_gcc_c11) ]
+       [ run test_list_elem.cpp : : : $(l_gcc_c11) ]
+       [ run test_list_empty.cpp : : : $(l_gcc_c11) ]
+       [ run test_list_equal.cpp : : : $(l_gcc_c11) ]
+       [ run test_list_to_seq.cpp : : : $(l_gcc_c11) ]
+       [ run test_list_to_tuple.cpp : : : $(l_gcc_c11) ]
+       [ run test_number_elem.cpp : : : $(l_gcc_c11) ]
+       [ run test_number_equal.cpp : : : $(l_gcc_c11) ]
+       [ run test_seq_elem.cpp : : : $(l_gcc_c11) ]
+       [ run test_seq_equal.cpp : : : $(l_gcc_c11) ]
+       [ run test_seq_pop_back.cpp : : : $(l_gcc_c11) ]
+       [ run test_seq_pop_front.cpp : : : $(l_gcc_c11) ]
+       [ run test_seq_push_back.cpp : : : $(l_gcc_c11) ]
+       [ run test_seq_push_front.cpp : : : $(l_gcc_c11) ]
+       [ run test_seq_remove.cpp : : : $(l_gcc_c11) ]
+       [ run test_seq_size.cpp : : : $(l_gcc_c11) ]
+       [ run test_seq_to_array.cpp : : : $(l_gcc_c11) ]
+       [ run test_seq_to_list.cpp : : : $(l_gcc_c11) ]
+       [ run test_seq_to_tuple.cpp : : : $(l_gcc_c11) ]
+       [ run test_sequence_after_elem.cpp : : : $(l_gcc_c11) ]
+       [ run test_sequence_elem.cpp : : : $(l_gcc_c11) ]
+       [ run test_sequence_enum.cpp : : : $(l_gcc_c11) ]
+       [ run test_sequence_size.cpp : : : $(l_gcc_c11) ]
+       [ run test_sequence_to_array.cpp : : : $(l_gcc_c11) ]
+       [ run test_sequence_to_list.cpp : : : $(l_gcc_c11) ]
+       [ run test_sequence_to_seq.cpp : : : $(l_gcc_c11) ]
+       [ run test_sequence_to_tuple.cpp : : : $(l_gcc_c11) ]
+       [ run test_tuple_elem.cpp : : : $(l_gcc_c11) ]
+       [ run test_tuple_equal.cpp : : : $(l_gcc_c11) ]
+       [ run test_tuple_pop_back.cpp : : : $(l_gcc_c11) ]
+       [ run test_tuple_pop_front.cpp : : : $(l_gcc_c11) ]
+       [ run test_tuple_push_back.cpp : : : $(l_gcc_c11) ]
+       [ run test_tuple_push_front.cpp : : : $(l_gcc_c11) ]
+       [ run test_tuple_remove.cpp : : : $(l_gcc_c11) ]
+       [ run test_tuple_size.cpp : : : $(l_gcc_c11) ]
+       [ run test_tuple_to_array.cpp : : : $(l_gcc_c11) ]
+       [ run test_tuple_to_list.cpp : : : $(l_gcc_c11) ]
+       [ run test_tuple_to_seq.cpp : : : $(l_gcc_c11) ]
+       [ run test_type.cpp : : : $(l_gcc_c11) ]
+       [ run test_type_elem.cpp : : : $(l_gcc_c11) ]
+       [ run test_type_equal.cpp : : : $(l_gcc_c11) ]
+       [ run test_variadic_macro.cpp ]
+    ;

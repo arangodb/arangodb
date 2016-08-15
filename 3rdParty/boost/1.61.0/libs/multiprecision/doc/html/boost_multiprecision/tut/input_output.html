@@ -1,0 +1,185 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Input Output</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../../index.html" title="Chapter&#160;1.&#160;Boost.Multiprecision">
+<link rel="up" href="../tut.html" title="Tutorial">
+<link rel="prev" href="limits/how_to_tell.html" title="How to Determine the Kind of a Number From std::numeric_limits">
+<link rel="next" href="../ref.html" title="Reference">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="limits/how_to_tell.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../tut.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../ref.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_multiprecision.tut.input_output"></a><a class="link" href="input_output.html" title="Input Output">Input Output</a>
+</h3></div></div></div>
+<h5>
+<a name="boost_multiprecision.tut.input_output.h0"></a>
+        <span><a name="boost_multiprecision.tut.input_output.loopback_testing"></a></span><a class="link" href="input_output.html#boost_multiprecision.tut.input_output.loopback_testing">Loopback
+        testing</a>
+      </h5>
+<p>
+        <span class="emphasis"><em>Loopback</em></span> or <span class="emphasis"><em>round-tripping</em></span> refers
+        to writing out a value as a decimal digit string using <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">iostream</span></code>,
+        usually to a <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">stringstream</span></code>, and then reading the string
+        back in to another value, and confirming that the two values are identical.
+        A trivial example using <code class="computeroutput"><span class="keyword">float</span></code>
+        is:
+      </p>
+<pre class="programlisting"><span class="keyword">float</span> <span class="identifier">write</span><span class="special">;</span> <span class="comment">// Value to round-trip.</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">stringstream</span> <span class="identifier">ss</span><span class="special">;</span>  <span class="comment">// Read and write std::stringstream.</span>
+<span class="identifier">ss</span><span class="special">.</span><span class="identifier">precision</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">numeric_limits</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;::</span><span class="identifier">max_digits10</span><span class="special">);</span>  <span class="comment">// Ensure all potentially significant bits are output.</span>
+<span class="identifier">ss</span><span class="special">.</span><span class="identifier">flags</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">ios_base</span><span class="special">::</span><span class="identifier">fmtflags</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">ios_base</span><span class="special">::</span><span class="identifier">scientific</span><span class="special">));</span> <span class="comment">// Use scientific format.</span>
+<span class="identifier">ss</span> <span class="special">&lt;&lt;</span> <span class="identifier">write</span><span class="special">;</span> <span class="comment">// Output to string.</span>
+<span class="keyword">float</span> <span class="identifier">read</span><span class="special">;</span>  <span class="comment">// Expected.</span>
+<span class="identifier">ss</span> <span class="special">&gt;&gt;</span> <span class="identifier">read</span><span class="special">;</span> <span class="comment">// Read decimal digits string from stringstream.</span>
+<span class="identifier">BOOST_CHECK_EQUAL</span><span class="special">(</span><span class="identifier">write</span><span class="special">,</span> <span class="identifier">read</span><span class="special">);</span> <span class="comment">// Should be the same.</span>
+</pre>
+<p>
+        and this can be run in a loop for all possible values of a 32-bit float.
+        For other floating-point types <code class="computeroutput"><span class="identifier">T</span></code>,
+        including built-in <code class="computeroutput"><span class="keyword">double</span></code>, it
+        takes far too long to test all values, so a reasonable test strategy is to
+        use a large number of random values.
+      </p>
+<pre class="programlisting"><span class="identifier">T</span> <span class="identifier">write</span><span class="special">;</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">stringstream</span> <span class="identifier">ss</span><span class="special">;</span>
+<span class="identifier">ss</span><span class="special">.</span><span class="identifier">precision</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">numeric_limits</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;::</span><span class="identifier">max_digits10</span><span class="special">);</span>  <span class="comment">// Ensure all potentially significant bits are output.</span>
+<span class="identifier">ss</span><span class="special">.</span><span class="identifier">flags</span><span class="special">(</span><span class="identifier">f</span><span class="special">);</span> <span class="comment">// Changed from default iostream format flags if desired.</span>
+<span class="identifier">ss</span> <span class="special">&lt;&lt;</span> <span class="identifier">write</span><span class="special">;</span> <span class="comment">// Output to stringstream.</span>
+
+<span class="identifier">T</span> <span class="identifier">read</span><span class="special">;</span>
+<span class="identifier">ss</span> <span class="special">&gt;&gt;</span> <span class="identifier">read</span><span class="special">;</span> <span class="comment">// Get read using operator&gt;&gt; from stringstream.</span>
+<span class="identifier">BOOST_CHECK_EQUAL</span><span class="special">(</span><span class="identifier">read</span><span class="special">,</span> <span class="identifier">write</span><span class="special">);</span>
+
+<span class="identifier">read</span> <span class="special">=</span> <span class="keyword">static_cast</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;(</span><span class="identifier">ss</span><span class="special">.</span><span class="identifier">str</span><span class="special">());</span> <span class="comment">// Get read by converting from decimal digits string representation of write.</span>
+<span class="identifier">BOOST_CHECK_EQUAL</span><span class="special">(</span><span class="identifier">read</span><span class="special">,</span> <span class="identifier">write</span><span class="special">);</span>
+
+<span class="identifier">read</span> <span class="special">=</span> <span class="keyword">static_cast</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;(</span><span class="identifier">write</span><span class="special">.</span><span class="identifier">str</span><span class="special">(</span><span class="number">0</span><span class="special">,</span> <span class="identifier">f</span><span class="special">));</span>  <span class="comment">// Get read using format specified when written.</span>
+<span class="identifier">BOOST_CHECK_EQUAL</span><span class="special">(</span><span class="identifier">read</span><span class="special">,</span> <span class="identifier">write</span><span class="special">);</span>
+</pre>
+<p>
+        The test at <a href="../../../../test/test_cpp_bin_float_io.cpp" target="_top">test_cpp_bin_float_io.cpp</a>
+        allows any floating-point type to be <span class="emphasis"><em>round_tripped</em></span> using
+        a wide range of fairly random values. It also includes tests compared a collection
+        of <a href="../../../../test/string_data.ipp" target="_top">stringdata</a> test cases
+        in a file.
+      </p>
+<h5>
+<a name="boost_multiprecision.tut.input_output.h1"></a>
+        <span><a name="boost_multiprecision.tut.input_output.comparing_with_output_using_buil"></a></span><a class="link" href="input_output.html#boost_multiprecision.tut.input_output.comparing_with_output_using_buil">Comparing
+        with output using Built-in types</a>
+      </h5>
+<p>
+        One can make some comparisons with the output of
+      </p>
+<pre class="programlisting"><span class="special">&lt;</span><span class="identifier">number</span><span class="special">&lt;</span><span class="identifier">cpp_bin_float</span><span class="special">&lt;</span><span class="number">53</span><span class="special">,</span> <span class="identifier">digit_count_2</span><span class="special">&gt;</span> <span class="special">&gt;</span>
+</pre>
+<p>
+        which has the same number of significant bits (53) as 64-bit double precision
+        floating-point.
+      </p>
+<p>
+        However, although most outputs are identical, there are differences on some
+        platforms caused by the implementation-dependent behaviours allowed by the
+        C99 specification <a href="http://www.open-std.org/jtc1/sc22/wg14/www/docs/n1124.pdf" target="_top">C99
+        ISO/IEC 9899:TC2</a>, incorporated by C++.
+      </p>
+<div class="blockquote"><blockquote class="blockquote"><p>
+          <span class="emphasis"><em>"For e, E, f, F, g, and G conversions, if the number of
+          significant decimal digits is at most DECIMAL_DIG, then the result should
+          be correctly rounded. If the number of significant decimal digits is more
+          than DECIMAL_DIG but the source value is exactly representable with DECIMAL_DIG
+          digits, then the result should be an exact representation with trailing
+          zeros. Otherwise, the source value is bounded by two adjacent decimal strings
+          L &lt; U, both having DECIMAL_DIG significant digits; the value of the
+          resultant decimal string D should satisfy L&lt;= D &lt;= U, with the extra
+          stipulation that the error should have a correct sign for the current rounding
+          direction."</em></span>
+        </p></blockquote></div>
+<p>
+        So not only is correct rounding for the full number of digits not required,
+        but even if the <span class="bold"><strong>optional</strong></span> recommended practice
+        is followed, then the value of these last few digits is unspecified as long
+        as the value is within certain bounds.
+      </p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+          Do not expect the output from different platforms to be <span class="bold"><strong>identical</strong></span>,
+          but <code class="computeroutput"><span class="identifier">cpp_dec_float</span></code>, <code class="computeroutput"><span class="identifier">cpp_bin_float</span></code> (and other backends) outputs
+          should be correctly rounded to the number of digits requested by the set
+          precision and format.
+        </p></td></tr>
+</table></div>
+<h5>
+<a name="boost_multiprecision.tut.input_output.h2"></a>
+        <span><a name="boost_multiprecision.tut.input_output.macro_boost_mp_min_exponent_digi"></a></span><a class="link" href="input_output.html#boost_multiprecision.tut.input_output.macro_boost_mp_min_exponent_digi">Macro
+        BOOST_MP_MIN_EXPONENT_DIGITS</a>
+      </h5>
+<p>
+        <a href="http://www.open-std.org/jtc1/sc22/wg14/www/docs/n1124.pdf" target="_top">C99
+        Standard</a> for format specifiers, 7.19.6 Formatted input/output functions
+        requires:
+      </p>
+<p>
+        "The exponent always contains at least two digits, and only as many
+        more digits as necessary to represent the exponent."
+      </p>
+<p>
+        So to conform to the C99 standard (incorporated by C++)
+      </p>
+<pre class="programlisting"><span class="preprocessor">#define</span> <span class="identifier">BOOST_MP_MIN_EXPONENT_DIGITS</span> <span class="number">2</span>
+</pre>
+<p>
+        Confusingly, Microsoft (and MinGW) do not conform to this standard and provide
+        <span class="bold"><strong>at least three digits</strong></span>, for example <code class="computeroutput"><span class="number">1e+001</span></code>. So if you want the output to match
+        that from built-in floating-point types on compilers that use Microsofts
+        runtime then use:
+      </p>
+<pre class="programlisting"><span class="preprocessor">#define</span> <span class="identifier">BOOST_MP_MIN_EXPONENT_DIGITS</span> <span class="number">3</span>
+</pre>
+<p>
+        Also useful to get the minimum exponent field width is
+      </p>
+<pre class="programlisting"><span class="preprocessor">#define</span> <span class="identifier">BOOST_MP_MIN_EXPONENT_DIGITS</span> <span class="number">1</span>
+</pre>
+<p>
+        producing a compact output like <code class="computeroutput"><span class="number">2e+4</span></code>,
+        useful when conserving space is important.
+      </p>
+<p>
+        Larger values are also supported, for example, value 4 for <code class="computeroutput"><span class="number">2e+0004</span></code> which may be useful to ensure that
+        columns line up.
+      </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2002-2013 John Maddock and Christopher Kormanyos<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="limits/how_to_tell.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../tut.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../ref.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

@@ -1,0 +1,157 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Localization and Regex Traits</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../../index.html" title="Chapter&#160;1.&#160;Boost.Xpressive">
+<link rel="up" href="../../xpressive/user_s_guide.html" title="User's Guide">
+<link rel="prev" href="symbol_tables_and_attributes.html" title="Symbol Tables and Attributes">
+<link rel="next" href="tips_n_tricks.html" title="Tips 'N Tricks">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="symbol_tables_and_attributes.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../xpressive/user_s_guide.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="tips_n_tricks.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_xpressive.user_s_guide.localization_and_regex_traits"></a><a class="link" href="localization_and_regex_traits.html" title="Localization and Regex Traits">Localization
+      and Regex Traits</a>
+</h3></div></div></div>
+<h3>
+<a name="boost_xpressive.user_s_guide.localization_and_regex_traits.h0"></a>
+        <span><a name="boost_xpressive.user_s_guide.localization_and_regex_traits.overview"></a></span><a class="link" href="localization_and_regex_traits.html#boost_xpressive.user_s_guide.localization_and_regex_traits.overview">Overview</a>
+      </h3>
+<p>
+        Matching a regular expression against a string often requires locale-dependent
+        information. For example, how are case-insensitive comparisons performed?
+        The locale-sensitive behavior is captured in a traits class. xpressive provides
+        three traits class templates: <code class="computeroutput"><span class="identifier">cpp_regex_traits</span><span class="special">&lt;&gt;</span></code>, <code class="computeroutput"><span class="identifier">c_regex_traits</span><span class="special">&lt;&gt;</span></code> and <code class="computeroutput"><span class="identifier">null_regex_traits</span><span class="special">&lt;&gt;</span></code>. The first wraps a <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">locale</span></code>,
+        the second wraps the global C locale, and the third is a stub traits type
+        for use when searching non-character data. All traits templates conform to
+        the <a class="link" href="concepts.html#boost_xpressive.user_s_guide.concepts.traits_requirements">Regex
+        Traits Concept</a>.
+      </p>
+<h3>
+<a name="boost_xpressive.user_s_guide.localization_and_regex_traits.h1"></a>
+        <span><a name="boost_xpressive.user_s_guide.localization_and_regex_traits.setting_the_default_regex_trait"></a></span><a class="link" href="localization_and_regex_traits.html#boost_xpressive.user_s_guide.localization_and_regex_traits.setting_the_default_regex_trait">Setting
+        the Default Regex Trait</a>
+      </h3>
+<p>
+        By default, xpressive uses <code class="computeroutput"><span class="identifier">cpp_regex_traits</span><span class="special">&lt;&gt;</span></code> for all patterns. This causes all
+        regex objects to use the global <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">locale</span></code>.
+        If you compile with <code class="computeroutput"><span class="identifier">BOOST_XPRESSIVE_USE_C_TRAITS</span></code>
+        defined, then xpressive will use <code class="computeroutput"><span class="identifier">c_regex_traits</span><span class="special">&lt;&gt;</span></code> by default.
+      </p>
+<h3>
+<a name="boost_xpressive.user_s_guide.localization_and_regex_traits.h2"></a>
+        <span><a name="boost_xpressive.user_s_guide.localization_and_regex_traits.using_custom_traits_with_dynamic_regexes"></a></span><a class="link" href="localization_and_regex_traits.html#boost_xpressive.user_s_guide.localization_and_regex_traits.using_custom_traits_with_dynamic_regexes">Using
+        Custom Traits with Dynamic Regexes</a>
+      </h3>
+<p>
+        To create a dynamic regex that uses a custom traits object, you must use
+        <code class="literal"><code class="computeroutput"><a class="link" href="../../boost/xpressive/regex_compiler.html" title="Struct template regex_compiler">regex_compiler&lt;&gt;</a></code></code>.
+        The basic steps are shown in the following example:
+      </p>
+<pre class="programlisting"><span class="comment">// Declare a regex_compiler that uses the global C locale</span>
+<span class="identifier">regex_compiler</span><span class="special">&lt;</span><span class="keyword">char</span> <span class="keyword">const</span> <span class="special">*,</span> <span class="identifier">c_regex_traits</span><span class="special">&lt;</span><span class="keyword">char</span><span class="special">&gt;</span> <span class="special">&gt;</span> <span class="identifier">crxcomp</span><span class="special">;</span>
+<span class="identifier">cregex</span> <span class="identifier">crx</span> <span class="special">=</span> <span class="identifier">crxcomp</span><span class="special">.</span><span class="identifier">compile</span><span class="special">(</span> <span class="string">"\\w+"</span> <span class="special">);</span>
+
+<span class="comment">// Declare a regex_compiler that uses a custom std::locale</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">locale</span> <span class="identifier">loc</span> <span class="special">=</span> <span class="comment">/* ... create a locale here ... */</span><span class="special">;</span>
+<span class="identifier">regex_compiler</span><span class="special">&lt;</span><span class="keyword">char</span> <span class="keyword">const</span> <span class="special">*,</span> <span class="identifier">cpp_regex_traits</span><span class="special">&lt;</span><span class="keyword">char</span><span class="special">&gt;</span> <span class="special">&gt;</span> <span class="identifier">cpprxcomp</span><span class="special">(</span><span class="identifier">loc</span><span class="special">);</span>
+<span class="identifier">cregex</span> <span class="identifier">cpprx</span> <span class="special">=</span> <span class="identifier">cpprxcomp</span><span class="special">.</span><span class="identifier">compile</span><span class="special">(</span> <span class="string">"\\w+"</span> <span class="special">);</span>
+</pre>
+<p>
+        The <code class="computeroutput"><span class="identifier">regex_compiler</span></code> objects
+        act as regex factories. Once they have been imbued with a locale, every regex
+        object they create will use that locale.
+      </p>
+<h3>
+<a name="boost_xpressive.user_s_guide.localization_and_regex_traits.h3"></a>
+        <span><a name="boost_xpressive.user_s_guide.localization_and_regex_traits.using_custom_traits_with_static_regexes"></a></span><a class="link" href="localization_and_regex_traits.html#boost_xpressive.user_s_guide.localization_and_regex_traits.using_custom_traits_with_static_regexes">Using
+        Custom Traits with Static Regexes</a>
+      </h3>
+<p>
+        If you want a particular static regex to use a different set of traits, you
+        can use the special <code class="computeroutput"><span class="identifier">imbue</span><span class="special">()</span></code> pattern modifier. For instance:
+      </p>
+<pre class="programlisting"><span class="comment">// Define a regex that uses the global C locale</span>
+<span class="identifier">c_regex_traits</span><span class="special">&lt;</span><span class="keyword">char</span><span class="special">&gt;</span> <span class="identifier">ctraits</span><span class="special">;</span>
+<span class="identifier">sregex</span> <span class="identifier">crx</span> <span class="special">=</span> <span class="identifier">imbue</span><span class="special">(</span><span class="identifier">ctraits</span><span class="special">)(</span> <span class="special">+</span><span class="identifier">_w</span> <span class="special">);</span>
+
+<span class="comment">// Define a regex that uses a customized std::locale</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">locale</span> <span class="identifier">loc</span> <span class="special">=</span> <span class="comment">/* ... create a locale here ... */</span><span class="special">;</span>
+<span class="identifier">cpp_regex_traits</span><span class="special">&lt;</span><span class="keyword">char</span><span class="special">&gt;</span> <span class="identifier">cpptraits</span><span class="special">(</span><span class="identifier">loc</span><span class="special">);</span>
+<span class="identifier">sregex</span> <span class="identifier">cpprx1</span> <span class="special">=</span> <span class="identifier">imbue</span><span class="special">(</span><span class="identifier">cpptraits</span><span class="special">)(</span> <span class="special">+</span><span class="identifier">_w</span> <span class="special">);</span>
+
+<span class="comment">// A shorthand for above</span>
+<span class="identifier">sregex</span> <span class="identifier">cpprx2</span> <span class="special">=</span> <span class="identifier">imbue</span><span class="special">(</span><span class="identifier">loc</span><span class="special">)(</span> <span class="special">+</span><span class="identifier">_w</span> <span class="special">);</span>
+</pre>
+<p>
+        The <code class="computeroutput"><span class="identifier">imbue</span><span class="special">()</span></code>
+        pattern modifier must wrap the entire pattern. It is an error to <code class="computeroutput"><span class="identifier">imbue</span></code> only part of a static regex. For
+        example:
+      </p>
+<pre class="programlisting"><span class="comment">// ERROR! Cannot imbue() only part of a regex</span>
+<span class="identifier">sregex</span> <span class="identifier">error</span> <span class="special">=</span> <span class="identifier">_w</span> <span class="special">&gt;&gt;</span> <span class="identifier">imbue</span><span class="special">(</span><span class="identifier">loc</span><span class="special">)(</span> <span class="identifier">_w</span> <span class="special">);</span>
+</pre>
+<h3>
+<a name="boost_xpressive.user_s_guide.localization_and_regex_traits.h4"></a>
+        <span><a name="boost_xpressive.user_s_guide.localization_and_regex_traits.searching_non_character_data_with__literal_null_regex_traits__literal_"></a></span><a class="link" href="localization_and_regex_traits.html#boost_xpressive.user_s_guide.localization_and_regex_traits.searching_non_character_data_with__literal_null_regex_traits__literal_">Searching
+        Non-Character Data With <code class="literal">null_regex_traits</code></a>
+      </h3>
+<p>
+        With xpressive static regexes, you are not limitted to searching for patterns
+        in character sequences. You can search for patterns in raw bytes, integers,
+        or anything that conforms to the <a class="link" href="concepts.html#boost_xpressive.user_s_guide.concepts.chart_requirements">Char
+        Concept</a>. The <code class="computeroutput"><span class="identifier">null_regex_traits</span><span class="special">&lt;&gt;</span></code> makes it simple. It is a stub implementation
+        of the <a class="link" href="concepts.html#boost_xpressive.user_s_guide.concepts.traits_requirements">Regex
+        Traits Concept</a>. It recognizes no character classes and does no case-sensitive
+        mappings.
+      </p>
+<p>
+        For example, with <code class="computeroutput"><span class="identifier">null_regex_traits</span><span class="special">&lt;&gt;</span></code>, you can write a static regex to
+        find a pattern in a sequence of integers as follows:
+      </p>
+<pre class="programlisting"><span class="comment">// some integral data to search</span>
+<span class="keyword">int</span> <span class="keyword">const</span> <span class="identifier">data</span><span class="special">[]</span> <span class="special">=</span> <span class="special">{</span><span class="number">0</span><span class="special">,</span> <span class="number">1</span><span class="special">,</span> <span class="number">2</span><span class="special">,</span> <span class="number">3</span><span class="special">,</span> <span class="number">4</span><span class="special">,</span> <span class="number">5</span><span class="special">,</span> <span class="number">6</span><span class="special">};</span>
+
+<span class="comment">// create a null_regex_traits&lt;&gt; object for searching integers ...</span>
+<span class="identifier">null_regex_traits</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;</span> <span class="identifier">nul</span><span class="special">;</span>
+
+<span class="comment">// imbue a regex object with the null_regex_traits ...</span>
+<span class="identifier">basic_regex</span><span class="special">&lt;</span><span class="keyword">int</span> <span class="keyword">const</span> <span class="special">*&gt;</span> <span class="identifier">rex</span> <span class="special">=</span> <span class="identifier">imbue</span><span class="special">(</span><span class="identifier">nul</span><span class="special">)(</span><span class="number">1</span> <span class="special">&gt;&gt;</span> <span class="special">+((</span><span class="identifier">set</span><span class="special">=</span> <span class="number">2</span><span class="special">,</span><span class="number">3</span><span class="special">)</span> <span class="special">|</span> <span class="number">4</span><span class="special">)</span> <span class="special">&gt;&gt;</span> <span class="number">5</span><span class="special">);</span>
+<span class="identifier">match_results</span><span class="special">&lt;</span><span class="keyword">int</span> <span class="keyword">const</span> <span class="special">*&gt;</span> <span class="identifier">what</span><span class="special">;</span>
+
+<span class="comment">// search for the pattern in the array of integers ...</span>
+<span class="identifier">regex_search</span><span class="special">(</span><span class="identifier">data</span><span class="special">,</span> <span class="identifier">data</span> <span class="special">+</span> <span class="number">7</span><span class="special">,</span> <span class="identifier">what</span><span class="special">,</span> <span class="identifier">rex</span><span class="special">);</span>
+
+<span class="identifier">assert</span><span class="special">(</span><span class="identifier">what</span><span class="special">[</span><span class="number">0</span><span class="special">].</span><span class="identifier">matched</span><span class="special">);</span>
+<span class="identifier">assert</span><span class="special">(*</span><span class="identifier">what</span><span class="special">[</span><span class="number">0</span><span class="special">].</span><span class="identifier">first</span> <span class="special">==</span> <span class="number">1</span><span class="special">);</span>
+<span class="identifier">assert</span><span class="special">(*</span><span class="identifier">what</span><span class="special">[</span><span class="number">0</span><span class="special">].</span><span class="identifier">second</span> <span class="special">==</span> <span class="number">6</span><span class="special">);</span>
+</pre>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2007 Eric Niebler<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="symbol_tables_and_attributes.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../xpressive/user_s_guide.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="tips_n_tricks.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

@@ -1,0 +1,250 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Intrusive splay tree based associative containers: splay_set, splay_multiset and , splay_tree</title>
+<link rel="stylesheet" href="../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../index.html" title="The Boost C++ Libraries BoostBook Documentation Subset">
+<link rel="up" href="../intrusive.html" title="Chapter&#160;16.&#160;Boost.Intrusive">
+<link rel="prev" href="avl_set_multiset.html" title="Intrusive avl tree based associative containers: avl_set, avl_multiset and avltree">
+<link rel="next" href="sg_set_multiset.html" title="Intrusive scapegoat tree based associative containers: sg_set, sg_multiset and sgtree">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../boost.png"></td>
+<td align="center"><a href="../../../index.html">Home</a></td>
+<td align="center"><a href="../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="avl_set_multiset.html"><img src="../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../intrusive.html"><img src="../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="sg_set_multiset.html"><img src="../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="intrusive.splay_set_multiset"></a><a class="link" href="splay_set_multiset.html" title="Intrusive splay tree based associative containers: splay_set, splay_multiset and , splay_tree">Intrusive splay tree based
+    associative containers: splay_set, splay_multiset and , splay_tree</a>
+</h2></div></div></div>
+<div class="toc"><dl>
+<dt><span class="section"><a href="splay_set_multiset.html#intrusive.splay_set_multiset.splay_set_multiset_disadvantages">Advantages
+      and disadvantages of splay tree based containers</a></span></dt>
+<dt><span class="section"><a href="splay_set_multiset.html#intrusive.splay_set_multiset.set_multiset_containers">splay_set,
+      splay_multiset and splaytree containers</a></span></dt>
+<dt><span class="section"><a href="splay_set_multiset.html#intrusive.splay_set_multiset.splay_set_multiset_example">Example</a></span></dt>
+</dl></div>
+<p>
+      C++ associative containers are usually based on red-black tree implementations
+      (e.g.: STL, Boost.Intrusive associative containers). However, there are other
+      interesting data structures that offer some advantages (and also disadvantages).
+    </p>
+<p>
+      Splay trees are self-adjusting binary search trees used typically in caches,
+      memory allocators and other applications, because splay trees have a "caching
+      effect": recently accessed elements have better access times than elements
+      accessed less frequently. For more information on splay trees see <a href="http://en.wikipedia.org/wiki/Splay_tree" target="_top">the
+      corresponding Wikipedia entry</a>.
+    </p>
+<p>
+      <span class="bold"><strong>Boost.Intrusive</strong></span> offers 3 containers based
+      on splay trees: <code class="computeroutput"><a class="link" href="../boost/intrusive/splay_set.html" title="Class template splay_set">splay_set</a></code>,
+      <code class="computeroutput"><a class="link" href="../boost/intrusive/splay_multiset.html" title="Class template splay_multiset">splay_multiset</a></code>
+      and <code class="computeroutput"><a class="link" href="../boost/intrusive/splaytree.html" title="Class template splaytree">splaytree</a></code>. The
+      first two are similar to <code class="computeroutput"><a class="link" href="../boost/intrusive/set.html" title="Class template set">set</a></code>
+      or <code class="computeroutput"><a class="link" href="../boost/intrusive/multiset.html" title="Class template multiset">multiset</a></code> and the
+      latter is a generalization that offers functions both to insert unique and
+      multiple keys.
+    </p>
+<p>
+      The memory overhead of these containers with Boost.Intrusive hooks is usually
+      3 pointers. An empty, non constant-time size splay container has also a size
+      of 3 pointers.
+    </p>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="intrusive.splay_set_multiset.splay_set_multiset_disadvantages"></a><a class="link" href="splay_set_multiset.html#intrusive.splay_set_multiset.splay_set_multiset_disadvantages" title="Advantages and disadvantages of splay tree based containers">Advantages
+      and disadvantages of splay tree based containers</a>
+</h3></div></div></div>
+<p>
+        Splay tree based intrusive containers have logarithmic complexity in many
+        operations like searches, insertions, erasures, etc., but if some elements
+        are more frequently accessed than others, splay trees perform faster searches
+        than equivalent balanced binary trees (such as red-black trees).
+      </p>
+<p>
+        The caching effect offered by splay trees comes with a cost: the tree must
+        be rebalanced when an element is searched. To maintain const-correctness
+        and thread-safety guarantees, this caching effect is not updated when const
+        versions of search functions like <code class="computeroutput"><span class="identifier">find</span><span class="special">()</span></code>, <code class="computeroutput"><span class="identifier">lower_bound</span><span class="special">()</span></code>, <code class="computeroutput"><span class="identifier">upper_bound</span><span class="special">()</span></code>, <code class="computeroutput"><span class="identifier">equal_range</span><span class="special">()</span></code>, <code class="computeroutput"><span class="identifier">count</span><span class="special">()</span></code>... are called. This means that using splay-tree
+        based associative containers as drop-in replacements of <code class="computeroutput"><a class="link" href="../boost/intrusive/set.html" title="Class template set">set</a></code>/
+        <code class="computeroutput"><a class="link" href="../boost/intrusive/multiset.html" title="Class template multiset">multiset</a></code>, specially
+        for const search functions, might not result in desired performance improvements.
+      </p>
+<p>
+        If element searches are randomized, the tree will be continuously srebalanced
+        without taking advantage of the cache effect, so splay trees can offer worse
+        performance than other balanced trees for several search patterns.
+      </p>
+<p>
+        <span class="bold"><strong>Boost.Intrusive</strong></span> splay associative containers
+        don't use their own hook types but plain Binary search tree hooks. See <a class="link" href="bst_hooks.html" title="Binary search tree hooks: bs_set_base_hook and bs_set_member_hook">Binary search tree hooks: bs_set_base_hook
+        and bs_set_member_hook</a> section for more information about these hooks.
+      </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="intrusive.splay_set_multiset.set_multiset_containers"></a><a class="link" href="splay_set_multiset.html#intrusive.splay_set_multiset.set_multiset_containers" title="splay_set, splay_multiset and splaytree containers">splay_set,
+      splay_multiset and splaytree containers</a>
+</h3></div></div></div>
+<pre class="programlisting"><span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">,</span> <span class="keyword">class</span> <span class="special">...</span><span class="identifier">Options</span><span class="special">&gt;</span>
+<span class="keyword">class</span> <span class="identifier">splay_set</span><span class="special">;</span>
+
+<span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">,</span> <span class="keyword">class</span> <span class="special">...</span><span class="identifier">Options</span><span class="special">&gt;</span>
+<span class="keyword">class</span> <span class="identifier">splay_multiset</span><span class="special">;</span>
+
+<span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">,</span> <span class="keyword">class</span> <span class="special">...</span><span class="identifier">Options</span><span class="special">&gt;</span>
+<span class="keyword">class</span> <span class="identifier">splaytree</span><span class="special">;</span>
+</pre>
+<p>
+        These containers receive the same options explained in the section <a class="link" href="usage.html" title="How to use Boost.Intrusive">How to use Boost.Intrusive</a>:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" type="disc">
+<li class="listitem">
+            <span class="bold"><strong><code class="computeroutput"><span class="identifier">base_hook</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Hook</span><span class="special">&gt;</span></code></strong></span>
+            / <span class="bold"><strong><code class="computeroutput"><span class="identifier">member_hook</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">Hook</span><span class="special">,</span> <span class="identifier">Hook</span> <span class="identifier">T</span><span class="special">::*</span> <span class="identifier">PtrToMember</span><span class="special">&gt;</span></code></strong></span>
+            / <span class="bold"><strong><code class="computeroutput"><span class="identifier">value_traits</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">ValueTraits</span><span class="special">&gt;</span></code></strong></span>:
+            To specify the hook type or value traits used to configure the container.
+            (To learn about value traits go to the section <a class="link" href="value_traits.html" title="Containers with custom ValueTraits">Containers
+            with custom ValueTraits</a>.)
+          </li>
+<li class="listitem">
+            <span class="bold"><strong><code class="computeroutput"><span class="identifier">constant_time_size</span><span class="special">&lt;</span><span class="keyword">bool</span> <span class="identifier">Enabled</span><span class="special">&gt;</span></code></strong></span>:
+            To activate the constant-time <code class="computeroutput"><span class="identifier">size</span><span class="special">()</span></code> operation. Default: <code class="computeroutput"><span class="identifier">constant_time_size</span><span class="special">&lt;</span><span class="keyword">true</span><span class="special">&gt;</span></code>
+          </li>
+<li class="listitem">
+            <span class="bold"><strong><code class="computeroutput"><span class="identifier">size_type</span><span class="special">&lt;</span><span class="keyword">bool</span> <span class="identifier">Enabled</span><span class="special">&gt;</span></code></strong></span>:
+            To specify the type that will be used to store the size of the container.
+            Default: <code class="computeroutput"><span class="identifier">size_type</span><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span><span class="special">&gt;</span></code>
+          </li>
+</ul></div>
+<p>
+        And they also can receive an additional option:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" type="disc">
+<li class="listitem">
+            <span class="bold"><strong><code class="computeroutput"><span class="identifier">compare</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Compare</span><span class="special">&gt;</span></code></strong></span>:
+            Comparison function for the objects to be inserted in containers. The
+            comparison functor must induce a strict weak ordering. Default: <code class="computeroutput"><span class="identifier">compare</span><span class="special">&lt;</span>
+            <span class="identifier">std</span><span class="special">::</span><span class="identifier">less</span><span class="special">&lt;</span><span class="identifier">key_type</span><span class="special">&gt;</span>
+            <span class="special">&gt;</span></code>
+          </li>
+<li class="listitem">
+            <span class="bold"><strong><code class="computeroutput"><span class="identifier">key_of_value</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">KeyOfValueFunctionObject</span><span class="special">&gt;</span></code></strong></span>:
+            A function object that will define the <code class="computeroutput"><span class="identifier">key_type</span></code>
+            of the value type to be stored. This type will allow a map-like interface.
+            See <a class="link" href="map_multimap.html" title="Map and multimap-like interface for associative containers">Map and multimap-like interface
+            with set and multiset</a> for details. Default: <code class="computeroutput"><span class="identifier">key_type</span></code>
+            is equal to <code class="computeroutput"><span class="identifier">value_type</span></code>
+            (set-like interface).
+          </li>
+</ul></div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="intrusive.splay_set_multiset.splay_set_multiset_example"></a><a class="link" href="splay_set_multiset.html#intrusive.splay_set_multiset.splay_set_multiset_example" title="Example">Example</a>
+</h3></div></div></div>
+<p>
+        Now let's see a small example using <code class="computeroutput"><a class="link" href="../boost/intrusive/splay_set.html" title="Class template splay_set">splay_set</a></code>/
+        <code class="computeroutput"><a class="link" href="../boost/intrusive/splay_multiset.html" title="Class template splay_multiset">splay_multiset</a></code>
+        containers:
+      </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">intrusive</span><span class="special">/</span><span class="identifier">splay_set</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">vector</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">functional</span><span class="special">&gt;</span>
+
+<span class="keyword">using</span> <span class="keyword">namespace</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">intrusive</span><span class="special">;</span>
+
+<span class="keyword">class</span> <span class="identifier">mytag</span><span class="special">;</span>
+
+<span class="keyword">class</span> <span class="identifier">MyClass</span>
+   <span class="special">:</span> <span class="keyword">public</span> <span class="identifier">bs_set_base_hook</span><span class="special">&lt;&gt;</span>
+<span class="special">{</span>
+   <span class="keyword">int</span> <span class="identifier">int_</span><span class="special">;</span>
+
+   <span class="keyword">public</span><span class="special">:</span>
+   <span class="comment">//This is a member hook</span>
+   <span class="identifier">bs_set_member_hook</span><span class="special">&lt;&gt;</span> <span class="identifier">member_hook_</span><span class="special">;</span>
+
+   <span class="identifier">MyClass</span><span class="special">(</span><span class="keyword">int</span> <span class="identifier">i</span><span class="special">)</span>
+      <span class="special">:</span>  <span class="identifier">int_</span><span class="special">(</span><span class="identifier">i</span><span class="special">)</span>
+      <span class="special">{}</span>
+   <span class="keyword">friend</span> <span class="keyword">bool</span> <span class="keyword">operator</span><span class="special">&lt;</span> <span class="special">(</span><span class="keyword">const</span> <span class="identifier">MyClass</span> <span class="special">&amp;</span><span class="identifier">a</span><span class="special">,</span> <span class="keyword">const</span> <span class="identifier">MyClass</span> <span class="special">&amp;</span><span class="identifier">b</span><span class="special">)</span>
+      <span class="special">{</span>  <span class="keyword">return</span> <span class="identifier">a</span><span class="special">.</span><span class="identifier">int_</span> <span class="special">&lt;</span> <span class="identifier">b</span><span class="special">.</span><span class="identifier">int_</span><span class="special">;</span>  <span class="special">}</span>
+   <span class="keyword">friend</span> <span class="keyword">bool</span> <span class="keyword">operator</span><span class="special">&gt;</span> <span class="special">(</span><span class="keyword">const</span> <span class="identifier">MyClass</span> <span class="special">&amp;</span><span class="identifier">a</span><span class="special">,</span> <span class="keyword">const</span> <span class="identifier">MyClass</span> <span class="special">&amp;</span><span class="identifier">b</span><span class="special">)</span>
+      <span class="special">{</span>  <span class="keyword">return</span> <span class="identifier">a</span><span class="special">.</span><span class="identifier">int_</span> <span class="special">&gt;</span> <span class="identifier">b</span><span class="special">.</span><span class="identifier">int_</span><span class="special">;</span>  <span class="special">}</span>
+   <span class="keyword">friend</span> <span class="keyword">bool</span> <span class="keyword">operator</span><span class="special">==</span> <span class="special">(</span><span class="keyword">const</span> <span class="identifier">MyClass</span> <span class="special">&amp;</span><span class="identifier">a</span><span class="special">,</span> <span class="keyword">const</span> <span class="identifier">MyClass</span> <span class="special">&amp;</span><span class="identifier">b</span><span class="special">)</span>
+      <span class="special">{</span>  <span class="keyword">return</span> <span class="identifier">a</span><span class="special">.</span><span class="identifier">int_</span> <span class="special">==</span> <span class="identifier">b</span><span class="special">.</span><span class="identifier">int_</span><span class="special">;</span>  <span class="special">}</span>
+<span class="special">};</span>
+
+<span class="comment">//Define a set using the base hook that will store values in reverse order</span>
+<span class="keyword">typedef</span> <span class="identifier">splay_set</span><span class="special">&lt;</span> <span class="identifier">MyClass</span><span class="special">,</span> <span class="identifier">compare</span><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">greater</span><span class="special">&lt;</span><span class="identifier">MyClass</span><span class="special">&gt;</span> <span class="special">&gt;</span> <span class="special">&gt;</span>     <span class="identifier">BaseSplaySet</span><span class="special">;</span>
+
+<span class="comment">//Define an multiset using the member hook</span>
+<span class="keyword">typedef</span> <span class="identifier">member_hook</span><span class="special">&lt;</span><span class="identifier">MyClass</span><span class="special">,</span> <span class="identifier">bs_set_member_hook</span><span class="special">&lt;&gt;,</span> <span class="special">&amp;</span><span class="identifier">MyClass</span><span class="special">::</span><span class="identifier">member_hook_</span><span class="special">&gt;</span> <span class="identifier">MemberOption</span><span class="special">;</span>
+<span class="keyword">typedef</span> <span class="identifier">splay_multiset</span><span class="special">&lt;</span> <span class="identifier">MyClass</span><span class="special">,</span> <span class="identifier">MemberOption</span><span class="special">&gt;</span>   <span class="identifier">MemberSplayMultiset</span><span class="special">;</span>
+
+<span class="keyword">int</span> <span class="identifier">main</span><span class="special">()</span>
+<span class="special">{</span>
+   <span class="keyword">typedef</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span><span class="identifier">MyClass</span><span class="special">&gt;::</span><span class="identifier">iterator</span> <span class="identifier">VectIt</span><span class="special">;</span>
+
+   <span class="comment">//Create several MyClass objects, each one with a different value</span>
+   <span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span><span class="identifier">MyClass</span><span class="special">&gt;</span> <span class="identifier">values</span><span class="special">;</span>
+   <span class="keyword">for</span><span class="special">(</span><span class="keyword">int</span> <span class="identifier">i</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span> <span class="identifier">i</span> <span class="special">&lt;</span> <span class="number">100</span><span class="special">;</span> <span class="special">++</span><span class="identifier">i</span><span class="special">)</span>  <span class="identifier">values</span><span class="special">.</span><span class="identifier">push_back</span><span class="special">(</span><span class="identifier">MyClass</span><span class="special">(</span><span class="identifier">i</span><span class="special">));</span>
+
+   <span class="identifier">BaseSplaySet</span>   <span class="identifier">baseset</span><span class="special">;</span>
+   <span class="identifier">MemberSplayMultiset</span> <span class="identifier">membermultiset</span><span class="special">;</span>
+
+
+   <span class="comment">//Insert values in the container</span>
+   <span class="keyword">for</span><span class="special">(</span><span class="identifier">VectIt</span> <span class="identifier">it</span><span class="special">(</span><span class="identifier">values</span><span class="special">.</span><span class="identifier">begin</span><span class="special">()),</span> <span class="identifier">itend</span><span class="special">(</span><span class="identifier">values</span><span class="special">.</span><span class="identifier">end</span><span class="special">());</span> <span class="identifier">it</span> <span class="special">!=</span> <span class="identifier">itend</span><span class="special">;</span> <span class="special">++</span><span class="identifier">it</span><span class="special">){</span>
+      <span class="identifier">baseset</span><span class="special">.</span><span class="identifier">insert</span><span class="special">(*</span><span class="identifier">it</span><span class="special">);</span>
+      <span class="identifier">membermultiset</span><span class="special">.</span><span class="identifier">insert</span><span class="special">(*</span><span class="identifier">it</span><span class="special">);</span>
+   <span class="special">}</span>
+
+   <span class="comment">//Now test sets</span>
+   <span class="special">{</span>
+      <span class="identifier">BaseSplaySet</span><span class="special">::</span><span class="identifier">reverse_iterator</span> <span class="identifier">rbit</span><span class="special">(</span><span class="identifier">baseset</span><span class="special">.</span><span class="identifier">rbegin</span><span class="special">());</span>
+      <span class="identifier">MemberSplayMultiset</span><span class="special">::</span><span class="identifier">iterator</span> <span class="identifier">mit</span><span class="special">(</span><span class="identifier">membermultiset</span><span class="special">.</span><span class="identifier">begin</span><span class="special">());</span>
+      <span class="identifier">VectIt</span> <span class="identifier">it</span><span class="special">(</span><span class="identifier">values</span><span class="special">.</span><span class="identifier">begin</span><span class="special">()),</span> <span class="identifier">itend</span><span class="special">(</span><span class="identifier">values</span><span class="special">.</span><span class="identifier">end</span><span class="special">());</span>
+
+      <span class="comment">//Test the objects inserted in the base hook set</span>
+      <span class="keyword">for</span><span class="special">(;</span> <span class="identifier">it</span> <span class="special">!=</span> <span class="identifier">itend</span><span class="special">;</span> <span class="special">++</span><span class="identifier">it</span><span class="special">,</span> <span class="special">++</span><span class="identifier">rbit</span><span class="special">){</span>
+         <span class="keyword">if</span><span class="special">(&amp;*</span><span class="identifier">rbit</span> <span class="special">!=</span> <span class="special">&amp;*</span><span class="identifier">it</span><span class="special">)</span>   <span class="keyword">return</span> <span class="number">1</span><span class="special">;</span>
+      <span class="special">}</span>
+
+      <span class="comment">//Test the objects inserted in member and binary search hook sets</span>
+      <span class="keyword">for</span><span class="special">(</span><span class="identifier">it</span> <span class="special">=</span> <span class="identifier">values</span><span class="special">.</span><span class="identifier">begin</span><span class="special">();</span> <span class="identifier">it</span> <span class="special">!=</span> <span class="identifier">itend</span><span class="special">;</span> <span class="special">++</span><span class="identifier">it</span><span class="special">,</span> <span class="special">++</span><span class="identifier">mit</span><span class="special">){</span>
+         <span class="keyword">if</span><span class="special">(&amp;*</span><span class="identifier">mit</span> <span class="special">!=</span> <span class="special">&amp;*</span><span class="identifier">it</span><span class="special">)</span>    <span class="keyword">return</span> <span class="number">1</span><span class="special">;</span>
+      <span class="special">}</span>
+   <span class="special">}</span>
+   <span class="keyword">return</span> <span class="number">0</span><span class="special">;</span>
+<span class="special">}</span>
+</pre>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2005 Olaf Krzikalla<br>Copyright &#169; 2006-2015 Ion Gaztanaga<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="avl_set_multiset.html"><img src="../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../intrusive.html"><img src="../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="sg_set_multiset.html"><img src="../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

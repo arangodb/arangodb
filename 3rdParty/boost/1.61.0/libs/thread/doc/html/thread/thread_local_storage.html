@@ -1,0 +1,139 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Thread Local Storage</title>
+<link rel="stylesheet" href="../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../index.html" title="Chapter&#160;1.&#160;Thread 4.7.0">
+<link rel="up" href="../index.html" title="Chapter&#160;1.&#160;Thread 4.7.0">
+<link rel="prev" href="synchronization/futures.html" title="Futures">
+<link rel="next" href="thread_local_storage/thread_specific_ptr.html" title="Class thread_specific_ptr">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="synchronization/futures.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="thread_local_storage/thread_specific_ptr.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="thread.thread_local_storage"></a><a class="link" href="thread_local_storage.html" title="Thread Local Storage">Thread Local Storage</a>
+</h2></div></div></div>
+<div class="toc"><dl>
+<dt><span class="section"><a href="thread_local_storage/thread_specific_ptr.html">Class
+      <code class="computeroutput"><span class="identifier">thread_specific_ptr</span></code></a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="thread_local_storage/thread_specific_ptr.html#thread.thread_local_storage.thread_specific_ptr.default_constructor"><code class="computeroutput"><span class="identifier">thread_specific_ptr</span><span class="special">();</span></code></a></span></dt>
+<dt><span class="section"><a href="thread_local_storage/thread_specific_ptr.html#thread.thread_local_storage.thread_specific_ptr.constructor_with_custom_cleanup"><code class="computeroutput"><span class="keyword">explicit</span> <span class="identifier">thread_specific_ptr</span><span class="special">(</span><span class="keyword">void</span> <span class="special">(*</span><span class="identifier">cleanup_function</span><span class="special">)(</span><span class="identifier">T</span><span class="special">*));</span></code></a></span></dt>
+<dt><span class="section"><a href="thread_local_storage/thread_specific_ptr.html#thread.thread_local_storage.thread_specific_ptr.destructor"><code class="computeroutput"><span class="special">~</span><span class="identifier">thread_specific_ptr</span><span class="special">();</span></code></a></span></dt>
+<dt><span class="section"><a href="thread_local_storage/thread_specific_ptr.html#thread.thread_local_storage.thread_specific_ptr.get"><code class="computeroutput"><span class="identifier">T</span><span class="special">*</span> <span class="identifier">get</span><span class="special">()</span> <span class="keyword">const</span><span class="special">;</span></code></a></span></dt>
+<dt><span class="section"><a href="thread_local_storage/thread_specific_ptr.html#thread.thread_local_storage.thread_specific_ptr.operator_arrow"><code class="computeroutput"><span class="identifier">T</span><span class="special">*</span> <span class="keyword">operator</span><span class="special">-&gt;()</span> <span class="keyword">const</span><span class="special">;</span></code></a></span></dt>
+<dt><span class="section"><a href="thread_local_storage/thread_specific_ptr.html#thread.thread_local_storage.thread_specific_ptr.operator_star"><code class="computeroutput"><span class="identifier">T</span><span class="special">&amp;</span> <span class="keyword">operator</span><span class="special">*()</span> <span class="keyword">const</span><span class="special">;</span></code></a></span></dt>
+<dt><span class="section"><a href="thread_local_storage/thread_specific_ptr.html#thread.thread_local_storage.thread_specific_ptr.reset"><code class="computeroutput"><span class="keyword">void</span> <span class="identifier">reset</span><span class="special">(</span><span class="identifier">T</span><span class="special">*</span>
+        <span class="identifier">new_value</span><span class="special">=</span><span class="number">0</span><span class="special">);</span></code></a></span></dt>
+<dt><span class="section"><a href="thread_local_storage/thread_specific_ptr.html#thread.thread_local_storage.thread_specific_ptr.release"><code class="computeroutput"><span class="identifier">T</span><span class="special">*</span> <span class="identifier">release</span><span class="special">();</span></code></a></span></dt>
+</dl></dd>
+</dl></div>
+<h4>
+<a name="thread.thread_local_storage.h0"></a>
+      <span><a name="thread.thread_local_storage.synopsis"></a></span><a class="link" href="thread_local_storage.html#thread.thread_local_storage.synopsis">Synopsis</a>
+    </h4>
+<p>
+      Thread local storage allows multi-threaded applications to have a separate
+      instance of a given data item for each thread. Where a single-threaded application
+      would use static or global data, this could lead to contention, deadlock or
+      data corruption in a multi-threaded application. One example is the C <code class="computeroutput"><span class="identifier">errno</span></code> variable, used for storing the error
+      code related to functions from the Standard C library. It is common practice
+      (and required by POSIX) for compilers that support multi-threaded applications
+      to provide a separate instance of <code class="computeroutput"><span class="identifier">errno</span></code>
+      for each thread, in order to avoid different threads competing to read or update
+      the value.
+    </p>
+<p>
+      Though compilers often provide this facility in the form of extensions to the
+      declaration syntax (such as <code class="computeroutput"><span class="identifier">__declspec</span><span class="special">(</span><span class="identifier">thread</span><span class="special">)</span></code>
+      or <code class="computeroutput"><a class="link" href="thread_management/thread.html" title="Class thread"><code class="computeroutput"><span class="identifier">thread</span></code></a></code>
+      annotations on <code class="computeroutput"><span class="keyword">static</span></code> or namespace-scope
+      variable declarations), such support is non-portable, and is often limited
+      in some way, such as only supporting POD types.
+    </p>
+<h4>
+<a name="thread.thread_local_storage.h1"></a>
+      <span><a name="thread.thread_local_storage.portable_thread_local_storage_with__code__phrase_role__identifier__boost__phrase__phrase_role__special______phrase__phrase_role__identifier__thread_specific_ptr__phrase___code_"></a></span><a class="link" href="thread_local_storage.html#thread.thread_local_storage.portable_thread_local_storage_with__code__phrase_role__identifier__boost__phrase__phrase_role__special______phrase__phrase_role__identifier__thread_specific_ptr__phrase___code_">Portable
+      thread-local storage with <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">thread_specific_ptr</span></code></a>
+    </h4>
+<p>
+      <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">thread_specific_ptr</span></code> provides a portable mechanism
+      for thread-local storage that works on all compilers supported by <span class="bold"><strong>Boost.Thread</strong></span>. Each instance of <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">thread_specific_ptr</span></code>
+      represents a pointer to an object (such as <code class="computeroutput"><span class="identifier">errno</span></code>)
+      where each thread must have a distinct value. The value for the current thread
+      can be obtained using the <code class="computeroutput"><span class="identifier">get</span><span class="special">()</span></code> member function, or by using the <code class="computeroutput"><span class="special">*</span></code> and <code class="computeroutput"><span class="special">-&gt;</span></code>
+      pointer deference operators. Initially the pointer has a value of <code class="computeroutput"><span class="identifier">NULL</span></code> in each thread, but the value for the
+      current thread can be set using the <code class="computeroutput"><span class="identifier">reset</span><span class="special">()</span></code> member function.
+    </p>
+<p>
+      If the value of the pointer for the current thread is changed using <code class="computeroutput"><span class="identifier">reset</span><span class="special">()</span></code>,
+      then the previous value is destroyed by calling the cleanup routine. Alternatively,
+      the stored value can be reset to <code class="computeroutput"><span class="identifier">NULL</span></code>
+      and the prior value returned by calling the <code class="computeroutput"><span class="identifier">release</span><span class="special">()</span></code> member function, allowing the application
+      to take back responsibility for destroying the object.
+    </p>
+<h4>
+<a name="thread.thread_local_storage.h2"></a>
+      <span><a name="thread.thread_local_storage.cleanup_at_thread_exit"></a></span><a class="link" href="thread_local_storage.html#thread.thread_local_storage.cleanup_at_thread_exit">Cleanup
+      at thread exit</a>
+    </h4>
+<p>
+      When a thread exits, the objects associated with each <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">thread_specific_ptr</span></code>
+      instance are destroyed. By default, the object pointed to by a pointer <code class="computeroutput"><span class="identifier">p</span></code> is destroyed by invoking <code class="computeroutput"><span class="keyword">delete</span> <span class="identifier">p</span></code>,
+      but this can be overridden for a specific instance of <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">thread_specific_ptr</span></code>
+      by providing a cleanup routine to the constructor. In this case, the object
+      is destroyed by invoking <code class="computeroutput"><span class="identifier">func</span><span class="special">(</span><span class="identifier">p</span><span class="special">)</span></code>
+      where <code class="computeroutput"><span class="identifier">func</span></code> is the cleanup routine
+      supplied to the constructor. The cleanup functions are called in an unspecified
+      order. If a cleanup routine sets the value of associated with an instance of
+      <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">thread_specific_ptr</span></code> that has already been
+      cleaned up, that value is added to the cleanup list. Cleanup finishes when
+      there are no outstanding instances of <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">thread_specific_ptr</span></code>
+      with values.
+    </p>
+<p>
+      Note: on some platforms, cleanup of thread-specific data is not performed for
+      threads created with the platform's native API. On those platforms such cleanup
+      is only done for threads that are started with <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">thread</span></code>
+      unless <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">on_thread_exit</span><span class="special">()</span></code>
+      is called manually from that thread.
+    </p>
+<h4>
+<a name="thread.thread_local_storage.h3"></a>
+      <span><a name="thread.thread_local_storage.rationale_about_the_nature_of_the_key"></a></span><a class="link" href="thread_local_storage.html#thread.thread_local_storage.rationale_about_the_nature_of_the_key">Rationale
+      about the nature of the key</a>
+    </h4>
+<p>
+      Boost.Thread uses the address of the <code class="computeroutput"><span class="identifier">thread_specific_ptr</span></code>
+      instance as key of the thread specific pointers. This avoids to create/destroy
+      a key which will need a lock to protect from race conditions. This has a little
+      performance liability, as the access must be done using an associative container.
+    </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2007 -11 Anthony Williams<br>Copyright &#169; 2011 -15 Vicente J. Botet Escriba<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="synchronization/futures.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="thread_local_storage/thread_specific_ptr.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

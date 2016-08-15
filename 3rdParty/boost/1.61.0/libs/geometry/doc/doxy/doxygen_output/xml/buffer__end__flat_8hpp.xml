@@ -1,0 +1,239 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="buffer__end__flat_8hpp" kind="file">
+    <compoundname>buffer_end_flat.hpp</compoundname>
+    <includes refid="cs_8hpp" local="no">boost/geometry/core/cs.hpp</includes>
+    <includes refid="strategies_2tags_8hpp" local="no">boost/geometry/strategies/tags.hpp</includes>
+    <includes refid="side_8hpp" local="no">boost/geometry/strategies/side.hpp</includes>
+    <includes refid="math_8hpp" local="no">boost/geometry/util/math.hpp</includes>
+    <includes refid="select__most__precise_8hpp" local="no">boost/geometry/util/select_most_precise.hpp</includes>
+    <includes refid="strategies_2buffer_8hpp" local="no">boost/geometry/strategies/buffer.hpp</includes>
+    <includedby refid="strategies_8hpp" local="no">/home/travis/build/boostorg/boost/boost/geometry/strategies/strategies.hpp</includedby>
+    <incdepgraph>
+      <node id="56497">
+        <label>boost/geometry/util/math.hpp</label>
+        <link refid="math_8hpp"/>
+        <childnode refid="56498" relation="include">
+        </childnode>
+        <childnode refid="56499" relation="include">
+        </childnode>
+        <childnode refid="56500" relation="include">
+        </childnode>
+        <childnode refid="56501" relation="include">
+        </childnode>
+        <childnode refid="56502" relation="include">
+        </childnode>
+        <childnode refid="56503" relation="include">
+        </childnode>
+        <childnode refid="56504" relation="include">
+        </childnode>
+        <childnode refid="56505" relation="include">
+        </childnode>
+        <childnode refid="56479" relation="include">
+        </childnode>
+        <childnode refid="56506" relation="include">
+        </childnode>
+      </node>
+      <node id="56486">
+        <label>boost/type_traits/remove_const.hpp</label>
+      </node>
+      <node id="56499">
+        <label>limits</label>
+      </node>
+      <node id="56501">
+        <label>boost/math/constants/constants.hpp</label>
+      </node>
+      <node id="56489">
+        <label>boost/type_traits/is_const.hpp</label>
+      </node>
+      <node id="56496">
+        <label>boost/geometry/strategies/side.hpp</label>
+        <link refid="side_8hpp"/>
+        <childnode refid="56495" relation="include">
+        </childnode>
+      </node>
+      <node id="56498">
+        <label>cmath</label>
+      </node>
+      <node id="56488">
+        <label>boost/mpl/if.hpp</label>
+      </node>
+      <node id="56502">
+        <label>boost/math/special_functions/fpclassify.hpp</label>
+      </node>
+      <node id="56481">
+        <label>boost/mpl/assert.hpp</label>
+      </node>
+      <node id="56490">
+        <label>boost/type_traits/remove_reference.hpp</label>
+      </node>
+      <node id="56483">
+        <label>boost/geometry/core/coordinate_system.hpp</label>
+        <link refid="coordinate__system_8hpp"/>
+        <childnode refid="56481" relation="include">
+        </childnode>
+        <childnode refid="56484" relation="include">
+        </childnode>
+        <childnode refid="56493" relation="include">
+        </childnode>
+      </node>
+      <node id="56500">
+        <label>boost/core/ignore_unused.hpp</label>
+      </node>
+      <node id="56492">
+        <label>boost/geometry/core/tags.hpp</label>
+        <link refid="core_2tags_8hpp"/>
+      </node>
+      <node id="56482">
+        <label>boost/type_traits/integral_constant.hpp</label>
+      </node>
+      <node id="56508">
+        <label>boost/geometry/strategies/buffer.hpp</label>
+        <link refid="strategies_2buffer_8hpp"/>
+      </node>
+      <node id="56504">
+        <label>boost/type_traits/is_fundamental.hpp</label>
+      </node>
+      <node id="56478">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/buffer_end_flat.hpp</label>
+        <link refid="buffer_end_flat.hpp"/>
+        <childnode refid="56479" relation="include">
+        </childnode>
+        <childnode refid="56495" relation="include">
+        </childnode>
+        <childnode refid="56496" relation="include">
+        </childnode>
+        <childnode refid="56497" relation="include">
+        </childnode>
+        <childnode refid="56506" relation="include">
+        </childnode>
+        <childnode refid="56508" relation="include">
+        </childnode>
+      </node>
+      <node id="56484">
+        <label>boost/geometry/core/point_type.hpp</label>
+        <link refid="point__type_8hpp"/>
+        <childnode refid="56481" relation="include">
+        </childnode>
+        <childnode refid="56485" relation="include">
+        </childnode>
+        <childnode refid="56486" relation="include">
+        </childnode>
+        <childnode refid="56487" relation="include">
+        </childnode>
+        <childnode refid="56491" relation="include">
+        </childnode>
+        <childnode refid="56492" relation="include">
+        </childnode>
+        <childnode refid="56493" relation="include">
+        </childnode>
+      </node>
+      <node id="56485">
+        <label>boost/range/value_type.hpp</label>
+      </node>
+      <node id="56480">
+        <label>cstddef</label>
+      </node>
+      <node id="56487">
+        <label>boost/geometry/core/ring_type.hpp</label>
+        <link refid="ring__type_8hpp"/>
+        <childnode refid="56481" relation="include">
+        </childnode>
+        <childnode refid="56488" relation="include">
+        </childnode>
+        <childnode refid="56485" relation="include">
+        </childnode>
+        <childnode refid="56489" relation="include">
+        </childnode>
+        <childnode refid="56486" relation="include">
+        </childnode>
+        <childnode refid="56490" relation="include">
+        </childnode>
+        <childnode refid="56491" relation="include">
+        </childnode>
+        <childnode refid="56492" relation="include">
+        </childnode>
+      </node>
+      <node id="56505">
+        <label>boost/type_traits/is_integral.hpp</label>
+      </node>
+      <node id="56507">
+        <label>boost/type_traits/is_floating_point.hpp</label>
+      </node>
+      <node id="56491">
+        <label>boost/geometry/core/tag.hpp</label>
+        <link refid="tag_8hpp"/>
+        <childnode refid="56492" relation="include">
+        </childnode>
+        <childnode refid="56493" relation="include">
+        </childnode>
+      </node>
+      <node id="56479">
+        <label>boost/geometry/core/cs.hpp</label>
+        <link refid="cs_8hpp"/>
+        <childnode refid="56480" relation="include">
+        </childnode>
+        <childnode refid="56481" relation="include">
+        </childnode>
+        <childnode refid="56482" relation="include">
+        </childnode>
+        <childnode refid="56483" relation="include">
+        </childnode>
+        <childnode refid="56492" relation="include">
+        </childnode>
+      </node>
+      <node id="56493">
+        <label>boost/geometry/util/bare_type.hpp</label>
+        <link refid="bare__type_8hpp"/>
+        <childnode refid="56486" relation="include">
+        </childnode>
+        <childnode refid="56494" relation="include">
+        </childnode>
+        <childnode refid="56490" relation="include">
+        </childnode>
+      </node>
+      <node id="56494">
+        <label>boost/type_traits/remove_pointer.hpp</label>
+      </node>
+      <node id="56506">
+        <label>boost/geometry/util/select_most_precise.hpp</label>
+        <link refid="select__most__precise_8hpp"/>
+        <childnode refid="56488" relation="include">
+        </childnode>
+        <childnode refid="56507" relation="include">
+        </childnode>
+        <childnode refid="56504" relation="include">
+        </childnode>
+      </node>
+      <node id="56495">
+        <label>boost/geometry/strategies/tags.hpp</label>
+        <link refid="strategies_2tags_8hpp"/>
+      </node>
+      <node id="56503">
+        <label>boost/numeric/conversion/cast.hpp</label>
+      </node>
+    </incdepgraph>
+    <invincdepgraph>
+      <node id="56510">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/strategies/strategies.hpp</label>
+        <link refid="strategies_8hpp"/>
+      </node>
+      <node id="56509">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/buffer_end_flat.hpp</label>
+        <link refid="buffer_end_flat.hpp"/>
+        <childnode refid="56510" relation="include">
+        </childnode>
+      </node>
+    </invincdepgraph>
+    <innerclass refid="classboost_1_1geometry_1_1strategy_1_1buffer_1_1end__flat" prot="public">boost::geometry::strategy::buffer::end_flat</innerclass>
+    <innernamespace refid="namespaceboost">boost</innernamespace>
+    <innernamespace refid="namespaceboost_1_1geometry">boost::geometry</innernamespace>
+    <innernamespace refid="namespaceboost_1_1geometry_1_1strategy">boost::geometry::strategy</innernamespace>
+    <innernamespace refid="namespaceboost_1_1geometry_1_1strategy_1_1buffer">boost::geometry::strategy::buffer</innernamespace>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/buffer_end_flat.hpp"/>
+  </compounddef>
+</doxygen>

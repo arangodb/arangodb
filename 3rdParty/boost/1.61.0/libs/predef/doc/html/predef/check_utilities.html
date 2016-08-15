@@ -1,0 +1,168 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Check Utilities</title>
+<link rel="stylesheet" href="../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../index.html" title="Predef 1.4.1">
+<link rel="up" href="../index.html" title="Predef 1.4.1">
+<link rel="prev" href="reference/version_definition_macros.html" title="Version definition macros">
+<link rel="next" href="history.html" title="History">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="reference/version_definition_macros.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="history.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="predef.check_utilities"></a><a class="link" href="check_utilities.html" title="Check Utilities">Check Utilities</a>
+</h2></div></div></div>
+<p>
+      The <code class="computeroutput"><span class="identifier">predef_check</span></code> utility provides
+      a facility for building a program that will check a given set of expressions
+      against the definitions it detected when it was built.
+    </p>
+<h4>
+<a name="predef.check_utilities.h0"></a>
+      <span><a name="predef.check_utilities.predef_check_programs"></a></span><a class="link" href="check_utilities.html#predef.check_utilities.predef_check_programs"><code class="literal">predef_check</code>
+      programs</a>
+    </h4>
+<p>
+      Even though there is only one <code class="computeroutput"><span class="identifier">predef_check</span></code>
+      program, there are variations for each of the languages that are detected by
+      Predef to match the convention for sources files. For all of them one invokes
+      with a list of expression arguments. The expressions are evaluated within the
+      context of the particular <code class="literal">predef_check</code> program and if they
+      all are true zero (0) is returned. Otherwise the index of the first false expression
+      is returned.
+    </p>
+<p>
+      The expression syntax is simple:
+    </p>
+<pre class="programlisting">predef-definition [ relational-operator version-value ]
+</pre>
+<p>
+      <em class="replaceable"><code>predef-definition</code></em> can be any of the Predef definitions.
+      For example <code class="computeroutput"><span class="identifier">BOOST_COMP_GCC</span></code>.
+    </p>
+<p>
+      <em class="replaceable"><code>relational-operator</code></em> can be any of: <code class="literal">&gt;</code>,
+      <code class="literal">&lt;</code>, <code class="literal">&gt;=</code>, <code class="literal">&lt;=</code>,
+      <code class="literal">==</code> and <code class="literal">!=</code>.
+    </p>
+<p>
+      <em class="replaceable"><code>version-number</code></em> can be a full or partial version
+      triplet value. If it's a partial version triple it is completed with zeros.
+      That is <code class="literal">x.y</code> is equivalent to <code class="literal">x.y.0</code> and
+      <code class="literal">x</code> is equivalent to <code class="literal">x.0.0</code>.
+    </p>
+<p>
+      The <em class="replaceable"><code>relations-operator</code></em> and <em class="replaceable"><code>version-number</code></em>
+      can be ommited. In which case it is equivalent to:
+    </p>
+<pre class="programlisting">predef-definition &gt; 0.0.0
+</pre>
+<h4>
+<a name="predef.check_utilities.h1"></a>
+      <span><a name="predef.check_utilities.using_with_boost_build"></a></span><a class="link" href="check_utilities.html#predef.check_utilities.using_with_boost_build">Using
+      with Boost.Build</a>
+    </h4>
+<p>
+      You can use the <code class="literal">predef_check</code> programs directly from Boost
+      Build to configure target requirements. This is useful for controlling what
+      gets built as part of your project based on the detailed version information
+      available in Predef. The basic use is simple:
+    </p>
+<pre class="programlisting">import path-to-predef-src/tools/check/predef
+    : check require
+    : predef-check predef-require ;
+
+exe my_windows_program : windows_source.cpp
+    : [ predef-require "BOOST_OS_WINDOWS" ] ;
+</pre>
+<p>
+      That simple use case will skip building the <code class="literal">my_windows_program</code>
+      unless one is building for Windows. Like the direct <code class="literal">predef_check</code>
+      you can pass mutiple expressions using relational comparisons. For example:
+    </p>
+<pre class="programlisting">import path-to-predef-src/tools/check/predef
+    : check require
+    : predef-check predef-require ;
+
+lib my_special_lib : source.cpp
+    : [ predef-require "BOOST_OS_WINDOWS != 0" "BOOST_OS_VMS != 0"] ;
+</pre>
+<p>
+      And in that case the <code class="literal">my_special_lib</code> is built only when the
+      OS is not Windows or VMS. The <code class="literal">requires</code> rule is a special
+      case of the <code class="literal">check</code> rule. And is defined in terms of it:
+    </p>
+<pre class="programlisting">rule require ( expressions + : language ? )
+{
+    return [ check $(expressions) : $(language) : : &lt;build&gt;no ] ;
+}
+</pre>
+<p>
+      The expression can also use explicit "and", "or" logical
+      operators to for more complex checks:
+    </p>
+<pre class="programlisting">import path-to-predef-src/tools/check/predef
+    : check require
+    : predef-check predef-require ;
+
+lib my_special_lib : source.cpp
+    : [ predef-require "BOOST_OS_WINDOWS" or "BOOST_OS_VMS"] ;
+</pre>
+<p>
+      You can use the <code class="literal">check</code> rule for more control and to implement
+      something other than control of what gets built. The definition for the <code class="literal">check</code>
+      rule is:
+    </p>
+<pre class="programlisting">rule check ( expressions + : language ? : true-properties * : false-properties * )
+</pre>
+<p>
+      When invoked as a reuirement of a Boost Build target this rule will add the
+      <code class="literal">true-properties</code> to the target if all the <code class="literal">expressions</code>
+      evaluate to true. Otherwise the <code class="literal">false-properties</code> get added
+      as requirements. For example you could use it to enable or disable features
+      in your programs:
+    </p>
+<pre class="programlisting">import path-to-predef-src/tools/check/predef
+    : check require
+    : predef-check predef-require ;
+
+exe my_special_exe : source.cpp
+    : [ predef-check "BOOST_OS_WINDOWS == 0"
+        : : &lt;define&gt;ENABLE_WMF=0
+        : &lt;define&gt;ENABLE_WMF=1 ] ;
+</pre>
+<p>
+      For both <code class="literal">check</code> and <code class="literal">require</code> the <code class="literal">language</code>
+      argument controls which variant of the <code class="literal">predef_check</code> program
+      is used to check the expressions. It defaults to "c++", but can be
+      any of: "c", "cpp", "objc", and "objcpp".
+    </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2005, 2008-2016 Rene Rivera<br>Copyright &#169; 2015 Charly Chevalier<br>Copyright &#169; 2015 Joel Falcou<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="reference/version_definition_macros.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="history.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

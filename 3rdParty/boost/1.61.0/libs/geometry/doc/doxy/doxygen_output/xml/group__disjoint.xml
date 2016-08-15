@@ -1,0 +1,73 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="group__disjoint" kind="group">
+    <compoundname>disjoint</compoundname>
+    <title>disjoint: detect if geometries are not spatially related</title>
+      <sectiondef kind="func">
+      <memberdef kind="function" id="group__disjoint_1ga980fdae7d8c1840c1362f09bb0dcf04e" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Geometry1</type>
+          </param>
+          <param>
+            <type>typename Geometry2</type>
+          </param>
+        </templateparamlist>
+        <type>bool</type>
+        <definition>bool boost::geometry::disjoint</definition>
+        <argsstring>(Geometry1 const &amp;geometry1, Geometry2 const &amp;geometry2)</argsstring>
+        <name>disjoint</name>
+        <param>
+          <type>Geometry1 const &amp;</type>
+          <declname>geometry1</declname>
+        </param>
+        <param>
+          <type>Geometry2 const &amp;</type>
+          <declname>geometry2</declname>
+        </param>
+        <briefdescription>
+<para>Checks if two geometries \1. </para>        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>Geometry1</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Any type fulfilling a Geometry Concept </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Geometry2</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Any type fulfilling a Geometry Concept </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>geometry1</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>A model of the specified concept </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>geometry2</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>A model of the specified concept </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>Returns true if two geometries \1</para></simplesect>
+ <qbk>[include reference/algorithms/disjoint.qbk]</qbk>  </para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/disjoint/interface.hpp" line="179" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/disjoint/interface.hpp" bodystart="177" bodyend="181"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+  </compounddef>
+</doxygen>

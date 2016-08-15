@@ -1,0 +1,21 @@
+[/
+  Copyright (c) Vladimir Batov 2009-2014
+  Distributed under the Boost Software License, Version 1.0.
+  See copy at http://www.boost.org/LICENSE_1_0.txt.
+]
+
+[section Acknowledgements]
+
+Many thanks to Julian Gonggrijp, Rob Stewart, Andrzej Krzemienski, Matus Chochlik, Jeroen Habraken, Hartmut Kaiser, Joel De Guzman, Thijs (M.A.) van den Berg, Roland Bock, Gavin Lambert, Paul Bristow, Alex Hagen-Zanker, Christopher Kormanyos for taking part in the ['Boost.Convert] review.
+
+Special thanks to:
+
+* Alex Hagen-Zanker, Roland Bock, Rob Stewart for their considerable and continuous contributions to the design and implementation of the library;
+* Andrzej Krzemienski for helping to partition responsibilities and to ultimately pave the way for the `boost::optional` and `std::tr2::optional` deployment;
+* Edward Diener the Boost Review Manager for helping with the converters' design, his continuous involvement, technical and administrative help, guidance and advice;
+* Joel De Guzman, Rob Stewart and Alex Hagen-Zanker for making sure the performance tests work as they should;
+* Paul Bristow for helping great deal with the documentation;
+* Kevlin Henney and Dave Abrahams for their lexical_cast-related insights and explanations.
+
+[endsect]
+

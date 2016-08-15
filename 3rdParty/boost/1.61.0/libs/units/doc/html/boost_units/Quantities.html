@@ -1,0 +1,128 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Quantities</title>
+<link rel="stylesheet" href="../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../index.html" title="Chapter&#160;1.&#160;Boost.Units 1.1.0">
+<link rel="up" href="../index.html" title="Chapter&#160;1.&#160;Boost.Units 1.1.0">
+<link rel="prev" href="Units/scaled_units.html" title="Scaled Units">
+<link rel="next" href="Quantities/Conversions.html" title="Conversions">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="Units/scaled_units.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="Quantities/Conversions.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="boost_units.Quantities"></a><a class="link" href="Quantities.html" title="Quantities">Quantities</a>
+</h2></div></div></div>
+<div class="toc"><dl>
+<dt><span class="section"><a href="Quantities.html#boost_units.Quantities.Heterogeneous_Operators">Heterogeneous
+      Operators</a></span></dt>
+<dt><span class="section"><a href="Quantities/Conversions.html">Conversions</a></span></dt>
+<dt><span class="section"><a href="Quantities/Quantity_Construction_and_Conversion.html">Construction
+      and Conversion of Quantities</a></span></dt>
+</dl></div>
+<p>
+      A <span class="bold"><strong>quantity</strong></span> is defined as a value of an arbitrary
+      value type that is associated with a specific unit. For example, while meter
+      is a unit, 3.0 meters is a quantity. Quantities obey two separate algebras:
+      the native algebra for their value type, and the dimensional analysis algebra
+      for the associated unit. In addition, algebraic operations are defined between
+      units and quantities to simplify the definition of quantities; it is effectively
+      equivalent to algebra with a unit-valued quantity.
+    </p>
+<p>
+      Quantities are implemented by the <span class="underline"><code class="computeroutput"><a class="link" href="../boost/units/quantity.html" title="Class template quantity">quantity</a></code></span>
+      template class defined in <code class="computeroutput"><a class="link" href="Reference.html#header.boost.units.quantity_hpp" title="Header &lt;boost/units/quantity.hpp&gt;">boost/units/quantity.hpp</a></code>
+      :
+    </p>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Unit</span><span class="special">,</span><span class="keyword">class</span> <span class="identifier">Y</span> <span class="special">=</span> <span class="keyword">double</span><span class="special">&gt;</span> <span class="keyword">class</span> <span class="identifier">quantity</span><span class="special">;</span>
+</pre>
+<p>
+      This class is templated on both unit type (<code class="computeroutput"><span class="identifier">Unit</span></code>)
+      and value type (<code class="computeroutput"><span class="identifier">Y</span></code>), with the
+      latter defaulting to double-precision floating point if not otherwise specified.
+      The value type must have a normal copy constructor and copy assignment operator.
+      Operators +, -, *, and / are provided for algebraic operations between scalars
+      and units, scalars and quantities, units and quantities, and between quantities.
+      In addition, integral and rational powers and roots can be computed using the
+      <span class="underline"><code class="computeroutput"><a class="link" href="../boost/units/pow_idp12927120.html" title="Function template pow">pow</a></code></span>&lt;R&gt;
+      and <span class="underline"><code class="computeroutput"><a class="link" href="../boost/units/root.html" title="Function template root">root</a></code></span>&lt;R&gt;
+      functions. Finally, the standard set of boolean comparison operators ( <code class="computeroutput"><span class="special">==,</span> <span class="special">!=,</span> <span class="special">&lt;,</span>
+      <span class="special">&lt;=,</span> <span class="special">&gt;,</span>
+      <span class="keyword">and</span> <span class="special">&gt;=</span></code>
+      ) are provided to allow comparison of quantities from the same unit system.
+      All operators simply delegate to the corresponding operator of the value type
+      if the units permit.
+    </p>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_units.Quantities.Heterogeneous_Operators"></a><a class="link" href="Quantities.html#boost_units.Quantities.Heterogeneous_Operators" title="Heterogeneous Operators">Heterogeneous
+      Operators</a>
+</h3></div></div></div>
+<p>
+        For most common value types, the result type of arithmetic operators is the
+        same as the value type itself. For example, the sum of two double precision
+        floating point numbers is another double precision floating point number.
+        However, there are instances where this is not the case. A simple example
+        is given by the <a href="http://en.wikipedia.org/wiki/Natural_number" target="_top">natural
+        numbers</a> where the operator arithmetic obeys the following rules (using
+        the standard notation for <a href="http://en.wikipedia.org/wiki/Number" target="_top">number
+        systems</a>):
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" type="disc">
+<li class="listitem">
+            <span class="inlinemediaobject"><img src="../../../libs/units/images/form_12.png" alt="form_12"></span>
+          </li>
+<li class="listitem">
+            <span class="inlinemediaobject"><img src="../../../libs/units/images/form_13.png" alt="form_13"></span>
+          </li>
+<li class="listitem">
+            <span class="inlinemediaobject"><img src="../../../libs/units/images/form_14.png" alt="form_14"></span>
+          </li>
+<li class="listitem">
+            <span class="inlinemediaobject"><img src="../../../libs/units/images/form_15.png" alt="form_15"></span>
+          </li>
+</ul></div>
+<p>
+        This library is designed to support arbitrary value type algebra for addition,
+        subtraction, multiplication, division, and rational powers and roots. It
+        uses Boost.Typeof to deduce the result of these operators. For compilers
+        that support <code class="computeroutput"><span class="identifier">typeof</span></code>, the
+        appropriate value type will be automatically deduced. For compilers that
+        do not provide language support for <code class="computeroutput"><span class="identifier">typeof</span></code>
+        it is necessary to register all the types used. For the case of natural numbers,
+        this would amount to something like the following:
+      </p>
+<pre class="programlisting"><span class="identifier">BOOST_TYPEOF_REGISTER_TYPE</span><span class="special">(</span><span class="identifier">natural</span><span class="special">);</span>
+<span class="identifier">BOOST_TYPEOF_REGISTER_TYPE</span><span class="special">(</span><span class="identifier">integer</span><span class="special">);</span>
+<span class="identifier">BOOST_TYPEOF_REGISTER_TYPE</span><span class="special">(</span><span class="identifier">rational</span><span class="special">);</span>
+</pre>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2008 Matthias Christian Schabel<br>Copyright &#169; 2007-2010 Steven
+      Watanabe<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="Units/scaled_units.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="Quantities/Conversions.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

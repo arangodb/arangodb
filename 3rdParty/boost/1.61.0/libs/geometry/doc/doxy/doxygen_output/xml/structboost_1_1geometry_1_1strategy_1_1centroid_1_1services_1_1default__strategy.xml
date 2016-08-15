@@ -1,0 +1,85 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="structboost_1_1geometry_1_1strategy_1_1centroid_1_1services_1_1default__strategy" kind="struct" prot="public">
+    <compoundname>boost::geometry::strategy::centroid::services::default_strategy</compoundname>
+    <includes local="no">centroid.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename CsTag</type>
+      </param>
+      <param>
+        <type>typename GeometryTag</type>
+      </param>
+      <param>
+        <type>std::size_t</type>
+        <declname>Dimension</declname>
+        <defname>Dimension</defname>
+      </param>
+      <param>
+        <type>typename Point</type>
+      </param>
+      <param>
+        <type>typename Geometry</type>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-type">
+      <memberdef kind="typedef" id="structboost_1_1geometry_1_1strategy_1_1centroid_1_1services_1_1default__strategy_1adf93bfd636e8875bccea7dc267a16ae4" prot="public" static="no">
+        <type><ref refid="structboost_1_1geometry_1_1strategy_1_1centroid_1_1not__applicable__strategy" kindref="compound">not_applicable_strategy</ref></type>
+        <definition>typedef not_applicable_strategy boost::geometry::strategy::centroid::services::default_strategy&lt; CsTag, GeometryTag, Dimension, Point, Geometry &gt;::type</definition>
+        <argsstring></argsstring>
+        <name>type</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/centroid.hpp" line="60" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/centroid.hpp" bodystart="60" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+<para>Traits class binding a centroid calculation strategy to a coordinate system. </para>    </briefdescription>
+    <detaileddescription>
+<para><parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>CsTag</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>tag of coordinate system, for specialization </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>GeometryTag</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>tag of geometry, for specialization </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Dimension</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>dimension of geometry, for specialization </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Point</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>point-type </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Geometry</parametername>
+</parameternamelist>
+<parameterdescription>
+<para></para></parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/centroid.hpp" line="59" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/centroid.hpp" bodystart="58" bodyend="61"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1strategy_1_1centroid_1_1services_1_1default__strategy_1adf93bfd636e8875bccea7dc267a16ae4" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::centroid::services::default_strategy</scope><name>type</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

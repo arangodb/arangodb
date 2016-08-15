@@ -1,0 +1,23 @@
+<%
+  hana = (0...50).step(5).to_a + (50..200).step(25).to_a
+  mpl = hana
+%>
+
+{
+  "title": {
+    "text": "Compile-time behavior of sort"
+  },
+  "series": [
+    {
+      "name": "hana::tuple",
+      "data": <%= time_compilation('compile.hana.tuple.erb.cpp', hana) %>
+    }
+
+    <% if cmake_bool("@Boost_FOUND@") %>
+    , {
+      "name": "mpl::vector ",
+      "data": <%= time_compilation('compile.mpl.vector.erb.cpp', mpl) %>
+    }
+    <% end %>
+  ]
+}

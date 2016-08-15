@@ -1,0 +1,14 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="structboost_1_1geometry_1_1strategy__intersection__empty" kind="struct" prot="public">
+    <compoundname>boost::geometry::strategy_intersection_empty</compoundname>
+    <includes local="no">intersection.hpp</includes>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/intersection.hpp" line="86" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/intersection.hpp" bodystart="86" bodyend="86"/>
+    <listofallmembers>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

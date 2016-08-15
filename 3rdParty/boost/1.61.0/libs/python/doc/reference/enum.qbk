@@ -1,0 +1,107 @@
+[section boost/python/enum.hpp]
+[section Introduction]
+<boost/python/enum.hpp> defines the interface through which users expose their C++ enumeration types to Python. It declares the `enum_` class template, which is parameterized on the enumeration type being exposed.
+[endsect]
+[section Class template `enum_`]
+Creates a Python class derived from Python's `int` type which is associated with the C++ type passed as its first parameter. 
+``
+namespace boost { namespace python
+{
+  template <class T>
+  class enum_ : public object
+  {
+    enum_(char const* name, char const* doc = 0);
+    enum_<T>& value(char const* name, T);
+    enum_<T>& export_values();
+  };
+}}
+``
+[endsect]
+[section Class template `enum_` constructors]
+``enum_(char const* name, char const* doc=0);``
+[variablelist
+[[Requires][name is an [link ntbs] which conforms to Python's [@http://www.python.org/doc/current/ref/identifiers.html identifier naming rules].]]
+[[Effects][Constructs an `enum_` object holding a Python extension type derived from `int` which is named `name`. The named attribute of the [link high_level_components.boost_python_scope_hpp current scope] is bound to the new extension type.]]
+]
+[endsect]
+[section Class template `enum_` modifier functions]
+``enum_<T>& value(char const* name, T x);``
+[variablelist
+[[Requires][name is an [link ntbs] which conforms to Python's [@http://www.python.org/doc/current/ref/identifiers.html identifier naming rules].]]
+[[Effects][adds an instance of the wrapped enumeration type with value x to the type's dictionary as the named attribute.]]
+[[Returns][`*this`]]
+]
+``enum_<T>& export_values();``
+[variablelist
+[[Effects][sets attributes in the [link high_level_components.boost_python_scope_hpp current scope] with the same names and values as all enumeration values exposed so far by calling value().]]
+[[Returns][`*this`]]
+]
+[endsect]
+[section Example]
+C++ module definition
+``
+#include <boost/python/enum.hpp>
+#include <boost/python/def.hpp>
+#include <boost/python/module.hpp>
+
+using namespace boost::python;
+
+enum color { red = 1, green = 2, blue = 4 };
+
+color identity_(color x) { return x; }
+
+BOOST_PYTHON_MODULE(enums)
+{
+  enum_<color>("color")
+    .value("red", red)
+    .value("green", green)
+    .export_values()
+    .value("blue", blue)
+    ;
+  
+  def("identity", identity_);
+}
+``
+Interactive Python:
+``
+>>> from enums import *
+
+>>> identity(red)
+enums.color.red
+
+>>> identity(color.red)
+enums.color.red
+
+>>> identity(green)
+enums.color.green
+
+>>> identity(color.green)
+enums.color.green
+
+>>> identity(blue)
+Traceback (most recent call last):
+  File "<stdin>", line 1, in ?
+NameError: name 'blue' is not defined
+
+>>> identity(color.blue)
+enums.color.blue
+
+>>> identity(color(1))
+enums.color.red
+
+>>> identity(color(2))
+enums.color.green
+
+>>> identity(color(3))
+enums.color(3)
+
+>>> identity(color(4))
+enums.color.blue
+
+>>> identity(1)
+Traceback (most recent call last):
+  File "<stdin>", line 1, in ?
+TypeError: bad argument type for built-in operation
+``
+[endsect]
+[endsect]

@@ -75,6 +75,11 @@ class MMFilesEngine final : public StorageEngine {
   // fully created (see "createDatabase" below). called at server start only
   void getDatabases(arangodb::velocypack::Builder& result) override;
 
+  // fills the provided builder with information about the collection 
+  void getCollectionInfo(TRI_vocbase_t* vocbase, TRI_voc_cid_t cid, 
+                         arangodb::velocypack::Builder& result, 
+                         bool includeIndexes, TRI_voc_tick_t maxTick) override;
+
   // fill the Builder object with an array of collections (and their corresponding
   // indexes) that were detected by the storage engine. called at server start separately
   // for each database
@@ -87,8 +92,15 @@ class MMFilesEngine final : public StorageEngine {
   uint64_t getMaxRevision() override;
   
   // return the path for a database
-  std::string databasePath(TRI_vocbase_t const* vocbase) const override { return databaseDirectory(vocbase->id()); }
+  std::string databasePath(TRI_vocbase_t const* vocbase) const override { 
+    return databaseDirectory(vocbase->id()); 
+  }
   
+  // return the path for a collection
+  std::string collectionPath(TRI_vocbase_t const* vocbase, TRI_voc_cid_t id) const override { 
+    return collectionDirectory(vocbase->id(), id); 
+  }
+
   TRI_vocbase_t* openDatabase(arangodb::velocypack::Slice const& parameters, bool isUpgrade) override;
 
   // database, collection and index management
@@ -127,9 +139,9 @@ class MMFilesEngine final : public StorageEngine {
   // and throw only then, so that subsequent collection creation requests will not fail.
   // the WAL entry for the collection creation will be written *after* the call
   // to "createCollection" returns
-  void createCollection(TRI_voc_tick_t databaseId, TRI_voc_cid_t id,
-                        arangodb::velocypack::Slice const& data) override;
-
+  std::string createCollection(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
+                               arangodb::VocbaseCollectionInfo const& parameters) override;
+  
   // asks the storage engine to drop the specified collection and persist the 
   // deletion info. Note that physical deletion of the collection data must not 
   // be carried out by this call, as there may
@@ -149,8 +161,8 @@ class MMFilesEngine final : public StorageEngine {
   // and throw only then, so that subsequent collection creation/rename requests will 
   // not fail. the WAL entry for the rename will be written *after* the call
   // to "renameCollection" returns
-  void renameCollection(TRI_voc_tick_t databaseId, TRI_voc_cid_t id,
-                        arangodb::velocypack::Slice const& data) override;
+  void renameCollection(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
+                        std::string const& name) override;
   
   // asks the storage engine to change properties of the collection as specified in 
   // the VPack Slice object and persist them. If this operation fails 
@@ -158,8 +170,9 @@ class MMFilesEngine final : public StorageEngine {
   // property changes and throw only then, so that subsequent operations will not fail.
   // the WAL entry for the propery change will be written *after* the call
   // to "changeCollection" returns
-  void changeCollection(TRI_voc_tick_t databaseId, TRI_voc_cid_t id,
-                        arangodb::velocypack::Slice const& data) override;
+  void changeCollection(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
+                        arangodb::VocbaseCollectionInfo const& parameters,
+                        bool doSync) override;
   
   // asks the storage engine to create an index as specified in the VPack
   // Slice object and persist the creation info. The database id, collection id 
@@ -223,7 +236,10 @@ class MMFilesEngine final : public StorageEngine {
                                                      bool deleted) const;
 
   std::string databaseDirectory(TRI_voc_tick_t id) const;
-  std::string parametersFile(TRI_voc_tick_t id) const;
+  std::string databaseParametersFilename(TRI_voc_tick_t id) const;
+  std::string collectionDirectory(TRI_voc_tick_t id, TRI_voc_cid_t cid) const;
+  std::string collectionParametersFilename(TRI_voc_tick_t id, TRI_voc_cid_t cid) const;
+
   int openDatabases();
 
   /// @brief open an existing database. internal function
@@ -244,6 +260,19 @@ class MMFilesEngine final : public StorageEngine {
   /// @brief find the maximum tick in a collection's journals
   bool findMaxTickInJournals(std::string const& path);
 
+  /// @brief create a full directory name for a collection
+  std::string createCollectionDirectoryName(std::string const& basePath, TRI_voc_cid_t cid);
+
+  void registerCollectionPath(TRI_voc_tick_t databaseId, TRI_voc_cid_t id, std::string const& path);
+  void unregisterCollectionPath(TRI_voc_tick_t databaseId, TRI_voc_cid_t id);
+
+  void saveCollectionInfo(TRI_vocbase_t* vocbase,
+                          TRI_voc_cid_t id,
+                          arangodb::VocbaseCollectionInfo const& parameters,
+                          bool forceSync) const;
+  VocbaseCollectionInfo loadCollectionInfo(TRI_vocbase_t* vocbase,
+    std::string const& collectionName, std::string const& path, bool versionWarning);
+
  public:
   static std::string const EngineName;
 
@@ -254,6 +283,8 @@ class MMFilesEngine final : public StorageEngine {
   bool _isUpgrade;
   TRI_voc_tick_t _maxTick;
   std::vector<std::pair<std::string, std::string>> _deleted;
+
+  std::unordered_map<TRI_voc_tick_t, std::unordered_map<TRI_voc_cid_t, std::string>> _collectionPaths;
 };
 
 }

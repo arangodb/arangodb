@@ -1,0 +1,220 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>boost/python/def.hpp</title>
+<link rel="stylesheet" href="../../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../index.html" title="Boost.Python Reference Manual">
+<link rel="up" href="../high_level_components.html" title="Chapter&#160;2.&#160;High Level Components">
+<link rel="prev" href="../high_level_components.html" title="Chapter&#160;2.&#160;High Level Components">
+<link rel="next" href="boost_python_def_visitor_hpp.html" title="boost/python/def_visitor.hpp">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr><td valign="top"><img alt="" width="" height="" src="../../images/boost.png"></td></tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../high_level_components.html"><img src="../../images/prev.png" alt="Prev"></a><a accesskey="u" href="../high_level_components.html"><img src="../../images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../images/home.png" alt="Home"></a><a accesskey="n" href="boost_python_def_visitor_hpp.html"><img src="../../images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="high_level_components.boost_python_def_hpp"></a><a class="link" href="boost_python_def_hpp.html" title="boost/python/def.hpp">boost/python/def.hpp</a>
+</h2></div></div></div>
+<div class="toc"><dl>
+<dt><span class="section"><a href="boost_python_def_hpp.html#high_level_components.boost_python_def_hpp.introduction">Introduction</a></span></dt>
+<dt><span class="section"><a href="boost_python_def_hpp.html#high_level_components.boost_python_def_hpp.functions">Functions</a></span></dt>
+<dt><span class="section"><a href="boost_python_def_hpp.html#high_level_components.boost_python_def_hpp.example">Example</a></span></dt>
+</dl></div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="high_level_components.boost_python_def_hpp.introduction"></a><a class="link" href="boost_python_def_hpp.html#high_level_components.boost_python_def_hpp.introduction" title="Introduction">Introduction</a>
+</h3></div></div></div>
+<p>
+          <code class="computeroutput"><span class="identifier">def</span><span class="special">()</span></code>
+          is the function which can be used to expose C++ functions and callable
+          objects as Python functions in the <a class="link" href="boost_python_scope_hpp.html#high_level_components.boost_python_scope_hpp.introduction" title="Introduction">current
+          scope</a>.
+        </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="high_level_components.boost_python_def_hpp.functions"></a><a class="link" href="boost_python_def_hpp.html#high_level_components.boost_python_def_hpp.functions" title="Functions">Functions</a>
+</h3></div></div></div>
+<pre class="programlisting"><span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">F</span><span class="special">&gt;</span>
+<span class="keyword">void</span> <span class="identifier">def</span><span class="special">(</span><span class="keyword">char</span> <span class="keyword">const</span><span class="special">*</span> <span class="identifier">name</span><span class="special">,</span> <span class="identifier">F</span> <span class="identifier">f</span><span class="special">);</span>
+
+<span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Fn</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">A1</span><span class="special">&gt;</span>
+<span class="keyword">void</span> <span class="identifier">def</span><span class="special">(</span><span class="keyword">char</span> <span class="keyword">const</span><span class="special">*</span> <span class="identifier">name</span><span class="special">,</span> <span class="identifier">Fn</span> <span class="identifier">fn</span><span class="special">,</span> <span class="identifier">A1</span> <span class="keyword">const</span><span class="special">&amp;);</span>
+
+<span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Fn</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">A1</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">A2</span><span class="special">&gt;</span>
+<span class="keyword">void</span> <span class="identifier">def</span><span class="special">(</span><span class="keyword">char</span> <span class="keyword">const</span><span class="special">*</span> <span class="identifier">name</span><span class="special">,</span> <span class="identifier">Fn</span> <span class="identifier">fn</span><span class="special">,</span> <span class="identifier">A1</span> <span class="keyword">const</span><span class="special">&amp;,</span> <span class="identifier">A2</span> <span class="keyword">const</span><span class="special">&amp;);</span>
+
+<span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Fn</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">A1</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">A2</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">A3</span><span class="special">&gt;</span>
+<span class="keyword">void</span> <span class="identifier">def</span><span class="special">(</span><span class="keyword">char</span> <span class="keyword">const</span><span class="special">*</span> <span class="identifier">name</span><span class="special">,</span> <span class="identifier">Fn</span> <span class="identifier">fn</span><span class="special">,</span> <span class="identifier">A1</span> <span class="keyword">const</span><span class="special">&amp;,</span> <span class="identifier">A2</span> <span class="keyword">const</span><span class="special">&amp;,</span> <span class="identifier">A3</span> <span class="keyword">const</span><span class="special">&amp;);</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl>
+<dt><span class="term">Requires</span></dt>
+<dd>
+<p>
+                name is an <a class="link" href="../glossary.html#ntbs">ntbs</a> which conforms to Python's
+                <a href="http://www.python.org/doc/current/ref/identifiers.html" target="_top">identifier
+                naming rules</a>.
+              </p>
+<div class="itemizedlist"><ul class="itemizedlist" type="disc">
+<li class="listitem">
+                    If <code class="computeroutput"><span class="identifier">Fn</span></code> is [derived
+                    from] <a class="link" href="../object_wrappers/boost_python_object_hpp.html#object_wrappers.boost_python_object_hpp.class_object" title="Class object">object</a>,
+                    it will be added to the <a class="link" href="boost_python_scope_hpp.html#high_level_components.boost_python_scope_hpp.introduction" title="Introduction">current
+                    scope</a> as a single overload. To be useful, <code class="computeroutput"><span class="identifier">fn</span></code> should be <a href="http://www.python.org/doc/current/lib/built-in-funcs.html#l2h-6" target="_top">callable</a>.
+                  </li>
+<li class="listitem">
+<p class="simpara">
+                    If <code class="computeroutput"><span class="identifier">a1</span></code> is the
+                    result of an <a class="link" href="../function_invocation_and_creation/boost_python_overloads_hpp.html#function_invocation_and_creation.boost_python_overloads_hpp.introduction.overload_dispatch_expressions" title="overload-dispatch-expressions">overload-dispatch-expression</a>,
+                    only the second form is allowed and <code class="computeroutput"><span class="identifier">fn</span></code>
+                    must be a pointer to function or pointer to member function whose
+                    <a class="link" href="../glossary.html#arity">arity</a> is the same as A1's <a class="link" href="../function_invocation_and_creation/boost_python_overloads_hpp.html#function_invocation_and_creation.boost_python_overloads_hpp.introduction.overload_dispatch_expressions" title="overload-dispatch-expressions">maximum
+                    arity</a>.
+                  </p>
+<p class="simpara">
+                    <span class="bold"><strong>Effects:</strong></span> For each prefix <code class="computeroutput"><span class="identifier">P</span></code> of <code class="computeroutput"><span class="identifier">Fn</span></code>'s
+                    sequence of argument types, beginning with the one whose length
+                    is <code class="computeroutput"><span class="identifier">A1</span></code>'s <a class="link" href="../function_invocation_and_creation/boost_python_overloads_hpp.html#function_invocation_and_creation.boost_python_overloads_hpp.introduction.overload_dispatch_expressions" title="overload-dispatch-expressions">minimum
+                    arity</a>, adds a <code class="computeroutput"><span class="identifier">name</span><span class="special">(...)</span></code> function overload to the
+                    <a class="link" href="boost_python_scope_hpp.html#high_level_components.boost_python_scope_hpp.introduction" title="Introduction">current
+                    scope</a>. Each overload generated invokes a1's call-expression
+                    with P, using a copy of a1's call policies. If the longest valid
+                    prefix of A1 contains N types and a1 holds M keywords, an initial
+                    sequence of the keywords are used for all but the first N - M
+                    arguments of each overload.
+                  </p>
+</li>
+<li class="listitem">
+<p class="simpara">
+                    Otherwise, fn must be a non-null function or member function
+                    pointer, and a single function overload built around fn is added
+                    to the current scope. If any of a1-a3 are supplied, they may
+                    be selected in any order from the table below.
+                  </p>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                            <p>
+                              Mnemonic Name
+                            </p>
+                          </th>
+<th>
+                            <p>
+                              Requirements/Type properties
+                            </p>
+                          </th>
+<th>
+                            <p>
+                              Effects
+                            </p>
+                          </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                            <p>
+                              docstring
+                            </p>
+                          </td>
+<td>
+                            <p>
+                              Any <a class="link" href="../glossary.html#ntbs">ntbs</a>
+                            </p>
+                          </td>
+<td>
+                            <p>
+                              Value will be bound to the <code class="computeroutput"><span class="identifier">__doc__</span></code>
+                              attribute of the resulting method overload.
+                            </p>
+                          </td>
+</tr>
+<tr>
+<td>
+                            <p>
+                              policies
+                            </p>
+                          </td>
+<td>
+                            <p>
+                              A model of <a class="link" href="../concepts.html#concepts.callpolicies" title="CallPolicies">CallPolicies</a>
+                            </p>
+                          </td>
+<td>
+                            <p>
+                              A copy will be used as the call policies of the resulting
+                              method overload.
+                            </p>
+                          </td>
+</tr>
+<tr>
+<td>
+                            <p>
+                              keywords
+                            </p>
+                          </td>
+<td>
+                            <p>
+                              The result of a <a class="link" href="../function_invocation_and_creation.html#function_invocation_and_creation.boost_python_args_hpp.introduction.keyword_expressions" title="keyword-expressions">keyword-expression</a>
+                              specifying no more arguments than the <a class="link" href="../glossary.html#arity">arity</a>
+                              of <code class="computeroutput"><span class="identifier">fn</span></code>.
+                            </p>
+                          </td>
+<td>
+                            <p>
+                              A copy will be used as the call policies of the resulting
+                              method overload.
+                            </p>
+                          </td>
+</tr>
+</tbody>
+</table></div>
+</li>
+</ul></div>
+</dd>
+</dl>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="high_level_components.boost_python_def_hpp.example"></a><a class="link" href="boost_python_def_hpp.html#high_level_components.boost_python_def_hpp.example" title="Example">Example</a>
+</h3></div></div></div>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">python</span><span class="special">/</span><span class="identifier">def</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">python</span><span class="special">/</span><span class="identifier">module</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">python</span><span class="special">/</span><span class="identifier">args</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="keyword">using</span> <span class="keyword">namespace</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">python</span><span class="special">;</span>
+
+<span class="keyword">char</span> <span class="keyword">const</span><span class="special">*</span> <span class="identifier">foo</span><span class="special">(</span><span class="keyword">int</span> <span class="identifier">x</span><span class="special">,</span> <span class="keyword">int</span> <span class="identifier">y</span><span class="special">)</span> <span class="special">{</span> <span class="keyword">return</span> <span class="string">"foo"</span><span class="special">;</span> <span class="special">}</span>
+
+<span class="identifier">BOOST_PYTHON_MODULE</span><span class="special">(</span><span class="identifier">def_test</span><span class="special">)</span>
+<span class="special">{</span>
+    <span class="identifier">def</span><span class="special">(</span><span class="string">"foo"</span><span class="special">,</span> <span class="identifier">foo</span><span class="special">,</span> <span class="identifier">args</span><span class="special">(</span><span class="string">"x"</span><span class="special">,</span> <span class="string">"y"</span><span class="special">),</span> <span class="string">"foo's docstring"</span><span class="special">);</span>
+<span class="special">}</span>
+</pre>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2002-2005, 2015 David Abrahams, Stefan Seefeld<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../high_level_components.html"><img src="../../images/prev.png" alt="Prev"></a><a accesskey="u" href="../high_level_components.html"><img src="../../images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../images/home.png" alt="Home"></a><a accesskey="n" href="boost_python_def_visitor_hpp.html"><img src="../../images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

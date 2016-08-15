@@ -1,0 +1,15 @@
+{
+    "key": "numeric/ublas",
+    "name": "uBLAS",
+    "authors": [
+        "Joerg Walter",
+        "Mathias Koch"
+    ],
+    "description": "uBLAS provides matrix and vector classes as well as basic linear algebra routines. Several dense, packed and sparse storage schemes are supported.",
+    "category": [
+        "Math"
+    ],
+    "maintainers": [
+        "David Bellot <david.bellot -at- gmail.com>"
+    ]
+}

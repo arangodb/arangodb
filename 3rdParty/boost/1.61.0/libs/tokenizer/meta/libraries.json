@@ -1,0 +1,15 @@
+{
+    "key": "tokenizer",
+    "name": "Tokenizer",
+    "authors": [
+        "John Bandela"
+    ],
+    "description": "Break of a string or other character sequence into a series of tokens.",
+    "category": [
+        "Iterators",
+        "String"
+    ],
+    "maintainers": [
+        "John R. Bandela <jbandela -at- ufl.edu>"
+    ]
+}

@@ -166,6 +166,8 @@ struct TRI_vocbase_t {
   ~TRI_vocbase_t();
 
  private:
+  /// @brief sleep interval used when polling for a loading collection's status
+  static constexpr unsigned collectionStatusPollInterval() { return 10 * 1000; }  
   
   /// @brief states for dropping
   enum DropState {
@@ -472,28 +474,10 @@ class TRI_vocbase_col_t {
   std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack(bool,
                                                               TRI_voc_tick_t);
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Transform the information for this collection to velocypack
+  /// @brief transform the information for this collection to velocypack
   ///        The builder has to be an opened Type::Object
-  //////////////////////////////////////////////////////////////////////////////
-
   void toVelocyPack(arangodb::velocypack::Builder&, bool, TRI_voc_tick_t);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Transform the information for the indexes of this collection to
-  /// velocypack
-  //////////////////////////////////////////////////////////////////////////////
-
-  std::shared_ptr<arangodb::velocypack::Builder> toVelocyPackIndexes(
-      TRI_voc_tick_t);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Transform the information for this collection to velocypack
-  ///        The builder has to be an opened Type::Array
-  //////////////////////////////////////////////////////////////////////////////
-
-  void toVelocyPackIndexes(arangodb::velocypack::Builder&, TRI_voc_tick_t);
-
+ 
  public:
   TRI_vocbase_t* const _vocbase;
   TRI_voc_cid_t const _cid;     // local collection identifier

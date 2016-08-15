@@ -1,0 +1,12 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="performance" kind="page">
+    <compoundname>performance</compoundname>
+    <title>Performance</title>
+    <detaileddescription>
+<para>The performance has been tested for some algorithms, concluding that Boost.Geometry is highly comparative (<ulink url="http://trac.osgeo.org/ggl/wiki/Performance">http://trac.osgeo.org/ggl/wiki/Performance</ulink>).</para><sect1 id="performance_1performance-notes">
+<title>Performance notes</title>
+<para>In the page about compiling the library there are some hints provided which might improve the performance.</para><para>Furthermore it is important to realize that if you&apos;re about to do calculations with two geometries, for example a point-in-polygon or an intersection, it is very useful to first calculate and store all bounding boxes (envelopes), and then before doing a point-in-polygon check if the point is in the bounding box. Checking if a point is within a box is of course much faster than visiting all vertices of a polygon.</para><para>The storage of bounding boxes is, on purpose, not done within the library because it would break the possibility to use standard vectors of points for linestrings or rings. The library might get a traits system in the future where geometries might tell their boundaries to the algorithms, this however would be an optional system. </para></sect1>
+    </detaileddescription>
+  </compounddef>
+</doxygen>

@@ -1,0 +1,99 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="structboost_1_1geometry_1_1segment__intersection__points" kind="struct" prot="public">
+    <compoundname>boost::geometry::segment_intersection_points</compoundname>
+    <includes local="no">intersection_result.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename Point</type>
+      </param>
+      <param>
+        <type>typename SegmentRatio</type>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-type">
+      <memberdef kind="typedef" id="structboost_1_1geometry_1_1segment__intersection__points_1adfcdebeced02c7c3c431ea3193223802" prot="public" static="no">
+        <type>Point</type>
+        <definition>typedef Point boost::geometry::segment_intersection_points&lt; Point, SegmentRatio &gt;::point_type</definition>
+        <argsstring></argsstring>
+        <name>point_type</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/intersection_result.hpp" line="69" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/intersection_result.hpp" bodystart="69" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="structboost_1_1geometry_1_1segment__intersection__points_1a01de8a7bae6f84897c8bad7fcbe2912a" prot="public" static="no" mutable="no">
+        <type>std::size_t</type>
+        <definition>std::size_t boost::geometry::segment_intersection_points&lt; Point, SegmentRatio &gt;::count</definition>
+        <argsstring></argsstring>
+        <name>count</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/intersection_result.hpp" line="64" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/intersection_result.hpp" bodystart="64" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structboost_1_1geometry_1_1segment__intersection__points_1ae3286ca870f5411c66713f3abee6f08e" prot="public" static="no" mutable="no">
+        <type><ref refid="structboost_1_1geometry_1_1fraction__type" kindref="compound">fraction_type</ref>&lt; SegmentRatio &gt;</type>
+        <definition>fraction_type&lt;SegmentRatio&gt; boost::geometry::segment_intersection_points&lt; Point, SegmentRatio &gt;::fractions[2]</definition>
+        <argsstring>[2]</argsstring>
+        <name>fractions</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/intersection_result.hpp" line="68" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/intersection_result.hpp" bodystart="68" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structboost_1_1geometry_1_1segment__intersection__points_1a52fb0898bf2d0a9ed59f97f509131623" prot="public" static="no" mutable="no">
+        <type>Point</type>
+        <definition>Point boost::geometry::segment_intersection_points&lt; Point, SegmentRatio &gt;::intersections[2]</definition>
+        <argsstring>[2]</argsstring>
+        <name>intersections</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/intersection_result.hpp" line="67" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/intersection_result.hpp" bodystart="67" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="structboost_1_1geometry_1_1segment__intersection__points_1a3aa866715679d74c536ddcbec4fbcf3a" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type></type>
+        <definition>boost::geometry::segment_intersection_points&lt; Point, SegmentRatio &gt;::segment_intersection_points</definition>
+        <argsstring>()</argsstring>
+        <name>segment_intersection_points</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/intersection_result.hpp" line="73" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/intersection_result.hpp" bodystart="71" bodyend="73"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+<para>return-type for segment-intersection </para>    </briefdescription>
+    <detaileddescription>
+<para><simplesect kind="note"><para>Set in <ref refid="intersection__points_8hpp" kindref="compound">intersection_points.hpp</ref>, from <ref refid="structboost_1_1geometry_1_1segment__intersection__info" kindref="compound">segment_intersection_info</ref> </para></simplesect>
+</para>    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/intersection_result.hpp" line="63" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/intersection_result.hpp" bodystart="62" bodyend="74"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1segment__intersection__points_1a01de8a7bae6f84897c8bad7fcbe2912a" prot="public" virt="non-virtual"><scope>boost::geometry::segment_intersection_points</scope><name>count</name></member>
+      <member refid="structboost_1_1geometry_1_1segment__intersection__points_1ae3286ca870f5411c66713f3abee6f08e" prot="public" virt="non-virtual"><scope>boost::geometry::segment_intersection_points</scope><name>fractions</name></member>
+      <member refid="structboost_1_1geometry_1_1segment__intersection__points_1a52fb0898bf2d0a9ed59f97f509131623" prot="public" virt="non-virtual"><scope>boost::geometry::segment_intersection_points</scope><name>intersections</name></member>
+      <member refid="structboost_1_1geometry_1_1segment__intersection__points_1adfcdebeced02c7c3c431ea3193223802" prot="public" virt="non-virtual"><scope>boost::geometry::segment_intersection_points</scope><name>point_type</name></member>
+      <member refid="structboost_1_1geometry_1_1segment__intersection__points_1a3aa866715679d74c536ddcbec4fbcf3a" prot="public" virt="non-virtual"><scope>boost::geometry::segment_intersection_points</scope><name>segment_intersection_points</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

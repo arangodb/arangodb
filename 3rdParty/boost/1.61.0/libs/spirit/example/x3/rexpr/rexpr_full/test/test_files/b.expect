@@ -1,0 +1,4 @@
+In file <%.*?b.input%>, line 4:
+Error! Expecting: Value here:
+    "position" = $
+_________________^_

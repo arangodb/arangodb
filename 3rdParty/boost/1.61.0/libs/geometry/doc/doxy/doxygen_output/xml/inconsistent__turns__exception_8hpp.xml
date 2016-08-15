@@ -1,0 +1,111 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="inconsistent__turns__exception_8hpp" kind="file">
+    <compoundname>inconsistent_turns_exception.hpp</compoundname>
+    <includes refid="exception_8hpp" local="no">boost/geometry/core/exception.hpp</includes>
+    <includedby refid="follow__linear__linear_8hpp" local="no">/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/overlay/follow_linear_linear.hpp</includedby>
+    <incdepgraph>
+      <node id="29681">
+        <label>exception</label>
+      </node>
+      <node id="29679">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/overlay/inconsistent_turns_exception.hpp</label>
+        <link refid="inconsistent_turns_exception.hpp"/>
+        <childnode refid="29680" relation="include">
+        </childnode>
+      </node>
+      <node id="29680">
+        <label>boost/geometry/core/exception.hpp</label>
+        <link refid="exception_8hpp"/>
+        <childnode refid="29681" relation="include">
+        </childnode>
+      </node>
+    </incdepgraph>
+    <invincdepgraph>
+      <node id="29689">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/intersection/interface.hpp</label>
+        <link refid="intersection_2interface_8hpp"/>
+        <childnode refid="29690" relation="include">
+        </childnode>
+        <childnode refid="29691" relation="include">
+        </childnode>
+        <childnode refid="29693" relation="include">
+        </childnode>
+      </node>
+      <node id="29692">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/intersection/implementation.hpp</label>
+        <link refid="intersection_2implementation_8hpp"/>
+        <childnode refid="29690" relation="include">
+        </childnode>
+      </node>
+      <node id="29690">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/intersection.hpp</label>
+        <link refid="algorithms_2intersection_8hpp"/>
+        <childnode refid="29686" relation="include">
+        </childnode>
+      </node>
+      <node id="29684">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/overlay/linear_linear.hpp</label>
+        <link refid="overlay_2linear__linear_8hpp"/>
+        <childnode refid="29685" relation="include">
+        </childnode>
+        <childnode refid="29687" relation="include">
+        </childnode>
+      </node>
+      <node id="29685">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/union.hpp</label>
+        <link refid="union_8hpp"/>
+        <childnode refid="29686" relation="include">
+        </childnode>
+      </node>
+      <node id="29687">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/overlay/intersection_insert.hpp</label>
+        <link refid="intersection__insert_8hpp"/>
+        <childnode refid="29688" relation="include">
+        </childnode>
+        <childnode refid="29689" relation="include">
+        </childnode>
+      </node>
+      <node id="29688">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/difference.hpp</label>
+        <link refid="difference_8hpp"/>
+      </node>
+      <node id="29693">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/intersection/multi.hpp</label>
+        <link refid="multi_8hpp"/>
+        <childnode refid="29692" relation="include">
+        </childnode>
+      </node>
+      <node id="29686">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/sym_difference.hpp</label>
+        <link refid="sym__difference_8hpp"/>
+      </node>
+      <node id="29682">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/overlay/inconsistent_turns_exception.hpp</label>
+        <link refid="inconsistent_turns_exception.hpp"/>
+        <childnode refid="29683" relation="include">
+        </childnode>
+      </node>
+      <node id="29683">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/overlay/follow_linear_linear.hpp</label>
+        <link refid="follow__linear__linear_8hpp"/>
+        <childnode refid="29684" relation="include">
+        </childnode>
+      </node>
+      <node id="29691">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/intersection/box_box.hpp</label>
+        <link refid="intersection_2box__box_8hpp"/>
+        <childnode refid="29692" relation="include">
+        </childnode>
+      </node>
+    </invincdepgraph>
+    <innerclass refid="classboost_1_1geometry_1_1inconsistent__turns__exception" prot="public">boost::geometry::inconsistent_turns_exception</innerclass>
+    <innernamespace refid="namespaceboost">boost</innernamespace>
+    <innernamespace refid="namespaceboost_1_1geometry">boost::geometry</innernamespace>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/overlay/inconsistent_turns_exception.hpp"/>
+  </compounddef>
+</doxygen>

@@ -1,0 +1,19 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="classboost_1_1geometry_1_1concept_1_1_const_ring" kind="class" prot="public">
+    <compoundname>boost::geometry::concept::ConstRing</compoundname>
+    <includes local="no">ring_concept.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename Geometry</type>
+      </param>
+    </templateparamlist>
+    <briefdescription>
+<para>(linear) ring concept (const version) </para>    </briefdescription>
+    <detaileddescription>
+<para>The ConstLinearRing concept check the same as the Geometry concept, but does not check write access. </para>    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/concepts/ring_concept.hpp" line="80" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/concepts/ring_concept.hpp" bodystart="79" bodyend="94"/>
+    <listofallmembers>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

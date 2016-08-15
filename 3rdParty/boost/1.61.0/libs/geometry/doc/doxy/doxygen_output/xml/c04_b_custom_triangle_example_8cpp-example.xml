@@ -1,0 +1,80 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="c04_b_custom_triangle_example_8cpp-example" kind="example">
+    <compoundname>c04_b_custom_triangle_example.cpp</compoundname>
+    <detaileddescription>
+<para>This second custom triangle example shows an alternative implementation for a custom shape, showing a partial specialization for the area calculation. <programlisting><codeline><highlight class="comment">//<sp/>Boost.Geometry<sp/>(aka<sp/>GGL,<sp/>Generic<sp/>Geometry<sp/>Library)</highlight><highlight class="normal"></highlight></codeline>
+<codeline><highlight class="normal"></highlight></codeline>
+<codeline><highlight class="normal"></highlight><highlight class="comment">//<sp/>Copyright<sp/>(c)<sp/>2007-2012<sp/>Barend<sp/>Gehrels,<sp/>Amsterdam,<sp/>the<sp/>Netherlands.</highlight><highlight class="normal"></highlight></codeline>
+<codeline><highlight class="normal"></highlight><highlight class="comment">//<sp/>Copyright<sp/>(c)<sp/>2008-2012<sp/>Bruno<sp/>Lalande,<sp/>Paris,<sp/>France.</highlight><highlight class="normal"></highlight></codeline>
+<codeline><highlight class="normal"></highlight><highlight class="comment">//<sp/>Copyright<sp/>(c)<sp/>2009-2012<sp/>Mateusz<sp/>Loskot,<sp/>London,<sp/>UK.</highlight><highlight class="normal"></highlight></codeline>
+<codeline><highlight class="normal"></highlight></codeline>
+<codeline><highlight class="normal"></highlight><highlight class="comment">//<sp/>Use,<sp/>modification<sp/>and<sp/>distribution<sp/>is<sp/>subject<sp/>to<sp/>the<sp/>Boost<sp/>Software<sp/>License,</highlight><highlight class="normal"></highlight></codeline>
+<codeline><highlight class="normal"></highlight><highlight class="comment">//<sp/>Version<sp/>1.0.<sp/>(See<sp/>accompanying<sp/>file<sp/>LICENSE_1_0.txt<sp/>or<sp/>copy<sp/>at</highlight><highlight class="normal"></highlight></codeline>
+<codeline><highlight class="normal"></highlight><highlight class="comment">//<sp/>http://www.boost.org/LICENSE_1_0.txt)</highlight><highlight class="normal"></highlight></codeline>
+<codeline><highlight class="normal"></highlight><highlight class="comment">//</highlight><highlight class="normal"></highlight></codeline>
+<codeline><highlight class="normal"></highlight><highlight class="comment">//<sp/>Custom<sp/>triangle<sp/>template<sp/>Example</highlight><highlight class="normal"></highlight></codeline>
+<codeline><highlight class="normal"></highlight></codeline>
+<codeline><highlight class="normal"></highlight><highlight class="preprocessor">#include<sp/>&lt;iostream&gt;</highlight><highlight class="normal"></highlight></codeline>
+<codeline><highlight class="normal"></highlight></codeline>
+<codeline><highlight class="normal"></highlight><highlight class="preprocessor">#include<sp/>&lt;boost/array.hpp&gt;</highlight><highlight class="normal"></highlight></codeline>
+<codeline><highlight class="normal"></highlight><highlight class="preprocessor">#include<sp/>&lt;boost/tuple/tuple.hpp&gt;</highlight><highlight class="normal"></highlight></codeline>
+<codeline><highlight class="normal"></highlight></codeline>
+<codeline><highlight class="normal"></highlight><highlight class="preprocessor">#include<sp/>&lt;<ref refid="algorithms_2area_8hpp" kindref="compound">boost/geometry/algorithms/area.hpp</ref>&gt;</highlight><highlight class="normal"></highlight></codeline>
+<codeline><highlight class="normal"></highlight><highlight class="preprocessor">#include<sp/>&lt;<ref refid="algorithms_2centroid_8hpp" kindref="compound">boost/geometry/algorithms/centroid.hpp</ref>&gt;</highlight><highlight class="normal"></highlight></codeline>
+<codeline><highlight class="normal"></highlight><highlight class="preprocessor">#include<sp/>&lt;<ref refid="boost__tuple_8hpp" kindref="compound">boost/geometry/geometries/adapted/boost_tuple.hpp</ref>&gt;</highlight><highlight class="normal"></highlight></codeline>
+<codeline><highlight class="normal"></highlight><highlight class="preprocessor">#include<sp/>&lt;<ref refid="geometries_2register_2ring_8hpp" kindref="compound">boost/geometry/geometries/register/ring.hpp</ref>&gt;</highlight><highlight class="normal"></highlight></codeline>
+<codeline><highlight class="normal"></highlight><highlight class="preprocessor">#include<sp/>&lt;<ref refid="strategies_8hpp" kindref="compound">boost/geometry/strategies/strategies.hpp</ref>&gt;</highlight><highlight class="normal"></highlight></codeline>
+<codeline><highlight class="normal"></highlight><highlight class="preprocessor">#include<sp/>&lt;boost/geometry/io/dsv/write.hpp&gt;</highlight><highlight class="normal"></highlight></codeline>
+<codeline><highlight class="normal"></highlight></codeline>
+<codeline><highlight class="normal"><ref refid="boost__tuple_8hpp_1ad912721c6dfdc38ab2cd6551c2436f97" kindref="member">BOOST_GEOMETRY_REGISTER_BOOST_TUPLE_CS</ref>(cs::cartesian)</highlight></codeline>
+<codeline><highlight class="normal"></highlight></codeline>
+<codeline><highlight class="normal"></highlight></codeline>
+<codeline><highlight class="normal">template<sp/>&lt;typename<sp/>P&gt;</highlight></codeline>
+<codeline><highlight class="normal">struct<sp/>triangle<sp/>:<sp/>public<sp/>boost::array&lt;P,<sp/>3&gt;</highlight></codeline>
+<codeline><highlight class="normal">{</highlight></codeline>
+<codeline><highlight class="normal">};</highlight></codeline>
+<codeline><highlight class="normal"></highlight></codeline>
+<codeline><highlight class="normal"></highlight></codeline>
+<codeline><highlight class="normal"></highlight><highlight class="comment">//<sp/>Register<sp/>triangle&lt;P&gt;<sp/>as<sp/>a<sp/>ring</highlight><highlight class="normal"></highlight></codeline>
+<codeline><highlight class="normal"><ref refid="group__register_1ga8a9071c3e9e9e0175250677a50e3fcc8" kindref="member" tooltip="Macro to register a \1.">BOOST_GEOMETRY_REGISTER_RING_TEMPLATED</ref>(triangle)</highlight></codeline>
+<codeline><highlight class="normal"></highlight></codeline>
+<codeline><highlight class="normal"></highlight></codeline>
+<codeline><highlight class="normal">namespace<sp/>boost<sp/>{<sp/></highlight><highlight class="keyword">namespace<sp/></highlight><highlight class="normal">geometry<sp/>{<sp/></highlight><highlight class="keyword">namespace<sp/></highlight><highlight class="normal">dispatch<sp/>{</highlight></codeline>
+<codeline><highlight class="normal"></highlight></codeline>
+<codeline><highlight class="normal"></highlight><highlight class="comment">//<sp/>Specializations<sp/>of<sp/>area<sp/>dispatch<sp/>structure,<sp/>implement<sp/>algorithm</highlight><highlight class="normal"></highlight></codeline>
+<codeline><highlight class="normal"></highlight><highlight class="keyword">template</highlight><highlight class="normal">&lt;</highlight><highlight class="keyword">typename</highlight><highlight class="normal"><sp/>Po</highlight><highlight class="keywordtype">int</highlight><highlight class="normal">&gt;</highlight></codeline>
+<codeline><highlight class="normal"></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal">area&lt;triangle&lt;Point&gt;,<sp/>ring_tag&gt;</highlight></codeline>
+<codeline><highlight class="normal">{</highlight></codeline>
+<codeline><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">template</highlight><highlight class="normal"><sp/>&lt;</highlight><highlight class="keyword">typename</highlight><highlight class="normal"><sp/>Strategy&gt;</highlight></codeline>
+<codeline><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">static</highlight><highlight class="normal"><sp/></highlight><highlight class="keyword">inline</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/>apply(triangle&lt;Point&gt;<sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal">&amp;<sp/>t,<sp/>Strategy<sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal">&amp;)</highlight></codeline>
+<codeline><highlight class="normal"><sp/><sp/><sp/><sp/>{</highlight></codeline>
+<codeline><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">return</highlight><highlight class="normal"><sp/>0.5<sp/><sp/>*<sp/>((get&lt;0&gt;(t[1])<sp/>-<sp/>get&lt;0&gt;(t[0]))<sp/>*<sp/>(get&lt;1&gt;(t[2])<sp/>-<sp/>get&lt;1&gt;(t[0]))</highlight></codeline>
+<codeline><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>-<sp/>(get&lt;0&gt;(t[2])<sp/>-<sp/>get&lt;0&gt;(t[0]))<sp/>*<sp/>(get&lt;1&gt;(t[1])<sp/>-<sp/>get&lt;1&gt;(t[0])));</highlight></codeline>
+<codeline><highlight class="normal"><sp/><sp/><sp/><sp/>}</highlight></codeline>
+<codeline><highlight class="normal">};</highlight></codeline>
+<codeline><highlight class="normal"></highlight></codeline>
+<codeline><highlight class="normal">}}}<sp/></highlight><highlight class="comment">//<sp/>namespace<sp/>boost::geometry::dispatch</highlight><highlight class="normal"></highlight></codeline>
+<codeline><highlight class="normal"></highlight></codeline>
+<codeline><highlight class="normal"></highlight></codeline>
+<codeline><highlight class="normal"></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/>main()</highlight></codeline>
+<codeline><highlight class="normal">{</highlight></codeline>
+<codeline><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="comment">//triangle&lt;boost::geometry::point_xy&lt;double&gt;<sp/>&gt;<sp/>t;</highlight><highlight class="normal"></highlight></codeline>
+<codeline><highlight class="normal"><sp/><sp/><sp/><sp/>triangle&lt;boost::tuple&lt;double,<sp/>double&gt;<sp/>&gt;<sp/>t;</highlight></codeline>
+<codeline><highlight class="normal"><sp/><sp/><sp/><sp/>t[0]<sp/>=<sp/>boost::make_tuple(0,<sp/>0);</highlight></codeline>
+<codeline><highlight class="normal"><sp/><sp/><sp/><sp/>t[1]<sp/>=<sp/>boost::make_tuple(5,<sp/>0);</highlight></codeline>
+<codeline><highlight class="normal"><sp/><sp/><sp/><sp/>t[2]<sp/>=<sp/>boost::make_tuple(2.5,<sp/>2.5);</highlight></codeline>
+<codeline><highlight class="normal"></highlight></codeline>
+<codeline><highlight class="normal"><sp/><sp/><sp/><sp/>std::cout<sp/>&lt;&lt;<sp/></highlight><highlight class="stringliteral">&quot;Triangle:<sp/>&quot;</highlight><highlight class="normal"><sp/>&lt;&lt;<sp/>boost::geometry::dsv(t)<sp/>&lt;&lt;<sp/>std::endl;</highlight></codeline>
+<codeline><highlight class="normal"><sp/><sp/><sp/><sp/>std::cout<sp/>&lt;&lt;<sp/></highlight><highlight class="stringliteral">&quot;Area:<sp/>&quot;</highlight><highlight class="normal"><sp/>&lt;&lt;<sp/><ref refid="group__area_1gaf7a1c34467f74f290d0b090adb27db62" kindref="member" tooltip="Calculates the area of a geometry.">boost::geometry::area</ref>(t)<sp/>&lt;&lt;<sp/>std::endl;</highlight></codeline>
+<codeline><highlight class="normal"></highlight></codeline>
+<codeline><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="comment">//boost::geometry::point_xy&lt;double&gt;<sp/>c;</highlight><highlight class="normal"></highlight></codeline>
+<codeline><highlight class="normal"><sp/><sp/><sp/><sp/>boost::tuple&lt;double,<sp/>double&gt;<sp/>c;</highlight></codeline>
+<codeline><highlight class="normal"><sp/><sp/><sp/><sp/><ref refid="group__centroid_1ga3ec2c5e245c42ffaf28f1c88ea564c8c" kindref="member" tooltip="Calculates the centroid of a geometry using the specified strategy.">boost::geometry::centroid</ref>(t,<sp/>c);</highlight></codeline>
+<codeline><highlight class="normal"><sp/><sp/><sp/><sp/>std::cout<sp/>&lt;&lt;<sp/></highlight><highlight class="stringliteral">&quot;Centroid:<sp/>&quot;</highlight><highlight class="normal"><sp/>&lt;&lt;<sp/>boost::geometry::dsv(c)<sp/>&lt;&lt;<sp/>std::endl;</highlight></codeline>
+<codeline><highlight class="normal"></highlight></codeline>
+<codeline><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">return</highlight><highlight class="normal"><sp/>0;</highlight></codeline>
+<codeline><highlight class="normal">}</highlight></codeline>
+</programlisting> </para>    </detaileddescription>
+  </compounddef>
+</doxygen>

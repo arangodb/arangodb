@@ -1,0 +1,56 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="structboost_1_1geometry_1_1resolve__variant_1_1convex__hull__insert_3_01boost_1_1variant_3_01_b_9d888f9c03bcc5ec38dc8dd118106356" kind="struct" prot="public">
+    <compoundname>boost::geometry::resolve_variant::convex_hull_insert&lt; boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; &gt;</compoundname>
+    <includes local="no">convex_hull.hpp</includes>
+    <innerclass refid="structboost_1_1geometry_1_1resolve__variant_1_1convex__hull__insert_3_01boost_1_1variant_3_01_b_d36cac5e0707c1f8379c7c39a7e0fbc4" prot="public">boost::geometry::resolve_variant::convex_hull_insert&lt; boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; &gt;::visitor</innerclass>
+    <templateparamlist>
+      <param>
+        <type>BOOST_VARIANT_ENUM_PARAMS(typename T)</type>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-static-func">
+      <memberdef kind="function" id="structboost_1_1geometry_1_1resolve__variant_1_1convex__hull__insert_3_01boost_1_1variant_3_01_b_9d888f9c03bcc5ec38dc8dd118106356_1a70ccdc5c6d0565c40af8f8c31303a376" prot="public" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename OutputIterator</type>
+          </param>
+          <param>
+            <type>typename Strategy</type>
+          </param>
+        </templateparamlist>
+        <type>OutputIterator</type>
+        <definition>static OutputIterator boost::geometry::resolve_variant::convex_hull_insert&lt; boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; &gt;::apply</definition>
+        <argsstring>(boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; const &amp;geometry, OutputIterator &amp;out, Strategy const &amp;strategy)</argsstring>
+        <name>apply</name>
+        <param>
+          <type>boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; const &amp;</type>
+          <declname>geometry</declname>
+        </param>
+        <param>
+          <type>OutputIterator &amp;</type>
+          <declname>out</declname>
+        </param>
+        <param>
+          <type>Strategy const &amp;</type>
+          <declname>strategy</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/convex_hull.hpp" line="293" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/convex_hull.hpp" bodystart="290" bodyend="295"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/convex_hull.hpp" line="270" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/convex_hull.hpp" bodystart="269" bodyend="296"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1resolve__variant_1_1convex__hull__insert_3_01boost_1_1variant_3_01_b_9d888f9c03bcc5ec38dc8dd118106356_1a70ccdc5c6d0565c40af8f8c31303a376" prot="public" virt="non-virtual"><scope>boost::geometry::resolve_variant::convex_hull_insert&lt; boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; &gt;</scope><name>apply</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

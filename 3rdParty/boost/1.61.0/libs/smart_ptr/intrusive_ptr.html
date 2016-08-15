@@ -1,0 +1,320 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+    <head>
+        <title>intrusive_ptr</title>
+        <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+    </head>
+    <body text="#000000" bgcolor="#ffffff" link="#0000ff" vlink="#0000ff">
+        <h1><img height="86" alt="boost.png (6897 bytes)" src="../../boost.png" 
+            width="277" align="middle" border="0">intrusive_ptr class template</h1>
+        <p>
+            <a href="#Introduction">Introduction</a><br>
+            <a href="#Synopsis">Synopsis</a><br>
+            <a href="#Members">Members</a><br>
+            <a href="#functions">Free Functions</a><br>
+        </p>
+        <h2><a name="Introduction">Introduction</a></h2>
+        <p>The <code>intrusive_ptr</code> class template stores a pointer to an object with an 
+            embedded reference count. Every new <code>intrusive_ptr</code> instance increments 
+            the reference count by using an unqualified call to the function <code>intrusive_ptr_add_ref</code>, 
+            passing it the pointer as an argument. Similarly, when an <code>intrusive_ptr</code>
+            is destroyed, it calls <code>intrusive_ptr_release</code>; this function is 
+            responsible for destroying the object when its reference count drops to zero. 
+            The user is expected to provide suitable definitions of these two functions. On 
+            compilers that support argument-dependent lookup, <code>intrusive_ptr_add_ref</code>
+            and <code>intrusive_ptr_release</code> should be defined in the namespace 
+            that corresponds to their parameter; otherwise, the definitions need to go in 
+            namespace <code>boost</code>. The library provides a helper base class template
+            <code><a href="intrusive_ref_counter.html">intrusive_ref_counter</a></code> which may
+            help adding support for <code>intrusive_ptr</code> to user types.</p>
+        <p>The class template is parameterized on <code>T</code>, the type of the object pointed 
+            to. <code>intrusive_ptr&lt;T&gt;</code> can be implicitly converted to <code>intrusive_ptr&lt;U&gt;</code>
+            whenever <code>T*</code> can be implicitly converted to <code>U*</code>.</p>
+        <p>The main reasons to use <code>intrusive_ptr</code> are:</p>
+        <ul>
+            <li>
+            Some existing frameworks or OSes provide objects with embedded reference 
+            counts;</li>
+            <li>
+                The memory footprint of <code>intrusive_ptr</code>
+            is the same as the corresponding raw pointer;</li>
+            <li>
+                <code>intrusive_ptr&lt;T&gt;</code> can be constructed from an arbitrary 
+                raw pointer of type <code>T *</code>.</li></ul>
+        <p>As a general rule, if it isn't obvious whether <code>intrusive_ptr</code> better 
+            fits your needs than <code>shared_ptr</code>, try a <code>shared_ptr</code>-based 
+            design first.</p>
+        <h2><a name="Synopsis">Synopsis</a></h2>
+        <pre>namespace boost {
+
+  template&lt;class T&gt; class intrusive_ptr {
+
+    public:
+
+      typedef T <a href="#element_type" >element_type</a>;
+
+      <a href="#constructors" >intrusive_ptr</a>(); // never throws
+      <a href="#constructors" >intrusive_ptr</a>(T * p, bool add_ref = true);
+
+      <a href="#constructors" >intrusive_ptr</a>(intrusive_ptr const &amp; r);
+      template&lt;class Y&gt; <a href="#constructors" >intrusive_ptr</a>(intrusive_ptr&lt;Y&gt; const &amp; r);
+
+      <a href="#destructor" >~intrusive_ptr</a>();
+
+      intrusive_ptr &amp; <a href="#assignment" >operator=</a>(intrusive_ptr const &amp; r);
+      template&lt;class Y&gt; intrusive_ptr &amp; <a href="#assignment" >operator=</a>(intrusive_ptr&lt;Y&gt; const &amp; r);
+      intrusive_ptr &amp; <a href="#assignment" >operator=</a>(T * r);
+
+      void <a href="#reset" >reset</a>();
+      void <a href="#reset" >reset</a>(T * r);
+      void <a href="#reset" >reset</a>(T * r, bool add_ref);
+
+      T &amp; <a href="#indirection" >operator*</a>() const; // never throws
+      T * <a href="#indirection" >operator-&gt;</a>() const; // never throws
+      T * <a href="#get" >get</a>() const; // never throws
+      T * <a href="#detach" >detach</a>(); // never throws
+
+      operator <a href="#conversions" ><i>unspecified-bool-type</i></a>() const; // never throws
+
+      void <a href="#swap" >swap</a>(intrusive_ptr &amp; b); // never throws
+  };
+
+  template&lt;class T, class U&gt;
+    bool <a href="#comparison" >operator==</a>(intrusive_ptr&lt;T&gt; const &amp; a, intrusive_ptr&lt;U&gt; const &amp; b); // never throws
+
+  template&lt;class T, class U&gt;
+    bool <a href="#comparison" >operator!=</a>(intrusive_ptr&lt;T&gt; const &amp; a, intrusive_ptr&lt;U&gt; const &amp; b); // never throws
+
+  template&lt;class T&gt;
+    bool <a href="#comparison" >operator==</a>(intrusive_ptr&lt;T&gt; const &amp; a, T * b); // never throws
+
+  template&lt;class T&gt;
+    bool <a href="#comparison" >operator!=</a>(intrusive_ptr&lt;T&gt; const &amp; a, T * b); // never throws
+
+  template&lt;class T&gt;
+    bool <a href="#comparison" >operator==</a>(T * a, intrusive_ptr&lt;T&gt; const &amp; b); // never throws
+
+  template&lt;class T&gt;
+    bool <a href="#comparison" >operator!=</a>(T * a, intrusive_ptr&lt;T&gt; const &amp; b); // never throws
+
+  template&lt;class T, class U&gt;
+    bool <a href="#comparison" >operator&lt;</a>(intrusive_ptr&lt;T&gt; const &amp; a, intrusive_ptr&lt;U&gt; const &amp; b); // never throws
+
+  template&lt;class T&gt; void <a href="#free-swap" >swap</a>(intrusive_ptr&lt;T&gt; &amp; a, intrusive_ptr&lt;T&gt; &amp; b); // never throws
+
+  template&lt;class T&gt; T * <a href="#get_pointer" >get_pointer</a>(intrusive_ptr&lt;T&gt; const &amp; p); // never throws
+
+  template&lt;class T, class U&gt;
+    intrusive_ptr&lt;T&gt; <a href="#static_pointer_cast" >static_pointer_cast</a>(intrusive_ptr&lt;U&gt; const &amp; r); // never throws
+
+  template&lt;class T, class U&gt;
+    intrusive_ptr&lt;T&gt; <a href="#const_pointer_cast" >const_pointer_cast</a>(intrusive_ptr&lt;U&gt; const &amp; r); // never throws
+
+  template&lt;class T, class U&gt;
+    intrusive_ptr&lt;T&gt; <a href="#dynamic_pointer_cast" >dynamic_pointer_cast</a>(intrusive_ptr&lt;U&gt; const &amp; r); // never throws
+
+  template&lt;class E, class T, class Y&gt;
+    std::basic_ostream&lt;E, T&gt; &amp; <a href="#insertion-operator" >operator&lt;&lt;</a> (std::basic_ostream&lt;E, T&gt; &amp; os, intrusive_ptr&lt;Y&gt; const &amp; p);
+
+}</pre>
+        <h2><a name="Members">Members</a></h2>
+        <h3><a name="element_type">element_type</a></h3>
+        <pre>typedef T element_type;</pre>
+        <blockquote>
+            <p>Provides the type of the template parameter <code>T</code>.</p>
+        </blockquote>
+        <h3><a name="constructors">constructors</a></h3>
+        <pre>intrusive_ptr(); // never throws</pre>
+        <blockquote>
+            <p><b>Postconditions:</b> <code>get() == 0</code>.</p>
+            <p><b>Throws:</b> nothing.</p>
+        </blockquote>
+        <pre>intrusive_ptr(T * p, bool add_ref = true);</pre>
+        <blockquote>
+            <p><b>Effects:</b> <code>if(p != 0 &amp;&amp; add_ref) intrusive_ptr_add_ref(p);</code>.</p>
+            <p><b>Postconditions:</b> <code>get() == p</code>.</p>
+        </blockquote>
+        <pre>intrusive_ptr(intrusive_ptr const &amp; r);
+template&lt;class Y&gt; intrusive_ptr(intrusive_ptr&lt;Y&gt; const &amp; r);</pre>
+        <blockquote>
+            <p><b>Effects:</b> <code>if(r.get() != 0) intrusive_ptr_add_ref(r.get());</code>.</p>
+            <p><b>Postconditions:</b> <code>get() == r.get()</code>.</p>
+        </blockquote>
+        <h3><a name="destructor">destructor</a></h3>
+        <pre>~intrusive_ptr();</pre>
+        <blockquote>
+            <p><b>Effects:</b> <code>if(get() != 0) intrusive_ptr_release(get());</code>.</p>
+        </blockquote>
+        <h3><a name="assignment">assignment</a></h3>
+        <pre>intrusive_ptr &amp; operator=(intrusive_ptr const &amp; r);
+template&lt;class Y&gt; intrusive_ptr &amp; operator=(intrusive_ptr&lt;Y&gt; const &amp; r);
+intrusive_ptr &amp; operator=(T * r);</pre>
+        <blockquote>
+            <p><b>Effects:</b> Equivalent to <code>intrusive_ptr(r).swap(*this)</code>.</p>
+            <p><b>Returns:</b> <code>*this</code>.</p>
+        </blockquote>
+        <h3><a name="reset">reset</a></h3>
+        <pre>void reset();</pre>
+        <blockquote>
+            <p><b>Effects:</b> Equivalent to <code>intrusive_ptr().swap(*this)</code>.</p>
+        </blockquote>
+        <pre>void reset(T * r);</pre>
+        <blockquote>
+            <p><b>Effects:</b> Equivalent to <code>intrusive_ptr(r).swap(*this)</code>.</p>
+        </blockquote>
+        <pre>void reset(T * r, bool add_ref);</pre>
+        <blockquote>
+            <p><b>Effects:</b> Equivalent to <code>intrusive_ptr(r, add_ref).swap(*this)</code>.</p>
+        </blockquote>
+        <h3><a name="indirection">indirection</a></h3>
+        <pre>T &amp; operator*() const; // never throws</pre>
+        <blockquote>
+            <p><b>Requirements:</b> <code>get() != 0</code>.</p>
+            <p><b>Returns:</b> <code>*get()</code>.</p>
+            <p><b>Throws:</b> nothing.</p>
+        </blockquote>
+        <pre>T * operator-&gt;() const; // never throws</pre>
+        <blockquote>
+            <p><b>Requirements:</b> <code>get() != 0</code>.</p>
+            <p><b>Returns:</b> <code>get()</code>.</p>
+            <p><b>Throws:</b> nothing.</p>
+        </blockquote>
+        <h3><a name="get">get</a></h3>
+        <pre>T * get() const; // never throws</pre>
+        <blockquote>
+            <p><b>Returns:</b> the stored pointer.</p>
+            <p><b>Throws:</b> nothing.</p>
+        </blockquote>
+        <h3><a name="detach">detach</a></h3>
+        <pre>T * detach(); // never throws</pre>
+        <blockquote>
+            <p><b>Returns:</b> the stored pointer.</p>
+            <p><b>Throws:</b> nothing.</p>
+            <p><b>Postconditions:</b> <code>get() == 0</code>.</p>
+            <p><b>Notes:</b> The returned pointer has an elevated reference count. This
+                allows conversion of an <code>intrusive_ptr</code> back to a raw pointer,
+                without the performance overhead of acquiring and dropping an extra
+                reference. It can be viewed as the complement of the
+                non-reference-incrementing constructor.</p>
+            <p><b>Caution:</b> Using <code>detach</code> escapes the safety of automatic
+                reference counting provided by <code>intrusive_ptr</code>. It should
+                by used only where strictly necessary (such as when interfacing to an
+                existing API), and when the implications are thoroughly understood.</p>
+        </blockquote>
+        <h3><a name="conversions">conversions</a></h3>
+        <pre>operator <i>unspecified-bool-type</i> () const; // never throws</pre>
+        <blockquote>
+            <p><b>Returns:</b> an unspecified value that, when used in boolean contexts, is 
+                equivalent to <code>get() != 0</code>.</p>
+            <p><b>Throws:</b> nothing.</p>
+            <p><b>Notes:</b> This conversion operator allows <code>intrusive_ptr</code> objects to be 
+                used in boolean contexts, like <code>if (p &amp;&amp; p-&gt;valid()) {}</code>. 
+                The actual target type is typically a pointer to a member function, avoiding 
+                many of the implicit conversion pitfalls.</p>
+        </blockquote>
+        <h3><a name="swap">swap</a></h3>
+        <pre>void swap(intrusive_ptr &amp; b); // never throws</pre>
+        <blockquote>
+            <p><b>Effects:</b> Exchanges the contents of the two smart pointers.</p>
+            <p><b>Throws:</b> nothing.</p>
+        </blockquote>
+        <h2><a name="functions">Free Functions</a></h2>
+        <h3><a name="comparison">comparison</a></h3>
+        <pre>template&lt;class T, class U&gt;
+  bool operator==(intrusive_ptr&lt;T&gt; const &amp; a, intrusive_ptr&lt;U&gt; const &amp; b); // never throws</pre>
+        <blockquote>
+            <p><b>Returns:</b> <code>a.get() == b.get()</code>.</p>
+            <p><b>Throws:</b> nothing.</p>
+        </blockquote>
+        <pre>template&lt;class T, class U&gt;
+  bool operator!=(intrusive_ptr&lt;T&gt; const &amp; a, intrusive_ptr&lt;U&gt; const &amp; b); // never throws</pre>
+        <blockquote>
+            <p><b>Returns:</b> <code>a.get() != b.get()</code>.</p>
+            <p><b>Throws:</b> nothing.</p>
+        </blockquote>
+        <pre>template&lt;class T, class U&gt;
+  bool operator==(intrusive_ptr&lt;T&gt; const &amp; a, U * b); // never throws</pre>
+        <blockquote>
+            <p><b>Returns:</b> <code>a.get() == b</code>.</p>
+            <p><b>Throws:</b> nothing.</p>
+        </blockquote>
+        <pre>template&lt;class T, class U&gt;
+  bool operator!=(intrusive_ptr&lt;T&gt; const &amp; a, U * b); // never throws</pre>
+        <blockquote>
+            <p><b>Returns:</b> <code>a.get() != b</code>.</p>
+            <p><b>Throws:</b> nothing.</p>
+        </blockquote>
+        <pre>template&lt;class T, class U&gt;
+  bool operator==(T * a, intrusive_ptr&lt;U&gt; const &amp; b); // never throws</pre>
+        <blockquote>
+            <p><b>Returns:</b> <code>a == b.get()</code>.</p>
+            <p><b>Throws:</b> nothing.</p>
+        </blockquote>
+        <pre>template&lt;class T, class U&gt;
+  bool operator!=(T * a, intrusive_ptr&lt;U&gt; const &amp; b); // never throws</pre>
+        <blockquote>
+            <p><b>Returns:</b> <code>a != b.get()</code>.</p>
+            <p><b>Throws:</b> nothing.</p>
+        </blockquote>
+        <pre>template&lt;class T, class U&gt;
+  bool operator&lt;(intrusive_ptr&lt;T&gt; const &amp; a, intrusive_ptr&lt;U&gt; const &amp; b); // never throws</pre>
+        <blockquote>
+            <p><b>Returns:</b> <code>std::less&lt;T *&gt;()(a.get(), b.get())</code>.</p>
+            <p><b>Throws:</b> nothing.</p>
+            <p><b>Notes:</b> Allows <code>intrusive_ptr</code> objects to be used as keys 
+                in associative containers.</p>
+        </blockquote>
+        <h3><a name="free-swap">swap</a></h3>
+        <pre>template&lt;class T&gt;
+  void swap(intrusive_ptr&lt;T&gt; &amp; a, intrusive_ptr&lt;T&gt; &amp; b); // never throws</pre>
+        <blockquote>
+            <p><b>Effects:</b> Equivalent to <code>a.swap(b)</code>.</p>
+            <p><b>Throws:</b> nothing.</p>
+            <p><b>Notes:</b> Matches the interface of <code>std::swap</code>. Provided as an aid to 
+                generic programming.</p>
+        </blockquote>
+        <h3><a name="get_pointer">get_pointer</a></h3>
+        <pre>template&lt;class T&gt;
+  T * get_pointer(intrusive_ptr&lt;T&gt; const &amp; p); // never throws</pre>
+        <blockquote>
+            <p><b>Returns:</b> <code>p.get()</code>.</p>
+            <p><b>Throws:</b> nothing.</p>
+            <p><b>Notes:</b> Provided as an aid to generic programming. Used by <a href="../bind/mem_fn.html">
+                    mem_fn</a>.</p>
+        </blockquote>
+        <h3><a name="static_pointer_cast">static_pointer_cast</a></h3>
+        <pre>template&lt;class T, class U&gt;
+  intrusive_ptr&lt;T&gt; static_pointer_cast(intrusive_ptr&lt;U&gt; const &amp; r); // never throws</pre>
+        <blockquote>
+            <p><b>Returns:</b> <code>intrusive_ptr&lt;T&gt;(static_cast&lt;T*&gt;(r.get()))</code>.</p>
+            <p><b>Throws:</b> nothing.</p>
+        </blockquote>
+        <h3><a name="const_pointer_cast">const_pointer_cast</a></h3>
+        <pre>template&lt;class T, class U&gt;
+  intrusive_ptr&lt;T&gt; const_pointer_cast(intrusive_ptr&lt;U&gt; const &amp; r); // never throws</pre>
+        <blockquote>
+            <p><b>Returns:</b> <code>intrusive_ptr&lt;T&gt;(const_cast&lt;T*&gt;(r.get()))</code>.</p>
+            <p><b>Throws:</b> nothing.</p>
+        </blockquote>
+        <h3><a name="dynamic_pointer_cast">dynamic_pointer_cast</a></h3>
+        <pre>template&lt;class T, class U&gt;
+  intrusive_ptr&lt;T&gt; dynamic_pointer_cast(intrusive_ptr&lt;U&gt; const &amp; r);</pre>
+        <blockquote>
+            <p><b>Returns:</b> <code>intrusive_ptr&lt;T&gt;(dynamic_cast&lt;T*&gt;(r.get()))</code>.</p>
+            <p><b>Throws:</b> nothing.</p>
+        </blockquote>
+        <h3><a name="insertion-operator">operator&lt;&lt;</a></h3>
+        <pre>template&lt;class E, class T, class Y&gt;
+    std::basic_ostream&lt;E, T&gt; &amp; operator&lt;&lt; (std::basic_ostream&lt;E, T&gt; &amp; os, intrusive_ptr&lt;Y&gt; const &amp; p);</pre>
+        <blockquote>
+            <p><b>Effects:</b> <code>os &lt;&lt; p.get();</code>.</p>
+            <p><b>Returns:</b> <code>os</code>.</p>
+        </blockquote>
+        <hr>
+        <p>$Date$</p>
+        <p>
+            <small>Copyright &copy; 2003-2005, 2013 Peter Dimov. Distributed under the Boost Software License, Version 
+            1.0. See accompanying file <a href="../../LICENSE_1_0.txt">LICENSE_1_0.txt</a> or 
+            copy at <a href="http://www.boost.org/LICENSE_1_0.txt">http://www.boost.org/LICENSE_1_0.txt</a>.</small></p>
+    </body>
+</html>

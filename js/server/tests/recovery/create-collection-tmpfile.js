@@ -60,7 +60,6 @@ function runSetup () {
   fs.writeFileSync(fs.join(path, "parameter.json.tmp"), content);
   // and remove parameter.json
   fs.remove(fs.join(path, "parameter.json"));
-  internal.print(fs.join(path, "parameter.json"));
 
   internal.debugSegfault('crashing server');
 }

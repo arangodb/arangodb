@@ -1,0 +1,1 @@
+exe constexpr_parser :  main.cpp ;

@@ -1,0 +1,39 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="structboost_1_1geometry_1_1traits_1_1clear" kind="struct" prot="public">
+    <compoundname>boost::geometry::traits::clear</compoundname>
+    <includes local="no">mutable_range.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename Range</type>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-static-func">
+      <memberdef kind="function" id="structboost_1_1geometry_1_1traits_1_1clear_1a0ad1f420199b2cf7c862907cc777f8eb" prot="public" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>void</type>
+        <definition>static void boost::geometry::traits::clear&lt; Range &gt;::apply</definition>
+        <argsstring>(typename rvalue_type&lt; Range &gt;::type range)</argsstring>
+        <name>apply</name>
+        <param>
+          <type>typename <ref refid="structboost_1_1geometry_1_1traits_1_1rvalue__type" kindref="compound">rvalue_type</ref>&lt; Range &gt;::type</type>
+          <declname>range</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/core/mutable_range.hpp" line="51" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/core/mutable_range.hpp" bodystart="50" bodyend="53"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+<para>Traits class to clear a geometry. </para>    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/core/mutable_range.hpp" line="49" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/core/mutable_range.hpp" bodystart="48" bodyend="54"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1traits_1_1clear_1a0ad1f420199b2cf7c862907cc777f8eb" prot="public" virt="non-virtual"><scope>boost::geometry::traits::clear</scope><name>apply</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

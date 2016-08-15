@@ -1,0 +1,25 @@
+#
+#   Copyright (C) 2015 Michael Caisse, ciere.com
+#
+#   Distributed under the Boost Software License, Version 1.0. (See accompanying
+#   file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+#
+
+project spirit-x3-example-rexpr
+   : requirements
+      <toolset>gcc:<cxxflags>-std=c++14
+      <toolset>gcc:<cxxflags>-ftemplate-depth-512
+      <toolset>clang:<cxxflags>-std=c++1y
+      <toolset>clang:<cxxflags>-ftemplate-depth-512
+      <toolset>darwin:<cxxflags>-std=c++14
+      <toolset>darwin:<cxxflags>-ftemplate-depth-512
+      <toolset>darwin:<cxxflags>-ftemplate-depth-512
+      <use>/boost//headers
+      <include>.
+   ;
+
+lib rexpr
+   : [ glob src/*.cpp ] /boost//system
+   ;
+
+build-project test ;

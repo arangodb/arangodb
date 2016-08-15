@@ -1,0 +1,134 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="classboost_1_1geometry_1_1range_1_1back__insert__iterator" kind="class" prot="public">
+    <compoundname>boost::geometry::range::back_insert_iterator</compoundname>
+    <includes local="no">range.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>class Container</type>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-type">
+      <memberdef kind="typedef" id="classboost_1_1geometry_1_1range_1_1back__insert__iterator_1aaeb9e21962b50c79d9cd11e439886eeb" prot="public" static="no">
+        <type>Container</type>
+        <definition>typedef Container boost::geometry::range::back_insert_iterator&lt; Container &gt;::container_type</definition>
+        <argsstring></argsstring>
+        <name>container_type</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/util/range.hpp" line="379" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/util/range.hpp" bodystart="379" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="private-attrib">
+      <memberdef kind="variable" id="classboost_1_1geometry_1_1range_1_1back__insert__iterator_1a50a1612fc5c0c831651cccaf5a0d4a22" prot="private" static="no" mutable="no">
+        <type>Container *</type>
+        <definition>Container* boost::geometry::range::back_insert_iterator&lt; Container &gt;::container</definition>
+        <argsstring></argsstring>
+        <name>container</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/util/range.hpp" line="407" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/util/range.hpp" bodystart="407" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="classboost_1_1geometry_1_1range_1_1back__insert__iterator_1a7e6a5f265baa3b844069e60ed5b46e65" prot="public" static="no" const="no" explicit="yes" inline="yes" virt="non-virtual">
+        <type></type>
+        <definition>boost::geometry::range::back_insert_iterator&lt; Container &gt;::back_insert_iterator</definition>
+        <argsstring>(Container &amp;c)</argsstring>
+        <name>back_insert_iterator</name>
+        <param>
+          <type>Container &amp;</type>
+          <declname>c</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/util/range.hpp" line="383" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/util/range.hpp" bodystart="381" bodyend="383"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1range_1_1back__insert__iterator_1abb13454d01fc8683ad2587b0b39f6ad2" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type><ref refid="classboost_1_1geometry_1_1range_1_1back__insert__iterator" kindref="compound">back_insert_iterator</ref> &amp;</type>
+        <definition>back_insert_iterator&amp; boost::geometry::range::back_insert_iterator&lt; Container &gt;::operator*</definition>
+        <argsstring>()</argsstring>
+        <name>operator*</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/util/range.hpp" line="392" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/util/range.hpp" bodystart="391" bodyend="394"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1range_1_1back__insert__iterator_1ac765b736af3d5e7d08a512ad29e2a776" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type><ref refid="classboost_1_1geometry_1_1range_1_1back__insert__iterator" kindref="compound">back_insert_iterator</ref> &amp;</type>
+        <definition>back_insert_iterator&amp; boost::geometry::range::back_insert_iterator&lt; Container &gt;::operator++</definition>
+        <argsstring>()</argsstring>
+        <name>operator++</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/util/range.hpp" line="397" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/util/range.hpp" bodystart="396" bodyend="399"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1range_1_1back__insert__iterator_1a89b4905bce80b95e7f36ab5f4e895a1e" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type><ref refid="classboost_1_1geometry_1_1range_1_1back__insert__iterator" kindref="compound">back_insert_iterator</ref></type>
+        <definition>back_insert_iterator boost::geometry::range::back_insert_iterator&lt; Container &gt;::operator++</definition>
+        <argsstring>(int)</argsstring>
+        <name>operator++</name>
+        <param>
+          <type>int</type>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/util/range.hpp" line="402" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/util/range.hpp" bodystart="401" bodyend="404"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1range_1_1back__insert__iterator_1ada4b8559d6dac28d4b51d12a6a917e34" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type><ref refid="classboost_1_1geometry_1_1range_1_1back__insert__iterator" kindref="compound">back_insert_iterator</ref> &amp;</type>
+        <definition>back_insert_iterator&amp; boost::geometry::range::back_insert_iterator&lt; Container &gt;::operator=</definition>
+        <argsstring>(typename Container::value_type const &amp;value)</argsstring>
+        <name>operator=</name>
+        <param>
+          <type>typename Container::value_type const &amp;</type>
+          <declname>value</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/util/range.hpp" line="386" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/util/range.hpp" bodystart="385" bodyend="389"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/util/range.hpp" line="377" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/util/range.hpp" bodystart="375" bodyend="408"/>
+    <listofallmembers>
+      <member refid="classboost_1_1geometry_1_1range_1_1back__insert__iterator_1a7e6a5f265baa3b844069e60ed5b46e65" prot="public" virt="non-virtual"><scope>boost::geometry::range::back_insert_iterator</scope><name>back_insert_iterator</name></member>
+      <member refid="classboost_1_1geometry_1_1range_1_1back__insert__iterator_1a50a1612fc5c0c831651cccaf5a0d4a22" prot="private" virt="non-virtual"><scope>boost::geometry::range::back_insert_iterator</scope><name>container</name></member>
+      <member refid="classboost_1_1geometry_1_1range_1_1back__insert__iterator_1aaeb9e21962b50c79d9cd11e439886eeb" prot="public" virt="non-virtual"><scope>boost::geometry::range::back_insert_iterator</scope><name>container_type</name></member>
+      <member refid="classboost_1_1geometry_1_1range_1_1back__insert__iterator_1abb13454d01fc8683ad2587b0b39f6ad2" prot="public" virt="non-virtual"><scope>boost::geometry::range::back_insert_iterator</scope><name>operator*</name></member>
+      <member refid="classboost_1_1geometry_1_1range_1_1back__insert__iterator_1ac765b736af3d5e7d08a512ad29e2a776" prot="public" virt="non-virtual"><scope>boost::geometry::range::back_insert_iterator</scope><name>operator++</name></member>
+      <member refid="classboost_1_1geometry_1_1range_1_1back__insert__iterator_1a89b4905bce80b95e7f36ab5f4e895a1e" prot="public" virt="non-virtual"><scope>boost::geometry::range::back_insert_iterator</scope><name>operator++</name></member>
+      <member refid="classboost_1_1geometry_1_1range_1_1back__insert__iterator_1ada4b8559d6dac28d4b51d12a6a917e34" prot="public" virt="non-virtual"><scope>boost::geometry::range::back_insert_iterator</scope><name>operator=</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

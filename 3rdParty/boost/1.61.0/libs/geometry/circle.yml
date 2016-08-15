@@ -1,0 +1,174 @@
+# Use, modification, and distribution are
+# subject to the Boost Software License, Version 1.0. (See accompanying
+# file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+#
+# Copyright Antony Polukhin 2014.
+# Copyright Adam Wulkiewicz 2015-2016.
+
+general:
+  branches:
+    only:
+      - master
+      - develop
+      - test
+
+machine:
+  environment:
+    # define tests list, if parallelism is enabled they are run in parallel
+    TESTS: test index/test
+
+    # this is not fully bulletproof, ideally one should check
+    # if the current branch originates in master or develop
+    # but it's good enough
+    # test library using corresponding branch of Boost repository
+    BOOST_BRANCH: $([[ "$CIRCLE_BRANCH" = "master" ]] && echo master || echo develop)
+
+    # required directories
+    BOOST_DIR: boost-local
+    COVERAGE_DIR: coverage-local
+
+    # helper variables
+    PROJECT_ROOT: $HOME/$CIRCLE_PROJECT_REPONAME
+    BOOST_ROOT: $PROJECT_ROOT/$BOOST_DIR
+    COVERAGE_ROOT: $PROJECT_ROOT/$COVERAGE_DIR
+    #COVERAGE_ROOT: $CIRCLE_ARTIFACTS
+
+dependencies:
+  pre:
+    - sudo apt-get update
+
+    # gcc, g++, gcov
+    - sudo apt-get install gcc-4.9 g++-4.9 build-essential
+    #- sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-4.9 10
+    #- sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-4.9 10
+    - sudo update-alternatives --install /usr/bin/gcov gcov /usr/bin/gcov-4.9 10
+    #- sudo update-alternatives --install /usr/bin/cc cc /usr/bin/gcc 20
+    #- sudo update-alternatives --set cc /usr/bin/gcc
+    #- sudo update-alternatives --install /usr/bin/c++ c++ /usr/bin/g++ 20
+    #- sudo update-alternatives --set c++ /usr/bin/g++
+    #- sudo update-alternatives --config gcc
+    #- sudo update-alternatives --config g++
+    - sudo update-alternatives --config gcov
+
+    # coveralls-lcov for lcov *.info to JSON conversion
+    - gem install coveralls-lcov
+
+    # jq for JSON handling
+    - sudo apt-get install jq
+
+    # curl for HTTP
+    - sudo apt-get install curl
+
+    # clone boost repository
+    - mkdir $BOOST_ROOT
+    - cd $BOOST_ROOT && git init .
+    - cd $BOOST_ROOT && git remote add --no-tags -t $BOOST_BRANCH origin https://github.com/boostorg/boost.git
+    - cd $BOOST_ROOT && git fetch --depth=1
+    - cd $BOOST_ROOT && git checkout $BOOST_BRANCH
+    - cd $BOOST_ROOT && git submodule update --init --merge
+    - cd $BOOST_ROOT && git remote set-branches --add origin $BOOST_BRANCH
+    - cd $BOOST_ROOT && git pull --recurse-submodules
+    - cd $BOOST_ROOT && git submodule update --init
+    - cd $BOOST_ROOT && git checkout $BOOST_BRANCH
+    - cd $BOOST_ROOT && git submodule foreach "git reset --quiet --hard; git clean -fxd"
+    - cd $BOOST_ROOT && git reset --hard; git clean -fxd
+    - cd $BOOST_ROOT && git status
+    # replace the content of the library with the currently tested repo
+    - cd $BOOST_ROOT && rm -rf libs/geometry/
+    - mkdir $BOOST_ROOT/libs/geometry
+    - cp -R `ls -A | grep -v $BOOST_DIR` $BOOST_ROOT/libs/geometry/
+    # build b2 and create headers
+    - cd $BOOST_ROOT && ./bootstrap.sh
+    - cd $BOOST_ROOT && ./b2 headers
+
+    # wait with the modifications of the project directory until now
+    # to avoid copying into the $BOOST_ROOT/libs/geometry/
+
+    # download and install the latest lcov
+    # do not use the old one from sources
+    - wget http://downloads.sourceforge.net/ltp/lcov-1.12.tar.gz
+    - tar xvzf lcov-1.12.tar.gz
+    - cd lcov-1.12 && sudo make install
+
+    # create a direcotry for temporary coverage data
+    - if [ ! -d $COVERAGE_ROOT ]; then mkdir $COVERAGE_ROOT; fi
+
+test:
+  override:
+    # `--coverage` flags required to generate coverage info for Coveralls
+    # temporary for test purposes
+    #- cd $BOOST_ROOT/libs/geometry && ../../b2 cxxflags="--coverage" linkflags="--coverage" test/algorithms
+    #- cd $BOOST_ROOT/libs/geometry && ../../b2 cxxflags="--coverage" linkflags="--coverage" test/algorithms/detail
+    #- cd $BOOST_ROOT/libs/geometry && ../../b2 cxxflags="--coverage" linkflags="--coverage" test/algorithms/relational_operations
+    #- cd $BOOST_ROOT/libs/geometry && ../../b2 cxxflags="--coverage" linkflags="--coverage" test
+    #- cd $BOOST_ROOT/libs/geometry && ../../b2 cxxflags="--coverage" linkflags="--coverage" index/test/algorithms
+    #- cd $BOOST_ROOT/libs/geometry && ../../b2 cxxflags="--coverage" linkflags="--coverage" index/test/rtree/exceptions
+    # this is the first step of the first approach to automatic balancing
+    # the problem is that first the upper-level dir is handled
+    # then the tests from lower dir are executed, so the tests in various containers overlap
+    #- cd $BOOST_ROOT/libs/geometry && index=0 ; run_tests() { for i in "$1"/* ; do if [ -f "$i"/Jamfile* ] ; then ((index++)) ; echo "$index - $i" ; ../../b2 cxxflags="--coverage" linkflags="--coverage" "$i" ; run_tests "$i" ; fi ; done } ; run_tests test
+
+    # so for now just run the tests from the list
+    - cd $BOOST_ROOT/libs/geometry && status=0; index=0 ; for t in ${TESTS[@]} ; do if [ $(((index++)%CIRCLE_NODE_TOTAL)) == $CIRCLE_NODE_INDEX ] ; then ../../b2 cxxflags="--coverage" linkflags="--coverage" $t ; fi || status=$? ; done ; exit $status :
+        parallel: true
+
+  post:
+    ## Copying Coveralls data to a separate folder
+    #- find $BOOST_ROOT/bin.v2/ -name "*.gcda" -exec mv "{}" $COVERAGE_ROOT \;
+    #- find $BOOST_ROOT/bin.v2/ -name "*.gcno" -exec mv "{}" $COVERAGE_ROOT \;
+    # upgraded version - change the file name if exists
+    - find $BOOST_ROOT/bin.v2/ -name "*.gcda" -exec bash -c 'filen=$(basename $1) ; filen=${filen%.*} ; dirn=$(dirname $1) ; dstfilen=$filen ; while [ -f $COVERAGE_ROOT/$dstfilen.gcda ]; do dstfilen=$filen.$RANDOM ; done ; mv $dirn/$filen.gcda $COVERAGE_ROOT/$dstfilen.gcda ; mv $dirn/$filen.gcno $COVERAGE_ROOT/$dstfilen.gcno ; echo $dstfilen' bash "{}" \; :
+        parallel: true
+
+    ## Preparing Coveralls data by
+
+    ## ... changind data format to a readable one
+
+    - cd $BOOST_ROOT/libs/geometry && lcov --directory $COVERAGE_ROOT --base-directory ./ --capture --output-file $COVERAGE_ROOT/coverage.info :
+        parallel: true
+
+    ## ... erasing /usr and unneeded directories data
+    - lcov --remove $COVERAGE_ROOT/coverage.info "/usr*" "*/libs/geometry/*" -o $COVERAGE_ROOT/coverage.info :
+        parallel: true
+
+    ## ... erasing data that is not related to this project directly
+    - ls $BOOST_ROOT/boost | sed -r '/(geometry.*)/d' | sed -r 's/(.+)/"*\/boost\/\1\/*"/g' | sed -r 's/(.+\.hpp)\/\*/\1/g' | sed ':a;N;$!ba;s/\n/ /g' | xargs lcov --remove $COVERAGE_ROOT/coverage.info -o $COVERAGE_ROOT/coverage.info :
+        parallel: true
+
+    ## ... sanity check
+    - ls -lah $COVERAGE_ROOT :
+        parallel: true
+
+    ## Sending data to Coveralls
+
+    ## ... gather all files in one container
+    - if [ $CIRCLE_NODE_INDEX = 0 ]; then mv $COVERAGE_ROOT/coverage.info $COVERAGE_ROOT/coverage0.info ; else scp $COVERAGE_ROOT/coverage.info node0:$COVERAGE_ROOT/coverage$CIRCLE_NODE_INDEX.info ; fi :
+        parallel: true
+
+    ## ... merge info files
+    - lcov `ls $COVERAGE_ROOT/coverage*.info | sed -r 's/(.+)/--add-tracefile \1/g'` -o $COVERAGE_ROOT/coverage.info
+
+    ## ... handle sending manually
+    ## ... convert data with coveralls-lcov
+    - coveralls-lcov --repo-token=$COVERALLS_REPO_TOKEN -v -n $COVERAGE_ROOT/coverage.info > $COVERAGE_ROOT/coverage.json #:
+        #parallel: true
+
+    ## ... alter the json file
+    - jq -c ".service_name = \"circle-ci\" | .service_job_id = \"$CIRCLE_BUILD_NUM\" | .git .branch =\"$CIRCLE_BRANCH\"" $COVERAGE_ROOT/coverage.json > $COVERAGE_ROOT/processed.json
+    #- jq -c ".service_name = \"circle-ci\" | .service_job_id = \"$CIRCLE_BUILD_NUM\" | .parallel = true | .git .branch =\"$CIRCLE_BRANCH\"" $COVERAGE_ROOT/coverage.json > $COVERAGE_ROOT/processed.json #:
+        #parallel: true
+
+    ## ... send it to Coveralls
+    - curl --retry 3 -F "json_file=@$COVERAGE_ROOT/processed.json" 'https://coveralls.io/api/v1/jobs' #:
+        #parallel: true
+
+    ## ... notify Coveralls that the parallel build has ended
+    # this doesn't work - Coveralls returns an error
+    #- echo "{\"payload\":{\"build_num\":\"$CIRCLE_BUILD_NUM\",\"status\":\"done\"}}" > $COVERAGE_ROOT/payload.json && curl --retry 3 -F "json_file=@$COVERAGE_ROOT/payload.json" "https://coveralls.io/webhook?repo_token=$COVERALLS_REPO_TOKEN"
+    #- echo "{\"payload\":{\"build_num\":\"$CIRCLE_BUILD_NUM\",\"status\":\"done\"}}" > $COVERAGE_ROOT/payload.json && curl --retry 3 -d "@$COVERAGE_ROOT/payload.json" "https://coveralls.io/webhook?repo_token=$COVERALLS_REPO_TOKEN"
+
+## This doesn't work - no effect
+#notify:
+#  webhooks:
+    # Notify Coveralls that the build has ended
+    #- url: https://coveralls.io/webhook?repo_token=$COVERALLS_REPO_TOKEN

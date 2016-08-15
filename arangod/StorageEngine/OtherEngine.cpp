@@ -55,6 +55,12 @@ void OtherEngine::prepare() {
 // fully created (see "createDatabase" below). called at server start only
 void OtherEngine::getDatabases(arangodb::velocypack::Builder& result) {
 }
+  
+// fills the provided builder with information about the collection 
+void OtherEngine::getCollectionInfo(TRI_vocbase_t* vocbase, TRI_voc_cid_t cid, 
+                                    arangodb::velocypack::Builder& result, 
+                                    bool includeIndexes, TRI_voc_tick_t maxTick) {
+}
 
 // fill the Builder object with an array of collections (and their corresponding
 // indexes) that were detected by the storage engine. called at server start only
@@ -102,10 +108,11 @@ int OtherEngine::waitUntilDeletion(TRI_voc_tick_t id, bool force) {
 // and throw only then, so that subsequent collection creation requests will not fail.
 // the WAL entry for the collection creation will be written *after* the call
 // to "createCollection" returns
-void OtherEngine::createCollection(TRI_voc_tick_t databaseId, TRI_voc_cid_t id,
-                                   arangodb::velocypack::Slice const& data) {
+std::string OtherEngine::createCollection(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
+                                          arangodb::VocbaseCollectionInfo const& parameters) {
+  return "test";
 }
-
+  
 // asks the storage engine to drop the specified collection and persist the 
 // deletion info. Note that physical deletion of the collection data must not 
 // be carried out by this call, as there may
@@ -126,8 +133,8 @@ void OtherEngine::dropCollection(TRI_voc_tick_t databaseId, TRI_voc_cid_t id,
 // and throw only then, so that subsequent collection creation/rename requests will 
 // not fail. the WAL entry for the rename will be written *after* the call
 // to "renameCollection" returns
-void OtherEngine::renameCollection(TRI_voc_tick_t databaseId, TRI_voc_cid_t id,
-                                   arangodb::velocypack::Slice const& data) {
+void OtherEngine::renameCollection(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
+                                   std::string const& name) {
 }
 
 // asks the storage engine to change properties of the collection as specified in 
@@ -136,8 +143,9 @@ void OtherEngine::renameCollection(TRI_voc_tick_t databaseId, TRI_voc_cid_t id,
 // property changes and throw only then, so that subsequent operations will not fail.
 // the WAL entry for the propery change will be written *after* the call
 // to "changeCollection" returns
-void OtherEngine::changeCollection(TRI_voc_tick_t databaseId, TRI_voc_cid_t id,
-                                   arangodb::velocypack::Slice const& data) {
+void OtherEngine::changeCollection(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
+                                   arangodb::VocbaseCollectionInfo const& parameters,
+                                   bool doSync) {
 }
 
 // asks the storage engine to create an index as specified in the VPack

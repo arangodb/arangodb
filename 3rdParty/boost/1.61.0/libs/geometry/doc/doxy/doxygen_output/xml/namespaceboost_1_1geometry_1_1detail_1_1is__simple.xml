@@ -1,0 +1,34 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="namespaceboost_1_1geometry_1_1detail_1_1is__simple" kind="namespace">
+    <compoundname>boost::geometry::detail::is_simple</compoundname>
+      <sectiondef kind="func">
+      <memberdef kind="function" id="namespaceboost_1_1geometry_1_1detail_1_1is__simple_1af081cd857f3b138cb8d0a30dbd01de77" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Linear</type>
+          </param>
+        </templateparamlist>
+        <type>void</type>
+        <definition>void boost::geometry::detail::is_simple::debug_print_boundary_points</definition>
+        <argsstring>(Linear const &amp;)</argsstring>
+        <name>debug_print_boundary_points</name>
+        <param>
+          <type>Linear const &amp;</type>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/is_simple/debug_print_boundary_points.hpp" line="104" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/is_simple/debug_print_boundary_points.hpp" bodystart="103" bodyend="105"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/is_simple/debug_print_boundary_points.hpp" line="39"/>
+  </compounddef>
+</doxygen>

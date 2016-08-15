@@ -1,0 +1,129 @@
+[section boost/python/function_doc_signature.hpp]
+[section Introduction]
+Boost.Python supports docstrings with automatic appending of Pythonic and C++ signatures. This feature is implemented by class `function_doc_signature_generator`. The class uses all of the overloads, supplied arg names and default values, as well as the user-defined docstrings, to generate documentation for a given function.
+[endsect]
+[section Class `function_doc_signature_generator`]
+The class has only one public function which returns a list of strings documenting the overloads of a function. 
+``
+namespace boost { namespace python { namespace objects {
+
+    class function_doc_signature_generator 
+    {
+      public:
+          static list function_doc_signatures(function const *f);
+    };
+
+}}}
+``
+[endsect]
+[section Example]
+``
+#include <boost/python/module.hpp>
+#include <boost/python/def.hpp>
+#include <boost/python/args.hpp>
+#include <boost/python/tuple.hpp>
+#include <boost/python/class.hpp>
+#include <boost/python/overloads.hpp>
+#include <boost/python/raw_function.hpp>
+
+using namespace boost::python;
+
+tuple f(int x = 1, double y = 4.25, char const* z = "wow")
+{
+    return make_tuple(x, y, z);
+}
+
+BOOST_PYTHON_FUNCTION_OVERLOADS(f_overloads, f, 0, 3)
+
+
+struct X
+{
+    tuple f(int x = 1, double y = 4.25, char const* z = "wow")
+    {
+        return make_tuple(x, y, z);
+    }
+};
+
+BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(X_f_overloads, X::f, 0, 3)
+
+tuple raw_func(tuple args, dict kw)
+{
+    return make_tuple(args, kw);
+}
+
+BOOST_PYTHON_MODULE(args_ext)
+{
+    def("f", f, (arg("x")=1, arg("y")=4.25, arg("z")="wow")
+        , "This is f's docstring"
+        );
+
+    def("raw", raw_function(raw_func));
+
+    def("f1", f, f_overloads("f1's docstring", args("x", "y", "z")));
+
+
+    class_<X>("X", "This is X's docstring", init<>(args("self")))
+        .def("f", &X::f
+             , "This is X.f's docstring"
+             , args("self","x", "y", "z"))
+
+        ;
+
+}
+``
+Python code: [python]
+``
+>>> import args_ext
+>>> help(args_ext)
+Help on module args_ext:
+
+NAME
+    args_ext
+
+FILE
+    args_ext.pyd
+
+CLASSES
+    Boost.Python.instance(__builtin__.object)
+        X
+
+    class X(Boost.Python.instance)
+     |  This is X's docstring
+     |
+     |  Method resolution order:
+     |      X
+     |      Boost.Python.instance
+     |      __builtin__.object
+     |
+     |  Methods defined here:
+     |
+     |  __init__(...)
+     |      __init__( (object)self) -> None :
+     |       C++ signature:
+     |           void __init__(struct _object *)
+     |
+     |  f(...)
+     |      f( (X)self, (int)x, (float)y, (str)z) -> tuple : This is X.f's docstring
+     |      C++ signature:
+     |          class boost::python::tuple f(struct X {lvalue},int,double,char const *)
+     |
+     |    .................
+     |
+FUNCTIONS
+    f(...)
+        f([ (int)x=1 [, (float)y=4.25 [, (str)z='wow']]]) -> tuple : This is f's docstring
+        C++ signature:
+            class boost::python::tuple f([ int=1 [,double=4.25 [,char const *='wow']]])
+
+    f1(...)
+        f1([ (int)x [, (float)y [, (str)z]]]) -> tuple : f1's docstring
+        C++ signature:
+            class boost::python::tuple f1([ int [,double [,char const *]]])
+
+    raw(...)
+        object raw(tuple args, dict kwds) :
+        C++ signature:
+            object raw(tuple args, dict kwds)
+``
+[endsect]
+[endsect]

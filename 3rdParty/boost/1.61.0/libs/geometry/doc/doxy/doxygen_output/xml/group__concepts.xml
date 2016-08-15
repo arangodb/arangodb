@@ -1,0 +1,88 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="group__concepts" kind="group">
+    <compoundname>concepts</compoundname>
+    <title>geometry concepts: defines and checks concepts for geometries</title>
+    <innerclass refid="classboost_1_1geometry_1_1concept_1_1_box" prot="public">boost::geometry::concept::Box</innerclass>
+    <innerclass refid="classboost_1_1geometry_1_1concept_1_1_linestring" prot="public">boost::geometry::concept::Linestring</innerclass>
+    <innerclass refid="classboost_1_1geometry_1_1concept_1_1_multi_linestring" prot="public">boost::geometry::concept::MultiLinestring</innerclass>
+    <innerclass refid="classboost_1_1geometry_1_1concept_1_1_multi_point" prot="public">boost::geometry::concept::MultiPoint</innerclass>
+    <innerclass refid="classboost_1_1geometry_1_1concept_1_1_multi_polygon" prot="public">boost::geometry::concept::MultiPolygon</innerclass>
+    <innerclass refid="classboost_1_1geometry_1_1concept_1_1_point" prot="public">boost::geometry::concept::Point</innerclass>
+    <innerclass refid="classboost_1_1geometry_1_1concept_1_1_polygon" prot="public">boost::geometry::concept::Polygon</innerclass>
+    <innerclass refid="classboost_1_1geometry_1_1concept_1_1_ring" prot="public">boost::geometry::concept::Ring</innerclass>
+    <innerclass refid="classboost_1_1geometry_1_1concept_1_1_segment" prot="public">boost::geometry::concept::Segment</innerclass>
+      <sectiondef kind="func">
+      <memberdef kind="function" id="group__concepts_1gafe2c2fe2b2fcdabd1c2b860d529e08b5" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Geometry</type>
+          </param>
+        </templateparamlist>
+        <type>void</type>
+        <definition>void boost::geometry::concept::check</definition>
+        <argsstring>()</argsstring>
+        <name>check</name>
+        <briefdescription>
+<para>Checks, in compile-time, the concept of any geometry. </para>        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/concepts/check.hpp" line="217" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/concepts/check.hpp" bodystart="216" bodyend="220"/>
+      </memberdef>
+      <memberdef kind="function" id="group__concepts_1ga2e54c5b71d715ff2cd2a58e15a23800f" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename FirstTag</type>
+          </param>
+          <param>
+            <type>typename SecondTag</type>
+          </param>
+          <param>
+            <type>typename CastedTag</type>
+          </param>
+          <param>
+            <type>typename Strategy</type>
+          </param>
+        </templateparamlist>
+        <type>void</type>
+        <definition>void boost::geometry::concept::within::check</definition>
+        <argsstring>()</argsstring>
+        <name>check</name>
+        <briefdescription>
+<para>Checks, in compile-time, the concept of any within-strategy. </para>        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/concepts/within_concept.hpp" line="282" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/concepts/within_concept.hpp" bodystart="281" bodyend="285"/>
+      </memberdef>
+      <memberdef kind="function" id="group__concepts_1ga72a1211ac80fc47bb5aa8b7f85e5c1d1" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Geometry1</type>
+          </param>
+          <param>
+            <type>typename Geometry2</type>
+          </param>
+        </templateparamlist>
+        <type>void</type>
+        <definition>void boost::geometry::concept::check_concepts_and_equal_dimensions</definition>
+        <argsstring>()</argsstring>
+        <name>check_concepts_and_equal_dimensions</name>
+        <briefdescription>
+<para>Checks, in compile-time, the concept of two geometries, and if they have equal dimensions. </para>        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/concepts/check.hpp" line="230" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/concepts/check.hpp" bodystart="229" bodyend="234"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+  </compounddef>
+</doxygen>

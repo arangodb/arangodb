@@ -1,0 +1,154 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+	<head>
+		<title>Boost: assert.hpp documentation</title>
+		<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
+	</head>
+	<body bgcolor="white" style="MARGIN-LEFT: 5%; MARGIN-RIGHT: 5%">
+		<table border="0" width="100%">
+			<tr>
+				<td width="277"><a href="../../index.htm"> <img src="../../boost.png" alt="boost.png (6897 bytes)" width="277" height="86" border="0" /></a>
+				</td>
+				<td align="center">
+					<h1>assert.hpp</h1>
+				</td>
+			</tr>
+			<tr>
+				<td colspan="2" height="64">&nbsp;</td>
+			</tr>
+		</table>
+		<p>
+			<a href="#BOOST_ASSERT">BOOST_ASSERT</a><br />
+            <a href="#BOOST_ASSERT_MSG">BOOST_ASSERT_MSG</a><br />
+            <a href="#BOOST_VERIFY">BOOST_VERIFY</a><br />
+            <a href="#BOOST_VERIFY_MSG">BOOST_VERIFY_MSG</a><br />
+            <a href="#BOOST_ASSERT_IS_VOID">BOOST_ASSERT_IS_VOID</a><br />            
+        </p>
+            
+<h2><a name="BOOST_ASSERT">BOOST_ASSERT</a></h2>
+		<p>
+			The header <code>&lt;boost/assert.hpp&gt;</code> defines the macro <code>BOOST_ASSERT</code>, 
+			which is similar to the standard <code>assert</code> macro defined in <code>&lt;cassert&gt;</code>. 
+			The macro is intended to be used in both Boost libraries and user 
+            code.
+		</p>
+		<p>&bull; By default, <code>BOOST_ASSERT(expr)</code> expands to <code>assert(expr)</code>.</p>
+		<p>&bull; If the macro <code>BOOST_DISABLE_ASSERTS</code> is defined when <code>&lt;boost/assert.hpp&gt;</code>
+			is included, <code>BOOST_ASSERT(expr)</code> expands to <code>((void)0)</code>, regardless of whether
+			the macro <code>NDEBUG</code> is defined. This allows users to selectively disable <code>BOOST_ASSERT</code> without 
+			affecting the definition of the standard <code>assert</code>.</p>
+		<p>&bull; If the macro <code>BOOST_ENABLE_ASSERT_HANDLER</code> is defined when <code>&lt;boost/assert.hpp&gt;</code>
+			is included, <code>BOOST_ASSERT(expr)</code> expands to</p>
+		<blockquote>
+<pre>(<a href="../config/doc/html/boost_config/boost_macro_reference.html#boost_config.boost_macro_reference.boost_helper_macros">BOOST_LIKELY</a>(!!(expr))? ((void)0): ::boost::assertion_failed(#expr, <a href="current_function.html">BOOST_CURRENT_FUNCTION</a>, __FILE__, __LINE__))</pre>
+        </blockquote>
+        <p>That is, it evaluates <code>expr</code> and if it's false, calls <code>::boost::assertion_failed(#expr, BOOST_CURRENT_FUNCTION, __FILE__, __LINE__)</code>.
+        This is true regardless of whether <code>NDEBUG</code> is defined.</p>
+		<p><code>boost::assertion_failed</code> is declared in <code>&lt;boost/assert.hpp&gt;</code> as</p>
+		<blockquote>
+		<pre>namespace boost
+{
+  void assertion_failed(char const * expr, char const * function, char const * file, long line);
+}
+</pre>
+		</blockquote>
+		<p>but it is never defined. The user is expected to supply an appropriate 
+			definition.</p>
+		<p>&bull; If the macro <code>BOOST_ENABLE_ASSERT_DEBUG_HANDLER</code> is defined when <code>&lt;boost/assert.hpp&gt;</code>
+			is included, <code>BOOST_ASSERT(expr)</code> expands to <code>((void)0)</code> when <code>NDEBUG</code> is
+			defined. Otherwise the behavior is as if <code>BOOST_ENABLE_ASSERT_HANDLER</code> has been defined.</p>
+		<p>As is the case with <code>&lt;cassert&gt;</code>, <code>&lt;boost/assert.hpp&gt;</code>
+			can be included multiple times in a single translation unit. <code>BOOST_ASSERT</code>
+			will be redefined each time as specified above.</p>
+			
+<h2><a name="BOOST_ASSERT_MSG">BOOST_ASSERT_MSG</a></h2>
+		<p>
+			The macro <code>BOOST_ASSERT_MSG</code> is similar to <code>BOOST_ASSERT</code>, but it takes an additional argument,
+			a character literal, supplying an error message.</p>
+		<p>&bull; By default, <code>BOOST_ASSERT_MSG(expr,msg)</code> expands to <code>assert((expr)&amp;&amp;(msg))</code>.</p>
+		<p>&bull; If the macro <code>BOOST_DISABLE_ASSERTS</code> is defined when <code>&lt;boost/assert.hpp&gt;</code>
+			is included, <code>BOOST_ASSERT_MSG(expr,msg)</code> expands to <code>((void)0)</code>, regardless of whether
+			the macro <code>NDEBUG</code> is defined.</p>
+		<p>&bull; If the macro <code>BOOST_ENABLE_ASSERT_HANDLER</code> is defined when <code>&lt;boost/assert.hpp&gt;</code>
+			is included, <code>BOOST_ASSERT_MSG(expr,msg)</code> expands to</p>
+		<blockquote>
+<pre>(<a href="../config/doc/html/boost_config/boost_macro_reference.html#boost_config.boost_macro_reference.boost_helper_macros">BOOST_LIKELY</a>(!!(expr))? ((void)0): ::boost::assertion_failed_msg(#expr, msg, <a href="current_function.html">BOOST_CURRENT_FUNCTION</a>, __FILE__, __LINE__))</pre>
+        </blockquote>
+        <p>This is true regardless of whether <code>NDEBUG</code> is defined.</p>
+		<p><code>boost::assertion_failed_msg</code> is declared in <code>&lt;boost/assert.hpp&gt;</code> as</p>
+		<blockquote>
+		<pre>namespace boost
+{
+  void assertion_failed_msg(char const * expr, char const * msg, char const * function, char const * file, long line);
+}
+</pre>
+		</blockquote>
+		<p>but it is never defined. The user is expected to supply an appropriate 
+			definition.</p>
+		<p>&bull; If the macro <code>BOOST_ENABLE_ASSERT_DEBUG_HANDLER</code> is defined when <code>&lt;boost/assert.hpp&gt;</code>
+			is included, <code>BOOST_ASSERT_MSG(expr)</code> expands to <code>((void)0)</code> when <code>NDEBUG</code> is
+			defined. Otherwise the behavior is as if <code>BOOST_ENABLE_ASSERT_HANDLER</code> has been defined.</p>
+		<p>As is the case with <code>&lt;cassert&gt;</code>, <code>&lt;boost/assert.hpp&gt;</code>
+			can be included multiple times in a single translation unit. <code>BOOST_ASSERT_MSG</code>
+			will be redefined each time as specified above.</p>
+			
+<h2><a name="BOOST_VERIFY">BOOST_VERIFY</a></h2>
+		<p>The macro <code>BOOST_VERIFY</code> has the same behavior as <code>BOOST_ASSERT</code>, except that 
+			the expression that is passed to <code>BOOST_VERIFY</code> is always 
+			evaluated. This is useful when the asserted expression has desirable side 
+			effects; it can also help suppress warnings about unused variables when the 
+			only use of the variable is inside an assertion.</p>
+		<p>&bull; If the macro <code>BOOST_DISABLE_ASSERTS</code> is defined when <code>&lt;boost/assert.hpp&gt;</code>
+			is included, <code>BOOST_VERIFY(expr)</code> expands to <code>((void)(expr))</code>.</p>
+		<p>&bull; If the macro <code>BOOST_ENABLE_ASSERT_HANDLER</code> is defined when <code>&lt;boost/assert.hpp&gt;</code>
+			is included, <code>BOOST_VERIFY(expr)</code> expands to <code>BOOST_ASSERT(expr)</code>.</p>
+		<p>&bull; Otherwise, <code>BOOST_VERIFY(expr)</code> expands to <code>((void)(expr))</code> when <code>NDEBUG</code> is
+			defined, to <code>BOOST_ASSERT(expr)</code> when it's not.</p>
+<h2><a name="BOOST_VERIFY_MSG">BOOST_VERIFY_MSG</a></h2>
+		<p>The macro <code>BOOST_VERIFY_MSG</code> is similar to <code>BOOST_VERIFY</code>, with an additional parameter, an error message.</p>
+		<p>&bull; If the macro <code>BOOST_DISABLE_ASSERTS</code> is defined when <code>&lt;boost/assert.hpp&gt;</code>
+			is included, <code>BOOST_VERIFY_MSG(expr,msg)</code> expands to <code>((void)(expr))</code>.</p>
+		<p>&bull; If the macro <code>BOOST_ENABLE_ASSERT_HANDLER</code> is defined when <code>&lt;boost/assert.hpp&gt;</code>
+			is included, <code>BOOST_VERIFY_MSG(expr,msg)</code> expands to <code>BOOST_ASSERT_MSG(expr,msg)</code>.</p>
+		<p>&bull; Otherwise, <code>BOOST_VERIFY_MSG(expr,msg)</code> expands to <code>((void)(expr))</code> when <code>NDEBUG</code> is
+			defined, to <code>BOOST_ASSERT_MSG(expr,msg)</code> when it's not.</p>
+	    <hr />
+		<p>
+<h2><a name="BOOST_ASSERT_IS_VOID">BOOST_ASSERT_IS_VOID</a></h2>
+		<p>The macro <code>BOOST_ASSERT_IS_VOID</code> is defined when <code>BOOST_ASSERT</code> and <code>BOOST_ASSERT_MSG</code>, are expanded to <code>((void)0)</code>.
+      	This macro is useful to avoid compiling and potentially running code that is only intended to prepare data to be used in the assertion.</p>
+		<blockquote>
+		<pre>
+void MyContainer::erase(iterator i)
+{
+  //Some sanity checks, data must be ordered
+  #ifndef BOOST_ASSERT_IS_VOID
+     if(i != c.begin()){
+        iterator prev = i;
+        --prev;
+        BOOST_ASSERT(*prev < *i);
+     }
+     else if(i != c.end()){
+        iterator next = i;
+        ++next;
+        BOOST_ASSERT(*i < *next);
+     }
+  #endif
+  this->erase_impl(i);
+}
+</pre>
+		</blockquote>         
+      
+      
+		<p>&bull; By default, <code>BOOST_ASSERT_IS_VOID</code> is defined if <code>NDEBUG</code> is defined.</p>
+		<p>&bull; If the macro <code>BOOST_DISABLE_ASSERTS</code> is defined <code>BOOST_ASSERT_IS_VOID</code> is always defined.</p>
+		<p>&bull; If the macro <code>BOOST_ENABLE_ASSERT_HANDLER</code> is defined <code>BOOST_ASSERT_IS_VOID</code> is never defined.</p>
+		<p>&bull; If the macro <code>BOOST_ENABLE_ASSERT_DEBUG_HANDLER</code>, then <code>BOOST_ASSERT_IS_VOID</code> is defined when <code>NDEBUG</code> is defined.</p>
+	    <hr />
+		<p>
+			<small>Copyright © 2002, 2007, 2014 by Peter Dimov.&nbsp; Copyright © 2011 
+        by Beman Dawes.&nbsp; Copyright © 2015 by Ion Gaztanaga. Distributed under the Boost Software 
+				License, Version 1.0. See accompanying file <a href="../../LICENSE_1_0.txt">LICENSE_1_0.txt</a>
+				or copy at <a href="http://www.boost.org/LICENSE_1_0.txt">http://www.boost.org/LICENSE_1_0.txt</a>.</small></p>
+	</body>
+</html>

@@ -1,0 +1,21 @@
+<%
+  hana = (0...50).step(5).to_a
+%>
+
+{
+  "title": {
+    "text": "Compile-time behavior of is_disjoint"
+  },
+  "series": [
+    {
+      "name": "hana::tuple",
+      "data": <%= time_compilation('compile.hana.tuple.erb.cpp', hana) %>
+    }, {
+      "name": "hana::set",
+      "data": <%= time_compilation('compile.hana.set.erb.cpp', hana) %>
+    }, {
+      "name": "hana::map",
+      "data": <%= time_compilation('compile.hana.map.erb.cpp', hana) %>
+    }
+  ]
+}

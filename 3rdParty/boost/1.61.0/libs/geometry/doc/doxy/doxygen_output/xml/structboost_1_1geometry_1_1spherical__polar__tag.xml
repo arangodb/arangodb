@@ -1,0 +1,39 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="structboost_1_1geometry_1_1spherical__polar__tag" kind="struct" prot="public">
+    <compoundname>boost::geometry::spherical_polar_tag</compoundname>
+    <basecompoundref refid="structboost_1_1geometry_1_1spherical__tag" prot="public" virt="non-virtual">boost::geometry::spherical_tag</basecompoundref>
+    <includes local="no">tags.hpp</includes>
+    <briefdescription>
+<para>Tag indicating Spherical polar coordinate system family. </para>    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <inheritancegraph>
+      <node id="1123">
+        <label>boost::geometry::spherical_tag</label>
+        <link refid="structboost_1_1geometry_1_1spherical__tag"/>
+      </node>
+      <node id="1122">
+        <label>boost::geometry::spherical_polar_tag</label>
+        <link refid="structboost_1_1geometry_1_1spherical__polar__tag"/>
+        <childnode refid="1123" relation="public-inheritance">
+        </childnode>
+      </node>
+    </inheritancegraph>
+    <collaborationgraph>
+      <node id="1125">
+        <label>boost::geometry::spherical_tag</label>
+        <link refid="structboost_1_1geometry_1_1spherical__tag"/>
+      </node>
+      <node id="1124">
+        <label>boost::geometry::spherical_polar_tag</label>
+        <link refid="structboost_1_1geometry_1_1spherical__polar__tag"/>
+        <childnode refid="1125" relation="public-inheritance">
+        </childnode>
+      </node>
+    </collaborationgraph>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/core/tags.hpp" line="36" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/core/tags.hpp" bodystart="36" bodyend="36"/>
+    <listofallmembers>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

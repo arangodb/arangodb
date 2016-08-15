@@ -1,0 +1,80 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>INI Parser</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../../index.html" title="Chapter&#160;1.&#160;Boost.PropertyTree">
+<link rel="up" href="../parsers.html" title="How to Populate a Property Tree">
+<link rel="prev" href="json_parser.html" title="JSON Parser">
+<link rel="next" href="info_parser.html" title="INFO Parser">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="json_parser.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../parsers.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="info_parser.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="property_tree.parsers.ini_parser"></a><a class="link" href="ini_parser.html" title="INI Parser">INI Parser</a>
+</h3></div></div></div>
+<p>
+        The <a href="http://en.wikipedia.org/wiki/INI" target="_top">INI format</a> was
+        once widely used in the world of Windows. It is now deprecated, but is still
+        used by a surprisingly large number of applications. The reason is probably
+        its simplicity, plus that Microsoft recommends using the registry as a replacement,
+        which not all developers want to do.
+      </p>
+<p>
+        INI is a simple key-value format with a single level of sectioning. It is
+        thus less rich than the property tree dataset, which means that not all property
+        trees can be serialized as INI files.
+      </p>
+<p>
+        The INI parser creates a tree node for every section, and a child node for
+        every property in that section. All properties not in a section are directly
+        added to the root node. Empty sections are ignored. (They don't round-trip,
+        as described below.)
+      </p>
+<p>
+        The INI serializer reverses this process. It first writes out every child
+        of the root that contains data, but no child nodes, as properties. Then it
+        creates a section for every child that contains child nodes, but no data.
+        The children of the sections must only contain data. It is an error if the
+        root node contains data, or any child of the root contains both data and
+        content, or there's more than three levels of hierarchy. There must also
+        not be any duplicate keys.
+      </p>
+<p>
+        An empty tree node is assumed to be an empty property. There is no way to
+        create empty sections.
+      </p>
+<p>
+        Since the Windows INI parser discards trailing spaces and does not support
+        quoting, the property tree parser follows this example. This means that property
+        values containing trailing spaces do not round-trip.
+      </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2008-2010 Marcin Kalicinski<br>Copyright &#169; 2010-2013 Sebastian
+      Redl<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="json_parser.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../parsers.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="info_parser.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

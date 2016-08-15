@@ -1,0 +1,86 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="structboost_1_1geometry_1_1strategy_1_1within_1_1winding__check__touch_3_01_point_00_01_calculate9f52b8a0d2744ce64bb2f274fded74d" kind="struct" prot="public">
+    <compoundname>boost::geometry::strategy::within::winding_check_touch&lt; Point, CalculationType, cartesian_tag &gt;</compoundname>
+    <includes local="no">point_in_poly_winding.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename Point</type>
+      </param>
+      <param>
+        <type>typename CalculationType</type>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-type">
+      <memberdef kind="typedef" id="structboost_1_1geometry_1_1strategy_1_1within_1_1winding__check__touch_3_01_point_00_01_calculate9f52b8a0d2744ce64bb2f274fded74d_1a62352d8bad4244d0d02d60752cad6ac9" prot="public" static="no">
+        <type>CalculationType</type>
+        <definition>typedef CalculationType boost::geometry::strategy::within::winding_check_touch&lt; Point, CalculationType, cartesian_tag &gt;::calc_t</definition>
+        <argsstring></argsstring>
+        <name>calc_t</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/point_in_poly_winding.hpp" line="221" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/point_in_poly_winding.hpp" bodystart="221" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-static-func">
+      <memberdef kind="function" id="structboost_1_1geometry_1_1strategy_1_1within_1_1winding__check__touch_3_01_point_00_01_calculate9f52b8a0d2744ce64bb2f274fded74d_1a9e6fabb63cd24ed36a81ccebb0b18d98" prot="public" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename PointOfSegment</type>
+          </param>
+          <param>
+            <type>typename State</type>
+          </param>
+        </templateparamlist>
+        <type>bool</type>
+        <definition>static bool boost::geometry::strategy::within::winding_check_touch&lt; Point, CalculationType, cartesian_tag &gt;::apply</definition>
+        <argsstring>(Point const &amp;point, PointOfSegment const &amp;seg1, PointOfSegment const &amp;seg2, State &amp;state, bool &amp;eq1, bool &amp;eq2)</argsstring>
+        <name>apply</name>
+        <param>
+          <type>Point const &amp;</type>
+          <declname>point</declname>
+        </param>
+        <param>
+          <type>PointOfSegment const &amp;</type>
+          <declname>seg1</declname>
+        </param>
+        <param>
+          <type>PointOfSegment const &amp;</type>
+          <declname>seg2</declname>
+        </param>
+        <param>
+          <type>State &amp;</type>
+          <declname>state</declname>
+        </param>
+        <param>
+          <type>bool &amp;</type>
+          <declname>eq1</declname>
+        </param>
+        <param>
+          <type>bool &amp;</type>
+          <declname>eq2</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/point_in_poly_winding.hpp" line="230" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/point_in_poly_winding.hpp" bodystart="224" bodyend="252"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/point_in_poly_winding.hpp" line="220" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/point_in_poly_winding.hpp" bodystart="219" bodyend="253"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1strategy_1_1within_1_1winding__check__touch_3_01_point_00_01_calculate9f52b8a0d2744ce64bb2f274fded74d_1a9e6fabb63cd24ed36a81ccebb0b18d98" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::within::winding_check_touch&lt; Point, CalculationType, cartesian_tag &gt;</scope><name>apply</name></member>
+      <member refid="structboost_1_1geometry_1_1strategy_1_1within_1_1winding__check__touch_3_01_point_00_01_calculate9f52b8a0d2744ce64bb2f274fded74d_1a62352d8bad4244d0d02d60752cad6ac9" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::within::winding_check_touch&lt; Point, CalculationType, cartesian_tag &gt;</scope><name>calc_t</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

@@ -1147,7 +1147,7 @@ if (list.length > 0) {
               <th><input type="text" id="newGeoFields" value=""/></th>
               <th class="tooltipInfoTh">
                 <div>
-                  <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="A list with one or two attribute paths.">
+                  <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="A comma-separated list with one or two attribute paths. Example: latitude,longitude">
                     <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
                   </a>
                 </div>
@@ -1160,7 +1160,7 @@ if (list.length > 0) {
               </th>
               <th class="tooltipInfoTh">
                 <div>
-                  <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="If a geo-spatial index on a location is constructed and geoJson is true, then the order within the list is longitude followed by latitude.">
+                  <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="Set geoJson to true if the coordinates stored in the specified attribute are arrays in the form [longitude,latitude].">
                     <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
                   </a>
                 </div>
@@ -1175,7 +1175,7 @@ if (list.length > 0) {
               <th><input type="text" id="newPersistentFields" value=""/></th>
               <th class="tooltipInfoTh">
                 <div>
-                  <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="A list of attribute paths.">
+                  <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="A comma-separated list of attribute paths.">
                     <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
                   </a>
                 </div>
@@ -1216,7 +1216,7 @@ if (list.length > 0) {
               <th><input type="text" id="newHashFields" value=""/></th>
               <th class="tooltipInfoTh">
                 <div>
-                  <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="A list of attribute paths.">
+                  <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="A comma-separated list of attribute paths.">
                     <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
                   </a>
                 </div>
@@ -1257,7 +1257,7 @@ if (list.length > 0) {
               <th><input type="text" id="newFulltextFields" value=""/></th>
               <th class="tooltipInfoTh">
                 <div>
-                  <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title='A list of attribute names. Currently, the list is limited to exactly one attribute, so the value of fields should look like this for example: [ "text" ].'>
+                  <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="A single attribute path. Example: message.text">
                     <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
                   </a>
                 </div>
@@ -1284,7 +1284,7 @@ if (list.length > 0) {
               <th><input type="text" id="newSkiplistFields" value=""/></th>
               <th class="tooltipInfoTh">
                 <div>
-                  <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="A list of attribute paths.">
+                  <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="A comma-separated list of attribute paths.">
                     <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
                   </a>
                 </div>
@@ -2185,7 +2185,9 @@ if (list.length > 0) {
       <div class="pull-left">
         <button id="toggleQueries1" class="button-primary"><i class="fa fa-star-o"></i>Queries</button>
         <button id="toggleQueries2" class="button-primary" style="display: none"><i class="fa fa-star"></i>Queries</button>
-        <button id="saveCurrentQuery" class="button-success"><i class="fa fa-save"></i>Save</button>
+        <button id="createNewQuery" class="button-warning">New</button>
+        <button id="updateCurrentQuery" class="button-success" style="display: none"><i class="fa fa-save"></i>Save</button>
+        <button id="saveCurrentQuery" class="button-success"><i class="fa fa-save"></i>Save as</button>
       </div>
 
       <div class="pull-right">
@@ -2710,4 +2712,4 @@ var cutByResolution = function (str) {
   </div>
 
   <div id="workMonitorContent" class="innerContent">
-  </div></script></head><body><nav class="navbar" style="display: none"><div class="primary"><div class="navlogo"><a class="logo big" href="#"><img class="arangodbLogo" src="img/arangodb_logo_big.png"></a><a class="logo small" href="#"><img class="arangodbLogo" src="img/arangodb_logo_small.png"></a><a class="version"><span>VERSION: </span><span id="currentVersion"></span></a></div><div class="statmenu" id="statisticBar"></div><div class="navmenu" id="navigationBar"></div></div></nav><div id="modalPlaceholder"></div><div class="bodyWrapper" style="display: none"><div class="centralRow"><div id="navbar2" class="navbarWrapper secondary"><div class="subnavmenu" id="subNavigationBar"></div></div><div class="resizecontainer contentWrapper"><div id="loadingScreen" class="loadingScreen" style="display: none"><i class="fa fa-circle-o-notch fa-spin fa-3x fa-fw margin-bottom"></i> <span class="sr-only">Loading...</span></div><div id="content" class="centralContent"></div><footer class="footer"><div id="footerBar"></div></footer></div></div></div><div id="progressPlaceholder" style="display:none"></div><div id="spotlightPlaceholder" style="display:none"></div><div id="graphSettingsContent" style="display: none"></div><div id="offlinePlaceholder" style="display:none"><div class="offline-div"><div class="pure-u"><div class="pure-u-1-4"></div><div class="pure-u-1-2 offline-window"><div class="offline-header"><h3>You have been disconnected from the server</h3></div><div class="offline-body"><p>The connection to the server has been lost. The server may be under heavy load.</p><p>Trying to reconnect in <span id="offlineSeconds">10</span> seconds.</p><p class="animation_state"><span><button class="button-success">Reconnect now</button></span></p></div></div><div class="pure-u-1-4"></div></div></div></div><div class="arangoFrame" style=""><div class="outerDiv"><div class="innerDiv"></div></div></div><script src="libs.js?version=1469732989307"></script><script src="app.js?version=1469732989307"></script></body></html>
+  </div></script></head><body><nav class="navbar" style="display: none"><div class="primary"><div class="navlogo"><a class="logo big" href="#"><img class="arangodbLogo" src="img/arangodb_logo_big.png"></a><a class="logo small" href="#"><img class="arangodbLogo" src="img/arangodb_logo_small.png"></a><a class="version"><span>VERSION: </span><span id="currentVersion"></span></a></div><div class="statmenu" id="statisticBar"></div><div class="navmenu" id="navigationBar"></div></div></nav><div id="modalPlaceholder"></div><div class="bodyWrapper" style="display: none"><div class="centralRow"><div id="navbar2" class="navbarWrapper secondary"><div class="subnavmenu" id="subNavigationBar"></div></div><div class="resizecontainer contentWrapper"><div id="loadingScreen" class="loadingScreen" style="display: none"><i class="fa fa-circle-o-notch fa-spin fa-3x fa-fw margin-bottom"></i> <span class="sr-only">Loading...</span></div><div id="content" class="centralContent"></div><footer class="footer"><div id="footerBar"></div></footer></div></div></div><div id="progressPlaceholder" style="display:none"></div><div id="spotlightPlaceholder" style="display:none"></div><div id="graphSettingsContent" style="display: none"></div><div id="offlinePlaceholder" style="display:none"><div class="offline-div"><div class="pure-u"><div class="pure-u-1-4"></div><div class="pure-u-1-2 offline-window"><div class="offline-header"><h3>You have been disconnected from the server</h3></div><div class="offline-body"><p>The connection to the server has been lost. The server may be under heavy load.</p><p>Trying to reconnect in <span id="offlineSeconds">10</span> seconds.</p><p class="animation_state"><span><button class="button-success">Reconnect now</button></span></p></div></div><div class="pure-u-1-4"></div></div></div></div><div class="arangoFrame" style=""><div class="outerDiv"><div class="innerDiv"></div></div></div><script src="libs.js?version=1470911098691"></script><script src="app.js?version=1470911098691"></script></body></html>

@@ -1,0 +1,51 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="structboost_1_1geometry_1_1equal__to" kind="struct" prot="public">
+    <compoundname>boost::geometry::equal_to</compoundname>
+    <includes local="no">compare.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename Point</type>
+      </param>
+      <param>
+        <type>int</type>
+        <declname>Dimension</declname>
+        <defname>Dimension</defname>
+        <defval>-1</defval>
+      </param>
+      <param>
+        <type>typename Strategy</type>
+        <defval><ref refid="structboost_1_1geometry_1_1strategy_1_1compare_1_1default__strategy" kindref="compound">strategy::compare::default_strategy</ref></defval>
+      </param>
+    </templateparamlist>
+    <briefdescription>
+<para>Equal To functor, to compare if points are equal. </para>    </briefdescription>
+    <detaileddescription>
+<para><parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>Geometry</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>the geometry </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Dimension</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>the dimension to compare on, defaults to -1, indicating ALL dimensions. If a dimension is specified, only that dimension is considered </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Strategy</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>underlying coordinate comparing functor </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/policies/compare.hpp" line="236" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/policies/compare.hpp" bodystart="228" bodyend="236"/>
+    <listofallmembers>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

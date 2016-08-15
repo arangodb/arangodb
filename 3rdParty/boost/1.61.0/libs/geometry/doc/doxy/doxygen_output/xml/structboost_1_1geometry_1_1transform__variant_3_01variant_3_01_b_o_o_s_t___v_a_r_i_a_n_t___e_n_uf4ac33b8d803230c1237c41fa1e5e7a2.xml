@@ -1,0 +1,27 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="structboost_1_1geometry_1_1transform__variant_3_01variant_3_01_b_o_o_s_t___v_a_r_i_a_n_t___e_n_uf4ac33b8d803230c1237c41fa1e5e7a2" kind="struct" prot="public">
+    <compoundname>boost::geometry::transform_variant&lt; variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt;, Op, boost::mpl::na &gt;</compoundname>
+    <includes local="no">transform_variant.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>BOOST_VARIANT_ENUM_PARAMS(typename T)</type>
+      </param>
+      <param>
+        <type>typename Op</type>
+      </param>
+    </templateparamlist>
+    <briefdescription>
+<para>Meta-function that takes a boost::variant type and an MPL lambda expression and returns a variant type over the same types as the initial variant type, each transformed using the lambda expression. </para>    </briefdescription>
+    <detaileddescription>
+<para><simplesect kind="par"><title>Example</title><para><programlisting><codeline><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">typedef</highlight><highlight class="normal"><sp/>variant&lt;int,<sp/>float,<sp/>long&gt;<sp/>variant_type;</highlight></codeline>
+<codeline><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">typedef</highlight><highlight class="normal"><sp/>transform_variant&lt;variant_type,<sp/>add_pointer&lt;_&gt;<sp/>&gt;<sp/>transformed;</highlight></codeline>
+<codeline><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">typedef</highlight><highlight class="normal"><sp/>variant&lt;int*,<sp/>float*,<sp/>long*&gt;<sp/>result;</highlight></codeline>
+<codeline><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>BOOST_MPL_ASSERT((<sp/>equal&lt;result,<sp/>transformed&gt;<sp/>));</highlight></codeline>
+</programlisting> </para></simplesect>
+</para>    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/util/transform_variant.hpp" line="78" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/util/transform_variant.hpp" bodystart="71" bodyend="78"/>
+    <listofallmembers>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

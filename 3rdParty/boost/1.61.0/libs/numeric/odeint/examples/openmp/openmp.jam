@@ -1,0 +1,52 @@
+# Copyright 2013 Karsten Ahnert
+# Copyright 2013 Mario Mulansky
+# Copyright 2013 Pascal Germroth
+# Distributed under the Boost Software License, Version 1.0. (See
+# accompanying file LICENSE_1_0.txt or copy at
+# http://www.boost.org/LICENSE_1_0.txt)
+
+
+# Only builds target with supported OpenMP enabled toolsets.
+#
+# use as:
+#   exe omp : omp.cpp : [ openmp ] ;
+#
+rule openmp return
+    # default
+    <build>no
+    # GNU C++
+    <toolset>gcc:<cxxflags>-fopenmp
+    <toolset>gcc:<linkflags>-fopenmp
+    <toolset>gcc:<build>yes
+    # Microsoft Visual C++
+    <toolset>msvc:<cxxflags>/openmp
+    <toolset>msvc:<linkflags>/openmp
+    <toolset>msvc:<build>yes
+    # Intel C++
+    <toolset>intel-linux:<cxxflags>-openmp
+    <toolset>intel-linux:<linkflags>-openmp
+    <toolset>intel-linux:<build>yes
+    <toolset>intel-win:<cxxflags>-Qopenmp
+    <toolset>intel-win:<linkflags>-Qopenmp
+    <toolset>intel-win:<build>yes
+    # HP aC++
+    <toolset>acc:<cxxflags>+Oopenmp
+    <toolset>acc:<linkflags>+Oopenmp
+    <toolset>acc:<build>yes
+    # Sun Studio
+    <toolset>sun:<cxxflags>-xopenmp
+    <toolset>sun:<linkflags>-xopenmp
+    <toolset>sun:<build>yes
+    # IBM XL
+    <toolset>vacpp:<cxxflags>-qsmp=omp
+    <toolset>vacpp:<linkflags>-qsmp=omp
+    <toolset>vacpp:<build>yes
+    # PG++
+    <toolset>pgi:<cxxflags>-mp
+    <toolset>pgi:<linkflags>-mp
+    <toolset>pgi:<build>yes
+    # Pathscale
+    <toolset>pathscale:<cxxflags>-mp
+    <toolset>pathscale:<linkflags>-mp
+    <toolset>pathscale:<build>yes
+    ;

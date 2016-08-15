@@ -1,0 +1,49 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="structboost_1_1geometry_1_1strategy_1_1relate_1_1relate" kind="struct" prot="public">
+    <compoundname>boost::geometry::strategy::relate::relate</compoundname>
+    <includes local="no">relate.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename Geometry1</type>
+      </param>
+      <param>
+        <type>typename Geometry2</type>
+      </param>
+      <param>
+        <type>typename StaticMask</type>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-static-func">
+      <memberdef kind="function" id="structboost_1_1geometry_1_1strategy_1_1relate_1_1relate_1a9e27ff51da4727f013e7ade2db0567bb" prot="public" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>bool</type>
+        <definition>static bool boost::geometry::strategy::relate::relate&lt; Geometry1, Geometry2, StaticMask &gt;::apply</definition>
+        <argsstring>(Geometry1 const &amp;geometry1, Geometry2 const &amp;geometry2)</argsstring>
+        <name>apply</name>
+        <param>
+          <type>Geometry1 const &amp;</type>
+          <declname>geometry1</declname>
+        </param>
+        <param>
+          <type>Geometry2 const &amp;</type>
+          <declname>geometry2</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/relate.hpp" line="27" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/relate.hpp" bodystart="26" bodyend="29"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/relate.hpp" line="25" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/relate.hpp" bodystart="24" bodyend="30"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1strategy_1_1relate_1_1relate_1a9e27ff51da4727f013e7ade2db0567bb" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::relate::relate</scope><name>apply</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

@@ -1,0 +1,68 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Space and Performance</title>
+<link rel="stylesheet" href="http://www.boost.org/doc/libs/1_53_0/doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../index.html" title="Chapter&#160;1.&#160;Boost.TypeIndex 4.0">
+<link rel="up" href="../index.html" title="Chapter&#160;1.&#160;Boost.TypeIndex 4.0">
+<link rel="prev" href="making_a_custom_type_index.html" title="Making a custom type_index">
+<link rel="next" href="code_bloat.html" title="Code bloat">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="http://www.boost.org/doc/libs/1_53_0/boost.png"></td>
+<td align="center"><a href="http://www.boost.org/doc/libs/1_53_0/index.html">Home</a></td>
+<td align="center"><a href="http://www.boost.org/doc/libs/1_53_0/libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="http://www.boost.org/doc/libs/1_53_0/more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="making_a_custom_type_index.html"><img src="http://www.boost.org/doc/libs/1_53_0/doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="http://www.boost.org/doc/libs/1_53_0/doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="http://www.boost.org/doc/libs/1_53_0/doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="code_bloat.html"><img src="http://www.boost.org/doc/libs/1_53_0/doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="boost_typeindex.space_and_performance"></a><a class="link" href="space_and_performance.html" title="Space and Performance">Space and Performance</a>
+</h2></div></div></div>
+<div class="itemizedlist"><ul class="itemizedlist" type="disc">
+<li class="listitem">
+          <code class="computeroutput"><span class="identifier">ctti_type_index</span></code> uses macro
+          for getting full text representation of function name which could lead
+          to code bloat, so prefer using <code class="computeroutput"><span class="identifier">stl_type_index</span></code>
+          type when possible.
+        </li>
+<li class="listitem">
+          All the type_index classes hold a single pointer and are fast to copy.
+        </li>
+<li class="listitem">
+          Calls to <code class="computeroutput"><span class="keyword">const</span> <span class="keyword">char</span><span class="special">*</span> <span class="identifier">raw_name</span><span class="special">()</span></code> do not require dynamic memory allocation
+          and usually just return a pointer to an array of chars in a read-only section
+          of the binary image.
+        </li>
+<li class="listitem">
+          Comparison operators are optimized as much as possible and execute a single
+          <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">strcmp</span></code> in worst case.
+        </li>
+<li class="listitem">
+          Calls to <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="identifier">pretty_name</span><span class="special">()</span></code> usually require dynamic memory allocation
+          and some computations, so they are not recommended for usage in performance
+          critical sections.
+        </li>
+</ul></div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2012-2014 Antony Polukhin<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="making_a_custom_type_index.html"><img src="http://www.boost.org/doc/libs/1_53_0/doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="http://www.boost.org/doc/libs/1_53_0/doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="http://www.boost.org/doc/libs/1_53_0/doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="code_bloat.html"><img src="http://www.boost.org/doc/libs/1_53_0/doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

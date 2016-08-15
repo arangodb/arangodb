@@ -1,0 +1,128 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Flexibility and Adaptability to Change</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../../index.html" title="Chapter&#160;1.&#160;Boost.Convert 2.0">
+<link rel="up" href="../getting_started.html" title="Getting Started">
+<link rel="prev" href="../getting_started.html" title="Getting Started">
+<link rel="next" href="basic_conversion_failure_detection.html" title="Basic Conversion-Failure Detection">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../getting_started.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../getting_started.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="basic_conversion_failure_detection.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_convert.getting_started.flexibility_and_adaptability_to_change"></a><a class="link" href="flexibility_and_adaptability_to_change.html" title="Flexibility and Adaptability to Change">Flexibility
+      and Adaptability to Change</a>
+</h3></div></div></div>
+<div class="blockquote"><blockquote class="blockquote"><p>
+          <span class="bold"><strong><span class="emphasis"><em>"There is nothing more constant than
+          change" Heraclitus</em></span></strong></span>
+        </p></blockquote></div>
+<p>
+        Sooner or later (during initial development or in the maintenance phase)
+        flexibility and adaptability become important. Deployment of <span class="emphasis"><em>Boost.Convert</em></span>
+        helps to adjust and to change in line with the evolution of the requirements.
+        Say, the program flow would benefit from the non-throwing behavior. Then:
+      </p>
+<p>
+</p>
+<pre class="programlisting"><span class="keyword">using</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span><span class="special">;</span>
+<span class="keyword">using</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">lexical_cast</span><span class="special">;</span>
+<span class="keyword">using</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">convert</span><span class="special">;</span>
+</pre>
+<p>
+      </p>
+<p>
+</p>
+<pre class="programlisting"><span class="comment">// Does not throw. Returns fallback value (-1) when failed.</span>
+<span class="keyword">int</span> <span class="identifier">i</span> <span class="special">=</span> <span class="identifier">convert</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;(</span><span class="string">"uhm"</span><span class="special">,</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">cnv</span><span class="special">::</span><span class="identifier">lexical_cast</span><span class="special">()).</span><span class="identifier">value_or</span><span class="special">(-</span><span class="number">1</span><span class="special">);</span>
+
+<span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="identifier">i</span> <span class="special">==</span> <span class="special">-</span><span class="number">1</span><span class="special">);</span> <span class="comment">// Conversion failed. 'i' assigned the fallback value.</span>
+</pre>
+<p>
+      </p>
+<p>
+        Or, the component is identified as too slow. Then the performance could be
+        improved with minimal effort by replacing the converter:
+      </p>
+<p>
+</p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">convert</span><span class="special">/</span><span class="identifier">strtol</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">convert</span><span class="special">/</span><span class="identifier">spirit</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+</pre>
+<p>
+      </p>
+<p>
+</p>
+<pre class="programlisting"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">cnv</span><span class="special">::</span><span class="identifier">lexical_cast</span> <span class="identifier">cnv1</span><span class="special">;</span>
+<span class="identifier">boost</span><span class="special">::</span><span class="identifier">cnv</span><span class="special">::</span><span class="identifier">strtol</span>       <span class="identifier">cnv2</span><span class="special">;</span>
+<span class="identifier">boost</span><span class="special">::</span><span class="identifier">cnv</span><span class="special">::</span><span class="identifier">spirit</span>       <span class="identifier">cnv3</span><span class="special">;</span>
+
+<span class="keyword">int</span> <span class="identifier">i1</span> <span class="special">=</span> <span class="identifier">convert</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;(</span><span class="string">"123"</span><span class="special">,</span> <span class="identifier">cnv1</span><span class="special">).</span><span class="identifier">value</span><span class="special">();</span>
+<span class="keyword">int</span> <span class="identifier">i2</span> <span class="special">=</span> <span class="identifier">convert</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;(</span><span class="string">"123"</span><span class="special">,</span> <span class="identifier">cnv2</span><span class="special">).</span><span class="identifier">value</span><span class="special">();</span> <span class="comment">// Two times faster than lexical_cast.</span>
+<span class="keyword">int</span> <span class="identifier">i3</span> <span class="special">=</span> <span class="identifier">convert</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;(</span><span class="string">"123"</span><span class="special">,</span> <span class="identifier">cnv3</span><span class="special">).</span><span class="identifier">value</span><span class="special">();</span> <span class="comment">// Four times faster than lexical_cast.</span>
+</pre>
+<p>
+      </p>
+<p>
+        If, instead, the requirements change to support more input formats or to
+        require a certain output format, then, again, that could be accommodated
+        with:
+      </p>
+<p>
+</p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">convert</span><span class="special">/</span><span class="identifier">stream</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+</pre>
+<p>
+      </p>
+<p>
+</p>
+<pre class="programlisting"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">cnv</span><span class="special">::</span><span class="identifier">cstream</span> <span class="identifier">cnv</span><span class="special">;</span>
+
+<span class="keyword">try</span>
+<span class="special">{</span>
+    <span class="keyword">int</span> <span class="identifier">i1</span> <span class="special">=</span> <span class="identifier">lexical_cast</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;(</span><span class="string">"   123"</span><span class="special">);</span> <span class="comment">// Does not work.</span>
+    <span class="identifier">BOOST_TEST</span><span class="special">(!</span><span class="string">"Never reached"</span><span class="special">);</span>
+<span class="special">}</span>
+<span class="keyword">catch</span> <span class="special">(...)</span> <span class="special">{}</span>
+
+<span class="keyword">int</span>          <span class="identifier">i2</span> <span class="special">=</span> <span class="identifier">convert</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;(</span><span class="string">"   123"</span><span class="special">,</span> <span class="identifier">cnv</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">skipws</span><span class="special">)).</span><span class="identifier">value</span><span class="special">();</span> <span class="comment">// Success</span>
+<span class="identifier">string</span>       <span class="identifier">s1</span> <span class="special">=</span> <span class="identifier">lexical_cast</span><span class="special">&lt;</span><span class="identifier">string</span><span class="special">&gt;(</span><span class="number">12.34567</span><span class="special">);</span>
+<span class="identifier">string</span>       <span class="identifier">s2</span> <span class="special">=</span> <span class="identifier">convert</span><span class="special">&lt;</span><span class="identifier">string</span><span class="special">&gt;(</span><span class="number">12.34567</span><span class="special">,</span> <span class="identifier">cnv</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">fixed</span><span class="special">)(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">setprecision</span><span class="special">(</span><span class="number">3</span><span class="special">))).</span><span class="identifier">value</span><span class="special">();</span>
+<span class="identifier">string</span>       <span class="identifier">s3</span> <span class="special">=</span> <span class="identifier">convert</span><span class="special">&lt;</span><span class="identifier">string</span><span class="special">&gt;(</span><span class="number">12.34567</span><span class="special">,</span> <span class="identifier">cnv</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">scientific</span><span class="special">)(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">setprecision</span><span class="special">(</span><span class="number">3</span><span class="special">))).</span><span class="identifier">value</span><span class="special">();</span>
+<span class="identifier">string</span> <span class="identifier">expected</span> <span class="special">=</span> <span class="identifier">local</span><span class="special">::</span><span class="identifier">is_msc</span> <span class="special">?</span> <span class="string">"1.235e+001"</span> <span class="special">:</span> <span class="string">"1.235e+01"</span><span class="special">;</span>
+
+<span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="identifier">i2</span> <span class="special">==</span> <span class="number">123</span><span class="special">);</span>        <span class="comment">// boost::cnv::cstream. Successfull conversion of "   123".</span>
+<span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="identifier">s1</span> <span class="special">==</span> <span class="string">"12.34567"</span><span class="special">);</span> <span class="comment">// boost::lexical_cast. Precision is not configurable.</span>
+<span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="identifier">s2</span> <span class="special">==</span> <span class="string">"12.346"</span><span class="special">);</span>   <span class="comment">// boost::cnv::cstream. Precision was set to 3. Fixed.</span>
+<span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="identifier">s3</span> <span class="special">==</span> <span class="identifier">expected</span><span class="special">);</span>   <span class="comment">// boost::cnv::cstream. Precision was set to 3. Scientific.</span>
+</pre>
+<p>
+      </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2009-2014 Vladimir Batov<p>
+        Distributed under the Boost Software License, Version 1.0. See copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>.
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../getting_started.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../getting_started.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="basic_conversion_failure_detection.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

@@ -1,0 +1,28 @@
+[/ 
+  (C) Copyright Edward Diener 2015
+  Distributed under the Boost Software License, Version 1.0.
+  (See accompanying file LICENSE_1_0.txt or copy at
+  http://www.boost.org/LICENSE_1_0.txt).
+]
+
+[section:vmd_useful Useful variadic macros not in Boost PP]
+
+Previous sections of this documentation have explained how VMD
+can be used to parse VMD data types, as well as recognize emptiness.
+
+Another area of functionality of VMD involves useful variadic macros, based
+on the previous functionality, which expands on similar macros
+already in Boost PP. These variadic macros can be divided into sections 
+illustrating these areas of behavior:
+
+# Expanded assertion macros
+# Expanded identity functionality
+# Expanded seq and tuple functionality for "empty" seqs and tuples
+
+Sub-sections for each of these now follow in the documentation.
+     
+[include vmd_assert.qbk]
+[include vmd_identity.qbk]
+[include vmd_empty_ppdata.qbk]
+
+[endsect]

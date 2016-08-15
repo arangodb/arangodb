@@ -1,0 +1,72 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="group__convert" kind="group">
+    <compoundname>convert</compoundname>
+    <title>convert: convert geometries from one type to another</title>
+      <sectiondef kind="func">
+      <memberdef kind="function" id="group__convert_1ga79cfffc1475f201bda92cb40a075a3d1" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Geometry1</type>
+          </param>
+          <param>
+            <type>typename Geometry2</type>
+          </param>
+        </templateparamlist>
+        <type>void</type>
+        <definition>void boost::geometry::convert</definition>
+        <argsstring>(Geometry1 const &amp;geometry1, Geometry2 &amp;geometry2)</argsstring>
+        <name>convert</name>
+        <param>
+          <type>Geometry1 const &amp;</type>
+          <declname>geometry1</declname>
+        </param>
+        <param>
+          <type>Geometry2 &amp;</type>
+          <declname>geometry2</declname>
+        </param>
+        <briefdescription>
+<para>Converts one geometry to another geometry. </para>        </briefdescription>
+        <detaileddescription>
+<para>The convert algorithm converts one geometry, e.g. a BOX, to another geometry, e.g. a RING. This only works if it is possible and applicable. If the point-order is different, or the closure is different between two geometry types, it will be converted correctly by explicitly reversing the points or closing or opening the polygon rings.</para><para><parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>Geometry1</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Any type fulfilling a Geometry Concept </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Geometry2</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Any type fulfilling a Geometry Concept </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>geometry1</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>A model of the specified concept (source) </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>geometry2</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>A model of the specified concept (target)</para></parameterdescription>
+</parameteritem>
+</parameterlist>
+ <qbk>[include reference/algorithms/convert.qbk]</qbk>  </para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/convert.hpp" line="549" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/convert.hpp" bodystart="548" bodyend="551"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+  </compounddef>
+</doxygen>

@@ -1,0 +1,14 @@
+{
+    "key": "assign",
+    "name": "Assign",
+    "authors": [
+        "Thorsten Ottosen"
+    ],
+    "description": "Filling containers with constant or generated data has never been easier.",
+    "category": [
+        "IO"
+    ],
+    "maintainers": [
+        "Thorsten Ottosen <nesotto -at- cs.auc.dk>"
+    ]
+}

@@ -1,0 +1,91 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Lock Options</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../../index.html" title="Chapter&#160;1.&#160;Thread 4.7.0">
+<link rel="up" href="../synchronization.html" title="Synchronization">
+<link rel="prev" href="mutex_concepts.html" title="Mutex Concepts">
+<link rel="next" href="lock_guard.html" title="Lock Guard">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="mutex_concepts.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../synchronization.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="lock_guard.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="thread.synchronization.lock_option"></a><a class="link" href="lock_option.html" title="Lock Options">Lock Options</a>
+</h3></div></div></div>
+<div class="toc"><dl><dt><span class="section"><a href="lock_option.html#thread.synchronization.lock_option.lock_tags">Lock
+        option tags</a></span></dt></dl></div>
+<pre class="programlisting"><span class="comment">// #include &lt;boost/thread/locks.hpp&gt; </span>
+<span class="comment">// #include &lt;boost/thread/locks_options.hpp&gt; </span>
+
+<span class="keyword">namespace</span> <span class="identifier">boost</span>
+<span class="special">{</span>
+  <span class="keyword">struct</span> <span class="identifier">defer_lock_t</span> <span class="special">{};</span>
+  <span class="keyword">struct</span> <span class="identifier">try_to_lock_t</span> <span class="special">{};</span>
+  <span class="keyword">struct</span> <span class="identifier">adopt_lock_t</span> <span class="special">{};</span>
+  <span class="keyword">constexpr</span> <span class="identifier">defer_lock_t</span> <span class="identifier">defer_lock</span><span class="special">;</span>
+  <span class="keyword">constexpr</span> <span class="identifier">try_to_lock_t</span> <span class="identifier">try_to_lock</span><span class="special">;</span>
+  <span class="keyword">constexpr</span> <span class="identifier">adopt_lock_t</span> <span class="identifier">adopt_lock</span><span class="special">;</span>
+</pre>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="thread.synchronization.lock_option.lock_tags"></a><a class="link" href="lock_option.html#thread.synchronization.lock_option.lock_tags" title="Lock option tags">Lock
+        option tags</a>
+</h4></div></div></div>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">thread</span><span class="special">/</span><span class="identifier">locks</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">thread</span><span class="special">/</span><span class="identifier">locks_options</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="keyword">struct</span> <span class="identifier">defer_lock_t</span> <span class="special">{};</span>
+<span class="keyword">struct</span> <span class="identifier">try_to_lock_t</span> <span class="special">{};</span>
+<span class="keyword">struct</span> <span class="identifier">adopt_lock_t</span> <span class="special">{};</span>
+<span class="keyword">const</span> <span class="identifier">defer_lock_t</span> <span class="identifier">defer_lock</span><span class="special">;</span>
+<span class="keyword">const</span> <span class="identifier">try_to_lock_t</span> <span class="identifier">try_to_lock</span><span class="special">;</span>
+<span class="keyword">const</span> <span class="identifier">adopt_lock_t</span> <span class="identifier">adopt_lock</span><span class="special">;</span>
+</pre>
+<p>
+          These tags are used in scoped locks constructors to specify a specific
+          behavior.
+        </p>
+<div class="itemizedlist"><ul class="itemizedlist" type="disc">
+<li class="listitem">
+              <code class="computeroutput"><span class="identifier">defer_lock_t</span></code>: is used
+              to construct the scoped lock without locking it.
+            </li>
+<li class="listitem">
+              <code class="computeroutput"><span class="identifier">try_to_lock_t</span></code>: is used
+              to construct the scoped lock trying to lock it.
+            </li>
+<li class="listitem">
+              <code class="computeroutput"><span class="identifier">adopt_lock_t</span></code>: is used
+              to construct the scoped lock without locking it but adopting ownership.
+            </li>
+</ul></div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2007 -11 Anthony Williams<br>Copyright &#169; 2011 -15 Vicente J. Botet Escriba<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="mutex_concepts.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../synchronization.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="lock_guard.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

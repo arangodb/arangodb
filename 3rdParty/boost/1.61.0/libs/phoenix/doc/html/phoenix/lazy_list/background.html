@@ -1,0 +1,82 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Background</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../../index.html" title="Chapter&#160;1.&#160;Phoenix 3.2.0">
+<link rel="up" href="../lazy_list.html" title="Lazy List">
+<link rel="prev" href="../lazy_list.html" title="Lazy List">
+<link rel="next" href="what_is_provided.html" title="What is provided">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../lazy_list.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../lazy_list.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="what_is_provided.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="phoenix.lazy_list.background"></a><a class="link" href="background.html" title="Background">Background</a>
+</h3></div></div></div>
+<p>
+        The original code of <a href="http://cgi.di.uoa.gr/~smaragd/fc++/" target="_top">FC++</a>
+        was developed by Brian McNamara and Yannis Smaragdakis between 2000 and 2003.
+        One of the aims of their work was to implement as mich as possible of the
+        Haskell prelude in C++. In the end they achieved a very large part of that
+        and went on to implement other similar things not in the Haskell prelude.
+        This was made up of a large amount of code written very carefully in a consistent
+        style which made it easy to extend it to provide more facilities.
+      </p>
+<p>
+        At the end of that time, two versions of it existed, FC++ 1.5 and <a href="http://cgi.di.uoa.gr/~smaragd/fc++/boostpaper/" target="_top">Boost FC++</a> which
+        was proposed for inclusion in Boost and rejected. Both are documented on
+        <a href="http://cgi.di.uoa.gr/~smaragd/fc++/" target="_top">FC++</a>.
+      </p>
+<p>
+        After 2003 John Fletcher spent a lot of time developing both these versions
+        and adding new features to them. One of the reasons intially was that the
+        existing versions could handle only a small number of function arguments.
+        He was able to inclrease the limit on the number of arguments and use the
+        new version to implement a number of new ideas. No new release has ever been
+        made although a draft release 1.5.2 exists. Much of his activity is documented
+        by <a href="http://c2.com/cgi/wiki?FunctoidsInCpp" target="_top">FunctoidsInCpp</a>
+        where some discussion took place with other people about this work.
+      </p>
+<p>
+        John discussed with Joel de Guzman how to make <a href="http://cgi.di.uoa.gr/~smaragd/fc++/" target="_top">FC++</a>
+        compatible with Phoenix. Joel suggested using Phoenix as a basis for a new
+        version of <a href="http://cgi.di.uoa.gr/~smaragd/fc++/" target="_top">FC++</a>.
+      </p>
+<p>
+        In 2014 John became the maintainer of Phoenix and after spending time getting
+        to know it he has now started to fulfil his idea of a new version of <a href="http://cgi.di.uoa.gr/~smaragd/fc++/" target="_top">FC++</a>. What is emerging
+        is significantly different from <a href="http://cgi.di.uoa.gr/~smaragd/fc++/" target="_top">FC++</a>
+        in the detail of the implementation. In some ways it will be more powerful
+        as it is well integrated with the facilities of Phoenix. In other ways it
+        will lack some features of <a href="http://cgi.di.uoa.gr/~smaragd/fc++/" target="_top">FC++</a>
+        as they can now be implemented in other ways.
+      </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2002-2005, 2010, 2014, 2015 Joel de Guzman, Dan Marsden, Thomas
+      Heller, John Fletcher<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../lazy_list.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../lazy_list.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="what_is_provided.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

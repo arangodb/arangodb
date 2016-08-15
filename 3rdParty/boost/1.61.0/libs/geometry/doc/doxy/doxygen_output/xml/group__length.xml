@@ -1,0 +1,113 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="group__length" kind="group">
+    <compoundname>length</compoundname>
+    <title>length: calculate length of a linear geometry</title>
+    <innerclass refid="structboost_1_1geometry_1_1default__length__result" prot="public">boost::geometry::default_length_result</innerclass>
+      <sectiondef kind="func">
+      <memberdef kind="function" id="group__length_1ga38dff36b8deb6a1a8cb0a3d6387af8fc" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Geometry</type>
+          </param>
+        </templateparamlist>
+        <type>default_length_result&lt; Geometry &gt;::type</type>
+        <definition>default_length_result&lt;Geometry&gt;::type boost::geometry::length</definition>
+        <argsstring>(Geometry const &amp;geometry)</argsstring>
+        <name>length</name>
+        <param>
+          <type>Geometry const &amp;</type>
+          <declname>geometry</declname>
+        </param>
+        <briefdescription>
+<para>Calculates the length of a geometry. </para>        </briefdescription>
+        <detaileddescription>
+<para>The free function length calculates the length (the sum of distances between consecutive points) of a geometry. It uses the default strategy, based on the coordinate system of the geometry. <parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>Geometry</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Any type fulfilling a Geometry Concept </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>geometry</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>A model of the specified concept </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>The calculated \1</para></simplesect>
+ <qbk>[include reference/algorithms/length.qbk]</qbk>   <qbk>[length] [length_output]</qbk>  </para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/length.hpp" line="253" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/length.hpp" bodystart="252" bodyend="265"/>
+      </memberdef>
+      <memberdef kind="function" id="group__length_1ga31c0f8fcd943475255e7ab329f2c2771" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Geometry</type>
+          </param>
+          <param>
+            <type>typename Strategy</type>
+          </param>
+        </templateparamlist>
+        <type>default_length_result&lt; Geometry &gt;::type</type>
+        <definition>default_length_result&lt;Geometry&gt;::type boost::geometry::length</definition>
+        <argsstring>(Geometry const &amp;geometry, Strategy const &amp;strategy)</argsstring>
+        <name>length</name>
+        <param>
+          <type>Geometry const &amp;</type>
+          <declname>geometry</declname>
+        </param>
+        <param>
+          <type>Strategy const &amp;</type>
+          <declname>strategy</declname>
+        </param>
+        <briefdescription>
+<para>Calculates the length of a geometry using the specified strategy. </para>        </briefdescription>
+        <detaileddescription>
+<para>The free function length calculates the length (the sum of distances between consecutive points) of a geometry using the specified strategy. Reasons to specify a strategy include: use another coordinate system for calculations; construct the strategy beforehand (e.g. with the radius of the Earth); select a strategy when there are more than one available for a calculation. <parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>Geometry</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Any type fulfilling a Geometry Concept </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Strategy</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Any type fulfilling a distance Strategy Concept </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>geometry</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>A model of the specified concept </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>strategy</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>The strategy which will be used for distance calculations </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>The calculated \1</para></simplesect>
+ <qbk.distinguish>with strategy</qbk.distinguish>   <qbk>[include reference/algorithms/length.qbk]</qbk>   <qbk>[length_with_strategy] [length_with_strategy_output]</qbk>  </para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/length.hpp" line="285" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/length.hpp" bodystart="284" bodyend="291"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+  </compounddef>
+</doxygen>

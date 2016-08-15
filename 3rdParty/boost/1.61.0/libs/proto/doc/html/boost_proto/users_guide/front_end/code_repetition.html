@@ -1,0 +1,164 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Generating Repetitive Code with the Preprocessor</title>
+<link rel="stylesheet" href="../../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../../../index.html" title="Chapter&#160;1.&#160;Boost.Proto">
+<link rel="up" href="../front_end.html" title="Fronts Ends: Defining Terminals and Non-Terminals of Your EDSL">
+<link rel="prev" href="define_operators.html" title="Adapting Existing Types to Proto">
+<link rel="next" href="../intermediate_form.html" title="Intermediate Form: Understanding and Introspecting Expressions">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="define_operators.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../front_end.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../intermediate_form.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="boost_proto.users_guide.front_end.code_repetition"></a><a class="link" href="code_repetition.html" title="Generating Repetitive Code with the Preprocessor">Generating
+        Repetitive Code with the Preprocessor</a>
+</h4></div></div></div>
+<p>
+          Sometimes as an EDSL designer, to make the lives of your users easy, you
+          have to make your own life hard. Giving your users natural and flexible
+          syntax often involves writing large numbers of repetitive function overloads.
+          It can be enough to give you repetitive stress injury! Before you hurt
+          yourself, check out the macros Proto provides for automating many repetitive
+          code-generation chores.
+        </p>
+<p>
+          Imagine that we are writing a lambda EDSL, and we would like to enable
+          syntax for constructing temporary objects of any type using the following
+          syntax:
+        </p>
+<pre class="programlisting"><span class="comment">// A lambda expression that takes two arguments and</span>
+<span class="comment">// uses them to construct a temporary std::complex&lt;&gt;</span>
+<span class="identifier">construct</span><span class="special">&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">complex</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;</span> <span class="special">&gt;(</span> <span class="identifier">_1</span><span class="special">,</span> <span class="identifier">_2</span> <span class="special">)</span>
+</pre>
+<p>
+          For the sake of the discussion, imagine that we already have a function
+          object template <code class="computeroutput"><span class="identifier">construct_impl</span><span class="special">&lt;&gt;</span></code> that accepts arguments and constructs
+          new objects from them. We would want the above lambda expression to be
+          equivalent to the following:
+        </p>
+<pre class="programlisting"><span class="comment">// The above lambda expression should be roughly equivalent</span>
+<span class="comment">// to the following:</span>
+<span class="identifier">proto</span><span class="special">::</span><span class="identifier">make_expr</span><span class="special">&lt;</span><span class="identifier">proto</span><span class="special">::</span><span class="identifier">tag</span><span class="special">::</span><span class="identifier">function</span><span class="special">&gt;(</span>
+    <span class="identifier">construct_impl</span><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">complex</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;</span> <span class="special">&gt;()</span> <span class="comment">// The function to invoke lazily</span>
+  <span class="special">,</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">ref</span><span class="special">(</span><span class="identifier">_1</span><span class="special">)</span>                       <span class="comment">// The first argument to the function</span>
+  <span class="special">,</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">ref</span><span class="special">(</span><span class="identifier">_2</span><span class="special">)</span>                       <span class="comment">// The second argument to the function</span>
+<span class="special">);</span>
+</pre>
+<p>
+          We can define our <code class="computeroutput"><span class="identifier">construct</span><span class="special">()</span></code> function template as follows:
+        </p>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">T</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">A0</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">A1</span><span class="special">&gt;</span>
+<span class="keyword">typename</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">result_of</span><span class="special">::</span><span class="identifier">make_expr</span><span class="special">&lt;</span>
+    <span class="identifier">proto</span><span class="special">::</span><span class="identifier">tag</span><span class="special">::</span><span class="identifier">function</span>
+  <span class="special">,</span> <span class="identifier">construct_impl</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;</span>
+  <span class="special">,</span> <span class="identifier">A0</span> <span class="keyword">const</span> <span class="special">&amp;</span>
+  <span class="special">,</span> <span class="identifier">A1</span> <span class="keyword">const</span> <span class="special">&amp;</span>
+<span class="special">&gt;::</span><span class="identifier">type</span> <span class="keyword">const</span>
+<span class="identifier">construct</span><span class="special">(</span><span class="identifier">A0</span> <span class="keyword">const</span> <span class="special">&amp;</span><span class="identifier">a0</span><span class="special">,</span> <span class="identifier">A1</span> <span class="keyword">const</span> <span class="special">&amp;</span><span class="identifier">a1</span><span class="special">)</span>
+<span class="special">{</span>
+    <span class="keyword">return</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">make_expr</span><span class="special">&lt;</span><span class="identifier">proto</span><span class="special">::</span><span class="identifier">tag</span><span class="special">::</span><span class="identifier">function</span><span class="special">&gt;(</span>
+        <span class="identifier">construct_impl</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;()</span>
+      <span class="special">,</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">ref</span><span class="special">(</span><span class="identifier">a0</span><span class="special">)</span>
+      <span class="special">,</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">ref</span><span class="special">(</span><span class="identifier">a1</span><span class="special">)</span>
+    <span class="special">);</span>
+<span class="special">}</span>
+</pre>
+<p>
+          This works for two arguments, but we would like it to work for any number
+          of arguments, up to ( <code class="literal"><code class="computeroutput"><a class="link" href="../../../BOOST_PROTO_MAX_ARITY.html" title="Macro BOOST_PROTO_MAX_ARITY">BOOST_PROTO_MAX_ARITY</a></code></code>
+          - 1). (Why "- 1"? Because one child is taken up by the <code class="computeroutput"><span class="identifier">construct_impl</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;()</span></code>
+          terminal leaving room for only ( <code class="literal"><code class="computeroutput"><a class="link" href="../../../BOOST_PROTO_MAX_ARITY.html" title="Macro BOOST_PROTO_MAX_ARITY">BOOST_PROTO_MAX_ARITY</a></code></code>
+          - 1) other children.)
+        </p>
+<p>
+          For cases like this, Proto provides the <code class="literal"><code class="computeroutput"><a class="link" href="../../../BOOST_PROTO_REPEAT.html" title="Macro BOOST_PROTO_REPEAT">BOOST_PROTO_REPEAT</a></code>()</code>
+          and <code class="literal"><code class="computeroutput"><a class="link" href="../../../BOOST_PROTO_REPEAT_FROM_TO.html" title="Macro BOOST_PROTO_REPEAT_FROM_TO">BOOST_PROTO_REPEAT_FROM_TO</a></code>()</code>
+          macros. To use it, we turn the function definition above into a macro as
+          follows:
+        </p>
+<pre class="programlisting"><span class="preprocessor">#define</span> <span class="identifier">M0</span><span class="special">(</span><span class="identifier">N</span><span class="special">,</span> <span class="identifier">typename_A</span><span class="special">,</span> <span class="identifier">A_const_ref</span><span class="special">,</span> <span class="identifier">A_const_ref_a</span><span class="special">,</span> <span class="identifier">ref_a</span><span class="special">)</span>  <span class="special">\</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">T</span><span class="special">,</span> <span class="identifier">typename_A</span><span class="special">(</span><span class="identifier">N</span><span class="special">)&gt;</span>                           <span class="special">\</span>
+<span class="keyword">typename</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">result_of</span><span class="special">::</span><span class="identifier">make_expr</span><span class="special">&lt;</span>                         <span class="special">\</span>
+    <span class="identifier">proto</span><span class="special">::</span><span class="identifier">tag</span><span class="special">::</span><span class="identifier">function</span>                                      <span class="special">\</span>
+  <span class="special">,</span> <span class="identifier">construct_impl</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;</span>                                         <span class="special">\</span>
+  <span class="special">,</span> <span class="identifier">A_const_ref</span><span class="special">(</span><span class="identifier">N</span><span class="special">)</span>                                            <span class="special">\</span>
+<span class="special">&gt;::</span><span class="identifier">type</span> <span class="keyword">const</span>                                                 <span class="special">\</span>
+<span class="identifier">construct</span><span class="special">(</span><span class="identifier">A_const_ref_a</span><span class="special">(</span><span class="identifier">N</span><span class="special">))</span>                                   <span class="special">\</span>
+<span class="special">{</span>                                                             <span class="special">\</span>
+    <span class="keyword">return</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">make_expr</span><span class="special">&lt;</span><span class="identifier">proto</span><span class="special">::</span><span class="identifier">tag</span><span class="special">::</span><span class="identifier">function</span><span class="special">&gt;(</span>            <span class="special">\</span>
+        <span class="identifier">construct_impl</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;()</span>                                   <span class="special">\</span>
+      <span class="special">,</span> <span class="identifier">ref_a</span><span class="special">(</span><span class="identifier">N</span><span class="special">)</span>                                              <span class="special">\</span>
+    <span class="special">);</span>                                                        <span class="special">\</span>
+<span class="special">}</span>
+</pre>
+<p>
+          Notice that we turned the function into a macro that takes 5 arguments.
+          The first is the current iteration number. The rest are the names of other
+          macros that generate different sequences. For instance, Proto passes as
+          the second parameter the name of a macro that will expand to <code class="computeroutput"><span class="keyword">typename</span> <span class="identifier">A0</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">A1</span><span class="special">,</span> <span class="special">...</span></code>.
+        </p>
+<p>
+          Now that we have turned our function into a macro, we can pass the macro
+          to <code class="literal"><code class="computeroutput"><a class="link" href="../../../BOOST_PROTO_REPEAT_FROM_TO.html" title="Macro BOOST_PROTO_REPEAT_FROM_TO">BOOST_PROTO_REPEAT_FROM_TO</a></code>()</code>.
+          Proto will invoke it iteratively, generating all the function overloads
+          for us.
+        </p>
+<pre class="programlisting"><span class="comment">// Generate overloads of construct() that accept from</span>
+<span class="comment">// 1 to BOOST_PROTO_MAX_ARITY-1 arguments:</span>
+<span class="identifier">BOOST_PROTO_REPEAT_FROM_TO</span><span class="special">(</span><span class="number">1</span><span class="special">,</span> <span class="identifier">BOOST_PROTO_MAX_ARITY</span><span class="special">,</span> <span class="identifier">M0</span><span class="special">)</span>
+<span class="preprocessor">#undef</span> <span class="identifier">M0</span>
+</pre>
+<h6>
+<a name="boost_proto.users_guide.front_end.code_repetition.h0"></a>
+          <span><a name="boost_proto.users_guide.front_end.code_repetition.non_default_sequences"></a></span><a class="link" href="code_repetition.html#boost_proto.users_guide.front_end.code_repetition.non_default_sequences">Non-Default
+          Sequences</a>
+        </h6>
+<p>
+          As mentioned above, Proto passes as the last 4 arguments to your macro
+          the names of other macros that generate various sequences. The macros
+          <code class="literal"><code class="computeroutput"><a class="link" href="../../../BOOST_PROTO_REPEAT.html" title="Macro BOOST_PROTO_REPEAT">BOOST_PROTO_REPEAT</a></code>()</code>
+          and <code class="literal"><code class="computeroutput"><a class="link" href="../../../BOOST_PROTO_REPEAT_FROM_TO.html" title="Macro BOOST_PROTO_REPEAT_FROM_TO">BOOST_PROTO_REPEAT_FROM_TO</a></code>()</code>
+          select defaults for these parameters. If the defaults do not meet your
+          needs, you can use <code class="literal"><code class="computeroutput"><a class="link" href="../../../BOOST_PROTO_REPEAT_EX.html" title="Macro BOOST_PROTO_REPEAT_EX">BOOST_PROTO_REPEAT_EX</a></code>()</code>
+          and <code class="literal"><code class="computeroutput"><a class="link" href="../../../BOOST_PROTO_REPEAT_FROM_TO_EX.html" title="Macro BOOST_PROTO_REPEAT_FROM_TO_EX">BOOST_PROTO_REPEAT_FROM_TO_EX</a></code>()</code>
+          and pass different macros that generate different sequences. Proto defines
+          a number of such macros for use as parameters to <code class="literal"><code class="computeroutput"><a class="link" href="../../../BOOST_PROTO_REPEAT_EX.html" title="Macro BOOST_PROTO_REPEAT_EX">BOOST_PROTO_REPEAT_EX</a></code>()</code>
+          and <code class="literal"><code class="computeroutput"><a class="link" href="../../../BOOST_PROTO_REPEAT_FROM_TO_EX.html" title="Macro BOOST_PROTO_REPEAT_FROM_TO_EX">BOOST_PROTO_REPEAT_FROM_TO_EX</a></code>()</code>.
+          Check the reference section for <code class="computeroutput"><a class="link" href="../../../header/boost/proto/repeat_hpp.html" title="Header &lt;boost/proto/repeat.hpp&gt;">boost/proto/repeat.hpp</a></code>
+          for all the details.
+        </p>
+<p>
+          Also, check out <code class="literal"><code class="computeroutput"><a class="link" href="../../../BOOST_PROTO_LOCAL_ITERATE.html" title="Macro BOOST_PROTO_LOCAL_ITERATE">BOOST_PROTO_LOCAL_ITERATE</a></code>()</code>.
+          It works similarly to <code class="literal"><code class="computeroutput"><a class="link" href="../../../BOOST_PROTO_REPEAT.html" title="Macro BOOST_PROTO_REPEAT">BOOST_PROTO_REPEAT</a></code>()</code>
+          and friends, but it can be easier to use when you want to change one macro
+          argument and accept defaults for the others.
+        </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2008 Eric Niebler<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="define_operators.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../front_end.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../intermediate_form.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

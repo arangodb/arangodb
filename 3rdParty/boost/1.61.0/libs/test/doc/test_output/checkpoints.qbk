@@ -1,0 +1,49 @@
+[/
+ / Copyright (c) 2001 Boost.Test contributors
+ /
+ / Distributed under the Boost Software License, Version 1.0. (See accompanying
+ / file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+ /]
+ 
+ 
+[section:checkpoints Checkpoints]
+
+Checkpoints may be used to indicate the state of the running test with more granularity in case a fatal 
+error occurs during the test. The checkpoints are also convenient for checks in loops as they might provide
+more information about the occurrence of a failure. 
+
+[/ -------------------------------------------------------------------------------------------------- ]
+[h3 Named checkpoints]
+
+
+The macro __BOOST_TEST_CHECKPOINT__ is intended to be used to inject [*named] checkpoint position. The
+macro signature is as follows:
+
+``
+  __BOOST_TEST_CHECKPOINT__(checkpoint_message);
+``
+
+The message formatted at the checkpoint position is saved and reported by the exception logging functions (if any
+occurs). Similarly to the __BOOST_TEST_MESSAGE__ the message can be formatted from any standard
+output stream compliant components.
+
+[bt_example example22..__BOOST_TEST_CHECKPOINT__ usage..run-fail]
+
+
+[/ -------------------------------------------------------------------------------------------------- ]
+[h3 Unnamed checkpoints]
+
+The macro __BOOST_TEST_PASSPOINT__ is intended to be used to inject an [*unnamed] checkpoint position. The
+macro signature is as follows:
+
+``
+  __BOOST_TEST_PASSPOINT__();
+``
+
+Unlike the macro __BOOST_TEST_CHECKPOINT__ this macro doesn't require any message to be
+supplied with it. It's just a simple "been there" marker that records file name and line number
+code passes through.
+
+[bt_example example23..__BOOST_TEST_PASSPOINT__ usage..run-fail]
+
+[endsect] [/checkpoints]

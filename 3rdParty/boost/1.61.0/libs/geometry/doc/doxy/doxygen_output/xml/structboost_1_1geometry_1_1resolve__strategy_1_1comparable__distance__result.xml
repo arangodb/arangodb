@@ -1,0 +1,70 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="structboost_1_1geometry_1_1resolve__strategy_1_1comparable__distance__result" kind="struct" prot="public">
+    <compoundname>boost::geometry::resolve_strategy::comparable_distance_result</compoundname>
+    <basecompoundref refid="structboost_1_1geometry_1_1strategy_1_1distance_1_1services_1_1return__type" prot="public" virt="non-virtual">boost::geometry::strategy::distance::services::return_type&lt; strategy::distance::services::comparable_type&lt; Strategy &gt;::type, point_type&lt; Geometry1 &gt;::type, point_type&lt; Geometry2 &gt;::type &gt;</basecompoundref>
+    <derivedcompoundref refid="structboost_1_1geometry_1_1resolve__variant_1_1comparable__distance__result" prot="public" virt="non-virtual">boost::geometry::resolve_variant::comparable_distance_result&lt; Geometry1, Geometry2, Strategy &gt;</derivedcompoundref>
+    <includes local="no">comparable_distance_result.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename</type>
+        <declname>Geometry1</declname>
+        <defname>Geometry1</defname>
+      </param>
+      <param>
+        <type>typename</type>
+        <declname>Geometry2</declname>
+        <defname>Geometry2</defname>
+      </param>
+      <param>
+        <type>typename</type>
+        <declname>Strategy</declname>
+        <defname>Strategy</defname>
+      </param>
+    </templateparamlist>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <inheritancegraph>
+      <node id="622">
+        <label>boost::geometry::resolve_variant::comparable_distance_result&lt; Geometry1, Geometry2, Strategy &gt;</label>
+        <link refid="structboost_1_1geometry_1_1resolve__variant_1_1comparable__distance__result"/>
+        <childnode refid="620" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="620">
+        <label>boost::geometry::resolve_strategy::comparable_distance_result&lt; Geometry1, Geometry2, Strategy &gt;</label>
+        <link refid="structboost_1_1geometry_1_1resolve__strategy_1_1comparable__distance__result"/>
+        <childnode refid="621" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="623">
+        <label>boost::geometry::comparable_distance_result&lt; Geometry1, Geometry2, Strategy &gt;</label>
+        <link refid="structboost_1_1geometry_1_1comparable__distance__result"/>
+        <childnode refid="622" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="621">
+        <label>boost::geometry::strategy::distance::services::return_type&lt; strategy::distance::services::comparable_type&lt; Strategy &gt;::type, point_type&lt; Geometry1 &gt;::type, point_type&lt; Geometry2 &gt;::type &gt;</label>
+        <link refid="structboost_1_1geometry_1_1strategy_1_1distance_1_1services_1_1return__type"/>
+      </node>
+    </inheritancegraph>
+    <collaborationgraph>
+      <node id="624">
+        <label>boost::geometry::resolve_strategy::comparable_distance_result&lt; Geometry1, Geometry2, Strategy &gt;</label>
+        <link refid="structboost_1_1geometry_1_1resolve__strategy_1_1comparable__distance__result"/>
+        <childnode refid="625" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="625">
+        <label>boost::geometry::strategy::distance::services::return_type&lt; strategy::distance::services::comparable_type&lt; Strategy &gt;::type, point_type&lt; Geometry1 &gt;::type, point_type&lt; Geometry2 &gt;::type &gt;</label>
+        <link refid="structboost_1_1geometry_1_1strategy_1_1distance_1_1services_1_1return__type"/>
+      </node>
+    </collaborationgraph>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/comparable_distance_result.hpp" line="48" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/comparable_distance_result.hpp" bodystart="38" bodyend="48"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1strategy_1_1distance_1_1services_1_1return__type_1aaa63d9f53da472aa093e480ae634b79c" prot="public" virt="non-virtual"><scope>boost::geometry::resolve_strategy::comparable_distance_result</scope><name>BOOST_MPL_ASSERT_MSG</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

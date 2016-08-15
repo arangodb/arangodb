@@ -1,0 +1,80 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="classboost_1_1geometry_1_1model_1_1segment" kind="class" prot="public">
+    <compoundname>boost::geometry::model::segment</compoundname>
+    <includes local="no">segment.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename Point</type>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="private-func">
+      <memberdef kind="function" id="classboost_1_1geometry_1_1model_1_1segment_1a7b62765825b9e5c2deb2fcabd7da2287" prot="private" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type></type>
+        <definition>boost::geometry::model::segment&lt; Point &gt;::BOOST_CONCEPT_ASSERT</definition>
+        <argsstring>((concept::Point&lt; Point &gt;))</argsstring>
+        <name>BOOST_CONCEPT_ASSERT</name>
+        <param>
+          <type>(<ref refid="classboost_1_1geometry_1_1concept_1_1_point" kindref="compound">concept::Point</ref>&lt; Point &gt;)</type>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/segment.hpp" line="48"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="classboost_1_1geometry_1_1model_1_1segment_1ace4d4cdfce0f1b2963e47ab888f8ff64" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type></type>
+        <definition>boost::geometry::model::segment&lt; Point &gt;::segment</definition>
+        <argsstring>()</argsstring>
+        <name>segment</name>
+        <briefdescription>
+<para>Default constructor, no initialization. </para>        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/segment.hpp" line="54"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1model_1_1segment_1aa2ab56ba75b691034266480fe721217b" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type></type>
+        <definition>boost::geometry::model::segment&lt; Point &gt;::segment</definition>
+        <argsstring>(Point const &amp;p1, Point const &amp;p2)</argsstring>
+        <name>segment</name>
+        <param>
+          <type>Point const &amp;</type>
+          <declname>p1</declname>
+        </param>
+        <param>
+          <type>Point const &amp;</type>
+          <declname>p2</declname>
+        </param>
+        <briefdescription>
+<para>Constructor taking the first and the second point. </para>        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/segment.hpp" line="65" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/segment.hpp" bodystart="64" bodyend="68"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+<para>Class segment: small class containing two points. </para>    </briefdescription>
+    <detaileddescription>
+<para>From Wikipedia: In geometry, a line segment is a part of a line that is bounded by two distinct end points, and contains every point on the line between its end points. <simplesect kind="note"><para>There is also a point-referring-segment, class <ref refid="classboost_1_1geometry_1_1model_1_1referring__segment" kindref="compound">referring_segment</ref>, containing point references, where points are NOT copied</para></simplesect>
+ <qbk>[include reference/geometries/segment.qbk]</qbk>   <qbk.before.synopsis>
+[heading Model of]
+[link geometry.reference.concepts.concept_segment Segment Concept]
+</qbk.before.synopsis>  </para>    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/segment.hpp" line="47" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/segment.hpp" bodystart="46" bodyend="69"/>
+    <listofallmembers>
+      <member refid="classboost_1_1geometry_1_1model_1_1segment_1a7b62765825b9e5c2deb2fcabd7da2287" prot="private" virt="non-virtual"><scope>boost::geometry::model::segment</scope><name>BOOST_CONCEPT_ASSERT</name></member>
+      <member refid="classboost_1_1geometry_1_1model_1_1segment_1ace4d4cdfce0f1b2963e47ab888f8ff64" prot="public" virt="non-virtual"><scope>boost::geometry::model::segment</scope><name>segment</name></member>
+      <member refid="classboost_1_1geometry_1_1model_1_1segment_1aa2ab56ba75b691034266480fe721217b" prot="public" virt="non-virtual"><scope>boost::geometry::model::segment</scope><name>segment</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

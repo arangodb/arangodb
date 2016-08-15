@@ -1,0 +1,334 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Expected failures specification</title>
+<link rel="stylesheet" href="../../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../../index.html" title="Boost.Test">
+<link rel="up" href="../testing_tools.html" title="Writing unit tests">
+<link rel="prev" href="timeout.html" title="Time-out for test cases">
+<link rel="next" href="custom_predicates.html" title="Custom predicate support">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="timeout.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../testing_tools.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="custom_predicates.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_test.testing_tools.expected_failures"></a><a class="link" href="expected_failures.html" title="Expected failures specification">Expected
+      failures specification</a>
+</h3></div></div></div>
+<p>
+        While in a perfect world all test assertions should pass in order for a test
+        module to pass, in some situations it is desirable to temporarily allow particular
+        tests to fail. For example, where a particular feature is not implemented
+        yet and one needs to prepare a library for the release or when particular
+        test fails on some platforms. To avoid a nagging red box in regression tests
+        table, you can use the expected failures feature.
+      </p>
+<p>
+        This feature allows specifying an expected number of failed assertions per
+        test unit. The value is specified during test tree construction, and can't
+        be updated during test execution.
+      </p>
+<p>
+        The feature is not intended to be used to check for expected functionality
+        failures. To check that a particular input is causing an exception to be
+        thrown use <a class="link" href="../utf_reference/testing_tool_ref/assertion_boost_level_throw.html" title="BOOST_&lt;level&gt;_THROW"><code class="computeroutput"><span class="identifier">BOOST_</span><span class="special">&lt;</span><span class="identifier">level</span><span class="special">&gt;</span><span class="identifier">_THROW</span></code></a> family of testing tools.
+      </p>
+<p>
+        The usage of this feature should be limited and employed only after careful
+        consideration. In general you should only use this feature when it is necessary
+        to force a test module to pass without actually fixing the problem. Obviously,
+        an excessive usage of expected failures defeats the purpose of the unit test.
+        In most cases it only needs be applied temporarily.
+      </p>
+<p>
+        You also need to remember that the expected failure specification is per
+        test case. This means that any failed assertion within that test case can
+        satisfy the expected failures quota. Meaning it is possible for an unexpected
+        failure to occur to satisfy this quota.
+      </p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+          If an assertion at fault is fixed and passed while an expected failures
+          specification still present, the number of failures becomes smaller than
+          expected. The test is going to be reported as passed; instead, a warning
+          message will be issued.
+        </p></td></tr>
+</table></div>
+<a name="l_expected_failure"></a><h4>
+<a name="boost_test.testing_tools.expected_failures.h0"></a>
+        <span><a name="boost_test.testing_tools.expected_failures.expected_failure_specification"></a></span><a class="link" href="expected_failures.html#boost_test.testing_tools.expected_failures.expected_failure_specification">Expected
+        failure specification</a>
+      </h4>
+<p>
+        The decorator <a class="link" href="../utf_reference/testing_tool_ref/decorator_expected_failures.html" title="expected_failures (decorator)"><code class="computeroutput"><span class="identifier">expected_failures</span></code></a> defines the number
+        of assertions that are expected to fail within the corresponding test unit.
+        It is reported as failure when the number of failed assertions is greater
+        than the declared expected number of failures. If the number of failed assertions
+        is less than the number of expected failures a message is reported. The total
+        number of expected failures for a given test suite <code class="computeroutput"><span class="identifier">S</span></code>
+        is the sum of the declared expected failures in <code class="computeroutput"><span class="identifier">S</span></code>
+        and the sum of expected failures in all nested test units:
+      </p>
+<h6>
+<a name="boost_test.testing_tools.expected_failures.h1"></a>
+        <span><a name="boost_test.testing_tools.expected_failures.example_descr"></a></span><a class="link" href="expected_failures.html#boost_test.testing_tools.expected_failures.example_descr">Example:
+        decorator expected_failures</a>
+      </h6>
+<div class="informaltable"><table class="table">
+<colgroup><col></colgroup>
+<thead><tr><th>
+                <p>
+                  Code
+                </p>
+              </th></tr></thead>
+<tbody><tr><td>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="preprocessor">#define</span> <span class="identifier">BOOST_TEST_MODULE</span> <span class="identifier">decorator_10</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">test</span><span class="special">/</span><span class="identifier">included</span><span class="special">/</span><span class="identifier">unit_test</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="keyword">namespace</span> <span class="identifier">utf</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">unit_test</span><span class="special">;</span>
+
+<span class="identifier">BOOST_AUTO_TEST_SUITE</span><span class="special">(</span><span class="identifier">suite1</span><span class="special">,</span>
+  <span class="special">*</span> <span class="identifier">utf</span><span class="special">::</span><span class="identifier">expected_failures</span><span class="special">(</span><span class="number">1</span><span class="special">))</span>
+
+  <span class="identifier">BOOST_AUTO_TEST_CASE</span><span class="special">(</span><span class="identifier">test1</span><span class="special">,</span>
+    <span class="special">*</span> <span class="identifier">utf</span><span class="special">::</span><span class="identifier">expected_failures</span><span class="special">(</span><span class="number">2</span><span class="special">))</span>
+  <span class="special">{</span>
+    <span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="keyword">false</span><span class="special">);</span>
+    <span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="keyword">false</span><span class="special">);</span>
+  <span class="special">}</span>
+
+  <span class="identifier">BOOST_AUTO_TEST_CASE</span><span class="special">(</span><span class="identifier">test2</span><span class="special">)</span>
+  <span class="special">{</span>
+    <span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="keyword">false</span><span class="special">);</span>
+    <span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="keyword">false</span><span class="special">);</span>
+  <span class="special">}</span>
+
+<span class="identifier">BOOST_AUTO_TEST_SUITE_END</span><span class="special">()</span>
+</pre>
+              </td></tr></tbody>
+</table></div>
+<div class="informaltable"><table class="table">
+<colgroup><col></colgroup>
+<thead><tr><th>
+                <p>
+                  Output
+                </p>
+              </th></tr></thead>
+<tbody><tr><td>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="special">&gt;</span> <span class="identifier">decorator_10</span>
+<span class="identifier">Running</span> <span class="number">2</span> <span class="identifier">test</span> <span class="identifier">cases</span><span class="special">...</span>
+<span class="identifier">test</span><span class="special">.</span><span class="identifier">cpp</span><span class="special">(</span><span class="number">11</span><span class="special">):</span> <span class="identifier">error</span><span class="special">:</span> <span class="identifier">in</span> <span class="string">"suite1/test1"</span><span class="special">:</span> <span class="identifier">check</span> <span class="keyword">false</span> <span class="identifier">has</span> <span class="identifier">failed</span>
+<span class="identifier">test</span><span class="special">.</span><span class="identifier">cpp</span><span class="special">(</span><span class="number">12</span><span class="special">):</span> <span class="identifier">error</span><span class="special">:</span> <span class="identifier">in</span> <span class="string">"suite1/test1"</span><span class="special">:</span> <span class="identifier">check</span> <span class="keyword">false</span> <span class="identifier">has</span> <span class="identifier">failed</span>
+<span class="identifier">test</span><span class="special">.</span><span class="identifier">cpp</span><span class="special">(</span><span class="number">17</span><span class="special">):</span> <span class="identifier">error</span><span class="special">:</span> <span class="identifier">in</span> <span class="string">"suite1/test2"</span><span class="special">:</span> <span class="identifier">check</span> <span class="keyword">false</span> <span class="identifier">has</span> <span class="identifier">failed</span>
+<span class="identifier">test</span><span class="special">.</span><span class="identifier">cpp</span><span class="special">(</span><span class="number">18</span><span class="special">):</span> <span class="identifier">error</span><span class="special">:</span> <span class="identifier">in</span> <span class="string">"suite1/test2"</span><span class="special">:</span> <span class="identifier">check</span> <span class="keyword">false</span> <span class="identifier">has</span> <span class="identifier">failed</span>
+
+<span class="special">***</span> <span class="number">4</span> <span class="identifier">failures</span> <span class="identifier">are</span> <span class="identifier">detected</span> <span class="special">(</span><span class="number">3</span> <span class="identifier">failures</span> <span class="identifier">are</span> <span class="identifier">expected</span><span class="special">)</span> <span class="identifier">in</span> <span class="identifier">the</span> <span class="identifier">test</span> <span class="identifier">module</span> <span class="string">"decorator_10"</span>
+
+
+<span class="special">&gt;</span> <span class="identifier">decorator_10</span> <span class="special">--</span><span class="identifier">run_test</span><span class="special">=</span><span class="identifier">suite1</span><span class="special">/</span><span class="identifier">test1</span>
+<span class="identifier">Running</span> <span class="number">1</span> <span class="identifier">test</span> <span class="keyword">case</span><span class="special">...</span>
+<span class="identifier">test</span><span class="special">.</span><span class="identifier">cpp</span><span class="special">(</span><span class="number">11</span><span class="special">):</span> <span class="identifier">error</span><span class="special">:</span> <span class="identifier">in</span> <span class="string">"suite1/test1"</span><span class="special">:</span> <span class="identifier">check</span> <span class="keyword">false</span> <span class="identifier">has</span> <span class="identifier">failed</span>
+<span class="identifier">test</span><span class="special">.</span><span class="identifier">cpp</span><span class="special">(</span><span class="number">12</span><span class="special">):</span> <span class="identifier">error</span><span class="special">:</span> <span class="identifier">in</span> <span class="string">"suite1/test1"</span><span class="special">:</span> <span class="identifier">check</span> <span class="keyword">false</span> <span class="identifier">has</span> <span class="identifier">failed</span>
+
+<span class="special">***</span> <span class="identifier">No</span> <span class="identifier">errors</span> <span class="identifier">detected</span>
+</pre>
+              </td></tr></tbody>
+</table></div>
+<p>
+        In the above example, we first run all test cases with four failed assertions.
+        The total number of expected failures is 3: 1 (for test <code class="computeroutput"><span class="identifier">suite1</span></code>)
+        + 2 (for <code class="computeroutput"><span class="identifier">test1</span></code>). Because
+        the expected failure count is exceeded, the error is reported. In the second
+        case, we only run test case <code class="computeroutput"><span class="identifier">suite1</span><span class="special">/</span><span class="identifier">test1</span></code>:
+        two failures occur, two failures are expected, therefore no error is reported.
+      </p>
+<h4>
+<a name="boost_test.testing_tools.expected_failures.h2"></a>
+        <span><a name="boost_test.testing_tools.expected_failures.usage_with_automatically_registe"></a></span><a class="link" href="expected_failures.html#boost_test.testing_tools.expected_failures.usage_with_automatically_registe">Usage
+        with automatically registered test cases</a>
+      </h4>
+<div class="caution"><table border="0" summary="Caution">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Caution]" src="../../../../../../doc/src/images/caution.png"></td>
+<th align="left">Caution</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+          this usage is considered as deprecated. Please consider using the <a class="link" href="expected_failures.html#l_expected_failure"><code class="computeroutput"><span class="identifier">expected_failures</span></code></a>
+          decorator instead.
+        </p></td></tr>
+</table></div>
+<p>
+        For backwards compatibility, it is possible to indicate the expected failures
+        with <a class="link" href="../utf_reference/testing_tool_ref/test_org_boost_test_case_expected_failure.html" title="BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES"><code class="computeroutput"><span class="identifier">BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES</span></code></a>
+        <sup>[<a name="boost_test.testing_tools.expected_failures.f0" href="#ftn.boost_test.testing_tools.expected_failures.f0" class="footnote">15</a>]</sup> before the test case definition.
+      </p>
+<pre class="programlisting"><span class="identifier">BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES</span><span class="special">(</span><span class="identifier">test_case_name</span><span class="special">,</span> <span class="identifier">number_of_expected_failures</span><span class="special">);</span>
+</pre>
+<p>
+        You can use this macro both on a file scope and inside a test suite. Moreover
+        you can use it even if name of test units coincide in different test suites.
+        Expected failures specification applies to the test unit belonging to the
+        same test suite where <a class="link" href="../utf_reference/testing_tool_ref/test_org_boost_test_case_expected_failure.html" title="BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES"><code class="computeroutput"><span class="identifier">BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES</span></code></a>
+        resides.
+      </p>
+<h6>
+<a name="boost_test.testing_tools.expected_failures.h3"></a>
+        <span><a name="boost_test.testing_tools.expected_failures.example_descr0"></a></span><a class="link" href="expected_failures.html#boost_test.testing_tools.expected_failures.example_descr0">Example:
+        Expected failures specification for automatically registered test case</a>
+      </h6>
+<div class="informaltable"><table class="table">
+<colgroup><col></colgroup>
+<thead><tr><th>
+                <p>
+                  Code
+                </p>
+              </th></tr></thead>
+<tbody><tr><td>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="preprocessor">#define</span> <span class="identifier">BOOST_TEST_MODULE</span> <span class="identifier">example</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">test</span><span class="special">/</span><span class="identifier">included</span><span class="special">/</span><span class="identifier">unit_test</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="identifier">BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES</span><span class="special">(</span> <span class="identifier">my_test1</span><span class="special">,</span> <span class="number">1</span> <span class="special">)</span>
+
+<span class="identifier">BOOST_AUTO_TEST_CASE</span><span class="special">(</span> <span class="identifier">my_test1</span> <span class="special">)</span>
+<span class="special">{</span>
+  <span class="identifier">BOOST_TEST</span><span class="special">(</span> <span class="number">2</span> <span class="special">==</span> <span class="number">1</span> <span class="special">);</span>
+<span class="special">}</span>
+
+<span class="identifier">BOOST_AUTO_TEST_SUITE</span><span class="special">(</span> <span class="identifier">internal</span> <span class="special">)</span>
+
+<span class="identifier">BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES</span><span class="special">(</span> <span class="identifier">my_test1</span><span class="special">,</span> <span class="number">2</span> <span class="special">)</span>
+
+<span class="identifier">BOOST_AUTO_TEST_CASE</span><span class="special">(</span> <span class="identifier">my_test1</span> <span class="special">)</span>
+<span class="special">{</span>
+  <span class="identifier">BOOST_CHECK_EQUAL</span><span class="special">(</span> <span class="keyword">sizeof</span><span class="special">(</span><span class="keyword">int</span><span class="special">),</span> <span class="keyword">sizeof</span><span class="special">(</span><span class="keyword">char</span><span class="special">)</span> <span class="special">);</span>
+  <span class="identifier">BOOST_CHECK_EQUAL</span><span class="special">(</span> <span class="keyword">sizeof</span><span class="special">(</span><span class="keyword">int</span><span class="special">*),</span> <span class="keyword">sizeof</span><span class="special">(</span><span class="keyword">char</span><span class="special">)</span> <span class="special">);</span>
+<span class="special">}</span>
+
+<span class="identifier">BOOST_AUTO_TEST_SUITE_END</span><span class="special">()</span>
+</pre>
+              </td></tr></tbody>
+</table></div>
+<div class="informaltable"><table class="table">
+<colgroup><col></colgroup>
+<thead><tr><th>
+                <p>
+                  Output
+                </p>
+              </th></tr></thead>
+<tbody><tr><td>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="special">&gt;</span> <span class="identifier">example</span> <span class="special">--</span><span class="identifier">report_level</span><span class="special">=</span><span class="keyword">short</span>
+<span class="identifier">Running</span> <span class="number">2</span> <span class="identifier">test</span> <span class="identifier">cases</span><span class="special">...</span>
+<span class="identifier">test</span><span class="special">.</span><span class="identifier">cpp</span><span class="special">(</span><span class="number">10</span><span class="special">):</span> <span class="identifier">error</span> <span class="identifier">in</span> <span class="string">"my_test1"</span><span class="special">:</span> <span class="identifier">check</span> <span class="number">2</span> <span class="special">==</span> <span class="number">1</span> <span class="identifier">has</span> <span class="identifier">failed</span>
+<span class="identifier">test</span><span class="special">.</span><span class="identifier">cpp</span><span class="special">(</span><span class="number">21</span><span class="special">):</span> <span class="identifier">error</span> <span class="identifier">in</span> <span class="string">"my_test1"</span><span class="special">:</span> <span class="identifier">check</span> <span class="keyword">sizeof</span><span class="special">(</span><span class="keyword">int</span><span class="special">)</span> <span class="special">==</span> <span class="keyword">sizeof</span><span class="special">(</span><span class="keyword">char</span><span class="special">)</span> <span class="identifier">has</span> <span class="identifier">failed</span> <span class="special">[</span><span class="number">4</span> <span class="special">!=</span> <span class="number">1</span><span class="special">]</span>
+<span class="identifier">test</span><span class="special">.</span><span class="identifier">cpp</span><span class="special">(</span><span class="number">22</span><span class="special">):</span> <span class="identifier">error</span> <span class="identifier">in</span> <span class="string">"my_test1"</span><span class="special">:</span> <span class="identifier">check</span> <span class="keyword">sizeof</span><span class="special">(</span><span class="keyword">int</span><span class="special">*)</span> <span class="special">==</span> <span class="keyword">sizeof</span><span class="special">(</span><span class="keyword">char</span><span class="special">)</span> <span class="identifier">has</span> <span class="identifier">failed</span> <span class="special">[</span><span class="number">4</span> <span class="special">!=</span> <span class="number">1</span><span class="special">]</span>
+
+<span class="identifier">Test</span> <span class="identifier">suite</span> <span class="string">"example"</span> <span class="identifier">passed</span> <span class="identifier">with</span><span class="special">:</span>
+  <span class="number">3</span> <span class="identifier">assertions</span> <span class="identifier">out</span> <span class="identifier">of</span> <span class="number">3</span> <span class="identifier">failed</span>
+  <span class="number">3</span> <span class="identifier">failures</span> <span class="identifier">expected</span>
+  <span class="number">2</span> <span class="identifier">test</span> <span class="identifier">cases</span> <span class="identifier">out</span> <span class="identifier">of</span> <span class="number">2</span> <span class="identifier">passed</span>
+</pre>
+              </td></tr></tbody>
+</table></div>
+<h4>
+<a name="boost_test.testing_tools.expected_failures.h4"></a>
+        <span><a name="boost_test.testing_tools.expected_failures.usage_with_manually_registered_t"></a></span><a class="link" href="expected_failures.html#boost_test.testing_tools.expected_failures.usage_with_manually_registered_t">Usage
+        with manually registered test cases</a>
+      </h4>
+<div class="caution"><table border="0" summary="Caution">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Caution]" src="../../../../../../doc/src/images/caution.png"></td>
+<th align="left">Caution</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+          this usage is considered as deprecated. Please consider using the <a class="link" href="expected_failures.html#l_expected_failure"><code class="computeroutput"><span class="identifier">expected_failures</span></code></a>
+          decorator instead.
+        </p></td></tr>
+</table></div>
+<p>
+        To set the value of expected failures for the manually registered test unit
+        pass it as a second argument for the <a class="link" href="../tests_organization/test_suite.html#ref_test_case_registration"><code class="computeroutput"><span class="identifier">test_suite</span><span class="special">::</span><span class="identifier">add</span></code></a> call during test unit registration.
+      </p>
+<h6>
+<a name="boost_test.testing_tools.expected_failures.h5"></a>
+        <span><a name="boost_test.testing_tools.expected_failures.example_descr1"></a></span><a class="link" href="expected_failures.html#boost_test.testing_tools.expected_failures.example_descr1">Example:
+        Expected failures specification for manually registered test case</a>
+      </h6>
+<div class="informaltable"><table class="table">
+<colgroup><col></colgroup>
+<thead><tr><th>
+                <p>
+                  Code
+                </p>
+              </th></tr></thead>
+<tbody><tr><td>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">test</span><span class="special">/</span><span class="identifier">included</span><span class="special">/</span><span class="identifier">unit_test</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="keyword">using</span> <span class="keyword">namespace</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">unit_test</span><span class="special">;</span>
+
+<span class="keyword">void</span> <span class="identifier">free_test_function</span><span class="special">()</span>
+<span class="special">{</span>
+  <span class="identifier">BOOST_TEST</span><span class="special">(</span> <span class="number">2</span> <span class="special">==</span> <span class="number">1</span> <span class="special">);</span>
+<span class="special">}</span>
+
+<span class="identifier">test_suite</span><span class="special">*</span> <span class="identifier">init_unit_test_suite</span><span class="special">(</span> <span class="keyword">int</span><span class="special">,</span> <span class="keyword">char</span><span class="special">*</span> <span class="special">[]</span> <span class="special">)</span>
+<span class="special">{</span>
+  <span class="identifier">framework</span><span class="special">::</span><span class="identifier">master_test_suite</span><span class="special">().</span>
+    <span class="identifier">add</span><span class="special">(</span> <span class="identifier">BOOST_TEST_CASE</span><span class="special">(</span> <span class="special">&amp;</span><span class="identifier">free_test_function</span> <span class="special">),</span> <span class="number">2</span> <span class="special">);</span>
+
+  <span class="keyword">return</span> <span class="number">0</span><span class="special">;</span>
+<span class="special">}</span>
+</pre>
+              </td></tr></tbody>
+</table></div>
+<div class="informaltable"><table class="table">
+<colgroup><col></colgroup>
+<thead><tr><th>
+                <p>
+                  Output
+                </p>
+              </th></tr></thead>
+<tbody><tr><td>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="special">&gt;</span> <span class="identifier">example</span> <span class="special">--</span><span class="identifier">log_level</span><span class="special">=</span><span class="identifier">message</span>
+<span class="identifier">Running</span> <span class="number">1</span> <span class="identifier">test</span> <span class="keyword">case</span><span class="special">...</span>
+<span class="identifier">test</span><span class="special">.</span><span class="identifier">cpp</span><span class="special">(</span><span class="number">8</span><span class="special">):</span> <span class="identifier">error</span> <span class="identifier">in</span> <span class="string">"free_test_function"</span><span class="special">:</span> <span class="identifier">check</span> <span class="number">2</span> <span class="special">==</span> <span class="number">1</span> <span class="identifier">has</span> <span class="identifier">failed</span>
+<span class="identifier">Test</span> <span class="keyword">case</span> <span class="identifier">has</span> <span class="identifier">less</span> <span class="identifier">failures</span> <span class="identifier">then</span> <span class="identifier">expected</span>
+
+<span class="special">***</span> <span class="identifier">No</span> <span class="identifier">errors</span> <span class="identifier">detected</span>
+</pre>
+              </td></tr></tbody>
+</table></div>
+<div class="footnotes">
+<br><hr width="100" align="left">
+<div class="footnote"><p><sup>[<a id="ftn.boost_test.testing_tools.expected_failures.f0" href="#boost_test.testing_tools.expected_failures.f0" class="para">15</a>] </sup>
+          deprecated
+        </p></div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2001-2016 Boost.Test contributors<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="timeout.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../testing_tools.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="custom_predicates.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

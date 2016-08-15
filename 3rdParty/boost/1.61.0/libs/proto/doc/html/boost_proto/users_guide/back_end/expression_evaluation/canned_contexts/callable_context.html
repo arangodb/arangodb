@@ -1,0 +1,175 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>callable_context&lt;&gt;</title>
+<link rel="stylesheet" href="../../../../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../../../../../index.html" title="Chapter&#160;1.&#160;Boost.Proto">
+<link rel="up" href="../canned_contexts.html" title="Proto's Built-In Contexts">
+<link rel="prev" href="null_context.html" title="null_context">
+<link rel="next" href="../../expression_transformation.html" title="Expression Transformation: Semantic Actions">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="null_context.html"><img src="../../../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../canned_contexts.html"><img src="../../../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../../../index.html"><img src="../../../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../../expression_transformation.html"><img src="../../../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h6 class="title">
+<a name="boost_proto.users_guide.back_end.expression_evaluation.canned_contexts.callable_context"></a><a class="link" href="callable_context.html" title="callable_context&lt;&gt;"><code class="literal">callable_context&lt;&gt;</code></a>
+</h6></div></div></div>
+<p>
+              The <code class="computeroutput"><a class="link" href="../../../../../boost/proto/context/callable_context.html" title="Struct template callable_context">proto::callable_context&lt;&gt;</a></code>
+              is a helper that simplifies the job of writing context classes. Rather
+              than writing template specializations, with <code class="computeroutput"><a class="link" href="../../../../../boost/proto/context/callable_context.html" title="Struct template callable_context">proto::callable_context&lt;&gt;</a></code>
+              you write a function object with an overloaded function call operator.
+              Any expressions not handled by an overload are automatically dispatched
+              to a default evaluation context that you can specify.
+            </p>
+<p>
+              Rather than an evaluation context in its own right, <code class="computeroutput"><a class="link" href="../../../../../boost/proto/context/callable_context.html" title="Struct template callable_context">proto::callable_context&lt;&gt;</a></code>
+              is more properly thought of as a context adaptor. To use it, you must
+              define your own context that inherits from <code class="computeroutput"><a class="link" href="../../../../../boost/proto/context/callable_context.html" title="Struct template callable_context">proto::callable_context&lt;&gt;</a></code>.
+            </p>
+<p>
+              In the <a class="link" href="null_context.html" title="null_context"><code class="literal">null_context</code></a>
+              section, we saw how to implement an evaluation context that increments
+              all the integers within an expression tree. Here is how to do the same
+              thing with the <code class="computeroutput"><a class="link" href="../../../../../boost/proto/context/callable_context.html" title="Struct template callable_context">proto::callable_context&lt;&gt;</a></code>:
+            </p>
+<pre class="programlisting"><span class="comment">// An evaluation context that increments all</span>
+<span class="comment">// integer terminals in-place.</span>
+<span class="keyword">struct</span> <span class="identifier">increment_ints</span>
+  <span class="special">:</span> <span class="identifier">callable_context</span><span class="special">&lt;</span>
+        <span class="identifier">increment_ints</span> <span class="keyword">const</span> <span class="comment">// derived context</span>
+      <span class="special">,</span> <span class="identifier">null_context</span> <span class="keyword">const</span>  <span class="comment">// fall-back context</span>
+    <span class="special">&gt;</span>
+<span class="special">{</span>
+    <span class="keyword">typedef</span> <span class="keyword">void</span> <span class="identifier">result_type</span><span class="special">;</span>
+
+    <span class="comment">// Handle int terminals here:</span>
+    <span class="keyword">void</span> <span class="keyword">operator</span><span class="special">()(</span><span class="identifier">proto</span><span class="special">::</span><span class="identifier">tag</span><span class="special">::</span><span class="identifier">terminal</span><span class="special">,</span> <span class="keyword">int</span> <span class="special">&amp;</span><span class="identifier">i</span><span class="special">)</span> <span class="keyword">const</span>
+    <span class="special">{</span>
+        <span class="special">++</span><span class="identifier">i</span><span class="special">;</span>
+    <span class="special">}</span>
+<span class="special">};</span>
+</pre>
+<p>
+              With such a context, we can do the following:
+            </p>
+<pre class="programlisting"><span class="identifier">literal</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;</span> <span class="identifier">i</span> <span class="special">=</span> <span class="number">0</span><span class="special">,</span> <span class="identifier">j</span> <span class="special">=</span> <span class="number">10</span><span class="special">;</span>
+<span class="identifier">proto</span><span class="special">::</span><span class="identifier">eval</span><span class="special">(</span> <span class="identifier">i</span> <span class="special">-</span> <span class="identifier">j</span> <span class="special">*</span> <span class="number">3.14</span><span class="special">,</span> <span class="identifier">increment_ints</span><span class="special">()</span> <span class="special">);</span>
+
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"i = "</span> <span class="special">&lt;&lt;</span> <span class="identifier">i</span><span class="special">.</span><span class="identifier">get</span><span class="special">()</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"j = "</span> <span class="special">&lt;&lt;</span> <span class="identifier">j</span><span class="special">.</span><span class="identifier">get</span><span class="special">()</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+</pre>
+<p>
+              This program outputs the following, which shows that the integers
+              <code class="computeroutput"><span class="identifier">i</span></code> and <code class="computeroutput"><span class="identifier">j</span></code> have been incremented by <code class="computeroutput"><span class="number">1</span></code>:
+            </p>
+<pre class="programlisting">i = 1
+j = 11
+</pre>
+<p>
+              In the <code class="computeroutput"><span class="identifier">increment_ints</span></code>
+              context, we didn't have to define any nested <code class="computeroutput"><span class="identifier">eval</span><span class="special">&lt;&gt;</span></code> templates. That's because
+              <code class="computeroutput"><a class="link" href="../../../../../boost/proto/context/callable_context.html" title="Struct template callable_context">proto::callable_context&lt;&gt;</a></code>
+              implements them for us. <code class="computeroutput"><a class="link" href="../../../../../boost/proto/context/callable_context.html" title="Struct template callable_context">proto::callable_context&lt;&gt;</a></code>
+              takes two template parameters: the derived context and a fall-back
+              context. For each node in the expression tree being evaluated, <code class="computeroutput"><a class="link" href="../../../../../boost/proto/context/callable_context.html" title="Struct template callable_context">proto::callable_context&lt;&gt;</a></code> checks to see if
+              there is an overloaded <code class="computeroutput"><span class="keyword">operator</span><span class="special">()</span></code> in the derived context that accepts
+              it. Given some expression <code class="computeroutput"><span class="identifier">expr</span></code>
+              of type <code class="computeroutput"><span class="identifier">Expr</span></code>, and a
+              context <code class="computeroutput"><span class="identifier">ctx</span></code>, it attempts
+              to call:
+            </p>
+<pre class="programlisting"><span class="identifier">ctx</span><span class="special">(</span>
+    <span class="keyword">typename</span> <span class="identifier">Expr</span><span class="special">::</span><span class="identifier">proto_tag</span><span class="special">()</span>
+  <span class="special">,</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">child_c</span><span class="special">&lt;</span><span class="number">0</span><span class="special">&gt;(</span><span class="identifier">expr</span><span class="special">)</span>
+  <span class="special">,</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">child_c</span><span class="special">&lt;</span><span class="number">1</span><span class="special">&gt;(</span><span class="identifier">expr</span><span class="special">)</span>
+    <span class="special">...</span>
+<span class="special">);</span>
+</pre>
+<p>
+              Using function overloading and metaprogramming tricks, <code class="computeroutput"><a class="link" href="../../../../../boost/proto/context/callable_context.html" title="Struct template callable_context">proto::callable_context&lt;&gt;</a></code>
+              can detect at compile-time whether such a function exists or not. If
+              so, that function is called. If not, the current expression is passed
+              to the fall-back evaluation context to be processed.
+            </p>
+<p>
+              We saw another example of the <code class="computeroutput"><a class="link" href="../../../../../boost/proto/context/callable_context.html" title="Struct template callable_context">proto::callable_context&lt;&gt;</a></code>
+              when we looked at the simple calculator expression evaluator. There,
+              we wanted to customize the evaluation of placeholder terminals, and
+              delegate the handling of all other nodes to the <code class="computeroutput"><a class="link" href="../../../../../boost/proto/context/default_context.html" title="Struct default_context">proto::default_context</a></code>. We did
+              that as follows:
+            </p>
+<pre class="programlisting"><span class="comment">// An evaluation context for calculator expressions that</span>
+<span class="comment">// explicitly handles placeholder terminals, but defers the</span>
+<span class="comment">// processing of all other nodes to the default_context.</span>
+<span class="keyword">struct</span> <span class="identifier">calculator_context</span>
+  <span class="special">:</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">callable_context</span><span class="special">&lt;</span> <span class="identifier">calculator_context</span> <span class="keyword">const</span> <span class="special">&gt;</span>
+<span class="special">{</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span><span class="keyword">double</span><span class="special">&gt;</span> <span class="identifier">args</span><span class="special">;</span>
+
+    <span class="comment">// Define the result type of the calculator.</span>
+    <span class="keyword">typedef</span> <span class="keyword">double</span> <span class="identifier">result_type</span><span class="special">;</span>
+
+    <span class="comment">// Handle the placeholders:</span>
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">int</span> <span class="identifier">I</span><span class="special">&gt;</span>
+    <span class="keyword">double</span> <span class="keyword">operator</span><span class="special">()(</span><span class="identifier">proto</span><span class="special">::</span><span class="identifier">tag</span><span class="special">::</span><span class="identifier">terminal</span><span class="special">,</span> <span class="identifier">placeholder</span><span class="special">&lt;</span><span class="identifier">I</span><span class="special">&gt;)</span> <span class="keyword">const</span>
+    <span class="special">{</span>
+        <span class="keyword">return</span> <span class="keyword">this</span><span class="special">-&gt;</span><span class="identifier">args</span><span class="special">[</span><span class="identifier">I</span><span class="special">];</span>
+    <span class="special">}</span>
+<span class="special">};</span>
+</pre>
+<p>
+              In this case, we didn't specify a fall-back context. In that case,
+              <code class="computeroutput"><a class="link" href="../../../../../boost/proto/context/callable_context.html" title="Struct template callable_context">proto::callable_context&lt;&gt;</a></code>
+              uses the <code class="computeroutput"><a class="link" href="../../../../../boost/proto/context/default_context.html" title="Struct default_context">proto::default_context</a></code>. With
+              the above <code class="computeroutput"><span class="identifier">calculator_context</span></code>
+              and a couple of appropriately defined placeholder terminals, we can
+              evaluate calculator expressions, as demonstrated below:
+            </p>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">int</span> <span class="identifier">I</span><span class="special">&gt;</span>
+<span class="keyword">struct</span> <span class="identifier">placeholder</span>
+<span class="special">{};</span>
+
+<span class="identifier">terminal</span><span class="special">&lt;</span><span class="identifier">placeholder</span><span class="special">&lt;</span><span class="number">0</span><span class="special">&gt;</span> <span class="special">&gt;::</span><span class="identifier">type</span> <span class="keyword">const</span> <span class="identifier">_1</span> <span class="special">=</span> <span class="special">{{}};</span>
+<span class="identifier">terminal</span><span class="special">&lt;</span><span class="identifier">placeholder</span><span class="special">&lt;</span><span class="number">1</span><span class="special">&gt;</span> <span class="special">&gt;::</span><span class="identifier">type</span> <span class="keyword">const</span> <span class="identifier">_2</span> <span class="special">=</span> <span class="special">{{}};</span>
+<span class="comment">// ...</span>
+
+<span class="identifier">calculator_context</span> <span class="identifier">ctx</span><span class="special">;</span>
+<span class="identifier">ctx</span><span class="special">.</span><span class="identifier">args</span><span class="special">.</span><span class="identifier">push_back</span><span class="special">(</span><span class="number">4</span><span class="special">);</span>
+<span class="identifier">ctx</span><span class="special">.</span><span class="identifier">args</span><span class="special">.</span><span class="identifier">push_back</span><span class="special">(</span><span class="number">5</span><span class="special">);</span>
+
+<span class="keyword">double</span> <span class="identifier">j</span> <span class="special">=</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">eval</span><span class="special">(</span> <span class="special">(</span><span class="identifier">_2</span> <span class="special">-</span> <span class="identifier">_1</span><span class="special">)</span> <span class="special">/</span> <span class="identifier">_2</span> <span class="special">*</span> <span class="number">100</span><span class="special">,</span> <span class="identifier">ctx</span> <span class="special">);</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"j = "</span> <span class="special">&lt;&lt;</span> <span class="identifier">j</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+</pre>
+<p>
+              The above code displays the following:
+            </p>
+<pre class="programlisting">j = 20
+</pre>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2008 Eric Niebler<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="null_context.html"><img src="../../../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../canned_contexts.html"><img src="../../../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../../../index.html"><img src="../../../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../../expression_transformation.html"><img src="../../../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

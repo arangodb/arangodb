@@ -1,0 +1,286 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>C99 Mathematical Special Functions.</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../../index.html" title="Chapter&#160;1.&#160;Boost.TR1">
+<link rel="up" href="../subject_list.html" title="TR1 By Subject">
+<link rel="prev" href="special.html" title="Mathematical Special Functions.">
+<link rel="next" href="../header_list.html" title="TR1 By Header">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="special.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../subject_list.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../header_list.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_tr1.subject_list.c99_special"></a><a class="link" href="c99_special.html" title="C99 Mathematical Special Functions.">C99 Mathematical
+      Special Functions.</a>
+</h3></div></div></div>
+<p>
+        The TR adds a number of special functions which were first introduced in
+        the C99 standard to header &lt;cmath&gt;.
+      </p>
+<p>
+        Refer to the <a href="../../../../libs/math/doc/html/math_toolkit/main_tr1.html" target="_top">Math
+        Library docs</a> for more information.
+      </p>
+<pre class="programlisting"><span class="keyword">namespace</span> <span class="identifier">std</span> <span class="special">{</span>
+<span class="keyword">namespace</span> <span class="identifier">tr1</span> <span class="special">{</span>
+
+   <span class="comment">// types</span>
+   <span class="keyword">typedef</span> <span class="identifier">floating</span><span class="special">-</span><span class="identifier">type</span> <span class="identifier">double_t</span><span class="special">;</span>
+   <span class="keyword">typedef</span> <span class="identifier">floating</span><span class="special">-</span><span class="identifier">type</span> <span class="identifier">float_t</span><span class="special">;</span>
+
+   <span class="comment">// functions</span>
+   <span class="keyword">double</span> <span class="identifier">acosh</span><span class="special">(</span><span class="keyword">double</span> <span class="identifier">x</span><span class="special">);</span>
+   <span class="keyword">float</span> <span class="identifier">acoshf</span><span class="special">(</span><span class="keyword">float</span> <span class="identifier">x</span><span class="special">);</span>
+   <span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">acoshl</span><span class="special">(</span><span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">x</span><span class="special">);</span>
+
+   <span class="keyword">double</span> <span class="identifier">asinh</span><span class="special">(</span><span class="keyword">double</span> <span class="identifier">x</span><span class="special">);</span>
+   <span class="keyword">float</span> <span class="identifier">asinhf</span><span class="special">(</span><span class="keyword">float</span> <span class="identifier">x</span><span class="special">);</span>
+   <span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">asinhl</span><span class="special">(</span><span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">x</span><span class="special">);</span>
+
+   <span class="keyword">double</span> <span class="identifier">atanh</span><span class="special">(</span><span class="keyword">double</span> <span class="identifier">x</span><span class="special">);</span>
+   <span class="keyword">float</span> <span class="identifier">atanhf</span><span class="special">(</span><span class="keyword">float</span> <span class="identifier">x</span><span class="special">);</span>
+   <span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">atanhl</span><span class="special">(</span><span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">x</span><span class="special">);</span>
+
+   <span class="keyword">double</span> <span class="identifier">cbrt</span><span class="special">(</span><span class="keyword">double</span> <span class="identifier">x</span><span class="special">);</span>
+   <span class="keyword">float</span> <span class="identifier">cbrtf</span><span class="special">(</span><span class="keyword">float</span> <span class="identifier">x</span><span class="special">);</span>
+   <span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">cbrtl</span><span class="special">(</span><span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">x</span><span class="special">);</span>
+
+   <span class="keyword">double</span> <span class="identifier">copysign</span><span class="special">(</span><span class="keyword">double</span> <span class="identifier">x</span><span class="special">,</span> <span class="keyword">double</span> <span class="identifier">y</span><span class="special">);</span>
+   <span class="keyword">float</span> <span class="identifier">copysignf</span><span class="special">(</span><span class="keyword">float</span> <span class="identifier">x</span><span class="special">,</span> <span class="keyword">float</span> <span class="identifier">y</span><span class="special">);</span>
+   <span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">copysignl</span><span class="special">(</span><span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">x</span><span class="special">,</span> <span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">y</span><span class="special">);</span>
+
+   <span class="keyword">double</span> <span class="identifier">erf</span><span class="special">(</span><span class="keyword">double</span> <span class="identifier">x</span><span class="special">);</span>
+   <span class="keyword">float</span> <span class="identifier">erff</span><span class="special">(</span><span class="keyword">float</span> <span class="identifier">x</span><span class="special">);</span>
+   <span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">erfl</span><span class="special">(</span><span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">x</span><span class="special">);</span>
+
+   <span class="keyword">double</span> <span class="identifier">erfc</span><span class="special">(</span><span class="keyword">double</span> <span class="identifier">x</span><span class="special">);</span>
+   <span class="keyword">float</span> <span class="identifier">erfcf</span><span class="special">(</span><span class="keyword">float</span> <span class="identifier">x</span><span class="special">);</span>
+   <span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">erfcl</span><span class="special">(</span><span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">x</span><span class="special">);</span>
+
+   <span class="keyword">double</span> <span class="identifier">exp2</span><span class="special">(</span><span class="keyword">double</span> <span class="identifier">x</span><span class="special">);</span>
+   <span class="keyword">float</span> <span class="identifier">exp2f</span><span class="special">(</span><span class="keyword">float</span> <span class="identifier">x</span><span class="special">);</span>
+   <span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">exp2l</span><span class="special">(</span><span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">x</span><span class="special">);</span>
+
+   <span class="keyword">double</span> <span class="identifier">expm1</span><span class="special">(</span><span class="keyword">double</span> <span class="identifier">x</span><span class="special">);</span>
+   <span class="keyword">float</span> <span class="identifier">expm1f</span><span class="special">(</span><span class="keyword">float</span> <span class="identifier">x</span><span class="special">);</span>
+   <span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">expm1l</span><span class="special">(</span><span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">x</span><span class="special">);</span>
+
+   <span class="keyword">double</span> <span class="identifier">fdim</span><span class="special">(</span><span class="keyword">double</span> <span class="identifier">x</span><span class="special">,</span> <span class="keyword">double</span> <span class="identifier">y</span><span class="special">);</span>
+   <span class="keyword">float</span> <span class="identifier">fdimf</span><span class="special">(</span><span class="keyword">float</span> <span class="identifier">x</span><span class="special">,</span> <span class="keyword">float</span> <span class="identifier">y</span><span class="special">);</span>
+   <span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">fdiml</span><span class="special">(</span><span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">x</span><span class="special">,</span> <span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">y</span><span class="special">);</span>
+
+   <span class="keyword">double</span> <span class="identifier">fma</span><span class="special">(</span><span class="keyword">double</span> <span class="identifier">x</span><span class="special">,</span> <span class="keyword">double</span> <span class="identifier">y</span><span class="special">,</span> <span class="keyword">double</span> <span class="identifier">z</span><span class="special">);</span>
+   <span class="keyword">float</span> <span class="identifier">fmaf</span><span class="special">(</span><span class="keyword">float</span> <span class="identifier">x</span><span class="special">,</span> <span class="keyword">float</span> <span class="identifier">y</span><span class="special">,</span> <span class="keyword">float</span> <span class="identifier">z</span><span class="special">);</span>
+   <span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">fmal</span><span class="special">(</span><span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">x</span><span class="special">,</span> <span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">y</span><span class="special">,</span> <span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">z</span><span class="special">);</span>
+
+   <span class="keyword">double</span> <span class="identifier">fmax</span><span class="special">(</span><span class="keyword">double</span> <span class="identifier">x</span><span class="special">,</span> <span class="keyword">double</span> <span class="identifier">y</span><span class="special">);</span>
+   <span class="keyword">float</span> <span class="identifier">fmaxf</span><span class="special">(</span><span class="keyword">float</span> <span class="identifier">x</span><span class="special">,</span> <span class="keyword">float</span> <span class="identifier">y</span><span class="special">);</span>
+   <span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">fmaxl</span><span class="special">(</span><span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">x</span><span class="special">,</span> <span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">y</span><span class="special">);</span>
+
+   <span class="keyword">double</span> <span class="identifier">fmin</span><span class="special">(</span><span class="keyword">double</span> <span class="identifier">x</span><span class="special">,</span> <span class="keyword">double</span> <span class="identifier">y</span><span class="special">);</span>
+   <span class="keyword">float</span> <span class="identifier">fminf</span><span class="special">(</span><span class="keyword">float</span> <span class="identifier">x</span><span class="special">,</span> <span class="keyword">float</span> <span class="identifier">y</span><span class="special">);</span>
+   <span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">fminl</span><span class="special">(</span><span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">x</span><span class="special">,</span> <span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">y</span><span class="special">);</span>
+
+   <span class="keyword">double</span> <span class="identifier">hypot</span><span class="special">(</span><span class="keyword">double</span> <span class="identifier">x</span><span class="special">,</span> <span class="keyword">double</span> <span class="identifier">y</span><span class="special">);</span>
+   <span class="keyword">float</span> <span class="identifier">hypotf</span><span class="special">(</span><span class="keyword">float</span> <span class="identifier">x</span><span class="special">,</span> <span class="keyword">float</span> <span class="identifier">y</span><span class="special">);</span>
+   <span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">hypotl</span><span class="special">(</span><span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">x</span><span class="special">,</span> <span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">y</span><span class="special">);</span>
+
+   <span class="keyword">int</span> <span class="identifier">ilogb</span><span class="special">(</span><span class="keyword">double</span> <span class="identifier">x</span><span class="special">);</span>
+   <span class="keyword">int</span> <span class="identifier">ilogbf</span><span class="special">(</span><span class="keyword">float</span> <span class="identifier">x</span><span class="special">);</span>
+   <span class="keyword">int</span> <span class="identifier">ilogbl</span><span class="special">(</span><span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">x</span><span class="special">);</span>
+
+   <span class="keyword">double</span> <span class="identifier">lgamma</span><span class="special">(</span><span class="keyword">double</span> <span class="identifier">x</span><span class="special">);</span>
+   <span class="keyword">float</span> <span class="identifier">lgammaf</span><span class="special">(</span><span class="keyword">float</span> <span class="identifier">x</span><span class="special">);</span>
+   <span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">lgammal</span><span class="special">(</span><span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">x</span><span class="special">);</span>
+
+   <span class="keyword">long</span> <span class="keyword">long</span> <span class="identifier">llrint</span><span class="special">(</span><span class="keyword">double</span> <span class="identifier">x</span><span class="special">);</span>
+   <span class="keyword">long</span> <span class="keyword">long</span> <span class="identifier">llrintf</span><span class="special">(</span><span class="keyword">float</span> <span class="identifier">x</span><span class="special">);</span>
+   <span class="keyword">long</span> <span class="keyword">long</span> <span class="identifier">llrintl</span><span class="special">(</span><span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">x</span><span class="special">);</span>
+
+   <span class="keyword">long</span> <span class="keyword">long</span> <span class="identifier">llround</span><span class="special">(</span><span class="keyword">double</span> <span class="identifier">x</span><span class="special">);</span>
+   <span class="keyword">long</span> <span class="keyword">long</span> <span class="identifier">llroundf</span><span class="special">(</span><span class="keyword">float</span> <span class="identifier">x</span><span class="special">);</span>
+   <span class="keyword">long</span> <span class="keyword">long</span> <span class="identifier">llroundl</span><span class="special">(</span><span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">x</span><span class="special">);</span>
+
+   <span class="keyword">double</span> <span class="identifier">log1p</span><span class="special">(</span><span class="keyword">double</span> <span class="identifier">x</span><span class="special">);</span>
+   <span class="keyword">float</span> <span class="identifier">log1pf</span><span class="special">(</span><span class="keyword">float</span> <span class="identifier">x</span><span class="special">);</span>
+   <span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">log1pl</span><span class="special">(</span><span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">x</span><span class="special">);</span>
+
+   <span class="keyword">double</span> <span class="identifier">log2</span><span class="special">(</span><span class="keyword">double</span> <span class="identifier">x</span><span class="special">);</span>
+   <span class="keyword">float</span> <span class="identifier">log2f</span><span class="special">(</span><span class="keyword">float</span> <span class="identifier">x</span><span class="special">);</span>
+   <span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">log2l</span><span class="special">(</span><span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">x</span><span class="special">);</span>
+
+   <span class="keyword">double</span> <span class="identifier">logb</span><span class="special">(</span><span class="keyword">double</span> <span class="identifier">x</span><span class="special">);</span>
+   <span class="keyword">float</span> <span class="identifier">logbf</span><span class="special">(</span><span class="keyword">float</span> <span class="identifier">x</span><span class="special">);</span>
+   <span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">logbl</span><span class="special">(</span><span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">x</span><span class="special">);</span>
+
+   <span class="keyword">long</span> <span class="identifier">lrint</span><span class="special">(</span><span class="keyword">double</span> <span class="identifier">x</span><span class="special">);</span>
+   <span class="keyword">long</span> <span class="identifier">lrintf</span><span class="special">(</span><span class="keyword">float</span> <span class="identifier">x</span><span class="special">);</span>
+   <span class="keyword">long</span> <span class="identifier">lrintl</span><span class="special">(</span><span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">x</span><span class="special">);</span>
+
+   <span class="keyword">long</span> <span class="identifier">lround</span><span class="special">(</span><span class="keyword">double</span> <span class="identifier">x</span><span class="special">);</span>
+   <span class="keyword">long</span> <span class="identifier">lroundf</span><span class="special">(</span><span class="keyword">float</span> <span class="identifier">x</span><span class="special">);</span>
+   <span class="keyword">long</span> <span class="identifier">lroundl</span><span class="special">(</span><span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">x</span><span class="special">);</span>
+
+   <span class="keyword">double</span> <span class="identifier">nan</span><span class="special">(</span><span class="keyword">const</span> <span class="keyword">char</span> <span class="special">*</span><span class="identifier">str</span><span class="special">);</span>
+   <span class="keyword">float</span> <span class="identifier">nanf</span><span class="special">(</span><span class="keyword">const</span> <span class="keyword">char</span> <span class="special">*</span><span class="identifier">str</span><span class="special">);</span>
+   <span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">nanl</span><span class="special">(</span><span class="keyword">const</span> <span class="keyword">char</span> <span class="special">*</span><span class="identifier">str</span><span class="special">);</span>
+
+   <span class="keyword">double</span> <span class="identifier">nearbyint</span><span class="special">(</span><span class="keyword">double</span> <span class="identifier">x</span><span class="special">);</span>
+   <span class="keyword">float</span> <span class="identifier">nearbyintf</span><span class="special">(</span><span class="keyword">float</span> <span class="identifier">x</span><span class="special">);</span>
+   <span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">nearbyintl</span><span class="special">(</span><span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">x</span><span class="special">);</span>
+
+   <span class="keyword">double</span> <span class="identifier">nextafter</span><span class="special">(</span><span class="keyword">double</span> <span class="identifier">x</span><span class="special">,</span> <span class="keyword">double</span> <span class="identifier">y</span><span class="special">);</span>
+   <span class="keyword">float</span> <span class="identifier">nextafterf</span><span class="special">(</span><span class="keyword">float</span> <span class="identifier">x</span><span class="special">,</span> <span class="keyword">float</span> <span class="identifier">y</span><span class="special">);</span>
+   <span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">nextafterl</span><span class="special">(</span><span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">x</span><span class="special">,</span> <span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">y</span><span class="special">);</span>
+
+   <span class="keyword">double</span> <span class="identifier">nexttoward</span><span class="special">(</span><span class="keyword">double</span> <span class="identifier">x</span><span class="special">,</span> <span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">y</span><span class="special">);</span>
+   <span class="keyword">float</span> <span class="identifier">nexttowardf</span><span class="special">(</span><span class="keyword">float</span> <span class="identifier">x</span><span class="special">,</span> <span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">y</span><span class="special">);</span>
+   <span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">nexttowardl</span><span class="special">(</span><span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">x</span><span class="special">,</span> <span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">y</span><span class="special">);</span>
+
+   <span class="keyword">double</span> <span class="identifier">remainder</span><span class="special">(</span><span class="keyword">double</span> <span class="identifier">x</span><span class="special">,</span> <span class="keyword">double</span> <span class="identifier">y</span><span class="special">);</span>
+   <span class="keyword">float</span> <span class="identifier">remainderf</span><span class="special">(</span><span class="keyword">float</span> <span class="identifier">x</span><span class="special">,</span> <span class="keyword">float</span> <span class="identifier">y</span><span class="special">);</span>
+   <span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">remainderl</span><span class="special">(</span><span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">x</span><span class="special">,</span> <span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">y</span><span class="special">);</span>
+
+   <span class="keyword">double</span> <span class="identifier">remquo</span><span class="special">(</span><span class="keyword">double</span> <span class="identifier">x</span><span class="special">,</span> <span class="keyword">double</span> <span class="identifier">y</span><span class="special">,</span> <span class="keyword">int</span> <span class="special">*</span><span class="identifier">pquo</span><span class="special">);</span>
+   <span class="keyword">float</span> <span class="identifier">remquof</span><span class="special">(</span><span class="keyword">float</span> <span class="identifier">x</span><span class="special">,</span> <span class="keyword">float</span> <span class="identifier">y</span><span class="special">,</span> <span class="keyword">int</span> <span class="special">*</span><span class="identifier">pquo</span><span class="special">);</span>
+   <span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">remquol</span><span class="special">(</span><span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">x</span><span class="special">,</span> <span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">y</span><span class="special">,</span> <span class="keyword">int</span> <span class="special">*</span><span class="identifier">pquo</span><span class="special">);</span>
+
+   <span class="keyword">double</span> <span class="identifier">rint</span><span class="special">(</span><span class="keyword">double</span> <span class="identifier">x</span><span class="special">);</span>
+   <span class="keyword">float</span> <span class="identifier">rintf</span><span class="special">(</span><span class="keyword">float</span> <span class="identifier">x</span><span class="special">);</span>
+   <span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">rintl</span><span class="special">(</span><span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">x</span><span class="special">);</span>
+
+   <span class="keyword">double</span> <span class="identifier">round</span><span class="special">(</span><span class="keyword">double</span> <span class="identifier">x</span><span class="special">);</span>
+   <span class="keyword">float</span> <span class="identifier">roundf</span><span class="special">(</span><span class="keyword">float</span> <span class="identifier">x</span><span class="special">);</span>
+   <span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">roundl</span><span class="special">(</span><span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">x</span><span class="special">);</span>
+
+   <span class="keyword">double</span> <span class="identifier">scalbln</span><span class="special">(</span><span class="keyword">double</span> <span class="identifier">x</span><span class="special">,</span> <span class="keyword">long</span> <span class="identifier">ex</span><span class="special">);</span>
+   <span class="keyword">float</span> <span class="identifier">scalblnf</span><span class="special">(</span><span class="keyword">float</span> <span class="identifier">x</span><span class="special">,</span> <span class="keyword">long</span> <span class="identifier">ex</span><span class="special">);</span>
+   <span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">scalblnl</span><span class="special">(</span><span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">x</span><span class="special">,</span> <span class="keyword">long</span> <span class="identifier">ex</span><span class="special">);</span>
+   <span class="keyword">double</span> <span class="identifier">scalbn</span><span class="special">(</span><span class="keyword">double</span> <span class="identifier">x</span><span class="special">,</span> <span class="keyword">int</span> <span class="identifier">ex</span><span class="special">);</span>
+   <span class="keyword">float</span> <span class="identifier">scalbnf</span><span class="special">(</span><span class="keyword">float</span> <span class="identifier">x</span><span class="special">,</span> <span class="keyword">int</span> <span class="identifier">ex</span><span class="special">);</span>
+   <span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">scalbnl</span><span class="special">(</span><span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">x</span><span class="special">,</span> <span class="keyword">int</span> <span class="identifier">ex</span><span class="special">);</span>
+
+   <span class="keyword">double</span> <span class="identifier">tgamma</span><span class="special">(</span><span class="keyword">double</span> <span class="identifier">x</span><span class="special">);</span>
+   <span class="keyword">float</span> <span class="identifier">tgammaf</span><span class="special">(</span><span class="keyword">float</span> <span class="identifier">x</span><span class="special">);</span>
+   <span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">tgammal</span><span class="special">(</span><span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">x</span><span class="special">);</span>
+
+   <span class="keyword">double</span> <span class="identifier">trunc</span><span class="special">(</span><span class="keyword">double</span> <span class="identifier">x</span><span class="special">);</span>
+   <span class="keyword">float</span> <span class="identifier">truncf</span><span class="special">(</span><span class="keyword">float</span> <span class="identifier">x</span><span class="special">);</span>
+   <span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">truncl</span><span class="special">(</span><span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">x</span><span class="special">);</span>
+
+   <span class="comment">// C99 macros defined as C++ templates</span>
+   <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">&gt;</span> <span class="keyword">bool</span> <span class="identifier">signbit</span><span class="special">(</span><span class="identifier">T</span> <span class="identifier">x</span><span class="special">);</span>
+   <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">&gt;</span> <span class="keyword">int</span> <span class="identifier">fpclassify</span><span class="special">(</span><span class="identifier">T</span> <span class="identifier">x</span><span class="special">);</span>
+   <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">&gt;</span> <span class="keyword">bool</span> <span class="identifier">isfinite</span><span class="special">(</span><span class="identifier">T</span> <span class="identifier">x</span><span class="special">);</span>
+   <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">&gt;</span> <span class="keyword">bool</span> <span class="identifier">isinf</span><span class="special">(</span><span class="identifier">T</span> <span class="identifier">x</span><span class="special">);</span>
+   <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">&gt;</span> <span class="keyword">bool</span> <span class="identifier">isnan</span><span class="special">(</span><span class="identifier">T</span> <span class="identifier">x</span><span class="special">);</span>
+   <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">&gt;</span> <span class="keyword">bool</span> <span class="identifier">isnormal</span><span class="special">(</span><span class="identifier">T</span> <span class="identifier">x</span><span class="special">);</span>
+   <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">&gt;</span> <span class="keyword">bool</span> <span class="identifier">isgreater</span><span class="special">(</span><span class="identifier">T</span> <span class="identifier">x</span><span class="special">,</span> <span class="identifier">T</span> <span class="identifier">y</span><span class="special">);</span>
+   <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">&gt;</span> <span class="keyword">bool</span> <span class="identifier">isgreaterequal</span><span class="special">(</span><span class="identifier">T</span> <span class="identifier">x</span><span class="special">,</span> <span class="identifier">T</span> <span class="identifier">y</span><span class="special">);</span>
+   <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">&gt;</span> <span class="keyword">bool</span> <span class="identifier">isless</span><span class="special">(</span><span class="identifier">T</span> <span class="identifier">x</span><span class="special">,</span> <span class="identifier">T</span> <span class="identifier">y</span><span class="special">);</span>
+   <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">&gt;</span> <span class="keyword">bool</span> <span class="identifier">islessequal</span><span class="special">(</span><span class="identifier">T</span> <span class="identifier">x</span><span class="special">,</span> <span class="identifier">T</span> <span class="identifier">y</span><span class="special">);</span>
+   <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">&gt;</span> <span class="keyword">bool</span> <span class="identifier">islessgreater</span><span class="special">(</span><span class="identifier">T</span> <span class="identifier">x</span><span class="special">,</span> <span class="identifier">T</span> <span class="identifier">y</span><span class="special">);</span>
+   <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">&gt;</span> <span class="keyword">bool</span> <span class="identifier">isunordered</span><span class="special">(</span><span class="identifier">T</span> <span class="identifier">x</span><span class="special">,</span> <span class="identifier">T</span> <span class="identifier">y</span><span class="special">);</span>
+
+<span class="special">}}</span> <span class="comment">// namespaces</span>
+</pre>
+<p>
+        <span class="bold"><strong>Standard Conformity:</strong></span> The following functions
+        are not supported in the Boost version of this component:
+      </p>
+<pre class="programlisting"><span class="keyword">double</span> <span class="identifier">exp2</span><span class="special">(</span><span class="keyword">double</span> <span class="identifier">x</span><span class="special">);</span>
+<span class="keyword">float</span> <span class="identifier">exp2f</span><span class="special">(</span><span class="keyword">float</span> <span class="identifier">x</span><span class="special">);</span>
+<span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">exp2l</span><span class="special">(</span><span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">x</span><span class="special">);</span>
+
+<span class="keyword">double</span> <span class="identifier">fdim</span><span class="special">(</span><span class="keyword">double</span> <span class="identifier">x</span><span class="special">,</span> <span class="keyword">double</span> <span class="identifier">y</span><span class="special">);</span>
+<span class="keyword">float</span> <span class="identifier">fdimf</span><span class="special">(</span><span class="keyword">float</span> <span class="identifier">x</span><span class="special">,</span> <span class="keyword">float</span> <span class="identifier">y</span><span class="special">);</span>
+<span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">fdiml</span><span class="special">(</span><span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">x</span><span class="special">,</span> <span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">y</span><span class="special">);</span>
+
+<span class="keyword">double</span> <span class="identifier">fma</span><span class="special">(</span><span class="keyword">double</span> <span class="identifier">x</span><span class="special">,</span> <span class="keyword">double</span> <span class="identifier">y</span><span class="special">,</span> <span class="keyword">double</span> <span class="identifier">z</span><span class="special">);</span>
+<span class="keyword">float</span> <span class="identifier">fmaf</span><span class="special">(</span><span class="keyword">float</span> <span class="identifier">x</span><span class="special">,</span> <span class="keyword">float</span> <span class="identifier">y</span><span class="special">,</span> <span class="keyword">float</span> <span class="identifier">z</span><span class="special">);</span>
+<span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">fmal</span><span class="special">(</span><span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">x</span><span class="special">,</span> <span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">y</span><span class="special">,</span> <span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">z</span><span class="special">);</span>
+
+<span class="keyword">int</span> <span class="identifier">ilogb</span><span class="special">(</span><span class="keyword">double</span> <span class="identifier">x</span><span class="special">);</span>
+<span class="keyword">int</span> <span class="identifier">ilogbf</span><span class="special">(</span><span class="keyword">float</span> <span class="identifier">x</span><span class="special">);</span>
+<span class="keyword">int</span> <span class="identifier">ilogbl</span><span class="special">(</span><span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">x</span><span class="special">);</span>
+
+<span class="keyword">long</span> <span class="keyword">long</span> <span class="identifier">llrint</span><span class="special">(</span><span class="keyword">double</span> <span class="identifier">x</span><span class="special">);</span>
+<span class="keyword">long</span> <span class="keyword">long</span> <span class="identifier">llrintf</span><span class="special">(</span><span class="keyword">float</span> <span class="identifier">x</span><span class="special">);</span>
+<span class="keyword">long</span> <span class="keyword">long</span> <span class="identifier">llrintl</span><span class="special">(</span><span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">x</span><span class="special">);</span>
+
+<span class="keyword">double</span> <span class="identifier">log2</span><span class="special">(</span><span class="keyword">double</span> <span class="identifier">x</span><span class="special">);</span>
+<span class="keyword">float</span> <span class="identifier">log2f</span><span class="special">(</span><span class="keyword">float</span> <span class="identifier">x</span><span class="special">);</span>
+<span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">log2l</span><span class="special">(</span><span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">x</span><span class="special">);</span>
+
+<span class="keyword">double</span> <span class="identifier">logb</span><span class="special">(</span><span class="keyword">double</span> <span class="identifier">x</span><span class="special">);</span>
+<span class="keyword">float</span> <span class="identifier">logbf</span><span class="special">(</span><span class="keyword">float</span> <span class="identifier">x</span><span class="special">);</span>
+<span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">logbl</span><span class="special">(</span><span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">x</span><span class="special">);</span>
+
+<span class="keyword">long</span> <span class="identifier">lrint</span><span class="special">(</span><span class="keyword">double</span> <span class="identifier">x</span><span class="special">);</span>
+<span class="keyword">long</span> <span class="identifier">lrintf</span><span class="special">(</span><span class="keyword">float</span> <span class="identifier">x</span><span class="special">);</span>
+<span class="keyword">long</span> <span class="identifier">lrintl</span><span class="special">(</span><span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">x</span><span class="special">);</span>
+
+<span class="keyword">double</span> <span class="identifier">nan</span><span class="special">(</span><span class="keyword">const</span> <span class="keyword">char</span> <span class="special">*</span><span class="identifier">str</span><span class="special">);</span>
+<span class="keyword">float</span> <span class="identifier">nanf</span><span class="special">(</span><span class="keyword">const</span> <span class="keyword">char</span> <span class="special">*</span><span class="identifier">str</span><span class="special">);</span>
+<span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">nanl</span><span class="special">(</span><span class="keyword">const</span> <span class="keyword">char</span> <span class="special">*</span><span class="identifier">str</span><span class="special">);</span>
+
+<span class="keyword">double</span> <span class="identifier">nearbyint</span><span class="special">(</span><span class="keyword">double</span> <span class="identifier">x</span><span class="special">);</span>
+<span class="keyword">float</span> <span class="identifier">nearbyintf</span><span class="special">(</span><span class="keyword">float</span> <span class="identifier">x</span><span class="special">);</span>
+<span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">nearbyintl</span><span class="special">(</span><span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">x</span><span class="special">);</span>
+
+<span class="keyword">double</span> <span class="identifier">remainder</span><span class="special">(</span><span class="keyword">double</span> <span class="identifier">x</span><span class="special">,</span> <span class="keyword">double</span> <span class="identifier">y</span><span class="special">);</span>
+<span class="keyword">float</span> <span class="identifier">remainderf</span><span class="special">(</span><span class="keyword">float</span> <span class="identifier">x</span><span class="special">,</span> <span class="keyword">float</span> <span class="identifier">y</span><span class="special">);</span>
+<span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">remainderl</span><span class="special">(</span><span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">x</span><span class="special">,</span> <span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">y</span><span class="special">);</span>
+
+<span class="keyword">double</span> <span class="identifier">remquo</span><span class="special">(</span><span class="keyword">double</span> <span class="identifier">x</span><span class="special">,</span> <span class="keyword">double</span> <span class="identifier">y</span><span class="special">,</span> <span class="keyword">int</span> <span class="special">*</span><span class="identifier">pquo</span><span class="special">);</span>
+<span class="keyword">float</span> <span class="identifier">remquof</span><span class="special">(</span><span class="keyword">float</span> <span class="identifier">x</span><span class="special">,</span> <span class="keyword">float</span> <span class="identifier">y</span><span class="special">,</span> <span class="keyword">int</span> <span class="special">*</span><span class="identifier">pquo</span><span class="special">);</span>
+<span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">remquol</span><span class="special">(</span><span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">x</span><span class="special">,</span> <span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">y</span><span class="special">,</span> <span class="keyword">int</span> <span class="special">*</span><span class="identifier">pquo</span><span class="special">);</span>
+
+<span class="keyword">double</span> <span class="identifier">rint</span><span class="special">(</span><span class="keyword">double</span> <span class="identifier">x</span><span class="special">);</span>
+<span class="keyword">float</span> <span class="identifier">rintf</span><span class="special">(</span><span class="keyword">float</span> <span class="identifier">x</span><span class="special">);</span>
+<span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">rintl</span><span class="special">(</span><span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">x</span><span class="special">);</span>
+
+<span class="keyword">double</span> <span class="identifier">scalbln</span><span class="special">(</span><span class="keyword">double</span> <span class="identifier">x</span><span class="special">,</span> <span class="keyword">long</span> <span class="identifier">ex</span><span class="special">);</span>
+<span class="keyword">float</span> <span class="identifier">scalblnf</span><span class="special">(</span><span class="keyword">float</span> <span class="identifier">x</span><span class="special">,</span> <span class="keyword">long</span> <span class="identifier">ex</span><span class="special">);</span>
+<span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">scalblnl</span><span class="special">(</span><span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">x</span><span class="special">,</span> <span class="keyword">long</span> <span class="identifier">ex</span><span class="special">);</span>
+<span class="keyword">double</span> <span class="identifier">scalbn</span><span class="special">(</span><span class="keyword">double</span> <span class="identifier">x</span><span class="special">,</span> <span class="keyword">int</span> <span class="identifier">ex</span><span class="special">);</span>
+<span class="keyword">float</span> <span class="identifier">scalbnf</span><span class="special">(</span><span class="keyword">float</span> <span class="identifier">x</span><span class="special">,</span> <span class="keyword">int</span> <span class="identifier">ex</span><span class="special">);</span>
+<span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">scalbnl</span><span class="special">(</span><span class="keyword">long</span> <span class="keyword">double</span> <span class="identifier">x</span><span class="special">,</span> <span class="keyword">int</span> <span class="identifier">ex</span><span class="special">);</span>
+
+<span class="comment">// C99 macros defined as C++ templates</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">&gt;</span> <span class="keyword">bool</span> <span class="identifier">isgreater</span><span class="special">(</span><span class="identifier">T</span> <span class="identifier">x</span><span class="special">,</span> <span class="identifier">T</span> <span class="identifier">y</span><span class="special">);</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">&gt;</span> <span class="keyword">bool</span> <span class="identifier">isgreaterequal</span><span class="special">(</span><span class="identifier">T</span> <span class="identifier">x</span><span class="special">,</span> <span class="identifier">T</span> <span class="identifier">y</span><span class="special">);</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">&gt;</span> <span class="keyword">bool</span> <span class="identifier">isless</span><span class="special">(</span><span class="identifier">T</span> <span class="identifier">x</span><span class="special">,</span> <span class="identifier">T</span> <span class="identifier">y</span><span class="special">);</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">&gt;</span> <span class="keyword">bool</span> <span class="identifier">islessequal</span><span class="special">(</span><span class="identifier">T</span> <span class="identifier">x</span><span class="special">,</span> <span class="identifier">T</span> <span class="identifier">y</span><span class="special">);</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">&gt;</span> <span class="keyword">bool</span> <span class="identifier">islessgreater</span><span class="special">(</span><span class="identifier">T</span> <span class="identifier">x</span><span class="special">,</span> <span class="identifier">T</span> <span class="identifier">y</span><span class="special">);</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">&gt;</span> <span class="keyword">bool</span> <span class="identifier">isunordered</span><span class="special">(</span><span class="identifier">T</span> <span class="identifier">x</span><span class="special">,</span> <span class="identifier">T</span> <span class="identifier">y</span><span class="special">);</span>
+</pre>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2005 John Maddock<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="special.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../subject_list.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../header_list.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

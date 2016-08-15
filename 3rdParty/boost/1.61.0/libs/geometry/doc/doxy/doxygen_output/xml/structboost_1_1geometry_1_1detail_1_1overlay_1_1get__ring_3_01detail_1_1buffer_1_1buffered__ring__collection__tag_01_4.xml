@@ -1,0 +1,45 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="structboost_1_1geometry_1_1detail_1_1overlay_1_1get__ring_3_01detail_1_1buffer_1_1buffered__ring__collection__tag_01_4" kind="struct" prot="public">
+    <compoundname>boost::geometry::detail::overlay::get_ring&lt; detail::buffer::buffered_ring_collection_tag &gt;</compoundname>
+    <includes local="no">buffered_ring.hpp</includes>
+    <templateparamlist>
+    </templateparamlist>
+      <sectiondef kind="public-static-func">
+      <memberdef kind="function" id="structboost_1_1geometry_1_1detail_1_1overlay_1_1get__ring_3_01detail_1_1buffer_1_1buffered__ring__collection__tag_01_4_1a30323e96c86284eb4fdbc57a450a8c74" prot="public" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename MultiGeometry</type>
+          </param>
+        </templateparamlist>
+        <type><ref refid="structboost_1_1geometry_1_1ring__type" kindref="compound">ring_type</ref>&lt; MultiGeometry &gt;::type const &amp;</type>
+        <definition>static ring_type&lt;MultiGeometry&gt;::type const&amp; boost::geometry::detail::overlay::get_ring&lt; detail::buffer::buffered_ring_collection_tag &gt;::apply</definition>
+        <argsstring>(ring_identifier const &amp;id, MultiGeometry const &amp;multi_ring)</argsstring>
+        <name>apply</name>
+        <param>
+          <type><ref refid="structboost_1_1geometry_1_1ring__identifier" kindref="compound">ring_identifier</ref> const &amp;</type>
+          <declname>id</declname>
+        </param>
+        <param>
+          <type>MultiGeometry const &amp;</type>
+          <declname>multi_ring</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/buffer/buffered_ring.hpp" line="251" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/buffer/buffered_ring.hpp" bodystart="248" bodyend="258"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/buffer/buffered_ring.hpp" line="246" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/buffer/buffered_ring.hpp" bodystart="245" bodyend="259"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1detail_1_1overlay_1_1get__ring_3_01detail_1_1buffer_1_1buffered__ring__collection__tag_01_4_1a30323e96c86284eb4fdbc57a450a8c74" prot="public" virt="non-virtual"><scope>boost::geometry::detail::overlay::get_ring&lt; detail::buffer::buffered_ring_collection_tag &gt;</scope><name>apply</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

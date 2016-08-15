@@ -1,0 +1,38 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="structboost_1_1geometry_1_1strategy_1_1within_1_1decide__within" kind="struct" prot="public">
+    <compoundname>boost::geometry::strategy::within::decide_within</compoundname>
+    <includes local="no">point_in_box_by_side.hpp</includes>
+      <sectiondef kind="public-static-func">
+      <memberdef kind="function" id="structboost_1_1geometry_1_1strategy_1_1within_1_1decide__within_1ac2b1cc1413dc93a4d06919d0e2d283c4" prot="public" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>bool</type>
+        <definition>static bool boost::geometry::strategy::within::decide_within::apply</definition>
+        <argsstring>(int side, bool &amp;result)</argsstring>
+        <name>apply</name>
+        <param>
+          <type>int</type>
+          <declname>side</declname>
+        </param>
+        <param>
+          <type>bool &amp;</type>
+          <declname>result</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/point_in_box_by_side.hpp" line="34" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/point_in_box_by_side.hpp" bodystart="33" bodyend="41"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/point_in_box_by_side.hpp" line="32" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/point_in_box_by_side.hpp" bodystart="31" bodyend="42"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1strategy_1_1within_1_1decide__within_1ac2b1cc1413dc93a4d06919d0e2d283c4" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::within::decide_within</scope><name>apply</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

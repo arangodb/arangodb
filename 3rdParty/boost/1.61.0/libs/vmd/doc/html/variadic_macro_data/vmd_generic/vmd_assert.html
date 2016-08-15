@@ -1,0 +1,253 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Testing for equality and inequality</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../../index.html" title="Chapter&#160;1.&#160;The Variadic Macro Data Library 1.9">
+<link rel="up" href="../vmd_generic.html" title="Generic macros for working with data types">
+<link rel="prev" href="vmd_convert_sequence.html" title="Getting the type of data">
+<link rel="next" href="../vmd_modifiers.html" title="Macros with modifiers">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="vmd_convert_sequence.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../vmd_generic.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../vmd_modifiers.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="variadic_macro_data.vmd_generic.vmd_assert"></a><a class="link" href="vmd_assert.html" title="Testing for equality and inequality">Testing for
+      equality and inequality</a>
+</h3></div></div></div>
+<p>
+        VMD allows the programmer to test generically for the equality or inequality
+        of any value which VMD can parse. This includes emptiness, identifiers, numbers,
+        types, arrays, lists, seqs, tuples, and multi-element sequences.
+      </p>
+<p>
+        The macro to test for equality is called BOOST_VMD_EQUAL and it has two required
+        parameters which are the two values against which to test. The values can
+        be any VMD data type.
+      </p>
+<p>
+        For the composite data types of array, list, seq, and tuple, or any of those
+        types in a multi-element sequence, the elements of those types must also
+        be a data type which VMD can parse. BOOST_VMD_EQUAL recursively parses the
+        elements in a composite data type for equality, up to a level of 16 inner
+        types, to test that one composite type equals another composite type. The
+        requirement, that composite elements must also be a data type which VMD can
+        parse, is different from most other macros in the VMD library, where only
+        the top-level composite type need be parsed enough to determine the type
+        of the data. If BOOST_VMD_EQUAL encounters a data type which it cannot parse
+        the result will be UB.
+      </p>
+<p>
+        VMD identifiers used in equality testing must be registered and pre-detected.
+        All numbers and v-types are already registered/pre-detected for equality
+        testing so it is only user-defined identifiers which must be registered and
+        pre-detected. If an identifier has not been both registered and predetected
+        it will never be equal to the same identifier value, so it will always fail
+        equality testing, although it will not give a preprocessing error doing so.
+      </p>
+<p>
+        The BOOST_VMD_EQUAL macro returns 1 if both parameters are equal and 0 if
+        the parameters are not equal.
+      </p>
+<p>
+        Conversely to test for inequality, of the same values as are required in
+        testing for equality, the VMD library has the macro BOOST_VMD_NOT_EQUAL.
+        This macro is simply a complement of the BOOST_VMD_EQUAL macro. If BOOST_VMD_EQUAL
+        returns 1 then BOOST_VMD_NOT_EQUAL returns 0 and if BOOST_VMD_EQUAL returns
+        0 then BOOST_VMD_NOT_EQUAL returns 1.
+      </p>
+<p>
+        The BOOST_VMD_EQUAL and BOOST_VMD_NOT_EQUAL macros are called "equality
+        macros".
+      </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">vmd</span><span class="special">/</span><span class="identifier">equal</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="preprocessor">#define</span> <span class="identifier">BOOST_VMD_REGISTER_AN_ID1</span> <span class="special">(</span><span class="identifier">AN_ID1</span><span class="special">)</span>
+<span class="preprocessor">#define</span> <span class="identifier">BOOST_VMD_REGISTER_AN_ID2</span> <span class="special">(</span><span class="identifier">AN_ID2</span><span class="special">)</span>
+
+<span class="preprocessor">#define</span> <span class="identifier">BOOST_VMD_DETECT_AN_ID1_AN_ID1</span>
+<span class="preprocessor">#define</span> <span class="identifier">BOOST_VMD_DETECT_AN_ID2_AN_ID2</span>
+
+<span class="preprocessor">#define</span> <span class="identifier">AN_IDENTIFIER1</span> <span class="identifier">AN_ID1</span>
+<span class="preprocessor">#define</span> <span class="identifier">AN_IDENTIFIER2</span> <span class="identifier">AN_ID2</span>
+<span class="preprocessor">#define</span> <span class="identifier">AN_IDENTIFIER3</span> <span class="identifier">AN_ID1</span> <span class="comment">// same as AN_IDENTIFIER1 = AN_ID1</span>
+
+<span class="preprocessor">#define</span> <span class="identifier">A_NUMBER1</span> <span class="number">33</span>
+<span class="preprocessor">#define</span> <span class="identifier">A_NUMBER2</span> <span class="number">145</span>
+<span class="preprocessor">#define</span> <span class="identifier">A_NUMBER3</span> <span class="number">33</span> <span class="comment">// same as A_NUMBER1 = 33</span>
+
+<span class="preprocessor">#define</span> <span class="identifier">A_TUPLE1</span> <span class="special">(</span><span class="identifier">AN_IDENTIFIER1</span><span class="special">,</span><span class="identifier">A_NUMBER1</span><span class="special">)</span>
+<span class="preprocessor">#define</span> <span class="identifier">A_TUPLE2</span> <span class="special">(</span><span class="identifier">AN_IDENTIFIER1</span><span class="special">,</span><span class="identifier">A_NUMBER2</span><span class="special">)</span>
+<span class="preprocessor">#define</span> <span class="identifier">A_TUPLE3</span> <span class="special">(</span><span class="identifier">AN_IDENTIFIER3</span><span class="special">,</span><span class="identifier">A_NUMBER3</span><span class="special">)</span> <span class="comment">// same as A_TUPLE1 = (AN_ID1,33)</span>
+
+<span class="preprocessor">#define</span> <span class="identifier">A_SEQ1</span> <span class="special">(</span><span class="identifier">A_NUMBER1</span><span class="special">)(</span><span class="identifier">A_TUPLE1</span><span class="special">)</span>
+<span class="preprocessor">#define</span> <span class="identifier">A_SEQ2</span> <span class="special">(</span><span class="identifier">A_NUMBER2</span><span class="special">)(</span><span class="identifier">A_TUPLE2</span><span class="special">)</span>
+<span class="preprocessor">#define</span> <span class="identifier">A_SEQ3</span> <span class="special">(</span><span class="identifier">A_NUMBER3</span><span class="special">)(</span><span class="identifier">A_TUPLE3</span><span class="special">)</span> <span class="comment">// same as A_SEQ1 = (33)((AN_ID1,33))</span>
+
+<span class="identifier">BOOST_VMD_EQUAL</span><span class="special">(</span><span class="identifier">AN_IDENTIFIER1</span><span class="special">,</span><span class="identifier">AN_IDENTIFIER2</span><span class="special">)</span> <span class="identifier">will</span> <span class="keyword">return</span> <span class="number">0</span>
+<span class="identifier">BOOST_VMD_EQUAL</span><span class="special">(</span><span class="identifier">AN_IDENTIFIER1</span><span class="special">,</span><span class="identifier">AN_IDENTIFIER3</span><span class="special">)</span> <span class="identifier">will</span> <span class="keyword">return</span> <span class="number">1</span>
+
+<span class="identifier">BOOST_VMD_EQUAL</span><span class="special">(</span><span class="identifier">A_NUMBER1</span><span class="special">,</span><span class="identifier">A_NUMBER2</span><span class="special">)</span> <span class="identifier">will</span> <span class="keyword">return</span> <span class="number">0</span>
+<span class="identifier">BOOST_VMD_EQUAL</span><span class="special">(</span><span class="identifier">A_NUMBER1</span><span class="special">,</span><span class="identifier">A_NUMBER3</span><span class="special">)</span> <span class="identifier">will</span> <span class="keyword">return</span> <span class="number">1</span>
+
+<span class="identifier">BOOST_VMD_EQUAL</span><span class="special">(</span><span class="identifier">A_TUPLE1</span><span class="special">,</span><span class="identifier">A_TUPLE2</span><span class="special">)</span> <span class="identifier">will</span> <span class="keyword">return</span> <span class="number">0</span>
+<span class="identifier">BOOST_VMD_EQUAL</span><span class="special">(</span><span class="identifier">A_TUPLE1</span><span class="special">,</span><span class="identifier">A_TUPLE3</span><span class="special">)</span> <span class="identifier">will</span> <span class="keyword">return</span> <span class="number">1</span>
+
+<span class="identifier">BOOST_VMD_EQUAL</span><span class="special">(</span><span class="identifier">A_SEQ1</span><span class="special">,</span><span class="identifier">A_SEQ2</span><span class="special">)</span> <span class="identifier">will</span> <span class="keyword">return</span> <span class="number">0</span>
+<span class="identifier">BOOST_VMD_EQUAL</span><span class="special">(</span><span class="identifier">A_SEQ1</span><span class="special">,</span><span class="identifier">A_SEQ3</span><span class="special">)</span> <span class="identifier">will</span> <span class="keyword">return</span> <span class="number">1</span>
+</pre>
+<p>
+        When BOOST_VMD_EQUAL tests for equality it always parses data for their most
+        specific types. The reason for this is that a valid tuple, which is also
+        an invalid list or array, can never be compared completely because all elements
+        of that tuple are not data types which VMD can parse. Therefore VMD always
+        tests equality based on the most specific type for any value being tested,
+        which speeds up testing for the more specific tuple data types such as lists
+        and arrays.
+      </p>
+<pre class="programlisting"><span class="preprocessor">#define</span> <span class="identifier">TUPLE_IS_ARRAY1</span> <span class="special">(</span><span class="number">2</span><span class="special">,(</span><span class="number">3</span><span class="special">,</span><span class="number">4</span><span class="special">))</span>
+<span class="preprocessor">#define</span> <span class="identifier">TUPLE_IS_ARRAY2</span> <span class="special">(</span><span class="number">2</span><span class="special">,(</span><span class="number">4</span><span class="special">,</span><span class="number">5</span><span class="special">))</span>
+<span class="preprocessor">#define</span> <span class="identifier">TUPLE_IS_ARRAY3</span> <span class="special">(</span><span class="number">2</span><span class="special">,(</span><span class="number">3</span><span class="special">,</span><span class="number">4</span><span class="special">))</span>
+
+<span class="preprocessor">#define</span> <span class="identifier">TUPLE_IS_LIST1</span> <span class="special">(</span><span class="number">55</span><span class="special">,</span><span class="identifier">BOOST_PP_NIL</span><span class="special">)</span>
+<span class="preprocessor">#define</span> <span class="identifier">TUPLE_IS_LIST2</span> <span class="special">(</span><span class="number">135</span><span class="special">,</span><span class="identifier">BOOST_PP_NIL</span><span class="special">)</span>
+<span class="preprocessor">#define</span> <span class="identifier">TUPLE_IS_LIST3</span> <span class="special">(</span><span class="number">55</span><span class="special">,</span><span class="identifier">BOOST_PP_NIL</span><span class="special">)</span>
+
+<span class="preprocessor">#define</span> <span class="identifier">TUPLE_IS_LIST_OR_ARRAY1</span> <span class="special">(</span><span class="number">2</span><span class="special">,(</span><span class="number">3</span><span class="special">,</span><span class="identifier">BOOST_PP_NIL</span><span class="special">))</span>
+<span class="preprocessor">#define</span> <span class="identifier">TUPLE_IS_LIST_OR_ARRAY2</span> <span class="special">(</span><span class="number">2</span><span class="special">,(</span><span class="number">4</span><span class="special">,</span><span class="identifier">BOOST_PP_NIL</span><span class="special">))</span>
+<span class="preprocessor">#define</span> <span class="identifier">TUPLE_IS_LIST_OR_ARRAY3</span> <span class="special">(</span><span class="number">2</span><span class="special">,(</span><span class="number">3</span><span class="special">,</span><span class="identifier">BOOST_PP_NIL</span><span class="special">))</span>
+
+<span class="preprocessor">#define</span> <span class="identifier">TUPLE_BUT_INVALID_ARRAY1</span> <span class="special">(&amp;</span><span class="number">2</span><span class="special">,(</span><span class="number">3</span><span class="special">,</span><span class="number">4</span><span class="special">))</span>
+<span class="preprocessor">#define</span> <span class="identifier">TUPLE_BUT_INVALID_ARRAY2</span> <span class="special">(&amp;</span><span class="number">2</span><span class="special">,(</span><span class="number">4</span><span class="special">,</span><span class="number">4</span><span class="special">))</span>
+<span class="preprocessor">#define</span> <span class="identifier">TUPLE_BUT_INVALID_ARRAY3</span> <span class="special">(&amp;</span><span class="number">2</span><span class="special">,(</span><span class="number">3</span><span class="special">,</span><span class="number">4</span><span class="special">))</span>
+
+<span class="preprocessor">#define</span> <span class="identifier">TUPLE_BUT_INVALID_LIST1</span> <span class="special">(</span><span class="number">55</span><span class="special">,^</span><span class="identifier">BOOST_PP_NIL</span><span class="special">)</span>
+<span class="preprocessor">#define</span> <span class="identifier">TUPLE_BUT_INVALID_LIST2</span> <span class="special">(</span><span class="number">135</span><span class="special">,^</span><span class="identifier">BOOST_PP_NIL</span><span class="special">)</span>
+<span class="preprocessor">#define</span> <span class="identifier">TUPLE_BUT_INVALID_LIST3</span> <span class="special">(</span><span class="number">55</span><span class="special">,^</span><span class="identifier">BOOST_PP_NIL</span><span class="special">)</span>
+</pre>
+<p>
+        All of the constructs above are valid tuples.
+      </p>
+<p>
+        The first three are valid arrays, so they will be parsed and compared as
+        arrays, so that they can be used as in:
+      </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">vmd</span><span class="special">/</span><span class="identifier">equal</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="identifier">BOOST_VMD_EQUAL</span><span class="special">(</span><span class="identifier">TUPLE_IS_ARRAY1</span><span class="special">,</span><span class="identifier">TUPLE_IS_ARRAY2</span><span class="special">)</span> <span class="identifier">will</span> <span class="keyword">return</span> <span class="number">0</span>
+<span class="identifier">BOOST_VMD_EQUAL</span><span class="special">(</span><span class="identifier">TUPLE_IS_ARRAY1</span><span class="special">,</span><span class="identifier">TUPLE_IS_ARRAY3</span><span class="special">)</span> <span class="identifier">will</span> <span class="keyword">return</span> <span class="number">1</span>
+</pre>
+<p>
+        The next three are valid lists, so they will be parsed and compared as lists,
+        so that they can be used as in:
+      </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">vmd</span><span class="special">/</span><span class="identifier">equal</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="identifier">BOOST_VMD_EQUAL</span><span class="special">(</span><span class="identifier">TUPLE_IS_LIST1</span><span class="special">,</span><span class="identifier">TUPLE_IS_LIST2</span><span class="special">)</span> <span class="identifier">will</span> <span class="keyword">return</span> <span class="number">0</span>
+<span class="identifier">BOOST_VMD_EQUAL</span><span class="special">(</span><span class="identifier">TUPLE_IS_LIST1</span><span class="special">,</span><span class="identifier">TUPLE_IS_LIST3</span><span class="special">)</span> <span class="identifier">will</span> <span class="keyword">return</span> <span class="number">1</span>
+</pre>
+<p>
+        The next three are valid lists or arrays but will be parsed as lists because
+        lists are more specific than arrays. They can be used as in:
+      </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">vmd</span><span class="special">/</span><span class="identifier">equal</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="identifier">BOOST_VMD_EQUAL</span><span class="special">(</span><span class="identifier">TUPLE_IS_LIST_OR_ARRAY1</span><span class="special">,</span><span class="identifier">TUPLE_IS_LIST_OR_ARRAY2</span><span class="special">)</span> <span class="identifier">will</span> <span class="keyword">return</span> <span class="number">0</span>
+<span class="identifier">BOOST_VMD_EQUAL</span><span class="special">(</span><span class="identifier">TUPLE_IS_LIST_OR_ARRAY1</span><span class="special">,</span><span class="identifier">TUPLE_IS_LIST_OR_ARRAY3</span><span class="special">)</span> <span class="identifier">will</span> <span class="keyword">return</span> <span class="number">1</span>
+</pre>
+<p>
+        The next three are valid tuples but invalid arrays. The BOOST_VMD_EQUAL macro
+        attempts to parse them as the most specific type they can be, which is an
+        array. But the attempt to parse them as arrays will lead to UB because the
+        number which signifies the size of the array is invalid as a number. Now
+        let us suppose we should parse them as the less specific type of a tuple
+        instead of as an array. This will still give UB if we will attempt to compare
+        the first tuple element against a corresponding first tuple element of another
+        tuple, and when we do will again encounter UB because it is not a data type
+        VMD can parse.
+      </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">vmd</span><span class="special">/</span><span class="identifier">equal</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="identifier">BOOST_VMD_EQUAL</span><span class="special">(</span><span class="identifier">TUPLE_BUT_INVALID_ARRAY1</span><span class="special">,</span><span class="identifier">TUPLE_BUT_INVALID_ARRAY1</span><span class="special">)</span> <span class="identifier">will</span> <span class="identifier">generate</span> <span class="identifier">UB</span>
+<span class="identifier">BOOST_VMD_EQUAL</span><span class="special">(</span><span class="identifier">TUPLE_BUT_INVALID_ARRAY1</span><span class="special">,</span><span class="identifier">TUPLE_BUT_INVALID_ARRAY1</span><span class="special">)</span> <span class="identifier">will</span> <span class="identifier">generate</span> <span class="identifier">UB</span>
+</pre>
+<p>
+        The next three are valid tuples but invalid lists. The BOOST_VMD_EQUAL macro
+        attempts to parse them as the most specific type they can be, which is a
+        list. But the attempt to parse them as lists will lead to UB because the
+        identifier which signifies the end-of-list is invalid as an identifier. Now
+        let us suppose we should parse them as the less specific type of a tuple
+        instead of as a list. This will still give UB if we will attempt to compare
+        the second tuple element against a corresponding second tuple element of
+        another tuple, and when we do will again encounter UB because it is not a
+        data type VMD can parse.
+      </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">vmd</span><span class="special">/</span><span class="identifier">equal</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="identifier">BOOST_VMD_EQUAL</span><span class="special">(</span><span class="identifier">TUPLE_BUT_INVALID_LIST1</span><span class="special">,</span><span class="identifier">TUPLE_BUT_INVALID_LIST2</span><span class="special">)</span> <span class="identifier">will</span> <span class="identifier">generate</span> <span class="identifier">UB</span>
+<span class="identifier">BOOST_VMD_EQUAL</span><span class="special">(</span><span class="identifier">TUPLE_BUT_INVALID_LIST1</span><span class="special">,</span><span class="identifier">TUPLE_BUT_INVALID_LIST3</span><span class="special">)</span> <span class="identifier">will</span> <span class="identifier">generate</span> <span class="identifier">UB</span>
+</pre>
+<p>
+        It is possible that a composite data type which has an element which VMD
+        cannot parse will not give UB when compared for equality, but rather just
+        the test for equality will fail. This can occur if the algorithm which tests
+        for equality tests false before parsing of the particular element. Such a
+        situation might be:
+      </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">vmd</span><span class="special">/</span><span class="identifier">equal</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="preprocessor">#define</span> <span class="identifier">A_TUPLE1</span> <span class="special">(</span><span class="number">3</span><span class="special">,</span><span class="number">4</span><span class="special">,</span><span class="string">"astring"</span><span class="special">)</span>
+<span class="preprocessor">#define</span> <span class="identifier">A_TUPLE2</span> <span class="special">(</span><span class="number">3</span><span class="special">,</span><span class="number">4</span><span class="special">)</span>
+
+<span class="identifier">BOOST_VMD_EQUAL</span><span class="special">(</span><span class="identifier">A_TUPLE1</span><span class="special">,</span><span class="identifier">A_TUPLE2</span><span class="special">)</span> <span class="identifier">will</span> <span class="keyword">return</span> <span class="number">0</span> <span class="identifier">rather</span> <span class="identifier">than</span> <span class="identifier">generate</span> <span class="identifier">UB</span>
+</pre>
+<p>
+        The reason the above correctly returns 0, rather than generate UB when VMD
+        attempts to parse '"astring"', which is not a data type VMD can
+        parse, is because the algorithm for testing equality tests whether or not
+        the tuples have the same number of elements before it tests for the equality
+        of each element. This is just one example where testing for equality may
+        fail before UB is generated when BOOST_VMD_EQUAL attempts to parse a data
+        type which it cannot handle. Nevertheless the general rule should still be
+        considered that for BOOST_VMD_EQUAL/BOOT_VMD_NOT_EQUAL all data types, even
+        an element of a composite data type, must be a VMD data type if the macro
+        is to work properly, else UB could occur.
+      </p>
+<h5>
+<a name="variadic_macro_data.vmd_generic.vmd_assert.h0"></a>
+        <span><a name="variadic_macro_data.vmd_generic.vmd_assert.usage"></a></span><a class="link" href="vmd_assert.html#variadic_macro_data.vmd_generic.vmd_assert.usage">Usage</a>
+      </h5>
+<p>
+        You can use the general header file:
+      </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">vmd</span><span class="special">/</span><span class="identifier">vmd</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+</pre>
+<p>
+        or you can use the individual header files:
+      </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">vmd</span><span class="special">/</span><span class="identifier">equal</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span> <span class="keyword">for</span> <span class="identifier">the</span> <span class="identifier">BOOST_VMD_EQUAL</span> <span class="identifier">macro</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">vmd</span><span class="special">/</span><span class="identifier">not_equal</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span> <span class="keyword">for</span> <span class="identifier">the</span> <span class="identifier">BOOST_VMD_NOT_EQUAL</span> <span class="identifier">macro</span>
+</pre>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2010-2015 Tropic Software East Inc</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="vmd_convert_sequence.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../vmd_generic.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../vmd_modifiers.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

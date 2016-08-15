@@ -1,0 +1,68 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="geometries_2register_2segment_8hpp" kind="file">
+    <compoundname>segment.hpp</compoundname>
+      <sectiondef kind="define">
+      <memberdef kind="define" id="geometries_2register_2segment_8hpp_1a9380eb86e9b25ec14f7a8b32e18bbb48" prot="public" static="no">
+        <name>BOOST_GEOMETRY_REGISTER_SEGMENT</name>
+        <param><defname>Segment</defname></param>
+        <param><defname>PointType</defname></param>
+        <param><defname>Index0</defname></param>
+        <param><defname>Index1</defname></param>
+        <initializer>namespace boost { namespace geometry { namespace traits {  \
+    BOOST_GEOMETRY_DETAIL_SPECIALIZE_SEGMENT_TRAITS(Segment, PointType) \
+    BOOST_GEOMETRY_DETAIL_SPECIALIZE_SEGMENT_ACCESS(Segment, PointType, Index0, Index1) \
+}}}</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/register/segment.hpp" line="109" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/register/segment.hpp" bodystart="105" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="define" id="geometries_2register_2segment_8hpp_1a6d57967e792809e5c337d3db2dfac94f" prot="public" static="no">
+        <name>BOOST_GEOMETRY_REGISTER_SEGMENT_2D_4VALUES</name>
+        <param><defname>Segment</defname></param>
+        <param><defname>PointType</defname></param>
+        <param><defname>Left</defname></param>
+        <param><defname>Bottom</defname></param>
+        <param><defname>Right</defname></param>
+        <param><defname>Top</defname></param>
+        <initializer>namespace boost { namespace geometry { namespace traits {  \
+    BOOST_GEOMETRY_DETAIL_SPECIALIZE_SEGMENT_TRAITS(Segment, PointType) \
+    BOOST_GEOMETRY_DETAIL_SPECIALIZE_SEGMENT_ACCESS_4VALUES(Segment, PointType, Left, Bottom, Right, Top) \
+}}}</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/register/segment.hpp" line="122" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/register/segment.hpp" bodystart="118" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="define" id="geometries_2register_2segment_8hpp_1a77377c61f2e522de63ed48e8695b8c6a" prot="public" static="no">
+        <name>BOOST_GEOMETRY_REGISTER_SEGMENT_TEMPLATIZED</name>
+        <param><defname>Segment</defname></param>
+        <param><defname>Index0</defname></param>
+        <param><defname>Index1</defname></param>
+        <initializer>namespace boost { namespace geometry { namespace traits {  \
+    BOOST_GEOMETRY_DETAIL_SPECIALIZE_SEGMENT_TRAITS_TEMPLATIZED(Segment) \
+    BOOST_GEOMETRY_DETAIL_SPECIALIZE_SEGMENT_ACCESS_TEMPLATIZED(Segment, Index0, Index1) \
+}}}</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/register/segment.hpp" line="116" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/register/segment.hpp" bodystart="112" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/register/segment.hpp"/>
+  </compounddef>
+</doxygen>

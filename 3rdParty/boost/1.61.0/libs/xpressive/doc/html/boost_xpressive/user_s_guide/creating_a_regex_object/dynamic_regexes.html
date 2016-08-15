@@ -1,0 +1,129 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Dynamic Regexes</title>
+<link rel="stylesheet" href="../../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../../../index.html" title="Chapter&#160;1.&#160;Boost.Xpressive">
+<link rel="up" href="../../../xpressive/user_s_guide/creating_a_regex_object.html" title="Creating a Regex Object">
+<link rel="prev" href="../../../xpressive/user_s_guide/creating_a_regex_object.html" title="Creating a Regex Object">
+<link rel="next" href="../matching_and_searching.html" title="Matching and Searching">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../../../xpressive/user_s_guide/creating_a_regex_object.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../../xpressive/user_s_guide/creating_a_regex_object.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../matching_and_searching.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="boost_xpressive.user_s_guide.creating_a_regex_object.dynamic_regexes"></a><a class="link" href="dynamic_regexes.html" title="Dynamic Regexes">Dynamic
+        Regexes</a>
+</h4></div></div></div>
+<h3>
+<a name="boost_xpressive.user_s_guide.creating_a_regex_object.dynamic_regexes.h0"></a>
+          <span><a name="boost_xpressive.user_s_guide.creating_a_regex_object.dynamic_regexes.overview"></a></span><a class="link" href="dynamic_regexes.html#boost_xpressive.user_s_guide.creating_a_regex_object.dynamic_regexes.overview">Overview</a>
+        </h3>
+<p>
+          Static regexes are dandy, but sometimes you need something a bit more ...
+          dynamic. Imagine you are developing a text editor with a regex search/replace
+          feature. You need to accept a regular expression from the end user as input
+          at run-time. There should be a way to parse a string into a regular expression.
+          That's what xpressive's dynamic regexes are for. They are built from the
+          same core components as their static counterparts, but they are late-bound
+          so you can specify them at run-time.
+        </p>
+<h3>
+<a name="boost_xpressive.user_s_guide.creating_a_regex_object.dynamic_regexes.h1"></a>
+          <span><a name="boost_xpressive.user_s_guide.creating_a_regex_object.dynamic_regexes.construction_and_assignment"></a></span><a class="link" href="dynamic_regexes.html#boost_xpressive.user_s_guide.creating_a_regex_object.dynamic_regexes.construction_and_assignment">Construction
+          and Assignment</a>
+        </h3>
+<p>
+          There are two ways to create a dynamic regex: with the <code class="literal"><code class="computeroutput"><a class="link" href="../../../boost/xpressive/basic_regex.html#idp12442608-bb">basic_regex&lt;&gt;::compile()</a></code></code>
+          function or with the <code class="literal"><code class="computeroutput"><a class="link" href="../../../boost/xpressive/regex_compiler.html" title="Struct template regex_compiler">regex_compiler&lt;&gt;</a></code></code>
+          class template. Use <code class="literal"><code class="computeroutput"><a class="link" href="../../../boost/xpressive/basic_regex.html#idp12442608-bb">basic_regex&lt;&gt;::compile()</a></code></code>
+          if you want the default locale. Use <code class="literal"><code class="computeroutput"><a class="link" href="../../../boost/xpressive/regex_compiler.html" title="Struct template regex_compiler">regex_compiler&lt;&gt;</a></code></code>
+          if you need to specify a different locale. In the section on <a class="link" href="../grammars_and_nested_matches.html" title="Grammars and Nested Matches">regex
+          grammars</a>, we'll see another use for <code class="literal"><code class="computeroutput"><a class="link" href="../../../boost/xpressive/regex_compiler.html" title="Struct template regex_compiler">regex_compiler&lt;&gt;</a></code></code>.
+        </p>
+<p>
+          Here is an example of using <code class="computeroutput"><span class="identifier">basic_regex</span><span class="special">&lt;&gt;::</span><span class="identifier">compile</span><span class="special">()</span></code>:
+        </p>
+<pre class="programlisting"><span class="identifier">sregex</span> <span class="identifier">re</span> <span class="special">=</span> <span class="identifier">sregex</span><span class="special">::</span><span class="identifier">compile</span><span class="special">(</span> <span class="string">"this|that"</span><span class="special">,</span> <span class="identifier">regex_constants</span><span class="special">::</span><span class="identifier">icase</span> <span class="special">);</span>
+</pre>
+<p>
+          Here is the same example using <code class="literal"><code class="computeroutput"><a class="link" href="../../../boost/xpressive/regex_compiler.html" title="Struct template regex_compiler">regex_compiler&lt;&gt;</a></code></code>:
+        </p>
+<pre class="programlisting"><span class="identifier">sregex_compiler</span> <span class="identifier">compiler</span><span class="special">;</span>
+<span class="identifier">sregex</span> <span class="identifier">re</span> <span class="special">=</span> <span class="identifier">compiler</span><span class="special">.</span><span class="identifier">compile</span><span class="special">(</span> <span class="string">"this|that"</span><span class="special">,</span> <span class="identifier">regex_constants</span><span class="special">::</span><span class="identifier">icase</span> <span class="special">);</span>
+</pre>
+<p>
+          <code class="literal"><code class="computeroutput"><a class="link" href="../../../boost/xpressive/basic_regex.html#idp12442608-bb">basic_regex&lt;&gt;::compile()</a></code></code>
+          is implemented in terms of <code class="literal"><code class="computeroutput"><a class="link" href="../../../boost/xpressive/regex_compiler.html" title="Struct template regex_compiler">regex_compiler&lt;&gt;</a></code></code>.
+        </p>
+<h3>
+<a name="boost_xpressive.user_s_guide.creating_a_regex_object.dynamic_regexes.h2"></a>
+          <span><a name="boost_xpressive.user_s_guide.creating_a_regex_object.dynamic_regexes.dynamic_xpressive_syntax"></a></span><a class="link" href="dynamic_regexes.html#boost_xpressive.user_s_guide.creating_a_regex_object.dynamic_regexes.dynamic_xpressive_syntax">Dynamic
+          xpressive Syntax</a>
+        </h3>
+<p>
+          Since the dynamic syntax is not constrained by the rules for valid C++
+          expressions, we are free to use familiar syntax for dynamic regexes. For
+          this reason, the syntax used by xpressive for dynamic regexes follows the
+          lead set by John Maddock's <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2003/n1429.htm" target="_top">proposal</a>
+          to add regular expressions to the Standard Library. It is essentially the
+          syntax standardized by <a href="http://www.ecma-international.org/publications/files/ECMA-ST/Ecma-262.pdf" target="_top">ECMAScript</a>,
+          with minor changes in support of internationalization.
+        </p>
+<p>
+          Since the syntax is documented exhaustively elsewhere, I will simply refer
+          you to the existing standards, rather than duplicate the specification
+          here.
+        </p>
+<h3>
+<a name="boost_xpressive.user_s_guide.creating_a_regex_object.dynamic_regexes.h3"></a>
+          <span><a name="boost_xpressive.user_s_guide.creating_a_regex_object.dynamic_regexes.internationalization"></a></span><a class="link" href="dynamic_regexes.html#boost_xpressive.user_s_guide.creating_a_regex_object.dynamic_regexes.internationalization">Internationalization</a>
+        </h3>
+<p>
+          As with static regexes, dynamic regexes support internationalization by
+          allowing you to specify a different <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">locale</span></code>.
+          To do this, you must use <code class="literal"><code class="computeroutput"><a class="link" href="../../../boost/xpressive/regex_compiler.html" title="Struct template regex_compiler">regex_compiler&lt;&gt;</a></code></code>.
+          The <code class="literal"><code class="computeroutput"><a class="link" href="../../../boost/xpressive/regex_compiler.html" title="Struct template regex_compiler">regex_compiler&lt;&gt;</a></code></code>
+          class has an <code class="computeroutput"><span class="identifier">imbue</span><span class="special">()</span></code>
+          function. After you have imbued a <code class="literal"><code class="computeroutput"><a class="link" href="../../../boost/xpressive/regex_compiler.html" title="Struct template regex_compiler">regex_compiler&lt;&gt;</a></code></code>
+          object with a custom <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">locale</span></code>,
+          all regex objects compiled by that <code class="literal"><code class="computeroutput"><a class="link" href="../../../boost/xpressive/regex_compiler.html" title="Struct template regex_compiler">regex_compiler&lt;&gt;</a></code></code>
+          will use that locale. For example:
+        </p>
+<pre class="programlisting"><span class="identifier">std</span><span class="special">::</span><span class="identifier">locale</span> <span class="identifier">my_locale</span> <span class="special">=</span> <span class="comment">/* initialize your locale object here */</span><span class="special">;</span>
+<span class="identifier">sregex_compiler</span> <span class="identifier">compiler</span><span class="special">;</span>
+<span class="identifier">compiler</span><span class="special">.</span><span class="identifier">imbue</span><span class="special">(</span> <span class="identifier">my_locale</span> <span class="special">);</span>
+<span class="identifier">sregex</span> <span class="identifier">re</span> <span class="special">=</span> <span class="identifier">compiler</span><span class="special">.</span><span class="identifier">compile</span><span class="special">(</span> <span class="string">"\\w+|\\d+"</span> <span class="special">);</span>
+</pre>
+<p>
+          This regex will use <code class="computeroutput"><span class="identifier">my_locale</span></code>
+          when evaluating the intrinsic character sets <code class="computeroutput"><span class="string">"\\w"</span></code>
+          and <code class="computeroutput"><span class="string">"\\d"</span></code>.
+        </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2007 Eric Niebler<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../../../xpressive/user_s_guide/creating_a_regex_object.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../../xpressive/user_s_guide/creating_a_regex_object.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../matching_and_searching.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

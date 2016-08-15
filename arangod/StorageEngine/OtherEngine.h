@@ -57,6 +57,11 @@ class OtherEngine final : public StorageEngine {
   // by the storage engine. this method must sort out databases that were not
   // fully created (see "createDatabase" below). called at server start only
   void getDatabases(arangodb::velocypack::Builder& result) override;
+  
+  // fills the provided builder with information about the collection 
+  void getCollectionInfo(TRI_vocbase_t* vocbase, TRI_voc_cid_t cid, 
+                         arangodb::velocypack::Builder& result, 
+                         bool includeIndexes, TRI_voc_tick_t maxTick) override;
 
   // fill the Builder object with an array of collections (and their corresponding
   // indexes) that were detected by the storage engine. called at server start only
@@ -69,6 +74,9 @@ class OtherEngine final : public StorageEngine {
   
   // return the path for a database
   std::string databasePath(TRI_vocbase_t const*) const override { return "none"; }
+  
+  // return the path for a collection
+  std::string collectionPath(TRI_vocbase_t const*, TRI_voc_cid_t) const override { return "none"; }
   
   TRI_vocbase_t* openDatabase(arangodb::velocypack::Slice const& parameters, bool isUpgrade) override { 
     return nullptr; 
@@ -110,8 +118,8 @@ class OtherEngine final : public StorageEngine {
   // and throw only then, so that subsequent collection creation requests will not fail.
   // the WAL entry for the collection creation will be written *after* the call
   // to "createCollection" returns
-  void createCollection(TRI_voc_tick_t databaseId, TRI_voc_cid_t id,
-                        arangodb::velocypack::Slice const& data) override;
+  std::string createCollection(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
+                               arangodb::VocbaseCollectionInfo const& parameters) override;
 
   // asks the storage engine to drop the specified collection and persist the 
   // deletion info. Note that physical deletion of the collection data must not 
@@ -132,8 +140,8 @@ class OtherEngine final : public StorageEngine {
   // and throw only then, so that subsequent collection creation/rename requests will 
   // not fail. the WAL entry for the rename will be written *after* the call
   // to "renameCollection" returns
-  void renameCollection(TRI_voc_tick_t databaseId, TRI_voc_cid_t id,
-                        arangodb::velocypack::Slice const& data) override;
+  void renameCollection(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
+                        std::string const& name) override;
   
   // asks the storage engine to change properties of the collection as specified in 
   // the VPack Slice object and persist them. If this operation fails 
@@ -141,8 +149,9 @@ class OtherEngine final : public StorageEngine {
   // property changes and throw only then, so that subsequent operations will not fail.
   // the WAL entry for the propery change will be written *after* the call
   // to "changeCollection" returns
-  void changeCollection(TRI_voc_tick_t databaseId, TRI_voc_cid_t id,
-                        arangodb::velocypack::Slice const& data) override;
+  void changeCollection(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
+                        arangodb::VocbaseCollectionInfo const& parameters,
+                        bool doSync) override;
   
   // asks the storage engine to create an index as specified in the VPack
   // Slice object and persist the creation info. The database id, collection id 
