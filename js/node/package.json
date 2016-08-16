@@ -17,6 +17,7 @@
     "highlight.js": "9.4.0",
     "http-errors": "1.5.0",
     "i": "0.3.5",
+    "iconv-lite": "0.4.13",
     "joi": "8.4.2",
     "joi-to-json-schema": "2.2.0",
     "js-yaml": "3.6.1",
