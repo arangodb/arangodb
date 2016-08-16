@@ -334,8 +334,6 @@ struct TRI_collection_t {
 
   bool removeCompactor(TRI_datafile_t*);
   bool removeDatafile(TRI_datafile_t*);
-  void addIndexFile(std::string const&);
-  bool removeIndexFileFromVector(TRI_idx_iid_t id);
   std::string const& path() const { return _path; }
   std::string label() const;
   
@@ -457,10 +455,10 @@ struct TRI_collection_t {
   int unload(bool updateStatus);
 
  private:
+  bool openIndex(VPackSlice const& description, arangodb::Transaction* trx);
+
   /// @brief enumerate all indexes of the collection, but don't fill them yet
   int detectIndexes(arangodb::Transaction*);
- 
-  void iterateIndexes(std::function<bool(std::string const&, void*)> const&, void*);
 
   arangodb::Index* removeIndex(TRI_idx_iid_t);
 
@@ -601,8 +599,6 @@ struct TRI_collection_t {
   
   // lock for indexes
   arangodb::basics::ReadWriteLock _lock;
-
-  std::vector<std::string> _indexFiles;   // all index filenames
 };
 
 #endif

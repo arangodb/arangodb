@@ -1646,9 +1646,8 @@ int MMFilesEngine::openCollection(TRI_vocbase_t* vocbase, TRI_collection_t* coll
       }
     }
 
-    // file is an index, just store the filename
+    // file is an index. indexes are handled elsewhere
     if (filetype == "index" && extension == "json") {
-      collection->addIndexFile(filename);
       continue;
     }
 

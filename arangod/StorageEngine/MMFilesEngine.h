@@ -87,7 +87,7 @@ class MMFilesEngine final : public StorageEngine {
   // for each database
   int getCollectionsAndIndexes(TRI_vocbase_t* vocbase, arangodb::velocypack::Builder& result,
                                bool wasCleanShutdown, bool isUpgrade) override;
-
+  
   // determine the maximum revision id previously handed out by the storage
   // engine. this value is used as a lower bound for further HLC values handed out by
   // the server. called at server start only, after getDatabases() and getCollectionsAndIndexes()

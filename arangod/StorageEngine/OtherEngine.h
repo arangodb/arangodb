@@ -66,7 +66,7 @@ class OtherEngine final : public StorageEngine {
   // fill the Builder object with an array of collections (and their corresponding
   // indexes) that were detected by the storage engine. called at server start only
   int getCollectionsAndIndexes(TRI_vocbase_t* vocbase, arangodb::velocypack::Builder& result, bool, bool) override;
-
+  
   // determine the maximum revision id previously handed out by the storage
   // engine. this value is used as a lower bound for further HLC values handed out by
   // the server. called at server start only, after getDatabases() and getCollectionsAndIndexes()

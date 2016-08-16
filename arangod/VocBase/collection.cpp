@@ -110,42 +110,6 @@ class IndexFiller {
   std::function<void(int)> _callback;
 };
 
-
-struct OpenIndexIteratorContext {
-  arangodb::Transaction* trx;
-  TRI_collection_t* collection;
-};
-
-/// @brief iterator for index open
-static bool OpenIndexIterator(std::string const& filename, void* data) {
-  // load VelocyPack description of the index
-  std::shared_ptr<VPackBuilder> builder;
-  try {
-    builder = arangodb::basics::VelocyPackHelper::velocyPackFromFile(filename);
-  } catch (...) {
-    // Failed to parse file
-    LOG(ERR) << "failed to parse index definition from '" << filename << "'";
-    return false;
-  }
-
-  VPackSlice description = builder->slice();
-  // VelocyPack must be an index description
-  if (!description.isObject()) {
-    LOG(ERR) << "cannot read index definition from '" << filename << "'";
-    return false;
-  }
-
-  auto ctx = static_cast<OpenIndexIteratorContext*>(data);
-  int res = ctx->collection->indexFromVelocyPack(ctx->trx, description, nullptr);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    // error was already printed if we get here
-    return false;
-  }
-
-  return true;
-}
-
 /// @brief extracts a field list from a VelocyPack object
 ///        Does not copy any data, caller has to make sure that data
 ///        in slice stays valid until this return value is destroyed.
@@ -177,22 +141,6 @@ static void EnsureErrorCode(int code) {
   errno = code;
 }
 
-static uint64_t GetNumericFilenamePart(char const* filename) {
-  char const* pos1 = strrchr(filename, '.');
-
-  if (pos1 == nullptr) {
-    return 0;
-  }
-
-  char const* pos2 = strrchr(filename, '-');
-
-  if (pos2 == nullptr || pos2 > pos1) {
-    return 0;
-  }
-
-  return StringUtils::uint64(pos2 + 1, pos1 - pos2 - 1);
-}
-  
 TRI_collection_t::TRI_collection_t(TRI_vocbase_t* vocbase, 
                                    arangodb::VocbaseCollectionInfo const& parameters)
       : _vocbase(vocbase), 
@@ -1260,50 +1208,39 @@ bool TRI_collection_t::removeDatafile(TRI_datafile_t* df) {
   return false;
 }
 
-void TRI_collection_t::addIndexFile(std::string const& filename) {
-  WRITE_LOCKER(readLocker, _filesLock);
-  _indexFiles.emplace_back(filename);
-}
-
-/// @brief removes an index file from the _indexFiles vector
-bool TRI_collection_t::removeIndexFileFromVector(TRI_idx_iid_t id) {
-  WRITE_LOCKER(readLocker, _filesLock);
-
-  for (auto it = _indexFiles.begin(); it != _indexFiles.end(); ++it) {
-    if (GetNumericFilenamePart((*it).c_str()) == id) {
-      // found
-      _indexFiles.erase(it);
-      return true;
-    }
+/// @brief iterator for index open
+bool TRI_collection_t::openIndex(VPackSlice const& description, arangodb::Transaction* trx) {
+  // VelocyPack must be an index description
+  if (!description.isObject()) {
+    return false;
   }
 
-  return false;
+  int res = indexFromVelocyPack(trx, description, nullptr);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    // error was already printed if we get here
+    return false;
+  }
+
+  return true;
 }
 
 /// @brief enumerate all indexes of the collection, but don't fill them yet
 int TRI_collection_t::detectIndexes(arangodb::Transaction* trx) {
-  OpenIndexIteratorContext ctx;
-  ctx.trx = trx;
-  ctx.collection = this;
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  VPackBuilder builder;
+  engine->getCollectionInfo(_vocbase, _info.id(), builder, true, UINT64_MAX);
 
-  iterateIndexes(OpenIndexIterator, static_cast<void*>(&ctx));
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-/// @brief iterates over all index files of a collection
-void TRI_collection_t::iterateIndexes(
-    std::function<bool(std::string const&, void*)> const& callback,
-    void* data) {
   // iterate over all index files
-  for (auto const& filename : _indexFiles) {
-    bool ok = callback(filename, data);
+  for (auto const& it : VPackArrayIterator(builder.slice().get("indexes"))) {
+    bool ok = openIndex(it, trx);
 
     if (!ok) {
-      LOG(ERR) << "cannot load index '" << filename << "' for collection '"
-               << _info.name() << "'";
+      LOG(ERR) << "cannot load index for collection '" << _info.name() << "'";
     }
   }
+
+  return TRI_ERROR_NO_ERROR;
 }
 
 /// @brief iterate over all datafiles in a vector
