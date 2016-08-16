@@ -232,6 +232,8 @@ class StorageEngine : public application_features::ApplicationFeature {
                                     std::function<void(TRI_vocbase_t*)> const& callback,
                                     bool checkForActiveBlockers) = 0;
   
+  virtual int shutdownDatabase(TRI_vocbase_t* vocbase) = 0; 
+  
  protected:
   TRI_vocbase_col_t* registerCollection(bool doLock, TRI_vocbase_t* vocbase, TRI_col_type_e type, TRI_voc_cid_t cid, 
                                         std::string const& name, TRI_voc_cid_t planId, std::string const& path) {

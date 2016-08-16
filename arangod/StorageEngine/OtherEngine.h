@@ -227,6 +227,10 @@ class OtherEngine final : public StorageEngine {
                             bool checkForActiveBlockers) override {
     return true;
   }
+  
+  int shutdownDatabase(TRI_vocbase_t* vocbase) override { 
+    return TRI_ERROR_NO_ERROR;
+  }
 
  public:
   static std::string const EngineName;

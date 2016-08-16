@@ -23,6 +23,7 @@
 
 #include "MMFilesEngine.h"
 #include "Basics/FileUtils.h"
+#include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
@@ -30,9 +31,9 @@
 #include "Random/RandomGenerator.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
+#include "StorageEngine/CompactorThread.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "VocBase/CleanupThread.h"
-#include "VocBase/CompactorThread.h"
 #include "VocBase/collection.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
@@ -178,13 +179,8 @@ void MMFilesEngine::recoveryDone(TRI_vocbase_t* vocbase) {
   if (!databaseFeature->checkVersion() && !databaseFeature->upgrade()) {
     // start compactor thread
     LOG(TRACE) << "starting compactor for database '" << vocbase->name() << "'";
-    TRI_ASSERT(vocbase->_compactorThread == nullptr);
-    vocbase->_compactorThread.reset(new CompactorThread(vocbase));
-  
-    if (!vocbase->_compactorThread->start()) {
-      LOG(ERR) << "could not start compactor thread";
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-    }
+
+    startCompactor(vocbase);
   }
 
   // delete all collection files from collections marked as deleted
@@ -1309,7 +1305,7 @@ bool MMFilesEngine::cleanupCompactionBlockers(TRI_vocbase_t* vocbase) {
     return false;
   }
 
-  auto it = _compactionBlockers.find(vocbase->id());
+  auto it = _compactionBlockers.find(vocbase);
 
   if (it == _compactionBlockers.end()) {
     // no entry for this database
@@ -1354,10 +1350,10 @@ int MMFilesEngine::insertCompactionBlocker(TRI_vocbase_t* vocbase, double ttl,
   {
     WRITE_LOCKER_EVENTUAL(locker, _compactionBlockersLock, 1000); 
 
-    auto it = _compactionBlockers.find(vocbase->id());
+    auto it = _compactionBlockers.find(vocbase);
 
     if (it == _compactionBlockers.end()) {
-      it = _compactionBlockers.emplace(vocbase->id(), std::vector<CompactionBlocker>()).first;
+      it = _compactionBlockers.emplace(vocbase, std::vector<CompactionBlocker>()).first;
     }
 
     (*it).second.emplace_back(blocker);
@@ -1377,7 +1373,7 @@ int MMFilesEngine::extendCompactionBlocker(TRI_vocbase_t* vocbase, TRI_voc_tick_
 
   WRITE_LOCKER_EVENTUAL(locker, _compactionBlockersLock, 1000); 
 
-  auto it = _compactionBlockers.find(vocbase->id());
+  auto it = _compactionBlockers.find(vocbase);
 
   if (it == _compactionBlockers.end()) {
     return TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
@@ -1398,7 +1394,7 @@ int MMFilesEngine::removeCompactionBlocker(TRI_vocbase_t* vocbase,
                                            TRI_voc_tick_t id) {
   WRITE_LOCKER_EVENTUAL(locker, _compactionBlockersLock, 1000); 
   
-  auto it = _compactionBlockers.find(vocbase->id());
+  auto it = _compactionBlockers.find(vocbase);
 
   if (it == _compactionBlockers.end()) {
     return TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
@@ -1438,7 +1434,7 @@ bool MMFilesEngine::tryPreventCompaction(TRI_vocbase_t* vocbase,
       double const now = TRI_microtime();
 
       // check if we have a still-valid compaction blocker
-      auto it = _compactionBlockers.find(vocbase->id());
+      auto it = _compactionBlockers.find(vocbase);
 
       if (it != _compactionBlockers.end()) {
         for (auto const& blocker : (*it).second) {
@@ -1453,4 +1449,70 @@ bool MMFilesEngine::tryPreventCompaction(TRI_vocbase_t* vocbase,
     return true;
   }
   return false;
+}
+
+int MMFilesEngine::shutdownDatabase(TRI_vocbase_t* vocbase) {
+  try {
+    return stopCompactor(vocbase);
+  } catch (basics::Exception const& ex) {
+    return ex.code();
+  } catch (...) {
+    return TRI_ERROR_INTERNAL;
+  }
+}
+
+int MMFilesEngine::startCompactor(TRI_vocbase_t* vocbase) {
+  std::unique_ptr<CompactorThread> thread;
+
+  {
+    MUTEX_LOCKER(locker, _threadsLock);
+    auto it = _compactorThreads.find(vocbase);
+
+    if (it != _compactorThreads.end()) {
+      return TRI_ERROR_INTERNAL;
+    }
+
+    thread.reset(new CompactorThread(vocbase));
+    _compactorThreads.emplace(vocbase, thread.get());
+  }
+
+  TRI_ASSERT(thread != nullptr);
+
+  if (!thread->start()) {
+    LOG(ERR) << "could not start compactor thread";
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+
+  thread.release();
+  return TRI_ERROR_NO_ERROR;
+}
+
+int MMFilesEngine::stopCompactor(TRI_vocbase_t* vocbase) {
+  CompactorThread* thread = nullptr;
+  
+  {
+    MUTEX_LOCKER(locker, _threadsLock);
+
+    auto it = _compactorThreads.find(vocbase);
+    
+    if (it == _compactorThreads.end()) {
+      return TRI_ERROR_INTERNAL;
+    }
+
+    thread = (*it).second;
+    _compactorThreads.erase(it);
+  }
+
+  TRI_ASSERT(thread != nullptr);
+
+  thread->beginShutdown();
+  thread->signal();
+
+  while (thread->isRunning()) {
+    usleep(5000);
+  }
+
+  delete thread;
+  
+  return TRI_ERROR_NO_ERROR;
 }

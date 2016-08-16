@@ -25,11 +25,13 @@
 #define ARANGOD_STORAGE_ENGINE_MMFILES_ENGINE_H 1
 
 #include "Basics/Common.h"
+#include "Basics/Mutex.h"
 #include "StorageEngine/StorageEngine.h"
 
 #include <velocypack/Builder.h>
 
 namespace arangodb {
+class CompactorThread;
 
 /// @brief collection file structure
 struct MMFilesEngineCollectionFiles {
@@ -242,6 +244,8 @@ class MMFilesEngine final : public StorageEngine {
                             std::function<void(TRI_vocbase_t*)> const& callback,
                             bool checkForActiveBlockers) override;
   
+  int shutdownDatabase(TRI_vocbase_t* vocbase) override;
+
  private:
   void verifyDirectories(); 
   std::vector<std::string> getDatabaseNames() const;
@@ -293,6 +297,9 @@ class MMFilesEngine final : public StorageEngine {
                           bool forceSync) const;
   VocbaseCollectionInfo loadCollectionInfo(TRI_vocbase_t* vocbase,
     std::string const& collectionName, std::string const& path, bool versionWarning);
+  
+  int startCompactor(TRI_vocbase_t* vocbase);
+  int stopCompactor(TRI_vocbase_t* vocbase);
 
  public:
   static std::string const EngineName;
@@ -317,8 +324,13 @@ class MMFilesEngine final : public StorageEngine {
 
   // lock for compaction blockers
   arangodb::basics::ReadWriteLock _compactionBlockersLock;
-  // cross-database map of compaction blockers
-  std::unordered_map<TRI_voc_tick_t, std::vector<CompactionBlocker>> _compactionBlockers;
+  // cross-database map of compaction blockers, protected by _compactionBlockersLock
+  std::unordered_map<TRI_vocbase_t*, std::vector<CompactionBlocker>> _compactionBlockers;
+  
+  // lock for threads
+  arangodb::Mutex _threadsLock;
+  // per-database compactor threads, protected by _threadsLock
+  std::unordered_map<TRI_vocbase_t*, CompactorThread*> _compactorThreads;
 };
 
 }

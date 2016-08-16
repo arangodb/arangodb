@@ -53,7 +53,6 @@
 #include "Utils/CursorRepository.h"
 #include "V8Server/v8-user-structures.h"
 #include "VocBase/CleanupThread.h"
-#include "VocBase/CompactorThread.h"
 #include "VocBase/Ditch.h"
 #include "VocBase/collection.h"
 #include "VocBase/replication-applier.h"
@@ -904,14 +903,8 @@ void TRI_vocbase_t::shutdown() {
   // this will signal the compactor thread to do one last iteration
   setState(TRI_vocbase_t::State::SHUTDOWN_COMPACTOR);
 
-  if (_compactorThread != nullptr) {
-    _compactorThread->beginShutdown();
-    _compactorThread->signal();
-
-    while (_compactorThread->isRunning()) {
-      usleep(5000);
-    }
-  }
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  engine->shutdownDatabase(this);
 
   // this will signal the cleanup thread to do one last iteration
   setState(TRI_vocbase_t::State::SHUTDOWN_CLEANUP);
@@ -934,8 +927,7 @@ void TRI_vocbase_t::shutdown() {
   for (auto& collection : _collections) {
     delete collection;
   }
-    
-  _compactorThread.reset();
+  
   _cleanupThread.reset();
 }
 
@@ -1447,9 +1439,8 @@ TRI_vocbase_t::~TRI_vocbase_t() {
     TRI_FreeUserStructuresVocBase(this);
   }
 
-  _replicationApplier.reset();
-  _compactorThread.reset();
-  _cleanupThread.reset();
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  engine->shutdownDatabase(this);
 }
   
 std::string TRI_vocbase_t::path() const {
