@@ -70,13 +70,13 @@ class CollectionRevisionCache {
 
  private:
   // collection id
-  TRI_voc_cid_t const                            _collectionId;
+  //TRI_voc_cid_t const                            _collectionId;
 
   // global document revision cache
-  GlobalRevisionCache*                           _globalCache;
+  //GlobalRevisionCache*                           _globalCache;
 
   // WAL logfile manager, used for reference counting of WAL files
-  arangodb::wal::LogfileManager*                 _logfileManager;
+  //arangodb::wal::LogfileManager*                 _logfileManager;
   
   // note: _revisionsLock and _revisions should be physically partitioned 
   // in order to avoid lock contention

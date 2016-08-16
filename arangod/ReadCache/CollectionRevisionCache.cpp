@@ -35,11 +35,13 @@ using namespace arangodb;
 // a collection-specific cache for documents
 CollectionRevisionCache::CollectionRevisionCache(TRI_voc_cid_t collectionId,
                                                  GlobalRevisionCache* globalCache,
-                                                 arangodb::wal::LogfileManager* logfileManager)
+                                                 arangodb::wal::LogfileManager* logfileManager) {}
+                                                 /*
     : _collectionId(collectionId),
       _globalCache(globalCache),
       _logfileManager(logfileManager) {
 }
+*/
 
 CollectionRevisionCache::~CollectionRevisionCache() {
   // TODO: decrease ref counts in global cache
