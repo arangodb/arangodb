@@ -599,7 +599,7 @@ void TRI_collection_t::addIndexFile(std::string const& filename) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_collection_t::removeIndexFile(TRI_idx_iid_t id) {
-  READ_LOCKER(readLocker, _filesLock);
+  WRITE_LOCKER(readLocker, _filesLock);
 
   for (auto it = _indexFiles.begin(); it != _indexFiles.end(); ++it) {
     if (GetNumericFilenamePart((*it).c_str()) == id) {
