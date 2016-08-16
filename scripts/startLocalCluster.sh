@@ -60,7 +60,7 @@ if [ $NRAGENTS -gt 1 ]; then
        port=$(( $BASE + $aid ))
        build/bin/arangod \
            -c none \
-           --agency.id $aid \
+           --agency.activate true \
            --agency.compaction-step-size $COMP \
            --agency.election-timeout-min $MINP \
            --agency.election-timeout-max $MAXP \
@@ -87,11 +87,10 @@ done
 build/bin/arangod \
     -c none \
     $endpoints \
-    --agency.id $(( $NRAGENTS - 1 )) \
+    --agency.activate true \
     --agency.compaction-step-size $COMP \
     --agency.election-timeout-min $MINP \
     --agency.election-timeout-max $MAXP \
-    --agency.notify true \
     --agency.size $NRAGENTS \
     --agency.supervision true \
     --agency.wait-for-sync false \

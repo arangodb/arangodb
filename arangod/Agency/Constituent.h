@@ -108,7 +108,8 @@ class Constituent : public arangodb::Thread {
   void candidate();
 
   /// @brief Become leader
-  void lead(std::map<arangodb::consensus::id_t,bool> const&);
+  void lead(std::map<arangodb::consensus::id_t,bool> const& =
+            std::map<arangodb::consensus::id_t,bool>());
 
   /// @brief Call for vote (by leader or candidates after timeout)
   void callElection();

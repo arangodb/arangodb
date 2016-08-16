@@ -208,7 +208,6 @@ void AgencyFeature::start() {
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "Starting agency personality";  
   _agent->start();
 
-  LOG(WARN) << __FILE__ << __LINE__;
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "Loading agency";  
   _agent->load();
 }

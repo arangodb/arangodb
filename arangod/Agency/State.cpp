@@ -432,8 +432,6 @@ bool State::loadCollections(TRI_vocbase_t* vocbase, QueryRegistry* queryRegistry
 bool State::loadPersisted() {
   TRI_ASSERT(_vocbase != nullptr);
 
-  LOG(WARN) << __FILE__ << " " << __LINE__;
-
   if (!checkCollection("configuration")) {
     createCollection("configuration");
   }
@@ -441,7 +439,6 @@ bool State::loadPersisted() {
   loadOrPersistConfiguration();
 
   if (checkCollection("log") && checkCollection("compact")) {
-    LOG(WARN) << __FILE__ << " " << __LINE__;
     return (loadCompacted() && loadRemaining());
   }
 
@@ -493,8 +490,6 @@ bool State::loadCompacted() {
 /// Load persisted configuration
 bool State::loadOrPersistConfiguration() {
   
-  LOG(WARN) << __FILE__ << " " << __LINE__;
-  
   auto bindVars = std::make_shared<VPackBuilder>();
   bindVars->openObject();
   bindVars->close();
@@ -513,14 +508,10 @@ bool State::loadOrPersistConfiguration() {
   
   VPackSlice result = queryResult.result->slice();
   
-  LOG(WARN) << __FILE__ << ":" << __LINE__;
-
   if (result.isArray() && result.length()) { // We already have a persisted conf
     
     try {
-      LOG(WARN) << __FILE__ << ":" << __LINE__;
       LOG(WARN) << result[0].toJson();
-      LOG(WARN) << __FILE__ << ":" << __LINE__;
       _agent->mergeConfiguration(result[0]);
     } catch (std::exception const& e) {
       LOG_TOPIC(ERR, Logger::AGENCY)
@@ -531,19 +522,16 @@ bool State::loadOrPersistConfiguration() {
     
   } else {                                   // Fresh start
     
-    LOG(WARN) << __FILE__ << ":" << __LINE__;
     LOG_TOPIC(DEBUG, Logger::AGENCY) << "New agency!";
     
     TRI_ASSERT(_agent != nullptr);
     _agent->id(to_string(boost::uuids::random_generator()()));
     
-    LOG(WARN) << __FILE__ << ":" << __LINE__;
     auto transactionContext =
       std::make_shared<StandaloneTransactionContext>(_vocbase);
     SingleCollectionTransaction trx(transactionContext, "configuration",
                                     TRI_TRANSACTION_WRITE);
     
-    LOG(WARN) << __FILE__ << ":" << __LINE__;
     int res = trx.begin();
     OperationResult result;
     
@@ -558,7 +546,6 @@ bool State::loadOrPersistConfiguration() {
     doc.add("cfg", _agent->config().toBuilder()->slice());
     doc.close();
     try {
-      LOG(WARN) << __FILE__ << ":" << __LINE__;
       result = trx.insert(
         "configuration", doc.slice(), _options);
     } catch (std::exception const& e) {

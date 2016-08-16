@@ -51,11 +51,8 @@ Agent::Agent(config_t const& config)
       _readDB(this),
       _serveActiveAgent(false),
       _nextCompationAfter(_config.compactionStepSize) {
-  LOG(WARN)<< __FILE__ << __LINE__;
   _state.configure(this);
-  LOG(WARN)<< __FILE__ << __LINE__;
   _constituent.configure(this);
-  LOG(WARN)<< __FILE__ << __LINE__;
 }
 
 
@@ -349,12 +346,18 @@ priv_rpc_ret_t Agent::sendAppendEntriesRPC(
 }
 
 
-
-bool Agent::activateSingle() {
-  MUTEX_LOCKER(mutexLocker, _ioLock);
+/// @brief 
+bool Agent::activateAgency() {
+  MUTEX_LOCKER(mutexLocker, _cfgLock);
   if (_config.active.empty()) {
-    _config.active.push_back(_config.id);
-    return _state.persistActiveAgents(_config.id);
+    size_t count = 0;
+    for (auto const& pair : _config.pool) {
+      _config.active.push_back(pair.first);
+      if(++count==size()) {
+        break;
+      }
+    }
+    return _state.persistActiveAgents(_config.active);
   }
   return true;
 }
@@ -382,10 +385,9 @@ bool Agent::load() {
 
   if (size() > 1) {
     inception();
-  } else {
-    MUTEX_LOCKER(mutexLocker, _cfgLock);
-    activateSingle();
   }
+
+  activateAgency();
   
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "Reassembling spearhead and read stores.";
   _spearhead.apply(_state.slices(_lastCommitIndex + 1));
@@ -605,27 +607,128 @@ bool Agent::booting() {
 }
 
 
-void Agent::gossipCallback(
-  arangodb::consensus::id_t const& peerId, query_t const& word) {
+/// Gossip to others
+/// - Get snapshot of gossip peers and agent pool
+/// - Create outgoing gossip.
+/// - Send to all peers
+void Agent::gossip() {
+
+  if (booting()) {
+
+    std::vector<std::string> peers; // Get snap shot 
+    std::map<std::string,std::string> pool;
+    std::string endpoint;
+    std::string id;
+    { 
+      MUTEX_LOCKER(mutexLocker, _cfgLock);
+      peers = _config.gossipPeers;
+      pool = _config.pool;
+      endpoint = _config.endpoint;
+      id = _config.id;
+    }
+
+    query_t out = std::make_shared<Builder>();
+    out->openObject();
+    out->add("endpoint", VPackValue(endpoint));
+    out->add("id", VPackValue(id));
+    out->add("pool", VPackValue(VPackValueType::Object));
+    for (auto const& i : pool) {
+      out->add(i.first,VPackValue(i.second));
+    }
+    out->close();
+    out->close();
+
+    auto headerFields =
+      std::make_unique<std::unordered_map<std::string, std::string>>();
+    std::string path = "/_api/agency/gossip";
+      
+    for (auto const& endpoint : peers) { // gossip peers
+      arangodb::ClusterComm::instance()->asyncRequest(
+        "1", 1, endpoint, GeneralRequest::RequestType::POST, path,
+        std::make_shared<std::string>(out->toJson()), headerFields,
+        std::make_shared<GossipCallback>(this), 1.0, true, 0.5);
+    }
+    
+    for (auto const& pair : pool) { // pool entries
+      arangodb::ClusterComm::instance()->asyncRequest(
+        "1", 1, pair.second, GeneralRequest::RequestType::POST, path,
+        std::make_shared<std::string>(out->toJson()), headerFields,
+        std::make_shared<GossipCallback>(this), 1.0, true, 0.5);
+    }
+    
+  }
+  
+}
+
+
+/// We expect an object as follows {id:<id>,endpoint:<endpoint>,pool:{...}}
+/// key: uuid value: endpoint
+/// Lock configuration and compare
+/// Add whatever is missing in our list.
+/// Compare whatever is in our list already. (ASSERT identity)
+/// If I know more immediately contact peer with my list.
+query_t Agent::gossip(query_t const& in, bool isCallback) {
+
+  VPackSlice slice = in->slice();
+  if (!slice.isObject()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+      20001, std::string("Gossip message must be an object. Incoming type is ")
+      + slice.typeName());
+  }
+
+  if (!slice.hasKey("id") || !slice.get("id").isString()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+      20002, "Gossip message must contain string parameter 'id'");
+  }
+  std::string id = slice.get("id").copyString();
+  
+  if (!slice.hasKey("endpoint") || !slice.get("endpoint").isString()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+      20003, "Gossip message must contain string parameter 'endpoint'");
+  }
+  std::string endpoint = slice.get("endpoint").copyString();
+    
+  LOG_TOPIC(DEBUG, Logger::AGENCY)
+    << "Gossip " << ((isCallback) ? "callback" : "call") << " from " << endpoint;
+  
+  if (!slice.hasKey("pool") || !slice.get("pool").isObject()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+      20003, "Gossip message must contain object parameter 'pool'");
+  }
+  VPackSlice pslice = slice.get("pool");
+
+  std::map<std::string,std::string> incoming;
+  for (auto const& pair : VPackObjectIterator(pslice)) {
+    if (!pair.value.isString()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+        20004, "Gossip message pool must contain string parameters");
+    }
+    incoming[pair.key.copyString()] = pair.value.copyString();
+  }
+  
   {
     MUTEX_LOCKER(mutexLocker, _cfgLock);
-    
-    VPackSlice slice = word->slice();
-    TRI_ASSERT(slice.isObject());
-    
+    auto found = find(
+      _config.gossipPeers.begin(), _config.gossipPeers.end(), endpoint);
+    if (found != _config.gossipPeers.end()) {
+      _config.gossipPeers.erase(found);
+    }
+  }
+
+  {
     size_t counter = 0;
-    for (auto const& i : VPackObjectIterator(slice)) {
+    for (auto const& i : incoming) {
       MUTEX_LOCKER(mutexLocker, _cfgLock);
-      if (++counter > _config.poolSize) {
+      
+      if (++counter > _config.poolSize) { /// more data than pool size: fatal!
         LOG_TOPIC(FATAL, Logger::AGENCY) <<
-          "Too many peers for poolsize: " counter << ">" <<_config.poolSize;
+          "Too many peers for poolsize: " << counter << ">" << _config.poolSize;
         FATAL_ERROR_EXIT();
       }
-      TRI_ASSERT(i.value.isString());
-      if (_config.pool.find(i.key.copyString()) != _config.pool.end()) {
-        _config.pool[i.key.copyString()] = i.value.copyString();
+      if (_config.pool.find(i.first) == _config.pool.end()) {
+        _config.pool[i.first] = i.second;
       } else {
-        if (_config.pool[i.key.copyString()] != i.value.copyString()) {
+        if (_config.pool.at(i.first) != i.second) { /// discrepancy!
           LOG_TOPIC(FATAL, Logger::AGENCY) << "Discrepancy in agent pool!";
           FATAL_ERROR_EXIT();
         }
@@ -633,97 +736,39 @@ void Agent::gossipCallback(
     }
   }
 
-  if (counter < size()) {
-
-    std::map<std::string,std::string> pool;
-    { 
-      MUTEX_LOCKER(mutexLocker, _cfgLock);
-      pool = _config.pool;
-    }
+  bool send = false;
+  std::map<std::string,std::string> pool;
+  {
+    MUTEX_LOCKER(mutexLocker, _cfgLock);
+    pool = _config.pool;
+    send = (isCallback && incoming.size() < pool.size());
+  }
+  
+  query_t out = std::make_shared<Builder>();
+  out->openObject();
+  out->add("endpoint", VPackValue(endpoint));
+  out->add("id", VPackValue(id));
+  out->add("pool", VPackValue(VPackValueType::Object));
+  for (auto const& i : pool) {
+    out->add(i.first,VPackValue(i.second));
+  }
+  out->close();
+  out->close();
+  
+  if (send) {
     
-    Builder word;
-    word.openObject();
-    word.add("pool", VPackValue(VPackValueType::Object));
-    for (auto const& i : pool) {
-      word.add(i.first,VPackValue(i.second));
-    }
-    word.close();
-    word.close();
-    return ret;
-
     auto headerFields =
       std::make_unique<std::unordered_map<std::string, std::string>>();
     std::string path = "/_api/agency/gossip";
     
     arangodb::ClusterComm::instance()->asyncRequest(
-      "1", 1, pool(peerId), GeneralRequest::RequestType::POST, path,
-      std::make_shared<std::string>(word->toJson()), headerFields,
-      std::make_shared<GossipCallback>(this, peerId), 1.0, true);
+      "1", 1, endpoint, GeneralRequest::RequestType::POST, path,
+      std::make_shared<std::string>(out->toJson()), headerFields,
+      std::make_shared<GossipCallback>(this), 1.0, true, 0.5);
     
   }
-  
-}
 
-
-/// Gossip to others
-void Agent::gossip() {
-
-  if (booting()) {
-
-    std::vector<std::string> peers;
-    std::map<std::string,std::string> pool;
-
-    { 
-      MUTEX_LOCKER(mutexLocker, _cfgLock);
-      peers = _config.gossipPeers;
-      pool = _config.pool;
-    }
-
-    Builder word;
-    word.openObject();
-    word.add("pool", VPackValue(VPackValueType::Object));
-    for (auto const& i : pool) {
-      word.add(i.first,VPackValue(i.second));
-    }
-    word.close();
-    word.close();
-    return ret;
-
-    for (auto const& endpoint : gossipPeers) {
-
-      auto headerFields =
-        std::make_unique<std::unordered_map<std::string, std::string>>();
-      std::string path = "/_api/agency/config";
-        
-      for (auto const& agent : pool) {
-        arangodb::ClusterComm::instance()->asyncRequest(
-          "1", 1, agent.second, GeneralRequest::RequestType::POST, path,
-          std::make_shared<std::string>(word->toJson()), headerFields,
-          std::make_shared<GossipCallback>(this, agent.first), 1.0, true);
-      }
-      
-    }
-    
-  }
-  
-}
-
-
-/// Handle incomint gossip
-void Agent::gossip(query_t const& word) {
-
-  TRI_ASSERT(word->slice().isObject());
-
-  MUTEX_LOCKER(mutexLocker, _cfgLock);
-  for (auto const& ent : VPackObjectIterator(word->slice())) {
-    TRI_ASSERT(ent.value.isString());
-    auto it = _config.pool.find(ent.key.copyString());
-    if (it != _config.pool.end()) {
-      TRI_ASSERT(it->second == ent.value.copyString());
-    } else {
-      _config.pool[ent.key.copyString()] = ent.value.copyString();
-    }
-  }
+  return out;
   
 }
 
@@ -903,7 +948,7 @@ void Agent::inception() {
       return;
     }
 
-    gossip()
+    gossip();
     
     _configCV.wait(1000);
 
@@ -912,7 +957,7 @@ void Agent::inception() {
         "Failed to find complete pool of agents.";
       FATAL_ERROR_EXIT();
     }
-      
+    
   }
   
 }

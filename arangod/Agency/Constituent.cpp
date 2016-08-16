@@ -195,14 +195,16 @@ void Constituent::lead(std::map<arangodb::consensus::id_t, bool> const& votes) {
     _leaderID = _id;
   }
 
-  std::stringstream ss;
-  ss << _id << ": Converted to leader in term " << _term << " with votes (";
-  for (auto const& vote : votes) {
-    ss << vote.second;
+  if (!votes.empty()) {
+    std::stringstream ss;
+    ss << _id << ": Converted to leader in term " << _term << " with votes (";
+    for (auto const& vote : votes) {
+      ss << vote.second;
+    }
+    ss << ")";
+    LOG_TOPIC(DEBUG, Logger::AGENCY) << ss.str();
   }
-  ss << ")";
   
-  LOG_TOPIC(DEBUG, Logger::AGENCY) << ss.str();
   _agent->lead();  // We need to rebuild spear_head and read_db;
   
 }
@@ -446,46 +448,49 @@ void Constituent::run() {
     }
   }
 
-  // Always start off as follower
-  while (!this->isStopping() && size() > 1) {
-    
-    if (_role == FOLLOWER) {
-      bool cast = false;
+  if (size() == 1) {
+    lead();
+  } else {
+
+    while (!this->isStopping()) {
       
-      {
-        MUTEX_LOCKER(guard, _castLock);
-        _cast = false;  // New round set not cast vote
-      }
-      
-      int32_t left = static_cast<int32_t>(1000000.0 * _agent->config().minPing),
-        right = static_cast<int32_t>(1000000.0 * _agent->config().maxPing);
-      long rand_wait = static_cast<long>(RandomGenerator::interval(left, right));
-      
-      {
-        CONDITION_LOCKER(guardv, _cv);
-        _cv.wait(rand_wait);
-      }
-      
-      {
-        MUTEX_LOCKER(guard, _castLock);
-        cast = _cast;
-      }
-      
-      if (!cast) {
-        candidate();  // Next round, we are running
-      }
-      
-    } else if (_role == CANDIDATE) {
-      callElection();  // Run for office
-    } else {
-      int32_t left = static_cast<int32_t>(100000.0 * _agent->config().minPing);
-      long rand_wait = static_cast<long>(left);
-      {
-        CONDITION_LOCKER(guardv, _cv);
-        _cv.wait(rand_wait);
+      if (_role == FOLLOWER) {
+        bool cast = false;
+        
+        {
+          MUTEX_LOCKER(guard, _castLock);
+          _cast = false;  // New round set not cast vote
+        }
+        
+        int32_t left = static_cast<int32_t>(1000000.0 * _agent->config().minPing),
+          right = static_cast<int32_t>(1000000.0 * _agent->config().maxPing);
+        long rand_wait = static_cast<long>(RandomGenerator::interval(left, right));
+        
+        {
+          CONDITION_LOCKER(guardv, _cv);
+          _cv.wait(rand_wait);
+        }
+        
+        {
+          MUTEX_LOCKER(guard, _castLock);
+          cast = _cast;
+        }
+        
+        if (!cast) {
+          candidate();  // Next round, we are running
+        }
+        
+      } else if (_role == CANDIDATE) {
+        callElection();  // Run for office
+      } else {
+        int32_t left = static_cast<int32_t>(100000.0 * _agent->config().minPing);
+        long rand_wait = static_cast<long>(left);
+        {
+          CONDITION_LOCKER(guardv, _cv);
+          _cv.wait(rand_wait);
+        }
       }
     }
-    
   }
 
 }

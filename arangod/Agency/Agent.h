@@ -112,7 +112,7 @@ class Agent : public arangodb::Thread {
   void gossip();
 
   /// @brief Gossip in
-  void gossip(query_t const& word);
+  query_t gossip(query_t const&, bool callback = false);
 
   /// @brief Persisted agents
   bool persistedAgents();
@@ -155,13 +155,10 @@ class Agent : public arangodb::Thread {
   /// State reads persisted state and prepares the agent
   friend class State;
 
-  /// @brief Handle gossip callbacks
-  void gossipCallback(arangodb::consensus::id_t const&, query_t const&);
-
  private:
 
   /// @brief Activate this agent in single agent mode.
-  bool activateSingle();
+  bool activateAgency();
 
   /// @brief Assignment of persisted state
   Agent& operator=(VPackSlice const&);

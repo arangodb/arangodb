@@ -66,7 +66,7 @@ class RestAgencyPrivHandler : public arangodb::RestBaseHandler {
 
   status reportErrorEmptyRequest();
   status reportTooManySuffices();
-  status reportBadQuery();
+  status reportBadQuery(std::string const& message = "bad parameter");
   status reportMethodNotAllowed();
   status reportGone();
 

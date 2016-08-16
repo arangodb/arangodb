@@ -88,9 +88,7 @@ struct config_t {
       supervision(s),
       waitForSync(w),
       supervisionFrequency(f),
-      compactionStepSize(c) {
-    LOG(WARN) << __FILE__ << __LINE__ ;
-  }
+      compactionStepSize(c) {}
 
 
   /// @brief active agency size

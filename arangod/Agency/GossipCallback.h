@@ -24,7 +24,6 @@
 #ifndef ARANGOD_CONSENSUS_GOSSIP_CALLBACK_H
 #define ARANGOD_CONSENSUS_GOSSIP_CALLBACK_H 1
 
-#include "Agency/AgencyCommon.h"
 #include "Cluster/ClusterComm.h"
 
 namespace arangodb {
@@ -34,7 +33,7 @@ class Agent;
 
 class GossipCallback : public arangodb::ClusterCommCallback {
 public:
-  GossipCallback(Agent*, arangodb::consensus::id_t);
+  GossipCallback(Agent*);
   
   virtual bool operator()(arangodb::ClusterCommResult*) override final;
   
@@ -43,7 +42,6 @@ public:
 private:
   
   Agent* _agent;
-  arangodb::consensus::id_t _peerId;
 
 };
 }

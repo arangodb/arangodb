@@ -27,13 +27,11 @@
 using namespace arangodb::consensus;
 using namespace arangodb::velocypack;
 
-GossipCallback::GossipCallback(Agent* agent, arangodb::consensus::id_t peerId)
-  : _agent(agent), _peerId(peerId) {}
+GossipCallback::GossipCallback(Agent*) {}
 
 bool GossipCallback::operator()(arangodb::ClusterCommResult* res) {
   if (res->status == CL_COMM_SENT && res->result->getHttpReturnCode() == 200) {
-    _agent->gossipCallback(_peerId,res->result->getBodyVelocyPack()
-);
+    _agent->gossip(res->result->getBodyVelocyPack(), true);
   }
   return true;
 }
