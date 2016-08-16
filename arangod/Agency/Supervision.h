@@ -145,6 +145,11 @@ class Supervision : public arangodb::Thread {
 
   void shrinkCluster();
 
+  bool isShuttingDown();
+  
+  bool handleJobs();
+  void handleShutdown();
+
   Agent* _agent; /**< @brief My agent */
   Node _snapshot;
 
