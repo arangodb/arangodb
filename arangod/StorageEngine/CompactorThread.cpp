@@ -75,26 +75,26 @@ void CompactorThread::DropDatafileCallback(TRI_datafile_t* datafile, void* data)
     // copy the current filename
     copy = datafile->_filename;
 
-    bool ok = TRI_RenameDatafile(datafile, filename.c_str());
+    int res = TRI_RenameDatafile(datafile, filename.c_str());
 
-    if (!ok) {
-      LOG_TOPIC(ERR, Logger::COMPACTOR) << "cannot rename obsolete datafile '" << copy << "' to '" << filename << "': " << TRI_last_error();
+    if (res != TRI_ERROR_NO_ERROR) {
+      LOG_TOPIC(ERR, Logger::COMPACTOR) << "cannot rename obsolete datafile '" << copy << "' to '" << filename << "': " << TRI_errno_string(res);
     }
   }
 
   LOG_TOPIC(DEBUG, Logger::COMPACTOR) << "finished compacting datafile '" << datafile->getName(datafile) << "'";
 
-  bool ok = TRI_CloseDatafile(datafile);
+  int res = TRI_CloseDatafile(datafile);
 
-  if (!ok) {
-    LOG_TOPIC(ERR, Logger::COMPACTOR) << "cannot close obsolete datafile '" << datafile->getName(datafile) << "': " << TRI_last_error();
+  if (res != TRI_ERROR_NO_ERROR) {
+    LOG_TOPIC(ERR, Logger::COMPACTOR) << "cannot close obsolete datafile '" << datafile->getName(datafile) << "': " << TRI_errno_string(res);
   } else if (datafile->isPhysical(datafile)) {
     LOG_TOPIC(DEBUG, Logger::COMPACTOR) << "wiping compacted datafile from disk";
 
-    int res = TRI_UnlinkFile(filename.c_str());
+    res = TRI_UnlinkFile(filename.c_str());
 
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG_TOPIC(ERR, Logger::COMPACTOR) << "cannot wipe obsolete datafile '" << datafile->getName(datafile) << "': " << TRI_last_error();
+      LOG_TOPIC(ERR, Logger::COMPACTOR) << "cannot wipe obsolete datafile '" << datafile->getName(datafile) << "': " << TRI_errno_string(res);
     }
 
     // check for .dead files
@@ -140,15 +140,19 @@ void CompactorThread::RenameDatafileCallback(TRI_datafile_t* datafile, void* dat
     std::string tempFilename = arangodb::basics::FileUtils::buildFilename(document->path(), jname);
     std::string realName = datafile->_filename;
 
-    if (!TRI_RenameDatafile(datafile, tempFilename.c_str())) {
-      LOG_TOPIC(ERR, Logger::COMPACTOR) << "unable to rename datafile '" << datafile->getName(datafile) << "' to '" << tempFilename << "'";
+    int res = TRI_RenameDatafile(datafile, tempFilename.c_str());
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      LOG_TOPIC(ERR, Logger::COMPACTOR) << "unable to rename datafile '" << datafile->getName(datafile) << "' to '" << tempFilename << "': " << TRI_errno_string(res);
     } else {
-      if (!TRI_RenameDatafile(compactor, realName.c_str())) {
-        LOG_TOPIC(ERR, Logger::COMPACTOR) << "unable to rename compaction file '" << compactor->getName(compactor) << "' to '" << realName << "'";
-      } else {
-        ok = true;
+      res = TRI_RenameDatafile(compactor, realName.c_str());
+
+      if (res != TRI_ERROR_NO_ERROR) {
+        LOG_TOPIC(ERR, Logger::COMPACTOR) << "unable to rename compaction file '" << compactor->getName(compactor) << "' to '" << realName << "': " << TRI_errno_string(res);
       }
     }
+
+    ok = (res == TRI_ERROR_NO_ERROR);
   } else {
     ok = true;
   }
@@ -361,7 +365,8 @@ void CompactorThread::compactDatafiles(TRI_collection_t* document,
 
       if (res != TRI_ERROR_NO_ERROR) {
         // TODO: dont fail but recover from this state
-        LOG_TOPIC(FATAL, Logger::COMPACTOR) << "cannot write compactor file: " << TRI_last_error(); FATAL_ERROR_EXIT();
+        LOG_TOPIC(FATAL, Logger::COMPACTOR) << "cannot write compactor file: " << TRI_errno_string(res); 
+        FATAL_ERROR_EXIT();
       }
 
       TRI_doc_mptr_t* found2 = const_cast<TRI_doc_mptr_t*>(found);
@@ -388,7 +393,7 @@ void CompactorThread::compactDatafiles(TRI_collection_t* document,
 
         if (res != TRI_ERROR_NO_ERROR) {
           // TODO: dont fail but recover from this state
-          LOG_TOPIC(FATAL, Logger::COMPACTOR) << "cannot write document marker to compactor file: " << TRI_last_error(); 
+          LOG_TOPIC(FATAL, Logger::COMPACTOR) << "cannot write document marker to compactor file: " << TRI_errno_string(res);
           FATAL_ERROR_EXIT();
         }
 
@@ -951,8 +956,6 @@ int CompactorThread::copyMarker(TRI_collection_t* document,
   int res = TRI_ReserveElementDatafile(compactor, marker->getSize(), result, 0);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    document->_lastError = TRI_set_errno(TRI_ERROR_ARANGO_NO_JOURNAL);
-
     return TRI_ERROR_ARANGO_NO_JOURNAL;
   }
 

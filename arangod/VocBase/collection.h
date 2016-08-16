@@ -541,8 +541,6 @@ struct TRI_collection_t {
   arangodb::basics::ReadWriteLock _infoLock;
   arangodb::VocbaseCollectionInfo _info;
 
-  int _lastError;          // last (critical) error
- 
  private: 
   std::string _path;
 

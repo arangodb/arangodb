@@ -146,7 +146,6 @@ TRI_collection_t::TRI_collection_t(TRI_vocbase_t* vocbase,
       : _vocbase(vocbase), 
         _tickMax(0),
         _info(parameters), 
-        _lastError(TRI_ERROR_NO_ERROR),
         _masterPointers(),
         _uncollectedLogfileEntries(0),
         _numberDocuments(0),
@@ -748,20 +747,22 @@ int TRI_collection_t::sealDatafile(TRI_datafile_t* datafile, bool isCompactor) {
 
   if (res != TRI_ERROR_NO_ERROR) {
     LOG(ERR) << "failed to seal journal '" << datafile->getName(datafile)
-             << "': " << TRI_last_error();
-  } else if (!isCompactor && datafile->isPhysical(datafile)) {
+             << "': " << TRI_errno_string(res);
+    return res;
+  }
+
+  if (!isCompactor && datafile->isPhysical(datafile)) {
     // rename the file
     std::string dname("datafile-" + std::to_string(datafile->_fid) + ".db");
     std::string filename = arangodb::basics::FileUtils::buildFilename(path(), dname);
 
-    bool ok = TRI_RenameDatafile(datafile, filename.c_str());
+    res = TRI_RenameDatafile(datafile, filename.c_str());
 
-    if (ok) {
+    if (res == TRI_ERROR_NO_ERROR) {
       LOG(TRACE) << "closed file '" << datafile->getName(datafile) << "'";
     } else {
       LOG(ERR) << "failed to rename datafile '" << datafile->getName(datafile)
-               << "' to '" << filename << "': " << TRI_last_error();
-      res = TRI_ERROR_INTERNAL;
+               << "' to '" << filename << "': " << TRI_errno_string(res);
     }
   }
 
@@ -1052,8 +1053,6 @@ TRI_datafile_t* TRI_collection_t::createDatafile(TRI_voc_fid_t fid,
 
     TRI_IF_FAILURE("CreateJournalDocumentCollection") {
       // simulate disk full
-      document->_lastError = TRI_set_errno(TRI_ERROR_ARANGO_FILESYSTEM_FULL);
-
       EnsureErrorCode(TRI_ERROR_ARANGO_FILESYSTEM_FULL);
 
       return nullptr;
@@ -1070,12 +1069,10 @@ TRI_datafile_t* TRI_collection_t::createDatafile(TRI_voc_fid_t fid,
 
   if (datafile == nullptr) {
     if (TRI_errno() == TRI_ERROR_OUT_OF_MEMORY_MMAP) {
-      document->_lastError = TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY_MMAP);
+      EnsureErrorCode(TRI_ERROR_OUT_OF_MEMORY_MMAP);
     } else {
-      document->_lastError = TRI_set_errno(TRI_ERROR_ARANGO_NO_JOURNAL);
+      EnsureErrorCode(TRI_ERROR_ARANGO_NO_JOURNAL);
     }
-
-    EnsureErrorCode(document->_lastError);
 
     return nullptr;
   }
@@ -1100,7 +1097,6 @@ TRI_datafile_t* TRI_collection_t::createDatafile(TRI_voc_fid_t fid,
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
-    document->_lastError = datafile->_lastError;
     LOG(ERR) << "cannot create collection header in file '"
              << datafile->getName(datafile) << "': " << TRI_errno_string(res);
 
@@ -1127,7 +1123,7 @@ TRI_datafile_t* TRI_collection_t::createDatafile(TRI_voc_fid_t fid,
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
-    document->_lastError = datafile->_lastError;
+    int res = datafile->_lastError;
     LOG(ERR) << "cannot create collection header in file '"
              << datafile->getName(datafile) << "': " << TRI_last_error();
 
@@ -1136,7 +1132,7 @@ TRI_datafile_t* TRI_collection_t::createDatafile(TRI_voc_fid_t fid,
     TRI_UnlinkFile(datafile->getName(datafile));
     TRI_FreeDatafile(datafile);
 
-    EnsureErrorCode(document->_lastError);
+    EnsureErrorCode(res);
 
     return nullptr;
   }
@@ -1150,23 +1146,23 @@ TRI_datafile_t* TRI_collection_t::createDatafile(TRI_voc_fid_t fid,
     std::string jname("journal-" + std::to_string(datafile->_fid) + ".db");
     std::string filename = arangodb::basics::FileUtils::buildFilename(path(), jname);
 
-    bool ok = TRI_RenameDatafile(datafile, filename.c_str());
+    int res = TRI_RenameDatafile(datafile, filename.c_str());
 
-    if (!ok) {
+    if (res != TRI_ERROR_NO_ERROR) {
       LOG(ERR) << "failed to rename journal '" << datafile->getName(datafile)
-               << "' to '" << filename << "': " << TRI_last_error();
+               << "' to '" << filename << "': " << TRI_errno_string(res);
 
       TRI_CloseDatafile(datafile);
       TRI_UnlinkFile(datafile->getName(datafile));
       TRI_FreeDatafile(datafile);
 
-      EnsureErrorCode(document->_lastError);
+      EnsureErrorCode(res);
 
       return nullptr;
-    } else {
-      LOG(TRACE) << "renamed journal from '" << datafile->getName(datafile)
-                 << "' to '" << filename << "'";
-    }
+    } 
+      
+    LOG(TRACE) << "renamed journal from '" << datafile->getName(datafile)
+               << "' to '" << filename << "'";
   }
 
   return datafile;
@@ -1265,7 +1261,12 @@ bool TRI_collection_t::closeDataFiles(std::vector<TRI_datafile_t*> const& files)
     if (datafile->_state == TRI_DF_STATE_CLOSED) {
       continue;
     }
-    result &= TRI_CloseDatafile(datafile);
+
+    int res = TRI_CloseDatafile(datafile);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      result = false;
+    }
   }
 
   return result;

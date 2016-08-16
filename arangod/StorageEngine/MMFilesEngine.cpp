@@ -1690,7 +1690,6 @@ int MMFilesEngine::openCollection(TRI_vocbase_t* vocbase, TRI_collection_t* coll
           TRI_OpenDatafile(filename.c_str(), ignoreErrors);
 
       if (datafile == nullptr) {
-        collection->_lastError = TRI_errno();
         LOG_TOPIC(ERR, Logger::DATAFILES) << "cannot open datafile '"
                                           << filename
                                           << "': " << TRI_last_error();
@@ -1754,10 +1753,6 @@ int MMFilesEngine::openCollection(TRI_vocbase_t* vocbase, TRI_collection_t* coll
           LOG_TOPIC(ERR, Logger::DATAFILES)
               << "datafile '" << filename
               << "' is not sealed, this should never happen";
-
-          collection->_lastError =
-              TRI_set_errno(TRI_ERROR_ARANGO_CORRUPTED_DATAFILE);
-
           stop = true;
           break;
         } else {
@@ -1780,16 +1775,15 @@ int MMFilesEngine::openCollection(TRI_vocbase_t* vocbase, TRI_collection_t* coll
       std::string dname("datafile-" + std::to_string(datafile->_fid) + ".db");
       std::string filename = arangodb::basics::FileUtils::buildFilename(collection->path(), dname);
 
-      bool ok = TRI_RenameDatafile(datafile, filename.c_str());
+      int res = TRI_RenameDatafile(datafile, filename.c_str());
 
-      if (ok) {
+      if (res == TRI_ERROR_NO_ERROR) {
         datafiles.emplace_back(datafile);
         LOG(DEBUG) << "renamed sealed journal to '" << filename << "'";
       } else {
-        collection->_lastError = datafile->_lastError;
         stop = true;
         LOG(ERR) << "cannot rename sealed log-file to " << filename
-                 << ", this should not happen: " << TRI_last_error();
+                 << ", this should not happen: " << TRI_errno_string(res);
         break;
       }
     }
