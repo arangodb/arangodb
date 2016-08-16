@@ -297,9 +297,13 @@ class MMFilesEngine final : public StorageEngine {
                           bool forceSync) const;
   VocbaseCollectionInfo loadCollectionInfo(TRI_vocbase_t* vocbase,
     std::string const& collectionName, std::string const& path, bool versionWarning);
-  
+ 
+  // start the compactor thread for the database 
   int startCompactor(TRI_vocbase_t* vocbase);
+  // stop the compactor thread for the database
   int stopCompactor(TRI_vocbase_t* vocbase);
+  // stop and delete the compactor thread for the database
+  int deleteCompactor(TRI_vocbase_t* vocbase);
 
  public:
   static std::string const EngineName;

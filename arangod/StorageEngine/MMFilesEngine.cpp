@@ -526,11 +526,17 @@ TRI_vocbase_t* MMFilesEngine::createDatabase(TRI_voc_tick_t id, arangodb::velocy
 // the WAL entry for database deletion will be written *after* the call
 // to "prepareDropDatabase" returns
 int MMFilesEngine::prepareDropDatabase(TRI_vocbase_t* vocbase) {
+  // signal the compactor thread to finish
+  stopCompactor(vocbase);
+
   return saveDatabaseParameters(vocbase->id(), vocbase->name(), true);
 }
 
 // perform a physical deletion of the database      
 int MMFilesEngine::dropDatabase(TRI_vocbase_t* vocbase) {
+  // stop compactor thread
+  shutdownDatabase(vocbase);
+
   _collectionPaths.erase(vocbase->id());
 
   return dropDatabaseDirectory(databaseDirectory(vocbase->id()));
@@ -1453,7 +1459,7 @@ bool MMFilesEngine::tryPreventCompaction(TRI_vocbase_t* vocbase,
 
 int MMFilesEngine::shutdownDatabase(TRI_vocbase_t* vocbase) {
   try {
-    return stopCompactor(vocbase);
+    return deleteCompactor(vocbase);
   } catch (basics::Exception const& ex) {
     return ex.code();
   } catch (...) {
@@ -1461,6 +1467,7 @@ int MMFilesEngine::shutdownDatabase(TRI_vocbase_t* vocbase) {
   }
 }
 
+// start the compactor thread for the database 
 int MMFilesEngine::startCompactor(TRI_vocbase_t* vocbase) {
   std::unique_ptr<CompactorThread> thread;
 
@@ -1487,6 +1494,7 @@ int MMFilesEngine::startCompactor(TRI_vocbase_t* vocbase) {
   return TRI_ERROR_NO_ERROR;
 }
 
+// stop the compactor thread for the database
 int MMFilesEngine::stopCompactor(TRI_vocbase_t* vocbase) {
   CompactorThread* thread = nullptr;
   
@@ -1496,7 +1504,33 @@ int MMFilesEngine::stopCompactor(TRI_vocbase_t* vocbase) {
     auto it = _compactorThreads.find(vocbase);
     
     if (it == _compactorThreads.end()) {
-      return TRI_ERROR_INTERNAL;
+      // already stopped
+      return TRI_ERROR_NO_ERROR;
+    }
+
+    thread = (*it).second;
+  }
+
+  TRI_ASSERT(thread != nullptr);
+
+  thread->beginShutdown();
+  thread->signal();
+  
+  return TRI_ERROR_NO_ERROR;
+}
+
+// stop and delete the compactor thread for the database
+int MMFilesEngine::deleteCompactor(TRI_vocbase_t* vocbase) {
+  CompactorThread* thread = nullptr;
+  
+  {
+    MUTEX_LOCKER(locker, _threadsLock);
+
+    auto it = _compactorThreads.find(vocbase);
+    
+    if (it == _compactorThreads.end()) {
+      // already stopped
+      return TRI_ERROR_NO_ERROR;
     }
 
     thread = (*it).second;
@@ -1516,3 +1550,4 @@ int MMFilesEngine::stopCompactor(TRI_vocbase_t* vocbase) {
   
   return TRI_ERROR_NO_ERROR;
 }
+

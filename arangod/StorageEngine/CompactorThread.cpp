@@ -920,7 +920,7 @@ void CompactorThread::run() {
     }
   
     if (state == TRI_vocbase_t::State::SHUTDOWN_COMPACTOR || isStopping()) {
-      // server shutdown
+      // server shutdown or database has been removed
       break;
     }
   }
