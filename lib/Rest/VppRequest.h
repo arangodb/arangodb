@@ -71,6 +71,10 @@ class VppRequest : public GeneralRequest {
     return _message._payload.byteSize();
   }
 
+  virtual arangodb::Endpoint::TransportType transportType() override {
+    return arangodb::Endpoint::TransportType::VPP;
+  };
+
   std::unordered_map<std::string, std::string> const& headers() const override;
   // get value from headers map. The key must be lowercase.
   std::string const& header(std::string const& key) const override;

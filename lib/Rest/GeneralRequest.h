@@ -165,6 +165,7 @@ class GeneralRequest {
   std::vector<std::string> const& suffix() const { return _suffix; }
   void addSuffix(std::string&& part);
 
+  virtual arangodb::Endpoint::TransportType transportType() = 0;
   virtual int64_t contentLength() const = 0;
   // get value from headers map. The key must be lowercase.
   virtual std::string const& header(std::string const& key) const = 0;
