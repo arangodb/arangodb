@@ -853,11 +853,8 @@ int TRI_collection_t::rotateActiveJournal() {
   return res;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief sync the active journal - will do nothing if there is no journal
 /// or if the journal is volatile
-////////////////////////////////////////////////////////////////////////////////
-
 int TRI_collection_t::syncActiveJournal() {
   WRITE_LOCKER(writeLocker, _filesLock);
 
@@ -905,12 +902,9 @@ int TRI_collection_t::syncActiveJournal() {
   return res;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief reserve space in the current journal. if no create exists or the
 /// current journal cannot provide enough space, close the old journal and
 /// create a new one
-////////////////////////////////////////////////////////////////////////////////
-
 int TRI_collection_t::reserveJournalSpace(TRI_voc_tick_t tick,
                                           TRI_voc_size_t size,
                                           char*& resultPosition,
@@ -1007,10 +1001,7 @@ int TRI_collection_t::reserveJournalSpace(TRI_voc_tick_t tick,
   return TRI_ERROR_ARANGO_NO_JOURNAL;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create compactor file
-////////////////////////////////////////////////////////////////////////////////
-
 TRI_datafile_t* TRI_collection_t::createCompactor(TRI_voc_fid_t fid,
                                                   TRI_voc_size_t maximalSize) {
   try {
@@ -1033,10 +1024,7 @@ TRI_datafile_t* TRI_collection_t::createCompactor(TRI_voc_fid_t fid,
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief close an existing compactor
-////////////////////////////////////////////////////////////////////////////////
-
 int TRI_collection_t::closeCompactor(TRI_datafile_t* datafile) {
   WRITE_LOCKER(writeLocker, _filesLock);
 
@@ -1054,10 +1042,7 @@ int TRI_collection_t::closeCompactor(TRI_datafile_t* datafile) {
   return sealDatafile(datafile, true);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief replace a datafile with a compactor
-////////////////////////////////////////////////////////////////////////////////
-
 int TRI_collection_t::replaceDatafileWithCompactor(TRI_datafile_t* datafile,
                                                    TRI_datafile_t* compactor) {
   TRI_ASSERT(datafile != nullptr);
@@ -1087,10 +1072,7 @@ int TRI_collection_t::replaceDatafileWithCompactor(TRI_datafile_t* datafile,
   return TRI_ERROR_INTERNAL;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a datafile
-////////////////////////////////////////////////////////////////////////////////
-
 TRI_datafile_t* TRI_collection_t::createDatafile(TRI_voc_fid_t fid,
                                                  TRI_voc_size_t journalSize,
                                                  bool isCompactor) {
@@ -1246,10 +1228,7 @@ TRI_datafile_t* TRI_collection_t::createDatafile(TRI_voc_fid_t fid,
   return datafile;
 }
 
-//////////////////////////////////////////////////////////////////////////////
 /// @brief remove a compactor file from the list of compactors
-//////////////////////////////////////////////////////////////////////////////
-
 bool TRI_collection_t::removeCompactor(TRI_datafile_t* df) {
   WRITE_LOCKER(writeLocker, _filesLock);
 
@@ -1265,10 +1244,7 @@ bool TRI_collection_t::removeCompactor(TRI_datafile_t* df) {
   return false;
 }
 
-//////////////////////////////////////////////////////////////////////////////
 /// @brief remove a datafile from the list of datafiles
-//////////////////////////////////////////////////////////////////////////////
-
 bool TRI_collection_t::removeDatafile(TRI_datafile_t* df) {
   WRITE_LOCKER(writeLocker, _filesLock);
 
