@@ -190,8 +190,8 @@ void VppCommTask::addResponse(VppResponse* response, bool isError) {
   for (auto const& slice : slices) {
     try {
       LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << slice.toJson();
-    } catch (Exception const& e) {
-      std::cout << e.message();
+    } catch (arangodb::velocypack::Exception const& e) {
+      std::cout << "obi exception" << e.what();
     }
   }
 
