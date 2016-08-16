@@ -107,6 +107,9 @@ The following [NPM modules](https://www.npmjs.com) are preinstalled:
 * [i (inflect)](https://github.com/pksunkara/inflect)
   is a utility library for inflecting (e.g. pluralizing) words.
 
+* [iconv-lite](https://github.com/ashtuchkin/iconv-lite)
+  is a utility library for converting between character encodings
+
 * [joi](https://github.com/hapijs/joi)
   is a validation library that is supported throughout the Foxx framework.
 
