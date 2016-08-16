@@ -159,7 +159,10 @@ VppCommTask::VppCommTask(GeneralServer* server, TRI_socket_t sock,
     : Task("VppCommTask"),
       GeneralCommTask(server, sock, std::move(info), timeout) {
   _protocol = "vpp";
-  // connectionStatisticsAgentSetVpp();
+  _readBuffer->reserve(
+      _bufferLength);  // ATTENTION <- this is required so we do not
+                       // loose information during a resize
+                       // connectionStatisticsAgentSetVpp();
 }
 
 void VppCommTask::addResponse(VppResponse* response, bool isError) {
