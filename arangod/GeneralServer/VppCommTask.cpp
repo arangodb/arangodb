@@ -188,7 +188,11 @@ void VppCommTask::addResponse(VppResponse* response, bool isError) {
 
   LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "got response:";
   for (auto const& slice : slices) {
-    LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << slice.toJson();
+    try {
+      LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << slice.toJson();
+    } catch (Exception const& e) {
+      std::cout << e.message();
+    }
   }
 
   // adds chunk header infromation and creates SingBuffer* that can be
@@ -365,16 +369,15 @@ bool VppCommTask::processRead() {
     _request = new VppRequest(_connectionInfo, std::move(message));
     GeneralServerFeature::HANDLER_FACTORY->setRequestContext(_request);
     if (_request->requestContext() == nullptr) {
-       handleSimpleError(GeneralResponse::ResponseCode::NOT_FOUND, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
-                      TRI_errno_string(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND));
-    }
-    else {
-
+      handleSimpleError(GeneralResponse::ResponseCode::NOT_FOUND,
+                        TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
+                        TRI_errno_string(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND));
+    } else {
       _request->setClientTaskId(_taskId);
       _protocolVersion = _request->protocolVersion();
-      executeRequest(_request,
-                   new VppResponse(GeneralResponse::ResponseCode::SERVER_ERROR,
-                                   chunkHeader._messageID));
+      executeRequest(
+          _request, new VppResponse(GeneralResponse::ResponseCode::SERVER_ERROR,
+                                    chunkHeader._messageID));
     }
   }
 
