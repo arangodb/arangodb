@@ -336,6 +336,9 @@ struct TRI_collection_t {
   bool removeDatafile(TRI_datafile_t*);
   std::string const& path() const { return _path; }
   std::string label() const;
+
+  double lastCompaction() const { return _lastCompaction; }
+  void lastCompaction(double value) { _lastCompaction = value; }
   
   std::unique_ptr<arangodb::FollowerInfo> const& followers() const {
     return _followers;
@@ -575,7 +578,6 @@ struct TRI_collection_t {
   std::atomic<int64_t> _uncollectedLogfileEntries;
   int64_t _numberDocuments;
   arangodb::basics::ReadWriteLock _compactionLock;
-  double _lastCompaction;
   
  private:
   std::vector<arangodb::Index*> _indexes;
@@ -593,6 +595,7 @@ struct TRI_collection_t {
   size_t _nextCompactionStartIndex;
   char const* _lastCompactionStatus;
   char _lastCompactionStamp[21];
+  double _lastCompaction;
 
   // whether or not secondary indexes should be filled
   bool _useSecondaryIndexes;

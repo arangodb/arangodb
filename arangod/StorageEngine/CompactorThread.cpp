@@ -864,7 +864,7 @@ void CompactorThread::run() {
 
             try {
               double const now = TRI_microtime();
-              if (document->_lastCompaction + compactionCollectionInterval() <= now) {
+              if (document->lastCompaction() + compactionCollectionInterval() <= now) {
                 auto ce = document->ditches()->createCompactionDitch(__FILE__,
                                                                       __LINE__);
 
@@ -878,7 +878,7 @@ void CompactorThread::run() {
 
                     if (!worked && !wasBlocked) {
                       // set compaction stamp
-                      document->_lastCompaction = now;
+                      document->lastCompaction(now);
                     }
                     // if we worked or were blocked, then we don't set the compaction stamp to
                     // force another round of compaction

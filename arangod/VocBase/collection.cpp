@@ -152,11 +152,11 @@ TRI_collection_t::TRI_collection_t(TRI_vocbase_t* vocbase,
         _masterPointers(),
         _uncollectedLogfileEntries(0),
         _numberDocuments(0),
-        _lastCompaction(0.0),
         _cleanupIndexes(0), 
         _persistentIndexes(0),
         _nextCompactionStartIndex(0),
         _lastCompactionStatus(nullptr),
+        _lastCompaction(0.0),
         _useSecondaryIndexes(true) {
 
   // check if we can generate the key generator
