@@ -747,8 +747,16 @@ void MMFilesEngine::createIndex(TRI_voc_tick_t databaseId, TRI_voc_cid_t collect
 // the actual deletion.
 // the WAL entry for index deletion will be written *after* the call
 // to "dropIndex" returns
-void MMFilesEngine::dropIndex(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId,
+void MMFilesEngine::dropIndex(TRI_vocbase_t* vocbase, TRI_voc_cid_t collectionId,
                               TRI_idx_iid_t id) {
+  // construct filename
+  std::string const filename = indexFilename(vocbase->id(), collectionId, id);
+
+  int res = TRI_UnlinkFile(filename.c_str());
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    LOG(ERR) << "cannot remove index definition: " << TRI_errno_string(res);
+  }
 }
 
 // iterate all documents of the underlying collection
@@ -1085,8 +1093,19 @@ std::string MMFilesEngine::collectionDirectory(TRI_voc_tick_t databaseId, TRI_vo
   return (*it2).second;
 }
 
+/// @brief build a parameters filename (absolute path)
 std::string MMFilesEngine::collectionParametersFilename(TRI_voc_tick_t databaseId, TRI_voc_cid_t id) const {
   return basics::FileUtils::buildFilename(collectionDirectory(databaseId, id), parametersFilename());
+}
+
+/// @brief build an index filename (absolute path)
+std::string MMFilesEngine::indexFilename(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId, TRI_idx_iid_t id) const {
+  return basics::FileUtils::buildFilename(collectionDirectory(databaseId, collectionId), indexFilename(id));
+}
+
+/// @brief build an index filename (relative path)
+std::string MMFilesEngine::indexFilename(TRI_idx_iid_t id) const {
+  return std::string("index-") + std::to_string(id) + ".json";
 }
 
 /// @brief open an existing database. internal function

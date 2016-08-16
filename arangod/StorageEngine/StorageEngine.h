@@ -186,7 +186,7 @@ class StorageEngine : public application_features::ApplicationFeature {
   // the actual deletion.
   // the WAL entry for index deletion will be written *after* the call
   // to "dropIndex" returns
-  virtual void dropIndex(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId,
+  virtual void dropIndex(TRI_vocbase_t* vocbase, TRI_voc_cid_t collectionId,
                          TRI_idx_iid_t id) = 0;
 
   // document operations

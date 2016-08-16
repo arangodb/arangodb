@@ -3449,22 +3449,6 @@ std::vector<std::shared_ptr<VPackBuilder>> TRI_collection_t::indexesToVelocyPack
   return result;
 }
 
-/// @brief removes an index file
-bool TRI_collection_t::removeIndexFile(TRI_idx_iid_t id) {
-  // construct filename
-  std::string name("index-" + std::to_string(id) + ".json");
-  std::string filename = arangodb::basics::FileUtils::buildFilename(path(), name);
-
-  int res = TRI_UnlinkFile(filename.c_str());
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    LOG(ERR) << "cannot remove index definition: " << TRI_last_error();
-    return false;
-  }
-
-  return true;
-}
-
 /// @brief drops an index, including index file removal and replication
 bool TRI_collection_t::dropIndex(TRI_idx_iid_t iid, bool writeMarker) {
   if (iid == 0) {
@@ -3479,45 +3463,46 @@ bool TRI_collection_t::dropIndex(TRI_idx_iid_t iid, bool writeMarker) {
     found = removeIndex(iid);
   }
 
-  if (found != nullptr) {
-    bool result = removeIndexFile(found->id());
+  if (found == nullptr) {
+    return false;
+  }
+    
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  engine->dropIndex(_vocbase, _info.id(), iid);
 
-    delete found;
-    found = nullptr;
 
-    if (writeMarker) {
-      int res = TRI_ERROR_NO_ERROR;
+  delete found;
+    
+  if (writeMarker) {
+    int res = TRI_ERROR_NO_ERROR;
 
-      try {
-        VPackBuilder markerBuilder;
-        markerBuilder.openObject();
-        markerBuilder.add("id", VPackValue(iid));
-        markerBuilder.close();
+    try {
+      VPackBuilder markerBuilder;
+      markerBuilder.openObject();
+      markerBuilder.add("id", VPackValue(iid));
+      markerBuilder.close();
 
-        arangodb::wal::CollectionMarker marker(TRI_DF_MARKER_VPACK_DROP_INDEX, _vocbase->id(), _info.id(), markerBuilder.slice());
-        
-        arangodb::wal::SlotInfoCopy slotInfo =
-            arangodb::wal::LogfileManager::instance()->allocateAndWrite(marker, false);
+      arangodb::wal::CollectionMarker marker(TRI_DF_MARKER_VPACK_DROP_INDEX, _vocbase->id(), _info.id(), markerBuilder.slice());
 
-        if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
-          THROW_ARANGO_EXCEPTION(slotInfo.errorCode);
-        }
+      arangodb::wal::SlotInfoCopy slotInfo =
+        arangodb::wal::LogfileManager::instance()->allocateAndWrite(marker, false);
 
-        return true;
-      } catch (arangodb::basics::Exception const& ex) {
-        res = ex.code();
-      } catch (...) {
-        res = TRI_ERROR_INTERNAL;
+      if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
+        THROW_ARANGO_EXCEPTION(slotInfo.errorCode);
       }
 
-      LOG(WARN) << "could not save index drop marker in log: " << TRI_errno_string(res);
+      return true;
+    } catch (basics::Exception const& ex) {
+      res = ex.code();
+    } catch (...) {
+      res = TRI_ERROR_INTERNAL;
     }
 
+    LOG(WARN) << "could not save index drop marker in log: " << TRI_errno_string(res);
     // TODO: what to do here?
-    return result;
   }
 
-  return false;
+  return true;
 }
 
 /// @brief finds a path based, unique or non-unique index

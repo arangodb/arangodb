@@ -341,7 +341,6 @@ struct TRI_collection_t {
   bool removeCompactor(TRI_datafile_t*);
   bool removeDatafile(TRI_datafile_t*);
   void addIndexFile(std::string const&);
-  bool removeIndexFile(TRI_idx_iid_t id);
   bool removeIndexFileFromVector(TRI_idx_iid_t id);
   std::string const& path() const { return _path; }
   std::string label() const;

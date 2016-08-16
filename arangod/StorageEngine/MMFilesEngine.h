@@ -195,7 +195,7 @@ class MMFilesEngine final : public StorageEngine {
   // the actual deletion.
   // the WAL entry for index deletion will be written *after* the call
   // to "dropIndex" returns
-  void dropIndex(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId,
+  void dropIndex(TRI_vocbase_t* vocbase, TRI_voc_cid_t collectionId,
                  TRI_idx_iid_t id) override;
 
   // document operations
@@ -258,14 +258,16 @@ class MMFilesEngine final : public StorageEngine {
   /// @brief save a parameter.json file for a database
   int saveDatabaseParameters(TRI_voc_tick_t id, std::string const& name, bool deleted);
   
-  arangodb::velocypack::Builder databaseToVelocyPack(TRI_voc_tick_t id, 
+  arangodb::velocypack::Builder databaseToVelocyPack(TRI_voc_tick_t databaseId, 
                                                      std::string const& name, 
                                                      bool deleted) const;
 
-  std::string databaseDirectory(TRI_voc_tick_t id) const;
-  std::string databaseParametersFilename(TRI_voc_tick_t id) const;
-  std::string collectionDirectory(TRI_voc_tick_t id, TRI_voc_cid_t cid) const;
-  std::string collectionParametersFilename(TRI_voc_tick_t id, TRI_voc_cid_t cid) const;
+  std::string databaseDirectory(TRI_voc_tick_t databaseId) const;
+  std::string databaseParametersFilename(TRI_voc_tick_t databaseId) const;
+  std::string collectionDirectory(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId) const;
+  std::string collectionParametersFilename(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId) const;
+  std::string indexFilename(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId, TRI_idx_iid_t indexId) const;
+  std::string indexFilename(TRI_idx_iid_t indexId) const;
 
   int openDatabases();
 
