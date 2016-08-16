@@ -245,6 +245,8 @@ class MMFilesEngine final : public StorageEngine {
                             bool checkForActiveBlockers) override;
   
   int shutdownDatabase(TRI_vocbase_t* vocbase) override;
+  
+  int openCollection(TRI_vocbase_t* vocbase, TRI_collection_t* collection, bool ignoreErrors) override;
 
  private:
   void verifyDirectories(); 
