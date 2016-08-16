@@ -1274,8 +1274,7 @@ bool TRI_collection_t::closeDataFiles(std::vector<TRI_datafile_t*> const& files)
 
 
 VocbaseCollectionInfo::VocbaseCollectionInfo(CollectionInfo const& other)
-    : _version(TRI_COL_VERSION),
-      _type(other.type()),
+    : _type(other.type()),
       _revision(0),      // not known in the cluster case on the coordinator
       _cid(other.id()),  // this is on the coordinator and describes a
                          // cluster-wide collection, for safety reasons,
@@ -1308,8 +1307,7 @@ VocbaseCollectionInfo::VocbaseCollectionInfo(TRI_vocbase_t* vocbase,
                                              TRI_col_type_e type,
                                              TRI_voc_size_t maximalSize,
                                              VPackSlice const& keyOptions)
-    : _version(TRI_COL_VERSION),
-      _type(type),
+    : _type(type),
       _revision(0),
       _cid(0),
       _planId(0),
@@ -1355,8 +1353,7 @@ VocbaseCollectionInfo::VocbaseCollectionInfo(TRI_vocbase_t* vocbase,
                                              TRI_col_type_e type,
                                              VPackSlice const& options,
                                              bool forceIsSystem)
-    : _version(TRI_COL_VERSION),
-      _type(type),
+    : _type(type),
       _revision(0),
       _cid(0),
       _planId(0),
@@ -1514,9 +1511,6 @@ VocbaseCollectionInfo::VocbaseCollectionInfo(TRI_vocbase_t* vocbase,
   _isSystem = (*_name == '_');
 }
 
-// collection version
-TRI_col_version_t VocbaseCollectionInfo::version() const { return _version; }
-
 // collection type
 TRI_col_type_e VocbaseCollectionInfo::type() const { return _type; }
 
@@ -1656,7 +1650,6 @@ void VocbaseCollectionInfo::update(VPackSlice const& slice, bool preferDefaults,
 }
 
 void VocbaseCollectionInfo::update(VocbaseCollectionInfo const& other) {
-  _version = other.version();
   _type = other.type();
   _cid = other.id();
   _planId = other.planId();
@@ -4525,7 +4518,7 @@ int TRI_collection_t::indexFromVelocyPack(arangodb::Transaction* trx,
 }
 
 /// @brief state during opening of a collection
-struct open_iterator_state_t {
+struct OpenIteratorState {
   TRI_collection_t* _document;
   TRI_voc_tid_t _tid;
   TRI_voc_fid_t _fid;
@@ -4537,8 +4530,8 @@ struct open_iterator_state_t {
   uint64_t _documents;
   int64_t _initialCount;
 
-  open_iterator_state_t(TRI_collection_t* document,
-                        TRI_vocbase_t* vocbase)
+  OpenIteratorState(TRI_collection_t* document,
+                    TRI_vocbase_t* vocbase)
       : _document(document),
         _tid(0),
         _fid(0),
@@ -4550,7 +4543,7 @@ struct open_iterator_state_t {
         _documents(0),
         _initialCount(-1) {}
 
-  ~open_iterator_state_t() {
+  ~OpenIteratorState() {
     for (auto& it : _stats) {
       delete it.second;
     }
@@ -4559,7 +4552,7 @@ struct open_iterator_state_t {
 
 /// @brief find a statistics container for a given file id
 static DatafileStatisticsContainer* FindDatafileStats(
-    open_iterator_state_t* state, TRI_voc_fid_t fid) {
+    OpenIteratorState* state, TRI_voc_fid_t fid) {
   auto it = state->_stats.find(fid);
 
   if (it != state->_stats.end()) {
@@ -4577,7 +4570,7 @@ static DatafileStatisticsContainer* FindDatafileStats(
 /// @brief process a document (or edge) marker when opening a collection
 static int OpenIteratorHandleDocumentMarker(TRI_df_marker_t const* marker,
                                             TRI_datafile_t* datafile,
-                                            open_iterator_state_t* state) {
+                                            OpenIteratorState* state) {
   auto const fid = datafile->_fid;
   TRI_collection_t* document = state->_document;
   arangodb::Transaction* trx = state->_trx;
@@ -4673,7 +4666,7 @@ static int OpenIteratorHandleDocumentMarker(TRI_df_marker_t const* marker,
 /// @brief process a deletion marker when opening a collection
 static int OpenIteratorHandleDeletionMarker(TRI_df_marker_t const* marker,
                                             TRI_datafile_t* datafile,
-                                            open_iterator_state_t* state) {
+                                            OpenIteratorState* state) {
   TRI_collection_t* document = state->_document;
   arangodb::Transaction* trx = state->_trx;
 
@@ -4743,7 +4736,7 @@ static int OpenIteratorHandleDeletionMarker(TRI_df_marker_t const* marker,
 static bool OpenIterator(TRI_df_marker_t const* marker, void* data,
                          TRI_datafile_t* datafile) {
   TRI_collection_t* document =
-      static_cast<open_iterator_state_t*>(data)->_document;
+      static_cast<OpenIteratorState*>(data)->_document;
   TRI_voc_tick_t const tick = marker->getTick();
   TRI_df_marker_type_t const type = marker->getType();
 
@@ -4751,7 +4744,7 @@ static bool OpenIterator(TRI_df_marker_t const* marker, void* data,
 
   if (type == TRI_DF_MARKER_VPACK_DOCUMENT) {
     res = OpenIteratorHandleDocumentMarker(marker, datafile,
-                                           static_cast<open_iterator_state_t*>(data));
+                                           static_cast<OpenIteratorState*>(data));
 
     if (datafile->_dataMin == 0) {
       datafile->_dataMin = tick;
@@ -4762,12 +4755,12 @@ static bool OpenIterator(TRI_df_marker_t const* marker, void* data,
     }
   } else if (type == TRI_DF_MARKER_VPACK_REMOVE) {
     res = OpenIteratorHandleDeletionMarker(marker, datafile,
-                                           static_cast<open_iterator_state_t*>(data));
+                                           static_cast<OpenIteratorState*>(data));
   } else {
     if (type == TRI_DF_MARKER_HEADER) {
       // ensure there is a datafile info entry for each datafile of the
       // collection
-      FindDatafileStats(static_cast<open_iterator_state_t*>(data), datafile->_fid);
+      FindDatafileStats(static_cast<OpenIteratorState*>(data), datafile->_fid);
     }
 
     LOG(TRACE) << "skipping marker type " << TRI_NameMarkerDatafile(marker);
@@ -4834,7 +4827,7 @@ static int IterateMarkersCollection(arangodb::Transaction* trx,
   auto document = reinterpret_cast<TRI_collection_t*>(collection);
 
   // initialize state for iteration
-  open_iterator_state_t openState(document, collection->_vocbase);
+  OpenIteratorState openState(document, collection->_vocbase);
 
   if (collection->_info.initialCount() != -1) {
     auto primaryIndex = document->primaryIndex();

@@ -453,7 +453,7 @@ int MMFilesEngine::getCollectionsAndIndexes(TRI_vocbase_t* vocbase,
         continue;
       }
 
-      if (info.version() < TRI_COL_VERSION && !isUpgrade) {
+      if (info.version() < VocbaseCollectionInfo::version() && !isUpgrade) {
         // collection is too "old"
         LOG(ERR) << "collection '" << info.name()
                  << "' has a too old version. Please start the server "
@@ -1321,7 +1321,7 @@ VocbaseCollectionInfo MMFilesEngine::loadCollectionInfo(TRI_vocbase_t* vocbase,
   VocbaseCollectionInfo info(vocbase, collectionName, slice, isSystemValue);
   
   // warn about wrong version of the collection
-  if (versionWarning && info.version() < TRI_COL_VERSION) {
+  if (versionWarning && info.version() < VocbaseCollectionInfo::version()) {
     if (info.name()[0] != '\0') {
       // only warn if the collection version is older than expected, and if it's
       // not a shape collection

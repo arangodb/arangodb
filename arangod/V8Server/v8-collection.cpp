@@ -2620,7 +2620,7 @@ static void JS_VersionVocbaseCol(
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
-  TRI_V8_RETURN(v8::Number::New(isolate, (int) TRI_COL_VERSION));
+  TRI_V8_RETURN(v8::Number::New(isolate, (int) VocbaseCollectionInfo::version()));
   TRI_V8_TRY_CATCH_END
 }
 

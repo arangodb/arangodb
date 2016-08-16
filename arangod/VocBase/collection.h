@@ -71,9 +71,6 @@ struct DocumentOperation;
 }
 }
 
-/// @brief current collection version
-#define TRI_COL_VERSION 5
-
 /// @brief predefined collection name for users
 #define TRI_COL_NAME_USERS "_users"
 
@@ -107,15 +104,11 @@ struct TRI_doc_collection_info_t {
   char _lastCompactionStamp[21];
 };
 
-/// @brief collection version
-typedef uint32_t TRI_col_version_t;
-
 namespace arangodb {
 
 /// @brief collection info block saved to disk as json
 class VocbaseCollectionInfo {
  private:
-  TRI_col_version_t _version;   // collection version
   TRI_col_type_e _type;         // collection type
   TRI_voc_rid_t _revision;      // last revision id written
   TRI_voc_cid_t _cid;           // local collection identifier
@@ -156,7 +149,7 @@ class VocbaseCollectionInfo {
   void toVelocyPack(VPackBuilder& builder) const;
 
   // collection version
-  TRI_col_version_t version() const;
+  static constexpr uint32_t version() { return 5; }
 
   // collection type
   TRI_col_type_e type() const;
