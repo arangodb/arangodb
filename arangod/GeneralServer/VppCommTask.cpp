@@ -194,7 +194,7 @@ void VppCommTask::addResponse(VppResponse* response, bool isError) {
     try {
       LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << slice.toJson();
     } catch (arangodb::velocypack::Exception const& e) {
-      std::cout << "obi exception" << e.what();
+      std::cout << e.what() << std::endl;
     }
   }
 
@@ -364,13 +364,13 @@ bool VppCommTask::processRead() {
   }
 
   if (doExecute) {
-    //    return false;  // we have no complete request, so we return early
-    // for now we can handle only one request at a time
-    // lock _request???? REVIEW (fc)
     LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
         << "got request:" << message._header.toJson();
+
     _request = new VppRequest(_connectionInfo, std::move(message));
     GeneralServerFeature::HANDLER_FACTORY->setRequestContext(_request);
+
+    //make sure we have a dabase
     if (_request->requestContext() == nullptr) {
       handleSimpleError(GeneralResponse::ResponseCode::NOT_FOUND,
                         TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
