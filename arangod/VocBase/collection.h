@@ -301,11 +301,6 @@ struct TRI_collection_t {
   arangodb::PrimaryIndex* primaryIndex();
   arangodb::EdgeIndex* edgeIndex();
  
-  /// @brief enumerate all indexes of the collection, but don't fill them yet
-  int detectIndexes(arangodb::Transaction*);
- 
-  void iterateIndexes(std::function<bool(std::string const&, void*)> const&, void*);
-  
   TRI_doc_collection_info_t* figures();
 
   int beginRead();
@@ -462,6 +457,11 @@ struct TRI_collection_t {
   int unload(bool updateStatus);
 
  private:
+  /// @brief enumerate all indexes of the collection, but don't fill them yet
+  int detectIndexes(arangodb::Transaction*);
+ 
+  void iterateIndexes(std::function<bool(std::string const&, void*)> const&, void*);
+
   arangodb::Index* removeIndex(TRI_idx_iid_t);
 
   int lookupDocument(arangodb::Transaction*, arangodb::velocypack::Slice const,
