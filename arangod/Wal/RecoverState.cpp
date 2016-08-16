@@ -939,7 +939,6 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
         // ignore any potential error returned by this call
         document->dropIndex(indexId, false);
         document->removeIndexFileFromVector(indexId); // TODO
-        document->removeIndex(indexId);
 
 #ifdef ARANGODB_ENABLE_ROCKSDB
         RocksDBFeature::dropIndex(databaseId, collectionId, indexId);
