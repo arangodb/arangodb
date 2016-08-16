@@ -873,8 +873,8 @@ bool VelocyPackHelper::hasExternals(VPackSlice input) {
   return false;
 }
 
-VPackBuilder VelocyPackHelper::stanitizeExternalsChecked(VPackSlice input,
-                                                         bool checkExternals) {
+VPackBuilder VelocyPackHelper::sanitizeExternalsChecked(VPackSlice input,
+                                                        bool checkExternals) {
   VPackBuilder builder;
   bool resolveExt = true;
   if (checkExternals) {
