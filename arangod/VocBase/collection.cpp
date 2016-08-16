@@ -146,7 +146,7 @@ static bool OpenIndexIterator(std::string const& filename, void* data) {
   return true;
 }
 
-/// @brief converts extracts a field list from a VelocyPack object
+/// @brief extracts a field list from a VelocyPack object
 ///        Does not copy any data, caller has to make sure that data
 ///        in slice stays valid until this return value is destroyed.
 static VPackSlice ExtractFields(VPackSlice const& slice, TRI_idx_iid_t iid) {
@@ -1289,12 +1289,9 @@ void TRI_collection_t::addIndexFile(std::string const& filename) {
   _indexFiles.emplace_back(filename);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief removes an index file from the _indexFiles vector
-////////////////////////////////////////////////////////////////////////////////
-
 bool TRI_collection_t::removeIndexFileFromVector(TRI_idx_iid_t id) {
-  READ_LOCKER(readLocker, _filesLock);
+  WRITE_LOCKER(readLocker, _filesLock);
 
   for (auto it = _indexFiles.begin(); it != _indexFiles.end(); ++it) {
     if (GetNumericFilenamePart((*it).c_str()) == id) {

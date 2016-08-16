@@ -82,8 +82,7 @@ class Transaction {
     friend class Transaction;
     std::shared_ptr<arangodb::Index> _index;
    public:
-    IndexHandle() {
-    }
+    IndexHandle() = default;
     void toVelocyPack(arangodb::velocypack::Builder& builder,
                       bool withFigures) const;
     bool operator==(IndexHandle const& other) const {

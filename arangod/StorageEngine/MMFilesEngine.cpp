@@ -1627,19 +1627,13 @@ int MMFilesEngine::openCollection(TRI_vocbase_t* vocbase, TRI_collection_t* coll
       }
     }
 
-    // .............................................................................
     // file is an index, just store the filename
-    // .............................................................................
-
     if (filetype == "index" && extension == "json") {
       collection->addIndexFile(filename);
       continue;
     }
 
-    // .............................................................................
     // file is a journal or datafile, open the datafile
-    // .............................................................................
-
     if (extension == "db") {
       // found a compaction file. now rename it back
       if (filetype == "compaction") {
