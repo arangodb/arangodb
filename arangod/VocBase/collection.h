@@ -569,8 +569,6 @@ struct TRI_collection_t {
   
   arangodb::DatafileStatistics _datafileStatistics;
   
-  mutable arangodb::Ditches _ditches;
-
   arangodb::MasterPointers _masterPointers;
 
   std::unique_ptr<arangodb::KeyGenerator> _keyGenerator;
@@ -580,6 +578,8 @@ struct TRI_collection_t {
   arangodb::basics::ReadWriteLock _compactionLock;
   
  private:
+  mutable arangodb::Ditches _ditches;
+
   std::vector<arangodb::Index*> _indexes;
 
   // whether or not any of the indexes may need to be garbage-collected
