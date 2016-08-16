@@ -64,6 +64,7 @@ arangodb::consensus::id_t Agent::id() const {
 
 /// Agent's id is set once from state machine
 bool Agent::id(arangodb::consensus::id_t const& id) {
+  LOG_TOPIC(DEBUG, Logger::AGENCY) << "My id is " << id;
   MUTEX_LOCKER(mutexLocker, _cfgLock);  
   _config.setId(id);
   return true;
@@ -305,10 +306,6 @@ priv_rpc_ret_t Agent::sendAppendEntriesRPC(
        << "&prevLogTerm=" << unconfirmed.front().term
        << "&leaderCommit=" << _lastCommitIndex;
 
-  // Headers
-  auto headerFields =
-      std::make_unique<std::unordered_map<std::string, std::string>>();
-
   // Body
   Builder builder;
   builder.add(VPackValue(VPackValueType::Array));
@@ -331,6 +328,8 @@ priv_rpc_ret_t Agent::sendAppendEntriesRPC(
   }
 
   // Send request
+  auto headerFields =
+    std::make_unique<std::unordered_map<std::string, std::string>>();
   arangodb::ClusterComm::instance()->asyncRequest(
       "1", 1, _config.pool[follower_id],
       arangodb::GeneralRequest::RequestType::POST, path.str(),
@@ -387,26 +386,34 @@ bool Agent::load() {
     inception();
   }
 
+  LOG(WARN) << __LINE__;
   activateAgency();
   
+  LOG(WARN) << __LINE__;
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "Reassembling spearhead and read stores.";
   _spearhead.apply(_state.slices(_lastCommitIndex + 1));
 
+  LOG(WARN) << __LINE__;
   {
     CONDITION_LOCKER(guard, _appendCV);
     guard.broadcast();
   }
 
+  LOG(WARN) << _config.toBuilder()->toJson();
+  LOG(WARN) << __LINE__;
   reportIn(id(), _state.lastLog().index);
 
+  LOG(WARN) << __LINE__;
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "Starting spearhead worker.";
   _spearhead.start();
   _readDB.start();
 
+  LOG(WARN) << __LINE__;
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "Starting constituent personality.";
   TRI_ASSERT(queryRegistry != nullptr);
   _constituent.start(vocbase, queryRegistry);
 
+  LOG(WARN) << __LINE__;
   if (_config.supervision) {
     LOG_TOPIC(DEBUG, Logger::AGENCY) << "Starting cluster sanity facilities";
     _supervision.start(this);
@@ -638,27 +645,48 @@ void Agent::gossip() {
     out->close();
     out->close();
 
-    auto headerFields =
-      std::make_unique<std::unordered_map<std::string, std::string>>();
     std::string path = "/_api/agency/gossip";
-      
-    for (auto const& endpoint : peers) { // gossip peers
-      arangodb::ClusterComm::instance()->asyncRequest(
-        "1", 1, endpoint, GeneralRequest::RequestType::POST, path,
-        std::make_shared<std::string>(out->toJson()), headerFields,
-        std::make_shared<GossipCallback>(this), 1.0, true, 0.5);
+    
+    for (auto const& p : peers) { // gossip peers
+      LOG(WARN) << p << " " << _config.endpoint;
+      bool send = false;
+      {
+        MUTEX_LOCKER(mutexLocker, _cfgLock);
+        if (p !=_config.endpoint) {
+          send = true;
+        }
+      }
+      if (send) {
+        LOG(WARN) << p;
+        auto hf = std::make_unique<std::unordered_map<std::string, std::string>>();
+        arangodb::ClusterComm::instance()->asyncRequest(
+          this->id(), 1, p, GeneralRequest::RequestType::POST, path,
+          std::make_shared<std::string>(out->toJson()), hf,
+          std::make_shared<GossipCallback>(this), 1.0, true);
+      }
     }
     
     for (auto const& pair : pool) { // pool entries
-      arangodb::ClusterComm::instance()->asyncRequest(
-        "1", 1, pair.second, GeneralRequest::RequestType::POST, path,
-        std::make_shared<std::string>(out->toJson()), headerFields,
-        std::make_shared<GossipCallback>(this), 1.0, true, 0.5);
+      bool send = false;
+      {
+        MUTEX_LOCKER(mutexLocker, _cfgLock);
+        if (pair.second !=_config.endpoint) {
+          send = true;
+        }
+      }
+      if (send) {
+        LOG(WARN) << pair.second;
+        auto hf = std::make_unique<std::unordered_map<std::string, std::string>>();
+        arangodb::ClusterComm::instance()->asyncRequest(
+          this->id(), 1, pair.second, GeneralRequest::RequestType::POST, path,
+          std::make_shared<std::string>(out->toJson()), hf,
+          std::make_shared<GossipCallback>(this), 1.0, true);
+      }
     }
-    
   }
   
 }
+
 
 
 /// We expect an object as follows {id:<id>,endpoint:<endpoint>,pool:{...}}
@@ -762,7 +790,7 @@ query_t Agent::gossip(query_t const& in, bool isCallback) {
     std::string path = "/_api/agency/gossip";
     
     arangodb::ClusterComm::instance()->asyncRequest(
-      "1", 1, endpoint, GeneralRequest::RequestType::POST, path,
+      "4", 1, endpoint, GeneralRequest::RequestType::POST, path,
       std::make_shared<std::string>(out->toJson()), headerFields,
       std::make_shared<GossipCallback>(this), 1.0, true, 0.5);
     
@@ -780,6 +808,8 @@ query_t Agent::gossip(query_t const& in, bool isCallback) {
 /// - no: 
 bool Agent::activeAgency() {
 
+  return false;
+  
   std::map<std::string, std::string> pool;
   std::vector<std::string> active;
   { 
@@ -802,7 +832,7 @@ inline static query_t getResponse(
   query_t ret = nullptr;
   std::unordered_map<std::string, std::string> headerFields;
   auto res = arangodb::ClusterComm::instance()->syncRequest(
-    "1", 1, endpoint, GeneralRequest::RequestType::GET, path, std::string(),
+    "5", 1, endpoint, GeneralRequest::RequestType::GET, path, std::string(),
     headerFields, 1.0);
 
   if (res->status == CL_COMM_RECEIVED) {
@@ -814,6 +844,8 @@ inline static query_t getResponse(
 }
 
 bool Agent::persistedAgents() {
+
+  return false;
   
   std::vector<std::string> active;
   std::map<std::string,std::string> pool;
@@ -934,15 +966,14 @@ bool Agent::serveActiveAgent() {
 void Agent::inception() {
 
   auto start = std::chrono::system_clock::now(); //
-  std::chrono::seconds timeout(300);
+  std::chrono::seconds timeout(30);
   
   if (persistedAgents()) {
     return;
   }
 
-  CONDITION_LOCKER(guard, _configCV);
 
-  while (booting()) {
+  while (!this->isStopping() && booting()) {
 
     if (activeAgency()) {
       return;
@@ -950,8 +981,8 @@ void Agent::inception() {
 
     gossip();
     
-    _configCV.wait(1000);
-
+    _configCV.wait(100000);
+    
     if (std::chrono::system_clock::now() - start > timeout) {
       LOG_TOPIC(ERR, Logger::AGENCY) <<
         "Failed to find complete pool of agents.";

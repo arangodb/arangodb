@@ -169,7 +169,7 @@ void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 }
 
 void AgencyFeature::prepare() {
-  _agencyEndpoints.resize(static_cast<size_t>(_size));
+  //_agencyEndpoints.resize(static_cast<size_t>(_size));
 }
 
 void AgencyFeature::start() {

@@ -449,7 +449,7 @@ void Constituent::run() {
   }
 
   if (size() == 1) {
-    lead();
+    _leaderID = _agent->config().id;
   } else {
 
     while (!this->isStopping()) {
