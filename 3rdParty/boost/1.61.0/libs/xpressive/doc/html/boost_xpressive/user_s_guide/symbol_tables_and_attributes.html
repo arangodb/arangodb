@@ -1,0 +1,171 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Symbol Tables and Attributes</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../../index.html" title="Chapter&#160;1.&#160;Boost.Xpressive">
+<link rel="up" href="../../xpressive/user_s_guide.html" title="User's Guide">
+<link rel="prev" href="semantic_actions_and_user_defined_assertions.html" title="Semantic Actions and User-Defined Assertions">
+<link rel="next" href="localization_and_regex_traits.html" title="Localization and Regex Traits">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="semantic_actions_and_user_defined_assertions.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../xpressive/user_s_guide.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="localization_and_regex_traits.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_xpressive.user_s_guide.symbol_tables_and_attributes"></a><a class="link" href="symbol_tables_and_attributes.html" title="Symbol Tables and Attributes">Symbol
+      Tables and Attributes</a>
+</h3></div></div></div>
+<h3>
+<a name="boost_xpressive.user_s_guide.symbol_tables_and_attributes.h0"></a>
+        <span><a name="boost_xpressive.user_s_guide.symbol_tables_and_attributes.overview"></a></span><a class="link" href="symbol_tables_and_attributes.html#boost_xpressive.user_s_guide.symbol_tables_and_attributes.overview">Overview</a>
+      </h3>
+<p>
+        Symbol tables can be built into xpressive regular expressions with just a
+        <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">map</span><span class="special">&lt;&gt;</span></code>.
+        The map keys are the strings to be matched and the map values are the data
+        to be returned to your semantic action. Xpressive attributes, named <code class="computeroutput"><span class="identifier">a1</span></code>, <code class="computeroutput"><span class="identifier">a2</span></code>,
+        through <code class="computeroutput"><span class="identifier">a9</span></code>, hold the value
+        corresponding to a matching key so that it can be used in a semantic action.
+        A default value can be specified for an attribute if a symbol is not found.
+      </p>
+<h3>
+<a name="boost_xpressive.user_s_guide.symbol_tables_and_attributes.h1"></a>
+        <span><a name="boost_xpressive.user_s_guide.symbol_tables_and_attributes.symbol_tables"></a></span><a class="link" href="symbol_tables_and_attributes.html#boost_xpressive.user_s_guide.symbol_tables_and_attributes.symbol_tables">Symbol
+        Tables</a>
+      </h3>
+<p>
+        An xpressive symbol table is just a <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">map</span><span class="special">&lt;&gt;</span></code>,
+        where the key is a string type and the value can be anything. For example,
+        the following regular expression matches a key from map1 and assigns the
+        corresponding value to the attribute <code class="computeroutput"><span class="identifier">a1</span></code>.
+        Then, in the semantic action, it assigns the value stored in attribute <code class="computeroutput"><span class="identifier">a1</span></code> to an integer result.
+      </p>
+<pre class="programlisting"><span class="keyword">int</span> <span class="identifier">result</span><span class="special">;</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">map</span><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span><span class="special">,</span> <span class="keyword">int</span><span class="special">&gt;</span> <span class="identifier">map1</span><span class="special">;</span>
+<span class="comment">// ... (fill the map)</span>
+<span class="identifier">sregex</span> <span class="identifier">rx</span> <span class="special">=</span> <span class="special">(</span> <span class="identifier">a1</span> <span class="special">=</span> <span class="identifier">map1</span> <span class="special">)</span> <span class="special">[</span> <span class="identifier">ref</span><span class="special">(</span><span class="identifier">result</span><span class="special">)</span> <span class="special">=</span> <span class="identifier">a1</span> <span class="special">];</span>
+</pre>
+<p>
+        Consider the following example code, which translates number names into integers.
+        It is described below.
+      </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">string</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">iostream</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">xpressive</span><span class="special">/</span><span class="identifier">xpressive</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">xpressive</span><span class="special">/</span><span class="identifier">regex_actions</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="keyword">using</span> <span class="keyword">namespace</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">xpressive</span><span class="special">;</span>
+
+<span class="keyword">int</span> <span class="identifier">main</span><span class="special">()</span>
+<span class="special">{</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">map</span><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span><span class="special">,</span> <span class="keyword">int</span><span class="special">&gt;</span> <span class="identifier">number_map</span><span class="special">;</span>
+    <span class="identifier">number_map</span><span class="special">[</span><span class="string">"one"</span><span class="special">]</span> <span class="special">=</span> <span class="number">1</span><span class="special">;</span>
+    <span class="identifier">number_map</span><span class="special">[</span><span class="string">"two"</span><span class="special">]</span> <span class="special">=</span> <span class="number">2</span><span class="special">;</span>
+    <span class="identifier">number_map</span><span class="special">[</span><span class="string">"three"</span><span class="special">]</span> <span class="special">=</span> <span class="number">3</span><span class="special">;</span>
+    <span class="comment">// Match a string from number_map</span>
+    <span class="comment">// and store the integer value in 'result'</span>
+    <span class="comment">// if not found, store -1 in 'result'</span>
+    <span class="keyword">int</span> <span class="identifier">result</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span>
+    <span class="identifier">cregex</span> <span class="identifier">rx</span> <span class="special">=</span> <span class="special">((</span><span class="identifier">a1</span> <span class="special">=</span> <span class="identifier">number_map</span> <span class="special">)</span> <span class="special">|</span> <span class="special">*</span><span class="identifier">_</span><span class="special">)</span>
+        <span class="special">[</span> <span class="identifier">ref</span><span class="special">(</span><span class="identifier">result</span><span class="special">)</span> <span class="special">=</span> <span class="special">(</span><span class="identifier">a1</span> <span class="special">|</span> <span class="special">-</span><span class="number">1</span><span class="special">)];</span>
+
+    <span class="identifier">regex_match</span><span class="special">(</span><span class="string">"three"</span><span class="special">,</span> <span class="identifier">rx</span><span class="special">);</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">result</span> <span class="special">&lt;&lt;</span> <span class="char">'\n'</span><span class="special">;</span>
+    <span class="identifier">regex_match</span><span class="special">(</span><span class="string">"two"</span><span class="special">,</span> <span class="identifier">rx</span><span class="special">);</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">result</span> <span class="special">&lt;&lt;</span> <span class="char">'\n'</span><span class="special">;</span>
+    <span class="identifier">regex_match</span><span class="special">(</span><span class="string">"stuff"</span><span class="special">,</span> <span class="identifier">rx</span><span class="special">);</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">result</span> <span class="special">&lt;&lt;</span> <span class="char">'\n'</span><span class="special">;</span>
+    <span class="keyword">return</span> <span class="number">0</span><span class="special">;</span>
+<span class="special">}</span>
+</pre>
+<p>
+        This program prints the following:
+      </p>
+<pre class="programlisting">3
+2
+-1
+</pre>
+<p>
+        First the program builds a number map, with number names as string keys and
+        the corresponding integers as values. Then it constructs a static regular
+        expression using an attribute <code class="computeroutput"><span class="identifier">a1</span></code>
+        to represent the result of the symbol table lookup. In the semantic action,
+        the attribute is assigned to an integer variable <code class="computeroutput"><span class="identifier">result</span></code>.
+        If the symbol was not found, a default value of <code class="computeroutput"><span class="special">-</span><span class="number">1</span></code> is assigned to <code class="computeroutput"><span class="identifier">result</span></code>.
+        A wildcard, <code class="computeroutput"><span class="special">*</span><span class="identifier">_</span></code>,
+        makes sure the regex matches even if the symbol is not found.
+      </p>
+<p>
+        A more complete version of this example can be found in <code class="literal">libs/xpressive/example/numbers.cpp</code><sup>[<a name="boost_xpressive.user_s_guide.symbol_tables_and_attributes.f0" href="#ftn.boost_xpressive.user_s_guide.symbol_tables_and_attributes.f0" class="footnote">2</a>]</sup>. It translates number names up to "nine hundred ninety nine
+        million nine hundred ninety nine thousand nine hundred ninety nine"
+        along with some special number names like "dozen".
+      </p>
+<p>
+        Symbol table matches are case sensitive by default, but they can be made
+        case-insensitive by enclosing the expression in <code class="computeroutput"><span class="identifier">icase</span><span class="special">()</span></code>.
+      </p>
+<h3>
+<a name="boost_xpressive.user_s_guide.symbol_tables_and_attributes.h2"></a>
+        <span><a name="boost_xpressive.user_s_guide.symbol_tables_and_attributes.attributes"></a></span><a class="link" href="symbol_tables_and_attributes.html#boost_xpressive.user_s_guide.symbol_tables_and_attributes.attributes">Attributes</a>
+      </h3>
+<p>
+        Up to nine attributes can be used in a regular expression. They are named
+        <code class="computeroutput"><span class="identifier">a1</span></code>, <code class="computeroutput"><span class="identifier">a2</span></code>,
+        ..., <code class="computeroutput"><span class="identifier">a9</span></code> in the <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">xpressive</span></code> namespace. The attribute type
+        is the same as the second component of the map that is assigned to it. A
+        default value for an attribute can be specified in a semantic action with
+        the syntax <code class="computeroutput"><span class="special">(</span><span class="identifier">a1</span>
+        <span class="special">|</span> <em class="replaceable"><code>default-value</code></em><span class="special">)</span></code>.
+      </p>
+<p>
+        Attributes are properly scoped, so you can do crazy things like: <code class="computeroutput"><span class="special">(</span> <span class="special">(</span><span class="identifier">a1</span><span class="special">=</span><span class="identifier">sym1</span><span class="special">)</span>
+        <span class="special">&gt;&gt;</span> <span class="special">(</span><span class="identifier">a1</span><span class="special">=</span><span class="identifier">sym2</span><span class="special">)[</span><span class="identifier">ref</span><span class="special">(</span><span class="identifier">x</span><span class="special">)=</span><span class="identifier">a1</span><span class="special">]</span> <span class="special">)[</span><span class="identifier">ref</span><span class="special">(</span><span class="identifier">y</span><span class="special">)=</span><span class="identifier">a1</span><span class="special">]</span></code>. The
+        inner semantic action sees the inner <code class="computeroutput"><span class="identifier">a1</span></code>,
+        and the outer semantic action sees the outer one. They can even have different
+        types.
+      </p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+          Xpressive builds a hidden ternary search trie from the map so it can search
+          quickly. If BOOST_DISABLE_THREADS is defined, the hidden ternary search
+          trie "self adjusts", so after each search it restructures itself
+          to improve the efficiency of future searches based on the frequency of
+          previous searches.
+        </p></td></tr>
+</table></div>
+<div class="footnotes">
+<br><hr width="100" align="left">
+<div class="footnote"><p><sup>[<a id="ftn.boost_xpressive.user_s_guide.symbol_tables_and_attributes.f0" href="#boost_xpressive.user_s_guide.symbol_tables_and_attributes.f0" class="para">2</a>] </sup>
+          Many thanks to David Jenkins, who contributed this example.
+        </p></div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2007 Eric Niebler<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="semantic_actions_and_user_defined_assertions.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../xpressive/user_s_guide.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="localization_and_regex_traits.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

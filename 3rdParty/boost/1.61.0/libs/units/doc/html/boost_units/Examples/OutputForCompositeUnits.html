@@ -1,0 +1,87 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Output for Composite Units</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../../index.html" title="Chapter&#160;1.&#160;Boost.Units 1.1.0">
+<link rel="up" href="../Examples.html" title="Examples">
+<link rel="prev" href="UnitsWithNonbaseDimensions.html" title="Units with Non-base Dimensions">
+<link rel="next" href="autoscale.html" title="Automatically Scaled Units">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="UnitsWithNonbaseDimensions.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../Examples.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="autoscale.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_units.Examples.OutputForCompositeUnits"></a><a class="link" href="OutputForCompositeUnits.html" title="Output for Composite Units">Output
+      for Composite Units</a>
+</h3></div></div></div>
+<p>
+        (<a href="../../../../libs/units/example/composite_output.cpp" target="_top">composite_output.cpp</a>)
+      </p>
+<p>
+        If a unit has a special name and/or symbol, the free functions <code class="computeroutput"><span class="identifier">name_string</span></code> and <code class="computeroutput"><span class="identifier">symbol_string</span></code>
+        can be overloaded directly.
+      </p>
+<p>
+</p>
+<pre class="programlisting"><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="identifier">name_string</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">cgs</span><span class="special">::</span><span class="identifier">force</span><span class="special">&amp;)</span>
+<span class="special">{</span>
+    <span class="keyword">return</span> <span class="string">"dyne"</span><span class="special">;</span>
+<span class="special">}</span>
+
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="identifier">symbol_string</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">cgs</span><span class="special">::</span><span class="identifier">force</span><span class="special">&amp;)</span>
+<span class="special">{</span>
+    <span class="keyword">return</span> <span class="string">"dyn"</span><span class="special">;</span>
+<span class="special">}</span>
+</pre>
+<p>
+      </p>
+<p>
+        In this case, any unit that reduces to the overloaded unit will be output
+        with the replacement symbol.
+      </p>
+<p>
+        Special names and symbols for the SI and CGS unit systems are found in <code class="computeroutput"><a class="link" href="../../header/boost/units/systems/si/io_hpp.html" title="Header &lt;boost/units/systems/si/io.hpp&gt;">boost/units/systems/si/io.hpp</a></code>
+        and <code class="computeroutput"><a class="link" href="../../header/boost/units/systems/cgs/io_hpp.html" title="Header &lt;boost/units/systems/cgs/io.hpp&gt;">boost/units/systems/cgs/io.hpp</a></code>,
+        respectively. If these headers are not included, the output will simply follow
+        default rules using the appropriate fundamental dimensions. Note that neither
+        of these functions is defined for quantities because doing so would require
+        making assumptions on how the corresponding value type should be formatted.
+      </p>
+<p>
+        Three <code class="computeroutput"><span class="identifier">ostream</span></code> formatters,
+        <code class="computeroutput"><span class="identifier">symbol_format</span></code>, <code class="computeroutput"><span class="identifier">name_format</span></code>, and <code class="computeroutput"><span class="identifier">typename_format</span></code>
+        are provided for convenience. These select the textual representation of
+        units provided by <code class="computeroutput"><span class="identifier">symbol_string</span></code>
+        or <code class="computeroutput"><span class="identifier">name_string</span></code> in the first
+        two cases, while the latter returns a demangled typename for debugging purposes.
+        Formatting of scaled unit is also done correctly.
+      </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2008 Matthias Christian Schabel<br>Copyright &#169; 2007-2010 Steven
+      Watanabe<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="UnitsWithNonbaseDimensions.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../Examples.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="autoscale.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

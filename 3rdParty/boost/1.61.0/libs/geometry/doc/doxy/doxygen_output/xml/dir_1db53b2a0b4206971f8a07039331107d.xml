@@ -1,0 +1,21 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="dir_1db53b2a0b4206971f8a07039331107d" kind="dir">
+    <compoundname>/home/travis/build/boostorg/boost/boost/geometry/</compoundname>
+    <innerdir refid="dir_0dc8931d37de9720ba7c03d0f554ded1">/home/travis/build/boostorg/boost/boost/geometry/algorithms/</innerdir>
+    <innerdir refid="dir_fb95e015b0511ec55c8d28ef36c37b2d">/home/travis/build/boostorg/boost/boost/geometry/arithmetic/</innerdir>
+    <innerdir refid="dir_a72d5363979ef62232485f75f2f4db90">/home/travis/build/boostorg/boost/boost/geometry/core/</innerdir>
+    <innerdir refid="dir_5070b4beede81efd2daa508f8025de96">/home/travis/build/boostorg/boost/boost/geometry/geometries/</innerdir>
+    <innerdir refid="dir_372b3be2c08e4e1d39166612525793e2">/home/travis/build/boostorg/boost/boost/geometry/io/</innerdir>
+    <innerdir refid="dir_054af7bbe036a67261726b73e573b3ce">/home/travis/build/boostorg/boost/boost/geometry/iterators/</innerdir>
+    <innerdir refid="dir_f136d2905b0cfceed5fa550ffb4c4588">/home/travis/build/boostorg/boost/boost/geometry/policies/</innerdir>
+    <innerdir refid="dir_5d74177c508066817a1255a92dc8f2a4">/home/travis/build/boostorg/boost/boost/geometry/strategies/</innerdir>
+    <innerdir refid="dir_f55ac20fb3e3255e57c57139f4ea1870">/home/travis/build/boostorg/boost/boost/geometry/util/</innerdir>
+    <innerdir refid="dir_66dc2cdcd61111ce2045ba19a27cf177">/home/travis/build/boostorg/boost/boost/geometry/views/</innerdir>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/"/>
+  </compounddef>
+</doxygen>

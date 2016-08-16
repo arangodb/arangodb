@@ -1,0 +1,122 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Lazy List</title>
+<link rel="stylesheet" href="../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../index.html" title="Chapter&#160;1.&#160;Phoenix 3.2.0">
+<link rel="up" href="../index.html" title="Chapter&#160;1.&#160;Phoenix 3.2.0">
+<link rel="prev" href="examples/transforming_the_expression_tree.html" title="Transforming the Expression Tree">
+<link rel="next" href="lazy_list/background.html" title="Background">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="examples/transforming_the_expression_tree.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="lazy_list/background.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="phoenix.lazy_list"></a><a class="link" href="lazy_list.html" title="Lazy List">Lazy List</a>
+</h2></div></div></div>
+<div class="toc"><dl>
+<dt><span class="section"><a href="lazy_list/background.html">Background</a></span></dt>
+<dt><span class="section"><a href="lazy_list/what_is_provided.html">What is provided</a></span></dt>
+<dt><span class="section"><a href="lazy_list/tutorial_with_examples.html">Tutorial with
+      examples</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="lazy_list/tutorial_with_examples/arithmetic_functions.html">Arithmetic
+        functions</a></span></dt>
+<dt><span class="section"><a href="lazy_list/tutorial_with_examples/list_generation.html">List
+        Generation</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="lazy_list/exceptions.html">Exceptions</a></span></dt>
+<dt><span class="section"><a href="lazy_list/implementation_details.html">Implementation
+      Details</a></span></dt>
+<dt><span class="section"><a href="lazy_list/testing.html">Testing</a></span></dt>
+<dt><span class="section"><a href="lazy_list/where_next_.html">Where Next?</a></span></dt>
+</dl></div>
+<h2>
+<a name="phoenix.lazy_list.h0"></a>
+      <span><a name="phoenix.lazy_list.summary"></a></span><a class="link" href="lazy_list.html#phoenix.lazy_list.summary">Summary</a>
+    </h2>
+<p>
+      Phoenix now has a lazy list implementation which is very similar but not identical
+      to the implementation provided by <a href="http://cgi.di.uoa.gr/~smaragd/fc++/" target="_top">FC++</a>.
+      This provides a set of objects defined by list&lt;type&gt;, for example this
+      which defines an empty list of type int.
+    </p>
+<pre class="programlisting"><span class="identifier">list</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;</span> <span class="identifier">example</span><span class="special">;</span>
+</pre>
+<p>
+      A list can contain zero or more elements of the same type. It can also be declared
+      using a function returning values of the correct type. Such lists are only
+      evaluated on demand. A set of functions are defined which enable many ways
+      of manipulating and using lists. Examples are provided for the features available.
+    </p>
+<p>
+      Exceptions are provided to deal with certain cases and these can be turned
+      off if desired. There is a check on the maximum list length which has a default
+      of 1000 which can be changed by the user.
+    </p>
+<p>
+      This is an extension to Boost Phoenix which does not change the public interface
+      except to define new features in the namespace
+    </p>
+<pre class="programlisting"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">phoenix</span>
+</pre>
+<p>
+      It has to be explicitly included using the header
+    </p>
+<pre class="programlisting"><span class="identifier">boost</span><span class="special">/</span><span class="identifier">phoenix</span><span class="special">/</span><span class="identifier">function</span><span class="special">/</span><span class="identifier">lazy_prelude</span><span class="special">.</span><span class="identifier">hpp</span>
+</pre>
+<h2>
+<a name="phoenix.lazy_list.h1"></a>
+      <span><a name="phoenix.lazy_list.introduction"></a></span><a class="link" href="lazy_list.html#phoenix.lazy_list.introduction">Introduction</a>
+    </h2>
+<p>
+      Boost Phoenix provides many features of functional_programming. One of the
+      things which has been missing until now is a lazy list implementation. One
+      is available in the library <a href="http://cgi.di.uoa.gr/~smaragd/fc++/" target="_top">FC++</a>
+      which although not part of Boost has many similarities. It has been possible
+      to reimplement the strategy of the <a href="http://people.cs.umass.edu/~yannis/fc++/New/new_list_implementation.html" target="_top">FC++
+      List Implementation</a> using the facilties in Phoenix. This provides something
+      which has up until now not been available anywhere in Phoenix and probably
+      not anywhere else in Boost. This new implementation is very well integrated
+      with other features in Phoenix as it uses the same mechanism. In turn that
+      is well integrated with Boost Function.
+    </p>
+<p>
+      There is a great deal of material in <a href="http://cgi.di.uoa.gr/~smaragd/fc++/" target="_top">FC++</a>
+      and it is not proposed to replicate all of it. A great deal has changed since
+      <a href="http://cgi.di.uoa.gr/~smaragd/fc++/" target="_top">FC++</a> was written and
+      many things are already available in Phoenix or elsewhere. The emphasis here
+      is to add to Phoenix in a way which will make it easier to implement functional_programming.
+    </p>
+<p>
+      Progress is being made in implementing both the basic list&lt;T&gt; and the
+      functions needed to manipulate lists.
+    </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2002-2005, 2010, 2014, 2015 Joel de Guzman, Dan Marsden, Thomas
+      Heller, John Fletcher<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="examples/transforming_the_expression_tree.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="lazy_list/background.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

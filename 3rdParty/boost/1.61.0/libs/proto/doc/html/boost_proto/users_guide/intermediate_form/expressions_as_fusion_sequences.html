@@ -1,0 +1,147 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Expressions as Fusion Sequences</title>
+<link rel="stylesheet" href="../../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../../../index.html" title="Chapter&#160;1.&#160;Boost.Proto">
+<link rel="up" href="../intermediate_form.html" title="Intermediate Form: Understanding and Introspecting Expressions">
+<link rel="prev" href="tags_and_metafunctions.html" title="Operator Tags and Metafunctions">
+<link rel="next" href="expression_introspection.html" title="Expression Introspection: Defining a Grammar">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="tags_and_metafunctions.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../intermediate_form.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="expression_introspection.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="boost_proto.users_guide.intermediate_form.expressions_as_fusion_sequences"></a><a class="link" href="expressions_as_fusion_sequences.html" title="Expressions as Fusion Sequences">Expressions
+        as Fusion Sequences</a>
+</h4></div></div></div>
+<p>
+          Boost.Fusion is a library of iterators, algorithms, containers and adaptors
+          for manipulating heterogeneous sequences. In essence, a Proto expression
+          is just a heterogeneous sequence of its child expressions, and so Proto
+          expressions are valid Fusion random-access sequences. That means you can
+          apply Fusion algorithms to them, transform them, apply Fusion filters and
+          views to them, and access their elements using <code class="computeroutput"><span class="identifier">fusion</span><span class="special">::</span><span class="identifier">at</span><span class="special">()</span></code>. The things Fusion can do to heterogeneous
+          sequences are beyond the scope of this users' guide, but below is a simple
+          example. It takes a lazy function invocation like <code class="computeroutput"><span class="identifier">fun</span><span class="special">(</span><span class="number">1</span><span class="special">,</span><span class="number">2</span><span class="special">,</span><span class="number">3</span><span class="special">,</span><span class="number">4</span><span class="special">)</span></code>
+          and uses Fusion to print the function arguments in order.
+        </p>
+<pre class="programlisting"><span class="keyword">struct</span> <span class="identifier">display</span>
+<span class="special">{</span>
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">T</span><span class="special">&gt;</span>
+    <span class="keyword">void</span> <span class="keyword">operator</span><span class="special">()(</span><span class="identifier">T</span> <span class="keyword">const</span> <span class="special">&amp;</span><span class="identifier">t</span><span class="special">)</span> <span class="keyword">const</span>
+    <span class="special">{</span>
+        <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">t</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+    <span class="special">}</span>
+<span class="special">};</span>
+
+<span class="keyword">struct</span> <span class="identifier">fun_t</span> <span class="special">{};</span>
+<span class="identifier">proto</span><span class="special">::</span><span class="identifier">terminal</span><span class="special">&lt;</span><span class="identifier">fun_t</span><span class="special">&gt;::</span><span class="identifier">type</span> <span class="keyword">const</span> <span class="identifier">fun</span> <span class="special">=</span> <span class="special">{{}};</span>
+
+<span class="comment">// ...</span>
+<span class="identifier">fusion</span><span class="special">::</span><span class="identifier">for_each</span><span class="special">(</span>
+    <span class="identifier">fusion</span><span class="special">::</span><span class="identifier">transform</span><span class="special">(</span>
+        <span class="comment">// pop_front() removes the "fun" child</span>
+        <span class="identifier">fusion</span><span class="special">::</span><span class="identifier">pop_front</span><span class="special">(</span><span class="identifier">fun</span><span class="special">(</span><span class="number">1</span><span class="special">,</span><span class="number">2</span><span class="special">,</span><span class="number">3</span><span class="special">,</span><span class="number">4</span><span class="special">))</span>
+        <span class="comment">// Extract the ints from the terminal nodes</span>
+      <span class="special">,</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">functional</span><span class="special">::</span><span class="identifier">value</span><span class="special">()</span>
+    <span class="special">)</span>
+  <span class="special">,</span> <span class="identifier">display</span><span class="special">()</span>
+<span class="special">);</span>
+</pre>
+<p>
+          Recall from the Introduction that types in the <code class="computeroutput"><span class="identifier">proto</span><span class="special">::</span><span class="identifier">functional</span></code>
+          namespace define function objects that correspond to Proto's free functions.
+          So <code class="computeroutput"><span class="identifier">proto</span><span class="special">::</span><span class="identifier">functional</span><span class="special">::</span><span class="identifier">value</span><span class="special">()</span></code>
+          creates a function object that is equivalent to the <code class="computeroutput"><span class="identifier">proto</span><span class="special">::</span><span class="identifier">value</span><span class="special">()</span></code> function. The above invocation of <code class="computeroutput"><span class="identifier">fusion</span><span class="special">::</span><span class="identifier">for_each</span><span class="special">()</span></code>
+          displays the following:
+        </p>
+<pre class="programlisting">1
+2
+3
+4
+</pre>
+<p>
+          Terminals are also valid Fusion sequences. They contain exactly one element:
+          their value.
+        </p>
+<h6>
+<a name="boost_proto.users_guide.intermediate_form.expressions_as_fusion_sequences.h0"></a>
+          <span><a name="boost_proto.users_guide.intermediate_form.expressions_as_fusion_sequences.flattening_proto_expression_tress"></a></span><a class="link" href="expressions_as_fusion_sequences.html#boost_proto.users_guide.intermediate_form.expressions_as_fusion_sequences.flattening_proto_expression_tress">Flattening
+          Proto Expression Tress</a>
+        </h6>
+<p>
+          Imagine a slight variation of the above example where, instead of iterating
+          over the arguments of a lazy function invocation, we would like to iterate
+          over the terminals in an addition expression:
+        </p>
+<pre class="programlisting"><span class="identifier">proto</span><span class="special">::</span><span class="identifier">terminal</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;::</span><span class="identifier">type</span> <span class="keyword">const</span> <span class="identifier">_1</span> <span class="special">=</span> <span class="special">{</span><span class="number">1</span><span class="special">};</span>
+
+<span class="comment">// ERROR: this doesn't work! Why?</span>
+<span class="identifier">fusion</span><span class="special">::</span><span class="identifier">for_each</span><span class="special">(</span>
+    <span class="identifier">fusion</span><span class="special">::</span><span class="identifier">transform</span><span class="special">(</span>
+        <span class="identifier">_1</span> <span class="special">+</span> <span class="number">2</span> <span class="special">+</span> <span class="number">3</span> <span class="special">+</span> <span class="number">4</span>
+      <span class="special">,</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">functional</span><span class="special">::</span><span class="identifier">value</span><span class="special">()</span>
+    <span class="special">)</span>
+  <span class="special">,</span> <span class="identifier">display</span><span class="special">()</span>
+<span class="special">);</span>
+</pre>
+<p>
+          The reason this doesn't work is because the expression <code class="computeroutput"><span class="identifier">_1</span>
+          <span class="special">+</span> <span class="number">2</span> <span class="special">+</span> <span class="number">3</span> <span class="special">+</span>
+          <span class="number">4</span></code> does not describe a flat sequence
+          of terminals --- it describes a binary tree. We can treat it as a flat
+          sequence of terminals, however, using Proto's <code class="computeroutput"><a class="link" href="../../../boost/proto/flatten_idp28718400.html" title="Function flatten">proto::flatten()</a></code>
+          function. <code class="computeroutput"><a class="link" href="../../../boost/proto/flatten_idp28718400.html" title="Function flatten">proto::flatten()</a></code> returns a view which makes
+          a tree appear as a flat Fusion sequence. If the top-most node has a tag
+          type <code class="computeroutput"><span class="identifier">T</span></code>, then the elements
+          of the flattened sequence are the child nodes that do <span class="emphasis"><em>not</em></span>
+          have tag type <code class="computeroutput"><span class="identifier">T</span></code>. This process
+          is evaluated recursively. So the above can correctly be written as:
+        </p>
+<pre class="programlisting"><span class="identifier">proto</span><span class="special">::</span><span class="identifier">terminal</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;::</span><span class="identifier">type</span> <span class="keyword">const</span> <span class="identifier">_1</span> <span class="special">=</span> <span class="special">{</span><span class="number">1</span><span class="special">};</span>
+
+<span class="comment">// OK, iterate over a flattened view</span>
+<span class="identifier">fusion</span><span class="special">::</span><span class="identifier">for_each</span><span class="special">(</span>
+    <span class="identifier">fusion</span><span class="special">::</span><span class="identifier">transform</span><span class="special">(</span>
+        <span class="identifier">proto</span><span class="special">::</span><span class="identifier">flatten</span><span class="special">(</span><span class="identifier">_1</span> <span class="special">+</span> <span class="number">2</span> <span class="special">+</span> <span class="number">3</span> <span class="special">+</span> <span class="number">4</span><span class="special">)</span>
+      <span class="special">,</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">functional</span><span class="special">::</span><span class="identifier">value</span><span class="special">()</span>
+    <span class="special">)</span>
+  <span class="special">,</span> <span class="identifier">display</span><span class="special">()</span>
+<span class="special">);</span>
+</pre>
+<p>
+          The above invocation of <code class="computeroutput"><span class="identifier">fusion</span><span class="special">::</span><span class="identifier">for_each</span><span class="special">()</span></code> displays the following:
+        </p>
+<pre class="programlisting">1
+2
+3
+4
+</pre>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2008 Eric Niebler<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="tags_and_metafunctions.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../intermediate_form.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="expression_introspection.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

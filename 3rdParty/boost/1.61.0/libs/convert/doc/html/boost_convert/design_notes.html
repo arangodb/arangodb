@@ -1,0 +1,138 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Design Notes</title>
+<link rel="stylesheet" href="../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../index.html" title="Chapter&#160;1.&#160;Boost.Convert 2.0">
+<link rel="up" href="../index.html" title="Chapter&#160;1.&#160;Boost.Convert 2.0">
+<link rel="prev" href="converters_detail/strtol_converter/supported_string_types/custom_string_types.html" title="Custom String Types">
+<link rel="next" href="design_notes/converter_signature.html" title="Converter Signature">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="converters_detail/strtol_converter/supported_string_types/custom_string_types.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="design_notes/converter_signature.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="boost_convert.design_notes"></a><a name="quickbook.ref.design_notes"></a><a class="link" href="design_notes.html" title="Design Notes">Design
+    Notes</a>
+</h2></div></div></div>
+<div class="toc"><dl>
+<dt><span class="section"><a href="design_notes.html#boost_convert.design_notes.requirements">Requirements</a></span></dt>
+<dt><span class="section"><a href="design_notes/converter_signature.html">Converter
+      Signature</a></span></dt>
+<dt><span class="section"><a href="design_notes/user_interface_signature.html">User
+      Interface Signature</a></span></dt>
+</dl></div>
+<div class="blockquote"><blockquote class="blockquote"><p>
+        <span class="bold"><strong><span class="emphasis"><em>"The art of simplicity is a puzzle of
+        complexity&#8221; Doug Horton</em></span></strong></span>
+      </p></blockquote></div>
+<p>
+      Feel free to skip this section. It is here to document the process and the
+      decisions made during design to be able to review and to reevaluate and to
+      ensure the relevancy and the correctness of those decisions and ultimately
+      the design. Still, this section might be useful for understanding why and how
+      certain decisions have been made and why <span class="emphasis"><em>Boost.Convert</em></span>
+      is the way it is.
+    </p>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_convert.design_notes.requirements"></a><a class="link" href="design_notes.html#boost_convert.design_notes.requirements" title="Requirements">Requirements</a>
+</h3></div></div></div>
+<p>
+        <span class="emphasis"><em>Boost.Convert</em></span> has been designed to satisfy the following
+        user requirements:
+      </p>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+            <span class="emphasis"><em>(R1)</em></span> <span class="emphasis"><em>Boost.Convert</em></span> shall provide
+            a mechanism and an interface that take a value of type <span class="emphasis"><em>TypeIn</em></span>
+            and yield a value of type <span class="emphasis"><em>TypeOut</em></span> using an algorithm
+            of type <span class="emphasis"><em>Converter</em></span>;
+          </li>
+<li class="listitem">
+            <span class="emphasis"><em>(R2)</em></span> <span class="emphasis"><em>Boost.Convert</em></span> shall provide
+            a mechanism and an interface to indicate success or failure of the requested
+            conversion;
+          </li>
+<li class="listitem">
+            <span class="emphasis"><em>(R3)</em></span> <span class="emphasis"><em>Boost.Convert</em></span> shall provide
+            fully-functional interfaces for two different program flows where
+            <div class="orderedlist"><ol class="orderedlist" type="a">
+<li class="listitem">
+                  <span class="emphasis"><em>(R3a)</em></span> error-processing is orthogonal to the
+                  normal program flow (exception-throwing interface);
+                </li>
+<li class="listitem">
+                  <span class="emphasis"><em>(R3b)</em></span> normal and error-processing flows are
+                  part of the same program flow (non-throwing interface);
+                </li>
+</ol></div>
+          </li>
+<li class="listitem">
+            <span class="emphasis"><em>(R4)</em></span> The throwing interface shall return the result
+            of successful conversion or shall throw an exception;
+          </li>
+<li class="listitem">
+            <span class="emphasis"><em>(R5)</em></span> The non-throwing interface shall return the
+            result and/or some indication of conversion success or failure;
+            <div class="orderedlist"><ol class="orderedlist" type="a">
+<li class="listitem">
+                  <span class="emphasis"><em>(R5a)</em></span> there shall be means to distinguish
+                  success from failure;
+                </li>
+<li class="listitem">
+                  <span class="emphasis"><em>(R5b)</em></span> the result of conversion shall only
+                  be available when conversion succeeds;
+                </li>
+<li class="listitem">
+                  <span class="emphasis"><em>(R5c)</em></span> when conversion fails, an optional fallback
+                  value shall be returned instead if supplied;
+                </li>
+<li class="listitem">
+                  <span class="emphasis"><em>(R5d)</em></span> in the case of failure (with no fallback
+                  provided) an attempt to retrieve the result shall result in an
+                  exception thrown;
+                </li>
+</ol></div>
+          </li>
+<li class="listitem">
+            <span class="emphasis"><em>(R6)</em></span> <span class="emphasis"><em>Boost.Convert</em></span> shall provide
+            a uniform interface suitable for generic programming;
+          </li>
+<li class="listitem">
+            <span class="emphasis"><em>(R7)</em></span> <span class="emphasis"><em>Boost.Convert</em></span> shall not
+            interfere with or intercept any exceptions that are not part of the official
+            converter interface (i.e. exceptions caused by malfunction, etc.);
+          </li>
+<li class="listitem">
+            <span class="emphasis"><em>(R8)</em></span> Converters shall be independent of and shall
+            not rely on the <span class="emphasis"><em>Boost.Convert</em></span> infrastructure.
+          </li>
+</ol></div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2009-2014 Vladimir Batov<p>
+        Distributed under the Boost Software License, Version 1.0. See copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>.
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="converters_detail/strtol_converter/supported_string_types/custom_string_types.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="design_notes/converter_signature.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

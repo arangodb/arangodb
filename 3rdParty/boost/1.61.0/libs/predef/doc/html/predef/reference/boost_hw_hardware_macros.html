@@ -1,0 +1,1306 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>BOOST_HW hardware macros</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../../index.html" title="Predef 1.4.1">
+<link rel="up" href="../reference.html" title="Reference">
+<link rel="prev" href="boost_plat_platform_macros.html" title="BOOST_PLAT platform macros">
+<link rel="next" href="other_macros.html" title="Other macros">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="boost_plat_platform_macros.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../reference.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="other_macros.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="predef.reference.boost_hw_hardware_macros"></a><a class="link" href="boost_hw_hardware_macros.html" title="BOOST_HW hardware macros"><code class="computeroutput"><span class="identifier">BOOST_HW</span></code> hardware macros</a>
+</h3></div></div></div>
+<div class="toc"><dl>
+<dt><span class="section"><a href="boost_hw_hardware_macros.html#predef.reference.boost_hw_hardware_macros.using_the_boost_hw_simd_predefs">Using
+        the <code class="computeroutput"><span class="identifier">BOOST_HW_SIMD_</span><span class="special">*</span></code>
+        predefs</a></span></dt>
+<dt><span class="section"><a href="boost_hw_hardware_macros.html#predef.reference.boost_hw_hardware_macros.boost_hw_simd"><code class="computeroutput"><span class="identifier">BOOST_HW_SIMD_</span><span class="special">*</span></code></a></span></dt>
+<dt><span class="section"><a href="boost_hw_hardware_macros.html#predef.reference.boost_hw_hardware_macros.boost_hw_simd_x86_version"><code class="computeroutput"><span class="identifier">BOOST_HW_SIMD_X86_</span><span class="special">*</span><span class="identifier">_VERSION</span></code></a></span></dt>
+<dt><span class="section"><a href="boost_hw_hardware_macros.html#predef.reference.boost_hw_hardware_macros.boost_hw_simd_x86_amd_version"><code class="computeroutput"><span class="identifier">BOOST_HW_SIMD_X86_AMD_</span><span class="special">*</span><span class="identifier">_VERSION</span></code></a></span></dt>
+<dt><span class="section"><a href="boost_hw_hardware_macros.html#predef.reference.boost_hw_hardware_macros.boost_hw_simd_arm_version"><code class="computeroutput"><span class="identifier">BOOST_HW_SIMD_ARM_</span><span class="special">*</span><span class="identifier">_VERSION</span></code></a></span></dt>
+<dt><span class="section"><a href="boost_hw_hardware_macros.html#predef.reference.boost_hw_hardware_macros.boost_hw_simd_ppc_version"><code class="computeroutput"><span class="identifier">BOOST_HW_SIMD_PPC_</span><span class="special">*</span><span class="identifier">_VERSION</span></code></a></span></dt>
+</dl></div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="predef.reference.boost_hw_hardware_macros.using_the_boost_hw_simd_predefs"></a><a class="link" href="boost_hw_hardware_macros.html#predef.reference.boost_hw_hardware_macros.using_the_boost_hw_simd_predefs" title="Using the BOOST_HW_SIMD_* predefs">Using
+        the <code class="computeroutput"><span class="identifier">BOOST_HW_SIMD_</span><span class="special">*</span></code>
+        predefs</a>
+</h4></div></div></div>
+<p>
+          SIMD predefs depend on compiler options. For example, you will have to
+          add the option <code class="computeroutput"><span class="special">-</span><span class="identifier">msse3</span></code>
+          to clang or gcc to enable SSE3. SIMD predefs are also inclusive. This means
+          that if SSE3 is enabled, then every other extensions with a lower version
+          number will implicitly be enabled and detected. However, some extensions
+          are CPU specific, they may not be detected nor enabled when an upper version
+          is enabled.
+        </p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+            SSE(1) and SSE2 are automatically enabled by default when using x86-64
+            architecture.
+          </p></td></tr>
+</table></div>
+<p>
+          To check if any SIMD extension has been enabled, you can use:
+        </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">predef</span><span class="special">/</span><span class="identifier">hardware</span><span class="special">/</span><span class="identifier">simd</span><span class="special">.</span><span class="identifier">h</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">iostream</span><span class="special">&gt;</span>
+
+<span class="keyword">int</span> <span class="identifier">main</span><span class="special">()</span>
+<span class="special">{</span>
+<span class="preprocessor">#if</span> <span class="identifier">defined</span><span class="special">(</span><span class="identifier">BOOST_HW_SIMD_AVAILABLE</span><span class="special">)</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"SIMD detected!"</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+<span class="preprocessor">#endif</span>
+    <span class="keyword">return</span> <span class="number">0</span><span class="special">;</span>
+<span class="special">}</span>
+</pre>
+<p>
+          When writing SIMD specific code, you may want to check if a particular
+          extension has been detected. To do so you have to use the right architecture
+          predef and compare it. Those predef are of the form <code class="computeroutput"><span class="identifier">BOOST_HW_SIMD_</span><span class="string">"ARCH"</span></code> (where <code class="computeroutput"><span class="string">"ARCH"</span></code>
+          is either <code class="computeroutput"><span class="identifier">ARM</span></code>, <code class="computeroutput"><span class="identifier">PPC</span></code>, or <code class="computeroutput"><span class="identifier">X86</span></code>).
+          For example, if you compile code for x86 architecture, you will have to
+          use <code class="computeroutput"><span class="identifier">BOOST_HW_SIMD_X86</span></code>.
+          Its value will be the version number of the most recent SIMD extension
+          detected for the architecture.
+        </p>
+<p>
+          To check if an extension has been enabled:
+        </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">predef</span><span class="special">/</span><span class="identifier">hardware</span><span class="special">/</span><span class="identifier">simd</span><span class="special">.</span><span class="identifier">h</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">iostream</span><span class="special">&gt;</span>
+
+<span class="keyword">int</span> <span class="identifier">main</span><span class="special">()</span>
+<span class="special">{</span>
+<span class="preprocessor">#if</span> <span class="identifier">BOOST_HW_SIMD_X86</span> <span class="special">&gt;=</span> <span class="identifier">BOOST_HW_SIMD_X86_SSE3_VERSION</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"This is SSE3!"</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+<span class="preprocessor">#endif</span>
+    <span class="keyword">return</span> <span class="number">0</span><span class="special">;</span>
+<span class="special">}</span>
+</pre>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+            The <span class="bold"><strong>_VERSION</strong></span> defines that map version
+            number to actual real identifiers. This way it is easier to write comparisons
+            without messing up with version numbers.
+          </p></td></tr>
+</table></div>
+<p>
+          To <span class="bold"><strong>"stricly"</strong></span> check the most
+          recent detected extension:
+        </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">predef</span><span class="special">/</span><span class="identifier">hardware</span><span class="special">/</span><span class="identifier">simd</span><span class="special">.</span><span class="identifier">h</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">iostream</span><span class="special">&gt;</span>
+
+<span class="keyword">int</span> <span class="identifier">main</span><span class="special">()</span>
+<span class="special">{</span>
+<span class="preprocessor">#if</span> <span class="identifier">BOOST_HW_SIMD_X86</span> <span class="special">==</span> <span class="identifier">BOOST_HW_SIMD_X86_SSE3_VERSION</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"This is SSE3 and this is the most recent enabled extension!"</span>
+        <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+<span class="preprocessor">#endif</span>
+    <span class="keyword">return</span> <span class="number">0</span><span class="special">;</span>
+<span class="special">}</span>
+</pre>
+<p>
+          Because of the version systems of predefs and of the inclusive property
+          of SIMD extensions macros, you can easily check for ranges of supported
+          extensions:
+        </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">predef</span><span class="special">/</span><span class="identifier">hardware</span><span class="special">/</span><span class="identifier">simd</span><span class="special">.</span><span class="identifier">h</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">iostream</span><span class="special">&gt;</span>
+
+<span class="keyword">int</span> <span class="identifier">main</span><span class="special">()</span>
+<span class="special">{</span>
+<span class="preprocessor">#if</span> <span class="identifier">BOOST_HW_SIMD_X86</span> <span class="special">&gt;=</span> <span class="identifier">BOOST_HW_SIMD_X86_SSE2_VERSION</span> <span class="special">&amp;&amp;\</span>
+    <span class="identifier">BOOST_HW_SIMD_X86</span> <span class="special">&lt;=</span> <span class="identifier">BOOST_HW_SIMD_X86_SSSE3_VERSION</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"This is SSE2, SSE3 and SSSE3!"</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+<span class="preprocessor">#endif</span>
+    <span class="keyword">return</span> <span class="number">0</span><span class="special">;</span>
+<span class="special">}</span>
+</pre>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+            Unlike gcc and clang, Visual Studio does not allow you to specify precisely
+            the SSE variants you want to use, the only detections that will take
+            place are SSE, SSE2, AVX and AVX2. For more informations, see <a href="https://msdn.microsoft.com/en-us/library/b0084kay.aspx" target="_top">here</a>.
+          </p></td></tr>
+</table></div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="predef.reference.boost_hw_hardware_macros.boost_hw_simd"></a><a class="link" href="boost_hw_hardware_macros.html#predef.reference.boost_hw_hardware_macros.boost_hw_simd" title="BOOST_HW_SIMD_*"><code class="computeroutput"><span class="identifier">BOOST_HW_SIMD_</span><span class="special">*</span></code></a>
+</h4></div></div></div>
+<h6>
+<a name="predef.reference.boost_hw_hardware_macros.boost_hw_simd.h0"></a>
+          <span><a name="predef.reference.boost_hw_hardware_macros.boost_hw_simd.boost_hw_simd"></a></span><a class="link" href="boost_hw_hardware_macros.html#predef.reference.boost_hw_hardware_macros.boost_hw_simd.boost_hw_simd"><code class="computeroutput"><span class="identifier">BOOST_HW_SIMD</span></code></a>
+        </h6>
+<p>
+          The SIMD extension detected for a specific architectures. Version number
+          depends on the detected extension.
+        </p>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                  <p>
+                    Symbol
+                  </p>
+                </th>
+<th>
+                  <p>
+                    Version
+                  </p>
+                </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">BOOST_HW_SIMD_X86_AVAILABLE</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="bold"><strong>detection</strong></span>
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">BOOST_HW_SIMD_X86_AMD_AVAILABLE</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="bold"><strong>detection</strong></span>
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">BOOST_HW_SIMD_ARM_AVAILABLE</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="bold"><strong>detection</strong></span>
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">BOOST_HW_SIMD_PPC_AVAILABLE</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="bold"><strong>detection</strong></span>
+                  </p>
+                </td>
+</tr>
+</tbody>
+</table></div>
+<h6>
+<a name="predef.reference.boost_hw_hardware_macros.boost_hw_simd.h1"></a>
+          <span><a name="predef.reference.boost_hw_hardware_macros.boost_hw_simd.boost_hw_simd_x86"></a></span><a class="link" href="boost_hw_hardware_macros.html#predef.reference.boost_hw_hardware_macros.boost_hw_simd.boost_hw_simd_x86"><code class="computeroutput"><span class="identifier">BOOST_HW_SIMD_X86</span></code></a>
+        </h6>
+<p>
+          The SIMD extension for x86 (<span class="bold"><strong>if detected</strong></span>).
+          Version number depends on the most recent detected extension.
+        </p>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                  <p>
+                    Symbol
+                  </p>
+                </th>
+<th>
+                  <p>
+                    Version
+                  </p>
+                </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">__SSE__</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="bold"><strong>detection</strong></span>
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">_M_X64</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="bold"><strong>detection</strong></span>
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">_M_IX86_FP</span> <span class="special">&gt;=</span>
+                    <span class="number">1</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="bold"><strong>detection</strong></span>
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">__SSE2__</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="bold"><strong>detection</strong></span>
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">_M_X64</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="bold"><strong>detection</strong></span>
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">_M_IX86_FP</span> <span class="special">&gt;=</span>
+                    <span class="number">2</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="bold"><strong>detection</strong></span>
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">__SSE3__</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="bold"><strong>detection</strong></span>
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">__SSSE3__</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="bold"><strong>detection</strong></span>
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">__SSE4_1__</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="bold"><strong>detection</strong></span>
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">__SSE4_2__</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="bold"><strong>detection</strong></span>
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">__AVX__</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="bold"><strong>detection</strong></span>
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">__FMA__</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="bold"><strong>detection</strong></span>
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">__AVX2__</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="bold"><strong>detection</strong></span>
+                  </p>
+                </td>
+</tr>
+</tbody>
+</table></div>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                  <p>
+                    Symbol
+                  </p>
+                </th>
+<th>
+                  <p>
+                    Version
+                  </p>
+                </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">__SSE__</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    BOOST_HW_SIMD_X86_SSE_VERSION
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">_M_X64</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    BOOST_HW_SIMD_X86_SSE_VERSION
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">_M_IX86_FP</span> <span class="special">&gt;=</span>
+                    <span class="number">1</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    BOOST_HW_SIMD_X86_SSE_VERSION
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">__SSE2__</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    BOOST_HW_SIMD_X86_SSE2_VERSION
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">_M_X64</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    BOOST_HW_SIMD_X86_SSE2_VERSION
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">_M_IX86_FP</span> <span class="special">&gt;=</span>
+                    <span class="number">2</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    BOOST_HW_SIMD_X86_SSE2_VERSION
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">__SSE3__</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    BOOST_HW_SIMD_X86_SSE3_VERSION
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">__SSSE3__</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    BOOST_HW_SIMD_X86_SSSE3_VERSION
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">__SSE4_1__</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    BOOST_HW_SIMD_X86_SSE4_1_VERSION
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">__SSE4_2__</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    BOOST_HW_SIMD_X86_SSE4_2_VERSION
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">__AVX__</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    BOOST_HW_SIMD_X86_AVX_VERSION
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">__FMA__</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    BOOST_HW_SIMD_X86_FMA3_VERSION
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">__AVX2__</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    BOOST_HW_SIMD_X86_AVX2_VERSION
+                  </p>
+                </td>
+</tr>
+</tbody>
+</table></div>
+<h6>
+<a name="predef.reference.boost_hw_hardware_macros.boost_hw_simd.h2"></a>
+          <span><a name="predef.reference.boost_hw_hardware_macros.boost_hw_simd.boost_hw_simd_x86_amd"></a></span><a class="link" href="boost_hw_hardware_macros.html#predef.reference.boost_hw_hardware_macros.boost_hw_simd.boost_hw_simd_x86_amd"><code class="computeroutput"><span class="identifier">BOOST_HW_SIMD_X86_AMD</span></code></a>
+        </h6>
+<p>
+          The SIMD extension for x86 (AMD) (<span class="bold"><strong>if detected</strong></span>).
+          Version number depends on the most recent detected extension.
+        </p>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                  <p>
+                    Symbol
+                  </p>
+                </th>
+<th>
+                  <p>
+                    Version
+                  </p>
+                </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">__SSE4A__</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="bold"><strong>detection</strong></span>
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">__FMA4__</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="bold"><strong>detection</strong></span>
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">__XOP__</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="bold"><strong>detection</strong></span>
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">BOOST_HW_SIMD_X86</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="bold"><strong>detection</strong></span>
+                  </p>
+                </td>
+</tr>
+</tbody>
+</table></div>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                  <p>
+                    Symbol
+                  </p>
+                </th>
+<th>
+                  <p>
+                    Version
+                  </p>
+                </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">__SSE4A__</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    BOOST_HW_SIMD_X86_SSE4A_VERSION
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">__FMA4__</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    BOOST_HW_SIMD_X86_FMA4_VERSION
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">__XOP__</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    BOOST_HW_SIMD_X86_XOP_VERSION
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">BOOST_HW_SIMD_X86</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    BOOST_HW_SIMD_X86
+                  </p>
+                </td>
+</tr>
+</tbody>
+</table></div>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+            This predef includes every other x86 SIMD extensions and also has other
+            more specific extensions (FMA4, XOP, SSE4a). You should use this predef
+            instead of <code class="computeroutput"><span class="identifier">BOOST_HW_SIMD_X86</span></code>
+            to test if those specific extensions have been detected.
+          </p></td></tr>
+</table></div>
+<h6>
+<a name="predef.reference.boost_hw_hardware_macros.boost_hw_simd.h3"></a>
+          <span><a name="predef.reference.boost_hw_hardware_macros.boost_hw_simd.boost_hw_simd_arm"></a></span><a class="link" href="boost_hw_hardware_macros.html#predef.reference.boost_hw_hardware_macros.boost_hw_simd.boost_hw_simd_arm"><code class="computeroutput"><span class="identifier">BOOST_HW_SIMD_ARM</span></code></a>
+        </h6>
+<p>
+          The SIMD extension for ARM (<span class="bold"><strong>if detected</strong></span>).
+          Version number depends on the most recent detected extension.
+        </p>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                  <p>
+                    Symbol
+                  </p>
+                </th>
+<th>
+                  <p>
+                    Version
+                  </p>
+                </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">__ARM_NEON__</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="bold"><strong>detection</strong></span>
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">__aarch64__</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="bold"><strong>detection</strong></span>
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">_M_ARM</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="bold"><strong>detection</strong></span>
+                  </p>
+                </td>
+</tr>
+</tbody>
+</table></div>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                  <p>
+                    Symbol
+                  </p>
+                </th>
+<th>
+                  <p>
+                    Version
+                  </p>
+                </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">__ARM_NEON__</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    BOOST_HW_SIMD_ARM_NEON_VERSION
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">__aarch64__</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    BOOST_HW_SIMD_ARM_NEON_VERSION
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">_M_ARM</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    BOOST_HW_SIMD_ARM_NEON_VERSION
+                  </p>
+                </td>
+</tr>
+</tbody>
+</table></div>
+<h6>
+<a name="predef.reference.boost_hw_hardware_macros.boost_hw_simd.h4"></a>
+          <span><a name="predef.reference.boost_hw_hardware_macros.boost_hw_simd.boost_hw_simd_ppc"></a></span><a class="link" href="boost_hw_hardware_macros.html#predef.reference.boost_hw_hardware_macros.boost_hw_simd.boost_hw_simd_ppc"><code class="computeroutput"><span class="identifier">BOOST_HW_SIMD_PPC</span></code></a>
+        </h6>
+<p>
+          The SIMD extension for PowerPC (<span class="bold"><strong>if detected</strong></span>).
+          Version number depends on the most recent detected extension.
+        </p>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                  <p>
+                    Symbol
+                  </p>
+                </th>
+<th>
+                  <p>
+                    Version
+                  </p>
+                </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">__VECTOR4DOUBLE__</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="bold"><strong>detection</strong></span>
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">__ALTIVEC__</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="bold"><strong>detection</strong></span>
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">__VEC__</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="bold"><strong>detection</strong></span>
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">__VSX__</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="bold"><strong>detection</strong></span>
+                  </p>
+                </td>
+</tr>
+</tbody>
+</table></div>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                  <p>
+                    Symbol
+                  </p>
+                </th>
+<th>
+                  <p>
+                    Version
+                  </p>
+                </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">__VECTOR4DOUBLE__</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    BOOST_HW_SIMD_PPC_QPX_VERSION
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">__ALTIVEC__</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    BOOST_HW_SIMD_PPC_VMX_VERSION
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">__VEC__</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    BOOST_HW_SIMD_PPC_VMX_VERSION
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">__VSX__</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    BOOST_HW_SIMD_PPC_VSX_VERSION
+                  </p>
+                </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="predef.reference.boost_hw_hardware_macros.boost_hw_simd_x86_version"></a><a class="link" href="boost_hw_hardware_macros.html#predef.reference.boost_hw_hardware_macros.boost_hw_simd_x86_version" title="BOOST_HW_SIMD_X86_*_VERSION"><code class="computeroutput"><span class="identifier">BOOST_HW_SIMD_X86_</span><span class="special">*</span><span class="identifier">_VERSION</span></code></a>
+</h4></div></div></div>
+<p>
+          Those defines represent x86 SIMD extensions versions.
+        </p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+            You <span class="bold"><strong>MUST</strong></span> compare them with the predef
+            <code class="computeroutput"><span class="identifier">BOOST_HW_SIMD_X86</span></code>.
+          </p></td></tr>
+</table></div>
+<h6>
+<a name="predef.reference.boost_hw_hardware_macros.boost_hw_simd_x86_version.h0"></a>
+          <span><a name="predef.reference.boost_hw_hardware_macros.boost_hw_simd_x86_version.boost_hw_simd_x86_mmx_version"></a></span><a class="link" href="boost_hw_hardware_macros.html#predef.reference.boost_hw_hardware_macros.boost_hw_simd_x86_version.boost_hw_simd_x86_mmx_version"><code class="computeroutput"><span class="identifier">BOOST_HW_SIMD_X86_MMX_VERSION</span></code></a>
+        </h6>
+<p>
+          The <a href="https://en.wikipedia.org/wiki/MMX_(instruction_set)" target="_top">MMX</a>
+          x86 extension version number.
+        </p>
+<p>
+          Version number is: <span class="bold"><strong>0.99.0</strong></span>.
+        </p>
+<h6>
+<a name="predef.reference.boost_hw_hardware_macros.boost_hw_simd_x86_version.h1"></a>
+          <span><a name="predef.reference.boost_hw_hardware_macros.boost_hw_simd_x86_version.boost_hw_simd_x86_sse_version"></a></span><a class="link" href="boost_hw_hardware_macros.html#predef.reference.boost_hw_hardware_macros.boost_hw_simd_x86_version.boost_hw_simd_x86_sse_version"><code class="computeroutput"><span class="identifier">BOOST_HW_SIMD_X86_SSE_VERSION</span></code></a>
+        </h6>
+<p>
+          The <a href="https://en.wikipedia.org/wiki/Streaming_SIMD_Extensions" target="_top">SSE</a>
+          x86 extension version number.
+        </p>
+<p>
+          Version number is: <span class="bold"><strong>1.0.0</strong></span>.
+        </p>
+<h6>
+<a name="predef.reference.boost_hw_hardware_macros.boost_hw_simd_x86_version.h2"></a>
+          <span><a name="predef.reference.boost_hw_hardware_macros.boost_hw_simd_x86_version.boost_hw_simd_x86_sse2_version"></a></span><a class="link" href="boost_hw_hardware_macros.html#predef.reference.boost_hw_hardware_macros.boost_hw_simd_x86_version.boost_hw_simd_x86_sse2_version"><code class="computeroutput"><span class="identifier">BOOST_HW_SIMD_X86_SSE2_VERSION</span></code></a>
+        </h6>
+<p>
+          The <a href="https://en.wikipedia.org/wiki/SSE2" target="_top">SSE2</a> x86 extension
+          version number.
+        </p>
+<p>
+          Version number is: <span class="bold"><strong>2.0.0</strong></span>.
+        </p>
+<h6>
+<a name="predef.reference.boost_hw_hardware_macros.boost_hw_simd_x86_version.h3"></a>
+          <span><a name="predef.reference.boost_hw_hardware_macros.boost_hw_simd_x86_version.boost_hw_simd_x86_sse3_version"></a></span><a class="link" href="boost_hw_hardware_macros.html#predef.reference.boost_hw_hardware_macros.boost_hw_simd_x86_version.boost_hw_simd_x86_sse3_version"><code class="computeroutput"><span class="identifier">BOOST_HW_SIMD_X86_SSE3_VERSION</span></code></a>
+        </h6>
+<p>
+          The <a href="https://en.wikipedia.org/wiki/SSE3" target="_top">SSE3</a> x86 extension
+          version number.
+        </p>
+<p>
+          Version number is: <span class="bold"><strong>3.0.0</strong></span>.
+        </p>
+<h6>
+<a name="predef.reference.boost_hw_hardware_macros.boost_hw_simd_x86_version.h4"></a>
+          <span><a name="predef.reference.boost_hw_hardware_macros.boost_hw_simd_x86_version.boost_hw_simd_x86_ssse3_version"></a></span><a class="link" href="boost_hw_hardware_macros.html#predef.reference.boost_hw_hardware_macros.boost_hw_simd_x86_version.boost_hw_simd_x86_ssse3_version"><code class="computeroutput"><span class="identifier">BOOST_HW_SIMD_X86_SSSE3_VERSION</span></code></a>
+        </h6>
+<p>
+          The <a href="https://en.wikipedia.org/wiki/SSSE3" target="_top">SSSE3</a> x86
+          extension version number.
+        </p>
+<p>
+          Version number is: <span class="bold"><strong>3.1.0</strong></span>.
+        </p>
+<h6>
+<a name="predef.reference.boost_hw_hardware_macros.boost_hw_simd_x86_version.h5"></a>
+          <span><a name="predef.reference.boost_hw_hardware_macros.boost_hw_simd_x86_version.boost_hw_simd_x86_sse4_1_version"></a></span><a class="link" href="boost_hw_hardware_macros.html#predef.reference.boost_hw_hardware_macros.boost_hw_simd_x86_version.boost_hw_simd_x86_sse4_1_version"><code class="computeroutput"><span class="identifier">BOOST_HW_SIMD_X86_SSE4_1_VERSION</span></code></a>
+        </h6>
+<p>
+          The <a href="https://en.wikipedia.org/wiki/SSE4#SSE4.1" target="_top">SSE4_1</a>
+          x86 extension version number.
+        </p>
+<p>
+          Version number is: <span class="bold"><strong>4.1.0</strong></span>.
+        </p>
+<h6>
+<a name="predef.reference.boost_hw_hardware_macros.boost_hw_simd_x86_version.h6"></a>
+          <span><a name="predef.reference.boost_hw_hardware_macros.boost_hw_simd_x86_version.boost_hw_simd_x86_sse4_2_version"></a></span><a class="link" href="boost_hw_hardware_macros.html#predef.reference.boost_hw_hardware_macros.boost_hw_simd_x86_version.boost_hw_simd_x86_sse4_2_version"><code class="computeroutput"><span class="identifier">BOOST_HW_SIMD_X86_SSE4_2_VERSION</span></code></a>
+        </h6>
+<p>
+          The <a href="https://en.wikipedia.org/wiki/SSE4##SSE4.2" target="_top">SSE4_2</a>
+          x86 extension version number.
+        </p>
+<p>
+          Version number is: <span class="bold"><strong>4.2.0</strong></span>.
+        </p>
+<h6>
+<a name="predef.reference.boost_hw_hardware_macros.boost_hw_simd_x86_version.h7"></a>
+          <span><a name="predef.reference.boost_hw_hardware_macros.boost_hw_simd_x86_version.boost_hw_simd_x86_avx_version"></a></span><a class="link" href="boost_hw_hardware_macros.html#predef.reference.boost_hw_hardware_macros.boost_hw_simd_x86_version.boost_hw_simd_x86_avx_version"><code class="computeroutput"><span class="identifier">BOOST_HW_SIMD_X86_AVX_VERSION</span></code></a>
+        </h6>
+<p>
+          The <a href="https://en.wikipedia.org/wiki/Advanced_Vector_Extensions" target="_top">AVX</a>
+          x86 extension version number.
+        </p>
+<p>
+          Version number is: <span class="bold"><strong>5.0.0</strong></span>.
+        </p>
+<h6>
+<a name="predef.reference.boost_hw_hardware_macros.boost_hw_simd_x86_version.h8"></a>
+          <span><a name="predef.reference.boost_hw_hardware_macros.boost_hw_simd_x86_version.boost_hw_simd_x86_fma3_version"></a></span><a class="link" href="boost_hw_hardware_macros.html#predef.reference.boost_hw_hardware_macros.boost_hw_simd_x86_version.boost_hw_simd_x86_fma3_version"><code class="computeroutput"><span class="identifier">BOOST_HW_SIMD_X86_FMA3_VERSION</span></code></a>
+        </h6>
+<p>
+          The <a href="https://en.wikipedia.org/wiki/FMA_instruction_set" target="_top">FMA3</a>
+          x86 extension version number.
+        </p>
+<p>
+          Version number is: <span class="bold"><strong>5.2.0</strong></span>.
+        </p>
+<h6>
+<a name="predef.reference.boost_hw_hardware_macros.boost_hw_simd_x86_version.h9"></a>
+          <span><a name="predef.reference.boost_hw_hardware_macros.boost_hw_simd_x86_version.boost_hw_simd_x86_avx2_version"></a></span><a class="link" href="boost_hw_hardware_macros.html#predef.reference.boost_hw_hardware_macros.boost_hw_simd_x86_version.boost_hw_simd_x86_avx2_version"><code class="computeroutput"><span class="identifier">BOOST_HW_SIMD_X86_AVX2_VERSION</span></code></a>
+        </h6>
+<p>
+          The <a href="https://en.wikipedia.org/wiki/Advanced_Vector_Extensions#Advanced_Vector_Extensions_2" target="_top">AVX2</a>
+          x86 extension version number.
+        </p>
+<p>
+          Version number is: <span class="bold"><strong>5.3.0</strong></span>.
+        </p>
+<h6>
+<a name="predef.reference.boost_hw_hardware_macros.boost_hw_simd_x86_version.h10"></a>
+          <span><a name="predef.reference.boost_hw_hardware_macros.boost_hw_simd_x86_version.boost_hw_simd_x86_mic_version"></a></span><a class="link" href="boost_hw_hardware_macros.html#predef.reference.boost_hw_hardware_macros.boost_hw_simd_x86_version.boost_hw_simd_x86_mic_version"><code class="computeroutput"><span class="identifier">BOOST_HW_SIMD_X86_MIC_VERSION</span></code></a>
+        </h6>
+<p>
+          The <a href="https://en.wikipedia.org/wiki/Xeon_Phi" target="_top">MIC</a> (Xeon
+          Phi) x86 extension version number.
+        </p>
+<p>
+          Version number is: <span class="bold"><strong>9.0.0</strong></span>.
+        </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="predef.reference.boost_hw_hardware_macros.boost_hw_simd_x86_amd_version"></a><a class="link" href="boost_hw_hardware_macros.html#predef.reference.boost_hw_hardware_macros.boost_hw_simd_x86_amd_version" title="BOOST_HW_SIMD_X86_AMD_*_VERSION"><code class="computeroutput"><span class="identifier">BOOST_HW_SIMD_X86_AMD_</span><span class="special">*</span><span class="identifier">_VERSION</span></code></a>
+</h4></div></div></div>
+<p>
+          Those defines represent x86 (AMD specific) SIMD extensions versions.
+        </p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+            You <span class="bold"><strong>MUST</strong></span> compare them with the predef
+            <code class="computeroutput"><span class="identifier">BOOST_HW_SIMD_X86_AMD</span></code>.
+          </p></td></tr>
+</table></div>
+<h6>
+<a name="predef.reference.boost_hw_hardware_macros.boost_hw_simd_x86_amd_version.h0"></a>
+          <span><a name="predef.reference.boost_hw_hardware_macros.boost_hw_simd_x86_amd_version.boost_hw_simd_x86_sse4a_version"></a></span><a class="link" href="boost_hw_hardware_macros.html#predef.reference.boost_hw_hardware_macros.boost_hw_simd_x86_amd_version.boost_hw_simd_x86_sse4a_version"><code class="computeroutput"><span class="identifier">BOOST_HW_SIMD_X86_SSE4A_VERSION</span></code></a>
+        </h6>
+<p>
+          <a href="https://en.wikipedia.org/wiki/SSE4##SSE4A" target="_top">SSE4A</a> x86
+          extension (AMD specific).
+        </p>
+<p>
+          Version number is: <span class="bold"><strong>4.0.0</strong></span>.
+        </p>
+<h6>
+<a name="predef.reference.boost_hw_hardware_macros.boost_hw_simd_x86_amd_version.h1"></a>
+          <span><a name="predef.reference.boost_hw_hardware_macros.boost_hw_simd_x86_amd_version.boost_hw_simd_x86_fma4_version"></a></span><a class="link" href="boost_hw_hardware_macros.html#predef.reference.boost_hw_hardware_macros.boost_hw_simd_x86_amd_version.boost_hw_simd_x86_fma4_version"><code class="computeroutput"><span class="identifier">BOOST_HW_SIMD_X86_FMA4_VERSION</span></code></a>
+        </h6>
+<p>
+          <a href="https://en.wikipedia.org/wiki/FMA_instruction_set#FMA4_instruction_set" target="_top">FMA4</a>
+          x86 extension (AMD specific).
+        </p>
+<p>
+          Version number is: <span class="bold"><strong>5.1.0</strong></span>.
+        </p>
+<h6>
+<a name="predef.reference.boost_hw_hardware_macros.boost_hw_simd_x86_amd_version.h2"></a>
+          <span><a name="predef.reference.boost_hw_hardware_macros.boost_hw_simd_x86_amd_version.boost_hw_simd_x86_xop_version"></a></span><a class="link" href="boost_hw_hardware_macros.html#predef.reference.boost_hw_hardware_macros.boost_hw_simd_x86_amd_version.boost_hw_simd_x86_xop_version"><code class="computeroutput"><span class="identifier">BOOST_HW_SIMD_X86_XOP_VERSION</span></code></a>
+        </h6>
+<p>
+          <a href="https://en.wikipedia.org/wiki/XOP_instruction_set" target="_top">XOP</a>
+          x86 extension (AMD specific).
+        </p>
+<p>
+          Version number is: <span class="bold"><strong>5.1.1</strong></span>.
+        </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="predef.reference.boost_hw_hardware_macros.boost_hw_simd_arm_version"></a><a class="link" href="boost_hw_hardware_macros.html#predef.reference.boost_hw_hardware_macros.boost_hw_simd_arm_version" title="BOOST_HW_SIMD_ARM_*_VERSION"><code class="computeroutput"><span class="identifier">BOOST_HW_SIMD_ARM_</span><span class="special">*</span><span class="identifier">_VERSION</span></code></a>
+</h4></div></div></div>
+<p>
+          Those defines represent ARM SIMD extensions versions.
+        </p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+            You <span class="bold"><strong>MUST</strong></span> compare them with the predef
+            <code class="computeroutput"><span class="identifier">BOOST_HW_SIMD_ARM</span></code>.
+          </p></td></tr>
+</table></div>
+<h6>
+<a name="predef.reference.boost_hw_hardware_macros.boost_hw_simd_arm_version.h0"></a>
+          <span><a name="predef.reference.boost_hw_hardware_macros.boost_hw_simd_arm_version.boost_hw_simd_arm_neon_version"></a></span><a class="link" href="boost_hw_hardware_macros.html#predef.reference.boost_hw_hardware_macros.boost_hw_simd_arm_version.boost_hw_simd_arm_neon_version"><code class="computeroutput"><span class="identifier">BOOST_HW_SIMD_ARM_NEON_VERSION</span></code></a>
+        </h6>
+<p>
+          The <a href="https://en.wikipedia.org/wiki/ARM_architecture#Advanced_SIMD_.28NEON.29" target="_top">NEON</a>
+          ARM extension version number.
+        </p>
+<p>
+          Version number is: <span class="bold"><strong>1.0.0</strong></span>.
+        </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="predef.reference.boost_hw_hardware_macros.boost_hw_simd_ppc_version"></a><a class="link" href="boost_hw_hardware_macros.html#predef.reference.boost_hw_hardware_macros.boost_hw_simd_ppc_version" title="BOOST_HW_SIMD_PPC_*_VERSION"><code class="computeroutput"><span class="identifier">BOOST_HW_SIMD_PPC_</span><span class="special">*</span><span class="identifier">_VERSION</span></code></a>
+</h4></div></div></div>
+<p>
+          Those defines represent Power PC SIMD extensions versions.
+        </p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+            You <span class="bold"><strong>MUST</strong></span> compare them with the predef
+            <code class="computeroutput"><span class="identifier">BOOST_HW_SIMD_PPC</span></code>.
+          </p></td></tr>
+</table></div>
+<h6>
+<a name="predef.reference.boost_hw_hardware_macros.boost_hw_simd_ppc_version.h0"></a>
+          <span><a name="predef.reference.boost_hw_hardware_macros.boost_hw_simd_ppc_version.boost_hw_simd_ppc_vmx_version"></a></span><a class="link" href="boost_hw_hardware_macros.html#predef.reference.boost_hw_hardware_macros.boost_hw_simd_ppc_version.boost_hw_simd_ppc_vmx_version"><code class="computeroutput"><span class="identifier">BOOST_HW_SIMD_PPC_VMX_VERSION</span></code></a>
+        </h6>
+<p>
+          The <a href="https://en.wikipedia.org/wiki/AltiVec#VMX128" target="_top">VMX</a>
+          powerpc extension version number.
+        </p>
+<p>
+          Version number is: <span class="bold"><strong>1.0.0</strong></span>.
+        </p>
+<h6>
+<a name="predef.reference.boost_hw_hardware_macros.boost_hw_simd_ppc_version.h1"></a>
+          <span><a name="predef.reference.boost_hw_hardware_macros.boost_hw_simd_ppc_version.boost_hw_simd_ppc_vsx_version"></a></span><a class="link" href="boost_hw_hardware_macros.html#predef.reference.boost_hw_hardware_macros.boost_hw_simd_ppc_version.boost_hw_simd_ppc_vsx_version"><code class="computeroutput"><span class="identifier">BOOST_HW_SIMD_PPC_VSX_VERSION</span></code></a>
+        </h6>
+<p>
+          The <a href="https://en.wikipedia.org/wiki/AltiVec#VSX" target="_top">VSX</a>
+          powerpc extension version number.
+        </p>
+<p>
+          Version number is: <span class="bold"><strong>1.1.0</strong></span>.
+        </p>
+<h6>
+<a name="predef.reference.boost_hw_hardware_macros.boost_hw_simd_ppc_version.h2"></a>
+          <span><a name="predef.reference.boost_hw_hardware_macros.boost_hw_simd_ppc_version.boost_hw_simd_ppc_qpx_version"></a></span><a class="link" href="boost_hw_hardware_macros.html#predef.reference.boost_hw_hardware_macros.boost_hw_simd_ppc_version.boost_hw_simd_ppc_qpx_version"><code class="computeroutput"><span class="identifier">BOOST_HW_SIMD_PPC_QPX_VERSION</span></code></a>
+        </h6>
+<p>
+          The QPX powerpc extension version number.
+        </p>
+<p>
+          Version number is: <span class="bold"><strong>2.0.0</strong></span>.
+        </p>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2005, 2008-2016 Rene Rivera<br>Copyright &#169; 2015 Charly Chevalier<br>Copyright &#169; 2015 Joel Falcou<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="boost_plat_platform_macros.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../reference.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="other_macros.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

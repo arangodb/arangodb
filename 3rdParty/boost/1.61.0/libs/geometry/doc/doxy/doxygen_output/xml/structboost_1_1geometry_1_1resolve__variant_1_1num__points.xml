@@ -1,0 +1,43 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="structboost_1_1geometry_1_1resolve__variant_1_1num__points" kind="struct" prot="public">
+    <compoundname>boost::geometry::resolve_variant::num_points</compoundname>
+    <includes local="no">num_points.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename Geometry</type>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-static-func">
+      <memberdef kind="function" id="structboost_1_1geometry_1_1resolve__variant_1_1num__points_1abc7610920cdd6721a363ff7024f6e14c" prot="public" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>std::size_t</type>
+        <definition>static std::size_t boost::geometry::resolve_variant::num_points&lt; Geometry &gt;::apply</definition>
+        <argsstring>(Geometry const &amp;geometry, bool add_for_open)</argsstring>
+        <name>apply</name>
+        <param>
+          <type>Geometry const &amp;</type>
+          <declname>geometry</declname>
+        </param>
+        <param>
+          <type>bool</type>
+          <declname>add_for_open</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/num_points.hpp" line="151" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/num_points.hpp" bodystart="149" bodyend="157"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/num_points.hpp" line="148" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/num_points.hpp" bodystart="147" bodyend="158"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1resolve__variant_1_1num__points_1abc7610920cdd6721a363ff7024f6e14c" prot="public" virt="non-virtual"><scope>boost::geometry::resolve_variant::num_points</scope><name>apply</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

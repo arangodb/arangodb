@@ -1,0 +1,45 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="structboost_1_1geometry_1_1index_1_1detail_1_1equals_3_01_geometry_01_5_00_01_tag_01_4" kind="struct" prot="public">
+    <compoundname>boost::geometry::index::detail::equals&lt; Geometry *, Tag &gt;</compoundname>
+    <templateparamlist>
+      <param>
+        <type>typename Geometry</type>
+      </param>
+      <param>
+        <type>typename Tag</type>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-static-func">
+      <memberdef kind="function" id="structboost_1_1geometry_1_1index_1_1detail_1_1equals_3_01_geometry_01_5_00_01_tag_01_4_1ace99def116207a342faa07fa916b7e42" prot="public" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>bool</type>
+        <definition>static bool boost::geometry::index::detail::equals&lt; Geometry *, Tag &gt;::apply</definition>
+        <argsstring>(const Geometry *g1, const Geometry *g2)</argsstring>
+        <name>apply</name>
+        <param>
+          <type>const Geometry *</type>
+          <declname>g1</declname>
+        </param>
+        <param>
+          <type>const Geometry *</type>
+          <declname>g2</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/equal_to.hpp" line="31" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/equal_to.hpp" bodystart="30" bodyend="33"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/index/equal_to.hpp" line="29" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/equal_to.hpp" bodystart="28" bodyend="34"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1index_1_1detail_1_1equals_3_01_geometry_01_5_00_01_tag_01_4_1ace99def116207a342faa07fa916b7e42" prot="public" virt="non-virtual"><scope>boost::geometry::index::detail::equals&lt; Geometry *, Tag &gt;</scope><name>apply</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

@@ -1,0 +1,14 @@
+{
+    "key": "coroutine",
+    "name": "Coroutine",
+    "authors": [
+        "Oliver Kowalke"
+    ],
+    "description": "Coroutine library.",
+    "category": [
+        "Concurrent"
+    ],
+    "maintainers": [
+        "Oliver Kowalke <oliver.kowalke -at- gmail.com>"
+    ]
+}

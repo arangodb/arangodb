@@ -48,7 +48,10 @@ class GeneralServer;
 //     `SocketTask::fillReadBuffer()`.
 //
 // (2) After reading data from the client, `processRead()` is called. Each
-//     sub-class of `GeneralCommTask` must implement this method.
+//     sub-class of `GeneralCommTask` must implement this method. While the
+//     function returns true it is called in a loop. Returning false signals
+//     that new data has to be received in order to continue and that all
+//     available data has been processed
 //
 // (3) As soon as `processRead()` detects that it has read a complete request,
 //     it must create an instance of a sub-class of `GeneralRequest` and
@@ -66,9 +69,9 @@ class GeneralServer;
 //     sub-class. It will be called with an response object and an indicator
 //     if an error has occurred.
 //
-//     It is the responsibility of the sub-class to govern what is support. For
-//     example, HTTP will only support one active request executing at a time
-//     until the final response has been send out.
+//     It is the responsibility of the sub-class to govern what is supported.
+//     For example, HTTP will only support one active request executing at a
+//     time until the final response has been send out.
 //
 //     VelocyPack on the other hand, allows multiple active requests. Partial
 //     responses are identified by a request id.
@@ -129,29 +132,26 @@ class GeneralCommTask : public SocketTask, public RequestStatisticsAgent {
   GeneralCommTask(GeneralServer*, TRI_socket_t, ConnectionInfo&&,
                   double keepAliveTimeout);
 
+  // write data from request into _writeBuffers and call fillWriteBuffer
+  virtual void addResponse(GeneralResponse*, bool error) = 0;
+
  protected:
   virtual ~GeneralCommTask();
 
- public:
-  virtual void addResponse(GeneralResponse*, bool error) = 0;
-
-  // void handleResponse(GeneralResponse*);  // resets vars and calls
-  // addResponse
-
- protected:
-  void signalTask(TaskData*) override;
-
- protected:
+  // is called in a loop as long as it returns true.
+  // Return false if there is not enough data to do
+  // any more processing and all available data has
+  // been evaluated.
   virtual bool processRead() = 0;
+
   virtual void handleChunk(char const*, size_t) = 0;
 
  protected:
-  bool handleRead() override final;
-
   void executeRequest(GeneralRequest*, GeneralResponse*);
+
   // TODO(fc) move to SocketTask
   // main callback of this class - called by base SocketTask - this version
-  // calls the SocketTask's handleEvent
+  // calls the SocketTask's handleEvent (called in httpsHandler directly)
   virtual bool handleEvent(EventToken token, EventType events) override;
 
   void processResponse(GeneralResponse*);
@@ -160,27 +160,24 @@ class GeneralCommTask : public SocketTask, public RequestStatisticsAgent {
   void handleSimpleError(GeneralResponse::ResponseCode, int code,
                          std::string const& errorMessage);
 
+  void fillWriteBuffer();  // fills SocketTasks _writeBuffer
+                           // _writeBufferStatistics from
+                           // _writeBuffers/_writeBuffersStats
+
   // clears the request object, TODO(fc) see below
   void clearRequest() {
     if (_request != nullptr) {
       delete _request;
     }
-
     _request = nullptr;
   }
 
-  //
-  // internal members
-  //
-
- protected:
+ private:
   void handleTimeout() override final { _clientClosed = true; }
+  bool handleRead() override final;
+  void signalTask(TaskData*) override;
 
  protected:
-  void fillWriteBuffer();  // fills SocketTasks _writeBuffer
-                           // _writeBufferStatistics from
-                           // _writeBuffers/_writeBuffersStats
-
   // for asynchronous requests
   GeneralServer* const _server;
 

@@ -1,0 +1,80 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Motivation</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../../index.html" title="Chapter&#160;1.&#160;Boost.Chrono 2.0.5">
+<link rel="up" href="../overview.html" title="Overview">
+<link rel="prev" href="../overview.html" title="Overview">
+<link rel="next" href="description.html" title="Description">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../overview.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../overview.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="description.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="chrono.overview.motivation"></a><a class="link" href="motivation.html" title="Motivation">Motivation</a>
+</h3></div></div></div>
+<h5>
+<a name="chrono.overview.motivation.h0"></a>
+        <span><a name="chrono.overview.motivation.time"></a></span><a class="link" href="motivation.html#chrono.overview.motivation.time">Time</a>
+      </h5>
+<p>
+        We all deal with time every day of our lives. We've intuitively known it
+        since birth. Thus we are all very familiar with it and believe it to be a
+        simple matter. The modeling of time in computer programs should be similarly
+        simple. The unfortunate truth is that this perceived simplicity is only skin
+        deep. Fortunately, we do not need a terribly complicated solution to meet
+        the bulk of our needs. However, overly simplistic solutions can be dangerous
+        and inefficient, and won't adapt as the computer industry evolves.
+      </p>
+<p>
+        <span class="bold"><strong>Boost.Chrono</strong></span> implements the new time facilities
+        in C++11, as proposed in <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2008/n2661.htm" target="_top"><span class="bold"><strong>N2661 - A Foundation to Sleep On</strong></span></a>. That document
+        provides background and motivation for key design decisions and is the source
+        of a good deal of information in this documentation.
+      </p>
+<p>
+        In addition to the clocks provided by the standard proposal, <span class="bold"><strong>Boost.Chrono</strong></span>
+        provides specific process and thread clocks.
+      </p>
+<h5>
+<a name="chrono.overview.motivation.h1"></a>
+        <span><a name="chrono.overview.motivation.wall_clock_versus_system_and_user_time"></a></span><a class="link" href="motivation.html#chrono.overview.motivation.wall_clock_versus_system_and_user_time">Wall
+        clock versus system and user time</a>
+      </h5>
+<p>
+        To make the timing facilities of Boost.Chrono more generally useful, the
+        library provides a number of clocks that are thin wrappers around the operating
+        system's process time API, thereby allowing the extraction of wall clock
+        time, user CPU time, and system CPU time of the process. Wall clock time
+        is the sum of CPU time and system CPU time. (On POSIX-like systems, this
+        relies on <code class="computeroutput"><span class="identifier">times</span><span class="special">()</span></code>.
+        On Windows, it relies on <code class="computeroutput"><span class="identifier">GetProcessTimes</span><span class="special">()</span></code>.)
+      </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2008 Howard Hinnant<br>Copyright &#169; 2006, 2008 Beman Dawes<br>Copyright &#169; 2009-2013 Vicente J. Botet Escriba<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../overview.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../overview.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="description.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

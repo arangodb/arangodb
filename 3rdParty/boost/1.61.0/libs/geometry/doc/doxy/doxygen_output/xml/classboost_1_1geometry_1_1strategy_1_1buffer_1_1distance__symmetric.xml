@@ -1,0 +1,79 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="classboost_1_1geometry_1_1strategy_1_1buffer_1_1distance__symmetric" kind="class" prot="public">
+    <compoundname>boost::geometry::strategy::buffer::distance_symmetric</compoundname>
+    <includes local="no">buffer_distance_symmetric.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename NumericType</type>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="private-attrib">
+      <memberdef kind="variable" id="classboost_1_1geometry_1_1strategy_1_1buffer_1_1distance__symmetric_1a01f19aaafcfb710b60ea75fe938d6249" prot="private" static="no" mutable="no">
+        <type>NumericType</type>
+        <definition>NumericType boost::geometry::strategy::buffer::distance_symmetric&lt; NumericType &gt;::m_distance</definition>
+        <argsstring></argsstring>
+        <name>m_distance</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/buffer_distance_symmetric.hpp" line="98" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/buffer_distance_symmetric.hpp" bodystart="98" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="classboost_1_1geometry_1_1strategy_1_1buffer_1_1distance__symmetric_1ae0cb002229706042a0bafb90f289a470" prot="public" static="no" const="no" explicit="yes" inline="yes" virt="non-virtual">
+        <type></type>
+        <definition>boost::geometry::strategy::buffer::distance_symmetric&lt; NumericType &gt;::distance_symmetric</definition>
+        <argsstring>(NumericType const &amp;distance)</argsstring>
+        <name>distance_symmetric</name>
+        <param>
+          <type>NumericType const &amp;</type>
+          <declname>distance</declname>
+        </param>
+        <briefdescription>
+<para>Constructs the strategy, a distance must be specified. </para>        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>distance</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>The distance (or radius) of the buffer </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/buffer_distance_symmetric.hpp" line="54" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/buffer_distance_symmetric.hpp" bodystart="52" bodyend="54"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+<para>Let the buffer algorithm create buffers with same distances. </para>    </briefdescription>
+    <detaileddescription>
+<para><parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>NumericType</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>numerical type (int, double, ttmath, ...)</para></parameterdescription>
+</parameteritem>
+</parameterlist>
+This strategy can be used as DistanceStrategy for the buffer algorithm. It can be applied for all geometries. It uses one distance for left and for right. If the distance is negative and used with a (multi)polygon or ring, the geometry will shrink (deflate) instead of expand (inflate).</para><para> <qbk>
+[heading Example]
+[buffer_distance_symmetric]
+[heading Output]
+[$img/strategies/buffer_distance_symmetric.png]
+[heading See also]
+\* [link geometry.reference.algorithms.buffer.buffer_7_with_strategies buffer (with strategies)]
+\* [link geometry.reference.strategies.strategy_buffer_distance_asymmetric distance_asymmetric]
+</qbk>  </para>    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/buffer_distance_symmetric.hpp" line="48" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/buffer_distance_symmetric.hpp" bodystart="47" bodyend="99"/>
+    <listofallmembers>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1buffer_1_1distance__symmetric_1ae0cb002229706042a0bafb90f289a470" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::buffer::distance_symmetric</scope><name>distance_symmetric</name></member>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1buffer_1_1distance__symmetric_1a01f19aaafcfb710b60ea75fe938d6249" prot="private" virt="non-virtual"><scope>boost::geometry::strategy::buffer::distance_symmetric</scope><name>m_distance</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

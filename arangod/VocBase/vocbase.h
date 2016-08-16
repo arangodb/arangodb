@@ -59,20 +59,6 @@ class Thread;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief compaction blocker entry
-////////////////////////////////////////////////////////////////////////////////
-
-struct compaction_blocker_t {
-  TRI_voc_tick_t _id;
-  double _expires;
-};
-
-struct compaction_blockers_t {
-  arangodb::basics::ReadWriteLock _lock;
-  std::vector<compaction_blocker_t> _data;
-};
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief name of the system database
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -166,6 +152,8 @@ struct TRI_vocbase_t {
   ~TRI_vocbase_t();
 
  private:
+  /// @brief sleep interval used when polling for a loading collection's status
+  static constexpr unsigned collectionStatusPollInterval() { return 10 * 1000; }  
   
   /// @brief states for dropping
   enum DropState {
@@ -212,8 +200,6 @@ struct TRI_vocbase_t {
 
   std::unique_ptr<arangodb::CompactorThread> _compactorThread;
   std::unique_ptr<arangodb::CleanupThread> _cleanupThread;
-
-  compaction_blockers_t _compactionBlockers;
 
  public:
   /// @brief checks if a database name is allowed
@@ -430,7 +416,7 @@ class TRI_vocbase_col_t {
 
   TRI_vocbase_col_t(TRI_vocbase_t* vocbase, TRI_col_type_e type,
                     TRI_voc_cid_t cid, std::string const& name, TRI_voc_cid_t planId,
-                    std::string const& path);
+                    std::string const& path, bool isLocal);
   ~TRI_vocbase_col_t();
 
   // Leftover from struct
@@ -446,7 +432,6 @@ class TRI_vocbase_col_t {
   std::string const& path() const { return _path; }
   bool isLocal() const { return _isLocal; }
   bool canDrop() const { return _canDrop; }
-  bool canUnload() const { return _canUnload; }
   bool canRename() const { return _canRename; }
 
  public:
@@ -472,28 +457,10 @@ class TRI_vocbase_col_t {
   std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack(bool,
                                                               TRI_voc_tick_t);
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Transform the information for this collection to velocypack
+  /// @brief transform the information for this collection to velocypack
   ///        The builder has to be an opened Type::Object
-  //////////////////////////////////////////////////////////////////////////////
-
   void toVelocyPack(arangodb::velocypack::Builder&, bool, TRI_voc_tick_t);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Transform the information for the indexes of this collection to
-  /// velocypack
-  //////////////////////////////////////////////////////////////////////////////
-
-  std::shared_ptr<arangodb::velocypack::Builder> toVelocyPackIndexes(
-      TRI_voc_tick_t);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Transform the information for this collection to velocypack
-  ///        The builder has to be an opened Type::Array
-  //////////////////////////////////////////////////////////////////////////////
-
-  void toVelocyPackIndexes(arangodb::velocypack::Builder&, TRI_voc_tick_t);
-
+ 
  public:
   TRI_vocbase_t* const _vocbase;
   TRI_voc_cid_t const _cid;     // local collection identifier
@@ -515,11 +482,9 @@ class TRI_vocbase_col_t {
   std::string _name;          // name of the collection
   std::string const _path;    // storage path
 
- public:
   bool _isLocal;    // if true, the collection is local. if false,
                     // the collection is a remote (cluster) collection
   bool _canDrop;    // true if the collection can be dropped
-  bool _canUnload;  // true if the collection can be unloaded
   bool _canRename;  // true if the collection can be renamed
 };
 

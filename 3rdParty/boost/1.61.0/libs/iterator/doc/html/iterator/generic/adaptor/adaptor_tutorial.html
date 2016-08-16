@@ -1,0 +1,198 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Tutorial</title>
+<link rel="stylesheet" href="../../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../../../index.html" title="Chapter&#160;1.&#160;Boost.Iterator">
+<link rel="up" href="../adaptor.html" title="Iterator Adaptor">
+<link rel="prev" href="../adaptor.html" title="Iterator Adaptor">
+<link rel="next" href="../../specialized.html" title="Specialized Adaptors">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../adaptor.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../adaptor.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../../specialized.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="iterator.generic.adaptor.adaptor_tutorial"></a><a class="link" href="adaptor_tutorial.html" title="Tutorial">Tutorial</a>
+</h4></div></div></div>
+<p>
+          In this section we'll further refine the <code class="computeroutput"><span class="identifier">node_iter</span></code>
+          class template we developed in the |fac_tut|_. If you haven't already read
+          that material, you should go back now and check it out because we're going
+          to pick up right where it left off.
+        </p>
+<p>
+          .. |fac_tut| replace:: <code class="computeroutput"><span class="identifier">iterator_facade</span></code>
+          tutorial .. _fac_tut: iterator_facade.html#tutorial-example
+        </p>
+<div class="sidebar">
+<div class="titlepage"></div>
+<p>
+          <span class="bold"><strong><code class="computeroutput"><span class="identifier">node_base</span><span class="special">*</span></code> really <span class="bold"><strong>is</strong></span>
+          an iterator</strong></span><br> <br> It's not really a very interesting
+          iterator, since <code class="computeroutput"><span class="identifier">node_base</span></code>
+          is an abstract class: a pointer to a <code class="computeroutput"><span class="identifier">node_base</span></code>
+          just points at some base subobject of an instance of some other class,
+          and incrementing a <code class="computeroutput"><span class="identifier">node_base</span><span class="special">*</span></code> moves it past this base subobject to who-knows-where?
+          The most we can do with that incremented position is to compare another
+          <code class="computeroutput"><span class="identifier">node_base</span><span class="special">*</span></code>
+          to it. In other words, the original iterator traverses a one-element array.
+        </p>
+</div>
+<p>
+          You probably didn't think of it this way, but the <code class="computeroutput"><span class="identifier">node_base</span><span class="special">*</span></code> object that underlies <code class="computeroutput"><span class="identifier">node_iterator</span></code>
+          is itself an iterator, just like all other pointers. If we examine that
+          pointer closely from an iterator perspective, we can see that it has much
+          in common with the <code class="computeroutput"><span class="identifier">node_iterator</span></code>
+          we're building. First, they share most of the same associated types (<code class="computeroutput"><span class="identifier">value_type</span></code>, <code class="computeroutput"><span class="identifier">reference</span></code>,
+          <code class="computeroutput"><span class="identifier">pointer</span></code>, and <code class="computeroutput"><span class="identifier">difference_type</span></code>). Second, even some of
+          the core functionality is the same: <code class="computeroutput"><span class="keyword">operator</span><span class="special">*</span></code> and <code class="computeroutput"><span class="keyword">operator</span><span class="special">==</span></code> on the <code class="computeroutput"><span class="identifier">node_iterator</span></code>
+          return the result of invoking the same operations on the underlying pointer,
+          via the <code class="computeroutput"><span class="identifier">node_iterator</span></code>'s
+          |dereference_and_equal|_). The only real behavioral difference between
+          <code class="computeroutput"><span class="identifier">node_base</span><span class="special">*</span></code>
+          and <code class="computeroutput"><span class="identifier">node_iterator</span></code> can be
+          observed when they are incremented: <code class="computeroutput"><span class="identifier">node_iterator</span></code>
+          follows the <code class="computeroutput"><span class="identifier">m_next</span></code> pointer,
+          while <code class="computeroutput"><span class="identifier">node_base</span><span class="special">*</span></code>
+          just applies an address offset.
+        </p>
+<p>
+          .. |dereference_and_equal| replace:: <code class="computeroutput"><span class="identifier">dereference</span></code>
+          and <code class="computeroutput"><span class="identifier">equal</span></code> member functions
+          .. _dereference_and_equal: iterator_facade.html#implementing-the-core-operations
+        </p>
+<p>
+          It turns out that the pattern of building an iterator on another iterator-like
+          type (the <code class="computeroutput"><span class="identifier">Base</span></code> <a name="base1"></a>_ type) while modifying just a few aspects of the underlying
+          type's behavior is an extremely common one, and it's the pattern addressed
+          by <code class="computeroutput"><span class="identifier">iterator_adaptor</span></code>. Using
+          <code class="computeroutput"><span class="identifier">iterator_adaptor</span></code> is very
+          much like using <code class="computeroutput"><span class="identifier">iterator_facade</span></code>,
+          but because iterator_adaptor tries to mimic as much of the <code class="computeroutput"><span class="identifier">Base</span></code> type's behavior as possible, we
+          neither have to supply a <code class="computeroutput"><span class="identifier">Value</span></code>
+          argument, nor implement any core behaviors other than <code class="computeroutput"><span class="identifier">increment</span></code>.
+          The implementation of <code class="computeroutput"><span class="identifier">node_iter</span></code>
+          is thus reduced to:
+        </p>
+<pre class="programlisting"><span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Value</span><span class="special">&gt;</span>
+<span class="keyword">class</span> <span class="identifier">node_iter</span>
+  <span class="special">:</span> <span class="keyword">public</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">iterator_adaptor</span><span class="special">&lt;</span>
+        <span class="identifier">node_iter</span><span class="special">&lt;</span><span class="identifier">Value</span><span class="special">&gt;</span>                <span class="comment">// Derived</span>
+      <span class="special">,</span> <span class="identifier">Value</span><span class="special">*</span>                          <span class="comment">// Base</span>
+      <span class="special">,</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">use_default</span>              <span class="comment">// Value</span>
+      <span class="special">,</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">forward_traversal_tag</span>    <span class="comment">// CategoryOrTraversal</span>
+    <span class="special">&gt;</span>
+<span class="special">{</span>
+ <span class="keyword">private</span><span class="special">:</span>
+    <span class="keyword">struct</span> <span class="identifier">enabler</span> <span class="special">{};</span>  <span class="comment">// a private type avoids misuse</span>
+
+ <span class="keyword">public</span><span class="special">:</span>
+    <span class="identifier">node_iter</span><span class="special">()</span>
+      <span class="special">:</span> <span class="identifier">node_iter</span><span class="special">::</span><span class="identifier">iterator_adaptor_</span><span class="special">(</span><span class="number">0</span><span class="special">)</span> <span class="special">{}</span>
+
+    <span class="keyword">explicit</span> <span class="identifier">node_iter</span><span class="special">(</span><span class="identifier">Value</span><span class="special">*</span> <span class="identifier">p</span><span class="special">)</span>
+      <span class="special">:</span> <span class="identifier">node_iter</span><span class="special">::</span><span class="identifier">iterator_adaptor_</span><span class="special">(</span><span class="identifier">p</span><span class="special">)</span> <span class="special">{}</span>
+
+    <span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">OtherValue</span><span class="special">&gt;</span>
+    <span class="identifier">node_iter</span><span class="special">(</span>
+        <span class="identifier">node_iter</span><span class="special">&lt;</span><span class="identifier">OtherValue</span><span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">other</span>
+      <span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">enable_if</span><span class="special">&lt;</span>
+            <span class="identifier">boost</span><span class="special">::</span><span class="identifier">is_convertible</span><span class="special">&lt;</span><span class="identifier">OtherValue</span><span class="special">*,</span><span class="identifier">Value</span><span class="special">*&gt;</span>
+          <span class="special">,</span> <span class="identifier">enabler</span>
+        <span class="special">&gt;::</span><span class="identifier">type</span> <span class="special">=</span> <span class="identifier">enabler</span><span class="special">()</span>
+    <span class="special">)</span>
+      <span class="special">:</span> <span class="identifier">node_iter</span><span class="special">::</span><span class="identifier">iterator_adaptor_</span><span class="special">(</span><span class="identifier">other</span><span class="special">.</span><span class="identifier">base</span><span class="special">())</span> <span class="special">{}</span>
+
+ <span class="keyword">private</span><span class="special">:</span>
+    <span class="keyword">friend</span> <span class="keyword">class</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">iterator_core_access</span><span class="special">;</span>
+    <span class="keyword">void</span> <span class="identifier">increment</span><span class="special">()</span> <span class="special">{</span> <span class="keyword">this</span><span class="special">-&gt;</span><span class="identifier">base_reference</span><span class="special">()</span> <span class="special">=</span> <span class="keyword">this</span><span class="special">-&gt;</span><span class="identifier">base</span><span class="special">()-&gt;</span><span class="identifier">next</span><span class="special">();</span> <span class="special">}</span>
+<span class="special">};</span>
+</pre>
+<p>
+          Note the use of <code class="computeroutput"><span class="identifier">node_iter</span><span class="special">::</span><span class="identifier">iterator_adaptor_</span></code>
+          here: because <code class="computeroutput"><span class="identifier">iterator_adaptor</span></code>
+          defines a nested <code class="computeroutput"><span class="identifier">iterator_adaptor_</span></code>
+          type that refers to itself, that gives us a convenient way to refer to
+          the complicated base class type of <code class="computeroutput"><span class="identifier">node_iter</span><span class="special">&lt;</span><span class="identifier">Value</span><span class="special">&gt;</span></code>. [Note: this technique is known not
+          to work with Borland C++ 5.6.4 and Metrowerks CodeWarrior versions prior
+          to 9.0]
+        </p>
+<p>
+          You can see an example program that exercises this version of the node
+          iterators <a href="../../../../example/node_iterator3.cpp" target="_top"><code class="computeroutput"><span class="identifier">here</span></code></a>.
+        </p>
+<p>
+          In the case of <code class="computeroutput"><span class="identifier">node_iter</span></code>,
+          it's not very compelling to pass <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">use_default</span></code>
+          as <code class="computeroutput"><span class="identifier">iterator_adaptor</span></code> 's
+          <code class="computeroutput"><span class="identifier">Value</span></code> argument; we could
+          have just passed <code class="computeroutput"><span class="identifier">node_iter</span></code>
+          's <code class="computeroutput"><span class="identifier">Value</span></code> along to <code class="computeroutput"><span class="identifier">iterator_adaptor</span></code>, and that'd even be
+          shorter! Most iterator class templates built with <code class="computeroutput"><span class="identifier">iterator_adaptor</span></code>
+          are parameterized on another iterator type, rather than on its <code class="computeroutput"><span class="identifier">value_type</span></code>. For example, <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">reverse_iterator</span></code> takes an iterator type
+          argument and reverses its direction of traversal, since the original iterator
+          and the reversed one have all the same associated types, <code class="computeroutput"><span class="identifier">iterator_adaptor</span></code> 's delegation of default
+          types to its <code class="computeroutput"><span class="identifier">Base</span></code> saves
+          the implementor of <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">reverse_iterator</span></code>
+          from writing:
+        </p>
+<pre class="programlisting"><span class="identifier">std</span><span class="special">::</span><span class="identifier">iterator_traits</span><span class="special">&lt;</span><span class="identifier">Iterator</span><span class="special">&gt;::*</span><span class="identifier">some</span><span class="special">-</span><span class="identifier">associated</span><span class="special">-</span><span class="identifier">type</span><span class="special">*</span>
+</pre>
+<p>
+          at least four times.
+        </p>
+<p>
+          We urge you to review the documentation and implementations of |reverse_iterator|_
+          and the other Boost <code class="computeroutput"><span class="identifier">specialized</span>
+          <span class="identifier">iterator</span> <span class="identifier">adaptors</span></code>__
+          to get an idea of the sorts of things you can do with <code class="computeroutput"><span class="identifier">iterator_adaptor</span></code>.
+          In particular, have a look at |transform_iterator|<span class="underline">,
+          which is perhaps the most straightforward adaptor, and also |counting_iterator|</span>,
+          which demonstrates that <code class="computeroutput"><span class="identifier">iterator_adaptor</span></code>'s
+          <code class="computeroutput"><span class="identifier">Base</span></code> type needn't be an
+          iterator.
+        </p>
+<p>
+          .. |reverse_iterator| replace:: <code class="computeroutput"><span class="identifier">reverse_iterator</span></code>
+          .. _reverse_iterator: reverse_iterator.html
+        </p>
+<p>
+          .. |counting_iterator| replace:: <code class="computeroutput"><span class="identifier">counting_iterator</span></code>
+          .. _counting_iterator: counting_iterator.html
+        </p>
+<p>
+          .. |transform_iterator| replace:: <code class="computeroutput"><span class="identifier">transform_iterator</span></code>
+          .. _transform_iterator: transform_iterator.html
+        </p>
+<p>
+          __ index.html#specialized-adaptors
+        </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003, 2005 David Abrahams Jeremy Siek Thomas
+      Witt<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at &lt;ulink url="http://www.boost.org/LICENSE_1_0.txt"&gt;
+        http://www.boost.org/LICENSE_1_0.txt &lt;/ulink&gt;)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../adaptor.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../adaptor.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../../specialized.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

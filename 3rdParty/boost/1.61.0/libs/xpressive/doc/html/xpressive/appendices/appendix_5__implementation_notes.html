@@ -1,0 +1,367 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Appendix 5: Implementation Notes</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../../index.html" title="Chapter&#160;1.&#160;Boost.Xpressive">
+<link rel="up" href="../appendices.html" title="Appendices">
+<link rel="prev" href="../../boost_xpressive/appendices/perf/perf_msvc.html" title="xpressive vs. Boost.Regex with Visual C++">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../../boost_xpressive/appendices/perf/perf_msvc.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../appendices.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="xpressive.appendices.appendix_5__implementation_notes"></a><a class="link" href="appendix_5__implementation_notes.html" title="Appendix 5: Implementation Notes">Appendix
+      5: Implementation Notes</a>
+</h3></div></div></div>
+<div class="toc"><dl><dt><span class="section"><a href="appendix_5__implementation_notes.html#boost_xpressive.appendices.appendix_5__implementation_notes.cycle_collection_with___tracking_ptr___">Cycle
+        collection with <code class="literal">tracking_ptr&lt;&gt;</code></a></span></dt></dl></div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="boost_xpressive.appendices.appendix_5__implementation_notes.cycle_collection_with___tracking_ptr___"></a><a class="link" href="appendix_5__implementation_notes.html#boost_xpressive.appendices.appendix_5__implementation_notes.cycle_collection_with___tracking_ptr___" title="Cycle collection with tracking_ptr&lt;&gt;">Cycle
+        collection with <code class="literal">tracking_ptr&lt;&gt;</code></a>
+</h4></div></div></div>
+<p>
+          In xpressive, regex objects can refer to each other and themselves by value
+          or by reference. In addition, they ref-count their referenced regexes to
+          keep them alive. This creates the possibility for cyclic reference counts,
+          and raises the possibility of memory leaks. xpressive avoids leaks by using
+          a type called <code class="computeroutput"><span class="identifier">tracking_ptr</span><span class="special">&lt;&gt;</span></code>. This doc describes at a high level
+          how <code class="computeroutput"><span class="identifier">tracking_ptr</span><span class="special">&lt;&gt;</span></code>
+          works.
+        </p>
+<h3>
+<a name="boost_xpressive.appendices.appendix_5__implementation_notes.cycle_collection_with___tracking_ptr___.h0"></a>
+          <span><a name="boost_xpressive.appendices.appendix_5__implementation_notes.cycle_collection_with___tracking_ptr___.constraints"></a></span><a class="link" href="appendix_5__implementation_notes.html#boost_xpressive.appendices.appendix_5__implementation_notes.cycle_collection_with___tracking_ptr___.constraints">Constraints</a>
+        </h3>
+<p>
+          Our solution must meet the following design constraints:
+        </p>
+<div class="itemizedlist"><ul class="itemizedlist" type="disc">
+<li class="listitem">
+              No dangling references: All objects referred to directly or indirectly
+              must be kept alive as long as the references are needed.
+            </li>
+<li class="listitem">
+              No leaks: all objects must be freed eventually.
+            </li>
+<li class="listitem">
+              No user intervention: The solution must not require users to explicitly
+              invoke some cycle collection routine.
+            </li>
+<li class="listitem">
+              Clean-up is no-throw: The collection phase will likely be called from
+              a destructor, so it must never throw an exception under any circumstance.
+            </li>
+</ul></div>
+<h3>
+<a name="boost_xpressive.appendices.appendix_5__implementation_notes.cycle_collection_with___tracking_ptr___.h1"></a>
+          <span><a name="boost_xpressive.appendices.appendix_5__implementation_notes.cycle_collection_with___tracking_ptr___.handle_body_idiom"></a></span><a class="link" href="appendix_5__implementation_notes.html#boost_xpressive.appendices.appendix_5__implementation_notes.cycle_collection_with___tracking_ptr___.handle_body_idiom">Handle-Body
+          Idiom</a>
+        </h3>
+<p>
+          To use <code class="computeroutput"><span class="identifier">tracking_ptr</span><span class="special">&lt;&gt;</span></code>,
+          you must separate your type into a handle and a body. In the case of xpressive,
+          the handle type is called <code class="computeroutput"><span class="identifier">basic_regex</span><span class="special">&lt;&gt;</span></code> and the body is called <code class="computeroutput"><span class="identifier">regex_impl</span><span class="special">&lt;&gt;</span></code>.
+          The handle will store a <code class="computeroutput"><span class="identifier">tracking_ptr</span><span class="special">&lt;&gt;</span></code> to the body.
+        </p>
+<p>
+          The body type must inherit from <code class="computeroutput"><span class="identifier">enable_reference_tracking</span><span class="special">&lt;&gt;</span></code>. This gives the body the bookkeeping
+          data structures that <code class="computeroutput"><span class="identifier">tracking_ptr</span><span class="special">&lt;&gt;</span></code> will use. In particular, it gives
+          the body:
+        </p>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+              <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">set</span><span class="special">&lt;</span><span class="identifier">shared_ptr</span><span class="special">&lt;</span><span class="identifier">body</span><span class="special">&gt;</span>
+              <span class="special">&gt;</span> <span class="identifier">refs_</span></code>
+              : collection of bodies to which this body refers, and
+            </li>
+<li class="listitem">
+              <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">set</span><span class="special">&lt;</span><span class="identifier">weak_ptr</span><span class="special">&lt;</span><span class="identifier">body</span><span class="special">&gt;</span>
+              <span class="special">&gt;</span> <span class="identifier">deps_</span></code>
+              : collection of bodies which refer to this body.
+            </li>
+</ol></div>
+<h3>
+<a name="boost_xpressive.appendices.appendix_5__implementation_notes.cycle_collection_with___tracking_ptr___.h2"></a>
+          <span><a name="boost_xpressive.appendices.appendix_5__implementation_notes.cycle_collection_with___tracking_ptr___.references_and_dependencies"></a></span><a class="link" href="appendix_5__implementation_notes.html#boost_xpressive.appendices.appendix_5__implementation_notes.cycle_collection_with___tracking_ptr___.references_and_dependencies">References
+          and Dependencies</a>
+        </h3>
+<p>
+          We refer to (1) above as the "references" and (2) as the "dependencies".
+          It is crucial to the understanding of <code class="computeroutput"><span class="identifier">tracking_ptr</span><span class="special">&lt;&gt;</span></code> to recognize that the set of references
+          includes both those objects that are referred to directly as well as those
+          that are referred to indirectly (that is, through another reference). The
+          same is true for the set of dependencies. In other words, each body holds
+          a ref-count directly to every other body that it needs.
+        </p>
+<p>
+          Why is this important? Because it means that when a body no longer has
+          a handle referring to it, all its references can be released immediately
+          without fear of creating dangling references.
+        </p>
+<p>
+          References and dependencies cross-pollinate. Here's how it works:
+        </p>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+              When one object acquires another as a reference, the second object
+              acquires the first as a dependency.
+            </li>
+<li class="listitem">
+              In addition, the first object acquires all of the second object's references,
+              and the second object acquires all of the first object's dependencies.
+            </li>
+<li class="listitem">
+              When an object picks up a new reference, the reference is also added
+              to all dependent objects.
+            </li>
+<li class="listitem">
+              When an object picks up a new dependency, the dependency is also added
+              to all referenced objects.
+            </li>
+<li class="listitem">
+              An object is never allowed to have itself as a dependency. Objects
+              may have themselves as references, and often do.
+            </li>
+</ol></div>
+<p>
+          Consider the following code:
+        </p>
+<pre class="programlisting"><span class="identifier">sregex</span> <span class="identifier">expr</span><span class="special">;</span>
+<span class="special">{</span>
+    <span class="identifier">sregex</span> <span class="identifier">group</span>  <span class="special">=</span> <span class="char">'('</span> <span class="special">&gt;&gt;</span> <span class="identifier">by_ref</span><span class="special">(</span><span class="identifier">expr</span><span class="special">)</span> <span class="special">&gt;&gt;</span> <span class="char">')'</span><span class="special">;</span>                 <span class="comment">// (1)</span>
+    <span class="identifier">sregex</span> <span class="identifier">fact</span>   <span class="special">=</span> <span class="special">+</span><span class="identifier">_d</span> <span class="special">|</span> <span class="identifier">group</span><span class="special">;</span>                                <span class="comment">// (2)</span>
+    <span class="identifier">sregex</span> <span class="identifier">term</span>   <span class="special">=</span> <span class="identifier">fact</span> <span class="special">&gt;&gt;</span> <span class="special">*((</span><span class="char">'*'</span> <span class="special">&gt;&gt;</span> <span class="identifier">fact</span><span class="special">)</span> <span class="special">|</span> <span class="special">(</span><span class="char">'/'</span> <span class="special">&gt;&gt;</span> <span class="identifier">fact</span><span class="special">));</span>   <span class="comment">// (3)</span>
+    <span class="identifier">expr</span>          <span class="special">=</span> <span class="identifier">term</span> <span class="special">&gt;&gt;</span> <span class="special">*((</span><span class="char">'+'</span> <span class="special">&gt;&gt;</span> <span class="identifier">term</span><span class="special">)</span> <span class="special">|</span> <span class="special">(</span><span class="char">'-'</span> <span class="special">&gt;&gt;</span> <span class="identifier">term</span><span class="special">));</span>   <span class="comment">// (4)</span>
+<span class="special">}</span>                                                               <span class="comment">// (5)</span>
+</pre>
+<p>
+          Here is how the references and dependencies propagate, line by line:
+        </p>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                  <p>
+                    Expression
+                  </p>
+                </th>
+<th>
+                  <p>
+                    Effects
+                  </p>
+                </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                  <p>
+                    1) <code class="computeroutput"><span class="identifier">sregex</span> <span class="identifier">group</span>
+                    <span class="special">=</span> <span class="char">'('</span>
+                    <span class="special">&gt;&gt;</span> <span class="identifier">by_ref</span><span class="special">(</span><span class="identifier">expr</span><span class="special">)</span> <span class="special">&gt;&gt;</span>
+                    <span class="char">')'</span><span class="special">;</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <code class="literal">group: cnt=1 refs={expr} deps={}<br> expr: cnt=2 refs={}
+                    deps={group}</code>
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    2) <code class="computeroutput"><span class="identifier">sregex</span> <span class="identifier">fact</span>
+                    <span class="special">=</span> <span class="special">+</span><span class="identifier">_d</span> <span class="special">|</span>
+                    <span class="identifier">group</span><span class="special">;</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <code class="literal">group: cnt=2 refs={expr} deps={fact}<br> expr: cnt=3
+                    refs={} deps={group,fact}<br> fact: cnt=1 refs={expr,group}
+                    deps={}</code>
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    3) <code class="computeroutput"><span class="identifier">sregex</span> <span class="identifier">term</span>
+                    <span class="special">=</span> <span class="identifier">fact</span>
+                    <span class="special">&gt;&gt;</span> <span class="special">*((</span><span class="char">'*'</span> <span class="special">&gt;&gt;</span>
+                    <span class="identifier">fact</span><span class="special">)</span>
+                    <span class="special">|</span> <span class="special">(</span><span class="char">'/'</span> <span class="special">&gt;&gt;</span>
+                    <span class="identifier">fact</span><span class="special">));</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <code class="literal">group: cnt=3 refs={expr} deps={fact,term}<br> expr:
+                    cnt=4 refs={} deps={group,fact,term}<br> fact: cnt=2 refs={expr,group}
+                    deps={term}<br> term: cnt=1 refs={expr,group,fact} deps={}</code>
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    4) <code class="computeroutput"><span class="identifier">expr</span> <span class="special">=</span>
+                    <span class="identifier">term</span> <span class="special">&gt;&gt;</span>
+                    <span class="special">*((</span><span class="char">'+'</span>
+                    <span class="special">&gt;&gt;</span> <span class="identifier">term</span><span class="special">)</span> <span class="special">|</span>
+                    <span class="special">(</span><span class="char">'-'</span>
+                    <span class="special">&gt;&gt;</span> <span class="identifier">term</span><span class="special">));</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <code class="literal">group: cnt=5 refs={expr,group,fact,term} deps={expr,fact,term}<br>
+                    expr: cnt=5 refs={expr,group,fact,term} deps={group,fact,term}<br>
+                    fact: cnt=5 refs={expr,group,fact,term} deps={expr,group,term}<br>
+                    term: cnt=5 refs={expr,group,fact,term} deps={expr,group,fact}</code>
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    5) <code class="computeroutput"><span class="special">}</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <code class="literal">expr: cnt=2 refs={expr,group,fact,term} deps={group,fact,term}</code>
+                  </p>
+                </td>
+</tr>
+</tbody>
+</table></div>
+<p>
+          This shows how references and dependencies propagate when creating cycles
+          of objects. After line (4), which closes the cycle, every object has a
+          ref-count on every other object, even to itself. So how does this not leak?
+          Read on.
+        </p>
+<h3>
+<a name="boost_xpressive.appendices.appendix_5__implementation_notes.cycle_collection_with___tracking_ptr___.h3"></a>
+          <span><a name="boost_xpressive.appendices.appendix_5__implementation_notes.cycle_collection_with___tracking_ptr___.cycle_breaking"></a></span><a class="link" href="appendix_5__implementation_notes.html#boost_xpressive.appendices.appendix_5__implementation_notes.cycle_collection_with___tracking_ptr___.cycle_breaking">Cycle
+          Breaking</a>
+        </h3>
+<p>
+          Now that the bodies have their sets of references and dependencies, the
+          hard part is done. All that remains is to decide when and where to break
+          the cycle. That is the job of <code class="computeroutput"><span class="identifier">tracking_ptr</span><span class="special">&lt;&gt;</span></code>, which is part of the handle. The
+          <code class="computeroutput"><span class="identifier">tracking_ptr</span><span class="special">&lt;&gt;</span></code>
+          holds 2 <code class="computeroutput"><span class="identifier">shared_ptr</span></code>s. The
+          first, obviously, is the <code class="computeroutput"><span class="identifier">shared_ptr</span><span class="special">&lt;</span><span class="identifier">body</span><span class="special">&gt;</span></code> -- the reference to the body to which
+          this handle refers. The other <code class="computeroutput"><span class="identifier">shared_ptr</span></code>
+          is used to break the cycle. It ensures that when all the handles to a body
+          go out of scope, the body's set of references is cleared.
+        </p>
+<p>
+          This suggests that more than one handle can refer to a body. In fact,
+          <code class="computeroutput"><span class="identifier">tracking_ptr</span><span class="special">&lt;&gt;</span></code>
+          gives you copy-on-write semantics -- when you copy a handle, the body is
+          shared. That makes copies very efficient. Eventually, all the handles to
+          a particular body go out of scope. When that happens, the ref count to
+          the body might still be greater than 0 because some other body (or this
+          body itself!) might be holding a reference to it. However, we are certain
+          that the cycle-breaker's ref-count goes to 0 because the cycle-breaker
+          only lives in handles. No more handles, no more cycle-breakers.
+        </p>
+<p>
+          What does the cycle-breaker do? Recall that the body has a set of references
+          of type <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">set</span><span class="special">&lt;</span><span class="identifier">shared_ptr</span><span class="special">&lt;</span><span class="identifier">body</span><span class="special">&gt;</span> <span class="special">&gt;</span></code>. Let's call this type "references_type".
+          The cycle-breaker is a <code class="computeroutput"><span class="identifier">shared_ptr</span><span class="special">&lt;</span><span class="identifier">references_type</span><span class="special">&gt;</span></code>. It uses a custom deleter, which is
+          defined as follows:
+        </p>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">DerivedT</span><span class="special">&gt;</span>
+<span class="keyword">struct</span> <span class="identifier">reference_deleter</span>
+<span class="special">{</span>
+    <span class="keyword">void</span> <span class="keyword">operator</span> <span class="special">()(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">set</span><span class="special">&lt;</span><span class="identifier">shared_ptr</span><span class="special">&lt;</span><span class="identifier">DerivedT</span><span class="special">&gt;</span> <span class="special">&gt;</span> <span class="special">*</span><span class="identifier">refs</span><span class="special">)</span> <span class="keyword">const</span>
+    <span class="special">{</span>
+        <span class="identifier">refs</span><span class="special">-&gt;</span><span class="identifier">clear</span><span class="special">();</span>
+    <span class="special">}</span>
+<span class="special">};</span>
+</pre>
+<p>
+          The job of to the cycle breaker is to ensure that when the last handle
+          to a body goes away, the body's set of references is cleared. That's it.
+        </p>
+<p>
+          We can clearly see how this guarantees that all bodies are cleaned up eventually.
+          Once every handle has gone out of scope, all the bodies' sets of references
+          will be cleared, leaving none with a non-zero ref-count. No leaks, guaranteed.
+        </p>
+<p>
+          It's a bit harder to see how this guarantees no dangling references. Imagine
+          that there are 3 bodies: A, B and C. A refers to B which refers to C. Now
+          all the handles to B go out of scope, so B's set of references is cleared.
+          Doesn't this mean that C gets deleted, even though it is being used (indirectly)
+          by A? It doesn't. This situation can never occur because we propagated
+          the references and dependencies above such that A will be holding a reference
+          directly to C in addition to B. When B's set of references is cleared,
+          no bodies get deleted, because they are all still in use by A.
+        </p>
+<h3>
+<a name="boost_xpressive.appendices.appendix_5__implementation_notes.cycle_collection_with___tracking_ptr___.h4"></a>
+          <span><a name="boost_xpressive.appendices.appendix_5__implementation_notes.cycle_collection_with___tracking_ptr___.future_work"></a></span><a class="link" href="appendix_5__implementation_notes.html#boost_xpressive.appendices.appendix_5__implementation_notes.cycle_collection_with___tracking_ptr___.future_work">Future
+          Work</a>
+        </h3>
+<p>
+          All these <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">set</span></code>s and <code class="computeroutput"><span class="identifier">shared_ptr</span></code>s
+          and <code class="computeroutput"><span class="identifier">weak_ptr</span></code>s! Very inefficient.
+          I used them because they were handy. I could probably do better.
+        </p>
+<p>
+          Also, some objects stick around longer than they need to. Consider:
+        </p>
+<pre class="programlisting"><span class="identifier">sregex</span> <span class="identifier">b</span><span class="special">;</span>
+<span class="special">{</span>
+    <span class="identifier">sregex</span> <span class="identifier">a</span> <span class="special">=</span> <span class="identifier">_</span><span class="special">;</span>
+    <span class="identifier">b</span> <span class="special">=</span> <span class="identifier">by_ref</span><span class="special">(</span><span class="identifier">a</span><span class="special">);</span>
+    <span class="identifier">b</span> <span class="special">=</span> <span class="identifier">_</span><span class="special">;</span>
+<span class="special">}</span>
+<span class="comment">// a is still alive here!</span>
+</pre>
+<p>
+          Due to the way references and dependencies are propagated, the <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">set</span></code> of references can only grow. It never
+          shrinks, even when some references are no longer needed. For xpressive
+          this isn't an issue. The graphs of referential objects generally stay small
+          and isolated. If someone were to try to use <code class="computeroutput"><span class="identifier">tracking_ptr</span><span class="special">&lt;&gt;</span></code> as a general ref-count-cycle-collection
+          mechanism, this problem would have to be addressed.
+        </p>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2007 Eric Niebler<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../../boost_xpressive/appendices/perf/perf_msvc.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../appendices.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a>
+</div>
+</body>
+</html>

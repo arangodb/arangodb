@@ -1,0 +1,38 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="structboost_1_1geometry_1_1strategy_1_1within_1_1decide__covered__by" kind="struct" prot="public">
+    <compoundname>boost::geometry::strategy::within::decide_covered_by</compoundname>
+    <includes local="no">point_in_box_by_side.hpp</includes>
+      <sectiondef kind="public-static-func">
+      <memberdef kind="function" id="structboost_1_1geometry_1_1strategy_1_1within_1_1decide__covered__by_1a7b3e671c2886dcfc480753eed8c02393" prot="public" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>bool</type>
+        <definition>static bool boost::geometry::strategy::within::decide_covered_by::apply</definition>
+        <argsstring>(int side, bool &amp;result)</argsstring>
+        <name>apply</name>
+        <param>
+          <type>int</type>
+          <declname>side</declname>
+        </param>
+        <param>
+          <type>bool &amp;</type>
+          <declname>result</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/point_in_box_by_side.hpp" line="47" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/point_in_box_by_side.hpp" bodystart="46" bodyend="54"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/point_in_box_by_side.hpp" line="45" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/agnostic/point_in_box_by_side.hpp" bodystart="44" bodyend="55"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1strategy_1_1within_1_1decide__covered__by_1a7b3e671c2886dcfc480753eed8c02393" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::within::decide_covered_by</scope><name>apply</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

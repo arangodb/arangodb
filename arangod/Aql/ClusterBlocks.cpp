@@ -34,7 +34,6 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
 #include "Dispatcher/DispatcherThread.h"
-#include "V8/v8-globals.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 

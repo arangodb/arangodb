@@ -1,0 +1,172 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Naming Conventions</title>
+<link rel="stylesheet" href="../../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../../../index.html" title="Chapter&#160;1.&#160;Boost.Proto">
+<link rel="up" href="../getting_started.html" title="Getting Started">
+<link rel="prev" href="installing_proto.html" title="Installing Proto">
+<link rel="next" href="hello_world.html" title="Hello World">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="installing_proto.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../getting_started.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="hello_world.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="boost_proto.users_guide.getting_started.naming"></a><a class="link" href="naming.html" title="Naming Conventions">Naming
+        Conventions</a>
+</h4></div></div></div>
+<p>
+          Proto is a large library and probably quite unlike any library you've used
+          before. Proto uses some consistent naming conventions to make it easier
+          to navigate, and they're described below.
+        </p>
+<h6>
+<a name="boost_proto.users_guide.getting_started.naming.h0"></a>
+          <span><a name="boost_proto.users_guide.getting_started.naming.functions"></a></span><a class="link" href="naming.html#boost_proto.users_guide.getting_started.naming.functions">Functions</a>
+        </h6>
+<p>
+          All of Proto's functions are defined in the <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">proto</span></code>
+          namespace. For example, there is a function called <code class="computeroutput"><span class="identifier">value</span><span class="special">()</span></code> defined in <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">proto</span></code>
+          that accepts a terminal expression and returns the terminal's value.
+        </p>
+<h6>
+<a name="boost_proto.users_guide.getting_started.naming.h1"></a>
+          <span><a name="boost_proto.users_guide.getting_started.naming.metafunctions"></a></span><a class="link" href="naming.html#boost_proto.users_guide.getting_started.naming.metafunctions">Metafunctions</a>
+        </h6>
+<p>
+          Proto defines <span class="emphasis"><em>metafunctions</em></span> that correspond to each
+          of Proto's free functions. The metafunctions are used to compute the functions'
+          return types. All of Proto's metafunctions live in the <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">proto</span><span class="special">::</span><span class="identifier">result_of</span></code>
+          namespace and have the same name as the functions to which they correspond.
+          For instance, there is a class template <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">proto</span><span class="special">::</span><span class="identifier">result_of</span><span class="special">::</span><span class="identifier">value</span><span class="special">&lt;&gt;</span></code> that you can use to compute the
+          return type of the <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">proto</span><span class="special">::</span><span class="identifier">value</span><span class="special">()</span></code> function.
+        </p>
+<h6>
+<a name="boost_proto.users_guide.getting_started.naming.h2"></a>
+          <span><a name="boost_proto.users_guide.getting_started.naming.function_objects"></a></span><a class="link" href="naming.html#boost_proto.users_guide.getting_started.naming.function_objects">Function
+          Objects</a>
+        </h6>
+<p>
+          Proto defines <span class="emphasis"><em>function object</em></span> equivalents of all of
+          its free functions. (A function object is an instance of a class type that
+          defines an <code class="computeroutput"><span class="keyword">operator</span><span class="special">()</span></code>
+          member function.) All of Proto's function object types are defined in the
+          <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">proto</span><span class="special">::</span><span class="identifier">functional</span></code> namespace and have the same
+          name as their corresponding free functions. For example, <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">proto</span><span class="special">::</span><span class="identifier">functional</span><span class="special">::</span><span class="identifier">value</span></code> is a class that defines a function
+          object that does the same thing as the <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">proto</span><span class="special">::</span><span class="identifier">value</span><span class="special">()</span></code> free function.
+        </p>
+<h6>
+<a name="boost_proto.users_guide.getting_started.naming.h3"></a>
+          <span><a name="boost_proto.users_guide.getting_started.naming.primitive_transforms"></a></span><a class="link" href="naming.html#boost_proto.users_guide.getting_started.naming.primitive_transforms">Primitive
+          Transforms</a>
+        </h6>
+<p>
+          Proto also defines <span class="emphasis"><em>primitive transforms</em></span> -- class types
+          that can be used to compose larger transforms for manipulating expression
+          trees. Many of Proto's free functions have corresponding primitive transforms.
+          These live in the <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">proto</span></code>
+          namespace and their names have a leading underscore. For instance, the
+          transform corresponding to the <code class="computeroutput"><span class="identifier">value</span><span class="special">()</span></code> function is called <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">proto</span><span class="special">::</span><span class="identifier">_value</span></code>.
+        </p>
+<p>
+          The following table summarizes the discussion above:
+        </p>
+<div class="table">
+<a name="boost_proto.users_guide.getting_started.naming.t0"></a><p class="title"><b>Table&#160;1.1.&#160;Proto Naming Conventions</b></p>
+<div class="table-contents"><table class="table" summary="Proto Naming Conventions">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                  <p>
+                    Entity
+                  </p>
+                </th>
+<th>
+                  <p>
+                    Example
+                  </p>
+                </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                  <p>
+                    Free Function
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">proto</span><span class="special">::</span><span class="identifier">value</span><span class="special">()</span></code>
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    Metafunction
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">proto</span><span class="special">::</span><span class="identifier">result_of</span><span class="special">::</span><span class="identifier">value</span><span class="special">&lt;&gt;</span></code>
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    Function Object
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">proto</span><span class="special">::</span><span class="identifier">functional</span><span class="special">::</span><span class="identifier">value</span></code>
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    Transform
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">proto</span><span class="special">::</span><span class="identifier">_value</span></code>
+                  </p>
+                </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<br class="table-break">
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2008 Eric Niebler<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="installing_proto.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../getting_started.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="hello_world.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

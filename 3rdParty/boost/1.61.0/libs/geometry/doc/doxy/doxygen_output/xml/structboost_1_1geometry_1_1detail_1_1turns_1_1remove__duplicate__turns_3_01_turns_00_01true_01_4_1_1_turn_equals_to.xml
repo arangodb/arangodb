@@ -1,0 +1,42 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="structboost_1_1geometry_1_1detail_1_1turns_1_1remove__duplicate__turns_3_01_turns_00_01true_01_4_1_1_turn_equals_to" kind="struct" prot="private">
+    <compoundname>boost::geometry::detail::turns::remove_duplicate_turns&lt; Turns, true &gt;::TurnEqualsTo</compoundname>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="structboost_1_1geometry_1_1detail_1_1turns_1_1remove__duplicate__turns_3_01_turns_00_01true_01_4_1_1_turn_equals_to_1a8804400fad20239652838978e2ceba36" prot="public" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Turn</type>
+          </param>
+        </templateparamlist>
+        <type>bool</type>
+        <definition>bool boost::geometry::detail::turns::remove_duplicate_turns&lt; Turns, true &gt;::TurnEqualsTo::operator()</definition>
+        <argsstring>(Turn const &amp;t1, Turn const &amp;t2) const </argsstring>
+        <name>operator()</name>
+        <param>
+          <type>Turn const &amp;</type>
+          <declname>t1</declname>
+        </param>
+        <param>
+          <type>Turn const &amp;</type>
+          <declname>t2</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/turns/remove_duplicate_turns.hpp" line="39" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/turns/remove_duplicate_turns.hpp" bodystart="38" bodyend="43"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/turns/remove_duplicate_turns.hpp" line="36" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/turns/remove_duplicate_turns.hpp" bodystart="35" bodyend="44"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1detail_1_1turns_1_1remove__duplicate__turns_3_01_turns_00_01true_01_4_1_1_turn_equals_to_1a8804400fad20239652838978e2ceba36" prot="public" virt="non-virtual"><scope>boost::geometry::detail::turns::remove_duplicate_turns&lt; Turns, true &gt;::TurnEqualsTo</scope><name>operator()</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

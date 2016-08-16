@@ -1,0 +1,18 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="classstd_1_1logic__error" kind="class" prot="public">
+    <compoundname>std::logic_error</compoundname>
+    <basecompoundref prot="public" virt="non-virtual">std::exception</basecompoundref>
+    <derivedcompoundref refid="classstd_1_1domain__error" prot="public" virt="non-virtual">std::domain_error</derivedcompoundref>
+    <derivedcompoundref refid="classstd_1_1invalid__argument" prot="public" virt="non-virtual">std::invalid_argument</derivedcompoundref>
+    <derivedcompoundref refid="classstd_1_1length__error" prot="public" virt="non-virtual">std::length_error</derivedcompoundref>
+    <derivedcompoundref refid="classstd_1_1out__of__range" prot="public" virt="non-virtual">std::out_of_range</derivedcompoundref>
+    <briefdescription>
+<para>STL class. </para>    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="[STL]" line="1"/>
+    <listofallmembers>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

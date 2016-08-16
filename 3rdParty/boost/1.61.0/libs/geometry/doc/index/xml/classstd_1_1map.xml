@@ -1,0 +1,59 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="classstd_1_1map" kind="class" prot="public">
+    <compoundname>std::map</compoundname>
+    <innerclass refid="classstd_1_1map_1_1const__iterator" prot="public">std::map::const_iterator</innerclass>
+    <innerclass refid="classstd_1_1map_1_1const__reverse__iterator" prot="public">std::map::const_reverse_iterator</innerclass>
+    <innerclass refid="classstd_1_1map_1_1iterator" prot="public">std::map::iterator</innerclass>
+    <innerclass refid="classstd_1_1map_1_1reverse__iterator" prot="public">std::map::reverse_iterator</innerclass>
+    <templateparamlist>
+      <param>
+        <type>typename</type>
+        <declname>K</declname>
+        <defname>K</defname>
+      </param>
+      <param>
+        <type>typename</type>
+        <declname>T</declname>
+        <defname>T</defname>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="classstd_1_1map_1a8dc2b3ed44acf51fb2bd3eb30b237269" prot="public" static="no" mutable="no">
+        <type>K</type>
+        <definition>K std::map&lt; K, T &gt;::keys</definition>
+        <argsstring></argsstring>
+        <name>keys</name>
+        <briefdescription>
+<para>STL member. </para>        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="" line="1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classstd_1_1map_1ac69fe575e214b796b8d9457b0c22469a" prot="public" static="no" mutable="no">
+        <type>T</type>
+        <definition>T std::map&lt; K, T &gt;::elements</definition>
+        <argsstring></argsstring>
+        <name>elements</name>
+        <briefdescription>
+<para>STL member. </para>        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="" line="1"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+<para>STL class. </para>    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="[STL]" line="1"/>
+    <listofallmembers>
+      <member refid="classstd_1_1map_1ac69fe575e214b796b8d9457b0c22469a" prot="public" virt="non-virtual"><scope>std::map</scope><name>elements</name></member>
+      <member refid="classstd_1_1map_1a8dc2b3ed44acf51fb2bd3eb30b237269" prot="public" virt="non-virtual"><scope>std::map</scope><name>keys</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

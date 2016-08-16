@@ -1,0 +1,156 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Class template dynamic_bitset</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../../index.html" title="Chapter&#160;1.&#160;Boost.Compute">
+<link rel="up" href="../../boost_compute/reference.html#header.boost.compute.container.dynamic_bitset_hpp" title="Header &lt;boost/compute/container/dynamic_bitset.hpp&gt;">
+<link rel="prev" href="basic_string.html" title="Class template basic_string">
+<link rel="next" href="flat_map.html" title="Class template flat_map">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="basic_string.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../boost_compute/reference.html#header.boost.compute.container.dynamic_bitset_hpp"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="flat_map.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="refentry">
+<a name="boost.compute.dynamic_bitset"></a><div class="titlepage"></div>
+<div class="refnamediv">
+<h2><span class="refentrytitle">Class template dynamic_bitset</span></h2>
+<p>boost::compute::dynamic_bitset &#8212; The <a class="link" href="dynamic_bitset.html" title="Class template dynamic_bitset">dynamic_bitset</a> class contains a resizable bit array. </p>
+</div>
+<h2 xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv-title">Synopsis</h2>
+<div xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv"><pre class="synopsis"><span class="comment">// In header: &lt;<a class="link" href="../../boost_compute/reference.html#header.boost.compute.container.dynamic_bitset_hpp" title="Header &lt;boost/compute/container/dynamic_bitset.hpp&gt;">boost/compute/container/dynamic_bitset.hpp</a>&gt;
+
+</span><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Block <span class="special">=</span> <span class="identifier">ulong_</span><span class="special">,</span> <span class="keyword">typename</span> Alloc <span class="special">=</span> <a class="link" href="buffer_allocator.html" title="Class template buffer_allocator">buffer_allocator</a><span class="special">&lt;</span><span class="identifier">Block</span><span class="special">&gt;</span> <span class="special">&gt;</span> 
+<span class="keyword">class</span> <a class="link" href="dynamic_bitset.html" title="Class template dynamic_bitset">dynamic_bitset</a> <span class="special">{</span>
+<span class="keyword">public</span><span class="special">:</span>
+  <span class="comment">// types</span>
+  <span class="keyword">typedef</span> <span class="identifier">Block</span>                     <a name="boost.compute.dynamic_bitset.block_type"></a><span class="identifier">block_type</span><span class="special">;</span>    
+  <span class="keyword">typedef</span> <span class="identifier">Alloc</span>                     <a name="boost.compute.dynamic_bitset.allocator_type"></a><span class="identifier">allocator_type</span><span class="special">;</span>
+  <span class="keyword">typedef</span> <a class="link" href="vector.html" title="Class template vector">vector</a><span class="special">&lt;</span> <span class="identifier">Block</span><span class="special">,</span> <span class="identifier">Alloc</span> <span class="special">&gt;</span>    <a name="boost.compute.dynamic_bitset.container_type"></a><span class="identifier">container_type</span><span class="special">;</span>
+  <span class="keyword">typedef</span> <span class="identifier">container_type</span><span class="special">::</span><span class="identifier">size_type</span> <a name="boost.compute.dynamic_bitset.size_type"></a><span class="identifier">size_type</span><span class="special">;</span>     
+
+  <span class="comment">// <a class="link" href="dynamic_bitset.html#boost.compute.dynamic_bitsetconstruct-copy-destruct">construct/copy/destruct</a></span>
+  <a class="link" href="dynamic_bitset.html#idp11294560-bb"><span class="identifier">dynamic_bitset</span></a><span class="special">(</span><span class="identifier">size_type</span><span class="special">,</span> <span class="identifier">command_queue</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <a class="link" href="dynamic_bitset.html#idp11297136-bb"><span class="identifier">dynamic_bitset</span></a><span class="special">(</span><span class="keyword">const</span> <a class="link" href="dynamic_bitset.html" title="Class template dynamic_bitset">dynamic_bitset</a> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <a class="link" href="dynamic_bitset.html" title="Class template dynamic_bitset">dynamic_bitset</a> <span class="special">&amp;</span> <a class="link" href="dynamic_bitset.html#idp11299328-bb"><span class="keyword">operator</span><span class="special">=</span></a><span class="special">(</span><span class="keyword">const</span> <a class="link" href="dynamic_bitset.html" title="Class template dynamic_bitset">dynamic_bitset</a> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <a class="link" href="dynamic_bitset.html#idp11302512-bb"><span class="special">~</span><span class="identifier">dynamic_bitset</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+
+  <span class="comment">// <a class="link" href="dynamic_bitset.html#idp11249696-bb">public member functions</a></span>
+   <a class="link" href="dynamic_bitset.html#idp11250256-bb"><span class="identifier">BOOST_STATIC_CONSTANT</span></a><span class="special">(</span><span class="identifier">size_type</span><span class="special">,</span> 
+                         <span class="identifier">bits_per_block</span> <span class="special">=</span> <span class="keyword">sizeof</span><span class="special">(</span><span class="identifier">block_type</span><span class="special">)</span><span class="special">*</span><span class="identifier">CHAR_BIT</span><span class="special">)</span><span class="special">;</span>
+   <a class="link" href="dynamic_bitset.html#idp11252624-bb"><span class="identifier">BOOST_STATIC_CONSTANT</span></a><span class="special">(</span><span class="identifier">size_type</span><span class="special">,</span> <span class="identifier">npos</span> <span class="special">=</span> <span class="keyword">static_cast</span><span class="special">&lt;</span> <span class="identifier">size_type</span> <span class="special">&gt;</span><span class="special">(</span><span class="special">-</span><span class="number">1</span><span class="special">)</span><span class="special">)</span><span class="special">;</span>
+  <span class="identifier">size_type</span> <a class="link" href="dynamic_bitset.html#idp11254992-bb"><span class="identifier">size</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="identifier">size_type</span> <a class="link" href="dynamic_bitset.html#idp11256432-bb"><span class="identifier">num_blocks</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="identifier">size_type</span> <a class="link" href="dynamic_bitset.html#idp11257888-bb"><span class="identifier">max_size</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="keyword">bool</span> <a class="link" href="dynamic_bitset.html#idp11259344-bb"><span class="identifier">empty</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="identifier">size_type</span> <a class="link" href="dynamic_bitset.html#idp11262112-bb"><span class="identifier">count</span></a><span class="special">(</span><span class="identifier">command_queue</span> <span class="special">&amp;</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="keyword">void</span> <a class="link" href="dynamic_bitset.html#idp11264256-bb"><span class="identifier">resize</span></a><span class="special">(</span><span class="identifier">size_type</span><span class="special">,</span> <span class="identifier">command_queue</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">void</span> <a class="link" href="dynamic_bitset.html#idp11267424-bb"><span class="identifier">set</span></a><span class="special">(</span><span class="identifier">size_type</span><span class="special">,</span> <span class="identifier">command_queue</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">void</span> <a class="link" href="dynamic_bitset.html#idp11270848-bb"><span class="identifier">set</span></a><span class="special">(</span><span class="identifier">size_type</span><span class="special">,</span> <span class="keyword">bool</span><span class="special">,</span> <span class="identifier">command_queue</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">bool</span> <a class="link" href="dynamic_bitset.html#idp11274960-bb"><span class="identifier">test</span></a><span class="special">(</span><span class="identifier">size_type</span><span class="special">,</span> <span class="identifier">command_queue</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">void</span> <a class="link" href="dynamic_bitset.html#idp11278384-bb"><span class="identifier">flip</span></a><span class="special">(</span><span class="identifier">size_type</span><span class="special">,</span> <span class="identifier">command_queue</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">bool</span> <a class="link" href="dynamic_bitset.html#idp11281360-bb"><span class="identifier">any</span></a><span class="special">(</span><span class="identifier">command_queue</span> <span class="special">&amp;</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="keyword">bool</span> <a class="link" href="dynamic_bitset.html#idp11283936-bb"><span class="identifier">none</span></a><span class="special">(</span><span class="identifier">command_queue</span> <span class="special">&amp;</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="keyword">void</span> <a class="link" href="dynamic_bitset.html#idp11286512-bb"><span class="identifier">reset</span></a><span class="special">(</span><span class="identifier">command_queue</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">void</span> <a class="link" href="dynamic_bitset.html#idp11288368-bb"><span class="identifier">reset</span></a><span class="special">(</span><span class="identifier">size_type</span><span class="special">,</span> <span class="identifier">command_queue</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">void</span> <a class="link" href="dynamic_bitset.html#idp11291344-bb"><span class="identifier">clear</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+  <span class="identifier">allocator_type</span> <a class="link" href="dynamic_bitset.html#idp11292944-bb"><span class="identifier">get_allocator</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+<span class="special">}</span><span class="special">;</span></pre></div>
+<div class="refsect1">
+<a name="idp71531056"></a><h2>Description</h2>
+<p>For example, to create a dynamic-bitset with space for 1000 bits on the device: </p>
+<pre class="programlisting"> <a class="link" href="dynamic_bitset.html" title="Class template dynamic_bitset">boost::compute::dynamic_bitset&lt;&gt;</a> <span class="identifier">bits</span><span class="special">(</span><span class="number">1000</span><span class="special">,</span> <span class="identifier">queue</span><span class="special">)</span><span class="special">;</span>
+</pre>
+<p>The Boost.Compute <code class="computeroutput"><a class="link" href="dynamic_bitset.html" title="Class template dynamic_bitset">dynamic_bitset</a></code> class provides a STL-like API and is modeled after the <code class="computeroutput">boost::dynamic_bitset</code> class from Boost.</p>
+<p><span class="bold"><strong>See Also:</strong></span></p>
+<p><a class="link" href="vector.html" title="Class template vector">vector&lt;T&gt;</a> </p>
+<p>
+</p>
+<div class="refsect2">
+<a name="idp71541472"></a><h3>
+<a name="boost.compute.dynamic_bitsetconstruct-copy-destruct"></a><code class="computeroutput">dynamic_bitset</code> 
+        public
+       construct/copy/destruct</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+<pre class="literallayout"><a name="idp11294560-bb"></a><span class="identifier">dynamic_bitset</span><span class="special">(</span><span class="identifier">size_type</span> size<span class="special">,</span> <span class="identifier">command_queue</span> <span class="special">&amp;</span> queue<span class="special">)</span><span class="special">;</span></pre>
+<p>Creates a new dynamic bitset with storage for <code class="computeroutput">size</code> bits. Initializes all bits to zero. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><a name="idp11297136-bb"></a><span class="identifier">dynamic_bitset</span><span class="special">(</span><span class="keyword">const</span> <a class="link" href="dynamic_bitset.html" title="Class template dynamic_bitset">dynamic_bitset</a> <span class="special">&amp;</span> other<span class="special">)</span><span class="special">;</span></pre>Creates a new dynamic bitset as a copy of <code class="computeroutput">other</code>. </li>
+<li class="listitem">
+<pre class="literallayout"><a class="link" href="dynamic_bitset.html" title="Class template dynamic_bitset">dynamic_bitset</a> <span class="special">&amp;</span> <a name="idp11299328-bb"></a><span class="keyword">operator</span><span class="special">=</span><span class="special">(</span><span class="keyword">const</span> <a class="link" href="dynamic_bitset.html" title="Class template dynamic_bitset">dynamic_bitset</a> <span class="special">&amp;</span> other<span class="special">)</span><span class="special">;</span></pre>Copies the data from <code class="computeroutput">other</code> to <code class="computeroutput">*this</code>. </li>
+<li class="listitem">
+<pre class="literallayout"><a name="idp11302512-bb"></a><span class="special">~</span><span class="identifier">dynamic_bitset</span><span class="special">(</span><span class="special">)</span><span class="special">;</span></pre>Destroys the dynamic bitset. </li>
+</ol></div>
+</div>
+<div class="refsect2">
+<a name="idp71571696"></a><h3>
+<a name="idp11249696-bb"></a><code class="computeroutput">dynamic_bitset</code> public member functions</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem"><pre class="literallayout"> <a name="idp11250256-bb"></a><span class="identifier">BOOST_STATIC_CONSTANT</span><span class="special">(</span><span class="identifier">size_type</span><span class="special">,</span> 
+                       <span class="identifier">bits_per_block</span> <span class="special">=</span> <span class="keyword">sizeof</span><span class="special">(</span><span class="identifier">block_type</span><span class="special">)</span><span class="special">*</span><span class="identifier">CHAR_BIT</span><span class="special">)</span><span class="special">;</span></pre></li>
+<li class="listitem"><pre class="literallayout"> <a name="idp11252624-bb"></a><span class="identifier">BOOST_STATIC_CONSTANT</span><span class="special">(</span><span class="identifier">size_type</span><span class="special">,</span> <span class="identifier">npos</span> <span class="special">=</span> <span class="keyword">static_cast</span><span class="special">&lt;</span> <span class="identifier">size_type</span> <span class="special">&gt;</span><span class="special">(</span><span class="special">-</span><span class="number">1</span><span class="special">)</span><span class="special">)</span><span class="special">;</span></pre></li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">size_type</span> <a name="idp11254992-bb"></a><span class="identifier">size</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>Returns the size of the dynamic bitset. </li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">size_type</span> <a name="idp11256432-bb"></a><span class="identifier">num_blocks</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>Returns the number of blocks to store the bits in the dynamic bitset. </li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">size_type</span> <a name="idp11257888-bb"></a><span class="identifier">max_size</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>Returns the maximum possible size for the dynamic bitset. </li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">bool</span> <a name="idp11259344-bb"></a><span class="identifier">empty</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>Returns <code class="computeroutput">true</code> if the dynamic bitset is empty (i.e. <code class="computeroutput">size()</code> == <code class="computeroutput">0</code>). </li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">size_type</span> <a name="idp11262112-bb"></a><span class="identifier">count</span><span class="special">(</span><span class="identifier">command_queue</span> <span class="special">&amp;</span> queue<span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>Returns the number of set bits (i.e. '1') in the bitset. </li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">void</span> <a name="idp11264256-bb"></a><span class="identifier">resize</span><span class="special">(</span><span class="identifier">size_type</span> num_bits<span class="special">,</span> <span class="identifier">command_queue</span> <span class="special">&amp;</span> queue<span class="special">)</span><span class="special">;</span></pre>
+<p>Resizes the bitset to contain <code class="computeroutput">num_bits</code>. If the new size is greater than the current size the new bits are set to zero. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">void</span> <a name="idp11267424-bb"></a><span class="identifier">set</span><span class="special">(</span><span class="identifier">size_type</span> n<span class="special">,</span> <span class="identifier">command_queue</span> <span class="special">&amp;</span> queue<span class="special">)</span><span class="special">;</span></pre>Sets the bit at position <code class="computeroutput">n</code> to <code class="computeroutput">true</code>. </li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">void</span> <a name="idp11270848-bb"></a><span class="identifier">set</span><span class="special">(</span><span class="identifier">size_type</span> n<span class="special">,</span> <span class="keyword">bool</span> value<span class="special">,</span> <span class="identifier">command_queue</span> <span class="special">&amp;</span> queue<span class="special">)</span><span class="special">;</span></pre>Sets the bit at position <code class="computeroutput">n</code> to <code class="computeroutput">value</code>. </li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">bool</span> <a name="idp11274960-bb"></a><span class="identifier">test</span><span class="special">(</span><span class="identifier">size_type</span> n<span class="special">,</span> <span class="identifier">command_queue</span> <span class="special">&amp;</span> queue<span class="special">)</span><span class="special">;</span></pre>Returns <code class="computeroutput">true</code> if the bit at position <code class="computeroutput">n</code> is set (i.e. '1'). </li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">void</span> <a name="idp11278384-bb"></a><span class="identifier">flip</span><span class="special">(</span><span class="identifier">size_type</span> n<span class="special">,</span> <span class="identifier">command_queue</span> <span class="special">&amp;</span> queue<span class="special">)</span><span class="special">;</span></pre>Flips the value of the bit at position <code class="computeroutput">n</code>. </li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">bool</span> <a name="idp11281360-bb"></a><span class="identifier">any</span><span class="special">(</span><span class="identifier">command_queue</span> <span class="special">&amp;</span> queue<span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>Returns <code class="computeroutput">true</code> if any bit in the bitset is set (i.e. '1'). </li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">bool</span> <a name="idp11283936-bb"></a><span class="identifier">none</span><span class="special">(</span><span class="identifier">command_queue</span> <span class="special">&amp;</span> queue<span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>Returns <code class="computeroutput">true</code> if all of the bits in the bitset are set to zero. </li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">void</span> <a name="idp11286512-bb"></a><span class="identifier">reset</span><span class="special">(</span><span class="identifier">command_queue</span> <span class="special">&amp;</span> queue<span class="special">)</span><span class="special">;</span></pre>Sets all of the bits in the bitset to zero. </li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">void</span> <a name="idp11288368-bb"></a><span class="identifier">reset</span><span class="special">(</span><span class="identifier">size_type</span> n<span class="special">,</span> <span class="identifier">command_queue</span> <span class="special">&amp;</span> queue<span class="special">)</span><span class="special">;</span></pre>Sets the bit at position <code class="computeroutput">n</code> to zero. </li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">void</span> <a name="idp11291344-bb"></a><span class="identifier">clear</span><span class="special">(</span><span class="special">)</span><span class="special">;</span></pre>Empties the bitset (e.g. <code class="computeroutput">resize(0)</code>). </li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">allocator_type</span> <a name="idp11292944-bb"></a><span class="identifier">get_allocator</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>Returns the allocator used to allocate storage for the bitset. </li>
+</ol></div>
+</div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2013, 2014 Kyle Lutz<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="basic_string.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../boost_compute/reference.html#header.boost.compute.container.dynamic_bitset_hpp"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="flat_map.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

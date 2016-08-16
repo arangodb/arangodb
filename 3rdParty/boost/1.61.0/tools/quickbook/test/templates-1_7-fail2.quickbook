@@ -1,0 +1,11 @@
+[article Template 1.7 fail
+[quickbook 1.7]
+]
+
+[/ This should fail because it's a block template called from an attribute ]
+
+[template fail[]
+
+Block template.]
+
+[link this-should-[fail]]

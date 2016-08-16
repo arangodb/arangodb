@@ -1,0 +1,32 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="structboost_1_1geometry_1_1nyi_1_1tag__to__term_3_01geometry__not__recognized__tag_01_4" kind="struct" prot="public">
+    <compoundname>boost::geometry::nyi::tag_to_term&lt; geometry_not_recognized_tag &gt;</compoundname>
+    <includes local="no">not_implemented.hpp</includes>
+    <templateparamlist>
+    </templateparamlist>
+      <sectiondef kind="public-type">
+      <memberdef kind="typedef" id="structboost_1_1geometry_1_1nyi_1_1tag__to__term_3_01geometry__not__recognized__tag_01_4_1a630cef819e6fac6cdb68fff605e0b52e" prot="public" static="no">
+        <type><ref refid="structboost_1_1geometry_1_1info_1_1_u_n_r_e_c_o_g_n_i_z_e_d___g_e_o_m_e_t_r_y___t_y_p_e" kindref="compound">info::UNRECOGNIZED_GEOMETRY_TYPE</ref></type>
+        <definition>typedef info::UNRECOGNIZED_GEOMETRY_TYPE boost::geometry::nyi::tag_to_term&lt; geometry_not_recognized_tag &gt;::type</definition>
+        <argsstring></argsstring>
+        <name>type</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/not_implemented.hpp" line="85" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/not_implemented.hpp" bodystart="85" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/not_implemented.hpp" line="85" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/not_implemented.hpp" bodystart="85" bodyend="85"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1nyi_1_1tag__to__term_3_01geometry__not__recognized__tag_01_4_1a630cef819e6fac6cdb68fff605e0b52e" prot="public" virt="non-virtual"><scope>boost::geometry::nyi::tag_to_term&lt; geometry_not_recognized_tag &gt;</scope><name>type</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

@@ -21,6 +21,7 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "VppMessage.h"
 #include "VppRequest.h"
 
 #include <velocypack/Builder.h>
@@ -30,10 +31,12 @@
 #include <velocypack/Validator.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include "Basics/conversions.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/StringRef.h"
 #include "Basics/StringUtils.h"
+#include "Basics/conversions.h"
 #include "Basics/tri-strings.h"
+#include "Meta/conversion.h"
 #include "Logger/Logger.h"
 
 using namespace arangodb;
@@ -59,16 +62,14 @@ VppRequest::VppRequest(ConnectionInfo const& connectionInfo,
     : GeneralRequest(connectionInfo),
       _message(std::move(message)),
       _headers(nullptr) {
-  if (message._payload != VPackSlice::noneSlice()) {
-    _contentType = ContentType::VPACK;
-    _contentTypeResponse = ContentType::VPACK;
-    _protocol = "vpp";
-    parseHeaderInformation();
-  }
+  _protocol = "vpp";
+  _contentType = ContentType::VPACK;
+  _contentTypeResponse = ContentType::VPACK;
+  parseHeaderInformation();
+  _user = "root";
 }
 
 VPackSlice VppRequest::payload(VPackOptions const* options) {
-  // TODO - handle options??
   return _message._payload;
 }
 
@@ -77,8 +78,8 @@ std::unordered_map<std::string, std::string> const& VppRequest::headers()
   if (!_headers) {
     using namespace std;
     _headers = make_unique<unordered_map<string, string>>();
-    TRI_ASSERT(_message._header.isObject());
-    for (auto const& it : VPackObjectIterator(_message._header)) {
+    VPackSlice meta = _message._header.get("meta");
+    for (auto const& it : VPackObjectIterator(meta)) {
       _headers->emplace(it.key.copyString(), it.value.copyString());
     }
   }
@@ -98,9 +99,13 @@ std::string const& VppRequest::header(std::string const& key) const {
 
 void VppRequest::parseHeaderInformation() {
   using namespace std;
-  TRI_ASSERT(_message._header.isObject());
+  auto& vHeader = _message._header;
+
+  _databaseName = vHeader.get("database").copyString();
+  _requestPath = vHeader.get("request").copyString();
+  _type = meta::toEnum<RequestType>(vHeader.get("requestType").getInt());
+
   VPackSlice params = _message._header.get("parameter");
-  TRI_ASSERT(params.isObject());
   for (auto const& it : VPackObjectIterator(params)) {
     if (it.value.isArray()) {
       vector<string> tmp;

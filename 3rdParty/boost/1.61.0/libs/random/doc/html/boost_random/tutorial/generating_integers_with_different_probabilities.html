@@ -1,0 +1,102 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Generating integers with different probabilities</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../../index.html" title="Chapter&#160;1.&#160;Boost.Random">
+<link rel="up" href="../tutorial.html" title="Tutorial">
+<link rel="prev" href="../tutorial.html" title="Tutorial">
+<link rel="next" href="generating_a_random_password.html" title="Generating a random password">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../tutorial.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../tutorial.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="generating_a_random_password.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_random.tutorial.generating_integers_with_different_probabilities"></a><a class="link" href="generating_integers_with_different_probabilities.html" title="Generating integers with different probabilities">Generating
+      integers with different probabilities</a>
+</h3></div></div></div>
+<p>
+        For the source of this example see <a href="../../../../../..//libs/random/example/weighted_die.cpp" target="_top">weighted_die.cpp</a>.
+      </p>
+<p>
+</p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">random</span><span class="special">/</span><span class="identifier">mersenne_twister</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">random</span><span class="special">/</span><span class="identifier">discrete_distribution</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="identifier">boost</span><span class="special">::</span><span class="identifier">mt19937</span> <span class="identifier">gen</span><span class="special">;</span>
+</pre>
+<p>
+      </p>
+<p>
+        This time, instead of a fair die, the probability of rolling a 1 is 50% (!).
+        The other five faces are all equally likely.
+      </p>
+<p>
+        <code class="computeroutput"><a class="link" href="../../boost/random/discrete_distribution.html" title="Class template discrete_distribution">discrete_distribution</a></code>
+        works nicely here by allowing us to assign weights to each of the possible
+        outcomes.
+      </p>
+<div class="tip"><table border="0" summary="Tip">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Tip]" src="../../../../../../doc/src/images/tip.png"></td>
+<th align="left">Tip</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+          If your compiler supports <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">initializer_list</span></code>,
+          you can initialize <code class="computeroutput"><a class="link" href="../../boost/random/discrete_distribution.html" title="Class template discrete_distribution">discrete_distribution</a></code>
+          directly with the weights.
+        </p></td></tr>
+</table></div>
+<p>
+</p>
+<pre class="programlisting"><span class="keyword">double</span> <span class="identifier">probabilities</span><span class="special">[]</span> <span class="special">=</span> <span class="special">{</span>
+    <span class="number">0.5</span><span class="special">,</span> <span class="number">0.1</span><span class="special">,</span> <span class="number">0.1</span><span class="special">,</span> <span class="number">0.1</span><span class="special">,</span> <span class="number">0.1</span><span class="special">,</span> <span class="number">0.1</span>
+<span class="special">};</span>
+<span class="identifier">boost</span><span class="special">::</span><span class="identifier">random</span><span class="special">::</span><span class="identifier">discrete_distribution</span><span class="special">&lt;&gt;</span> <span class="identifier">dist</span><span class="special">(</span><span class="identifier">probabilities</span><span class="special">);</span>
+</pre>
+<p>
+      </p>
+<p>
+        Now define a function that simulates rolling this die.
+      </p>
+<p>
+</p>
+<pre class="programlisting"><span class="keyword">int</span> <span class="identifier">roll_weighted_die</span><span class="special">()</span> <span class="special">{</span>
+    <a class="co" name="boost_random.tutorial.generating_integers_with_different_probabilities.c0" href="generating_integers_with_different_probabilities.html#boost_random.tutorial.generating_integers_with_different_probabilities.c1"><img src="../../../../../../doc/src/images/callouts/1.png" alt="1" border="0"></a><span class="keyword">return</span> <span class="identifier">dist</span><span class="special">(</span><span class="identifier">gen</span><span class="special">)</span> <span class="special">+</span> <span class="number">1</span><span class="special">;</span>
+<span class="special">}</span>
+</pre>
+<p>
+      </p>
+<div class="calloutlist"><table border="0" summary="Callout list"><tr>
+<td width="5%" valign="top" align="left"><p><a name="boost_random.tutorial.generating_integers_with_different_probabilities.c1"></a><a href="#boost_random.tutorial.generating_integers_with_different_probabilities.c0"><img src="../../../../../../doc/src/images/callouts/1.png" alt="1" border="0"></a> </p></td>
+<td valign="top" align="left"><p>
+            Add 1 to make sure that the result is in the range [1,6] instead of [0,5].
+          </p></td>
+</tr></table></div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2000-2005 Jens Maurer<br>Copyright &#169; 2009, 2010 Steven Watanabe<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../tutorial.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../tutorial.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="generating_a_random_password.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

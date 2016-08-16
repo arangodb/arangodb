@@ -1,0 +1,427 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Mixed: Adapting Several Non-Proto Terminal Types</title>
+<link rel="stylesheet" href="../../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../../../index.html" title="Chapter&#160;1.&#160;Boost.Proto">
+<link rel="up" href="../examples.html" title="Examples">
+<link rel="prev" href="vector.html" title="Vector: Adapting a Non-Proto Terminal Type">
+<link rel="next" href="map_assign.html" title="Map Assign: An Intermediate Transform">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="vector.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../examples.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="map_assign.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="boost_proto.users_guide.examples.mixed"></a><a class="link" href="mixed.html" title="Mixed: Adapting Several Non-Proto Terminal Types">Mixed: Adapting
+        Several Non-Proto Terminal Types</a>
+</h4></div></div></div>
+<p>
+          This is an example of using <code class="computeroutput"><span class="identifier">BOOST_PROTO_DEFINE_OPERATORS</span><span class="special">()</span></code> to Protofy expressions using <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;&gt;</span></code>
+          and <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">list</span><span class="special">&lt;&gt;</span></code>,
+          non-Proto types. It is a port of the Mixed example from <a href="http://acts.nersc.gov/formertools/pete/index.html" target="_top">PETE</a>.
+        </p>
+<p>
+</p>
+<pre class="programlisting"><span class="comment">///////////////////////////////////////////////////////////////////////////////</span>
+<span class="comment">//  Copyright 2008 Eric Niebler. Distributed under the Boost</span>
+<span class="comment">//  Software License, Version 1.0. (See accompanying file</span>
+<span class="comment">//  LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)</span>
+<span class="comment">//</span>
+<span class="comment">// This is an example of using BOOST_PROTO_DEFINE_OPERATORS to Protofy</span>
+<span class="comment">// expressions using std::vector&lt;&gt; and std::list, non-proto types. It is a port</span>
+<span class="comment">// of the Mixed example from PETE.</span>
+<span class="comment">// (http://www.codesourcery.com/pooma/download.html).</span>
+
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">list</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">cmath</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">vector</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">complex</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">iostream</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">stdexcept</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">proto</span><span class="special">/</span><span class="identifier">core</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">proto</span><span class="special">/</span><span class="identifier">debug</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">proto</span><span class="special">/</span><span class="identifier">context</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">proto</span><span class="special">/</span><span class="identifier">transform</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">utility</span><span class="special">/</span><span class="identifier">enable_if</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">typeof</span><span class="special">/</span><span class="identifier">std</span><span class="special">/</span><span class="identifier">list</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">typeof</span><span class="special">/</span><span class="identifier">std</span><span class="special">/</span><span class="identifier">vector</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">typeof</span><span class="special">/</span><span class="identifier">std</span><span class="special">/</span><span class="identifier">complex</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">type_traits</span><span class="special">/</span><span class="identifier">remove_reference</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="keyword">namespace</span> <span class="identifier">proto</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">proto</span><span class="special">;</span>
+<span class="keyword">namespace</span> <span class="identifier">mpl</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">mpl</span><span class="special">;</span>
+<span class="keyword">using</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">_</span><span class="special">;</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">Expr</span><span class="special">&gt;</span>
+<span class="keyword">struct</span> <span class="identifier">MixedExpr</span><span class="special">;</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">Iter</span><span class="special">&gt;</span>
+<span class="keyword">struct</span> <span class="identifier">iterator_wrapper</span>
+<span class="special">{</span>
+    <span class="keyword">typedef</span> <span class="identifier">Iter</span> <span class="identifier">iterator</span><span class="special">;</span>
+
+    <span class="keyword">explicit</span> <span class="identifier">iterator_wrapper</span><span class="special">(</span><span class="identifier">Iter</span> <span class="identifier">iter</span><span class="special">)</span>
+      <span class="special">:</span> <span class="identifier">it</span><span class="special">(</span><span class="identifier">iter</span><span class="special">)</span>
+    <span class="special">{}</span>
+
+    <span class="keyword">mutable</span> <span class="identifier">Iter</span> <span class="identifier">it</span><span class="special">;</span>
+<span class="special">};</span>
+
+<span class="keyword">struct</span> <span class="identifier">begin</span> <span class="special">:</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">callable</span>
+<span class="special">{</span>
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Sig</span><span class="special">&gt;</span>
+    <span class="keyword">struct</span> <span class="identifier">result</span><span class="special">;</span>
+
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">This</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">Cont</span><span class="special">&gt;</span>
+    <span class="keyword">struct</span> <span class="identifier">result</span><span class="special">&lt;</span><span class="identifier">This</span><span class="special">(</span><span class="identifier">Cont</span><span class="special">)&gt;</span>
+      <span class="special">:</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">result_of</span><span class="special">::</span><span class="identifier">as_expr</span><span class="special">&lt;</span>
+            <span class="identifier">iterator_wrapper</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">remove_reference</span><span class="special">&lt;</span><span class="identifier">Cont</span><span class="special">&gt;::</span><span class="identifier">type</span><span class="special">::</span><span class="identifier">const_iterator</span><span class="special">&gt;</span>
+        <span class="special">&gt;</span>
+    <span class="special">{};</span>
+
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">Cont</span><span class="special">&gt;</span>
+    <span class="keyword">typename</span> <span class="identifier">result</span><span class="special">&lt;</span><span class="identifier">begin</span><span class="special">(</span><span class="identifier">Cont</span> <span class="keyword">const</span> <span class="special">&amp;)&gt;::</span><span class="identifier">type</span>
+    <span class="keyword">operator</span> <span class="special">()(</span><span class="identifier">Cont</span> <span class="keyword">const</span> <span class="special">&amp;</span><span class="identifier">cont</span><span class="special">)</span> <span class="keyword">const</span>
+    <span class="special">{</span>
+        <span class="identifier">iterator_wrapper</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">Cont</span><span class="special">::</span><span class="identifier">const_iterator</span><span class="special">&gt;</span> <span class="identifier">it</span><span class="special">(</span><span class="identifier">cont</span><span class="special">.</span><span class="identifier">begin</span><span class="special">());</span>
+        <span class="keyword">return</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">as_expr</span><span class="special">(</span><span class="identifier">it</span><span class="special">);</span>
+    <span class="special">}</span>
+<span class="special">};</span>
+
+<span class="comment">// Here is a grammar that replaces vector and list terminals with their</span>
+<span class="comment">// begin iterators</span>
+<span class="keyword">struct</span> <span class="identifier">Begin</span>
+  <span class="special">:</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">or_</span><span class="special">&lt;</span>
+        <span class="identifier">proto</span><span class="special">::</span><span class="identifier">when</span><span class="special">&lt;</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">terminal</span><span class="special">&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span><span class="identifier">_</span><span class="special">,</span> <span class="identifier">_</span><span class="special">&gt;</span> <span class="special">&gt;,</span> <span class="identifier">begin</span><span class="special">(</span><span class="identifier">proto</span><span class="special">::</span><span class="identifier">_value</span><span class="special">)</span> <span class="special">&gt;</span>
+      <span class="special">,</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">when</span><span class="special">&lt;</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">terminal</span><span class="special">&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">list</span><span class="special">&lt;</span><span class="identifier">_</span><span class="special">,</span> <span class="identifier">_</span><span class="special">&gt;</span> <span class="special">&gt;,</span> <span class="identifier">begin</span><span class="special">(</span><span class="identifier">proto</span><span class="special">::</span><span class="identifier">_value</span><span class="special">)</span> <span class="special">&gt;</span>
+      <span class="special">,</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">when</span><span class="special">&lt;</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">terminal</span><span class="special">&lt;</span><span class="identifier">_</span><span class="special">&gt;</span> <span class="special">&gt;</span>
+      <span class="special">,</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">when</span><span class="special">&lt;</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">nary_expr</span><span class="special">&lt;</span><span class="identifier">_</span><span class="special">,</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">vararg</span><span class="special">&lt;</span><span class="identifier">Begin</span><span class="special">&gt;</span> <span class="special">&gt;</span> <span class="special">&gt;</span>
+    <span class="special">&gt;</span>
+<span class="special">{};</span>
+
+<span class="comment">// Here is an evaluation context that dereferences iterator</span>
+<span class="comment">// terminals.</span>
+<span class="keyword">struct</span> <span class="identifier">DereferenceCtx</span>
+<span class="special">{</span>
+    <span class="comment">// Unless this is an iterator terminal, use the</span>
+    <span class="comment">// default evaluation context</span>
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">Expr</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">EnableIf</span> <span class="special">=</span> <span class="keyword">void</span><span class="special">&gt;</span>
+    <span class="keyword">struct</span> <span class="identifier">eval</span>
+      <span class="special">:</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">default_eval</span><span class="special">&lt;</span><span class="identifier">Expr</span><span class="special">,</span> <span class="identifier">DereferenceCtx</span> <span class="keyword">const</span><span class="special">&gt;</span>
+    <span class="special">{};</span>
+
+    <span class="comment">// Dereference iterator terminals.</span>
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">Expr</span><span class="special">&gt;</span>
+    <span class="keyword">struct</span> <span class="identifier">eval</span><span class="special">&lt;</span>
+        <span class="identifier">Expr</span>
+      <span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">enable_if</span><span class="special">&lt;</span>
+            <span class="identifier">proto</span><span class="special">::</span><span class="identifier">matches</span><span class="special">&lt;</span><span class="identifier">Expr</span><span class="special">,</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">terminal</span><span class="special">&lt;</span><span class="identifier">iterator_wrapper</span><span class="special">&lt;</span><span class="identifier">_</span><span class="special">&gt;</span> <span class="special">&gt;</span> <span class="special">&gt;</span>
+        <span class="special">&gt;::</span><span class="identifier">type</span>
+    <span class="special">&gt;</span>
+    <span class="special">{</span>
+        <span class="keyword">typedef</span> <span class="keyword">typename</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">result_of</span><span class="special">::</span><span class="identifier">value</span><span class="special">&lt;</span><span class="identifier">Expr</span><span class="special">&gt;::</span><span class="identifier">type</span> <span class="identifier">IteratorWrapper</span><span class="special">;</span>
+        <span class="keyword">typedef</span> <span class="keyword">typename</span> <span class="identifier">IteratorWrapper</span><span class="special">::</span><span class="identifier">iterator</span> <span class="identifier">iterator</span><span class="special">;</span>
+        <span class="keyword">typedef</span> <span class="keyword">typename</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">iterator_traits</span><span class="special">&lt;</span><span class="identifier">iterator</span><span class="special">&gt;::</span><span class="identifier">reference</span> <span class="identifier">result_type</span><span class="special">;</span>
+
+        <span class="identifier">result_type</span> <span class="keyword">operator</span> <span class="special">()(</span><span class="identifier">Expr</span> <span class="special">&amp;</span><span class="identifier">expr</span><span class="special">,</span> <span class="identifier">DereferenceCtx</span> <span class="keyword">const</span> <span class="special">&amp;)</span> <span class="keyword">const</span>
+        <span class="special">{</span>
+            <span class="keyword">return</span> <span class="special">*</span><span class="identifier">proto</span><span class="special">::</span><span class="identifier">value</span><span class="special">(</span><span class="identifier">expr</span><span class="special">).</span><span class="identifier">it</span><span class="special">;</span>
+        <span class="special">}</span>
+    <span class="special">};</span>
+<span class="special">};</span>
+
+<span class="comment">// Here is an evaluation context that increments iterator</span>
+<span class="comment">// terminals.</span>
+<span class="keyword">struct</span> <span class="identifier">IncrementCtx</span>
+<span class="special">{</span>
+    <span class="comment">// Unless this is an iterator terminal, use the</span>
+    <span class="comment">// default evaluation context</span>
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">Expr</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">EnableIf</span> <span class="special">=</span> <span class="keyword">void</span><span class="special">&gt;</span>
+    <span class="keyword">struct</span> <span class="identifier">eval</span>
+      <span class="special">:</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">null_eval</span><span class="special">&lt;</span><span class="identifier">Expr</span><span class="special">,</span> <span class="identifier">IncrementCtx</span> <span class="keyword">const</span><span class="special">&gt;</span>
+    <span class="special">{};</span>
+
+    <span class="comment">// advance iterator terminals.</span>
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">Expr</span><span class="special">&gt;</span>
+    <span class="keyword">struct</span> <span class="identifier">eval</span><span class="special">&lt;</span>
+        <span class="identifier">Expr</span>
+      <span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">enable_if</span><span class="special">&lt;</span>
+            <span class="identifier">proto</span><span class="special">::</span><span class="identifier">matches</span><span class="special">&lt;</span><span class="identifier">Expr</span><span class="special">,</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">terminal</span><span class="special">&lt;</span><span class="identifier">iterator_wrapper</span><span class="special">&lt;</span><span class="identifier">_</span><span class="special">&gt;</span> <span class="special">&gt;</span> <span class="special">&gt;</span>
+        <span class="special">&gt;::</span><span class="identifier">type</span>
+    <span class="special">&gt;</span>
+    <span class="special">{</span>
+        <span class="keyword">typedef</span> <span class="keyword">void</span> <span class="identifier">result_type</span><span class="special">;</span>
+
+        <span class="identifier">result_type</span> <span class="keyword">operator</span> <span class="special">()(</span><span class="identifier">Expr</span> <span class="special">&amp;</span><span class="identifier">expr</span><span class="special">,</span> <span class="identifier">IncrementCtx</span> <span class="keyword">const</span> <span class="special">&amp;)</span> <span class="keyword">const</span>
+        <span class="special">{</span>
+            <span class="special">++</span><span class="identifier">proto</span><span class="special">::</span><span class="identifier">value</span><span class="special">(</span><span class="identifier">expr</span><span class="special">).</span><span class="identifier">it</span><span class="special">;</span>
+        <span class="special">}</span>
+    <span class="special">};</span>
+<span class="special">};</span>
+
+<span class="comment">// A grammar which matches all the assignment operators,</span>
+<span class="comment">// so we can easily disable them.</span>
+<span class="keyword">struct</span> <span class="identifier">AssignOps</span>
+  <span class="special">:</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">switch_</span><span class="special">&lt;</span><span class="keyword">struct</span> <span class="identifier">AssignOpsCases</span><span class="special">&gt;</span>
+<span class="special">{};</span>
+
+<span class="comment">// Here are the cases used by the switch_ above.</span>
+<span class="keyword">struct</span> <span class="identifier">AssignOpsCases</span>
+<span class="special">{</span>
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">Tag</span><span class="special">,</span> <span class="keyword">int</span> <span class="identifier">D</span> <span class="special">=</span> <span class="number">0</span><span class="special">&gt;</span> <span class="keyword">struct</span> <span class="identifier">case_</span>  <span class="special">:</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">not_</span><span class="special">&lt;</span><span class="identifier">_</span><span class="special">&gt;</span> <span class="special">{};</span>
+
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">int</span> <span class="identifier">D</span><span class="special">&gt;</span> <span class="keyword">struct</span> <span class="identifier">case_</span><span class="special">&lt;</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">tag</span><span class="special">::</span><span class="identifier">plus_assign</span><span class="special">,</span> <span class="identifier">D</span> <span class="special">&gt;</span>         <span class="special">:</span> <span class="identifier">_</span> <span class="special">{};</span>
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">int</span> <span class="identifier">D</span><span class="special">&gt;</span> <span class="keyword">struct</span> <span class="identifier">case_</span><span class="special">&lt;</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">tag</span><span class="special">::</span><span class="identifier">minus_assign</span><span class="special">,</span> <span class="identifier">D</span> <span class="special">&gt;</span>        <span class="special">:</span> <span class="identifier">_</span> <span class="special">{};</span>
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">int</span> <span class="identifier">D</span><span class="special">&gt;</span> <span class="keyword">struct</span> <span class="identifier">case_</span><span class="special">&lt;</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">tag</span><span class="special">::</span><span class="identifier">multiplies_assign</span><span class="special">,</span> <span class="identifier">D</span> <span class="special">&gt;</span>   <span class="special">:</span> <span class="identifier">_</span> <span class="special">{};</span>
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">int</span> <span class="identifier">D</span><span class="special">&gt;</span> <span class="keyword">struct</span> <span class="identifier">case_</span><span class="special">&lt;</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">tag</span><span class="special">::</span><span class="identifier">divides_assign</span><span class="special">,</span> <span class="identifier">D</span> <span class="special">&gt;</span>      <span class="special">:</span> <span class="identifier">_</span> <span class="special">{};</span>
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">int</span> <span class="identifier">D</span><span class="special">&gt;</span> <span class="keyword">struct</span> <span class="identifier">case_</span><span class="special">&lt;</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">tag</span><span class="special">::</span><span class="identifier">modulus_assign</span><span class="special">,</span> <span class="identifier">D</span> <span class="special">&gt;</span>      <span class="special">:</span> <span class="identifier">_</span> <span class="special">{};</span>
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">int</span> <span class="identifier">D</span><span class="special">&gt;</span> <span class="keyword">struct</span> <span class="identifier">case_</span><span class="special">&lt;</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">tag</span><span class="special">::</span><span class="identifier">shift_left_assign</span><span class="special">,</span> <span class="identifier">D</span> <span class="special">&gt;</span>   <span class="special">:</span> <span class="identifier">_</span> <span class="special">{};</span>
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">int</span> <span class="identifier">D</span><span class="special">&gt;</span> <span class="keyword">struct</span> <span class="identifier">case_</span><span class="special">&lt;</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">tag</span><span class="special">::</span><span class="identifier">shift_right_assign</span><span class="special">,</span> <span class="identifier">D</span> <span class="special">&gt;</span>  <span class="special">:</span> <span class="identifier">_</span> <span class="special">{};</span>
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">int</span> <span class="identifier">D</span><span class="special">&gt;</span> <span class="keyword">struct</span> <span class="identifier">case_</span><span class="special">&lt;</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">tag</span><span class="special">::</span><span class="identifier">bitwise_and_assign</span><span class="special">,</span> <span class="identifier">D</span> <span class="special">&gt;</span>  <span class="special">:</span> <span class="identifier">_</span> <span class="special">{};</span>
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">int</span> <span class="identifier">D</span><span class="special">&gt;</span> <span class="keyword">struct</span> <span class="identifier">case_</span><span class="special">&lt;</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">tag</span><span class="special">::</span><span class="identifier">bitwise_or_assign</span><span class="special">,</span> <span class="identifier">D</span> <span class="special">&gt;</span>   <span class="special">:</span> <span class="identifier">_</span> <span class="special">{};</span>
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">int</span> <span class="identifier">D</span><span class="special">&gt;</span> <span class="keyword">struct</span> <span class="identifier">case_</span><span class="special">&lt;</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">tag</span><span class="special">::</span><span class="identifier">bitwise_xor_assign</span><span class="special">,</span> <span class="identifier">D</span> <span class="special">&gt;</span>  <span class="special">:</span> <span class="identifier">_</span> <span class="special">{};</span>
+<span class="special">};</span>
+
+<span class="comment">// An expression conforms to the MixedGrammar if it is a terminal or some</span>
+<span class="comment">// op that is not an assignment op. (Assignment will be handled specially.)</span>
+<span class="keyword">struct</span> <span class="identifier">MixedGrammar</span>
+  <span class="special">:</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">or_</span><span class="special">&lt;</span>
+        <span class="identifier">proto</span><span class="special">::</span><span class="identifier">terminal</span><span class="special">&lt;</span><span class="identifier">_</span><span class="special">&gt;</span>
+      <span class="special">,</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">and_</span><span class="special">&lt;</span>
+            <span class="identifier">proto</span><span class="special">::</span><span class="identifier">nary_expr</span><span class="special">&lt;</span><span class="identifier">_</span><span class="special">,</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">vararg</span><span class="special">&lt;</span><span class="identifier">MixedGrammar</span><span class="special">&gt;</span> <span class="special">&gt;</span>
+          <span class="special">,</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">not_</span><span class="special">&lt;</span><span class="identifier">AssignOps</span><span class="special">&gt;</span>
+        <span class="special">&gt;</span>
+    <span class="special">&gt;</span>
+<span class="special">{};</span>
+
+<span class="comment">// Expressions in the MixedDomain will be wrapped in MixedExpr&lt;&gt;</span>
+<span class="comment">// and must conform to the MixedGrammar</span>
+<span class="keyword">struct</span> <span class="identifier">MixedDomain</span>
+  <span class="special">:</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">domain</span><span class="special">&lt;</span><span class="identifier">proto</span><span class="special">::</span><span class="identifier">generator</span><span class="special">&lt;</span><span class="identifier">MixedExpr</span><span class="special">&gt;,</span> <span class="identifier">MixedGrammar</span><span class="special">&gt;</span>
+<span class="special">{};</span>
+
+<span class="comment">// Here is MixedExpr, a wrapper for expression types in the MixedDomain.</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">Expr</span><span class="special">&gt;</span>
+<span class="keyword">struct</span> <span class="identifier">MixedExpr</span>
+  <span class="special">:</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">extends</span><span class="special">&lt;</span><span class="identifier">Expr</span><span class="special">,</span> <span class="identifier">MixedExpr</span><span class="special">&lt;</span><span class="identifier">Expr</span><span class="special">&gt;,</span> <span class="identifier">MixedDomain</span><span class="special">&gt;</span>
+<span class="special">{</span>
+    <span class="keyword">explicit</span> <span class="identifier">MixedExpr</span><span class="special">(</span><span class="identifier">Expr</span> <span class="keyword">const</span> <span class="special">&amp;</span><span class="identifier">expr</span><span class="special">)</span>
+      <span class="special">:</span> <span class="identifier">MixedExpr</span><span class="special">::</span><span class="identifier">proto_extends</span><span class="special">(</span><span class="identifier">expr</span><span class="special">)</span>
+    <span class="special">{}</span>
+<span class="keyword">private</span><span class="special">:</span>
+    <span class="comment">// hide this:</span>
+    <span class="keyword">using</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">extends</span><span class="special">&lt;</span><span class="identifier">Expr</span><span class="special">,</span> <span class="identifier">MixedExpr</span><span class="special">&lt;</span><span class="identifier">Expr</span><span class="special">&gt;,</span> <span class="identifier">MixedDomain</span><span class="special">&gt;::</span><span class="keyword">operator</span> <span class="special">[];</span>
+<span class="special">};</span>
+
+<span class="comment">// Define a trait type for detecting vector and list terminals, to</span>
+<span class="comment">// be used by the BOOST_PROTO_DEFINE_OPERATORS macro below.</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">T</span><span class="special">&gt;</span>
+<span class="keyword">struct</span> <span class="identifier">IsMixed</span>
+  <span class="special">:</span> <span class="identifier">mpl</span><span class="special">::</span><span class="identifier">false_</span>
+<span class="special">{};</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">T</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">A</span><span class="special">&gt;</span>
+<span class="keyword">struct</span> <span class="identifier">IsMixed</span><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">list</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">,</span> <span class="identifier">A</span><span class="special">&gt;</span> <span class="special">&gt;</span>
+  <span class="special">:</span> <span class="identifier">mpl</span><span class="special">::</span><span class="identifier">true_</span>
+<span class="special">{};</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">T</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">A</span><span class="special">&gt;</span>
+<span class="keyword">struct</span> <span class="identifier">IsMixed</span><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">,</span> <span class="identifier">A</span><span class="special">&gt;</span> <span class="special">&gt;</span>
+  <span class="special">:</span> <span class="identifier">mpl</span><span class="special">::</span><span class="identifier">true_</span>
+<span class="special">{};</span>
+
+<span class="keyword">namespace</span> <span class="identifier">MixedOps</span>
+<span class="special">{</span>
+    <span class="comment">// This defines all the overloads to make expressions involving</span>
+    <span class="comment">// std::vector to build expression templates.</span>
+    <span class="identifier">BOOST_PROTO_DEFINE_OPERATORS</span><span class="special">(</span><span class="identifier">IsMixed</span><span class="special">,</span> <span class="identifier">MixedDomain</span><span class="special">)</span>
+
+    <span class="keyword">struct</span> <span class="identifier">assign_op</span>
+    <span class="special">{</span>
+        <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">T</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">U</span><span class="special">&gt;</span>
+        <span class="keyword">void</span> <span class="keyword">operator</span> <span class="special">()(</span><span class="identifier">T</span> <span class="special">&amp;</span><span class="identifier">t</span><span class="special">,</span> <span class="identifier">U</span> <span class="keyword">const</span> <span class="special">&amp;</span><span class="identifier">u</span><span class="special">)</span> <span class="keyword">const</span>
+        <span class="special">{</span>
+            <span class="identifier">t</span> <span class="special">=</span> <span class="identifier">u</span><span class="special">;</span>
+        <span class="special">}</span>
+    <span class="special">};</span>
+
+    <span class="keyword">struct</span> <span class="identifier">plus_assign_op</span>
+    <span class="special">{</span>
+        <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">T</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">U</span><span class="special">&gt;</span>
+        <span class="keyword">void</span> <span class="keyword">operator</span> <span class="special">()(</span><span class="identifier">T</span> <span class="special">&amp;</span><span class="identifier">t</span><span class="special">,</span> <span class="identifier">U</span> <span class="keyword">const</span> <span class="special">&amp;</span><span class="identifier">u</span><span class="special">)</span> <span class="keyword">const</span>
+        <span class="special">{</span>
+            <span class="identifier">t</span> <span class="special">+=</span> <span class="identifier">u</span><span class="special">;</span>
+        <span class="special">}</span>
+    <span class="special">};</span>
+
+    <span class="keyword">struct</span> <span class="identifier">minus_assign_op</span>
+    <span class="special">{</span>
+        <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">T</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">U</span><span class="special">&gt;</span>
+        <span class="keyword">void</span> <span class="keyword">operator</span> <span class="special">()(</span><span class="identifier">T</span> <span class="special">&amp;</span><span class="identifier">t</span><span class="special">,</span> <span class="identifier">U</span> <span class="keyword">const</span> <span class="special">&amp;</span><span class="identifier">u</span><span class="special">)</span> <span class="keyword">const</span>
+        <span class="special">{</span>
+            <span class="identifier">t</span> <span class="special">-=</span> <span class="identifier">u</span><span class="special">;</span>
+        <span class="special">}</span>
+    <span class="special">};</span>
+
+    <span class="keyword">struct</span> <span class="identifier">sin_</span>
+    <span class="special">{</span>
+        <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">Sig</span><span class="special">&gt;</span>
+        <span class="keyword">struct</span> <span class="identifier">result</span><span class="special">;</span>
+
+        <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">This</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">Arg</span><span class="special">&gt;</span>
+        <span class="keyword">struct</span> <span class="identifier">result</span><span class="special">&lt;</span><span class="identifier">This</span><span class="special">(</span><span class="identifier">Arg</span><span class="special">)&gt;</span>
+          <span class="special">:</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">remove_const</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">remove_reference</span><span class="special">&lt;</span><span class="identifier">Arg</span><span class="special">&gt;::</span><span class="identifier">type</span><span class="special">&gt;</span>
+        <span class="special">{};</span>
+
+        <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">Arg</span><span class="special">&gt;</span>
+        <span class="identifier">Arg</span> <span class="keyword">operator</span> <span class="special">()(</span><span class="identifier">Arg</span> <span class="keyword">const</span> <span class="special">&amp;</span><span class="identifier">a</span><span class="special">)</span> <span class="keyword">const</span>
+        <span class="special">{</span>
+            <span class="keyword">return</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">sin</span><span class="special">(</span><span class="identifier">a</span><span class="special">);</span>
+        <span class="special">}</span>
+    <span class="special">};</span>
+
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">A</span><span class="special">&gt;</span>
+    <span class="keyword">typename</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">result_of</span><span class="special">::</span><span class="identifier">make_expr</span><span class="special">&lt;</span>
+        <span class="identifier">proto</span><span class="special">::</span><span class="identifier">tag</span><span class="special">::</span><span class="identifier">function</span>
+      <span class="special">,</span> <span class="identifier">MixedDomain</span>
+      <span class="special">,</span> <span class="identifier">sin_</span> <span class="keyword">const</span>
+      <span class="special">,</span> <span class="identifier">A</span> <span class="keyword">const</span> <span class="special">&amp;</span>
+    <span class="special">&gt;::</span><span class="identifier">type</span> <span class="identifier">sin</span><span class="special">(</span><span class="identifier">A</span> <span class="keyword">const</span> <span class="special">&amp;</span><span class="identifier">a</span><span class="special">)</span>
+    <span class="special">{</span>
+        <span class="keyword">return</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">make_expr</span><span class="special">&lt;</span><span class="identifier">proto</span><span class="special">::</span><span class="identifier">tag</span><span class="special">::</span><span class="identifier">function</span><span class="special">,</span> <span class="identifier">MixedDomain</span><span class="special">&gt;(</span><span class="identifier">sin_</span><span class="special">(),</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">ref</span><span class="special">(</span><span class="identifier">a</span><span class="special">));</span>
+    <span class="special">}</span>
+
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">FwdIter</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">Expr</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">Op</span><span class="special">&gt;</span>
+    <span class="keyword">void</span> <span class="identifier">evaluate</span><span class="special">(</span><span class="identifier">FwdIter</span> <span class="identifier">begin</span><span class="special">,</span> <span class="identifier">FwdIter</span> <span class="identifier">end</span><span class="special">,</span> <span class="identifier">Expr</span> <span class="keyword">const</span> <span class="special">&amp;</span><span class="identifier">expr</span><span class="special">,</span> <span class="identifier">Op</span> <span class="identifier">op</span><span class="special">)</span>
+    <span class="special">{</span>
+        <span class="identifier">IncrementCtx</span> <span class="keyword">const</span> <span class="identifier">inc</span> <span class="special">=</span> <span class="special">{};</span>
+        <span class="identifier">DereferenceCtx</span> <span class="keyword">const</span> <span class="identifier">deref</span> <span class="special">=</span> <span class="special">{};</span>
+        <span class="keyword">typename</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">result_of</span><span class="special">&lt;</span><span class="identifier">Begin</span><span class="special">(</span><span class="identifier">Expr</span> <span class="keyword">const</span> <span class="special">&amp;)&gt;::</span><span class="identifier">type</span> <span class="identifier">expr2</span> <span class="special">=</span> <span class="identifier">Begin</span><span class="special">()(</span><span class="identifier">expr</span><span class="special">);</span>
+        <span class="keyword">for</span><span class="special">(;</span> <span class="identifier">begin</span> <span class="special">!=</span> <span class="identifier">end</span><span class="special">;</span> <span class="special">++</span><span class="identifier">begin</span><span class="special">)</span>
+        <span class="special">{</span>
+            <span class="identifier">op</span><span class="special">(*</span><span class="identifier">begin</span><span class="special">,</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">eval</span><span class="special">(</span><span class="identifier">expr2</span><span class="special">,</span> <span class="identifier">deref</span><span class="special">));</span>
+            <span class="identifier">proto</span><span class="special">::</span><span class="identifier">eval</span><span class="special">(</span><span class="identifier">expr2</span><span class="special">,</span> <span class="identifier">inc</span><span class="special">);</span>
+        <span class="special">}</span>
+    <span class="special">}</span>
+
+    <span class="comment">// Add-assign to a vector from some expression.</span>
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">T</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">A</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">Expr</span><span class="special">&gt;</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">,</span> <span class="identifier">A</span><span class="special">&gt;</span> <span class="special">&amp;</span><span class="identifier">assign</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">,</span> <span class="identifier">A</span><span class="special">&gt;</span> <span class="special">&amp;</span><span class="identifier">arr</span><span class="special">,</span> <span class="identifier">Expr</span> <span class="keyword">const</span> <span class="special">&amp;</span><span class="identifier">expr</span><span class="special">)</span>
+    <span class="special">{</span>
+        <span class="identifier">evaluate</span><span class="special">(</span><span class="identifier">arr</span><span class="special">.</span><span class="identifier">begin</span><span class="special">(),</span> <span class="identifier">arr</span><span class="special">.</span><span class="identifier">end</span><span class="special">(),</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">as_expr</span><span class="special">&lt;</span><span class="identifier">MixedDomain</span><span class="special">&gt;(</span><span class="identifier">expr</span><span class="special">),</span> <span class="identifier">assign_op</span><span class="special">());</span>
+        <span class="keyword">return</span> <span class="identifier">arr</span><span class="special">;</span>
+    <span class="special">}</span>
+
+    <span class="comment">// Add-assign to a list from some expression.</span>
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">T</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">A</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">Expr</span><span class="special">&gt;</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">list</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">,</span> <span class="identifier">A</span><span class="special">&gt;</span> <span class="special">&amp;</span><span class="identifier">assign</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">list</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">,</span> <span class="identifier">A</span><span class="special">&gt;</span> <span class="special">&amp;</span><span class="identifier">arr</span><span class="special">,</span> <span class="identifier">Expr</span> <span class="keyword">const</span> <span class="special">&amp;</span><span class="identifier">expr</span><span class="special">)</span>
+    <span class="special">{</span>
+        <span class="identifier">evaluate</span><span class="special">(</span><span class="identifier">arr</span><span class="special">.</span><span class="identifier">begin</span><span class="special">(),</span> <span class="identifier">arr</span><span class="special">.</span><span class="identifier">end</span><span class="special">(),</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">as_expr</span><span class="special">&lt;</span><span class="identifier">MixedDomain</span><span class="special">&gt;(</span><span class="identifier">expr</span><span class="special">),</span> <span class="identifier">assign_op</span><span class="special">());</span>
+        <span class="keyword">return</span> <span class="identifier">arr</span><span class="special">;</span>
+    <span class="special">}</span>
+
+    <span class="comment">// Add-assign to a vector from some expression.</span>
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">T</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">A</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">Expr</span><span class="special">&gt;</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">,</span> <span class="identifier">A</span><span class="special">&gt;</span> <span class="special">&amp;</span><span class="keyword">operator</span> <span class="special">+=(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">,</span> <span class="identifier">A</span><span class="special">&gt;</span> <span class="special">&amp;</span><span class="identifier">arr</span><span class="special">,</span> <span class="identifier">Expr</span> <span class="keyword">const</span> <span class="special">&amp;</span><span class="identifier">expr</span><span class="special">)</span>
+    <span class="special">{</span>
+        <span class="identifier">evaluate</span><span class="special">(</span><span class="identifier">arr</span><span class="special">.</span><span class="identifier">begin</span><span class="special">(),</span> <span class="identifier">arr</span><span class="special">.</span><span class="identifier">end</span><span class="special">(),</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">as_expr</span><span class="special">&lt;</span><span class="identifier">MixedDomain</span><span class="special">&gt;(</span><span class="identifier">expr</span><span class="special">),</span> <span class="identifier">plus_assign_op</span><span class="special">());</span>
+        <span class="keyword">return</span> <span class="identifier">arr</span><span class="special">;</span>
+    <span class="special">}</span>
+
+    <span class="comment">// Add-assign to a list from some expression.</span>
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">T</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">A</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">Expr</span><span class="special">&gt;</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">list</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">,</span> <span class="identifier">A</span><span class="special">&gt;</span> <span class="special">&amp;</span><span class="keyword">operator</span> <span class="special">+=(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">list</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">,</span> <span class="identifier">A</span><span class="special">&gt;</span> <span class="special">&amp;</span><span class="identifier">arr</span><span class="special">,</span> <span class="identifier">Expr</span> <span class="keyword">const</span> <span class="special">&amp;</span><span class="identifier">expr</span><span class="special">)</span>
+    <span class="special">{</span>
+        <span class="identifier">evaluate</span><span class="special">(</span><span class="identifier">arr</span><span class="special">.</span><span class="identifier">begin</span><span class="special">(),</span> <span class="identifier">arr</span><span class="special">.</span><span class="identifier">end</span><span class="special">(),</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">as_expr</span><span class="special">&lt;</span><span class="identifier">MixedDomain</span><span class="special">&gt;(</span><span class="identifier">expr</span><span class="special">),</span> <span class="identifier">plus_assign_op</span><span class="special">());</span>
+        <span class="keyword">return</span> <span class="identifier">arr</span><span class="special">;</span>
+    <span class="special">}</span>
+
+    <span class="comment">// Minus-assign to a vector from some expression.</span>
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">T</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">A</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">Expr</span><span class="special">&gt;</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">,</span> <span class="identifier">A</span><span class="special">&gt;</span> <span class="special">&amp;</span><span class="keyword">operator</span> <span class="special">-=(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">,</span> <span class="identifier">A</span><span class="special">&gt;</span> <span class="special">&amp;</span><span class="identifier">arr</span><span class="special">,</span> <span class="identifier">Expr</span> <span class="keyword">const</span> <span class="special">&amp;</span><span class="identifier">expr</span><span class="special">)</span>
+    <span class="special">{</span>
+        <span class="identifier">evaluate</span><span class="special">(</span><span class="identifier">arr</span><span class="special">.</span><span class="identifier">begin</span><span class="special">(),</span> <span class="identifier">arr</span><span class="special">.</span><span class="identifier">end</span><span class="special">(),</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">as_expr</span><span class="special">&lt;</span><span class="identifier">MixedDomain</span><span class="special">&gt;(</span><span class="identifier">expr</span><span class="special">),</span> <span class="identifier">minus_assign_op</span><span class="special">());</span>
+        <span class="keyword">return</span> <span class="identifier">arr</span><span class="special">;</span>
+    <span class="special">}</span>
+
+    <span class="comment">// Minus-assign to a list from some expression.</span>
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">T</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">A</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">Expr</span><span class="special">&gt;</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">list</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">,</span> <span class="identifier">A</span><span class="special">&gt;</span> <span class="special">&amp;</span><span class="keyword">operator</span> <span class="special">-=(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">list</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">,</span> <span class="identifier">A</span><span class="special">&gt;</span> <span class="special">&amp;</span><span class="identifier">arr</span><span class="special">,</span> <span class="identifier">Expr</span> <span class="keyword">const</span> <span class="special">&amp;</span><span class="identifier">expr</span><span class="special">)</span>
+    <span class="special">{</span>
+        <span class="identifier">evaluate</span><span class="special">(</span><span class="identifier">arr</span><span class="special">.</span><span class="identifier">begin</span><span class="special">(),</span> <span class="identifier">arr</span><span class="special">.</span><span class="identifier">end</span><span class="special">(),</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">as_expr</span><span class="special">&lt;</span><span class="identifier">MixedDomain</span><span class="special">&gt;(</span><span class="identifier">expr</span><span class="special">),</span> <span class="identifier">minus_assign_op</span><span class="special">());</span>
+        <span class="keyword">return</span> <span class="identifier">arr</span><span class="special">;</span>
+    <span class="special">}</span>
+<span class="special">}</span>
+
+<span class="keyword">int</span> <span class="identifier">main</span><span class="special">()</span>
+<span class="special">{</span>
+    <span class="keyword">using</span> <span class="keyword">namespace</span> <span class="identifier">MixedOps</span><span class="special">;</span>
+
+    <span class="keyword">int</span> <span class="identifier">n</span> <span class="special">=</span> <span class="number">10</span><span class="special">;</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;</span> <span class="identifier">a</span><span class="special">,</span><span class="identifier">b</span><span class="special">,</span><span class="identifier">c</span><span class="special">,</span><span class="identifier">d</span><span class="special">;</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">list</span><span class="special">&lt;</span><span class="keyword">double</span><span class="special">&gt;</span> <span class="identifier">e</span><span class="special">;</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">list</span><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">complex</span><span class="special">&lt;</span><span class="keyword">double</span><span class="special">&gt;</span> <span class="special">&gt;</span> <span class="identifier">f</span><span class="special">;</span>
+
+    <span class="keyword">int</span> <span class="identifier">i</span><span class="special">;</span>
+    <span class="keyword">for</span><span class="special">(</span><span class="identifier">i</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span><span class="identifier">i</span> <span class="special">&lt;</span> <span class="identifier">n</span><span class="special">;</span> <span class="special">++</span><span class="identifier">i</span><span class="special">)</span>
+    <span class="special">{</span>
+        <span class="identifier">a</span><span class="special">.</span><span class="identifier">push_back</span><span class="special">(</span><span class="identifier">i</span><span class="special">);</span>
+        <span class="identifier">b</span><span class="special">.</span><span class="identifier">push_back</span><span class="special">(</span><span class="number">2</span><span class="special">*</span><span class="identifier">i</span><span class="special">);</span>
+        <span class="identifier">c</span><span class="special">.</span><span class="identifier">push_back</span><span class="special">(</span><span class="number">3</span><span class="special">*</span><span class="identifier">i</span><span class="special">);</span>
+        <span class="identifier">d</span><span class="special">.</span><span class="identifier">push_back</span><span class="special">(</span><span class="identifier">i</span><span class="special">);</span>
+        <span class="identifier">e</span><span class="special">.</span><span class="identifier">push_back</span><span class="special">(</span><span class="number">0.0</span><span class="special">);</span>
+        <span class="identifier">f</span><span class="special">.</span><span class="identifier">push_back</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">complex</span><span class="special">&lt;</span><span class="keyword">double</span><span class="special">&gt;(</span><span class="number">1.0</span><span class="special">,</span> <span class="number">1.0</span><span class="special">));</span>
+    <span class="special">}</span>
+
+    <span class="identifier">MixedOps</span><span class="special">::</span><span class="identifier">assign</span><span class="special">(</span><span class="identifier">b</span><span class="special">,</span> <span class="number">2</span><span class="special">);</span>
+    <span class="identifier">MixedOps</span><span class="special">::</span><span class="identifier">assign</span><span class="special">(</span><span class="identifier">d</span><span class="special">,</span> <span class="identifier">a</span> <span class="special">+</span> <span class="identifier">b</span> <span class="special">*</span> <span class="identifier">c</span><span class="special">);</span>
+    <span class="identifier">a</span> <span class="special">+=</span> <span class="identifier">if_else</span><span class="special">(</span><span class="identifier">d</span> <span class="special">&lt;</span> <span class="number">30</span><span class="special">,</span> <span class="identifier">b</span><span class="special">,</span> <span class="identifier">c</span><span class="special">);</span>
+
+    <span class="identifier">MixedOps</span><span class="special">::</span><span class="identifier">assign</span><span class="special">(</span><span class="identifier">e</span><span class="special">,</span> <span class="identifier">c</span><span class="special">);</span>
+    <span class="identifier">e</span> <span class="special">+=</span> <span class="identifier">e</span> <span class="special">-</span> <span class="number">4</span> <span class="special">/</span> <span class="special">(</span><span class="identifier">c</span> <span class="special">+</span> <span class="number">1</span><span class="special">);</span>
+
+    <span class="identifier">f</span> <span class="special">-=</span> <span class="identifier">sin</span><span class="special">(</span><span class="number">0.1</span> <span class="special">*</span> <span class="identifier">e</span> <span class="special">*</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">complex</span><span class="special">&lt;</span><span class="keyword">double</span><span class="special">&gt;(</span><span class="number">0.2</span><span class="special">,</span> <span class="number">1.2</span><span class="special">));</span>
+
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">list</span><span class="special">&lt;</span><span class="keyword">double</span><span class="special">&gt;::</span><span class="identifier">const_iterator</span> <span class="identifier">ei</span> <span class="special">=</span> <span class="identifier">e</span><span class="special">.</span><span class="identifier">begin</span><span class="special">();</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">list</span><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">complex</span><span class="special">&lt;</span><span class="keyword">double</span><span class="special">&gt;</span> <span class="special">&gt;::</span><span class="identifier">const_iterator</span> <span class="identifier">fi</span> <span class="special">=</span> <span class="identifier">f</span><span class="special">.</span><span class="identifier">begin</span><span class="special">();</span>
+    <span class="keyword">for</span> <span class="special">(</span><span class="identifier">i</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span> <span class="identifier">i</span> <span class="special">&lt;</span> <span class="identifier">n</span><span class="special">;</span> <span class="special">++</span><span class="identifier">i</span><span class="special">)</span>
+    <span class="special">{</span>
+        <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span>
+            <span class="special">&lt;&lt;</span> <span class="string">"a("</span> <span class="special">&lt;&lt;</span> <span class="identifier">i</span> <span class="special">&lt;&lt;</span> <span class="string">") = "</span> <span class="special">&lt;&lt;</span> <span class="identifier">a</span><span class="special">[</span><span class="identifier">i</span><span class="special">]</span>
+            <span class="special">&lt;&lt;</span> <span class="string">" b("</span> <span class="special">&lt;&lt;</span> <span class="identifier">i</span> <span class="special">&lt;&lt;</span> <span class="string">") = "</span> <span class="special">&lt;&lt;</span> <span class="identifier">b</span><span class="special">[</span><span class="identifier">i</span><span class="special">]</span>
+            <span class="special">&lt;&lt;</span> <span class="string">" c("</span> <span class="special">&lt;&lt;</span> <span class="identifier">i</span> <span class="special">&lt;&lt;</span> <span class="string">") = "</span> <span class="special">&lt;&lt;</span> <span class="identifier">c</span><span class="special">[</span><span class="identifier">i</span><span class="special">]</span>
+            <span class="special">&lt;&lt;</span> <span class="string">" d("</span> <span class="special">&lt;&lt;</span> <span class="identifier">i</span> <span class="special">&lt;&lt;</span> <span class="string">") = "</span> <span class="special">&lt;&lt;</span> <span class="identifier">d</span><span class="special">[</span><span class="identifier">i</span><span class="special">]</span>
+            <span class="special">&lt;&lt;</span> <span class="string">" e("</span> <span class="special">&lt;&lt;</span> <span class="identifier">i</span> <span class="special">&lt;&lt;</span> <span class="string">") = "</span> <span class="special">&lt;&lt;</span> <span class="special">*</span><span class="identifier">ei</span><span class="special">++</span>
+            <span class="special">&lt;&lt;</span> <span class="string">" f("</span> <span class="special">&lt;&lt;</span> <span class="identifier">i</span> <span class="special">&lt;&lt;</span> <span class="string">") = "</span> <span class="special">&lt;&lt;</span> <span class="special">*</span><span class="identifier">fi</span><span class="special">++</span>
+            <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+    <span class="special">}</span>
+<span class="special">}</span>
+</pre>
+<p>
+        </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2008 Eric Niebler<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="vector.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../examples.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="map_assign.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

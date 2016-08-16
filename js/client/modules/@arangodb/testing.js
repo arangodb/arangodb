@@ -95,7 +95,7 @@ const optionsDocumentation = [
   '   - `loopSleepWhen`: sleep every nth iteration',
   '   - `loopSleepSec`: sleep seconds between iterations',
   '',
-  '   - `server`: server_url for external server',
+  '   - `server`: server_url (e.g. tcp://127.0.0.1:8529) for external server',
   '   - `cluster`: if set to true the tests are run with the coordinator',
   '     of a small local cluster',
   '   - `dbServers`: number of DB-Servers to use',
@@ -897,8 +897,6 @@ function executeArangod (cmd, args, options) {
       testfn += '_';
     }
 
-    testfn += valgrindTest;
-
     if (valgrindOpts.xml === 'yes') {
       valgrindOpts['xml-file'] = testfn + '.%p.xml';
     }
@@ -1055,7 +1053,7 @@ function runInArangosh (options, instanceInfo, file, addArgs) {
 function createArangoshRunner(args) {
   let runner = function(options, instanceInfo, file) {
     return runInArangosh(options, instanceInfo, file, args);
-  }
+  };
   runner.info = 'arangosh';
   return runner;
 }
@@ -1195,7 +1193,7 @@ function shutdownInstance (instanceInfo, options) {
   const n = instanceInfo.arangods.length;
 
   let nonagencies = instanceInfo.arangods
-    .filter(arangod => arangod.role != 'agent');
+    .filter(arangod => arangod.role !== 'agent');
   nonagencies.forEach(arangod => shutdownArangod(arangod, options)
   );
 
@@ -1219,7 +1217,7 @@ function shutdownInstance (instanceInfo, options) {
     // are agents:
     if (!agentsKilled && nrAgents > 0 && toShutdown.length === nrAgents) {
       instanceInfo.arangods
-        .filter(arangod => arangod.role == 'agent')
+        .filter(arangod => arangod.role === 'agent')
         .forEach(arangod => shutdownArangod(arangod, options));
       agentsKilled = true;
     }
@@ -3863,16 +3861,20 @@ function unitTestPrettyPrintResults (r) {
           continue;
         }
 
-        print(RED + '    [FAILED]  ' + name + RESET);
+        print(RED + '    [FAILED]  ' + name + '\n' + RESET);
 
         let details = failedCases[name];
 
+        let count = 0;
         for (let one in details) {
           if (!details.hasOwnProperty(one)) {
             continue;
           }
-
+          if(count > 0){
+            print("\n");
+          }
           print(RED + "      '" + one + "' failed: " + details[one] + RESET);
+          count++;
         }
       }
     }

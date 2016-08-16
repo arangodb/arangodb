@@ -1,0 +1,200 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>RTTI emulation limitations</title>
+<link rel="stylesheet" href="../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../index.html" title="The Boost C++ Libraries BoostBook Documentation Subset">
+<link rel="up" href="../boost_typeindex.html" title="Chapter&#160;37.&#160;Boost.TypeIndex 4.0">
+<link rel="prev" href="code_bloat.html" title="Code bloat">
+<link rel="next" href="mixing_sources_with_rtti_on_and_.html" title="Mixing sources with RTTI on and RTTI off">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../boost.png"></td>
+<td align="center"><a href="../../../index.html">Home</a></td>
+<td align="center"><a href="../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="code_bloat.html"><img src="../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../boost_typeindex.html"><img src="../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="mixing_sources_with_rtti_on_and_.html"><img src="../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="boost_typeindex.rtti_emulation_limitations"></a><a class="link" href="rtti_emulation_limitations.html" title="RTTI emulation limitations">RTTI emulation
+    limitations</a>
+</h2></div></div></div>
+<div class="toc"><dl>
+<dt><span class="section"><a href="rtti_emulation_limitations.html#boost_typeindex.rtti_emulation_limitations.define_the_boost_type_index_func">Define
+      the BOOST_TYPE_INDEX_FUNCTION_SIGNATURE macro</a></span></dt>
+<dt><span class="section"><a href="rtti_emulation_limitations.html#boost_typeindex.rtti_emulation_limitations.fixing_pretty_name_output">Fixing
+      pretty_name() output</a></span></dt>
+</dl></div>
+<p>
+      TypeIndex has been tested and successfully work on many compilers.
+    </p>
+<div class="warning"><table border="0" summary="Warning">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Warning]" src="../../../doc/src/images/warning.png"></td>
+<th align="left">Warning</th>
+</tr>
+<tr><td align="left" valign="top">
+<p>
+        With RTTI off classes with exactly the same names defined in different modules
+        in anonymous namespaces may collapse:
+      </p>
+<pre class="programlisting"><span class="comment">// In A.cpp</span>
+<span class="keyword">namespace</span> <span class="special">{</span> <span class="keyword">struct</span> <span class="identifier">user_defined</span><span class="special">{};</span> <span class="special">}</span>
+<span class="identifier">type_index</span> <span class="identifier">foo_a</span><span class="special">()</span> <span class="special">{</span> <span class="keyword">return</span> <span class="identifier">type_id</span><span class="special">&lt;</span><span class="identifier">user_defined</span><span class="special">&gt;();</span> <span class="special">}</span>
+
+<span class="comment">// In B.cpp</span>
+<span class="keyword">namespace</span> <span class="special">{</span> <span class="keyword">struct</span> <span class="identifier">user_defined</span><span class="special">{};</span> <span class="special">}</span>
+<span class="identifier">type_index</span> <span class="identifier">foo_b</span><span class="special">()</span> <span class="special">{</span> <span class="keyword">return</span> <span class="identifier">type_id</span><span class="special">&lt;</span><span class="identifier">user_defined</span><span class="special">&gt;();</span> <span class="special">}</span>
+
+<span class="comment">// In main.cpp</span>
+<span class="identifier">assert</span><span class="special">(</span><span class="identifier">foo_a</span><span class="special">()</span> <span class="special">!=</span> <span class="identifier">foo_b</span><span class="special">());</span> <span class="comment">// will fail on some compilers</span>
+</pre>
+<p>
+        <span class="bold"><strong>Compilers that have that limitation:</strong></span> GCC,
+        CLANG, Intel.
+      </p>
+<p>
+        <span class="bold"><strong>Test:</strong></span> you can test this issue by runing
+        the <code class="computeroutput"><span class="identifier">testing_crossmodule_anonymous_no_rtti</span></code>
+        that can be build if you run <code class="computeroutput"><span class="special">../../../</span><span class="identifier">b2</span></code> in <code class="computeroutput"><span class="identifier">type_index</span><span class="special">/</span><span class="identifier">test</span><span class="special">/</span></code>
+        folder.
+      </p>
+</td></tr>
+</table></div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_typeindex.rtti_emulation_limitations.define_the_boost_type_index_func"></a><a class="link" href="rtti_emulation_limitations.html#boost_typeindex.rtti_emulation_limitations.define_the_boost_type_index_func" title="Define the BOOST_TYPE_INDEX_FUNCTION_SIGNATURE macro">Define
+      the BOOST_TYPE_INDEX_FUNCTION_SIGNATURE macro</a>
+</h3></div></div></div>
+<p>
+        If you get the following error during compilation
+      </p>
+<pre class="programlisting"><span class="identifier">TypeIndex</span> <span class="identifier">library</span> <span class="identifier">could</span> <span class="keyword">not</span> <span class="identifier">detect</span> <span class="identifier">your</span> <span class="identifier">compiler</span><span class="special">.</span>
+<span class="identifier">Please</span> <span class="identifier">make</span> <span class="identifier">the</span> <span class="identifier">BOOST_TYPE_INDEX_FUNCTION_SIGNATURE</span> <span class="identifier">macro</span> <span class="identifier">use</span>
+<span class="identifier">correct</span> <span class="identifier">compiler</span> <span class="identifier">macro</span> <span class="keyword">for</span> <span class="identifier">getting</span> <span class="identifier">the</span> <span class="identifier">whole</span> <span class="identifier">function</span> <span class="identifier">name</span><span class="special">.</span>
+<span class="identifier">Define</span> <span class="identifier">BOOST_TYPE_INDEX_CTTI_USER_DEFINED_PARSING</span> <span class="identifier">to</span> <span class="identifier">correct</span> <span class="identifier">value</span> <span class="identifier">after</span> <span class="identifier">that</span><span class="special">.</span>
+</pre>
+<p>
+        then you are using a compiler that was not tested with this library.
+      </p>
+<p>
+        <code class="computeroutput"><a class="link" href="../BOOST_TYPE_INDEX_FUNCTION_SIGNATURE.html" title="Macro BOOST_TYPE_INDEX_FUNCTION_SIGNATURE">BOOST_TYPE_INDEX_FUNCTION_SIGNATURE</a></code>
+        must be defined to a compiler specific macro, that outputs the <span class="bold"><strong>whole</strong></span> function signature including template parameters.
+      </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_typeindex.rtti_emulation_limitations.fixing_pretty_name_output"></a><a class="link" href="rtti_emulation_limitations.html#boost_typeindex.rtti_emulation_limitations.fixing_pretty_name_output" title="Fixing pretty_name() output">Fixing
+      pretty_name() output</a>
+</h3></div></div></div>
+<p>
+        If the output of <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">typeindex</span><span class="special">::</span><span class="identifier">ctti_type_index</span><span class="special">::</span><span class="identifier">type_id</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;().</span><span class="identifier">name</span><span class="special">()</span></code>
+        * returns not just <code class="computeroutput"><span class="keyword">int</span></code> but also
+        a lot of text around the <code class="computeroutput"><span class="keyword">int</span></code>
+        * or does not return type at all then you are using a compiler that was not
+        tested with this library and you need to setup the <code class="computeroutput"><a class="link" href="../BOOST_TYPE_INDEX_CTTI_USER_DEFINED_PARSING.html" title="Macro BOOST_TYPE_INDEX_CTTI_USER_DEFINED_PARSING">BOOST_TYPE_INDEX_CTTI_USER_DEFINED_PARSING</a></code>
+        macro.
+      </p>
+<p>
+        Here is a short instruction:
+      </p>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+            get the output of <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">typeindex</span><span class="special">::</span><span class="identifier">ctti_type_index</span><span class="special">::</span><span class="identifier">type_id</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;().</span><span class="identifier">name</span><span class="special">()</span></code>
+          </li>
+<li class="listitem">
+            define <code class="computeroutput"><a class="link" href="../BOOST_TYPE_INDEX_CTTI_USER_DEFINED_PARSING.html" title="Macro BOOST_TYPE_INDEX_CTTI_USER_DEFINED_PARSING">BOOST_TYPE_INDEX_CTTI_USER_DEFINED_PARSING</a></code>
+            to <code class="computeroutput"><span class="special">(</span><span class="identifier">skip_at_begin</span><span class="special">,</span> <span class="identifier">skip_at_end</span><span class="special">,</span> <span class="keyword">false</span><span class="special">,</span> <span class="string">""</span><span class="special">)</span></code>, where
+            <div class="itemizedlist"><ul class="itemizedlist" type="disc">
+<li class="listitem">
+                  <code class="computeroutput"><span class="identifier">skip_at_begin</span></code> is
+                  equal to characters count before the first occurrence of <code class="computeroutput"><span class="keyword">int</span></code> in output
+                </li>
+<li class="listitem">
+                  <code class="computeroutput"><span class="identifier">skip_at_end</span></code> is
+                  equal to characters count after last occurrence of <code class="computeroutput"><span class="keyword">int</span></code> in output
+                </li>
+</ul></div>
+          </li>
+<li class="listitem">
+            check that <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">typeindex</span><span class="special">::</span><span class="identifier">ctti_type_index</span><span class="special">::</span><span class="identifier">type_id</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;().</span><span class="identifier">name_demangled</span><span class="special">()</span></code>
+            returns "int"
+          </li>
+<li class="listitem">
+            if it does not return <code class="computeroutput"><span class="keyword">int</span></code>,
+            then define BOOST_TYPE_INDEX_CTTI_USER_DEFINED_PARSING to <code class="computeroutput"><span class="special">(</span><span class="identifier">skip_at_begin</span><span class="special">,</span> <span class="identifier">skip_at_end</span><span class="special">,</span> <span class="keyword">true</span><span class="special">,</span> <span class="string">"T = "</span><span class="special">)</span></code>, where
+            <div class="itemizedlist"><ul class="itemizedlist" type="disc">
+<li class="listitem">
+                  <code class="computeroutput"><span class="identifier">skip_at_begin</span></code> is
+                  equal to <code class="computeroutput"><span class="identifier">skip_at_begin</span></code>
+                  at step 2
+                </li>
+<li class="listitem">
+                  <code class="computeroutput"><span class="identifier">skip_at_end</span></code> is
+                  equal to <code class="computeroutput"><span class="identifier">skip_at_end</span></code>
+                  at step 2
+                </li>
+<li class="listitem">
+                  <code class="computeroutput"><span class="string">"T = "</span></code> is
+                  equal to characters that are right before the <code class="computeroutput"><span class="keyword">int</span></code>
+                  in output
+                </li>
+</ul></div>
+          </li>
+<li class="listitem">
+            (optional, but highly recommended) <a href="http://www.boost.org/support/bugs.html" target="_top">create
+            ticket</a> with feature request to add your compiler to supported
+            compilers list. Include parameters provided to <code class="computeroutput"><span class="identifier">BOOST_TYPE_INDEX_CTTI_USER_DEFINED_PARSING</span></code>
+            macro.
+          </li>
+</ol></div>
+<p>
+        Consider the following example:
+      </p>
+<p>
+        <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">typeindex</span><span class="special">::</span><span class="identifier">ctti_type_index</span><span class="special">::</span><span class="identifier">type_id</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;().</span><span class="identifier">raw_name</span><span class="special">()</span></code>
+        returns "const char *__cdecl boost::detail::ctti&lt;int&gt;::n(void)".
+        Then you shall set <code class="computeroutput"><span class="identifier">skip_at_begin</span></code>
+        to <code class="computeroutput"><span class="keyword">sizeof</span><span class="special">(</span><span class="string">"const char *__cdecl boost::detail::ctti&lt;"</span><span class="special">)</span> <span class="special">-</span> <span class="number">1</span></code>
+        and <code class="computeroutput"><span class="identifier">skip_at_end</span></code> to <code class="computeroutput"><span class="keyword">sizeof</span><span class="special">(</span><span class="string">"&gt;::n(void)"</span><span class="special">)</span> <span class="special">-</span> <span class="number">1</span></code>.
+      </p>
+<pre class="programlisting"><span class="preprocessor">#define</span> <span class="identifier">BOOST_TYPE_INDEX_CTTI_USER_DEFINED_PARSING</span> <span class="special">(</span><span class="number">39</span><span class="special">,</span> <span class="number">6</span><span class="special">,</span> <span class="keyword">false</span><span class="special">,</span> <span class="string">""</span><span class="special">)</span>
+</pre>
+<p>
+        Another example:
+      </p>
+<p>
+        <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">typeindex</span><span class="special">::</span><span class="identifier">ctti_type_index</span><span class="special">::</span><span class="identifier">type_id</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;().</span><span class="identifier">raw_name</span><span class="special">()</span></code>
+        returns "static const char *boost::detail::ctti&lt;int&gt;::n() [T =
+        int]"". Then you shall set <code class="computeroutput"><span class="identifier">skip_at_begin</span></code>
+        to <code class="computeroutput"><span class="keyword">sizeof</span><span class="special">(</span><span class="string">"static const char *boost::detail::ctti&lt;"</span><span class="special">)</span> <span class="special">-</span> <span class="number">1</span></code>
+        and <code class="computeroutput"><span class="identifier">skip_at_end</span></code> to <code class="computeroutput"><span class="keyword">sizeof</span><span class="special">(</span><span class="string">"]"</span><span class="special">)</span> <span class="special">-</span> <span class="number">1</span></code>
+        and last parameter of macro to "T = ".
+      </p>
+<pre class="programlisting"><span class="preprocessor">#define</span> <span class="identifier">BOOST_TYPE_INDEX_CTTI_USER_DEFINED_PARSING</span> <span class="special">(</span><span class="number">39</span><span class="special">,</span> <span class="number">1</span><span class="special">,</span> <span class="keyword">true</span><span class="special">,</span> <span class="string">"T = "</span><span class="special">)</span>
+</pre>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2012-2014 Antony Polukhin<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="code_bloat.html"><img src="../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../boost_typeindex.html"><img src="../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="mixing_sources_with_rtti_on_and_.html"><img src="../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

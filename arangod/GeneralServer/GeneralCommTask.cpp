@@ -28,6 +28,7 @@
 #include "Basics/MutexLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
+#include "Meta/conversion.h"
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "GeneralServer/RestHandler.h"
@@ -89,7 +90,10 @@ void GeneralCommTask::signalTask(TaskData* data) {
     data->RequestStatisticsAgent::transferTo(this);
     HttpResponse response(GeneralResponse::ResponseCode::OK);
     velocypack::Slice slice(data->_buffer->data());
-    response.setPayload(_request, slice, true, VPackOptions::Defaults);
+
+    response.setPayload(meta::enumToEnum<GeneralResponse::ContentType>(
+                            _request->contentTypeResponse()),
+                        slice, true, VPackOptions::Defaults);
     processResponse(&response);
     processRead();
   }
@@ -140,8 +144,12 @@ void GeneralCommTask::fillWriteBuffer() {
 
     TRI_ASSERT(buffer != nullptr);
 
-    TRI_request_statistics_t* statistics = _writeBuffersStats.front();
-    _writeBuffersStats.pop_front();
+    // REVIEW (fc)
+    TRI_request_statistics_t* statistics = nullptr;
+    if (!_writeBuffersStats.empty()) {
+      statistics = _writeBuffersStats.front();
+      _writeBuffersStats.pop_front();
+    }
 
     setWriteBuffer(buffer, statistics);
   }
@@ -240,8 +248,9 @@ void GeneralCommTask::handleSimpleError(
   builder.close();
 
   try {
-    response.setPayload(_request, builder.slice(), true,
-                        VPackOptions::Defaults);
+    response.setPayload(meta::enumToEnum<GeneralResponse::ContentType>(
+                            _request->contentTypeResponse()),
+                        builder.slice(), true, VPackOptions::Defaults);
     clearRequest();
     processResponse(&response);
   } catch (...) {

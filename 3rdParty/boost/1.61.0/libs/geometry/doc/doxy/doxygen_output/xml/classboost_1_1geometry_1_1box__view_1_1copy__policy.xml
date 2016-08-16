@@ -1,0 +1,67 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="classboost_1_1geometry_1_1box__view_1_1copy__policy" kind="class" prot="private">
+    <compoundname>boost::geometry::box_view::copy_policy</compoundname>
+      <sectiondef kind="private-attrib">
+      <memberdef kind="variable" id="classboost_1_1geometry_1_1box__view_1_1copy__policy_1a9f188bdc467591c1f9762138cc2f7533" prot="private" static="no" mutable="no">
+        <type>Box const &amp;</type>
+        <definition>Box const&amp; boost::geometry::box_view&lt; Box, Clockwise &gt;::copy_policy::m_box</definition>
+        <argsstring></argsstring>
+        <name>m_box</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/views/box_view.hpp" line="79" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/views/box_view.hpp" bodystart="79" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="classboost_1_1geometry_1_1box__view_1_1copy__policy_1a44888a29a6a69c79baa47b0c93c6a555" prot="public" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <type>void</type>
+        <definition>void boost::geometry::box_view&lt; Box, Clockwise &gt;::copy_policy::apply</definition>
+        <argsstring>(point_type *points) const </argsstring>
+        <name>apply</name>
+        <param>
+          <type><ref refid="structboost_1_1geometry_1_1box__view_1a70791d0cb54de244cdbec85135e6be10" kindref="member">point_type</ref> *</type>
+          <declname>points</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/views/box_view.hpp" line="70" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/views/box_view.hpp" bodystart="69" bodyend="77"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1box__view_1_1copy__policy_1a459f9764df9636fa96271c7d5bb01392" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type></type>
+        <definition>boost::geometry::box_view&lt; Box, Clockwise &gt;::copy_policy::copy_policy</definition>
+        <argsstring>(Box const &amp;box)</argsstring>
+        <name>copy_policy</name>
+        <param>
+          <type>Box const &amp;</type>
+          <declname>box</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/views/box_view.hpp" line="67" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/views/box_view.hpp" bodystart="65" bodyend="67"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/views/box_view.hpp" line="63" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/views/box_view.hpp" bodystart="62" bodyend="80"/>
+    <listofallmembers>
+      <member refid="classboost_1_1geometry_1_1box__view_1_1copy__policy_1a44888a29a6a69c79baa47b0c93c6a555" prot="public" virt="non-virtual"><scope>boost::geometry::box_view::copy_policy</scope><name>apply</name></member>
+      <member refid="classboost_1_1geometry_1_1box__view_1_1copy__policy_1a459f9764df9636fa96271c7d5bb01392" prot="public" virt="non-virtual"><scope>boost::geometry::box_view::copy_policy</scope><name>copy_policy</name></member>
+      <member refid="classboost_1_1geometry_1_1box__view_1_1copy__policy_1a9f188bdc467591c1f9762138cc2f7533" prot="private" virt="non-virtual"><scope>boost::geometry::box_view::copy_policy</scope><name>m_box</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

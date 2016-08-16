@@ -1,0 +1,180 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="classboost_1_1geometry_1_1model_1_1ring" kind="class" prot="public">
+    <compoundname>boost::geometry::model::ring</compoundname>
+    <includes local="no">ring.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename</type>
+        <declname>Point</declname>
+        <defname>Point</defname>
+      </param>
+      <param>
+        <type>bool</type>
+        <declname>ClockWise</declname>
+        <defname>ClockWise</defname>
+        <defval>true</defval>
+      </param>
+      <param>
+        <type>bool</type>
+        <declname>Closed</declname>
+        <defname>Closed</defname>
+        <defval>true</defval>
+      </param>
+      <param>
+        <type>template&lt; typename, typename &gt; class</type>
+        <declname>Container</declname>
+        <defname>Container</defname>
+        <defval>std::vector</defval>
+      </param>
+      <param>
+        <type>template&lt; typename &gt; class</type>
+        <declname>Allocator</declname>
+        <defname>Allocator</defname>
+        <defval>std::allocator</defval>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="private-type">
+      <memberdef kind="typedef" id="classboost_1_1geometry_1_1model_1_1ring_1a5c956a692c473c18ed09f8b7e6c991f8" prot="private" static="no">
+        <type>Container&lt; Point, Allocator&lt; Point &gt; &gt;</type>
+        <definition>typedef Container&lt;Point, Allocator&lt;Point&gt; &gt; boost::geometry::model::ring&lt; Point, ClockWise, Closed, Container, Allocator &gt;::base_type</definition>
+        <argsstring></argsstring>
+        <name>base_type</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/ring.hpp" line="68" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/ring.hpp" bodystart="68" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="private-func">
+      <memberdef kind="function" id="classboost_1_1geometry_1_1model_1_1ring_1a4699652b7d188d4f56d0edd8ef8b0a93" prot="private" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type></type>
+        <definition>boost::geometry::model::ring&lt; Point, ClockWise, Closed, Container, Allocator &gt;::BOOST_CONCEPT_ASSERT</definition>
+        <argsstring>((concept::Point&lt; Point &gt;))</argsstring>
+        <name>BOOST_CONCEPT_ASSERT</name>
+        <param>
+          <type>(<ref refid="classboost_1_1geometry_1_1concept_1_1_point" kindref="compound">concept::Point</ref>&lt; Point &gt;)</type>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/ring.hpp" line="66"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="classboost_1_1geometry_1_1model_1_1ring_1a7de828a9c7ea1061e9790b827c1d39e9" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type></type>
+        <definition>boost::geometry::model::ring&lt; Point, ClockWise, Closed, Container, Allocator &gt;::ring</definition>
+        <argsstring>()</argsstring>
+        <name>ring</name>
+        <briefdescription>
+<para>Default constructor, creating an empty \1. </para>        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/ring.hpp" line="74" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/ring.hpp" bodystart="72" bodyend="74"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1model_1_1ring_1a514bb0991233b1663ac64c4c3cab940b" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Iterator</type>
+          </param>
+        </templateparamlist>
+        <type></type>
+        <definition>boost::geometry::model::ring&lt; Point, ClockWise, Closed, Container, Allocator &gt;::ring</definition>
+        <argsstring>(Iterator begin, Iterator end)</argsstring>
+        <name>ring</name>
+        <param>
+          <type>Iterator</type>
+          <declname>begin</declname>
+        </param>
+        <param>
+          <type>Iterator</type>
+          <declname>end</declname>
+        </param>
+        <briefdescription>
+<para>Constructor with begin and end, filling the \1. </para>        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/ring.hpp" line="80" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/ring.hpp" bodystart="78" bodyend="80"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1model_1_1ring_1a2511ffcecb9c6f89f91eb34ec2d74f9b" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type></type>
+        <definition>boost::geometry::model::ring&lt; Point, ClockWise, Closed, Container, Allocator &gt;::ring</definition>
+        <argsstring>(std::initializer_list&lt; Point &gt; l)</argsstring>
+        <name>ring</name>
+        <param>
+          <type>std::initializer_list&lt; Point &gt;</type>
+          <declname>l</declname>
+        </param>
+        <briefdescription>
+<para>Constructor taking std::initializer_list, filling the \1. </para>        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/ring.hpp" line="87" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/ring.hpp" bodystart="85" bodyend="87"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+<para>A ring (aka linear ring) is a closed line which should not be selfintersecting. </para>    </briefdescription>
+    <detaileddescription>
+<para><parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>Point</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>point type </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>ClockWise</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>true for clockwise direction, false for CounterClockWise direction </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Closed</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>true for closed polygons (last point == first point), false open points </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Container</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>container type, for example std::vector, std::deque </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Allocator</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>container-allocator-type</para></parameterdescription>
+</parameteritem>
+</parameterlist>
+ <qbk>[include reference/geometries/ring.qbk]</qbk>   <qbk.before.synopsis>
+[heading Model of]
+[link geometry.reference.concepts.concept_ring Ring Concept]
+</qbk.before.synopsis>  </para>    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/ring.hpp" line="65" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/ring.hpp" bodystart="64" bodyend="103"/>
+    <listofallmembers>
+      <member refid="classboost_1_1geometry_1_1model_1_1ring_1a5c956a692c473c18ed09f8b7e6c991f8" prot="private" virt="non-virtual"><scope>boost::geometry::model::ring</scope><name>base_type</name></member>
+      <member refid="classboost_1_1geometry_1_1model_1_1ring_1a4699652b7d188d4f56d0edd8ef8b0a93" prot="private" virt="non-virtual"><scope>boost::geometry::model::ring</scope><name>BOOST_CONCEPT_ASSERT</name></member>
+      <member refid="classboost_1_1geometry_1_1model_1_1ring_1a7de828a9c7ea1061e9790b827c1d39e9" prot="public" virt="non-virtual"><scope>boost::geometry::model::ring</scope><name>ring</name></member>
+      <member refid="classboost_1_1geometry_1_1model_1_1ring_1a514bb0991233b1663ac64c4c3cab940b" prot="public" virt="non-virtual"><scope>boost::geometry::model::ring</scope><name>ring</name></member>
+      <member refid="classboost_1_1geometry_1_1model_1_1ring_1a2511ffcecb9c6f89f91eb34ec2d74f9b" prot="public" virt="non-virtual"><scope>boost::geometry::model::ring</scope><name>ring</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

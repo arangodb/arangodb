@@ -1,0 +1,19 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="structboost_1_1geometry_1_1detail_1_1unique__types" kind="struct" prot="public">
+    <compoundname>boost::geometry::detail::unique_types</compoundname>
+    <includes local="no">compress_variant.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename Variant</type>
+      </param>
+    </templateparamlist>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/util/compress_variant.hpp" line="59" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/util/compress_variant.hpp" bodystart="43" bodyend="59"/>
+    <listofallmembers>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

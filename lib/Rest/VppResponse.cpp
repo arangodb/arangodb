@@ -1,4 +1,4 @@
-////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
 /// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
@@ -35,6 +35,7 @@
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Basics/VelocyPackDumper.h"
 #include "Basics/tri-strings.h"
+#include "Meta/conversion.h"
 #include "Rest/VppRequest.h"
 
 using namespace arangodb;
@@ -42,34 +43,42 @@ using namespace arangodb::basics;
 
 bool VppResponse::HIDE_PRODUCT_HEADER = false;
 
-VppResponse::VppResponse(ResponseCode code)
-    : GeneralResponse(code),
-      _connectionType(CONNECTION_KEEP_ALIVE),
-      _body(TRI_UNKNOWN_MEM_ZONE, false),
-      _contentType(ContentType::VPACK) {}
+VppResponse::VppResponse(ResponseCode code, uint64_t id)
+    : GeneralResponse(code), _header(nullptr), _payload(), _messageID(id) {
+  _contentType = ContentType::VPACK;
+  _connectionType = CONNECTION_KEEP_ALIVE;
+}
 
 void VppResponse::reset(ResponseCode code) {
   _responseCode = code;
   _headers.clear();
   _connectionType = CONNECTION_KEEP_ALIVE;
   _contentType = ContentType::TEXT;
+  _generateBody = false;  // payload has to be set
 }
 
-void VppResponse::setPayload(GeneralRequest const* request,
+void VppResponse::setPayload(ContentType contentType,
                              arangodb::velocypack::Slice const& slice,
                              bool generateBody, VPackOptions const& options) {
-  // VELOCYPACK
-  if (request != nullptr && request->velocyPackResponse()) {
-    setContentType(VppResponse::ContentType::VPACK);
-    // size_t length = static_cast<size_t>(slice.byteSize());
-    if (generateBody) {
-    }
-  } else {  // JSON
-    setContentType(VppResponse::ContentType::JSON);
-    if (generateBody) {
-    } else {
-    }
+  if (generateBody) {
+    _generateBody = true;
+    _payload.append(slice.startAs<char>(),
+                    std::distance(slice.begin(), slice.end()));
   }
 };
 
-void VppResponse::writeHeader(basics::StringBuffer*) {}
+VPackMessageNoOwnBuffer VppResponse::prepareForNetwork() {
+  VPackBuilder builder;
+  builder.openObject();
+  builder.add("version", VPackValue(int(1)));
+  builder.add("type", VPackValue(int(1)));  // 2 == response
+  builder.add(
+      "responseCode",
+      VPackValue(static_cast<int>(meta::underlyingValue(_responseCode))));
+  builder.close();
+  _header = builder.steal();
+  return VPackMessageNoOwnBuffer(VPackSlice(_header->data()),
+                                 VPackSlice(_payload.data()), _messageID,
+                                 _generateBody);
+}
+// void VppResponse::writeHeader(basics::StringBuffer*) {}

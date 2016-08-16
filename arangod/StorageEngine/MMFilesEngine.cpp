@@ -27,6 +27,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/files.h"
+#include "Random/RandomGenerator.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -41,6 +42,7 @@
 #include "Indexes/RocksDBIndex.h"
 #endif
 
+#include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -48,11 +50,13 @@ using namespace arangodb;
 using namespace arangodb::basics;
 
 namespace {
+/// @brief collection meta info filename
+static constexpr char const* parametersFilename() { return "parameter.json"; }
 
 /// @brief extract the numeric part from a filename
 /// the filename must look like this: /.*type-abc\.ending$/, where abc is
 /// a number, and type and ending are arbitrary letters
-static uint64_t GetNumericFilenamePartFromDatafile(std::string const& filename) {
+static uint64_t getNumericFilenamePartFromDatafile(std::string const& filename) {
   char const* pos1 = strrchr(filename.c_str(), '.');
 
   if (pos1 == nullptr) {
@@ -69,7 +73,7 @@ static uint64_t GetNumericFilenamePartFromDatafile(std::string const& filename) 
 }
 
 /// @brief extract the numeric part from a filename
-static uint64_t GetNumericFilenamePartFromDatabase(std::string const& filename) {
+static uint64_t getNumericFilenamePartFromDatabase(std::string const& filename) {
   char const* pos = strrchr(filename.c_str(), '-');
 
   if (pos == nullptr) {
@@ -83,7 +87,7 @@ static uint64_t GetNumericFilenamePartFromDatabase(std::string const& filename) 
 /// the filename. this is used to sort database filenames on startup
 struct DatafileIdStringComparator {
   bool operator()(std::string const& lhs, std::string const& rhs) const {
-    return GetNumericFilenamePartFromDatafile(lhs) < GetNumericFilenamePartFromDatafile(rhs);
+    return getNumericFilenamePartFromDatafile(lhs) < getNumericFilenamePartFromDatafile(rhs);
   }
 };
 
@@ -91,7 +95,7 @@ struct DatafileIdStringComparator {
 /// the filename. this is used to sort database filenames on startup
 struct DatabaseIdStringComparator {
   bool operator()(std::string const& lhs, std::string const& rhs) const {
-    return GetNumericFilenamePartFromDatabase(lhs) < GetNumericFilenamePartFromDatabase(rhs);
+    return getNumericFilenamePartFromDatabase(lhs) < getNumericFilenamePartFromDatabase(rhs);
   }
 };
 
@@ -124,9 +128,9 @@ void MMFilesEngine::prepare() {
   TRI_ASSERT(EngineSelectorFeature::ENGINE = this);
 
   // get base path from DatabaseServerFeature 
-  auto database = application_features::ApplicationServer::getFeature<DatabasePathFeature>("DatabasePath");
-  _basePath = database->directory();
-  _databasePath += database->subdirectoryName("databases") + TRI_DIR_SEPARATOR_CHAR;
+  auto databasePathFeature = application_features::ApplicationServer::getFeature<DatabasePathFeature>("DatabasePath");
+  _basePath = databasePathFeature->directory();
+  _databasePath += databasePathFeature->subdirectoryName("databases") + TRI_DIR_SEPARATOR_CHAR;
   
   TRI_ASSERT(!_basePath.empty());
   TRI_ASSERT(!_databasePath.empty());
@@ -212,7 +216,7 @@ void MMFilesEngine::getDatabases(arangodb::velocypack::Builder& result) {
   for (auto const& name : files) {
     TRI_ASSERT(!name.empty());
     
-    TRI_voc_tick_t id = GetNumericFilenamePartFromDatabase(name);
+    TRI_voc_tick_t id = getNumericFilenamePartFromDatabase(name);
 
     if (id == 0) {
       // invalid id
@@ -255,7 +259,7 @@ void MMFilesEngine::getDatabases(arangodb::velocypack::Builder& result) {
     // a valid database directory
 
     // now read data from parameter.json file
-    std::string const file = parametersFile(id);
+    std::string const file = databaseParametersFilename(id);
 
     if (!TRI_ExistsFile(file.c_str())) {
       // no parameter.json file
@@ -328,6 +332,66 @@ void MMFilesEngine::getDatabases(arangodb::velocypack::Builder& result) {
   result.close();
 }
 
+// fills the provided builder with information about the collection 
+void MMFilesEngine::getCollectionInfo(TRI_vocbase_t* vocbase, TRI_voc_cid_t id, 
+                                      arangodb::velocypack::Builder& builder, 
+                                      bool includeIndexes, TRI_voc_tick_t maxTick) {
+
+  std::string const path = collectionDirectory(vocbase->id(), id);
+
+  builder.openObject();
+
+  std::shared_ptr<VPackBuilder> fileInfoBuilder =
+      arangodb::basics::VelocyPackHelper::velocyPackFromFile(basics::FileUtils::buildFilename(path, parametersFilename()));
+  builder.add("parameters", fileInfoBuilder->slice());
+
+  if (includeIndexes) {
+    // dump index information
+    builder.add("indexes", VPackValue(VPackValueType::Array));
+
+    std::vector<std::string> files = TRI_FilesDirectory(path.c_str());
+
+    // sort by index id
+    std::sort(files.begin(), files.end(), DatafileIdStringComparator());
+
+    for (auto const& file : files) {
+      if (StringUtils::isPrefix(file, "index-") &&
+          StringUtils::isSuffix(file, ".json")) {
+        std::string const filename = basics::FileUtils::buildFilename(path, file);
+        std::shared_ptr<VPackBuilder> indexVPack =
+            arangodb::basics::VelocyPackHelper::velocyPackFromFile(filename);
+
+        VPackSlice const indexSlice = indexVPack->slice();
+        VPackSlice const id = indexSlice.get("id");
+
+        if (id.isNumber()) {
+          uint64_t iid = id.getNumericValue<uint64_t>();
+          if (iid <= static_cast<uint64_t>(maxTick)) {
+            // convert "id" to string
+            VPackBuilder toMerge;
+            {
+              VPackObjectBuilder b(&toMerge);
+              toMerge.add("id", VPackValue(std::to_string(iid)));
+            }
+            VPackBuilder mergedBuilder =
+                VPackCollection::merge(indexSlice, toMerge.slice(), false);
+            builder.add(mergedBuilder.slice());
+          }
+        } else if (id.isString()) {
+          std::string data = id.copyString();
+          uint64_t iid = StringUtils::uint64(data);
+          if (iid <= static_cast<uint64_t>(maxTick)) {
+            builder.add(indexSlice);
+          }
+        }
+      }
+    }
+    builder.close();
+  }
+
+  builder.close();
+}
+
 // fill the Builder object with an array of collections (and their corresponding
 // indexes) that were detected by the storage engine. called at server start only
 int MMFilesEngine::getCollectionsAndIndexes(TRI_vocbase_t* vocbase, 
@@ -374,10 +438,7 @@ int MMFilesEngine::getCollectionsAndIndexes(TRI_vocbase_t* vocbase,
     int res = TRI_ERROR_NO_ERROR;
 
     try {
-      arangodb::VocbaseCollectionInfo info =
-          arangodb::VocbaseCollectionInfo::fromFile(directory, vocbase,
-                                                    "",  // Name is unused
-                                                    true);
+      arangodb::VocbaseCollectionInfo info = loadCollectionInfo(vocbase, "", directory, true);
      
       if (info.deleted()) {
         _deleted.emplace_back(std::make_pair(info.name(), directory));
@@ -474,6 +535,8 @@ int MMFilesEngine::prepareDropDatabase(TRI_vocbase_t* vocbase) {
 
 // perform a physical deletion of the database      
 int MMFilesEngine::dropDatabase(TRI_vocbase_t* vocbase) {
+  _collectionPaths.erase(vocbase->id());
+
   return dropDatabaseDirectory(databaseDirectory(vocbase->id()));
 }
 
@@ -516,10 +579,96 @@ int MMFilesEngine::waitUntilDeletion(TRI_voc_tick_t id, bool force) {
 // and throw only then, so that subsequent collection creation requests will not fail.
 // the WAL entry for the collection creation will be written *after* the call
 // to "createCollection" returns
-void MMFilesEngine::createCollection(TRI_voc_tick_t databaseId, TRI_voc_cid_t id,
-                                     arangodb::velocypack::Slice const& data) {
-}
+std::string MMFilesEngine::createCollection(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
+                                            arangodb::VocbaseCollectionInfo const& parameters) {
+  std::string const path = databasePath(vocbase);
 
+  // sanity check
+  if (sizeof(TRI_df_header_marker_t) + sizeof(TRI_df_footer_marker_t) > parameters.maximalSize()) {
+    LOG(ERR) << "cannot create datafile '" << parameters.name() << "' in '"
+             << path << "', maximal size '"
+             << parameters.maximalSize() << "' is too small";
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATAFILE_FULL);
+  }
+
+  if (!TRI_IsDirectory(path.c_str())) {
+    LOG(ERR) << "cannot create collection '" << path << "', path is not a directory";
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATADIR_INVALID);
+  }
+
+  TRI_ASSERT(id != 0);
+  std::string const dirname = createCollectionDirectoryName(path, id);
+  registerCollectionPath(vocbase->id(), id, dirname);
+
+  // directory must not exist
+  if (TRI_ExistsFile(dirname.c_str())) {
+    LOG(ERR) << "cannot create collection '" << parameters.name()
+             << "' in directory '" << dirname << "': directory already exists";
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_DIRECTORY_ALREADY_EXISTS);
+  }
+
+  // use a temporary directory first. this saves us from leaving an empty
+  // directory behind, and the server refusing to start
+  std::string const tmpname = dirname + ".tmp";
+
+  // create directory
+  std::string errorMessage;
+  long systemError;
+  int res = TRI_CreateDirectory(tmpname.c_str(), systemError, errorMessage);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    LOG(ERR) << "cannot create collection '" << parameters.name()
+             << "' in directory '" << path << "': " << TRI_errno_string(res)
+             << " - " << systemError << " - " << errorMessage;
+    THROW_ARANGO_EXCEPTION(res);
+  }
+
+  TRI_IF_FAILURE("CreateCollection::tempDirectory") { THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG); }
+
+  // create a temporary file (.tmp)
+  std::string const tmpfile(
+      arangodb::basics::FileUtils::buildFilename(tmpname.c_str(), ".tmp"));
+  res = TRI_WriteFile(tmpfile.c_str(), "", 0);
+
+  // this file will be renamed to this filename later...
+  std::string const tmpfile2(
+      arangodb::basics::FileUtils::buildFilename(dirname.c_str(), ".tmp"));
+
+  TRI_IF_FAILURE("CreateCollection::tempFile") { THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG); }
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    LOG(ERR) << "cannot create collection '" << parameters.name()
+             << "' in directory '" << path << "': " << TRI_errno_string(res)
+             << " - " << systemError << " - " << errorMessage;
+    TRI_RemoveDirectory(tmpname.c_str());
+    THROW_ARANGO_EXCEPTION(res);
+  }
+
+  TRI_IF_FAILURE("CreateCollection::renameDirectory") { THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG); }
+
+  res = TRI_RenameFile(tmpname.c_str(), dirname.c_str());
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    LOG(ERR) << "cannot create collection '" << parameters.name()
+             << "' in directory '" << path << "': " << TRI_errno_string(res)
+             << " - " << systemError << " - " << errorMessage;
+    TRI_RemoveDirectory(tmpname.c_str());
+    THROW_ARANGO_EXCEPTION(res);
+  }
+
+  // now we have the collection directory in place with the correct name and a
+  // .tmp file in it
+
+  // delete .tmp file
+  TRI_UnlinkFile(tmpfile2.c_str());
+
+  // save the parameters file
+  bool const doSync = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database")->forceSyncProperties();
+  saveCollectionInfo(vocbase, id, parameters, doSync);
+
+  return dirname;
+}
+ 
 // asks the storage engine to drop the specified collection and persist the 
 // deletion info. Note that physical deletion of the collection data must not 
 // be carried out by this call, as there may
@@ -530,6 +679,7 @@ void MMFilesEngine::createCollection(TRI_voc_tick_t databaseId, TRI_voc_cid_t id
 // to "dropCollection" returns
 void MMFilesEngine::dropCollection(TRI_voc_tick_t databaseId, TRI_voc_cid_t id, 
                                    std::function<bool()> const& canRemovePhysically) {
+//  unregisterCollectionPath(databaseId, id);
 }
 
 // asks the storage engine to rename the collection as specified in the VPack
@@ -540,8 +690,15 @@ void MMFilesEngine::dropCollection(TRI_voc_tick_t databaseId, TRI_voc_cid_t id,
 // and throw only then, so that subsequent collection creation/rename requests will 
 // not fail. the WAL entry for the rename will be written *after* the call
 // to "renameCollection" returns
-void MMFilesEngine::renameCollection(TRI_voc_tick_t databaseId, TRI_voc_cid_t id,
-                                     arangodb::velocypack::Slice const& data) {
+void MMFilesEngine::renameCollection(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
+                                     std::string const& name) {
+  std::string const path = collectionPath(vocbase, id);
+  
+  arangodb::VocbaseCollectionInfo parameters = loadCollectionInfo(vocbase, name, path, true); 
+  parameters.rename(name);
+
+  bool const doSync = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database")->forceSyncProperties();
+  saveCollectionInfo(vocbase, id, parameters, doSync);
 }
 
 // asks the storage engine to change properties of the collection as specified in 
@@ -550,8 +707,10 @@ void MMFilesEngine::renameCollection(TRI_voc_tick_t databaseId, TRI_voc_cid_t id
 // property changes and throw only then, so that subsequent operations will not fail.
 // the WAL entry for the propery change will be written *after* the call
 // to "changeCollection" returns
-void MMFilesEngine::changeCollection(TRI_voc_tick_t databaseId, TRI_voc_cid_t id,
-                                     arangodb::velocypack::Slice const& data) {
+void MMFilesEngine::changeCollection(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
+                                     arangodb::VocbaseCollectionInfo const& parameters,
+                                     bool doSync) {
+  saveCollectionInfo(vocbase, id, parameters, doSync);
 }
 
 // asks the storage engine to create an index as specified in the VPack
@@ -862,10 +1021,10 @@ int MMFilesEngine::saveDatabaseParameters(TRI_voc_tick_t id,
   TRI_ASSERT(!name.empty());
 
   VPackBuilder builder = databaseToVelocyPack(id, name, deleted);
-  std::string const file = parametersFile(id);
+  std::string const file = databaseParametersFilename(id);
 
   if (!arangodb::basics::VelocyPackHelper::velocyPackToFile(
-          file.c_str(), builder.slice(), true)) {
+          file, builder.slice(), true)) {
     LOG(ERR) << "cannot save database information in file '" << file << "'";
     return TRI_ERROR_INTERNAL;
   }
@@ -893,8 +1052,27 @@ std::string MMFilesEngine::databaseDirectory(TRI_voc_tick_t id) const {
   return _databasePath + "database-" + std::to_string(id);
 }
 
-std::string MMFilesEngine::parametersFile(TRI_voc_tick_t id) const {
-  return basics::FileUtils::buildFilename(databaseDirectory(id), TRI_VOC_PARAMETER_FILE);
+std::string MMFilesEngine::databaseParametersFilename(TRI_voc_tick_t id) const {
+  return basics::FileUtils::buildFilename(databaseDirectory(id), parametersFilename());
+}
+
+std::string MMFilesEngine::collectionDirectory(TRI_voc_tick_t databaseId, TRI_voc_cid_t id) const {
+  auto it = _collectionPaths.find(databaseId);
+
+  if (it == _collectionPaths.end()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "trying to determine directory for unknown collection"); 
+  }
+
+  auto it2 = (*it).second.find(id);
+
+  if (it2 == (*it).second.end()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "trying to determine directory for unknown collection"); 
+  }
+  return (*it2).second;
+}
+
+std::string MMFilesEngine::collectionParametersFilename(TRI_voc_tick_t databaseId, TRI_voc_cid_t id) const {
+  return basics::FileUtils::buildFilename(collectionDirectory(databaseId, id), parametersFilename());
 }
 
 /// @brief open an existing database. internal function
@@ -920,8 +1098,10 @@ TRI_vocbase_t* MMFilesEngine::openExistingDatabase(TRI_voc_tick_t id, std::strin
     std::string const directory = it.get("path").copyString();
     TRI_vocbase_col_t* c = nullptr;
 
+    TRI_ASSERT(info.id() != 0);
     try {
       c = StorageEngine::registerCollection(ConditionalWriteLocker::DoLock(), vocbase.get(), info.type(), info.id(), info.name(), info.planId(), directory);
+      registerCollectionPath(vocbase->id(), info.id(), directory);
     } catch (...) {
       // if we caught an exception, c is still a nullptr
     }
@@ -1007,3 +1187,270 @@ bool MMFilesEngine::findMaxTickInJournals(std::string const& path) {
   return iterateFiles(structure.journals);
 }
 
+/// @brief create a full directory name for a collection
+std::string MMFilesEngine::createCollectionDirectoryName(std::string const& basePath, TRI_voc_cid_t cid) {
+  std::string filename("collection-");
+  filename.append(std::to_string(cid));
+  filename.push_back('-');
+  filename.append(std::to_string(RandomGenerator::interval(UINT32_MAX)));
+
+  return arangodb::basics::FileUtils::buildFilename(basePath, filename);
+}
+
+void MMFilesEngine::registerCollectionPath(TRI_voc_tick_t databaseId, TRI_voc_cid_t id, std::string const& path) {
+  auto it = _collectionPaths.find(databaseId);
+
+  if (it == _collectionPaths.end()) {
+    it = _collectionPaths.emplace(databaseId, std::unordered_map<TRI_voc_cid_t, std::string>()).first;
+  }
+  (*it).second[id] = path;
+}
+
+void MMFilesEngine::unregisterCollectionPath(TRI_voc_tick_t databaseId, TRI_voc_cid_t id) {
+  auto it = _collectionPaths.find(databaseId);
+
+  if (it == _collectionPaths.end()) {
+    return;
+  }
+  (*it).second.erase(id);
+}
+
+void MMFilesEngine::saveCollectionInfo(TRI_vocbase_t* vocbase,
+                                       TRI_voc_cid_t id,
+                                       arangodb::VocbaseCollectionInfo const& parameters,
+                                       bool forceSync) const {
+  std::string const filename = collectionParametersFilename(vocbase->id(), id);
+
+  VPackBuilder builder;
+  builder.openObject();
+  parameters.toVelocyPack(builder);
+  builder.close();
+
+  TRI_ASSERT(id != 0);
+
+  bool ok = VelocyPackHelper::velocyPackToFile(filename,
+                                               builder.slice(), forceSync);
+
+  if (!ok) {
+    int res = TRI_errno();
+    THROW_ARANGO_EXCEPTION_MESSAGE(res, std::string("cannot save collection properties file '") + 
+                                   filename + "': " + TRI_errno_string(res));
+  }
+}
+
+VocbaseCollectionInfo MMFilesEngine::loadCollectionInfo(TRI_vocbase_t* vocbase,
+    std::string const& collectionName, std::string const& path, bool versionWarning) {
+  // find parameter file
+  std::string filename =
+      arangodb::basics::FileUtils::buildFilename(path, parametersFilename());
+
+  if (!TRI_ExistsFile(filename.c_str())) {
+    filename += ".tmp";  // try file with .tmp extension
+    if (!TRI_ExistsFile(filename.c_str())) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_PARAMETER_FILE);
+    }
+  }
+
+  std::shared_ptr<VPackBuilder> content =
+      arangodb::basics::VelocyPackHelper::velocyPackFromFile(filename);
+  VPackSlice slice = content->slice();
+  if (!slice.isObject()) {
+    LOG(ERR) << "cannot open '" << filename
+             << "', collection parameters are not readable";
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_PARAMETER_FILE);
+  }
+
+  
+
+  if (filename.substr(filename.size() - 4, 4) == ".tmp") {
+    // we got a tmp file. Now try saving the original file
+    arangodb::basics::VelocyPackHelper::velocyPackToFile(filename.substr(0, filename.size() - 4),
+                                                         slice, true);
+  }
+
+  // fiddle "isSystem" value, which is not contained in the JSON file
+  bool isSystemValue = false;
+  if (slice.hasKey("name")) {
+    auto name = slice.get("name").copyString();
+    if (!name.empty()) {
+      isSystemValue = name[0] == '_';
+    }
+  }
+
+  VPackBuilder bx;
+  bx.openObject();
+  bx.add("isSystem", VPackValue(isSystemValue));
+  bx.close();
+  VPackSlice isSystem = bx.slice();
+  VPackBuilder b2 = VPackCollection::merge(slice, isSystem, false);
+  slice = b2.slice();
+
+  VocbaseCollectionInfo info(vocbase, collectionName, slice, isSystemValue);
+  
+  // warn about wrong version of the collection
+  if (versionWarning && info.version() < TRI_COL_VERSION) {
+    if (info.name()[0] != '\0') {
+      // only warn if the collection version is older than expected, and if it's
+      // not a shape collection
+      LOG(WARN) << "collection '" << info.name()
+                << "' has an old version and needs to be upgraded.";
+    }
+  }
+  return info;
+}
+
+/// @brief remove data of expired compaction blockers
+bool MMFilesEngine::cleanupCompactionBlockers(TRI_vocbase_t* vocbase) {
+  // check if we can instantly acquire the lock
+  TRY_WRITE_LOCKER(locker, _compactionBlockersLock);
+
+  if (!locker.isLocked()) {
+    // couldn't acquire lock
+    return false;
+  }
+
+  auto it = _compactionBlockers.find(vocbase->id());
+
+  if (it == _compactionBlockers.end()) {
+    // no entry for this database
+    return true;
+  }
+
+  // we are now holding the write lock
+  double now = TRI_microtime();
+
+  size_t n = (*it).second.size();
+
+  for (size_t i = 0; i < n; /* no hoisting */) {
+    auto& blocker = (*it).second[i];
+
+    if (blocker._expires < now) {
+      (*it).second.erase((*it).second.begin() + i);
+      n--;
+    } else {
+      i++;
+    }
+  }
+
+  if ((*it).second.empty()) {
+    // remove last element
+    _compactionBlockers.erase(it);
+  }
+
+  return true;
+}
+
+/// @brief insert a compaction blocker
+int MMFilesEngine::insertCompactionBlocker(TRI_vocbase_t* vocbase, double ttl,
+                                           TRI_voc_tick_t& id) {
+  id = 0;
+
+  if (ttl <= 0.0) {
+    return TRI_ERROR_BAD_PARAMETER;
+  }
+
+  CompactionBlocker blocker(TRI_NewTickServer(), TRI_microtime() + ttl);
+
+  {
+    WRITE_LOCKER_EVENTUAL(locker, _compactionBlockersLock, 1000); 
+
+    auto it = _compactionBlockers.find(vocbase->id());
+
+    if (it == _compactionBlockers.end()) {
+      it = _compactionBlockers.emplace(vocbase->id(), std::vector<CompactionBlocker>()).first;
+    }
+
+    (*it).second.emplace_back(blocker);
+  }
+
+  id = blocker._id;
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+/// @brief touch an existing compaction blocker
+int MMFilesEngine::extendCompactionBlocker(TRI_vocbase_t* vocbase, TRI_voc_tick_t id,
+                                           double ttl) {
+  if (ttl <= 0.0) {
+    return TRI_ERROR_BAD_PARAMETER;
+  }
+
+  WRITE_LOCKER_EVENTUAL(locker, _compactionBlockersLock, 1000); 
+
+  auto it = _compactionBlockers.find(vocbase->id());
+
+  if (it == _compactionBlockers.end()) {
+    return TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
+  }
+
+  for (auto& blocker : (*it).second) {
+    if (blocker._id == id) {
+      blocker._expires = TRI_microtime() + ttl;
+      return TRI_ERROR_NO_ERROR;
+    }
+  }
+
+  return TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
+}
+
+/// @brief remove an existing compaction blocker
+int MMFilesEngine::removeCompactionBlocker(TRI_vocbase_t* vocbase,
+                                           TRI_voc_tick_t id) {
+  WRITE_LOCKER_EVENTUAL(locker, _compactionBlockersLock, 1000); 
+  
+  auto it = _compactionBlockers.find(vocbase->id());
+
+  if (it == _compactionBlockers.end()) {
+    return TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
+  }
+
+  size_t const n = (*it).second.size();
+
+  for (size_t i = 0; i < n; ++i) {
+    auto& blocker = (*it).second[i];
+    if (blocker._id == id) {
+      (*it).second.erase((*it).second.begin() + i);
+
+      if ((*it).second.empty()) {
+        // remove last item
+        _compactionBlockers.erase(it);
+      }
+      return TRI_ERROR_NO_ERROR;
+    }
+  }
+
+  return TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
+}
+
+void MMFilesEngine::preventCompaction(TRI_vocbase_t* vocbase,
+                                      std::function<void(TRI_vocbase_t*)> const& callback) {
+  WRITE_LOCKER_EVENTUAL(locker, _compactionBlockersLock, 5000);
+  callback(vocbase);
+}
+
+bool MMFilesEngine::tryPreventCompaction(TRI_vocbase_t* vocbase,
+                                         std::function<void(TRI_vocbase_t*)> const& callback,
+                                         bool checkForActiveBlockers) {
+  TRY_WRITE_LOCKER(locker, _compactionBlockersLock);
+
+  if (locker.isLocked()) {
+    if (checkForActiveBlockers) {
+      double const now = TRI_microtime();
+
+      // check if we have a still-valid compaction blocker
+      auto it = _compactionBlockers.find(vocbase->id());
+
+      if (it != _compactionBlockers.end()) {
+        for (auto const& blocker : (*it).second) {
+          if (blocker._expires > now) {
+            // found a compaction blocker
+            return false;
+          }
+        }
+      }
+    }
+    callback(vocbase);
+    return true;
+  }
+  return false;
+}

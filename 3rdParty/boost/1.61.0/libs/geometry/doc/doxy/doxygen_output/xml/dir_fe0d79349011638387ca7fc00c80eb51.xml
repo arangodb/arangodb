@@ -1,0 +1,21 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="dir_fe0d79349011638387ca7fc00c80eb51" kind="dir">
+    <compoundname>/home/travis/build/boostorg/boost/boost/geometry/geometries/concepts/</compoundname>
+    <innerfile refid="box__concept_8hpp">box_concept.hpp</innerfile>
+    <innerfile refid="check_8hpp">check.hpp</innerfile>
+    <innerfile refid="linestring__concept_8hpp">linestring_concept.hpp</innerfile>
+    <innerfile refid="multi__linestring__concept_8hpp">multi_linestring_concept.hpp</innerfile>
+    <innerfile refid="multi__point__concept_8hpp">multi_point_concept.hpp</innerfile>
+    <innerfile refid="multi__polygon__concept_8hpp">multi_polygon_concept.hpp</innerfile>
+    <innerfile refid="point__concept_8hpp">point_concept.hpp</innerfile>
+    <innerfile refid="polygon__concept_8hpp">polygon_concept.hpp</innerfile>
+    <innerfile refid="ring__concept_8hpp">ring_concept.hpp</innerfile>
+    <innerfile refid="segment__concept_8hpp">segment_concept.hpp</innerfile>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/concepts/"/>
+  </compounddef>
+</doxygen>

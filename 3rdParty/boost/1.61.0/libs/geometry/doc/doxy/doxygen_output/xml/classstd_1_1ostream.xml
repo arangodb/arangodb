@@ -1,0 +1,54 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="classstd_1_1ostream" kind="class" prot="public">
+    <compoundname>std::ostream</compoundname>
+    <basecompoundref prot="public" virt="non-virtual">std::basic_ostream&lt; char &gt;</basecompoundref>
+    <briefdescription>
+<para>STL class. </para>    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <inheritancegraph>
+      <node id="2059">
+        <label>std::basic_ios&lt; Char &gt;</label>
+        <childnode refid="2060" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="2060">
+        <label>std::ios_base</label>
+      </node>
+      <node id="2057">
+        <label>std::ostream</label>
+        <childnode refid="2058" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="2058">
+        <label>std::basic_ostream&lt; char &gt;</label>
+        <childnode refid="2059" relation="public-inheritance">
+        </childnode>
+      </node>
+    </inheritancegraph>
+    <collaborationgraph>
+      <node id="2063">
+        <label>std::basic_ios&lt; Char &gt;</label>
+        <childnode refid="2064" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="2064">
+        <label>std::ios_base</label>
+      </node>
+      <node id="2061">
+        <label>std::ostream</label>
+        <childnode refid="2062" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="2062">
+        <label>std::basic_ostream&lt; char &gt;</label>
+        <childnode refid="2063" relation="public-inheritance">
+        </childnode>
+      </node>
+    </collaborationgraph>
+    <location file="[STL]" line="1"/>
+    <listofallmembers>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

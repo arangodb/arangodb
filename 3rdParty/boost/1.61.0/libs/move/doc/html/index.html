@@ -1,0 +1,144 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Chapter&#160;1.&#160;Boost.Move</title>
+<link rel="stylesheet" href="../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="index.html" title="Chapter&#160;1.&#160;Boost.Move">
+<link rel="next" href="move/what_is_boost_move.html" title="What is Boost.Move?">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../boost.png"></td>
+<td align="center"><a href="../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav"><a accesskey="n" href="move/what_is_boost_move.html"><img src="../../../../doc/src/images/next.png" alt="Next"></a></div>
+<div class="chapter">
+<div class="titlepage"><div>
+<div><h2 class="title">
+<a name="move"></a>Chapter&#160;1.&#160;Boost.Move</h2></div>
+<div><div class="author"><h3 class="author">
+<span class="firstname">Ion</span> <span class="surname">Gaztanaga</span>
+</h3></div></div>
+<div><p class="copyright">Copyright &#169; 2008-2014 Ion Gaztanaga</p></div>
+<div><div class="legalnotice">
+<a name="move.legal"></a><p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></div>
+</div></div>
+<div class="toc">
+<p><b>Table of Contents</b></p>
+<dl>
+<dt><span class="section"><a href="move/what_is_boost_move.html">What is Boost.Move?</a></span></dt>
+<dt><span class="section"><a href="move/introduction.html">Introduction</a></span></dt>
+<dt><span class="section"><a href="move/implementing_movable_classes.html">Implementing copyable
+    and movable classes</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="move/implementing_movable_classes.html#move.implementing_movable_classes.copyable_and_movable_cpp0x">Copyable
+      and movable classes in C++0x</a></span></dt>
+<dt><span class="section"><a href="move/implementing_movable_classes.html#move.implementing_movable_classes.copyable_and_movable_cpp03">Copyable
+      and movable classes in portable syntax for both C++03 and C++0x compilers</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="move/composition_inheritance.html">Composition or inheritance</a></span></dt>
+<dt><span class="section"><a href="move/movable_only_classes.html">Movable but Non-Copyable Types</a></span></dt>
+<dt><span class="section"><a href="move/move_and_containers.html">Containers and move semantics</a></span></dt>
+<dt><span class="section"><a href="move/construct_forwarding.html">Constructor Forwarding</a></span></dt>
+<dt><span class="section"><a href="move/move_return.html">Implicit Move when returning a local
+    object</a></span></dt>
+<dt><span class="section"><a href="move/move_iterator.html">Move iterators</a></span></dt>
+<dt><span class="section"><a href="move/move_inserters.html">Move inserters</a></span></dt>
+<dt><span class="section"><a href="move/move_algorithms.html">Move algorithms</a></span></dt>
+<dt><span class="section"><a href="move/emulation_limitations.html">Emulation limitations</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="move/emulation_limitations.html#move.emulation_limitations.emulation_limitations_base">Initializing
+      base classes</a></span></dt>
+<dt><span class="section"><a href="move/emulation_limitations.html#move.emulation_limitations.template_parameters">Template
+      parameters for perfect forwarding</a></span></dt>
+<dt><span class="section"><a href="move/emulation_limitations.html#move.emulation_limitations.emulation_limitations_binding">Binding
+      of rvalue references to lvalues</a></span></dt>
+<dt><span class="section"><a href="move/emulation_limitations.html#move.emulation_limitations.assignment_operator">Assignment
+      operator in classes derived from or holding copyable and movable types</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="move/how_the_library_works.html">How the library works</a></span></dt>
+<dt><span class="section"><a href="move/thanks_to.html">Thanks and credits</a></span></dt>
+<dt><span class="section"><a href="move/release_notes.html">Release Notes</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="move/release_notes.html#move.release_notes.release_notes_boost_1_61">Boost 1.61
+      Release</a></span></dt>
+<dt><span class="section"><a href="move/release_notes.html#move.release_notes.release_notes_boost_1_60">Boost 1.60
+      Release</a></span></dt>
+<dt><span class="section"><a href="move/release_notes.html#move.release_notes.release_notes_boost_1_59">Boost 1.59
+      Release</a></span></dt>
+<dt><span class="section"><a href="move/release_notes.html#move.release_notes.release_notes_boost_1_58_00">Boost
+      1.58 Release</a></span></dt>
+<dt><span class="section"><a href="move/release_notes.html#move.release_notes.release_notes_boost_1_57_00">Boost
+      1.57 Release</a></span></dt>
+<dt><span class="section"><a href="move/release_notes.html#move.release_notes.release_notes_boost_1_56_00">Boost
+      1.56 Release</a></span></dt>
+<dt><span class="section"><a href="move/release_notes.html#move.release_notes.release_notes_boost_1_55_00">Boost
+      1.55 Release</a></span></dt>
+<dt><span class="section"><a href="move/release_notes.html#move.release_notes.release_notes_boost_1_54_00">Boost
+      1.54 Release</a></span></dt>
+<dt><span class="section"><a href="move/release_notes.html#move.release_notes.release_notes_boost_1_53_00">Boost
+      1.53 Release</a></span></dt>
+<dt><span class="section"><a href="move/release_notes.html#move.release_notes.release_notes_boost_1_51_00">Boost
+      1.51 Release</a></span></dt>
+<dt><span class="section"><a href="move/release_notes.html#move.release_notes.release_notes_boost_1_49_00">Boost
+      1.49 Release</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="move/reference.html">Reference</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="move/reference.html#header.boost.move.adl_move_swap_hpp">Header &lt;boost/move/adl_move_swap.hpp&gt;</a></span></dt>
+<dt><span class="section"><a href="move/reference.html#header.boost.move.algo.adaptive_merge_hpp">Header &lt;boost/move/algo/adaptive_merge.hpp&gt;</a></span></dt>
+<dt><span class="section"><a href="move/reference.html#header.boost.move.algo.adaptive_sort_hpp">Header &lt;boost/move/algo/adaptive_sort.hpp&gt;</a></span></dt>
+<dt><span class="section"><a href="move/reference.html#header.boost.move.algorithm_hpp">Header &lt;boost/move/algorithm.hpp&gt;</a></span></dt>
+<dt><span class="section"><a href="move/reference.html#header.boost.move.core_hpp">Header &lt;boost/move/core.hpp&gt;</a></span></dt>
+<dt><span class="section"><a href="move/reference.html#header.boost.move.default_delete_hpp">Header &lt;boost/move/default_delete.hpp&gt;</a></span></dt>
+<dt><span class="section"><a href="move/reference.html#header.boost.move.iterator_hpp">Header &lt;boost/move/iterator.hpp&gt;</a></span></dt>
+<dt><span class="section"><a href="move/reference.html#header.boost.move.make_unique_hpp">Header &lt;boost/move/make_unique.hpp&gt;</a></span></dt>
+<dt><span class="section"><a href="move/reference.html#header.boost.move.move_hpp">Header &lt;boost/move/move.hpp&gt;</a></span></dt>
+<dt><span class="section"><a href="move/reference.html#header.boost.move.algo.move_hpp">Header &lt;boost/move/algo/move.hpp&gt;</a></span></dt>
+<dt><span class="section"><a href="move/reference.html#header.boost.move.traits_hpp">Header &lt;boost/move/traits.hpp&gt;</a></span></dt>
+<dt><span class="section"><a href="move/reference.html#header.boost.move.unique_ptr_hpp">Header &lt;boost/move/unique_ptr.hpp&gt;</a></span></dt>
+<dt><span class="section"><a href="move/reference.html#header.boost.move.utility_hpp">Header &lt;boost/move/utility.hpp&gt;</a></span></dt>
+<dt><span class="section"><a href="move/reference.html#header.boost.move.utility_core_hpp">Header &lt;boost/move/utility_core.hpp&gt;</a></span></dt>
+</dl></dd>
+</dl>
+</div>
+<div class="important"><table border="0" summary="Important">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Important]" src="../../../../doc/src/images/important.png"></td>
+<th align="left">Important</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+      To be able to use containers of movable-only values you will need to use containers
+      supporting move semantics, like <span class="bold"><strong>Boost.Container</strong></span>
+      containers
+    </p></td></tr>
+</table></div>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+      Tested compilers: MSVC-7.1, 8.0, 9.0, GCC 4.3-MinGW in C++03 and C++0x modes,
+      Intel 10.1
+    </p></td></tr>
+</table></div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"><p><small>Last revised: May 05, 2016 at 21:19:19 GMT</small></p></td>
+<td align="right"><div class="copyright-footer"></div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav"><a accesskey="n" href="move/what_is_boost_move.html"><img src="../../../../doc/src/images/next.png" alt="Next"></a></div>
+</body>
+</html>

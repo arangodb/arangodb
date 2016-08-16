@@ -1,0 +1,74 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="group__convex__hull" kind="group">
+    <compoundname>convex_hull</compoundname>
+    <title>convex hull: calculate the convex hull of a geometry</title>
+    <innerclass refid="classboost_1_1geometry_1_1concept_1_1_convex_hull_strategy" prot="public">boost::geometry::concept::ConvexHullStrategy</innerclass>
+    <innerclass refid="structboost_1_1geometry_1_1strategy__convex__hull" prot="public">boost::geometry::strategy_convex_hull</innerclass>
+      <sectiondef kind="func">
+      <memberdef kind="function" id="group__convex__hull_1gadce5f964b027cc193af16673ad8ff4e9" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Geometry</type>
+          </param>
+          <param>
+            <type>typename OutputGeometry</type>
+          </param>
+        </templateparamlist>
+        <type>void</type>
+        <definition>void boost::geometry::convex_hull</definition>
+        <argsstring>(Geometry const &amp;geometry, OutputGeometry &amp;hull)</argsstring>
+        <name>convex_hull</name>
+        <param>
+          <type>Geometry const &amp;</type>
+          <declname>geometry</declname>
+        </param>
+        <param>
+          <type>OutputGeometry &amp;</type>
+          <declname>hull</declname>
+        </param>
+        <briefdescription>
+<para>Calculates the convex hull of a geometry. </para>        </briefdescription>
+        <detaileddescription>
+<para>The free function convex_hull calculates the convex hull of a geometry. <parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>Geometry</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>the input geometry type </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>OutputGeometry</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>the output geometry type </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>geometry</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>A model of the specified concept, input geometry </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>hull</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>A model of the specified concept which is set to the \1</para></parameterdescription>
+</parameteritem>
+</parameterlist>
+ <qbk>[include reference/algorithms/convex_hull.qbk]</qbk>  </para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/convex_hull.hpp" line="329" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/convex_hull.hpp" bodystart="327" bodyend="331"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+  </compounddef>
+</doxygen>

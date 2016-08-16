@@ -29,8 +29,9 @@
 #include "Basics/WriteLocker.h"
 #include "Basics/files.h"
 #include "Logger/Logger.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/StorageEngine.h"
 #include "Utils/CursorRepository.h"
-#include "VocBase/CompactorThread.h"
 #include "VocBase/Ditch.h"
 #include "VocBase/collection.h"
 #include "Wal/LogfileManager.h"
@@ -49,6 +50,7 @@ void CleanupThread::signal() {
 
 /// @brief cleanup event loop
 void CleanupThread::run() {
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
   uint64_t iterations = 0;
 
   std::vector<TRI_vocbase_col_t*> collections;
@@ -70,53 +72,49 @@ void CleanupThread::run() {
       
     // check if we can get the compactor lock exclusively
     // check if compaction is currently disallowed
-    {
-      TRY_WRITE_LOCKER(locker, _vocbase->_compactionBlockers._lock);
-
-      if (locker.isLocked()) {
-        try {
-          // copy all collections
-          collections = _vocbase->collections();
-        } catch (...) {
-          collections.clear();
-        }
-
-        for (auto& collection : collections) {
-          TRI_ASSERT(collection != nullptr);
-          TRI_collection_t* document;
-
-          {
-            READ_LOCKER(readLocker, collection->_lock);
-            document = collection->_collection;
-          }
-
-          if (document == nullptr) {
-            // collection currently not loaded
-            continue;
-          }
-
-          TRI_ASSERT(document != nullptr);
-
-          // we're the only ones that can unload the collection, so using
-          // the collection pointer outside the lock is ok
-
-          // maybe cleanup indexes, unload the collection or some datafiles
-          // clean indexes?
-          if (iterations % cleanupIndexIterations() == 0) {
-            document->cleanupIndexes();
-          }
-
-          cleanupCollection(collection, document);
-        }
+    engine->tryPreventCompaction(_vocbase, [this, &collections, &iterations](TRI_vocbase_t* vocbase) {
+      try {
+        // copy all collections
+        collections = vocbase->collections();
+      } catch (...) {
+        collections.clear();
       }
-    }
+
+      for (auto& collection : collections) {
+        TRI_ASSERT(collection != nullptr);
+        TRI_collection_t* document;
+
+        {
+          READ_LOCKER(readLocker, collection->_lock);
+          document = collection->_collection;
+        }
+
+        if (document == nullptr) {
+          // collection currently not loaded
+          continue;
+        }
+
+        TRI_ASSERT(document != nullptr);
+
+        // we're the only ones that can unload the collection, so using
+        // the collection pointer outside the lock is ok
+
+        // maybe cleanup indexes, unload the collection or some datafiles
+        // clean indexes?
+        if (iterations % cleanupIndexIterations() == 0) {
+          document->cleanupIndexes();
+        }
+
+        cleanupCollection(collection, document);
+      }
+    }, false);
 
     // server is still running, clean up unused cursors
     if (iterations % cleanupCursorIterations() == 0) {
       cleanupCursors(false);
 
       // clean up expired compactor locks
-      TRI_CleanupCompactorVocBase(_vocbase);
+      engine->cleanupCompactionBlockers(_vocbase);
     }
 
     if (state == TRI_vocbase_t::State::NORMAL) {

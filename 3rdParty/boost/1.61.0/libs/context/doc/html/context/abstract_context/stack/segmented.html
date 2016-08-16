@@ -1,0 +1,139 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Class segmented_stack</title>
+<link rel="stylesheet" href="../../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.75.2">
+<link rel="home" href="../../../index.html" title="Chapter&#160;1.&#160;Context">
+<link rel="up" href="../stack.html" title="Stack allocation">
+<link rel="prev" href="fixedsize.html" title="Class fixedsize_stack">
+<link rel="next" href="stack_traits.html" title="Class stack_traits">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="fixedsize.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../stack.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="stack_traits.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="context.abstract_context.stack.segmented"></a><a class="link" href="segmented.html" title="Class segmented_stack">Class <span class="emphasis"><em>segmented_stack</em></span></a>
+</h4></div></div></div>
+<p>
+          <span class="bold"><strong>Boost.Context</strong></span> supports usage of a <span class="emphasis"><em>segmented_stack</em></span>,
+          e. g. the size of the stack grows on demand. The coroutine is created with
+          a minimal stack size and will be increased as required. Class <span class="emphasis"><em>segmented_stack</em></span>
+          models the <span class="emphasis"><em>stack-allocator concept</em></span>. In contrast to
+          <span class="emphasis"><em>protected_fixedsize_stack</em></span> and <span class="emphasis"><em>fixedsize_stack</em></span>
+          it creates a stack which grows on demand.
+        </p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+            Segmented stacks are currently only supported by <span class="bold"><strong>gcc</strong></span>
+            from version <span class="bold"><strong>4.7</strong></span> <span class="bold"><strong>clang</strong></span>
+            from version <span class="bold"><strong>3.4</strong></span> onwards. In order to
+            use a __segmented_stack__ <span class="bold"><strong>Boost.Context</strong></span>
+            must be built with <span class="bold"><strong>toolset=gcc segmented-stacks=on</strong></span>
+            at b2/bjam command-line. Applications must be compiled with compiler-flags
+            <span class="bold"><strong>-fsplit-stack -DBOOST_USE_SEGMENTED_STACKS</strong></span>.
+          </p></td></tr>
+</table></div>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">context</span><span class="special">/</span><span class="identifier">segmented_stack</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span> <span class="keyword">typename</span> <span class="identifier">traitsT</span> <span class="special">&gt;</span>
+<span class="keyword">struct</span> <span class="identifier">basic_segmented_stack</span>
+<span class="special">{</span>
+    <span class="keyword">typedef</span> <span class="identifier">traitT</span>  <span class="identifier">traits_type</span><span class="special">;</span>
+
+    <span class="identifier">basic_segmented_stack</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">size</span> <span class="special">=</span> <span class="identifier">traits_type</span><span class="special">::</span><span class="identifier">default_size</span><span class="special">());</span>
+
+    <span class="identifier">stack_context</span> <span class="identifier">allocate</span><span class="special">();</span>
+
+    <span class="keyword">void</span> <span class="identifier">deallocate</span><span class="special">(</span> <span class="identifier">stack_context</span> <span class="special">&amp;);</span>
+<span class="special">}</span>
+
+<span class="keyword">typedef</span> <span class="identifier">basic_segmented_stack</span><span class="special">&lt;</span> <span class="identifier">stack_traits</span> <span class="special">&gt;</span> <span class="identifier">segmented_stack</span><span class="special">;</span>
+</pre>
+<h6>
+<a name="context.abstract_context.stack.segmented.h0"></a>
+          <span><a name="context.abstract_context.stack.segmented._code__phrase_role__identifier__stack_context__phrase___phrase_role__identifier__allocate__phrase__phrase_role__special______phrase___code_"></a></span><a class="link" href="segmented.html#context.abstract_context.stack.segmented._code__phrase_role__identifier__stack_context__phrase___phrase_role__identifier__allocate__phrase__phrase_role__special______phrase___code_"><code class="computeroutput"><span class="identifier">stack_context</span> <span class="identifier">allocate</span><span class="special">()</span></code></a>
+        </h6>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl>
+<dt><span class="term">Preconditions:</span></dt>
+<dd><p>
+                <code class="computeroutput"><span class="identifier">traits_type</span><span class="special">::</span><span class="identifier">minimum</span><span class="special">:</span><span class="identifier">size</span><span class="special">()</span>
+                <span class="special">&lt;=</span> <span class="identifier">size</span></code>
+                and <code class="computeroutput"><span class="special">!</span> <span class="identifier">traits_type</span><span class="special">::</span><span class="identifier">is_unbounded</span><span class="special">()</span> <span class="special">&amp;&amp;</span>
+                <span class="special">(</span> <span class="identifier">traits_type</span><span class="special">::</span><span class="identifier">maximum</span><span class="special">:</span><span class="identifier">size</span><span class="special">()</span> <span class="special">&gt;=</span>
+                <span class="identifier">size</span><span class="special">)</span></code>.
+              </p></dd>
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+                Allocates memory of at least <code class="computeroutput"><span class="identifier">size</span></code>
+                Bytes and stores a pointer to the stack and its actual size in <code class="computeroutput"><span class="identifier">sctx</span></code>. Depending on the architecture
+                (the stack grows downwards/upwards) the stored address is the highest/lowest
+                address of the stack.
+              </p></dd>
+</dl>
+</div>
+<h6>
+<a name="context.abstract_context.stack.segmented.h1"></a>
+          <span><a name="context.abstract_context.stack.segmented._code__phrase_role__keyword__void__phrase___phrase_role__identifier__deallocate__phrase__phrase_role__special_____phrase___phrase_role__identifier__stack_context__phrase___phrase_role__special___amp___phrase___phrase_role__identifier__sctx__phrase__phrase_role__special_____phrase___code_"></a></span><a class="link" href="segmented.html#context.abstract_context.stack.segmented._code__phrase_role__keyword__void__phrase___phrase_role__identifier__deallocate__phrase__phrase_role__special_____phrase___phrase_role__identifier__stack_context__phrase___phrase_role__special___amp___phrase___phrase_role__identifier__sctx__phrase__phrase_role__special_____phrase___code_"><code class="computeroutput"><span class="keyword">void</span> <span class="identifier">deallocate</span><span class="special">(</span> <span class="identifier">stack_context</span>
+          <span class="special">&amp;</span> <span class="identifier">sctx</span><span class="special">)</span></code></a>
+        </h6>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl>
+<dt><span class="term">Preconditions:</span></dt>
+<dd><p>
+                <code class="computeroutput"><span class="identifier">sctx</span><span class="special">.</span><span class="identifier">sp</span></code> is valid, <code class="computeroutput"><span class="identifier">traits_type</span><span class="special">::</span><span class="identifier">minimum</span><span class="special">:</span><span class="identifier">size</span><span class="special">()</span> <span class="special">&lt;=</span>
+                <span class="identifier">sctx</span><span class="special">.</span><span class="identifier">size</span></code> and <code class="computeroutput"><span class="special">!</span>
+                <span class="identifier">traits_type</span><span class="special">::</span><span class="identifier">is_unbounded</span><span class="special">()</span>
+                <span class="special">&amp;&amp;</span> <span class="special">(</span>
+                <span class="identifier">traits_type</span><span class="special">::</span><span class="identifier">maximum</span><span class="special">:</span><span class="identifier">size</span><span class="special">()</span>
+                <span class="special">&gt;=</span> <span class="identifier">sctx</span><span class="special">.</span><span class="identifier">size</span><span class="special">)</span></code>.
+              </p></dd>
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+                Deallocates the stack space.
+              </p></dd>
+</dl>
+</div>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+            If the library is compiled for segmented stacks, __segmented_stack__
+            is the only available stack allocator.
+          </p></td></tr>
+</table></div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2014 Oliver Kowalke<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="fixedsize.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../stack.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="stack_traits.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

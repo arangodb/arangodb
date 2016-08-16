@@ -1701,7 +1701,8 @@ bool AstNode::isSimple() const {
 
   if (type == NODE_TYPE_ARRAY || type == NODE_TYPE_OBJECT ||
       type == NODE_TYPE_EXPANSION || type == NODE_TYPE_ITERATOR ||
-      type == NODE_TYPE_ARRAY_LIMIT || type == NODE_TYPE_CALCULATED_OBJECT_ELEMENT) {
+      type == NODE_TYPE_ARRAY_LIMIT || type == NODE_TYPE_CALCULATED_OBJECT_ELEMENT ||
+      type == NODE_TYPE_OPERATOR_TERNARY) {
     size_t const n = numMembers();
 
     for (size_t i = 0; i < n; ++i) {
@@ -1718,7 +1719,8 @@ bool AstNode::isSimple() const {
   }
 
   if (type == NODE_TYPE_OBJECT_ELEMENT || type == NODE_TYPE_ATTRIBUTE_ACCESS ||
-      type == NODE_TYPE_OPERATOR_UNARY_NOT) {
+      type == NODE_TYPE_OPERATOR_UNARY_NOT || type == NODE_TYPE_OPERATOR_UNARY_PLUS ||
+      type == NODE_TYPE_OPERATOR_UNARY_MINUS) {
     TRI_ASSERT(numMembers() == 1);
 
     if (!getMember(0)->isSimple()) {

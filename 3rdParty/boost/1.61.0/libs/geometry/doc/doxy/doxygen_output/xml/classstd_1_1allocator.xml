@@ -1,0 +1,47 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="classstd_1_1allocator" kind="class" prot="public">
+    <compoundname>std::allocator</compoundname>
+    <templateparamlist>
+      <param>
+        <type>typename</type>
+        <declname>T</declname>
+        <defname>T</defname>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="classstd_1_1allocator_1a55f88dab1194d6b8a34e46017c4dfd79" prot="public" static="no" mutable="no">
+        <type>T</type>
+        <definition>T std::allocator&lt; T &gt;::elements</definition>
+        <argsstring></argsstring>
+        <name>elements</name>
+        <briefdescription>
+<para>STL member. </para>        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="" line="1"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+<para>STL class. </para>    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <collaborationgraph>
+      <node id="1603">
+        <label>T</label>
+      </node>
+      <node id="1602">
+        <label>std::allocator&lt; T &gt;</label>
+        <childnode refid="1603" relation="usage">
+          <edgelabel>elements</edgelabel>
+        </childnode>
+      </node>
+    </collaborationgraph>
+    <location file="[STL]" line="1"/>
+    <listofallmembers>
+      <member refid="classstd_1_1allocator_1a55f88dab1194d6b8a34e46017c4dfd79" prot="public" virt="non-virtual"><scope>std::allocator</scope><name>elements</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

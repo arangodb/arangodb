@@ -1,0 +1,219 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Lock Guard</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../../index.html" title="Chapter&#160;1.&#160;Thread 4.7.0">
+<link rel="up" href="../synchronization.html" title="Synchronization">
+<link rel="prev" href="lock_option.html" title="Lock Options">
+<link rel="next" href="with_lock_guard.html" title="With Lock Guard">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="lock_option.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../synchronization.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="with_lock_guard.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="thread.synchronization.lock_guard"></a><a class="link" href="lock_guard.html" title="Lock Guard">Lock Guard</a>
+</h3></div></div></div>
+<div class="toc"><dl>
+<dt><span class="section"><a href="lock_guard.html#thread.synchronization.lock_guard.lock_guard">Class
+        template <code class="computeroutput"><span class="identifier">lock_guard</span></code></a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="lock_guard.html#thread.synchronization.lock_guard.lock_guard.constructor"><code class="computeroutput"><span class="identifier">lock_guard</span><span class="special">(</span><span class="identifier">Lockable</span> <span class="special">&amp;</span>
+          <span class="identifier">m</span><span class="special">)</span></code></a></span></dt>
+<dt><span class="section"><a href="lock_guard.html#thread.synchronization.lock_guard.lock_guard.constructor_adopt"><code class="computeroutput"><span class="identifier">lock_guard</span><span class="special">(</span><span class="identifier">Lockable</span> <span class="special">&amp;</span>
+          <span class="identifier">m</span><span class="special">,</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">adopt_lock_t</span><span class="special">)</span></code></a></span></dt>
+<dt><span class="section"><a href="lock_guard.html#thread.synchronization.lock_guard.lock_guard.destructor"><code class="computeroutput"><span class="special">~</span><span class="identifier">lock_guard</span><span class="special">()</span></code></a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="lock_guard.html#thread.synchronization.lock_guard.make_lock_guard">Non
+        Member Function <code class="computeroutput"><span class="identifier">make_lock_guard</span></code></a></span></dt>
+<dt><span class="section"><a href="lock_guard.html#thread.synchronization.lock_guard.make_lock_guard_adopt">Non
+        Member Function <code class="computeroutput"><span class="identifier">make_lock_guard</span></code></a></span></dt>
+</dl></div>
+<pre class="programlisting"><span class="comment">// #include &lt;boost/thread/locks.hpp&gt; </span>
+<span class="comment">// #include &lt;boost/thread/lock_guard.hpp&gt; </span>
+
+<span class="keyword">namespace</span> <span class="identifier">boost</span>
+<span class="special">{</span>
+
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">Lockable</span><span class="special">&gt;</span>
+  <span class="keyword">class</span> <span class="identifier">lock_guard</span>
+<span class="preprocessor">#if</span> <span class="special">!</span> <span class="identifier">defined</span> <span class="identifier">BOOST_THREAD_NO_MAKE_LOCK_GUARD</span>
+  <span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">Lockable</span><span class="special">&gt;</span>
+  <span class="identifier">lock_guard</span><span class="special">&lt;</span><span class="identifier">Lockable</span><span class="special">&gt;</span> <span class="identifier">make_lock_guard</span><span class="special">(</span><span class="identifier">Lockable</span><span class="special">&amp;</span> <span class="identifier">mtx</span><span class="special">);</span> <span class="comment">// EXTENSION</span>
+  <span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">Lockable</span><span class="special">&gt;</span>
+  <span class="identifier">lock_guard</span><span class="special">&lt;</span><span class="identifier">Lockable</span><span class="special">&gt;</span> <span class="identifier">make_lock_guard</span><span class="special">(</span><span class="identifier">Lockable</span><span class="special">&amp;</span> <span class="identifier">mtx</span><span class="special">,</span> <span class="identifier">adopt_lock_t</span><span class="special">);</span> <span class="comment">// EXTENSION</span>
+<span class="preprocessor">#endif</span>
+<span class="special">}</span>
+</pre>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="thread.synchronization.lock_guard.lock_guard"></a><a class="link" href="lock_guard.html#thread.synchronization.lock_guard.lock_guard" title="Class template lock_guard">Class
+        template <code class="computeroutput"><span class="identifier">lock_guard</span></code></a>
+</h4></div></div></div>
+<div class="toc"><dl>
+<dt><span class="section"><a href="lock_guard.html#thread.synchronization.lock_guard.lock_guard.constructor"><code class="computeroutput"><span class="identifier">lock_guard</span><span class="special">(</span><span class="identifier">Lockable</span> <span class="special">&amp;</span>
+          <span class="identifier">m</span><span class="special">)</span></code></a></span></dt>
+<dt><span class="section"><a href="lock_guard.html#thread.synchronization.lock_guard.lock_guard.constructor_adopt"><code class="computeroutput"><span class="identifier">lock_guard</span><span class="special">(</span><span class="identifier">Lockable</span> <span class="special">&amp;</span>
+          <span class="identifier">m</span><span class="special">,</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">adopt_lock_t</span><span class="special">)</span></code></a></span></dt>
+<dt><span class="section"><a href="lock_guard.html#thread.synchronization.lock_guard.lock_guard.destructor"><code class="computeroutput"><span class="special">~</span><span class="identifier">lock_guard</span><span class="special">()</span></code></a></span></dt>
+</dl></div>
+<pre class="programlisting"><span class="comment">// #include &lt;boost/thread/locks.hpp&gt;</span>
+<span class="comment">// #include &lt;boost/thread/lock_guard.hpp&gt; </span>
+
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">Lockable</span><span class="special">&gt;</span>
+<span class="keyword">class</span> <span class="identifier">lock_guard</span>
+<span class="special">{</span>
+<span class="keyword">public</span><span class="special">:</span>
+    <span class="keyword">explicit</span> <span class="identifier">lock_guard</span><span class="special">(</span><span class="identifier">Lockable</span><span class="special">&amp;</span> <span class="identifier">m_</span><span class="special">);</span>
+    <span class="identifier">lock_guard</span><span class="special">(</span><span class="identifier">Lockable</span><span class="special">&amp;</span> <span class="identifier">m_</span><span class="special">,</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">adopt_lock_t</span><span class="special">);</span>
+
+    <span class="special">~</span><span class="identifier">lock_guard</span><span class="special">();</span>
+<span class="special">};</span>
+</pre>
+<p>
+          <a class="link" href="lock_guard.html#thread.synchronization.lock_guard.lock_guard" title="Class template lock_guard"><code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">lock_guard</span></code></a> is very simple: on
+          construction it acquires ownership of the implementation of the <a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.lockable" title="Lockable Concept"><code class="computeroutput"><span class="identifier">Lockable</span></code> concept</a> supplied as the
+          constructor parameter. On destruction, the ownership is released. This
+          provides simple RAII-style locking of a <a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.lockable" title="Lockable Concept"><code class="computeroutput"><span class="identifier">Lockable</span></code></a> object, to facilitate
+          exception-safe locking and unlocking. In addition, the <a class="link" href="lock_guard.html#thread.synchronization.lock_guard.lock_guard.constructor_adopt" title="lock_guard(Lockable &amp; m,boost::adopt_lock_t)"><code class="computeroutput"><span class="identifier">lock_guard</span><span class="special">(</span><span class="identifier">Lockable</span> <span class="special">&amp;</span>
+          <span class="identifier">m</span><span class="special">,</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">adopt_lock_t</span><span class="special">)</span></code>
+          constructor</a> allows the <a class="link" href="lock_guard.html#thread.synchronization.lock_guard.lock_guard" title="Class template lock_guard"><code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">lock_guard</span></code></a> object to take ownership
+          of a lock already held by the current thread.
+        </p>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="thread.synchronization.lock_guard.lock_guard.constructor"></a><a class="link" href="lock_guard.html#thread.synchronization.lock_guard.lock_guard.constructor" title="lock_guard(Lockable &amp; m)"><code class="computeroutput"><span class="identifier">lock_guard</span><span class="special">(</span><span class="identifier">Lockable</span> <span class="special">&amp;</span>
+          <span class="identifier">m</span><span class="special">)</span></code></a>
+</h5></div></div></div>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl>
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+                  Stores a reference to <code class="computeroutput"><span class="identifier">m</span></code>.
+                  Invokes <a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.basic_lockable.lock" title="m.lock();"><code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><span class="identifier">lock</span><span class="special">()</span></code></a>.
+                </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+                  Any exception thrown by the call to <a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.basic_lockable.lock" title="m.lock();"><code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><span class="identifier">lock</span><span class="special">()</span></code></a>.
+                </p></dd>
+</dl>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="thread.synchronization.lock_guard.lock_guard.constructor_adopt"></a><a class="link" href="lock_guard.html#thread.synchronization.lock_guard.lock_guard.constructor_adopt" title="lock_guard(Lockable &amp; m,boost::adopt_lock_t)"><code class="computeroutput"><span class="identifier">lock_guard</span><span class="special">(</span><span class="identifier">Lockable</span> <span class="special">&amp;</span>
+          <span class="identifier">m</span><span class="special">,</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">adopt_lock_t</span><span class="special">)</span></code></a>
+</h5></div></div></div>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl>
+<dt><span class="term">Precondition:</span></dt>
+<dd><p>
+                  The current thread owns a lock on <code class="computeroutput"><span class="identifier">m</span></code>
+                  equivalent to one obtained by a call to <a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.basic_lockable.lock" title="m.lock();"><code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><span class="identifier">lock</span><span class="special">()</span></code></a>.
+                </p></dd>
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+                  Stores a reference to <code class="computeroutput"><span class="identifier">m</span></code>.
+                  Takes ownership of the lock state of <code class="computeroutput"><span class="identifier">m</span></code>.
+                </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+                  Nothing.
+                </p></dd>
+</dl>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="thread.synchronization.lock_guard.lock_guard.destructor"></a><a class="link" href="lock_guard.html#thread.synchronization.lock_guard.lock_guard.destructor" title="~lock_guard()"><code class="computeroutput"><span class="special">~</span><span class="identifier">lock_guard</span><span class="special">()</span></code></a>
+</h5></div></div></div>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl>
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+                  Invokes <a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.basic_lockable.unlock" title="m.unlock();"><code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><span class="identifier">unlock</span><span class="special">()</span></code></a>
+                  on the <a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.lockable" title="Lockable Concept"><code class="computeroutput"><span class="identifier">Lockable</span></code></a> object passed
+                  to the constructor.
+                </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+                  Nothing.
+                </p></dd>
+</dl>
+</div>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="thread.synchronization.lock_guard.make_lock_guard"></a><a class="link" href="lock_guard.html#thread.synchronization.lock_guard.make_lock_guard" title="Non Member Function make_lock_guard">Non
+        Member Function <code class="computeroutput"><span class="identifier">make_lock_guard</span></code></a>
+</h4></div></div></div>
+<pre class="programlisting"><span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">Lockable</span><span class="special">&gt;</span>
+<span class="identifier">lock_guard</span><span class="special">&lt;</span><span class="identifier">Lockable</span><span class="special">&gt;</span> <span class="identifier">make_lock_guard</span><span class="special">(</span><span class="identifier">Lockable</span><span class="special">&amp;</span> <span class="identifier">m</span><span class="special">);</span> <span class="comment">// EXTENSION</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl>
+<dt><span class="term">Returns:</span></dt>
+<dd><p>
+                a lock_guard as if initialized with <code class="computeroutput"><span class="special">{</span><span class="identifier">m</span><span class="special">}</span></code>.
+              </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+                Any exception thrown by the call to <a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.basic_lockable.lock" title="m.lock();"><code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><span class="identifier">lock</span><span class="special">()</span></code></a>.
+              </p></dd>
+</dl>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="thread.synchronization.lock_guard.make_lock_guard_adopt"></a><a class="link" href="lock_guard.html#thread.synchronization.lock_guard.make_lock_guard_adopt" title="Non Member Function make_lock_guard">Non
+        Member Function <code class="computeroutput"><span class="identifier">make_lock_guard</span></code></a>
+</h4></div></div></div>
+<pre class="programlisting"><span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">Lockable</span><span class="special">&gt;</span>
+<span class="identifier">lock_guard</span><span class="special">&lt;</span><span class="identifier">Lockable</span><span class="special">&gt;</span> <span class="identifier">make_lock_guard</span><span class="special">(</span><span class="identifier">Lockable</span><span class="special">&amp;</span> <span class="identifier">m</span><span class="special">,</span> <span class="identifier">adopt_lock_t</span><span class="special">);</span> <span class="comment">// EXTENSION</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl>
+<dt><span class="term">Returns:</span></dt>
+<dd><p>
+                a lock_guard as if initialized with <code class="computeroutput"><span class="special">{</span><span class="identifier">m</span><span class="special">,</span> <span class="identifier">adopt_lock</span><span class="special">}</span></code>.
+              </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+                Any exception thrown by the call to <a class="link" href="mutex_concepts.html#thread.synchronization.mutex_concepts.basic_lockable.lock" title="m.lock();"><code class="computeroutput"><span class="identifier">m</span><span class="special">.</span><span class="identifier">lock</span><span class="special">()</span></code></a>.
+              </p></dd>
+</dl>
+</div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2007 -11 Anthony Williams<br>Copyright &#169; 2011 -15 Vicente J. Botet Escriba<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="lock_option.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../synchronization.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="with_lock_guard.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

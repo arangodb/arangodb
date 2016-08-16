@@ -1,0 +1,32 @@
+<?xml version="1.0" standalone="yes"?>
+<library-reference id="cgs_base_units_reference"><title>CGS Base Units Reference</title><header name="boost/units/base_units/cgs/biot.hpp">
+<namespace name="boost">
+<namespace name="units">
+<namespace name="cgs">
+<typedef name="biot_base_unit"><type>scaled_base_unit&lt; boost::units::si::ampere_base_unit, scale&lt; 10, static_rational&lt;-1 &gt; &gt; &gt;</type></typedef>
+</namespace>
+</namespace>
+</namespace>
+</header>
+<header name="boost/units/base_units/cgs/centimeter.hpp">
+<namespace name="boost">
+<namespace name="units">
+<namespace name="cgs">
+<typedef name="centimeter_base_unit"><type>scaled_base_unit&lt; boost::units::si::meter_base_unit, scale&lt; 10, static_rational&lt;-2 &gt; &gt; &gt;</type></typedef>
+</namespace>
+</namespace>
+</namespace>
+</header>
+<header name="boost/units/base_units/cgs/gram.hpp">
+<namespace name="boost">
+<namespace name="units">
+<namespace name="cgs">
+<struct name="gram_base_unit"><method-group name="public static functions">
+<method name="name" specifiers="static"><type>std::string</type></method>
+<method name="symbol" specifiers="static"><type>std::string</type></method>
+</method-group>
+</struct></namespace>
+</namespace>
+</namespace>
+</header>
+</library-reference>

@@ -1,0 +1,48 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="structboost_1_1geometry_1_1multi__tag" kind="struct" prot="public">
+    <compoundname>boost::geometry::multi_tag</compoundname>
+    <derivedcompoundref refid="structboost_1_1geometry_1_1geometry__collection__tag" prot="public" virt="non-virtual">boost::geometry::geometry_collection_tag</derivedcompoundref>
+    <derivedcompoundref refid="structboost_1_1geometry_1_1multi__linestring__tag" prot="public" virt="non-virtual">boost::geometry::multi_linestring_tag</derivedcompoundref>
+    <derivedcompoundref refid="structboost_1_1geometry_1_1multi__point__tag" prot="public" virt="non-virtual">boost::geometry::multi_point_tag</derivedcompoundref>
+    <derivedcompoundref refid="structboost_1_1geometry_1_1multi__polygon__tag" prot="public" virt="non-virtual">boost::geometry::multi_polygon_tag</derivedcompoundref>
+    <includes local="no">tags.hpp</includes>
+    <briefdescription>
+<para>For multiple-geometries (multi_point, multi_linestring, multi_polygon) </para>    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <inheritancegraph>
+      <node id="485">
+        <label>boost::geometry::multi_linestring_tag</label>
+        <link refid="structboost_1_1geometry_1_1multi__linestring__tag"/>
+        <childnode refid="483" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="483">
+        <label>boost::geometry::multi_tag</label>
+        <link refid="structboost_1_1geometry_1_1multi__tag"/>
+      </node>
+      <node id="486">
+        <label>boost::geometry::multi_point_tag</label>
+        <link refid="structboost_1_1geometry_1_1multi__point__tag"/>
+        <childnode refid="483" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="484">
+        <label>boost::geometry::geometry_collection_tag</label>
+        <link refid="structboost_1_1geometry_1_1geometry__collection__tag"/>
+        <childnode refid="483" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="487">
+        <label>boost::geometry::multi_polygon_tag</label>
+        <link refid="structboost_1_1geometry_1_1multi__polygon__tag"/>
+        <childnode refid="483" relation="public-inheritance">
+        </childnode>
+      </node>
+    </inheritancegraph>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/core/tags.hpp" line="61" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/core/tags.hpp" bodystart="61" bodyend="61"/>
+    <listofallmembers>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

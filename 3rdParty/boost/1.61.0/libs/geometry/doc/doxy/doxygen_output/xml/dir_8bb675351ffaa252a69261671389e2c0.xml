@@ -1,0 +1,18 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="dir_8bb675351ffaa252a69261671389e2c0" kind="dir">
+    <compoundname>/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/</compoundname>
+    <innerfile refid="area__huiller_8hpp">area_huiller.hpp</innerfile>
+    <innerfile refid="compare__circular_8hpp">compare_circular.hpp</innerfile>
+    <innerfile refid="distance__cross__track_8hpp">distance_cross_track.hpp</innerfile>
+    <innerfile refid="distance__cross__track__point__box_8hpp">distance_cross_track_point_box.hpp</innerfile>
+    <innerfile refid="distance__haversine_8hpp">distance_haversine.hpp</innerfile>
+    <innerfile refid="side__by__cross__track_8hpp">side_by_cross_track.hpp</innerfile>
+    <innerfile refid="ssf_8hpp">ssf.hpp</innerfile>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/"/>
+  </compounddef>
+</doxygen>

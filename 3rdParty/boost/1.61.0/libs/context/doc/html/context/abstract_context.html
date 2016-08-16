@@ -1,0 +1,72 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Context classes</title>
+<link rel="stylesheet" href="../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.75.2">
+<link rel="home" href="../index.html" title="Chapter&#160;1.&#160;Context">
+<link rel="up" href="../index.html" title="Chapter&#160;1.&#160;Context">
+<link rel="prev" href="requirements.html" title="Requirements">
+<link rel="next" href="abstract_context/econtext.html" title="Class execution_context">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="requirements.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="abstract_context/econtext.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="context.abstract_context"></a><a class="link" href="abstract_context.html" title="Context classes">Context classes</a>
+</h2></div></div></div>
+<div class="toc"><dl>
+<dt><span class="section"><a href="abstract_context/econtext.html">Class execution_context</a></span></dt>
+<dt><span class="section"><a href="abstract_context/ccontext.html">Class captured_context</a></span></dt>
+<dt><span class="section"><a href="abstract_context/stack.html">Stack allocation</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="abstract_context/stack/protected_fixedsize.html">Class
+        <span class="emphasis"><em>protected_fixedsize</em></span></a></span></dt>
+<dt><span class="section"><a href="abstract_context/stack/fixedsize.html">Class <span class="emphasis"><em>fixedsize_stack</em></span></a></span></dt>
+<dt><span class="section"><a href="abstract_context/stack/segmented.html">Class <span class="emphasis"><em>segmented_stack</em></span></a></span></dt>
+<dt><span class="section"><a href="abstract_context/stack/stack_traits.html">Class
+        <span class="emphasis"><em>stack_traits</em></span></a></span></dt>
+<dt><span class="section"><a href="abstract_context/stack/stack_context.html">Class
+        <span class="emphasis"><em>stack_context</em></span></a></span></dt>
+<dt><span class="section"><a href="abstract_context/stack/valgrind.html">Support for
+        valgrind</a></span></dt>
+</dl></dd>
+</dl></div>
+<p>
+      <span class="bold"><strong>Boost.Context</strong></span> provides two classes encapsulating
+      <span class="emphasis"><em>fcontext_t</em></span> and related functions (<span class="emphasis"><em>jump_fcontext()</em></span>
+      and <span class="emphasis"><em>make_fcontext()</em></span>) and stack management - <span class="emphasis"><em>execution_context</em></span>
+      and <span class="emphasis"><em>captured_context</em></span>. <span class="emphasis"><em>execution_context</em></span>
+      and <span class="emphasis"><em>captured_context</em></span> represent one <span class="emphasis"><em>thread-of-execution</em></span>.
+      A <span class="emphasis"><em>thread-of-execution</em></span> is a single flow of control within
+      a programm. Each class maintains a control structure, containing the preserved
+      registers, the stack and the stack allocator. The main difference between
+      <span class="emphasis"><em>execution_context</em></span> and <span class="emphasis"><em>captured_context</em></span>
+      consists in maintaining context' control structure.
+    </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2014 Oliver Kowalke<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="requirements.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="abstract_context/econtext.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

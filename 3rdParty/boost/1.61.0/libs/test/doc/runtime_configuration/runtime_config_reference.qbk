@@ -1,0 +1,823 @@
+[/
+ / Copyright (c) 2003 Boost.Test contributors
+ /
+ / Distributed under the Boost Software License, Version 1.0. (See accompanying
+ / file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+ /]
+
+
+[section:rt_param_reference Runtime parameters reference]
+
+Following sections provide detailed specification for all __UTF__ runtime parameters. Each parameter specification includes:
+
+* The full parameter name.
+* Description of parameter semantic and default value.
+* Acceptable argument values. The default value for the parameter is bold in the acceptable values list.
+* Command line syntax. The format of all command line arguments is: `<prefix><name>[<separator><value>]`.
+  For example: `--param=<value>`.
+  `[]` around separator and value indicate that argument value is optional. For example: `-q[ <value>]`.
+* Corresponding environment variable name.
+
+[note All command line argument formats support parameter name guessing. What this means is that is if command like
+format is like this:
+[pre  --long_parameter_name=<value>]
+you can in fact use any unambiguous prefix of the parameter name to specify the argument. For example:
+[pre  --long_param=123]
+or
+[pre  --long_p=123.]
+If parameter name prefix you chose is ambiguous the framework lets you know which parameters match specified
+prefix. For example, try
+[pre  --log=all]
+]
+
+[h4 Parameter value formats]
+
+The __UTF__ runtime parameters take value of the following types: string, boolean, enumeration,
+unsigned, long. Formats required for values of these types are following:
+
+[h5 String, unsigned, long][#regular_param_value]
+
+Values of these types are expected in the same format they are represented in C++.
+
+[h5 Boolean][#boolean_param_value]
+
+Values of these types are options with yes/no or true/false meaning. True values are represented
+by case insensitive strings: "Y", "YES", "TRUE", "1". False values are represented by case
+insensitive strings: "N", "NO", "FALSE", "0".
+
+[h5 Enumeration][#enum_param_value]
+
+Values of an enumeration type are expected as case sensitive strings representing
+enumeration value names. Each parameter with an enumeration value lists all valid names in a
+parameter`s description.
+
+[/ ###############################################################################################]
+
+[section:auto_dbg `auto_start_dbg`]
+
+Option ['auto_start_dbg] specifies whether Boost.Test should attempt to attach a debugger when a fatal system
+error occurs. At the moment this feature is only available on a few selected platforms: Win32 and *nix. There is a
+default debugger configured for these platforms. You can manually configure a different debugger.
+For more details on how to configure a debugger see the [headerref boost/test/debug.hpp Boost.Test debug API],
+specifically the function [funcref boost::debug::set_debugger].
+
+[h4 Acceptable values]
+
+[link boolean_param_value Boolean] with default value [*no].
+
+[h4 Command line syntax]
+
+* `--auto_debug[=<boolean value>]`
+* `-d [<boolean value>]`
+
+[h4 Environment variable]
+
+  BOOST_TEST_AUTO_START_DBG
+
+[endsect] [/auto_start_dbg]
+
+[/ ###############################################################################################]
+
+[section:build_info `build_info`]
+
+Option ['build_info] instructs the __UTF__ to display the build information before testing begins.
+This information includes:
+
+* platform
+* compiler
+* STL implementation in use
+* boost version
+
+[h4 Acceptable values]
+
+[link boolean_param_value Boolean] with default value [*no].
+
+[h4 Command line syntax]
+
+* `--build_info[=<boolean value>]`
+* `-i [<boolean value>]`
+
+[h4 Environment variable]
+
+  BOOST_TEST_BUILD_INFO
+
+[endsect] [/ build_info]
+
+[/ ###############################################################################################]
+[section:catch_system `catch_system_errors`]
+
+If option ['catch_system_errors] has value "no" the __UTF__ does not attempt to catch asynchronous system failures
+(signals on *NIX platforms or structured exceptions on Windows). This can be used for test programs executed
+within an IDE or to get a coredump for a stack analysis. See
+[link ref_usage_recommendations usage recommendations] pages for more details.
+
+[h4 Acceptable values]
+
+[link boolean_param_value Boolean] with default value [*no].
+
+[note The __UTF__ can be built with flag BOOST_TEST_DEFAULTS_TO_CORE_DUMP in which case default changes to [*yes]]
+
+[h4 Command line syntax]
+
+* `--catch_system_errors[=<boolean value>]`
+* `-s [<boolean value>]`
+
+[h4 Environment variable]
+
+  BOOST_TEST_CATCH_SYSTEM_ERRORS
+
+[endsect] [/catch_system_errors]
+
+[/ ###############################################################################################]
+[section:color_output `color_output`]
+
+The __UTF__ is able to produce color output on systems which support it. To enable this behavior, set this option to
+`yes`. By default the framework does not produce color output.
+
+[h4 Acceptable values]
+
+[link boolean_param_value Boolean] with default value [*no].
+
+[h4 Command line syntax]
+
+* `--color_output[=<boolean value>]`
+* `-x [<boolean value>]`
+
+[h4 Environment variable]
+
+  BOOST_TEST_COLOR_OUTPUT
+
+[endsect] [/color_output]
+
+[/ ###############################################################################################]
+[section:detect_fp_exceptions `detect_fp_exceptions`]
+
+Option ['build_info] enables/disables hardware traps for the floating point exceptions (if supported on your platform).
+
+[h4 Acceptable values]
+
+[link boolean_param_value Boolean] with default value [*no].
+
+[h4 Command line syntax]
+
+* `--detect_fp_exceptions[=<boolean value>]`
+
+[h4 Environment variable]
+
+  BOOST_TEST_DETECT_FP_EXCEPTIONS
+
+[endsect] [/detect_fp_exceptions]
+
+[/ ###############################################################################################]
+[section:detect_memory_leaks `detect_memory_leaks`]
+
+Parameter ['detect_memory_leaks] enables/disables memory leaks detection (if present in your build configuration).
+This parameter has an optional long integer value. The default value is 1, which enables memory leak detection.
+The value 0 disables memory leak detection. Any value N greater than 1 is treated as leak allocation number and tells the
+framework to setup runtime breakpoint at Nth heap allocation. If value is omitted the default value is assumed.
+
+[note The only platform which supports memory leak detection is Microsoft Visual Studio family of compilers in debug builds.]
+
+[h4 Acceptable values]
+
+* 0
+* [*1] (default)
+* [link regular_param_value long integer value] > 1
+
+[h4 Command line syntax]
+
+* `--detect_memory_leaks[=<alloc order number>]`
+
+[h4 Environment variable]
+
+  BOOST_TEST_DETECT_MEMORY_LEAK
+
+[endsect] [/detect_memory_leaks]
+
+[/ ###############################################################################################]
+[section:help `help`]
+
+Parameter ['help] displays help on the framework's parameters. The parameter accepts an optional
+argument value:
+
+* if present, the argument value is interpreted as a parameter name. Name guessing
+  works as well (so for example `--help=rand` displays help on the parameter `random`).
+* if the parameter name is unknown or ambiguous, an error is reported,
+* if the argument value is absent, a summary of all framework's parameter is displayed.
+
+[h4 Acceptable values]
+
+An optional parameter name [link regular_param_value string].
+
+[h4 Command line syntax]
+
+* `--help[=<parameter name>]`
+
+[endsect] [/help]
+
+[/ ###############################################################################################]
+[section:list_content `list_content`]
+
+Lists the name of the [link ref_test_unit test units] contained in the [link ref_test_module test module] and exits (no test is run).
+
+This command line parameter accepts an /optional/ string value indicating the format of the output.
+The framework supports the following two formats:
+
+# HRF (default), standing for /Human Readable Format/,
+# DOT, standing for the [@http://www.graphviz.org/doc/info/lang.html Graphviz graph format]. This format may be automatically parsed or rendered.
+
+[h4 HRF]
+
+For HRF, the [link ref_test_tree test tree] (test suites and test cases) is presented in a tree like form with
+each test unit name on a separate line with horizontal indentation in relation to the parent test suite.
+In addition, test units which are enabled by default have an asterisk `*` next to the test unit name. For example, the following output:
+
+    testsuite1*
+        testcase1*
+        testcase2
+    testsuite2*
+        testcase3*
+
+represents test module consisting of two test suites: `testsuite1` and `testsuite2`, and three test cases: `testcase1`,
+`testcase2`, and `testcase3`. The formatting reflects the test-tree: the first two test cases belong to the first test suite
+and last one belongs to the second. Out of three test cases only two are enabled by default:
+`testcase1` and `testcase3`. `testcase2` is not enabled by default, but can be enabled by using the parameter __param_run_test__.
+
+[h4 DOT]
+
+DOT output generates a graph representing the module's [link ref_test_tree test tree] in a
+[@http://www.graphviz.org/doc/info/lang.html dot format].
+This output includes much more information about the test tree including labels, timeouts, expected failures, and dependencies.
+
+The legend is as follow:
+
+* the master test suite is represented as an ellipse
+* a test unit (suite, case) is in a rounded rectangle
+* test unit declaration location, [link boost_test.tests_organization.tests_grouping labels],
+  [link boost_test.testing_tools.expected_failures expected failures], [link boost_test.testing_tools.timeout timeouts] are appended,
+* a green box indicates that the test unit that is enabled, otherwise its color is yellow,
+* a plain black arrow goes from a test unit to each of its children, following the test tree (the arrow pointing to the child),
+* a dashed red arrow indicates a runtime dependence on test units, the arrow pointing to the parent in the dependency graph.
+
+
+[h4 Acceptable values]
+
+[link enum_param_value Enumeration] names:
+
+* [*HRF] (default)
+* DOT
+
+[h4 Command line syntax]
+
+* `--list_content[=<format>]`
+
+[h4 Environment variable]
+
+  BOOST_TEST_LIST_CONTENT
+
+[h4 Example]
+
+The following /deliberately/ complicated example illustrates the purpose of the `--list_content`
+directive. The SVG generated from the produced Graphviz/dot file can be downloaded
+[@images/boost_runtime_list_content.svg here].
+
+[bt_example boost_runtime_list_content..`--list_content` illustration..run-fail]
+
+[$images/boost_runtime_list_content.png [width 70%]]
+
+
+[endsect] [/list_content]
+
+[/ ###############################################################################################]
+[section:list_labels `list_labels`]
+
+Lists the labels associated to the [link ref_test_unit test units] in the current
+[link ref_test_module test module] and exits (no test is run).
+
+[tip
+See [link boost_test.tests_organization.tests_grouping this section] for more details on labels and logical grouping
+of test cases.
+]
+
+[h4 Acceptable values]
+
+[link boolean_param_value Boolean] with default value [*no].
+
+[h4 Command line syntax]
+
+* `--list_labels[=<boolean value>]`
+
+[h4 Environment variable]
+
+  BOOST_TEST_LIST_LABELS
+
+[h4 Example]
+
+The previous example from [link boost_test.utf_reference.rt_param_reference.list_content `--list_content`] gives
+```
+> ./boost_runtime_list_content --list_labels
+Available labels:
+  label1
+  label2
+```
+
+[endsect] [/list_labels]
+
+[/ ###############################################################################################]
+[section:log_format `log_format`]
+
+Parameter ['log_format] allows to set the __UTF__ log format to one of the formats supplied by the framework.
+To specify custom log format use the [link ref_log_formatter_api custom log formatting API].
+
+The only acceptable values for this parameter are the names of the output formats supplied by the
+framework. By default the framework uses human readable format (HRF) for the testing log. This format
+is similar to a compiler error format. Alternatively you can specify XML as a log format. This format
+is easier to process by testing automation tools.
+
+[h4 Acceptable values]
+
+[link enum_param_value Enumeration] names:
+
+* [*HRF] (default)
+* XML
+
+[h4 Command line syntax]
+
+* `--log_format=<format>`
+* `-f <format>`
+
+[h4 Environment variable]
+
+  BOOST_TEST_LOG_FORMAT
+
+[endsect] [/log_format]
+
+[/ ###############################################################################################]
+[section:log_level `log_level`]
+
+Parameter ['log_level] allows to set the __UTF__ [link ref_log_level_explanations log level]. Log level defines
+the verbosity of the testing log produced by a testing module. The verbosity ranges from a complete log, when all
+assertions (both successful and failing) are reported and all notifications about test units start and finish
+are included, to an empty log, when nothing is reported to a testing log stream.
+
+Log level is set to one of the predefined levels which are organized hierarchically, where each level includes
+all the messages on that level as well as all the messages from levels below. Levels are identified by string
+names, which are listed next.
+
+[h4 Acceptable values]
+
+Following is the list of [link enum_param_value enumeration] log_level names ordered from higher to lower level.
+Thus each level includes messages on that level as well as all the messages on levels defined below.
+
+[table
+  [
+    [Value]
+    [Included messages]
+  ]
+  [
+    [all]
+    [All log messages including the passed assertions notification]
+  ]
+  [
+    [success]
+    [The same as all]
+  ]
+  [
+    [test_suite]
+    [Test units start/finish notifications]
+  ]
+  [
+    [message]
+    [User generated messages (using __BOOST_TEST_MESSAGE__ tool)]
+  ]
+  [
+    [warning]
+    [Messages describing failed assertion on `WARN` level (
+    [link boost_test.utf_reference.testing_tool_ref.assertion_boost_test_universal_macro `BOOST_TEST_WARN`]
+    / `BOOST_WARN_...`
+     tools)]
+  ]
+  [
+    [[*error] (default)]
+    [Messages describing failed assertion on `CHECK` level (__BOOST_TEST__ / `BOOST_CHECK_...` tools)]
+  ]
+  [
+    [cpp_exception]
+    [Messages reporting uncaught C++ exception]
+  ]
+  [
+    [system_error]
+    [Messages reporting system originated non-fatal errors. For example, timeout or floating point exception.]
+  ]
+  [
+    [fatal_error]
+    [Messages reporting user or system originated fatal errors. For example, memory access violation. Also
+     all the messages describing failed assertion on `REQUIRE` level (__BOOST_TEST_REQUIRE__ / `BOOST_REQUIRE_...` tools)]
+  ]
+  [
+    [nothing]
+    [No messages are reported.]
+  ]
+]
+
+[h4 Command line syntax]
+
+* `--log_level=<level>`
+* `-l <level>`
+
+[h4 Environment variable]
+
+  BOOST_TEST_LOG_LEVEL
+
+[endsect] [/log_level]
+
+[/ ###############################################################################################]
+[section:log_sink `log_sink`]
+
+Parameter ['log_sink] allows to set the log sink - location where framework writes the testing log to,
+thus it allows to easily redirect the testing log to file or standard streams. By default testing log
+is directed to the standard output stream.
+
+[h4 Acceptable values]
+
+Case sensitive [link regular_param_value string]:
+
+[table
+  [
+    [Value]
+    [Meaning]
+  ]
+  [
+    [[*`stdout`] (default)]
+    [Testing log is redirected into standard output stream]
+  ]
+  [
+    [stderr]
+    [Testing log is redirected into standard error stream]
+  ]
+  [
+    [File name]
+    [Testing log is redirected into this file]
+  ]
+]
+
+[h4 Command line syntax]
+
+* `--log_sink=<stream or file name>`
+* `-k <stream or file name>`
+
+[h4 Environment variable]
+
+  BOOST_TEST_LOG_SINK
+
+[endsect] [/log_sink]
+
+[/ ###############################################################################################]
+[section:output_format `output_format`]
+
+Parameter ['output_format] combines an effect of
+[link boost_test.utf_reference.rt_param_reference.report_format `report_format`] and
+[link boost_test.utf_reference.rt_param_reference.log_format `log_format`]
+parameters. This parameter has higher priority than either one of them. In other words if this
+parameter is specified it overrides the value of other two parameters. This parameter does not have
+a default value. The only acceptable values are string names of output formats: HRF - human readable
+format and XML - XML formats for automation tools processing.
+
+[h4 Acceptable values]
+
+[link enum_param_value Enumeration] name:
+
+* HRF
+* XML
+
+['HRF] stands for human readable format, while ['XML] is dedicated to  automated output processing
+
+[h4 Command line syntax]
+
+* `--output_format=<format>`
+* `-o <format>`
+
+[h4 Environment variable]
+
+  BOOST_TEST_OUTPUT_FORMAT
+
+[endsect] [/output_format]
+
+[/ ###############################################################################################]
+[section:random `random`]
+
+Parameter ['random] instructs the __UTF__ to execute the test cases in random order. This parameter
+accepts an optional `unsigned integer` argument for the seed of the random generator:
+
+* By default (value `0`), the test cases are executed in some specific order
+  defined by the order of test units in the test files, and the dependencies between test units.
+* If the parameter is specified without the argument value, or with value `1`, the testing order is randomized based on current time.
+* Alternatively, any positive value greater than `1` will be used as random seed for the run.
+
+[tip in case `--random` is specified, the value of the seed is logged using __BOOST_TEST_MESSAGE__, so that it is possible to replay
+ exactly the same sequence of unit test in case of failure. For the seed to be visible in the logs,
+ make sure the proper [link boost_test.utf_reference.rt_param_reference.log_level `--log_level`] is set.
+ ]
+
+[h4 Acceptable values]
+
+* [*0] (default): no randomization
+* `1`: random seed based on the current time
+* [link regular_param_value integer] `value > 1` : seed for the random number generator
+
+[h4 Command line syntax]
+
+* `--random=<seed>`
+
+[h4 Environment variable]
+
+  BOOST_TEST_RANDOM
+
+[endsect] [/random]
+
+[/ ###############################################################################################]
+[section:report_format `report_format`]
+
+Parameter ['report_format] allows to set the __UTF__ report format to one of the formats supplied
+by the framework. To specify a custom report format use unit_test_report API.
+
+The only acceptable values for this parameter are the names of the output formats. By default the
+framework uses human readable format (HRF) for results reporting. Alternatively you can specify
+XML as report format. This format is easier to process by testing automation tools.
+
+[h4 Acceptable values]
+
+[link enum_param_value Enumeration] names:
+
+* [*HRF] (default)
+* XML
+
+[h4 Command line syntax]
+
+* `--report_format=<format>`
+* `-m <format>`
+
+[h4 Environment variable]
+
+  BOOST_TEST_REPORT_FORMAT
+
+[endsect] [/report_format]
+
+[/ ###############################################################################################]
+[section:report_level `report_level`]
+
+Parameter ['report_level] allows to set the verbosity level of the testing result report generated by
+the __UTF__. Use value "no" to eliminate the results report completely. See the
+[link ref_report_formats report formats] section for description of report formats on different levels.
+
+[h4 Acceptable values]
+
+[link enum_param_value Enumeration] report_level names:
+
+* [*confirm] (default)
+* no
+* short
+* detailed
+
+[h4 Command line syntax]
+
+* `--report_level=<format>`
+* `-r <format>`
+
+[h4 Environment variable]
+
+  BOOST_TEST_REPORT_LEVEL
+
+[endsect] [/report_level]
+
+[/ ###############################################################################################]
+[section:report_memory_leaks_to `report_memory_leaks_to`]
+
+Parameter ['report_memory_leaks_to] allows to specify a file where to report memory leaks to. The
+parameter does not have default value. If it is not specified, memory leaks (if any) are reported
+to the standard error stream.
+
+[h4 Acceptable values]
+
+Arbitrary file name [link regular_param_value string].
+
+[h4 Command line syntax]
+
+* `--report_memory_leaks_to=<file name>`
+
+[h4 Environment variable]
+
+  BOOST_TEST_REPORT_MEMORY_LEAKS_TO
+
+[endsect] [/report_sink]
+
+[/ ###############################################################################################]
+[section:report_sink `report_sink`]
+
+Parameter ['report_sink] allows to set the result report sink - the location where the framework writes
+the result report to, thus it allows to easily redirect the result report to a file or a standard stream.
+By default the testing result report is directed to the standard error stream.
+
+[h4 Acceptable values]
+
+Case sensitive [link regular_param_value string]:
+
+* [*`stderr`] (default)
+* `stdout`
+* arbitrary file name
+
+[h4 Command line syntax]
+
+* `--report_synk=<stream or file name>`
+* `-e <stream or file name>`
+
+[h4 Environment variable]
+
+  BOOST_TEST_REPORT_SINK
+
+[endsect] [/report_sink]
+
+[/ ###############################################################################################]
+[section:result_code `result_code`]
+
+The "no" argument value for the option [`result_code] instructs the __UTF__ to always return zero
+result code. This could be used for test programs executed within IDE. By default this parameter has
+value "yes". See the [link ref_usage_recommendations usage recommendations] section for more details.
+
+[h4 Acceptable values]
+
+[link boolean_param_value Boolean] with default value [*yes].
+
+[h4 Command line syntax]
+
+* `--result_code[=<boolean value>]`
+* `-c [<boolean value>]`
+
+[h4 Environment variable]
+
+  BOOST_TEST_RESULT_CODE
+
+[endsect] [/result_code]
+
+[/ ###############################################################################################]
+[section:run_test `run_test`]
+
+Parameter ['run_test] allows to filter which test units to execute during testing. The __UTF__ supports
+both "selection filters", which allow to select which test units to enable from the set of available
+test units, and "disabler filters", which allow to disable some test units. The __UTF__ also supports
+enabling/disabling test units at compile time. These settings identify the default set of test units
+to run. Parameter ['run_test] is used to change this default. This parameter is repeatable, so you can
+specify more than one filter if necessary.
+
+More details about practical application of this parameter resides in [link boost_test.runtime_config.test_unit_filtering test unit
+filtering] section.
+
+[h4 Acceptable values]
+
+[link regular_param_value String] value representing single filter. The following grammar productions
+describe the syntax of filters:
+
+```
+filter        ::= relative_spec? test_set
+relative_spec ::= '+' | '!'
+test_set      ::= label | path
+label         ::= '@' identifier
+path          ::= (suite '/')? pattern_list
+pattern_list   ::= (pattern ',')* pattern
+suite         ::= (pattern '/')* pattern
+pattern       ::= '*'? identifier '*'?
+```
+
+Regarding the meaning of these values [link ref_command_line_control see here].
+
+[h4 Command line syntax]
+
+* `--run_test=<test unit filter spec>`
+* `-t <test unit filter spec>`
+
+[h4 Environment variable]
+
+  BOOST_TEST_RUN_FILTERS
+
+[endsect] [/run_test]
+
+[/ ###############################################################################################]
+[section:save_pattern `save_pattern`]
+
+Option ['save_pattern] facilitates switching mode of operation for testing output streams. See __output_test_stream_tool__
+section for details on these tests.
+
+This parameter serves no particular purpose within the framework itself. It can be used by test modules relying
+on [classref boost::test_tools::output_test_stream] to implement testing logic. It has two modes of operation:
+
+* save the pattern file (true).
+* and match against a previously stored pattern file (false).
+
+Default mode is 'match' (false).
+
+You can use this parameter to switch between these modes, by passing the parameter value to the `output_test_stream` constructor.
+The value of the command line parameter is available using call like this:
+``
+bool is_save_pattern_flag_set = boost::unit_test::runtime_config::save_pattern();
+``
+
+[h4 Acceptable values]
+
+[link boolean_param_value Boolean] with default value [*no].
+
+[h4 Command line syntax]
+
+* `--save_pattern[=<boolean value>]`
+
+[h4 Environment variable]
+
+  BOOST_TEST_SAVE_PATTERN
+
+[endsect] [/save_pattern]
+
+[/ ###############################################################################################]
+[section:show_progress `show_progress`]
+
+Option ['show_progress] instructs the __UTF__ to display test progress information. By default the
+parameter test progress is not shown. More details [link boost_test.test_output.test_output_progress here].
+
+[h4 Acceptable values]
+
+[link boolean_param_value Boolean] with default value [*no].
+
+[h4 Command line syntax]
+
+* `--show_progress[=<boolean value>]`
+* `-p [<boolean value>]`
+
+[h4 Environment variable]
+
+  BOOST_TEST_SHOW_PROGRESS
+
+[endsect]
+
+[/ ###############################################################################################]
+[section:use_alt_stack `use_alt_stack`]
+
+Option ['use_alt_stack] instructs the __UTF__ to use alternative stack for signals processing, on
+platforms where they are supported. More information about this feature is available
+[@http://www.gnu.org/software/libc/manual/html_node/Signal-Stack.html here]. The feature is enabled
+by default, but can be disabled using this parameter.
+
+[/ TODO indicate which platforms are supported]
+[/ TODO add a link to the execution monitor]
+
+[h4 Acceptable values]
+
+[link boolean_param_value Boolean] with default value [*yes].
+
+[h4 Command line syntax]
+
+* `--use_alt_stack[=<boolean value>]`
+
+[h4 Environment variable]
+
+  BOOST_TEST_USE_ALT_STACK
+
+[endsect] [/use_alt_stack]
+
+[/ ###############################################################################################]
+[section:usage `usage`]
+
+If specified option ['usage] instructs the __UTF__ to displays short usage message about the
+framework's parameters.
+
+[h4 Command line syntax]
+
+* `-? [<boolean value>]`
+
+[note The parameter name is not part of command line format, only short '-?'.]
+
+[h4 Acceptable values]
+
+[link boolean_param_value Boolean] with default value [*no].
+
+[endsect] [/usage]
+
+[/ ###############################################################################################]
+[section:wait_for_debugger `wait_for_debugger`]
+
+Option ['wait_for_debugger] instructs the __UTF__ to pause before starting test units execution,
+so that you can attach a debugger to running test module. By default this parameters turned off.
+
+[h4 Acceptable values]
+
+[link boolean_param_value Boolean] with default value [*no].
+
+[h4 Command line syntax]
+
+* `--wait_for_debugger[=<boolean value>]`
+* `-w [<boolean value>]`
+
+[h4 Environment variable]
+
+  BOOST_TEST_WAIT_FOR_DEBUGGER
+
+[endsect] [/wait_for_debugger]
+
+[endsect] [/ runtime parameters reference]

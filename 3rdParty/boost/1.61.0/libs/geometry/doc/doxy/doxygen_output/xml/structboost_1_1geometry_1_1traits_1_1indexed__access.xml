@@ -1,0 +1,57 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="structboost_1_1geometry_1_1traits_1_1indexed__access" kind="struct" prot="public">
+    <compoundname>boost::geometry::traits::indexed_access</compoundname>
+    <includes local="no">access.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename Geometry</type>
+      </param>
+      <param>
+        <type>std::size_t</type>
+        <declname>Index</declname>
+        <defname>Index</defname>
+      </param>
+      <param>
+        <type>std::size_t</type>
+        <declname>Dimension</declname>
+        <defname>Dimension</defname>
+      </param>
+    </templateparamlist>
+    <briefdescription>
+<para>Traits class defining &quot;get&quot; and &quot;set&quot; to get and set point coordinate values. </para>    </briefdescription>
+    <detaileddescription>
+<para><parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>Geometry</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>geometry (box, segment) </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Index</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>index (min_corner/max_corner for box, 0/1 for segment) </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Dimension</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>dimension </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="par"><title>Geometries:</title><para><itemizedlist>
+<listitem><para>box</para></listitem><listitem><para>segment </para></listitem></itemizedlist>
+</para></simplesect>
+<simplesect kind="par"><title>Specializations should provide:</title><para><itemizedlist>
+<listitem><para>static inline T get(G const&amp;)</para></listitem><listitem><para>static inline void set(G&amp;, T const&amp;) </para></listitem></itemizedlist>
+</para></simplesect>
+</para>    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/core/access.hpp" line="79" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/core/access.hpp" bodystart="79" bodyend="79"/>
+    <listofallmembers>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

@@ -1,0 +1,67 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="classboost_1_1geometry_1_1strategy_1_1side_1_1spherical__side__formula" kind="class" prot="public">
+    <compoundname>boost::geometry::strategy::side::spherical_side_formula</compoundname>
+    <includes local="no">ssf.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename CalculationType</type>
+        <defval>void</defval>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-static-func">
+      <memberdef kind="function" id="classboost_1_1geometry_1_1strategy_1_1side_1_1spherical__side__formula_1a83857673a9e158794ac4b430f451117c" prot="public" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename P1</type>
+          </param>
+          <param>
+            <type>typename P2</type>
+          </param>
+          <param>
+            <type>typename P</type>
+          </param>
+        </templateparamlist>
+        <type>int</type>
+        <definition>static int boost::geometry::strategy::side::spherical_side_formula&lt; CalculationType &gt;::apply</definition>
+        <argsstring>(P1 const &amp;p1, P2 const &amp;p2, P const &amp;p)</argsstring>
+        <name>apply</name>
+        <param>
+          <type>P1 const &amp;</type>
+          <declname>p1</declname>
+        </param>
+        <param>
+          <type>P2 const &amp;</type>
+          <declname>p2</declname>
+        </param>
+        <param>
+          <type>P const &amp;</type>
+          <declname>p</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/ssf.hpp" line="87" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/ssf.hpp" bodystart="86" bodyend="107"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+<para>Check at which side of a Great Circle segment a point lies left of segment (&gt; 0), right of segment (&lt; 0), on segment (0) </para>    </briefdescription>
+    <detaileddescription>
+<para><parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>CalculationType</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>numeric type for calculation (e.g. high precision); if [*void] then it is extracted automatically from the coordinate type and (if necessary) promoted to floating point </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/ssf.hpp" line="82" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/ssf.hpp" bodystart="81" bodyend="108"/>
+    <listofallmembers>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1side_1_1spherical__side__formula_1a83857673a9e158794ac4b430f451117c" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::side::spherical_side_formula</scope><name>apply</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

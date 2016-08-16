@@ -1,0 +1,247 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Intermediate Form: Understanding and Introspecting Expressions</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../../index.html" title="Chapter&#160;1.&#160;Boost.Proto">
+<link rel="up" href="../../proto/users_guide.html" title="Users' Guide">
+<link rel="prev" href="front_end/code_repetition.html" title="Generating Repetitive Code with the Preprocessor">
+<link rel="next" href="intermediate_form/left_right_child.html" title="Accessing Parts of an Expression">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="front_end/code_repetition.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../proto/users_guide.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="intermediate_form/left_right_child.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_proto.users_guide.intermediate_form"></a><a class="link" href="intermediate_form.html" title="Intermediate Form: Understanding and Introspecting Expressions">Intermediate
+      Form: Understanding and Introspecting Expressions</a>
+</h3></div></div></div>
+<div class="toc"><dl>
+<dt><span class="section"><a href="intermediate_form/left_right_child.html">Accessing
+        Parts of an Expression</a></span></dt>
+<dt><span class="section"><a href="intermediate_form/deep_copying_expressions.html">Deep-copying
+        Expressions</a></span></dt>
+<dt><span class="section"><a href="intermediate_form/debugging_expressions.html">Debugging
+        Expressions</a></span></dt>
+<dt><span class="section"><a href="intermediate_form/tags_and_metafunctions.html">Operator
+        Tags and Metafunctions</a></span></dt>
+<dt><span class="section"><a href="intermediate_form/expressions_as_fusion_sequences.html">Expressions
+        as Fusion Sequences</a></span></dt>
+<dt><span class="section"><a href="intermediate_form/expression_introspection.html">Expression
+        Introspection: Defining a Grammar</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="intermediate_form/expression_introspection/patterns.html">Finding
+          Patterns in Expressions</a></span></dt>
+<dt><span class="section"><a href="intermediate_form/expression_introspection/fuzzy_and_exact_matches_of_terminals.html">Fuzzy
+          and Exact Matches of Terminals</a></span></dt>
+<dt><span class="section"><a href="intermediate_form/expression_introspection/if_and_not.html"><code class="literal">if_&lt;&gt;</code>,
+          <code class="literal">and_&lt;&gt;</code>, and <code class="literal">not_&lt;&gt;</code></a></span></dt>
+<dt><span class="section"><a href="intermediate_form/expression_introspection/switch.html">Improving
+          Compile Times With <code class="literal">switch_&lt;&gt;</code></a></span></dt>
+<dt><span class="section"><a href="intermediate_form/expression_introspection/matching_vararg_expressions.html">Matching
+          Vararg Expressions</a></span></dt>
+<dt><span class="section"><a href="intermediate_form/expression_introspection/defining_edsl_grammars.html">Defining
+          EDSL Grammars</a></span></dt>
+</dl></dd>
+</dl></div>
+<p>
+        By now, you know a bit about how to build a front-end for your EDSL "compiler"
+        -- you can define terminals and functions that generate expression templates.
+        But we haven't said anything about the expression templates themselves. What
+        do they look like? What can you do with them? In this section we'll see.
+      </p>
+<h5>
+<a name="boost_proto.users_guide.intermediate_form.h0"></a>
+        <span><a name="boost_proto.users_guide.intermediate_form.the__literal_expr_lt__gt___literal__type"></a></span><a class="link" href="intermediate_form.html#boost_proto.users_guide.intermediate_form.the__literal_expr_lt__gt___literal__type">The
+        <code class="literal">expr&lt;&gt;</code> Type</a>
+      </h5>
+<p>
+        All Proto expressions are an instantiation of a template called <code class="computeroutput"><a class="link" href="../../boost/proto/expr.html" title="Struct template expr">proto::expr&lt;&gt;</a></code> (or a wrapper around
+        such an instantiation). When we define a terminal as below, we are really
+        initializing an instance of the <code class="computeroutput"><a class="link" href="../../boost/proto/expr.html" title="Struct template expr">proto::expr&lt;&gt;</a></code>
+        template.
+      </p>
+<pre class="programlisting"><span class="comment">// Define a placeholder type</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">int</span> <span class="identifier">I</span><span class="special">&gt;</span>
+<span class="keyword">struct</span> <span class="identifier">placeholder</span>
+<span class="special">{};</span>
+
+<span class="comment">// Define the Protofied placeholder terminal</span>
+<span class="identifier">proto</span><span class="special">::</span><span class="identifier">terminal</span><span class="special">&lt;</span> <span class="identifier">placeholder</span><span class="special">&lt;</span><span class="number">0</span><span class="special">&gt;</span> <span class="special">&gt;::</span><span class="identifier">type</span> <span class="keyword">const</span> <span class="identifier">_1</span> <span class="special">=</span> <span class="special">{{}};</span>
+</pre>
+<p>
+        The actual type of <code class="computeroutput"><span class="identifier">_1</span></code> looks
+        like this:
+      </p>
+<pre class="programlisting"><span class="identifier">proto</span><span class="special">::</span><span class="identifier">expr</span><span class="special">&lt;</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">tag</span><span class="special">::</span><span class="identifier">terminal</span><span class="special">,</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">term</span><span class="special">&lt;</span> <span class="identifier">placeholder</span><span class="special">&lt;</span><span class="number">0</span><span class="special">&gt;</span> <span class="special">&gt;,</span> <span class="number">0</span> <span class="special">&gt;</span>
+</pre>
+<p>
+        The <code class="computeroutput"><a class="link" href="../../boost/proto/expr.html" title="Struct template expr">proto::expr&lt;&gt;</a></code> template is the most
+        important type in Proto. Although you will rarely need to deal with it directly,
+        it's always there behind the scenes holding your expression trees together.
+        In fact, <code class="computeroutput"><a class="link" href="../../boost/proto/expr.html" title="Struct template expr">proto::expr&lt;&gt;</a></code> <span class="emphasis"><em>is</em></span>
+        the expression tree -- branches, leaves and all.
+      </p>
+<p>
+        The <code class="computeroutput"><a class="link" href="../../boost/proto/expr.html" title="Struct template expr">proto::expr&lt;&gt;</a></code> template makes up the
+        nodes in expression trees. The first template parameter is the node type;
+        in this case, <code class="computeroutput"><span class="identifier">proto</span><span class="special">::</span><span class="identifier">tag</span><span class="special">::</span><span class="identifier">terminal</span></code>.
+        That means that <code class="computeroutput"><span class="identifier">_1</span></code> is a leaf-node
+        in the expression tree. The second template parameter is a list of child
+        types, or in the case of terminals, the terminal's value type. Terminals
+        will always have only one type in the type list. The last parameter is the
+        arity of the expression. Terminals have arity 0, unary expressions have arity
+        1, etc.
+      </p>
+<p>
+        The <code class="computeroutput"><a class="link" href="../../boost/proto/expr.html" title="Struct template expr">proto::expr&lt;&gt;</a></code> struct is defined as
+        follows:
+      </p>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span> <span class="keyword">typename</span> <span class="identifier">Tag</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">Args</span><span class="special">,</span> <span class="keyword">long</span> <span class="identifier">Arity</span> <span class="special">=</span> <span class="identifier">Args</span><span class="special">::</span><span class="identifier">arity</span> <span class="special">&gt;</span>
+<span class="keyword">struct</span> <span class="identifier">expr</span><span class="special">;</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span> <span class="keyword">typename</span> <span class="identifier">Tag</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">Args</span> <span class="special">&gt;</span>
+<span class="keyword">struct</span> <span class="identifier">expr</span><span class="special">&lt;</span> <span class="identifier">Tag</span><span class="special">,</span> <span class="identifier">Args</span><span class="special">,</span> <span class="number">1</span> <span class="special">&gt;</span>
+<span class="special">{</span>
+    <span class="keyword">typedef</span> <span class="keyword">typename</span> <span class="identifier">Args</span><span class="special">::</span><span class="identifier">child0</span> <span class="identifier">proto_child0</span><span class="special">;</span>
+    <span class="identifier">proto_child0</span> <span class="identifier">child0</span><span class="special">;</span>
+    <span class="comment">// ...</span>
+<span class="special">};</span>
+</pre>
+<p>
+        The <code class="computeroutput"><a class="link" href="../../boost/proto/expr.html" title="Struct template expr">proto::expr&lt;&gt;</a></code> struct does not define
+        a constructor, or anything else that would prevent static initialization.
+        All <code class="computeroutput"><a class="link" href="../../boost/proto/expr.html" title="Struct template expr">proto::expr&lt;&gt;</a></code> objects are initialized
+        using <span class="emphasis"><em>aggregate initialization</em></span>, with curly braces. In
+        our example, <code class="computeroutput"><span class="identifier">_1</span></code> is initialized
+        with the initializer <code class="computeroutput"><span class="special">{{}}</span></code>. The
+        outer braces are the initializer for the <code class="computeroutput"><a class="link" href="../../boost/proto/expr.html" title="Struct template expr">proto::expr&lt;&gt;</a></code>
+        struct, and the inner braces are for the member <code class="computeroutput"><span class="identifier">_1</span><span class="special">.</span><span class="identifier">child0</span></code>
+        which is of type <code class="computeroutput"><span class="identifier">placeholder</span><span class="special">&lt;</span><span class="number">0</span><span class="special">&gt;</span></code>.
+        Note that we use braces to initialize <code class="computeroutput"><span class="identifier">_1</span><span class="special">.</span><span class="identifier">child0</span></code>
+        because <code class="computeroutput"><span class="identifier">placeholder</span><span class="special">&lt;</span><span class="number">0</span><span class="special">&gt;</span></code> is also
+        an aggregate.
+      </p>
+<h5>
+<a name="boost_proto.users_guide.intermediate_form.h1"></a>
+        <span><a name="boost_proto.users_guide.intermediate_form.building_expression_trees"></a></span><a class="link" href="intermediate_form.html#boost_proto.users_guide.intermediate_form.building_expression_trees">Building
+        Expression Trees</a>
+      </h5>
+<p>
+        The <code class="computeroutput"><span class="identifier">_1</span></code> node is an instantiation
+        of <code class="computeroutput"><a class="link" href="../../boost/proto/expr.html" title="Struct template expr">proto::expr&lt;&gt;</a></code>, and expressions containing
+        <code class="computeroutput"><span class="identifier">_1</span></code> are also instantiations
+        of <code class="computeroutput"><a class="link" href="../../boost/proto/expr.html" title="Struct template expr">proto::expr&lt;&gt;</a></code>. To use Proto effectively,
+        you won't have to bother yourself with the actual types that Proto generates.
+        These are details, but you're likely to encounter these types in compiler
+        error messages, so it's helpful to be familiar with them. The types look
+        like this:
+      </p>
+<pre class="programlisting"><span class="comment">// The type of the expression -_1</span>
+<span class="keyword">typedef</span>
+    <span class="identifier">proto</span><span class="special">::</span><span class="identifier">expr</span><span class="special">&lt;</span>
+        <span class="identifier">proto</span><span class="special">::</span><span class="identifier">tag</span><span class="special">::</span><span class="identifier">negate</span>
+      <span class="special">,</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">list1</span><span class="special">&lt;</span>
+            <span class="identifier">proto</span><span class="special">::</span><span class="identifier">expr</span><span class="special">&lt;</span>
+                <span class="identifier">proto</span><span class="special">::</span><span class="identifier">tag</span><span class="special">::</span><span class="identifier">terminal</span>
+              <span class="special">,</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">term</span><span class="special">&lt;</span> <span class="identifier">placeholder</span><span class="special">&lt;</span><span class="number">0</span><span class="special">&gt;</span> <span class="special">&gt;</span>
+              <span class="special">,</span> <span class="number">0</span>
+            <span class="special">&gt;</span> <span class="keyword">const</span> <span class="special">&amp;</span>
+        <span class="special">&gt;</span>
+      <span class="special">,</span> <span class="number">1</span>
+    <span class="special">&gt;</span>
+<span class="identifier">negate_placeholder_type</span><span class="special">;</span>
+
+<span class="identifier">negate_placeholder_type</span> <span class="identifier">x</span> <span class="special">=</span> <span class="special">-</span><span class="identifier">_1</span><span class="special">;</span>
+
+<span class="comment">// The type of the expression _1 + 42</span>
+<span class="keyword">typedef</span>
+    <span class="identifier">proto</span><span class="special">::</span><span class="identifier">expr</span><span class="special">&lt;</span>
+        <span class="identifier">proto</span><span class="special">::</span><span class="identifier">tag</span><span class="special">::</span><span class="identifier">plus</span>
+      <span class="special">,</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">list2</span><span class="special">&lt;</span>
+            <span class="identifier">proto</span><span class="special">::</span><span class="identifier">expr</span><span class="special">&lt;</span>
+                <span class="identifier">proto</span><span class="special">::</span><span class="identifier">tag</span><span class="special">::</span><span class="identifier">terminal</span>
+              <span class="special">,</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">term</span><span class="special">&lt;</span> <span class="identifier">placeholder</span><span class="special">&lt;</span><span class="number">0</span><span class="special">&gt;</span> <span class="special">&gt;</span>
+              <span class="special">,</span> <span class="number">0</span>
+            <span class="special">&gt;</span> <span class="keyword">const</span> <span class="special">&amp;</span>
+          <span class="special">,</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">expr</span><span class="special">&lt;</span>
+                <span class="identifier">proto</span><span class="special">::</span><span class="identifier">tag</span><span class="special">::</span><span class="identifier">terminal</span>
+              <span class="special">,</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">term</span><span class="special">&lt;</span> <span class="keyword">int</span> <span class="keyword">const</span> <span class="special">&amp;</span> <span class="special">&gt;</span>
+              <span class="special">,</span> <span class="number">0</span>
+            <span class="special">&gt;</span>
+        <span class="special">&gt;</span>
+      <span class="special">,</span> <span class="number">2</span>
+    <span class="special">&gt;</span>
+<span class="identifier">placeholder_plus_int_type</span><span class="special">;</span>
+
+<span class="identifier">placeholder_plus_int_type</span> <span class="identifier">y</span> <span class="special">=</span> <span class="identifier">_1</span> <span class="special">+</span> <span class="number">42</span><span class="special">;</span>
+</pre>
+<p>
+        There are a few things to note about these types:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" type="disc">
+<li class="listitem">
+            Terminals have arity zero, unary expressions have arity one and binary
+            expressions have arity two.
+          </li>
+<li class="listitem">
+            When one Proto expression is made a child node of another Proto expression,
+            it is held by reference, <span class="emphasis"><em>even if it is a temporary object</em></span>.
+            This last point becomes important later.
+          </li>
+<li class="listitem">
+            Non-Proto expressions, such as the integer literal, are turned into Proto
+            expressions by wrapping them in new <code class="computeroutput"><span class="identifier">expr</span><span class="special">&lt;&gt;</span></code> terminal objects. These new wrappers
+            are not themselves held by reference, but the object wrapped <span class="emphasis"><em>is</em></span>.
+            Notice that the type of the Protofied <code class="computeroutput"><span class="number">42</span></code>
+            literal is <code class="computeroutput"><span class="keyword">int</span> <span class="keyword">const</span>
+            <span class="special">&amp;</span></code> -- held by reference.
+          </li>
+</ul></div>
+<p>
+        The types make it clear: everything in a Proto expression tree is held by
+        reference. That means that building an expression tree is exceptionally cheap.
+        It involves no copying at all.
+      </p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+          An astute reader will notice that the object <code class="computeroutput"><span class="identifier">y</span></code>
+          defined above will be left holding a dangling reference to a temporary
+          int. In the sorts of high-performance applications Proto addresses, it
+          is typical to build and evaluate an expression tree before any temporary
+          objects go out of scope, so this dangling reference situation often doesn't
+          arise, but it is certainly something to be aware of. Proto provides utilities
+          for deep-copying expression trees so they can be passed around as value
+          types without concern for dangling references.
+        </p></td></tr>
+</table></div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2008 Eric Niebler<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="front_end/code_repetition.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../proto/users_guide.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="intermediate_form/left_right_child.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

@@ -1,0 +1,37 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="structboost_1_1geometry_1_1cs_1_1geographic" kind="struct" prot="public">
+    <compoundname>boost::geometry::cs::geographic</compoundname>
+    <includes local="no">cs.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename DegreeOrRadian</type>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-type">
+      <memberdef kind="typedef" id="structboost_1_1geometry_1_1cs_1_1geographic_1a92837e3e0b3a77c3a1226541737eb644" prot="public" static="no">
+        <type>core_detail::coordinate_system_units&lt; DegreeOrRadian &gt;::<ref refid="structboost_1_1geometry_1_1cs_1_1geographic_1a92837e3e0b3a77c3a1226541737eb644" kindref="member">units</ref></type>
+        <definition>typedef core_detail::coordinate_system_units&lt; DegreeOrRadian &gt;::units boost::geometry::cs::geographic&lt; DegreeOrRadian &gt;::units</definition>
+        <argsstring></argsstring>
+        <name>units</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/core/cs.hpp" line="114" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/core/cs.hpp" bodystart="114" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+<para>Geographic coordinate system, in degree or in radian. </para>    </briefdescription>
+    <detaileddescription>
+<para>Defines the geographic coordinate system where points are defined in two angles and usually known as lat,long or lo,la or phi,lambda <simplesect kind="see"><para><ulink url="http://en.wikipedia.org/wiki/Geographic_coordinate_system">http://en.wikipedia.org/wiki/Geographic_coordinate_system</ulink></para></simplesect>
+<simplesect kind="note"><para>might be moved to extensions/gis/geographic </para></simplesect>
+</para>    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/core/cs.hpp" line="110" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/core/cs.hpp" bodystart="109" bodyend="115"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1cs_1_1geographic_1a92837e3e0b3a77c3a1226541737eb644" prot="public" virt="non-virtual"><scope>boost::geometry::cs::geographic</scope><name>units</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

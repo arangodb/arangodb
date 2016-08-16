@@ -1,0 +1,86 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="structboost_1_1geometry_1_1detail_1_1result__direct" kind="struct" prot="public">
+    <compoundname>boost::geometry::detail::result_direct</compoundname>
+    <includes local="no">vincenty_direct.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename T</type>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="structboost_1_1geometry_1_1detail_1_1result__direct_1a6f161a5c3dac36bdd9ec4f593784b547" prot="public" static="no" mutable="no">
+        <type>T</type>
+        <definition>T boost::geometry::detail::result_direct&lt; T &gt;::lat2</definition>
+        <argsstring></argsstring>
+        <name>lat2</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/vincenty_direct.hpp" line="45" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/vincenty_direct.hpp" bodystart="45" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structboost_1_1geometry_1_1detail_1_1result__direct_1a8a91f8ac4e7a1531bad37f6c99169841" prot="public" static="no" mutable="no">
+        <type>T</type>
+        <definition>T boost::geometry::detail::result_direct&lt; T &gt;::lon2</definition>
+        <argsstring></argsstring>
+        <name>lon2</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/vincenty_direct.hpp" line="44" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/vincenty_direct.hpp" bodystart="44" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="structboost_1_1geometry_1_1detail_1_1result__direct_1aad5372c0b014aa5c3f110914c1b6928b" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>void</type>
+        <definition>void boost::geometry::detail::result_direct&lt; T &gt;::set</definition>
+        <argsstring>(T const &amp;lo2, T const &amp;la2)</argsstring>
+        <name>set</name>
+        <param>
+          <type>T const &amp;</type>
+          <declname>lo2</declname>
+        </param>
+        <param>
+          <type>T const &amp;</type>
+          <declname>la2</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/vincenty_direct.hpp" line="40" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/vincenty_direct.hpp" bodystart="39" bodyend="43"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <collaborationgraph>
+      <node id="235">
+        <label>T</label>
+      </node>
+      <node id="234">
+        <label>boost::geometry::detail::result_direct&lt; T &gt;</label>
+        <link refid="structboost_1_1geometry_1_1detail_1_1result__direct"/>
+        <childnode refid="235" relation="usage">
+          <edgelabel>lat2</edgelabel>
+          <edgelabel>lon2</edgelabel>
+        </childnode>
+      </node>
+    </collaborationgraph>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/vincenty_direct.hpp" line="38" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/vincenty_direct.hpp" bodystart="37" bodyend="46"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1detail_1_1result__direct_1a6f161a5c3dac36bdd9ec4f593784b547" prot="public" virt="non-virtual"><scope>boost::geometry::detail::result_direct</scope><name>lat2</name></member>
+      <member refid="structboost_1_1geometry_1_1detail_1_1result__direct_1a8a91f8ac4e7a1531bad37f6c99169841" prot="public" virt="non-virtual"><scope>boost::geometry::detail::result_direct</scope><name>lon2</name></member>
+      <member refid="structboost_1_1geometry_1_1detail_1_1result__direct_1aad5372c0b014aa5c3f110914c1b6928b" prot="public" virt="non-virtual"><scope>boost::geometry::detail::result_direct</scope><name>set</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

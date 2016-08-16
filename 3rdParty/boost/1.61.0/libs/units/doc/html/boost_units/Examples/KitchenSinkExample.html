@@ -1,0 +1,395 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Kitchen Sink Example using SI units</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../../index.html" title="Chapter&#160;1.&#160;Boost.Units 1.1.0">
+<link rel="up" href="../Examples.html" title="Examples">
+<link rel="prev" href="QuantityExample.html" title="Quantity Example">
+<link rel="next" href="ConversionExample.html" title="Conversion Example">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="QuantityExample.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../Examples.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="ConversionExample.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_units.Examples.KitchenSinkExample"></a><a class="link" href="KitchenSinkExample.html" title="Kitchen Sink Example using SI units">Kitchen Sink
+      Example using SI units</a>
+</h3></div></div></div>
+<div class="toc"><dl><dt><span class="section"><a href="KitchenSinkExample.html#boost_units.Examples.KitchenSinkExample.UDT_Quantities">User-defined
+        value types</a></span></dt></dl></div>
+<p>
+        (<a href="../../../../libs/units/example/kitchen_sink.cpp" target="_top">kitchen_sink.cpp</a>)
+      </p>
+<p>
+        This example provides a fairly extensive set of tests covering most of the
+        <span class="underline"><code class="computeroutput"><a class="link" href="../../boost/units/quantity.html" title="Class template quantity">quantity</a></code></span>
+        functionality. It uses the SI unit system defined in <code class="computeroutput"><a class="link" href="../../si_system_reference.html#header.boost.units.systems.si_hpp" title="Header &lt;boost/units/systems/si.hpp&gt;">boost/units/systems/si.hpp</a></code>.
+      </p>
+<p>
+        If we define a few units and associated quantities,
+      </p>
+<p>
+</p>
+<pre class="programlisting"><span class="comment">/// scalar</span>
+<span class="keyword">const</span> <span class="keyword">double</span>    <span class="identifier">s1</span> <span class="special">=</span> <span class="number">2</span><span class="special">;</span>
+
+<span class="keyword">const</span> <span class="keyword">long</span>                  <span class="identifier">x1</span> <span class="special">=</span> <span class="number">2</span><span class="special">;</span>
+<span class="keyword">const</span> <span class="identifier">static_rational</span><span class="special">&lt;</span><span class="number">4</span><span class="special">,</span><span class="number">3</span><span class="special">&gt;</span>  <span class="identifier">x2</span><span class="special">;</span>
+
+<span class="comment">/// define some units</span>
+<span class="identifier">force</span>       <span class="identifier">u1</span> <span class="special">=</span> <span class="identifier">newton</span><span class="special">;</span>
+<span class="identifier">energy</span>      <span class="identifier">u2</span> <span class="special">=</span> <span class="identifier">joule</span><span class="special">;</span>
+
+<span class="comment">/// define some quantities</span>
+<span class="identifier">quantity</span><span class="special">&lt;</span><span class="identifier">force</span><span class="special">&gt;</span>      <span class="identifier">q1</span><span class="special">(</span><span class="number">1.0</span><span class="special">*</span><span class="identifier">u1</span><span class="special">);</span>
+<span class="identifier">quantity</span><span class="special">&lt;</span><span class="identifier">energy</span><span class="special">&gt;</span>     <span class="identifier">q2</span><span class="special">(</span><span class="number">2.0</span><span class="special">*</span><span class="identifier">u2</span><span class="special">);</span>
+</pre>
+<p>
+      </p>
+<p>
+        the various algebraic operations between scalars, units, and quantities give
+      </p>
+<p>
+</p>
+<pre class="programlisting"><span class="identifier">S1</span> <span class="special">:</span>    <span class="number">2</span>
+<span class="identifier">X1</span> <span class="special">:</span>    <span class="number">2</span>
+<span class="identifier">X2</span> <span class="special">:</span>    <span class="special">(</span><span class="number">4</span><span class="special">/</span><span class="number">3</span><span class="special">)</span>
+<span class="identifier">U1</span> <span class="special">:</span>    <span class="identifier">N</span>
+<span class="identifier">U2</span> <span class="special">:</span>    <span class="identifier">J</span>
+<span class="identifier">Q1</span> <span class="special">:</span>    <span class="number">1</span> <span class="identifier">N</span>
+<span class="identifier">Q2</span> <span class="special">:</span>    <span class="number">2</span> <span class="identifier">J</span>
+</pre>
+<p>
+      </p>
+<p>
+        Scalar/unit operations :
+      </p>
+<p>
+</p>
+<pre class="programlisting"><span class="identifier">U1</span><span class="special">*</span><span class="identifier">S1</span> <span class="special">:</span> <span class="number">2</span> <span class="identifier">N</span>
+<span class="identifier">S1</span><span class="special">*</span><span class="identifier">U1</span> <span class="special">:</span> <span class="number">2</span> <span class="identifier">N</span>
+<span class="identifier">U1</span><span class="special">/</span><span class="identifier">S1</span> <span class="special">:</span> <span class="number">0.5</span> <span class="identifier">N</span>
+<span class="identifier">S1</span><span class="special">/</span><span class="identifier">U1</span> <span class="special">:</span> <span class="number">2</span> <span class="identifier">m</span><span class="special">^-</span><span class="number">1</span> <span class="identifier">kg</span><span class="special">^-</span><span class="number">1</span> <span class="identifier">s</span><span class="special">^</span><span class="number">2</span>
+</pre>
+<p>
+      </p>
+<p>
+        Unit/unit operations and integral/rational powers of units :
+      </p>
+<p>
+</p>
+<pre class="programlisting"><span class="identifier">U1</span><span class="special">+</span><span class="identifier">U1</span> <span class="special">:</span> <span class="identifier">N</span>
+<span class="identifier">U1</span><span class="special">-</span><span class="identifier">U1</span> <span class="special">:</span> <span class="identifier">N</span>
+<span class="identifier">U1</span><span class="special">*</span><span class="identifier">U1</span> <span class="special">:</span> <span class="identifier">m</span><span class="special">^</span><span class="number">2</span> <span class="identifier">kg</span><span class="special">^</span><span class="number">2</span> <span class="identifier">s</span><span class="special">^-</span><span class="number">4</span>
+<span class="identifier">U1</span><span class="special">/</span><span class="identifier">U1</span> <span class="special">:</span> <span class="identifier">dimensionless</span>
+<span class="identifier">U1</span><span class="special">*</span><span class="identifier">U2</span> <span class="special">:</span> <span class="identifier">m</span><span class="special">^</span><span class="number">3</span> <span class="identifier">kg</span><span class="special">^</span><span class="number">2</span> <span class="identifier">s</span><span class="special">^-</span><span class="number">4</span>
+<span class="identifier">U1</span><span class="special">/</span><span class="identifier">U2</span> <span class="special">:</span> <span class="identifier">m</span><span class="special">^-</span><span class="number">1</span>
+<span class="identifier">U1</span><span class="special">^</span><span class="identifier">X</span>  <span class="special">:</span> <span class="identifier">m</span><span class="special">^</span><span class="number">2</span> <span class="identifier">kg</span><span class="special">^</span><span class="number">2</span> <span class="identifier">s</span><span class="special">^-</span><span class="number">4</span>
+<span class="identifier">X1vU1</span> <span class="special">:</span> <span class="identifier">m</span><span class="special">^(</span><span class="number">1</span><span class="special">/</span><span class="number">2</span><span class="special">)</span> <span class="identifier">kg</span><span class="special">^(</span><span class="number">1</span><span class="special">/</span><span class="number">2</span><span class="special">)</span> <span class="identifier">s</span><span class="special">^-</span><span class="number">1</span>
+<span class="identifier">U1</span><span class="special">^</span><span class="identifier">X2</span> <span class="special">:</span> <span class="identifier">m</span><span class="special">^(</span><span class="number">4</span><span class="special">/</span><span class="number">3</span><span class="special">)</span> <span class="identifier">kg</span><span class="special">^(</span><span class="number">4</span><span class="special">/</span><span class="number">3</span><span class="special">)</span> <span class="identifier">s</span><span class="special">^(-</span><span class="number">8</span><span class="special">/</span><span class="number">3</span><span class="special">)</span>
+<span class="identifier">X2vU1</span> <span class="special">:</span> <span class="identifier">m</span><span class="special">^(</span><span class="number">3</span><span class="special">/</span><span class="number">4</span><span class="special">)</span> <span class="identifier">kg</span><span class="special">^(</span><span class="number">3</span><span class="special">/</span><span class="number">4</span><span class="special">)</span> <span class="identifier">s</span><span class="special">^(-</span><span class="number">3</span><span class="special">/</span><span class="number">2</span><span class="special">)</span>
+</pre>
+<p>
+      </p>
+<p>
+        Scalar/quantity operations :
+      </p>
+<p>
+</p>
+<pre class="programlisting"><span class="identifier">Q1</span><span class="special">*</span><span class="identifier">S1</span> <span class="special">:</span> <span class="number">2</span> <span class="identifier">N</span>
+<span class="identifier">S1</span><span class="special">*</span><span class="identifier">Q1</span> <span class="special">:</span> <span class="number">2</span> <span class="identifier">N</span>
+<span class="identifier">Q1</span><span class="special">/</span><span class="identifier">S1</span> <span class="special">:</span> <span class="number">0.5</span> <span class="identifier">N</span>
+<span class="identifier">S1</span><span class="special">/</span><span class="identifier">Q1</span> <span class="special">:</span> <span class="number">2</span> <span class="identifier">m</span><span class="special">^-</span><span class="number">1</span> <span class="identifier">kg</span><span class="special">^-</span><span class="number">1</span> <span class="identifier">s</span><span class="special">^</span><span class="number">2</span>
+</pre>
+<p>
+      </p>
+<p>
+        Unit/quantity operations :
+      </p>
+<p>
+</p>
+<pre class="programlisting"><span class="identifier">U1</span><span class="special">*</span><span class="identifier">Q1</span> <span class="special">:</span> <span class="number">1</span> <span class="identifier">m</span><span class="special">^</span><span class="number">2</span> <span class="identifier">kg</span><span class="special">^</span><span class="number">2</span> <span class="identifier">s</span><span class="special">^-</span><span class="number">4</span>
+<span class="identifier">Q1</span><span class="special">*</span><span class="identifier">U1</span> <span class="special">:</span> <span class="number">1</span> <span class="identifier">m</span><span class="special">^</span><span class="number">2</span> <span class="identifier">kg</span><span class="special">^</span><span class="number">2</span> <span class="identifier">s</span><span class="special">^-</span><span class="number">4</span>
+<span class="identifier">U1</span><span class="special">/</span><span class="identifier">Q1</span> <span class="special">:</span> <span class="number">1</span> <span class="identifier">dimensionless</span>
+<span class="identifier">Q1</span><span class="special">/</span><span class="identifier">U1</span> <span class="special">:</span> <span class="number">1</span> <span class="identifier">dimensionless</span>
+</pre>
+<p>
+      </p>
+<p>
+        Quantity/quantity operations and integral/rational powers of quantities :
+      </p>
+<p>
+</p>
+<pre class="programlisting"><span class="special">+</span><span class="identifier">Q1</span>   <span class="special">:</span> <span class="number">1</span> <span class="identifier">N</span>
+<span class="special">-</span><span class="identifier">Q1</span>   <span class="special">:</span> <span class="special">-</span><span class="number">1</span> <span class="identifier">N</span>
+<span class="identifier">Q1</span><span class="special">+</span><span class="identifier">Q1</span> <span class="special">:</span> <span class="number">2</span> <span class="identifier">N</span>
+<span class="identifier">Q1</span><span class="special">-</span><span class="identifier">Q1</span> <span class="special">:</span> <span class="number">0</span> <span class="identifier">N</span>
+<span class="identifier">Q1</span><span class="special">*</span><span class="identifier">Q1</span> <span class="special">:</span> <span class="number">1</span> <span class="identifier">m</span><span class="special">^</span><span class="number">2</span> <span class="identifier">kg</span><span class="special">^</span><span class="number">2</span> <span class="identifier">s</span><span class="special">^-</span><span class="number">4</span>
+<span class="identifier">Q1</span><span class="special">/</span><span class="identifier">Q1</span> <span class="special">:</span> <span class="number">1</span> <span class="identifier">dimensionless</span>
+<span class="identifier">Q1</span><span class="special">*</span><span class="identifier">Q2</span> <span class="special">:</span> <span class="number">2</span> <span class="identifier">m</span><span class="special">^</span><span class="number">3</span> <span class="identifier">kg</span><span class="special">^</span><span class="number">2</span> <span class="identifier">s</span><span class="special">^-</span><span class="number">4</span>
+<span class="identifier">Q1</span><span class="special">/</span><span class="identifier">Q2</span> <span class="special">:</span> <span class="number">0.5</span> <span class="identifier">m</span><span class="special">^-</span><span class="number">1</span>
+<span class="identifier">Q1</span><span class="special">^</span><span class="identifier">X1</span> <span class="special">:</span> <span class="number">1</span> <span class="identifier">m</span><span class="special">^</span><span class="number">2</span> <span class="identifier">kg</span><span class="special">^</span><span class="number">2</span> <span class="identifier">s</span><span class="special">^-</span><span class="number">4</span>
+<span class="identifier">X1vQ1</span> <span class="special">:</span> <span class="number">1</span> <span class="identifier">m</span><span class="special">^(</span><span class="number">1</span><span class="special">/</span><span class="number">2</span><span class="special">)</span> <span class="identifier">kg</span><span class="special">^(</span><span class="number">1</span><span class="special">/</span><span class="number">2</span><span class="special">)</span> <span class="identifier">s</span><span class="special">^-</span><span class="number">1</span>
+<span class="identifier">Q1</span><span class="special">^</span><span class="identifier">X2</span> <span class="special">:</span> <span class="number">1</span> <span class="identifier">m</span><span class="special">^(</span><span class="number">4</span><span class="special">/</span><span class="number">3</span><span class="special">)</span> <span class="identifier">kg</span><span class="special">^(</span><span class="number">4</span><span class="special">/</span><span class="number">3</span><span class="special">)</span> <span class="identifier">s</span><span class="special">^(-</span><span class="number">8</span><span class="special">/</span><span class="number">3</span><span class="special">)</span>
+<span class="identifier">X2vQ1</span> <span class="special">:</span> <span class="number">1</span> <span class="identifier">m</span><span class="special">^(</span><span class="number">3</span><span class="special">/</span><span class="number">4</span><span class="special">)</span> <span class="identifier">kg</span><span class="special">^(</span><span class="number">3</span><span class="special">/</span><span class="number">4</span><span class="special">)</span> <span class="identifier">s</span><span class="special">^(-</span><span class="number">3</span><span class="special">/</span><span class="number">2</span><span class="special">)</span>
+</pre>
+<p>
+      </p>
+<p>
+        Logical comparison operators are also defined between quantities :
+      </p>
+<p>
+</p>
+<pre class="programlisting"><span class="comment">/// check comparison tests</span>
+<span class="identifier">quantity</span><span class="special">&lt;</span><span class="identifier">length</span><span class="special">&gt;</span>    <span class="identifier">l1</span><span class="special">(</span><span class="number">1.0</span><span class="special">*</span><span class="identifier">meter</span><span class="special">),</span>
+                    <span class="identifier">l2</span><span class="special">(</span><span class="number">2.0</span><span class="special">*</span><span class="identifier">meters</span><span class="special">);</span>
+</pre>
+<p>
+      </p>
+<p>
+        giving
+      </p>
+<p>
+</p>
+<pre class="programlisting"><span class="identifier">l1</span> <span class="special">==</span> <span class="identifier">l2</span>    <span class="keyword">false</span>
+<span class="identifier">l1</span> <span class="special">!=</span> <span class="identifier">l2</span>    <span class="keyword">true</span>
+<span class="identifier">l1</span> <span class="special">&lt;=</span> <span class="identifier">l2</span>    <span class="keyword">true</span>
+<span class="identifier">l1</span> <span class="special">&lt;</span> <span class="identifier">l2</span>     <span class="keyword">true</span>
+<span class="identifier">l1</span> <span class="special">&gt;=</span> <span class="identifier">l2</span>    <span class="keyword">false</span>
+<span class="identifier">l1</span> <span class="special">&gt;</span> <span class="identifier">l2</span>     <span class="keyword">false</span>
+</pre>
+<p>
+      </p>
+<p>
+        Implicit conversion is allowed between dimensionless quantities and their
+        corresponding value types :
+      </p>
+<p>
+</p>
+<pre class="programlisting"><span class="comment">/// check implicit unit conversion from dimensionless to value_type  </span>
+<span class="keyword">const</span> <span class="keyword">double</span>    <span class="identifier">dimless</span> <span class="special">=</span> <span class="special">(</span><span class="identifier">q1</span><span class="special">/</span><span class="identifier">q1</span><span class="special">);</span>
+</pre>
+<p>
+      </p>
+<p>
+        A generic function for computing mechanical work can be defined that takes
+        force and distance arguments in an arbitrary unit system and returns energy
+        in the same system:
+      </p>
+<p>
+</p>
+<pre class="programlisting"><span class="comment">/// the physical definition of work - computed for an arbitrary unit system </span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">System</span><span class="special">,</span><span class="keyword">class</span> <span class="identifier">Y</span><span class="special">&gt;</span>
+<span class="identifier">quantity</span><span class="special">&lt;</span><span class="identifier">unit</span><span class="special">&lt;</span><span class="identifier">energy_dimension</span><span class="special">,</span><span class="identifier">System</span><span class="special">&gt;,</span><span class="identifier">Y</span><span class="special">&gt;</span>
+<span class="identifier">work</span><span class="special">(</span><span class="identifier">quantity</span><span class="special">&lt;</span><span class="identifier">unit</span><span class="special">&lt;</span><span class="identifier">force_dimension</span><span class="special">,</span><span class="identifier">System</span><span class="special">&gt;,</span><span class="identifier">Y</span><span class="special">&gt;</span> <span class="identifier">F</span><span class="special">,</span>
+     <span class="identifier">quantity</span><span class="special">&lt;</span><span class="identifier">unit</span><span class="special">&lt;</span><span class="identifier">length_dimension</span><span class="special">,</span><span class="identifier">System</span><span class="special">&gt;,</span><span class="identifier">Y</span><span class="special">&gt;</span> <span class="identifier">dx</span><span class="special">)</span>
+<span class="special">{</span>
+    <span class="keyword">return</span> <span class="identifier">F</span><span class="special">*</span><span class="identifier">dx</span><span class="special">;</span>
+<span class="special">}</span>
+</pre>
+<p>
+      </p>
+<p>
+</p>
+<pre class="programlisting"><span class="comment">/// test calcuation of work</span>
+<span class="identifier">quantity</span><span class="special">&lt;</span><span class="identifier">force</span><span class="special">&gt;</span>       <span class="identifier">F</span><span class="special">(</span><span class="number">1.0</span><span class="special">*</span><span class="identifier">newton</span><span class="special">);</span>
+<span class="identifier">quantity</span><span class="special">&lt;</span><span class="identifier">length</span><span class="special">&gt;</span>      <span class="identifier">dx</span><span class="special">(</span><span class="number">1.0</span><span class="special">*</span><span class="identifier">meter</span><span class="special">);</span>
+<span class="identifier">quantity</span><span class="special">&lt;</span><span class="identifier">energy</span><span class="special">&gt;</span>      <span class="identifier">E</span><span class="special">(</span><span class="identifier">work</span><span class="special">(</span><span class="identifier">F</span><span class="special">,</span><span class="identifier">dx</span><span class="special">));</span>
+</pre>
+<p>
+      </p>
+<p>
+        which functions as expected for SI quantities :
+      </p>
+<p>
+</p>
+<pre class="programlisting"><span class="identifier">F</span>  <span class="special">=</span> <span class="number">1</span> <span class="identifier">N</span>
+<span class="identifier">dx</span> <span class="special">=</span> <span class="number">1</span> <span class="identifier">m</span>
+<span class="identifier">E</span>  <span class="special">=</span> <span class="number">1</span> <span class="identifier">J</span>
+</pre>
+<p>
+      </p>
+<p>
+        The ideal gas law can also be implemented in SI units :
+      </p>
+<p>
+</p>
+<pre class="programlisting"><span class="comment">/// the ideal gas law in si units</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Y</span><span class="special">&gt;</span>
+<span class="identifier">quantity</span><span class="special">&lt;</span><span class="identifier">si</span><span class="special">::</span><span class="identifier">amount</span><span class="special">,</span><span class="identifier">Y</span><span class="special">&gt;</span>
+<span class="identifier">idealGasLaw</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">quantity</span><span class="special">&lt;</span><span class="identifier">si</span><span class="special">::</span><span class="identifier">pressure</span><span class="special">,</span><span class="identifier">Y</span><span class="special">&gt;&amp;</span> <span class="identifier">P</span><span class="special">,</span>
+            <span class="keyword">const</span> <span class="identifier">quantity</span><span class="special">&lt;</span><span class="identifier">si</span><span class="special">::</span><span class="identifier">volume</span><span class="special">,</span><span class="identifier">Y</span><span class="special">&gt;&amp;</span> <span class="identifier">V</span><span class="special">,</span>
+            <span class="keyword">const</span> <span class="identifier">quantity</span><span class="special">&lt;</span><span class="identifier">si</span><span class="special">::</span><span class="identifier">temperature</span><span class="special">,</span><span class="identifier">Y</span><span class="special">&gt;&amp;</span> <span class="identifier">T</span><span class="special">)</span>
+<span class="special">{</span>
+    <span class="keyword">using</span> <span class="keyword">namespace</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">units</span><span class="special">::</span><span class="identifier">si</span><span class="special">;</span>
+
+    <span class="keyword">using</span> <span class="keyword">namespace</span> <span class="identifier">constants</span><span class="special">::</span><span class="identifier">codata</span><span class="special">;</span>
+    <span class="keyword">return</span> <span class="special">(</span><span class="identifier">P</span><span class="special">*</span><span class="identifier">V</span><span class="special">/(</span><span class="identifier">R</span><span class="special">*</span><span class="identifier">T</span><span class="special">));</span>
+<span class="special">}</span>
+</pre>
+<p>
+      </p>
+<p>
+</p>
+<pre class="programlisting"><span class="comment">/// test ideal gas law</span>
+<span class="identifier">quantity</span><span class="special">&lt;</span><span class="identifier">temperature</span><span class="special">&gt;</span>   <span class="identifier">T</span> <span class="special">=</span> <span class="special">(</span><span class="number">273.</span><span class="special">+</span><span class="number">37.</span><span class="special">)*</span><span class="identifier">kelvin</span><span class="special">;</span>
+<span class="identifier">quantity</span><span class="special">&lt;</span><span class="identifier">pressure</span><span class="special">&gt;</span>      <span class="identifier">P</span> <span class="special">=</span> <span class="number">1.01325e5</span><span class="special">*</span><span class="identifier">pascals</span><span class="special">;</span>
+<span class="identifier">quantity</span><span class="special">&lt;</span><span class="identifier">length</span><span class="special">&gt;</span>        <span class="identifier">r</span> <span class="special">=</span> <span class="number">0.5e-6</span><span class="special">*</span><span class="identifier">meters</span><span class="special">;</span>
+<span class="identifier">quantity</span><span class="special">&lt;</span><span class="identifier">volume</span><span class="special">&gt;</span>        <span class="identifier">V</span> <span class="special">=</span> <span class="special">(</span><span class="number">4.0</span><span class="special">/</span><span class="number">3.0</span><span class="special">)*</span><span class="number">3.141592</span><span class="special">*</span><span class="identifier">pow</span><span class="special">&lt;</span><span class="number">3</span><span class="special">&gt;(</span><span class="identifier">r</span><span class="special">);</span>
+<span class="identifier">quantity</span><span class="special">&lt;</span><span class="identifier">amount</span><span class="special">&gt;</span>        <span class="identifier">n</span><span class="special">(</span><span class="identifier">idealGasLaw</span><span class="special">(</span><span class="identifier">P</span><span class="special">,</span><span class="identifier">V</span><span class="special">,</span><span class="identifier">T</span><span class="special">));</span>
+</pre>
+<p>
+      </p>
+<p>
+        with the resulting output :
+      </p>
+<p>
+</p>
+<pre class="programlisting"><span class="identifier">r</span> <span class="special">=</span> <span class="number">5e-07</span> <span class="identifier">m</span>
+<span class="identifier">P</span> <span class="special">=</span> <span class="number">101325</span> <span class="identifier">Pa</span>
+<span class="identifier">V</span> <span class="special">=</span> <span class="number">5.23599e-19</span> <span class="identifier">m</span><span class="special">^</span><span class="number">3</span>
+<span class="identifier">T</span> <span class="special">=</span> <span class="number">310</span> <span class="identifier">K</span>
+<span class="identifier">n</span> <span class="special">=</span> <span class="number">2.05835e-17</span> <span class="identifier">mol</span>
+<span class="identifier">R</span> <span class="special">=</span> <span class="number">8.314472</span> <span class="identifier">m</span><span class="special">^</span><span class="number">2</span> <span class="identifier">kg</span> <span class="identifier">s</span><span class="special">^-</span><span class="number">2</span> <span class="identifier">K</span><span class="special">^-</span><span class="number">1</span> <span class="identifier">mol</span><span class="special">^-</span><span class="number">1</span> <span class="special">(</span><span class="identifier">rel</span><span class="special">.</span> <span class="identifier">unc</span><span class="special">.</span> <span class="special">=</span> <span class="number">1.8e-06</span><span class="special">)</span>
+</pre>
+<p>
+      </p>
+<p>
+        Trigonometric and inverse trigonometric functions can be implemented for
+        any unit system that provides an angular base dimension. For radians, these
+        functions are found in <code class="computeroutput"><a class="link" href="../Reference.html#header.boost.units.cmath_hpp" title="Header &lt;boost/units/cmath.hpp&gt;">boost/units/cmath.hpp</a></code>
+        These behave as one expects, with trigonometric functions taking an angular
+        quantity and returning a dimensionless quantity, while the inverse trigonometric
+        functions take a dimensionless quantity and return an angular quantity :
+      </p>
+<p>
+        Defining a few angular quantities,
+      </p>
+<p>
+</p>
+<pre class="programlisting"><span class="comment">/// test trig stuff</span>
+<span class="identifier">quantity</span><span class="special">&lt;</span><span class="identifier">plane_angle</span><span class="special">&gt;</span>           <span class="identifier">theta</span> <span class="special">=</span> <span class="number">0.375</span><span class="special">*</span><span class="identifier">radians</span><span class="special">;</span>
+<span class="identifier">quantity</span><span class="special">&lt;</span><span class="identifier">dimensionless</span><span class="special">&gt;</span>         <span class="identifier">sin_theta</span> <span class="special">=</span> <span class="identifier">sin</span><span class="special">(</span><span class="identifier">theta</span><span class="special">);</span>
+<span class="identifier">quantity</span><span class="special">&lt;</span><span class="identifier">plane_angle</span><span class="special">&gt;</span>           <span class="identifier">thetap</span> <span class="special">=</span> <span class="identifier">asin</span><span class="special">(</span><span class="identifier">sin_theta</span><span class="special">);</span>
+</pre>
+<p>
+      </p>
+<p>
+        yields
+      </p>
+<p>
+</p>
+<pre class="programlisting"><span class="identifier">theta</span>            <span class="special">=</span> <span class="number">0.375</span> <span class="identifier">rd</span>
+<span class="identifier">sin</span><span class="special">(</span><span class="identifier">theta</span><span class="special">)</span>       <span class="special">=</span> <span class="number">0.366273</span> <span class="identifier">dimensionless</span>
+<span class="identifier">asin</span><span class="special">(</span><span class="identifier">sin</span><span class="special">(</span><span class="identifier">theta</span><span class="special">))</span> <span class="special">=</span> <span class="number">0.375</span> <span class="identifier">rd</span>
+</pre>
+<p>
+      </p>
+<p>
+        Dealing with complex quantities is trivial. Here is the calculation of complex
+        impedance :
+      </p>
+<p>
+</p>
+<pre class="programlisting"><span class="identifier">quantity</span><span class="special">&lt;</span><span class="identifier">electric_potential</span><span class="special">,</span><span class="identifier">complex_type</span><span class="special">&gt;</span> <span class="identifier">v</span> <span class="special">=</span> <span class="identifier">complex_type</span><span class="special">(</span><span class="number">12.5</span><span class="special">,</span><span class="number">0.0</span><span class="special">)*</span><span class="identifier">volts</span><span class="special">;</span>
+<span class="identifier">quantity</span><span class="special">&lt;</span><span class="identifier">current</span><span class="special">,</span><span class="identifier">complex_type</span><span class="special">&gt;</span>            <span class="identifier">i</span> <span class="special">=</span> <span class="identifier">complex_type</span><span class="special">(</span><span class="number">3.0</span><span class="special">,</span><span class="number">4.0</span><span class="special">)*</span><span class="identifier">amperes</span><span class="special">;</span>
+<span class="identifier">quantity</span><span class="special">&lt;</span><span class="identifier">resistance</span><span class="special">,</span><span class="identifier">complex_type</span><span class="special">&gt;</span>         <span class="identifier">z</span> <span class="special">=</span> <span class="identifier">complex_type</span><span class="special">(</span><span class="number">1.5</span><span class="special">,-</span><span class="number">2.0</span><span class="special">)*</span><span class="identifier">ohms</span><span class="special">;</span>
+</pre>
+<p>
+      </p>
+<p>
+        giving
+      </p>
+<p>
+</p>
+<pre class="programlisting"><span class="identifier">V</span>   <span class="special">=</span> <span class="special">(</span><span class="number">12.5</span><span class="special">,</span><span class="number">0</span><span class="special">)</span> <span class="identifier">V</span>
+<span class="identifier">I</span>   <span class="special">=</span> <span class="special">(</span><span class="number">3</span><span class="special">,</span><span class="number">4</span><span class="special">)</span> <span class="identifier">A</span>
+<span class="identifier">Z</span>   <span class="special">=</span> <span class="special">(</span><span class="number">1.5</span><span class="special">,-</span><span class="number">2</span><span class="special">)</span> <span class="identifier">Ohm</span>
+<span class="identifier">I</span><span class="special">*</span><span class="identifier">Z</span> <span class="special">=</span> <span class="special">(</span><span class="number">12.5</span><span class="special">,</span><span class="number">0</span><span class="special">)</span> <span class="identifier">V</span>
+</pre>
+<p>
+      </p>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="boost_units.Examples.KitchenSinkExample.UDT_Quantities"></a><a class="link" href="KitchenSinkExample.html#boost_units.Examples.KitchenSinkExample.UDT_Quantities" title="User-defined value types">User-defined
+        value types</a>
+</h4></div></div></div>
+<p>
+          User-defined value types that support the appropriate arithmetic operations
+          are automatically supported as quantity value types. The operators that
+          are supported by default for quantity value types are unary plus, unary
+          minus, addition, subtraction, multiplication, division, equal-to, not-equal-to,
+          less-than, less-or-equal-to, greater-than, and greater-or-equal-to. Support
+          for rational powers and roots can be added by overloading the <span class="underline"><code class="computeroutput"><a class="link" href="../../boost/units/power_typeof_helper.html" title="Struct template power_typeof_helper">power_typeof_helper</a></code></span>
+          and <span class="underline"><code class="computeroutput"><a class="link" href="../../boost/units/root_typeof_helper.html" title="Struct template root_typeof_helper">root_typeof_helper</a></code></span>
+          classes. Here we implement a user-defined <code class="computeroutput"><span class="identifier">measurement</span></code>
+          class that models a numerical measurement with an associated measurement
+          error and the appropriate algebra and demonstrates its use as a quantity
+          value type; the full code is found in <a href="../../../../libs/units/example/measurement.hpp" target="_top">measurement.hpp</a>.
+        </p>
+<p>
+          Then, defining some <code class="computeroutput"><span class="identifier">measurement</span></code>
+          <span class="underline"><code class="computeroutput"><a class="link" href="../../boost/units/quantity.html" title="Class template quantity">quantity</a></code></span>
+          variables
+        </p>
+<p>
+</p>
+<pre class="programlisting"><span class="identifier">quantity</span><span class="special">&lt;</span><span class="identifier">length</span><span class="special">,</span><span class="identifier">measurement</span><span class="special">&lt;</span><span class="keyword">double</span><span class="special">&gt;</span> <span class="special">&gt;</span>
+    <span class="identifier">u</span><span class="special">(</span><span class="identifier">measurement</span><span class="special">&lt;</span><span class="keyword">double</span><span class="special">&gt;(</span><span class="number">1.0</span><span class="special">,</span><span class="number">0.0</span><span class="special">)*</span><span class="identifier">meters</span><span class="special">),</span>
+    <span class="identifier">w</span><span class="special">(</span><span class="identifier">measurement</span><span class="special">&lt;</span><span class="keyword">double</span><span class="special">&gt;(</span><span class="number">4.52</span><span class="special">,</span><span class="number">0.02</span><span class="special">)*</span><span class="identifier">meters</span><span class="special">),</span>
+    <span class="identifier">x</span><span class="special">(</span><span class="identifier">measurement</span><span class="special">&lt;</span><span class="keyword">double</span><span class="special">&gt;(</span><span class="number">2.0</span><span class="special">,</span><span class="number">0.2</span><span class="special">)*</span><span class="identifier">meters</span><span class="special">),</span>
+    <span class="identifier">y</span><span class="special">(</span><span class="identifier">measurement</span><span class="special">&lt;</span><span class="keyword">double</span><span class="special">&gt;(</span><span class="number">3.0</span><span class="special">,</span><span class="number">0.6</span><span class="special">)*</span><span class="identifier">meters</span><span class="special">);</span>
+</pre>
+<p>
+        </p>
+<p>
+          gives
+        </p>
+<p>
+</p>
+<pre class="programlisting"><span class="identifier">x</span><span class="special">+</span><span class="identifier">y</span><span class="special">-</span><span class="identifier">w</span>         <span class="special">=</span> <span class="number">0.48</span><span class="special">(+/-</span><span class="number">0.632772</span><span class="special">)</span> <span class="identifier">m</span>
+<span class="identifier">w</span><span class="special">*</span><span class="identifier">x</span>           <span class="special">=</span> <span class="number">9.04</span><span class="special">(+/-</span><span class="number">0.904885</span><span class="special">)</span> <span class="identifier">m</span><span class="special">^</span><span class="number">2</span>
+<span class="identifier">x</span><span class="special">/</span><span class="identifier">y</span>           <span class="special">=</span> <span class="number">0.666667</span><span class="special">(+/-</span><span class="number">0.149071</span><span class="special">)</span> <span class="identifier">dimensionless</span>
+</pre>
+<p>
+        </p>
+<p>
+          If we implement the overloaded helper classes for rational powers and roots
+          then we can also compute rational powers of measurement quantities :
+        </p>
+<p>
+</p>
+<pre class="programlisting"><span class="identifier">w</span><span class="special">*</span><span class="identifier">y</span><span class="special">^</span><span class="number">2</span><span class="special">/(</span><span class="identifier">u</span><span class="special">*</span><span class="identifier">x</span><span class="special">)^</span><span class="number">2</span> <span class="special">=</span> <span class="number">10.17</span><span class="special">(+/-</span><span class="number">3.52328</span><span class="special">)</span> <span class="identifier">m</span><span class="special">^-</span><span class="number">1</span>
+<span class="identifier">w</span><span class="special">/(</span><span class="identifier">u</span><span class="special">*</span><span class="identifier">x</span><span class="special">)^(</span><span class="number">1</span><span class="special">/</span><span class="number">2</span><span class="special">)</span> <span class="special">=</span> <span class="number">3.19612</span><span class="special">(+/-</span><span class="number">0.160431</span><span class="special">)</span> <span class="identifier">dimensionless</span>
+</pre>
+<p>
+        </p>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2008 Matthias Christian Schabel<br>Copyright &#169; 2007-2010 Steven
+      Watanabe<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="QuantityExample.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../Examples.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="ConversionExample.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

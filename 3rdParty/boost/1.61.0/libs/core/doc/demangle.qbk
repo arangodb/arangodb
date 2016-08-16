@@ -1,0 +1,136 @@
+[/
+  Copyright 2014 Peter Dimov
+  Copyright 2014 Andrey Semashev
+
+  Distributed under the Boost Software License, Version 1.0.
+
+  See accompanying file LICENSE_1_0.txt
+  or copy at http://boost.org/LICENSE_1_0.txt
+]
+
+[section:demangle demangle]
+
+[simplesect Authors]
+
+* Peter Dimov
+* Andrey Semashev
+
+[endsimplesect]
+
+[section Header <boost/core/demangle.hpp>]
+
+The header `<boost/core/demangle.hpp>` defines several tools for undecorating
+symbol names.
+
+[section Synopsis]
+
+    namespace boost
+    {
+
+    namespace core
+    {
+        std::string demangle( char const * name );
+
+        char const * demangle_alloc( char const * name ) noexcept;
+        void demangle_free( char const * demangled_name ) noexcept;
+
+        class scoped_demangled_name
+        {
+        public:
+            explicit scoped_demangled_name( char const * name ) noexcept;
+            ~scoped_demangled_name() noexcept;
+            char const * get() const noexcept;
+
+            scoped_demangled_name( scoped_demangled_name const& ) = delete;
+            scoped_demangled_name& operator= ( scoped_demangled_name const& ) = delete;
+        };
+    }
+
+    }
+
+[endsect]
+
+[section Conventional interface]
+
+The function `boost::core::demangle` is the conventional
+way to obtain demangled symbol name. It takes a mangled string such as
+those returned by `typeid(T).name()` on certain implementations
+such as `g++`, and returns its demangled, human-readable, form. In case if
+demangling fails (e.g. if `name` cannot be interpreted as a mangled name)
+the function returns `name`.
+
+[section Example]
+
+    #include <boost/core/demangle.hpp>
+    #include <typeinfo>
+    #include <iostream>
+
+    template<class T> struct X
+    {
+    };
+
+    int main()
+    {
+        char const * name = typeid( X<int> ).name();
+
+        std::cout << name << std::endl; // prints 1XIiE
+        std::cout << boost::core::demangle( name ) << std::endl; // prints X<int>
+    }
+
+[endsect]
+
+[endsect]
+
+[section Low level interface]
+
+In some cases more low level interface may be desirable. For example:
+
+* Assuming that symbol demangling may fail, the user wants to be able to handle such errors.
+* The user needs to post-process the demangled name (e.g. remove common namespaces), and
+allocating a temporary string with the complete demangled name is significant overhead.
+
+The function `boost::core::demangle_alloc` performs name demangling and returns a pointer
+to a string with the demangled name, if succeeded, or `nullptr` otherwise. The returned pointer
+must be passed to `boost::core::demangle_free` to reclaim resources. Note that on some platforms
+the pointer returned by `boost::core::demangle_alloc` may refer to the string denoted by `name`,
+so this string must be kept immutable for the whole life time of the returned pointer.
+
+The `boost::core::scoped_demangled_name` class is a scope guard that automates the calls to
+`boost::core::demangle_alloc` (on its construction) and `boost::core::demangle_free` (on destruction).
+The string with the demangled name can be obtained with its `get` method. Note that this method may
+return `nullptr` if demangling failed.
+
+[section Example]
+
+    #include <boost/core/demangle.hpp>
+    #include <typeinfo>
+    #include <iostream>
+
+    template<class T> struct X
+    {
+    };
+
+    int main()
+    {
+        char const * name = typeid( X<int> ).name();
+        boost::core::scoped_demangled_name demangled( name );
+
+        std::cout << name << std::endl; // prints 1XIiE
+        std::cout << (demangled.get() ? demangled.get() : "[unknown]") << std::endl; // prints X<int>
+    }
+
+[endsect]
+
+[endsect]
+
+[endsect]
+
+[section Acknowledgments]
+
+The implementation of `core::demangle` was taken from
+`boost/exception/detail/type_info.hpp`, which in turn was adapted
+from `boost/units/detail/utility.hpp` and `boost/log/utility/type_info_wrapper.hpp`.
+
+[endsect]
+
+[endsect]

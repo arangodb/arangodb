@@ -1,0 +1,147 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Using and building the library</title>
+<link rel="stylesheet" href="../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../index.html" title="Chapter&#160;1.&#160;Thread 4.7.0">
+<link rel="up" href="../index.html" title="Chapter&#160;1.&#160;Thread 4.7.0">
+<link rel="prev" href="overview.html" title="Overview">
+<link rel="next" href="build/configuration.html" title="Configuration">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="overview.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="build/configuration.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="thread.build"></a><a class="link" href="build.html" title="Using and building the library">Using and building the library</a>
+</h2></div></div></div>
+<div class="toc"><dl>
+<dt><span class="section"><a href="build/configuration.html">Configuration</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="build/configuration.html#thread.build.configuration.chrono">Boost.Chrono</a></span></dt>
+<dt><span class="section"><a href="build/configuration.html#thread.build.configuration.move">Boost.Move</a></span></dt>
+<dt><span class="section"><a href="build/configuration.html#thread.build.configuration.date_time">Boost.DateTime</a></span></dt>
+<dt><span class="section"><a href="build/configuration.html#thread.build.configuration.move0">Boost.Atomic</a></span></dt>
+<dt><span class="section"><a href="build/configuration.html#thread.build.configuration.thread_eq"><code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">thread</span><span class="special">::</span><span class="keyword">operator</span><span class="special">==</span></code>
+        deprecated</a></span></dt>
+<dt><span class="section"><a href="build/configuration.html#thread.build.configuration.condition">boost::condition
+        deprecated</a></span></dt>
+<dt><span class="section"><a href="build/configuration.html#thread.build.configuration.nested_lock">Mutex nested
+        lock types deprecated</a></span></dt>
+<dt><span class="section"><a href="build/configuration.html#thread.build.configuration.id">thread::id</a></span></dt>
+<dt><span class="section"><a href="build/configuration.html#thread.build.configuration.shared_gen">Shared Locking
+        Generic</a></span></dt>
+<dt><span class="section"><a href="build/configuration.html#thread.build.configuration.shared_upwards">Shared Locking
+        Upwards Conversion</a></span></dt>
+<dt><span class="section"><a href="build/configuration.html#thread.build.configuration.explicit_cnv">Explicit Lock
+        Conversion</a></span></dt>
+<dt><span class="section"><a href="build/configuration.html#thread.build.configuration.future">unique_future versus
+        future</a></span></dt>
+<dt><span class="section"><a href="build/configuration.html#thread.build.configuration.lazy">promise lazy initialization</a></span></dt>
+<dt><span class="section"><a href="build/configuration.html#thread.build.configuration.alloc">promise Allocator
+        constructor</a></span></dt>
+<dt><span class="section"><a href="build/configuration.html#thread.build.configuration.terminate">Call to terminate
+        if joinable</a></span></dt>
+<dt><span class="section"><a href="build/configuration.html#thread.build.configuration.once_flag">once_flag</a></span></dt>
+<dt><span class="section"><a href="build/configuration.html#thread.build.configuration.deprecated">Signature parameter
+        for packaged_task</a></span></dt>
+<dt><span class="section"><a href="build/configuration.html#thread.build.configuration.thread_const">-var thread
+        constructor with variadic rvalue parameters</a></span></dt>
+<dt><span class="section"><a href="build/configuration.html#thread.build.configuration.get_invalid">future&lt;&gt;::get()
+        invalidates the future</a></span></dt>
+<dt><span class="section"><a href="build/configuration.html#thread.build.configuration.intr">Interruptions</a></span></dt>
+<dt><span class="section"><a href="build/configuration.html#thread.build.configuration.version">Version</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="build/limitations.html">Limitations</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="build/limitations.html#thread.build.limitations.sun">SunPro</a></span></dt>
+<dt><span class="section"><a href="build/limitations.html#thread.build.limitations.vacpp">VACPP</a></span></dt>
+<dt><span class="section"><a href="build/limitations.html#thread.build.limitations.ce">WCE</a></span></dt>
+</dl></dd>
+</dl></div>
+<p>
+      Boost.Thread is configured following the conventions used to build <a href="http://www.boost.org/doc/libs/1_48_0/libs/config/doc/html/boost_config/boost_macro_reference.html#boost_config.boost_macro_reference.macros_for_libraries_with_separate_source_code" target="_top">libraries
+      with separate source code</a>. Boost.Thread will import/export the code
+      only if the user has specifically asked for it, by defining either BOOST_ALL_DYN_LINK
+      if they want all boost libraries to be dynamically linked, or BOOST_THREAD_DYN_LINK
+      if they want just this one to be dynamically liked.
+    </p>
+<p>
+      The definition of these macros determines whether BOOST_THREAD_USE_DLL is defined.
+      If BOOST_THREAD_USE_DLL is not defined, the library will define BOOST_THREAD_USE_DLL
+      or BOOST_THREAD_USE_LIB depending on whether the platform. On non windows platforms
+      BOOST_THREAD_USE_LIB is defined if is not defined. In windows platforms, BOOST_THREAD_USE_LIB
+      is defined if BOOST_THREAD_USE_DLL and the compiler supports auto-tss cleanup
+      with Boost.Threads (for the time been Msvc and Intel)
+    </p>
+<p>
+      The source code compiled when building the library defines a macros BOOST_THREAD_SOURCE
+      that is used to import or export it. The user must not define this macro in
+      any case.
+    </p>
+<p>
+      Boost.Thread depends on some non header-only libraries.
+    </p>
+<div class="itemizedlist"><ul class="itemizedlist" type="disc">
+<li class="listitem">
+          Boost.System: This dependency is mandatory and you will need to link with
+          the library.
+        </li>
+<li class="listitem">
+          Boost.Chrono: This dependency is optional (see below how to configure)
+          and you will need to link with the library if you use some of the time
+          related interfaces.
+        </li>
+<li class="listitem">
+          Boost.DateTime: This dependency is mandatory, but even if Boost.DateTime
+          is a non header-only library Boost.Thread uses only parts that are header-only,
+          so in principle you should not need to link with the library.
+        </li>
+</ul></div>
+<p>
+      It seems that there are some IDE (as e.g. Visual Studio) that deduce the libraries
+      that a program needs to link to inspecting the sources. Such IDE could force
+      to link to Boost.DateTime and/or Boost.Chrono.
+    </p>
+<p>
+      As the single mandatory dependency is to Boost.System, the following
+    </p>
+<pre class="programlisting"><span class="identifier">bjam</span> <span class="identifier">toolset</span><span class="special">=</span><span class="identifier">msvc</span><span class="special">-</span><span class="number">11.0</span> <span class="special">--</span><span class="identifier">build</span><span class="special">-</span><span class="identifier">type</span><span class="special">=</span><span class="identifier">complete</span> <span class="special">--</span><span class="identifier">with</span><span class="special">-</span><span class="identifier">thread</span>
+</pre>
+<p>
+      will install only boost_thread and boost_system.
+    </p>
+<p>
+      Users of such IDE should force the Boost.Chrono and Boost.DateTime build using
+    </p>
+<pre class="programlisting"><span class="identifier">bjam</span> <span class="identifier">toolset</span><span class="special">=</span><span class="identifier">msvc</span><span class="special">-</span><span class="number">11.0</span> <span class="special">--</span><span class="identifier">build</span><span class="special">-</span><span class="identifier">type</span><span class="special">=</span><span class="identifier">complete</span> <span class="special">--</span><span class="identifier">with</span><span class="special">-</span><span class="identifier">thread</span> <span class="special">--</span><span class="identifier">with</span><span class="special">-</span><span class="identifier">chrono</span> <span class="special">--</span><span class="identifier">with</span><span class="special">-</span><span class="identifier">date_time</span>
+</pre>
+<p>
+      The following section describes all the macros used to configure Boost.Thread.
+    </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2007 -11 Anthony Williams<br>Copyright &#169; 2011 -15 Vicente J. Botet Escriba<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="overview.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="build/configuration.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

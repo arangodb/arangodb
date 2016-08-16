@@ -1,0 +1,143 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Complex Number Algorithm Overloads.</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../../index.html" title="Chapter&#160;1.&#160;Boost.TR1">
+<link rel="up" href="../subject_list.html" title="TR1 By Subject">
+<link rel="prev" href="regex.html" title="Regular Expressions.">
+<link rel="next" href="complex_trig.html" title="Complex Number Additional Algorithms.">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="regex.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../subject_list.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="complex_trig.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_tr1.subject_list.complex"></a><a class="link" href="complex.html" title="Complex Number Algorithm Overloads.">Complex Number Algorithm
+      Overloads.</a>
+</h3></div></div></div>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">tr1</span><span class="special">/</span><span class="identifier">complex</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+</pre>
+<p>
+        or
+      </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">complex</span><span class="special">&gt;</span>
+</pre>
+<p>
+        The following function templates have additional overloads: <code class="computeroutput"><span class="identifier">arg</span></code>, <code class="computeroutput"><span class="identifier">norm</span></code>,
+        <code class="computeroutput"><span class="identifier">conj</span></code>, <code class="computeroutput"><span class="identifier">polar</span></code>,
+        <code class="computeroutput"><span class="identifier">imag</span></code>, and <code class="computeroutput"><span class="identifier">real</span></code>.
+      </p>
+<p>
+        The additional overloads are sufficient to ensure:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" type="disc">
+<li class="listitem">
+            If the argument has type <code class="computeroutput"><span class="keyword">long</span>
+            <span class="keyword">double</span></code>, then the overload behaves
+            as if the argument had been cast to <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">complex</span><span class="special">&lt;</span><span class="keyword">long</span> <span class="keyword">double</span><span class="special">&gt;</span></code>.
+          </li>
+<li class="listitem">
+            Otherwise, if the argument has type <code class="computeroutput"><span class="keyword">double</span></code>
+            or is an integer type, then the overload behaves as if the argument had
+            been cast to <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">complex</span><span class="special">&lt;</span><span class="keyword">double</span><span class="special">&gt;</span></code>.
+          </li>
+<li class="listitem">
+            Otherwise, if the argument has type <code class="computeroutput"><span class="keyword">float</span></code>,
+            then the overload behaves as if the argument had been cast to <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">complex</span><span class="special">&lt;</span><span class="keyword">float</span><span class="special">&gt;</span></code>.
+          </li>
+</ul></div>
+<p>
+        The function template <code class="computeroutput"><span class="identifier">pow</span></code>
+        has additional overloads sufficient to ensure, for a call with at least one
+        argument of type <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">complex</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;</span></code>:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" type="disc">
+<li class="listitem">
+            If either argument has type <code class="computeroutput"><span class="identifier">complex</span><span class="special">&lt;</span><span class="keyword">long</span> <span class="keyword">double</span><span class="special">&gt;</span></code>
+            or type <code class="computeroutput"><span class="keyword">long</span> <span class="keyword">double</span></code>,
+            then the overload behaves as if both arguments were cast to <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">complex</span><span class="special">&lt;</span><span class="keyword">long</span> <span class="keyword">double</span><span class="special">&gt;</span></code>
+          </li>
+<li class="listitem">
+            Otherwise, if either argument has type <code class="computeroutput"><span class="identifier">complex</span><span class="special">&lt;</span><span class="keyword">double</span><span class="special">&gt;</span></code>, <code class="computeroutput"><span class="keyword">double</span></code>,
+            or an integer type, then the overload behaves as if both arguments were
+            cast to <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">complex</span><span class="special">&lt;</span><span class="keyword">double</span><span class="special">&gt;</span></code>
+          </li>
+<li class="listitem">
+            Otherwise, if either argument has type <code class="computeroutput"><span class="identifier">complex</span><span class="special">&lt;</span><span class="keyword">float</span><span class="special">&gt;</span></code> or <code class="computeroutput"><span class="keyword">float</span></code>,
+            then the overload behaves as if both arguments were cast to <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">complex</span><span class="special">&lt;</span><span class="keyword">float</span><span class="special">&gt;</span></code>
+          </li>
+</ul></div>
+<p>
+        In the following synopsis, <code class="computeroutput"><span class="identifier">Real</span></code>
+        is a floating point type, <code class="computeroutput"><span class="identifier">Arithmetic</span></code>
+        is an integer or floating point type, and <code class="computeroutput"> <span class="identifier">PROMOTE</span><span class="special">(</span><span class="identifier">X1</span> <span class="special">...</span>
+        <span class="identifier">XN</span><span class="special">)</span></code>
+        is the largest floating point type in the list X1 to XN, after any non-floating
+        point types in the list have been replaced by the type <code class="computeroutput"><span class="keyword">double</span></code>.
+      </p>
+<pre class="programlisting"><span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Arithmetic</span><span class="special">&gt;</span>
+<span class="identifier">PROMOTE</span><span class="special">(</span><span class="identifier">Arithmetic</span><span class="special">)</span> <span class="identifier">arg</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">Arithmetic</span><span class="special">&amp;</span> <span class="identifier">t</span><span class="special">);</span>
+
+<span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Arithmetic</span><span class="special">&gt;</span>
+<span class="identifier">PROMOTE</span><span class="special">(</span><span class="identifier">Arithmetic</span><span class="special">)</span> <span class="identifier">norm</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">Arithmetic</span><span class="special">&amp;</span> <span class="identifier">t</span><span class="special">);</span>
+
+<span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Arithmetic</span><span class="special">&gt;</span>
+<span class="identifier">complex</span><span class="special">&lt;</span><span class="identifier">PROMOTE</span><span class="special">(</span><span class="identifier">Arithmetic</span><span class="special">)&gt;</span> <span class="identifier">conj</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">Arithmetic</span><span class="special">&amp;</span> <span class="identifier">t</span><span class="special">);</span>
+
+<span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Arithmetic1</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">Arithmetic2</span><span class="special">&gt;</span>
+<span class="identifier">complex</span><span class="special">&lt;</span><span class="identifier">PROMOTE</span><span class="special">(</span><span class="identifier">Arithmetic1</span><span class="special">,</span><span class="identifier">Arithmetic2</span><span class="special">)&gt;</span> <span class="identifier">polar</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">Arithmetic1</span><span class="special">&amp;</span> <span class="identifier">rho</span><span class="special">,</span> <span class="keyword">const</span> <span class="identifier">Arithmetic2</span><span class="special">&amp;</span> <span class="identifier">theta</span> <span class="special">=</span> <span class="number">0</span><span class="special">);</span>
+
+<span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Arithmetic</span><span class="special">&gt;</span>
+<span class="identifier">PROMOTE</span><span class="special">(</span><span class="identifier">Arithmetic</span><span class="special">)</span> <span class="identifier">imag</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">Arithmetic</span><span class="special">&amp;</span> <span class="special">);</span>
+
+<span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Arithmetic</span><span class="special">&gt;</span>
+<span class="identifier">PROMOTE</span><span class="special">(</span><span class="identifier">Arithmetic</span><span class="special">)</span> <span class="identifier">real</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">Arithmetic</span><span class="special">&amp;</span> <span class="identifier">t</span><span class="special">);</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Real1</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">Real2</span><span class="special">&gt;</span>
+<span class="identifier">complex</span><span class="special">&lt;</span><span class="identifier">PROMOTE</span><span class="special">(</span><span class="identifier">Real1</span><span class="special">,</span> <span class="identifier">Real2</span><span class="special">)&gt;</span>
+   <span class="identifier">pow</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">complex</span><span class="special">&lt;</span><span class="identifier">Real1</span><span class="special">&gt;&amp;</span> <span class="identifier">x</span><span class="special">,</span> <span class="keyword">const</span> <span class="identifier">complex</span><span class="special">&lt;</span><span class="identifier">Real2</span><span class="special">&gt;&amp;</span> <span class="identifier">y</span><span class="special">);</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Real</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">Arithmetic</span><span class="special">&gt;</span>
+<span class="identifier">complex</span><span class="special">&lt;</span><span class="identifier">PROMOTE</span><span class="special">(</span><span class="identifier">Real</span><span class="special">,</span> <span class="identifier">Arithmetic</span><span class="special">)&gt;</span>
+   <span class="identifier">pow</span> <span class="special">(</span><span class="keyword">const</span> <span class="identifier">complex</span><span class="special">&lt;</span><span class="identifier">Real</span><span class="special">&gt;&amp;</span> <span class="identifier">x</span><span class="special">,</span> <span class="keyword">const</span> <span class="identifier">Arithmetic</span><span class="special">&amp;</span> <span class="identifier">y</span><span class="special">);</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Arithmetic</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">Real</span><span class="special">&gt;</span>
+<span class="identifier">complex</span><span class="special">&lt;</span><span class="identifier">PROMOTE</span><span class="special">(</span><span class="identifier">Real</span><span class="special">,</span> <span class="identifier">Arithmetic</span><span class="special">)&gt;</span>
+   <span class="identifier">pow</span> <span class="special">(</span><span class="keyword">const</span> <span class="identifier">Arithmetic</span><span class="special">&amp;</span> <span class="identifier">x</span><span class="special">,</span> <span class="keyword">const</span> <span class="identifier">complex</span><span class="special">&lt;</span><span class="identifier">Real</span><span class="special">&gt;&amp;</span> <span class="identifier">y</span><span class="special">);</span>
+</pre>
+<p>
+        <span class="bold"><strong>Configuration:</strong></span> <a href="../../../../libs/config/index.html" target="_top">Boost.Config</a>
+        should (automatically) define the macro BOOST_HAS_TR1_COMPLEX_OVERLOADS if
+        your standard library implements the additional overloads for the existing
+        complex arithmetic functions.
+      </p>
+<p>
+        <span class="bold"><strong>Standard Conformity:</strong></span> No known problems.
+      </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2005 John Maddock<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="regex.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../subject_list.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="complex_trig.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

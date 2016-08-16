@@ -1,0 +1,39 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="structboost_1_1geometry_1_1strategy_1_1within_1_1box__within__longitude__check" kind="struct" prot="public">
+    <compoundname>boost::geometry::strategy::within::box_within_longitude_check</compoundname>
+    <includes local="no">box_in_box.hpp</includes>
+      <sectiondef kind="public-static-func">
+      <memberdef kind="function" id="structboost_1_1geometry_1_1strategy_1_1within_1_1box__within__longitude__check_1a3c81a7432a2bd05a07dedd97ca8b7741" prot="public" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename CalcT</type>
+          </param>
+        </templateparamlist>
+        <type>bool</type>
+        <definition>static bool boost::geometry::strategy::within::box_within_longitude_check::apply</definition>
+        <argsstring>(CalcT const &amp;diff_ed)</argsstring>
+        <name>apply</name>
+        <param>
+          <type>CalcT const &amp;</type>
+          <declname>diff_ed</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/box_in_box.hpp" line="72" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/box_in_box.hpp" bodystart="71" bodyend="74"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/box_in_box.hpp" line="69" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/box_in_box.hpp" bodystart="68" bodyend="75"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1strategy_1_1within_1_1box__within__longitude__check_1a3c81a7432a2bd05a07dedd97ca8b7741" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::within::box_within_longitude_check</scope><name>apply</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

@@ -474,7 +474,7 @@ SimpleHttpResult* SimpleHttpClient::getResult() {
     }
   }
 
-  if (haveErrorMessage() && (_result->getHttpReturnMessage().length() == 0)) {
+  if (haveErrorMessage() && _result->getHttpReturnMessage().empty()) {
     _result->setHttpReturnMessage(_errorMessage);
   }
 

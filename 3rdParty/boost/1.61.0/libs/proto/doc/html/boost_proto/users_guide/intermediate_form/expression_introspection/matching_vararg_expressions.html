@@ -1,0 +1,98 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Matching Vararg Expressions</title>
+<link rel="stylesheet" href="../../../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../../../../index.html" title="Chapter&#160;1.&#160;Boost.Proto">
+<link rel="up" href="../expression_introspection.html" title="Expression Introspection: Defining a Grammar">
+<link rel="prev" href="switch.html" title="Improving Compile Times With switch_&lt;&gt;">
+<link rel="next" href="defining_edsl_grammars.html" title="Defining EDSL Grammars">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="switch.html"><img src="../../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../expression_introspection.html"><img src="../../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../../index.html"><img src="../../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="defining_edsl_grammars.html"><img src="../../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="boost_proto.users_guide.intermediate_form.expression_introspection.matching_vararg_expressions"></a><a class="link" href="matching_vararg_expressions.html" title="Matching Vararg Expressions">Matching
+          Vararg Expressions</a>
+</h5></div></div></div>
+<p>
+            Not all of C++'s overloadable operators are unary or binary. There is
+            the oddball <code class="computeroutput"><span class="keyword">operator</span><span class="special">()</span></code>
+            -- the function call operator -- which can have any number of arguments.
+            Likewise, with Proto you may define your own "operators" that
+            could also take more that two arguments. As a result, there may be nodes
+            in your Proto expression tree that have an arbitrary number of children
+            (up to <code class="literal"><code class="computeroutput"><a class="link" href="../../../../BOOST_PROTO_MAX_ARITY.html" title="Macro BOOST_PROTO_MAX_ARITY">BOOST_PROTO_MAX_ARITY</a></code></code>,
+            which is configurable). How do you write a grammar to match such a node?
+          </p>
+<p>
+            For such cases, Proto provides the <code class="computeroutput"><a class="link" href="../../../../boost/proto/vararg.html" title="Struct template vararg">proto::vararg&lt;&gt;</a></code>
+            class template. Its template argument is a grammar, and the <code class="computeroutput"><a class="link" href="../../../../boost/proto/vararg.html" title="Struct template vararg">proto::vararg&lt;&gt;</a></code> will match the grammar
+            zero or more times. Consider a Proto lazy function called <code class="computeroutput"><span class="identifier">fun</span><span class="special">()</span></code>
+            that can take zero or more characters as arguments, as follows:
+          </p>
+<pre class="programlisting"><span class="keyword">struct</span> <span class="identifier">fun_tag</span> <span class="special">{};</span>
+<span class="keyword">struct</span> <span class="identifier">FunTag</span> <span class="special">:</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">terminal</span><span class="special">&lt;</span> <span class="identifier">fun_tag</span> <span class="special">&gt;</span> <span class="special">{};</span>
+<span class="identifier">FunTag</span><span class="special">::</span><span class="identifier">type</span> <span class="keyword">const</span> <span class="identifier">fun</span> <span class="special">=</span> <span class="special">{{}};</span>
+
+<span class="comment">// example usage:</span>
+<span class="identifier">fun</span><span class="special">();</span>
+<span class="identifier">fun</span><span class="special">(</span><span class="char">'a'</span><span class="special">);</span>
+<span class="identifier">fun</span><span class="special">(</span><span class="char">'a'</span><span class="special">,</span> <span class="char">'b'</span><span class="special">);</span>
+<span class="special">...</span>
+</pre>
+<p>
+            Below is the grammar that matches all the allowable invocations of <code class="computeroutput"><span class="identifier">fun</span><span class="special">()</span></code>:
+          </p>
+<pre class="programlisting"><span class="keyword">struct</span> <span class="identifier">FunCall</span>
+  <span class="special">:</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">function</span><span class="special">&lt;</span> <span class="identifier">FunTag</span><span class="special">,</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">vararg</span><span class="special">&lt;</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">terminal</span><span class="special">&lt;</span> <span class="keyword">char</span> <span class="special">&gt;</span> <span class="special">&gt;</span> <span class="special">&gt;</span>
+<span class="special">{};</span>
+</pre>
+<p>
+            The <code class="computeroutput"><span class="identifier">FunCall</span></code> grammar uses
+            <code class="computeroutput"><a class="link" href="../../../../boost/proto/vararg.html" title="Struct template vararg">proto::vararg&lt;&gt;</a></code> to match zero or
+            more character literals as arguments of the <code class="computeroutput"><span class="identifier">fun</span><span class="special">()</span></code> function.
+          </p>
+<p>
+            As another example, can you guess what the following grammar matches?
+          </p>
+<pre class="programlisting"><span class="keyword">struct</span> <span class="identifier">Foo</span>
+  <span class="special">:</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">or_</span><span class="special">&lt;</span>
+        <span class="identifier">proto</span><span class="special">::</span><span class="identifier">terminal</span><span class="special">&lt;</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">_</span> <span class="special">&gt;</span>
+      <span class="special">,</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">nary_expr</span><span class="special">&lt;</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">_</span><span class="special">,</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">vararg</span><span class="special">&lt;</span> <span class="identifier">Foo</span> <span class="special">&gt;</span> <span class="special">&gt;</span>
+    <span class="special">&gt;</span>
+<span class="special">{};</span>
+</pre>
+<p>
+            Here's a hint: the first template parameter to <code class="computeroutput"><span class="identifier">proto</span><span class="special">::</span><span class="identifier">nary_expr</span><span class="special">&lt;&gt;</span></code> represents the node type, and
+            any additional template parameters represent child nodes. The answer
+            is that this is a degenerate grammar that matches every possible expression
+            tree, from root to leaves.
+          </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2008 Eric Niebler<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="switch.html"><img src="../../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../expression_introspection.html"><img src="../../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../../index.html"><img src="../../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="defining_edsl_grammars.html"><img src="../../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

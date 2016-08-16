@@ -1,0 +1,14 @@
+{
+    "key": "rational",
+    "name": "Rational",
+    "authors": [
+        "Paul Moore"
+    ],
+    "description": "A rational number class.",
+    "category": [
+        "Math"
+    ],
+    "maintainers": [
+        "Jonathan Turkanis <turkanis -at- coderage.com>"
+    ]
+}

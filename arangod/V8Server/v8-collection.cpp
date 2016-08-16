@@ -65,7 +65,7 @@ struct LocalCollectionGuard {
       : _collection(collection) {}
 
   ~LocalCollectionGuard() {
-    if (_collection != nullptr && !_collection->_isLocal) {
+    if (_collection != nullptr && !_collection->isLocal()) {
       delete _collection;
     }
   }
@@ -239,7 +239,7 @@ static TRI_vocbase_col_t const* UseCollection(
       TRI_UnwrapClass<TRI_vocbase_col_t>(collection, WRP_VOCBASE_COL_TYPE);
 
   if (col != nullptr) {
-    if (!col->_isLocal) {
+    if (!col->isLocal()) {
       TRI_CreateErrorObject(isolate, TRI_ERROR_NOT_IMPLEMENTED);
       TRI_set_errno(TRI_ERROR_NOT_IMPLEMENTED);
       return nullptr;
@@ -824,7 +824,7 @@ static void DropVocbaseColCoordinator(
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
-  if (!collection->_canDrop) {
+  if (!collection->canDrop()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
 
@@ -2599,25 +2599,7 @@ static void JS_VersionVocbaseCol(
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
-  if (ServerState::instance()->isCoordinator()) {
-    TRI_V8_RETURN(v8::Number::New(isolate, (int)TRI_COL_VERSION));
-  }
-
-  // fallthru intentional
-  READ_LOCKER(readLocker, collection->_lock);
-  try {
-    std::string const collectionName(collection->name());
-    VocbaseCollectionInfo info = VocbaseCollectionInfo::fromFile(
-        collection->path().c_str(), collection->vocbase(), collectionName.c_str(),
-        false);
-
-    TRI_V8_RETURN(v8::Number::New(isolate, (int)info.version()));
-  } catch (arangodb::basics::Exception const& e) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(e.code(), "cannot fetch collection info");
-  } catch (...) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "cannot fetch collection info");
-  }
+  TRI_V8_RETURN(v8::Number::New(isolate, (int) TRI_COL_VERSION));
   TRI_V8_TRY_CATCH_END
 }
 

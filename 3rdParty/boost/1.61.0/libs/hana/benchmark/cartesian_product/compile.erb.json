@@ -1,0 +1,15 @@
+<%
+  hana = (0..30)
+%>
+
+{
+  "title": {
+    "text": "Compile-time behavior of cartesian_product"
+  },
+  "series": [
+    {
+      "name": "hana::tuple",
+      "data": <%= time_compilation('compile.hana.tuple.erb.cpp', hana) %>
+    }
+  ]
+}

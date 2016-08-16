@@ -1,0 +1,26 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="namespaceboost_1_1geometry_1_1nyi" kind="namespace">
+    <compoundname>boost::geometry::nyi</compoundname>
+    <innerclass refid="structboost_1_1geometry_1_1nyi_1_1not__implemented__error" prot="public">boost::geometry::nyi::not_implemented_error</innerclass>
+    <innerclass refid="structboost_1_1geometry_1_1nyi_1_1not__implemented__tag" prot="public">boost::geometry::nyi::not_implemented_tag</innerclass>
+    <innerclass refid="structboost_1_1geometry_1_1nyi_1_1tag__to__term" prot="public">boost::geometry::nyi::tag_to_term</innerclass>
+    <innerclass refid="structboost_1_1geometry_1_1nyi_1_1tag__to__term_3_01boost_1_1mpl_1_1int___3_01_d_01_4_01_4" prot="public">boost::geometry::nyi::tag_to_term&lt; boost::mpl::int_&lt; D &gt; &gt;</innerclass>
+    <innerclass refid="structboost_1_1geometry_1_1nyi_1_1tag__to__term_3_01box__tag_01_4" prot="public">boost::geometry::nyi::tag_to_term&lt; box_tag &gt;</innerclass>
+    <innerclass refid="structboost_1_1geometry_1_1nyi_1_1tag__to__term_3_01geometry__collection__tag_01_4" prot="public">boost::geometry::nyi::tag_to_term&lt; geometry_collection_tag &gt;</innerclass>
+    <innerclass refid="structboost_1_1geometry_1_1nyi_1_1tag__to__term_3_01geometry__not__recognized__tag_01_4" prot="public">boost::geometry::nyi::tag_to_term&lt; geometry_not_recognized_tag &gt;</innerclass>
+    <innerclass refid="structboost_1_1geometry_1_1nyi_1_1tag__to__term_3_01linestring__tag_01_4" prot="public">boost::geometry::nyi::tag_to_term&lt; linestring_tag &gt;</innerclass>
+    <innerclass refid="structboost_1_1geometry_1_1nyi_1_1tag__to__term_3_01multi__linestring__tag_01_4" prot="public">boost::geometry::nyi::tag_to_term&lt; multi_linestring_tag &gt;</innerclass>
+    <innerclass refid="structboost_1_1geometry_1_1nyi_1_1tag__to__term_3_01multi__point__tag_01_4" prot="public">boost::geometry::nyi::tag_to_term&lt; multi_point_tag &gt;</innerclass>
+    <innerclass refid="structboost_1_1geometry_1_1nyi_1_1tag__to__term_3_01multi__polygon__tag_01_4" prot="public">boost::geometry::nyi::tag_to_term&lt; multi_polygon_tag &gt;</innerclass>
+    <innerclass refid="structboost_1_1geometry_1_1nyi_1_1tag__to__term_3_01point__tag_01_4" prot="public">boost::geometry::nyi::tag_to_term&lt; point_tag &gt;</innerclass>
+    <innerclass refid="structboost_1_1geometry_1_1nyi_1_1tag__to__term_3_01polygon__tag_01_4" prot="public">boost::geometry::nyi::tag_to_term&lt; polygon_tag &gt;</innerclass>
+    <innerclass refid="structboost_1_1geometry_1_1nyi_1_1tag__to__term_3_01ring__tag_01_4" prot="public">boost::geometry::nyi::tag_to_term&lt; ring_tag &gt;</innerclass>
+    <innerclass refid="structboost_1_1geometry_1_1nyi_1_1tag__to__term_3_01segment__tag_01_4" prot="public">boost::geometry::nyi::tag_to_term&lt; segment_tag &gt;</innerclass>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/not_implemented.hpp" line="51"/>
+  </compounddef>
+</doxygen>

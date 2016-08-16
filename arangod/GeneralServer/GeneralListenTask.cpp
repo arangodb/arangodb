@@ -26,6 +26,7 @@
 
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/GeneralServerFeature.h"
+#include "GeneralServer/VppCommTask.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Ssl/SslServerFeature.h"
@@ -64,11 +65,11 @@ bool GeneralListenTask::handleConnected(TRI_socket_t socket,
   switch (_connectionType) {
     case ConnectionType::VPPS:
       commTask =
-          new HttpCommTask(_server, socket, std::move(info), _keepAliveTimeout);
+          new VppCommTask(_server, socket, std::move(info), _keepAliveTimeout);
       break;
     case ConnectionType::VPP:
       commTask =
-          new HttpCommTask(_server, socket, std::move(info), _keepAliveTimeout);
+          new VppCommTask(_server, socket, std::move(info), _keepAliveTimeout);
       break;
     case ConnectionType::HTTPS:
       commTask = new HttpsCommTask(_server, socket, std::move(info),

@@ -1,0 +1,52 @@
+<?xml version="1.0" standalone="yes"?>
+<library-reference><header name="boost/accumulators/framework/depends_on.hpp">
+<namespace name="boost">
+<namespace name="accumulators">
+<struct name="as_feature"><template>
+      <template-type-parameter name="Feature"/>
+    </template><typedef name="type"><type>Feature</type></typedef>
+</struct><struct name="as_weighted_feature"><template>
+      <template-type-parameter name="Feature"/>
+    </template><typedef name="type"><type>Feature</type></typedef>
+</struct><struct name="feature_of"><template>
+      <template-type-parameter name="Feature"/>
+    </template><typedef name="type"><type>Feature</type></typedef>
+</struct><struct name="depends_on"><template>
+      <template-type-parameter name="Feature1"/>
+      <template-type-parameter name="Feature2"/>
+      <template-nontype-parameter name=""><type>...</type></template-nontype-parameter>
+    </template><description><para><classname alt="boost::accumulators::depends_on">depends_on</classname> </para></description><typedef name="is_weight_accumulator"><type>mpl::false_</type></typedef>
+<typedef name="dependencies"><type>mpl::transform&lt; mpl::vector&lt; Feature1, Feature2,...&gt;, <classname>as_feature</classname>&lt; mpl::_1 &gt; &gt;::<classname>type</classname></type></typedef>
+</struct></namespace>
+</namespace>
+</header>
+<header name="boost/accumulators/framework/extractor.hpp">
+<namespace name="boost">
+<namespace name="accumulators">
+<struct name="extractor"><template>
+      <template-type-parameter name="Feature"/>
+    </template><description><para>Extracts the result associated with Feature from the specified accumulator_set. </para></description><struct-specialization name="result"><template>
+      <template-type-parameter name="A1"/>
+    </template><specialization><template-arg>this_type(A1)</template-arg></specialization></struct-specialization><typedef name="this_type"><type><classname>extractor</classname>&lt; Feature &gt;</type></typedef>
+<method-group name="public member functions">
+<method name="operator()" cv="const"><type><emphasis>unspecified</emphasis></type><template>
+          <template-type-parameter name="Arg1"/>
+        </template><parameter name="arg1"><paramtype>Arg1 const &amp;</paramtype></parameter><description><para>Extract the result associated with Feature from the accumulator set 
+</para></description></method>
+<method name="operator()" cv="const"><type><emphasis>unspecified</emphasis></type><template>
+          <template-type-parameter name="AccumulatorSet"/>
+          <template-type-parameter name="A1"/>
+        </template><parameter name="acc"><paramtype>AccumulatorSet const &amp;</paramtype></parameter><parameter name="a1"><paramtype>A1 const &amp;</paramtype><description><para>Optional named parameter to be passed to the accumulator's result() function. </para></description></parameter><description><para>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts. 
+</para></description></method>
+<method name="operator()"><type><emphasis>unspecified</emphasis></type><template>
+          <template-type-parameter name="AccumulatorSet"/>
+          <template-type-parameter name="A1"/>
+          <template-type-parameter name="A2"/>
+          <template-nontype-parameter name=""><type>...</type></template-nontype-parameter>
+        </template><parameter name="acc"><paramtype>AccumulatorSet const &amp;</paramtype></parameter><parameter name="a1"><paramtype>A1 const &amp;</paramtype></parameter><parameter name="a2"><paramtype>A2 const &amp;</paramtype></parameter><parameter name=""><paramtype>...</paramtype></parameter><description><para>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts. </para></description></method>
+</method-group>
+</struct></namespace>
+</namespace>
+<macro name="BOOST_ACCUMULATORS_DEFINE_EXTRACTOR" kind="functionlike"><macro-parameter name="Tag"/><macro-parameter name="Feature"/><macro-parameter name="ParamSeq"/></macro>
+</header>
+</library-reference>

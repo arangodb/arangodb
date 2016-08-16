@@ -1,0 +1,2 @@
+This is an extended version of the calculator example: it supports unary
+operators (eg. -13) as well.

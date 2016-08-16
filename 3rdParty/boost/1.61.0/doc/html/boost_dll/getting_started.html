@@ -1,0 +1,225 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Getting started</title>
+<link rel="stylesheet" href="../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../index.html" title="The Boost C++ Libraries BoostBook Documentation Subset">
+<link rel="up" href="../boost_dll.html" title="Chapter&#160;10.&#160;Boost.DLL">
+<link rel="prev" href="../boost_dll.html" title="Chapter&#160;10.&#160;Boost.DLL">
+<link rel="next" href="tutorial.html" title="Tutorial">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../boost.png"></td>
+<td align="center"><a href="../../../index.html">Home</a></td>
+<td align="center"><a href="../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../boost_dll.html"><img src="../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../boost_dll.html"><img src="../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="tutorial.html"><img src="../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="boost_dll.getting_started"></a><a class="link" href="getting_started.html" title="Getting started">Getting started</a>
+</h2></div></div></div>
+<p>
+      Boost.DLL is a header only library. To start with the library you only need
+      to include <code class="computeroutput"><span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">dll</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span></code> header.
+      After that you are free to import and export functions and variables. Importing
+      code requires linking with <code class="computeroutput"><span class="identifier">boost_filesystem</span></code>
+      and <code class="computeroutput"><span class="identifier">boost_system</span></code> libraries.
+    </p>
+<p>
+</p>
+<pre class="programlisting"><span class="keyword">using</span> <span class="keyword">namespace</span> <span class="identifier">boost</span><span class="special">;</span>
+
+<span class="comment">// `extern "C"` - specifies C linkage: forces the compiler to export function/variable by a pretty (unmangled) C name.</span>
+<span class="preprocessor">#define</span> <span class="identifier">API</span> <span class="keyword">extern</span> <span class="string">"C"</span> <span class="identifier">BOOST_SYMBOL_EXPORT</span>
+</pre>
+<p>
+    </p>
+<div class="informaltable">
+<a name="boost_dll.getting_started.starting"></a><table class="table">
+<colgroup>
+<col>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+              <p>
+                Import (code that uses DLL/DSL):
+              </p>
+            </th>
+<th>
+              <p>
+                Export (DLL/DSL sources):
+              </p>
+            </th>
+<th>
+              <p>
+                Functions description:
+              </p>
+            </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+              <p>
+</p>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="comment">// Importing function.</span>
+<span class="keyword">auto</span> <span class="identifier">cpp11_func</span> <span class="special">=</span> <span class="identifier">dll</span><span class="special">::</span><span class="identifier">import</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span><span class="special">&amp;&amp;)&gt;(</span>
+        <span class="identifier">path_to_shared_library</span><span class="special">,</span> <span class="string">"i_am_a_cpp11_function"</span>
+    <span class="special">);</span>
+</pre>
+<p>
+              </p>
+            </td>
+<td>
+              <p>
+</p>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="keyword">namespace</span> <span class="identifier">some_namespace</span> <span class="special">{</span>
+    <span class="identifier">API</span> <span class="keyword">int</span> <span class="identifier">i_am_a_cpp11_function</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span><span class="special">&amp;&amp;</span> <span class="identifier">param</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+<span class="comment">//          ^--------------------  function name to use in dll::import&lt;&gt;</span>
+<span class="special">}</span>
+</pre>
+<p>
+              </p>
+            </td>
+<td>
+              <p>
+                <code class="computeroutput"><a class="link" href="../boost/dll/import.html" title="Function import">import&lt;T&gt;(...)</a></code>
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+</p>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="comment">// Importing  variable.</span>
+<span class="identifier">shared_ptr</span><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span><span class="special">&gt;</span> <span class="identifier">cpp_var</span> <span class="special">=</span> <span class="identifier">dll</span><span class="special">::</span><span class="identifier">import</span><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span><span class="special">&gt;(</span>
+        <span class="identifier">path_to_shared_library</span><span class="special">,</span> <span class="string">"cpp_variable_name"</span>
+    <span class="special">);</span>
+</pre>
+<p>
+              </p>
+            </td>
+<td>
+              <p>
+</p>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="keyword">namespace</span> <span class="identifier">your_project_namespace</span> <span class="special">{</span>
+    <span class="identifier">API</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="identifier">cpp_variable_name</span><span class="special">;</span>
+<span class="special">}</span>
+</pre>
+<p>
+              </p>
+            </td>
+<td>
+              <p>
+                <code class="computeroutput"><a class="link" href="../boost/dll/import.html" title="Function import">import&lt;T&gt;(...)</a></code>
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+</p>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="comment">// Importing function by alias name</span>
+<span class="keyword">auto</span> <span class="identifier">cpp_func</span> <span class="special">=</span> <span class="identifier">dll</span><span class="special">::</span><span class="identifier">import_alias</span><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span><span class="special">&amp;)&gt;(</span>
+        <span class="identifier">path_to_shared_library</span><span class="special">,</span> <span class="string">"pretty_name"</span>
+    <span class="special">);</span>
+</pre>
+<p>
+              </p>
+            </td>
+<td>
+              <p>
+</p>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="keyword">namespace</span> <span class="identifier">some_namespace</span> <span class="special">{</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="identifier">i_am_function_with_ugly_name</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span><span class="special">&amp;</span> <span class="identifier">param</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+<span class="special">}</span>
+
+<span class="comment">// When you have no control over function sources or wish to specify another name.</span>
+<span class="identifier">BOOST_DLL_ALIAS</span><span class="special">(</span><span class="identifier">some_namespace</span><span class="special">::</span><span class="identifier">i_am_function_with_ugly_name</span><span class="special">,</span> <span class="identifier">pretty_name</span><span class="special">)</span>
+</pre>
+<p>
+              </p>
+            </td>
+<td>
+              <p>
+                <code class="computeroutput"><a class="link" href="../boost/dll/import_alias.html" title="Function import_alias">import_alias&lt;T&gt;(...)</a></code>
+              </p>
+              <p>
+                <code class="computeroutput"><a class="link" href="../BOOST_DLL_ALIAS.html" title="Macro BOOST_DLL_ALIAS">BOOST_DLL_ALIAS</a></code>
+              </p>
+            </td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>
+      It is safe to use imported variable or function because the variables returned
+      from <code class="computeroutput"><a class="link" href="../boost/dll/import.html" title="Function import">import&lt;T&gt;(...)</a></code>
+      and <code class="computeroutput"><a class="link" href="../boost/dll/import_alias.html" title="Function import_alias">import_alias&lt;T&gt;(...)</a></code>
+      functions internally hold a reference to the shared library.
+    </p>
+<p>
+      <code class="computeroutput">BOOST_SYMBOL_EXPORT</code> is just
+      a macro from Boost.Config that expands into the <code class="computeroutput"><span class="identifier">__declspec</span><span class="special">(</span><span class="identifier">dllexport</span><span class="special">)</span></code> or <code class="computeroutput"><span class="identifier">__attribute__</span><span class="special">((</span><span class="identifier">visibility</span><span class="special">(</span><span class="string">"default"</span><span class="special">)))</span></code>. You are free to use your own macro for
+      exports.
+    </p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+        On Linux/POSIX/MacOS link with library "dl". "-fvisibility=hidden"
+        flag is also recommended.
+      </p></td></tr>
+</table></div>
+<p>
+      If you need a low level API <code class="computeroutput"><a class="link" href="../boost/dll/shared_library.html" title="Class shared_library">boost::dll::shared_library</a></code>
+      will suit you. If you want to load a library, just construct that class with
+      a path to the library as a parameter:
+</p>
+<pre class="programlisting"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">dll</span><span class="special">::</span><span class="identifier">shared_library</span> <span class="identifier">lib</span><span class="special">(</span><span class="string">"/test/boost/application/libtest_library.so"</span><span class="special">);</span>
+</pre>
+<p>
+      Now you can easily import symbols from that library using the <code class="computeroutput"><span class="identifier">get</span></code> and <code class="computeroutput"><span class="identifier">get_alias</span></code>
+      member functions:
+</p>
+<pre class="programlisting"><span class="keyword">int</span> <span class="identifier">plugin_constant</span> <span class="special">=</span> <span class="identifier">lib</span><span class="special">.</span><span class="identifier">get</span><span class="special">&lt;</span><span class="keyword">const</span> <span class="keyword">int</span><span class="special">&gt;(</span><span class="string">"integer_variable"</span><span class="special">);</span>
+<span class="identifier">boost</span><span class="special">::</span><span class="identifier">function</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">()&gt;</span> <span class="identifier">f</span> <span class="special">=</span> <span class="identifier">lib</span><span class="special">.</span><span class="identifier">get</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">()&gt;(</span><span class="string">"function_returning_int"</span><span class="special">);</span>
+<span class="keyword">int</span><span class="special">&amp;</span> <span class="identifier">i</span> <span class="special">=</span> <span class="identifier">lib</span><span class="special">.</span><span class="identifier">get_alias</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;(</span><span class="string">"alias_to_int_variable"</span><span class="special">);</span>
+</pre>
+<p>
+      In case of <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">dll</span><span class="special">::</span><span class="identifier">shared_library</span></code>
+      it is safe to use imported symbols only until <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">dll</span><span class="special">::</span><span class="identifier">shared_library</span></code> instance is not destroyed.
+    </p>
+<p>
+      Query libraries using <code class="computeroutput"><a class="link" href="../boost/dll/library_info.html" title="Class library_info">boost::dll::library_info</a></code>
+      and get symbol infos using <code class="computeroutput"><a class="link" href="../boost/dll/symbol_location.html" title="Function symbol_location">boost::dll::symbol_location</a></code>,
+      <code class="computeroutput"><a class="link" href="../boost/dll/this_line_location.html" title="Function this_line_location">boost::dll::this_line_location</a></code>
+      and <code class="computeroutput"><a class="link" href="../boost/dll/program_location.html" title="Function program_location">boost::dll::program_location</a></code>.
+    </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2014 Renato Tegon Forti, Antony Polukhin<br>Copyright &#169; 2015, 2016 Antony Polukhin<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../boost_dll.html"><img src="../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../boost_dll.html"><img src="../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="tutorial.html"><img src="../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

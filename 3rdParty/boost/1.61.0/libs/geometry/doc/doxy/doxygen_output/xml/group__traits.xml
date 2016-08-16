@@ -1,0 +1,27 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="group__traits" kind="group">
+    <compoundname>traits</compoundname>
+    <title>traits: adapt geometries</title>
+    <innerclass refid="structboost_1_1geometry_1_1traits_1_1access" prot="public">boost::geometry::traits::access</innerclass>
+    <innerclass refid="structboost_1_1geometry_1_1traits_1_1closure" prot="public">boost::geometry::traits::closure</innerclass>
+    <innerclass refid="structboost_1_1geometry_1_1traits_1_1coordinate__system" prot="public">boost::geometry::traits::coordinate_system</innerclass>
+    <innerclass refid="structboost_1_1geometry_1_1traits_1_1coordinate__type" prot="public">boost::geometry::traits::coordinate_type</innerclass>
+    <innerclass refid="structboost_1_1geometry_1_1traits_1_1cs__tag" prot="public">boost::geometry::traits::cs_tag</innerclass>
+    <innerclass refid="structboost_1_1geometry_1_1traits_1_1dimension" prot="public">boost::geometry::traits::dimension</innerclass>
+    <innerclass refid="structboost_1_1geometry_1_1traits_1_1exterior__ring" prot="public">boost::geometry::traits::exterior_ring</innerclass>
+    <innerclass refid="structboost_1_1geometry_1_1traits_1_1indexed__access" prot="public">boost::geometry::traits::indexed_access</innerclass>
+    <innerclass refid="structboost_1_1geometry_1_1traits_1_1interior__const__type" prot="public">boost::geometry::traits::interior_const_type</innerclass>
+    <innerclass refid="structboost_1_1geometry_1_1traits_1_1interior__rings" prot="public">boost::geometry::traits::interior_rings</innerclass>
+    <innerclass refid="structboost_1_1geometry_1_1traits_1_1point__order" prot="public">boost::geometry::traits::point_order</innerclass>
+    <innerclass refid="structboost_1_1geometry_1_1traits_1_1point__type" prot="public">boost::geometry::traits::point_type</innerclass>
+    <innerclass refid="structboost_1_1geometry_1_1traits_1_1radius__access" prot="public">boost::geometry::traits::radius_access</innerclass>
+    <innerclass refid="structboost_1_1geometry_1_1traits_1_1radius__type" prot="public">boost::geometry::traits::radius_type</innerclass>
+    <innerclass refid="structboost_1_1geometry_1_1traits_1_1ring__const__type" prot="public">boost::geometry::traits::ring_const_type</innerclass>
+    <innerclass refid="structboost_1_1geometry_1_1traits_1_1tag" prot="public">boost::geometry::traits::tag</innerclass>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+  </compounddef>
+</doxygen>

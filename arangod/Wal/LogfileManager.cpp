@@ -1813,7 +1813,7 @@ int LogfileManager::writeShutdownInfo(bool writeShutdownTime) {
       // time
       MUTEX_LOCKER(mutexLocker, _shutdownFileLock);
       ok = arangodb::basics::VelocyPackHelper::velocyPackToFile(
-          filename.c_str(), builder.slice(), true);
+          filename, builder.slice(), true);
     }
 
     if (!ok) {

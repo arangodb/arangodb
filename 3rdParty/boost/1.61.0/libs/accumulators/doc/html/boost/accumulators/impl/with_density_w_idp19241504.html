@@ -1,0 +1,82 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Struct template with_density_weighted_median_impl</title>
+<link rel="stylesheet" href="../../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../../../index.html" title="Chapter&#160;1.&#160;Boost.Accumulators">
+<link rel="up" href="../../../statistics_library_reference.html#header.boost.accumulators.statistics.weighted_median_hpp" title="Header &lt;boost/accumulators/statistics/weighted_median.hpp&gt;">
+<link rel="prev" href="weighted_median_impl.html" title="Struct template weighted_median_impl">
+<link rel="next" href="with_p_square__idp19258880.html" title="Struct template with_p_square_cumulative_distribution_weighted_median_impl">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="weighted_median_impl.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../../statistics_library_reference.html#header.boost.accumulators.statistics.weighted_median_hpp"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="with_p_square__idp19258880.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="refentry">
+<a name="boost.accumulators.impl.with_density_w_idp19241504"></a><div class="titlepage"></div>
+<div class="refnamediv">
+<h2><span class="refentrytitle">Struct template with_density_weighted_median_impl</span></h2>
+<p>boost::accumulators::impl::with_density_weighted_median_impl &#8212; Median estimation for weighted samples based on the density estimator. </p>
+</div>
+<h2 xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv-title">Synopsis</h2>
+<div xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv"><pre class="synopsis"><span class="comment">// In header: &lt;<a class="link" href="../../../statistics_library_reference.html#header.boost.accumulators.statistics.weighted_median_hpp" title="Header &lt;boost/accumulators/statistics/weighted_median.hpp&gt;">boost/accumulators/statistics/weighted_median.hpp</a>&gt;
+
+</span><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Sample<span class="special">&gt;</span> 
+<span class="keyword">struct</span> <a class="link" href="with_density_w_idp19241504.html" title="Struct template with_density_weighted_median_impl">with_density_weighted_median_impl</a> <span class="special">{</span>
+  <span class="comment">// types</span>
+  <span class="keyword">typedef</span> <span class="identifier">numeric</span><span class="special">::</span><span class="identifier">functional</span><span class="special">::</span><span class="identifier">fdiv</span><span class="special">&lt;</span> <span class="identifier">Sample</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="special">&gt;</span><span class="special">::</span><span class="identifier">result_type</span> <a name="boost.accumulators.impl.with_density_w_idp19241504.float_type"></a><span class="identifier">float_type</span><span class="special">;</span>    
+  <span class="keyword">typedef</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">pair</span><span class="special">&lt;</span> <span class="identifier">float_type</span><span class="special">,</span> <span class="identifier">float_type</span> <span class="special">&gt;</span> <span class="special">&gt;</span>            <a name="boost.accumulators.impl.with_density_w_idp19241504.histogram_type"></a><span class="identifier">histogram_type</span><span class="special">;</span>
+  <span class="keyword">typedef</span> <span class="identifier">iterator_range</span><span class="special">&lt;</span> <span class="keyword">typename</span> <span class="identifier">histogram_type</span><span class="special">::</span><span class="identifier">iterator</span> <span class="special">&gt;</span>           <a name="boost.accumulators.impl.with_density_w_idp19241504.range_type"></a><span class="identifier">range_type</span><span class="special">;</span>    
+  <span class="keyword">typedef</span> <span class="identifier">float_type</span>                                                    <a name="boost.accumulators.impl.with_density_w_idp19241504.result_type"></a><span class="identifier">result_type</span><span class="special">;</span>   
+
+  <span class="comment">// <a class="link" href="with_density_w_idp19241504.html#boost.accumulators.impl.with_density_w_idp19241504construct-copy-destruct">construct/copy/destruct</a></span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Args<span class="special">&gt;</span> <a class="link" href="with_density_w_idp19241504.html#idp19257056-bb"><span class="identifier">with_density_weighted_median_impl</span></a><span class="special">(</span><span class="identifier">Args</span> <span class="keyword">const</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+
+  <span class="comment">// <a class="link" href="with_density_w_idp19241504.html#idp19252144-bb">public member functions</a></span>
+  <span class="keyword">void</span> <a class="link" href="with_density_w_idp19241504.html#idp19252704-bb"><span class="keyword">operator</span><span class="special">(</span><span class="special">)</span></a><span class="special">(</span><span class="identifier">dont_care</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Args<span class="special">&gt;</span> <span class="identifier">result_type</span> <a class="link" href="with_density_w_idp19241504.html#idp19254240-bb"><span class="identifier">result</span></a><span class="special">(</span><span class="identifier">Args</span> <span class="keyword">const</span> <span class="special">&amp;</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+<span class="special">}</span><span class="special">;</span></pre></div>
+<div class="refsect1">
+<a name="idp59120208"></a><h2>Description</h2>
+<p>The algorithm determines the bin in which the <span class="inlinemediaobject"><img src="../../../images/accumulators//form_34.png"></span>-th sample lies, <span class="inlinemediaobject"><img src="../../../images/accumulators//form_35.png"></span> being the total number of samples. It returns the approximate horizontal position of this sample, based on a linear interpolation inside the bin. </p>
+<div class="refsect2">
+<a name="idp59125904"></a><h3>
+<a name="boost.accumulators.impl.with_density_w_idp19241504construct-copy-destruct"></a><code class="computeroutput">with_density_weighted_median_impl</code> 
+        public
+       construct/copy/destruct</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1"><li class="listitem"><pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Args<span class="special">&gt;</span> <a name="idp19257056-bb"></a><span class="identifier">with_density_weighted_median_impl</span><span class="special">(</span><span class="identifier">Args</span> <span class="keyword">const</span> <span class="special">&amp;</span> args<span class="special">)</span><span class="special">;</span></pre></li></ol></div>
+</div>
+<div class="refsect2">
+<a name="idp59136560"></a><h3>
+<a name="idp19252144-bb"></a><code class="computeroutput">with_density_weighted_median_impl</code> public member functions</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem"><pre class="literallayout"><span class="keyword">void</span> <a name="idp19252704-bb"></a><span class="keyword">operator</span><span class="special">(</span><span class="special">)</span><span class="special">(</span><span class="identifier">dont_care</span><span class="special">)</span><span class="special">;</span></pre></li>
+<li class="listitem"><pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Args<span class="special">&gt;</span> <span class="identifier">result_type</span> <a name="idp19254240-bb"></a><span class="identifier">result</span><span class="special">(</span><span class="identifier">Args</span> <span class="keyword">const</span> <span class="special">&amp;</span> args<span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre></li>
+</ol></div>
+</div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2005, 2006 Eric Niebler<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="weighted_median_impl.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../../statistics_library_reference.html#header.boost.accumulators.statistics.weighted_median_hpp"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="with_p_square__idp19258880.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

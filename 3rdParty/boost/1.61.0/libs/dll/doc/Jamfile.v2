@@ -1,0 +1,90 @@
+# Copyright (c) 2014 Renato Tegon Forti, Antony Polukhin.
+# Copyright (c) 2015-2016 Antony Polukhin.
+#
+# Distributed under the Boost Software License, Version 1.0. (See accompanying
+# file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+
+using quickbook ;
+using boostbook ;
+using doxygen ;
+using xsltproc ;
+
+import set ;
+import doxygen ;
+import xsltproc ;
+import notfile ;
+import path ;
+
+project dll/doc ;
+
+#
+# Common params for doxygen
+# 
+
+local doxygen_params =
+    <doxygen:param>HIDE_UNDOC_MEMBERS=YES
+    <doxygen:param>HIDE_UNDOC_CLASSES=YES
+    <doxygen:param>HIDE_SCOPE_NAMES=YES
+    <doxygen:param>EXTRACT_ALL=NO
+    <doxygen:param>EXTRACT_PRIVATE=NO
+    <doxygen:param>BUILTIN_STL_SUPPORT=YES
+    <doxygen:param>ENABLE_PREPROCESSING=YES
+    <doxygen:param>MACRO_EXPANSION=YES
+    <doxygen:param>"ALIASES= \\
+        \"forcedlink{1}=\\xmlonly<link linkend='boost.dll.\\1'>boost::dll::\\1</link>\\endxmlonly\" \\
+        \"forcedmacrolink{1}=\\xmlonly<link linkend='\\1'>\\1</link>\\endxmlonly\" "
+    <doxygen:param>"PREDEFINED= \\
+        \"BOOST_RV_REF(T)=T&&\" \\
+        \"BOOST_RV_REF(shared_library)=shared_library&&\" \\
+        \"BOOST_COPY_ASSIGN_REF(shared_library)=const shared_library&\" \\
+        \"BOOST_MOVABLE_BUT_NOT_COPYABLE(shared_library)= \\
+            shared_library(const shared_library&) = delete; \\
+            shared_library& operator=(const shared_library&) = delete; \" \\
+        \"BOOST_DLL_IMPORT_RESULT_TYPE=result_type\" \\
+        \"BOOST_EXPLICIT_OPERATOR_BOOL()=explicit operator bool() const noexcept;\" \\
+        \"BOOST_DLL_DOXYGEN\" "
+    ;
+
+#
+# Ref Sessions Generation
+#
+doxygen autodoc_shared_library_core
+    :
+        [ glob 
+            ../include/boost/dll/shared_library.hpp
+            ../include/boost/dll/shared_library_load_mode.hpp
+            ../include/boost/dll/library_info.hpp
+            ../include/boost/dll/runtime_symbol_info.hpp
+            ../include/boost/dll/alias.hpp
+
+            ../include/boost/dll/smart_library.hpp
+        ]
+    :
+        $(doxygen_params)
+        <xsl:param>"boost.doxygen.reftitle=Shared Library Reference"
+    ;
+
+doxygen autodoc_shared_library_refcountable
+    :
+        [ glob 
+            ../include/boost/dll/import.hpp
+        ]
+    :
+        $(doxygen_params)
+        <xsl:param>"boost.doxygen.reftitle=Shared Library Refcountable Reference"
+    ;
+
+#
+# Docs Generation
+#
+boostbook dll-doc
+    :
+        dll.qbk
+    :
+        <dependency>autodoc_shared_library_core
+        <dependency>autodoc_shared_library_refcountable
+        <xsl:param>boost.root=http://www.boost.org/doc/libs/1_60_0
+        #<xsl:param>boost.root=../../../.
+        <xml:param>html.stylesheet=../../../../doc/src/boostbook.css
+    ;
+

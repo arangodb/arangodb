@@ -1,0 +1,55 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="structboost_1_1geometry_1_1dispatch_1_1within_3_01_point_00_01_multi_geometry_00_01point__tag_00ae9ce608c120e8deb4dc22620a60eb84" kind="struct" prot="public">
+    <compoundname>boost::geometry::dispatch::within&lt; Point, MultiGeometry, point_tag, detail::buffer::buffered_ring_collection_tag &gt;</compoundname>
+    <includes local="no">buffered_ring.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename Point</type>
+      </param>
+      <param>
+        <type>typename MultiGeometry</type>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-static-func">
+      <memberdef kind="function" id="structboost_1_1geometry_1_1dispatch_1_1within_3_01_point_00_01_multi_geometry_00_01point__tag_00ae9ce608c120e8deb4dc22620a60eb84_1a2a10f5c0976d406507cf7b9069a52ab8" prot="public" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Strategy</type>
+          </param>
+        </templateparamlist>
+        <type>bool</type>
+        <definition>static bool boost::geometry::dispatch::within&lt; Point, MultiGeometry, point_tag, detail::buffer::buffered_ring_collection_tag &gt;::apply</definition>
+        <argsstring>(Point const &amp;point, MultiGeometry const &amp;multi, Strategy const &amp;strategy)</argsstring>
+        <name>apply</name>
+        <param>
+          <type>Point const &amp;</type>
+          <declname>point</declname>
+        </param>
+        <param>
+          <type>MultiGeometry const &amp;</type>
+          <declname>multi</declname>
+        </param>
+        <param>
+          <type>Strategy const &amp;</type>
+          <declname>strategy</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/buffer/buffered_ring.hpp" line="218" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/buffer/buffered_ring.hpp" bodystart="216" bodyend="220"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/buffer/buffered_ring.hpp" line="214" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/buffer/buffered_ring.hpp" bodystart="207" bodyend="221"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1dispatch_1_1within_3_01_point_00_01_multi_geometry_00_01point__tag_00ae9ce608c120e8deb4dc22620a60eb84_1a2a10f5c0976d406507cf7b9069a52ab8" prot="public" virt="non-virtual"><scope>boost::geometry::dispatch::within&lt; Point, MultiGeometry, point_tag, detail::buffer::buffered_ring_collection_tag &gt;</scope><name>apply</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

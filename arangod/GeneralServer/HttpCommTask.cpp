@@ -24,13 +24,12 @@
 
 #include "HttpCommTask.h"
 
+#include "Meta/conversion.h"
 #include "Basics/HybridLogicalClock.h"
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "GeneralServer/RestHandler.h"
 #include "GeneralServer/RestHandlerFactory.h"
-#include "Scheduler/Scheduler.h"
-#include "Scheduler/SchedulerFeature.h"
 #include "VocBase/ticks.h"  //clock
 
 using namespace arangodb;
@@ -366,20 +365,6 @@ bool HttpCommTask::processRead() {
         }
       }
 
-      // .............................................................................
-      // check if server is active
-      // .............................................................................
-
-      Scheduler const* scheduler = SchedulerFeature::SCHEDULER;
-
-      if (scheduler != nullptr && !scheduler->isActive()) {
-        // server is inactive and will intentionally respond with HTTP 503
-        LOG(TRACE) << "cannot serve request - server is inactive";
-
-        handleSimpleError(GeneralResponse::ResponseCode::SERVICE_UNAVAILABLE);
-        return false;
-      }
-
       // check for a 100-continue
       if (_readRequestBody) {
         bool found;
@@ -566,8 +551,11 @@ void HttpCommTask::processRequest() {
   }
 
   // create a handler and execute
-  executeRequest(_request,
-                 new HttpResponse(GeneralResponse::ResponseCode::SERVER_ERROR));
+  HttpResponse* response =
+      new HttpResponse(GeneralResponse::ResponseCode::SERVER_ERROR);
+  response->setContentType(meta::enumToEnum<GeneralResponse::ContentType>(
+      _request->contentTypeResponse()));
+  executeRequest(_request, response);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

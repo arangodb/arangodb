@@ -1,0 +1,171 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="classboost_1_1geometry_1_1strategy_1_1distance_1_1cross__track__point__box" kind="class" prot="public">
+    <compoundname>boost::geometry::strategy::distance::cross_track_point_box</compoundname>
+    <includes local="no">distance_cross_track_point_box.hpp</includes>
+    <innerclass refid="structboost_1_1geometry_1_1strategy_1_1distance_1_1cross__track__point__box_1_1return__type" prot="public">boost::geometry::strategy::distance::cross_track_point_box::return_type</innerclass>
+    <templateparamlist>
+      <param>
+        <type>typename CalculationType</type>
+        <defval>void</defval>
+      </param>
+      <param>
+        <type>typename Strategy</type>
+        <defval><ref refid="classboost_1_1geometry_1_1strategy_1_1distance_1_1cross__track" kindref="compound">cross_track</ref>&lt;CalculationType&gt;</defval>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-type">
+      <memberdef kind="typedef" id="classboost_1_1geometry_1_1strategy_1_1distance_1_1cross__track__point__box_1a60c3d350ed24b483c3a696ff9c98081d" prot="public" static="no">
+        <type>Strategy::radius_type</type>
+        <definition>typedef Strategy::radius_type boost::geometry::strategy::distance::cross_track_point_box&lt; CalculationType, Strategy &gt;::radius_type</definition>
+        <argsstring></argsstring>
+        <name>radius_type</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/distance_cross_track_point_box.hpp" line="74" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/distance_cross_track_point_box.hpp" bodystart="74" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="private-attrib">
+      <memberdef kind="variable" id="classboost_1_1geometry_1_1strategy_1_1distance_1_1cross__track__point__box_1a76f61973e8b9a4699293b9f8aef3c09f" prot="private" static="no" mutable="no">
+        <type>Strategy</type>
+        <definition>Strategy boost::geometry::strategy::distance::cross_track_point_box&lt; CalculationType, Strategy &gt;::m_ps_strategy</definition>
+        <argsstring></argsstring>
+        <name>m_ps_strategy</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/distance_cross_track_point_box.hpp" line="231" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/distance_cross_track_point_box.hpp" bodystart="231" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="classboost_1_1geometry_1_1strategy_1_1distance_1_1cross__track__point__box_1ae2c119c528a7a6bb32bfb8b9097f5a4d" prot="public" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Point</type>
+          </param>
+          <param>
+            <type>typename Box</type>
+          </param>
+        </templateparamlist>
+        <type><ref refid="structboost_1_1geometry_1_1strategy_1_1distance_1_1cross__track__point__box_1_1return__type" kindref="compound">return_type</ref>&lt; Point, Box &gt;::type</type>
+        <definition>return_type&lt;Point, Box&gt;::type boost::geometry::strategy::distance::cross_track_point_box&lt; CalculationType, Strategy &gt;::apply</definition>
+        <argsstring>(Point const &amp;point, Box const &amp;box) const </argsstring>
+        <name>apply</name>
+        <param>
+          <type>Point const &amp;</type>
+          <declname>point</declname>
+        </param>
+        <param>
+          <type>Box const &amp;</type>
+          <declname>box</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/distance_cross_track_point_box.hpp" line="95" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/distance_cross_track_point_box.hpp" bodystart="94" bodyend="223"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1strategy_1_1distance_1_1cross__track__point__box_1aa2f407b00a6bcd1abecea8266ed454c5" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type></type>
+        <definition>boost::geometry::strategy::distance::cross_track_point_box&lt; CalculationType, Strategy &gt;::cross_track_point_box</definition>
+        <argsstring>()</argsstring>
+        <name>cross_track_point_box</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/distance_cross_track_point_box.hpp" line="77" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/distance_cross_track_point_box.hpp" bodystart="76" bodyend="77"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1strategy_1_1distance_1_1cross__track__point__box_1a9ab4d0f3e971d5ef63f9f4730cc547a7" prot="public" static="no" const="no" explicit="yes" inline="yes" virt="non-virtual">
+        <type></type>
+        <definition>boost::geometry::strategy::distance::cross_track_point_box&lt; CalculationType, Strategy &gt;::cross_track_point_box</definition>
+        <argsstring>(typename Strategy::radius_type const &amp;r)</argsstring>
+        <name>cross_track_point_box</name>
+        <param>
+          <type>typename Strategy::radius_type const &amp;</type>
+          <declname>r</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/distance_cross_track_point_box.hpp" line="81" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/distance_cross_track_point_box.hpp" bodystart="79" bodyend="81"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1strategy_1_1distance_1_1cross__track__point__box_1a0ae35335f6a6661a973b4804898ad0c0" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type></type>
+        <definition>boost::geometry::strategy::distance::cross_track_point_box&lt; CalculationType, Strategy &gt;::cross_track_point_box</definition>
+        <argsstring>(Strategy const &amp;s)</argsstring>
+        <name>cross_track_point_box</name>
+        <param>
+          <type>Strategy const &amp;</type>
+          <declname>s</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/distance_cross_track_point_box.hpp" line="85" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/distance_cross_track_point_box.hpp" bodystart="83" bodyend="85"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1strategy_1_1distance_1_1cross__track__point__box_1a10f3656c00a078140cebcddc871bce01" prot="public" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <type>Strategy::radius_type</type>
+        <definition>Strategy::radius_type boost::geometry::strategy::distance::cross_track_point_box&lt; CalculationType, Strategy &gt;::radius</definition>
+        <argsstring>() const </argsstring>
+        <name>radius</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/distance_cross_track_point_box.hpp" line="226" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/distance_cross_track_point_box.hpp" bodystart="225" bodyend="228"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+<para>Strategy functor for distance point to box calculation. </para>    </briefdescription>
+    <detaileddescription>
+<para>Class which calculates the distance of a point to a box, for points and boxes on a sphere or globe <parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>CalculationType</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>numeric type for calculation (e.g. high precision); if [*void] then it is extracted automatically from the coordinate type and (if necessary) promoted to floating point </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Strategy</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>underlying point-segment distance strategy, defaults to cross track</para></parameterdescription>
+</parameteritem>
+</parameterlist>
+ <qbk>
+[heading See also]
+[link geometry.reference.algorithms.distance.distance_3_with_strategy distance (with strategy)]
+</qbk>  </para>    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/distance_cross_track_point_box.hpp" line="67" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/distance_cross_track_point_box.hpp" bodystart="66" bodyend="232"/>
+    <listofallmembers>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1distance_1_1cross__track__point__box_1ae2c119c528a7a6bb32bfb8b9097f5a4d" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::distance::cross_track_point_box</scope><name>apply</name></member>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1distance_1_1cross__track__point__box_1aa2f407b00a6bcd1abecea8266ed454c5" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::distance::cross_track_point_box</scope><name>cross_track_point_box</name></member>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1distance_1_1cross__track__point__box_1a9ab4d0f3e971d5ef63f9f4730cc547a7" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::distance::cross_track_point_box</scope><name>cross_track_point_box</name></member>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1distance_1_1cross__track__point__box_1a0ae35335f6a6661a973b4804898ad0c0" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::distance::cross_track_point_box</scope><name>cross_track_point_box</name></member>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1distance_1_1cross__track__point__box_1a76f61973e8b9a4699293b9f8aef3c09f" prot="private" virt="non-virtual"><scope>boost::geometry::strategy::distance::cross_track_point_box</scope><name>m_ps_strategy</name></member>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1distance_1_1cross__track__point__box_1a10f3656c00a078140cebcddc871bce01" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::distance::cross_track_point_box</scope><name>radius</name></member>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1distance_1_1cross__track__point__box_1a60c3d350ed24b483c3a696ff9c98081d" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::distance::cross_track_point_box</scope><name>radius_type</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

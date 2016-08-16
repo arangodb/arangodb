@@ -1,0 +1,521 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Examples</title>
+<link rel="stylesheet" href="http://www.boost.org/doc/libs/1_53_0/doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../index.html" title="Chapter&#160;1.&#160;Boost.TypeIndex 4.0">
+<link rel="up" href="../index.html" title="Chapter&#160;1.&#160;Boost.TypeIndex 4.0">
+<link rel="prev" href="how_it_works.html" title="How it works">
+<link rel="next" href="../boost_typeindex_header_reference.html" title="Boost.TypeIndex Header Reference">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="http://www.boost.org/doc/libs/1_53_0/boost.png"></td>
+<td align="center"><a href="http://www.boost.org/doc/libs/1_53_0/index.html">Home</a></td>
+<td align="center"><a href="http://www.boost.org/doc/libs/1_53_0/libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="http://www.boost.org/doc/libs/1_53_0/more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="how_it_works.html"><img src="http://www.boost.org/doc/libs/1_53_0/doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="http://www.boost.org/doc/libs/1_53_0/doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="http://www.boost.org/doc/libs/1_53_0/doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../boost_typeindex_header_reference.html"><img src="http://www.boost.org/doc/libs/1_53_0/doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="boost_typeindex.examples"></a><a class="link" href="examples.html" title="Examples">Examples</a>
+</h2></div></div></div>
+<div class="toc"><dl>
+<dt><span class="section"><a href="examples.html#boost_typeindex.examples.getting_human_readable_and_mangl">Getting
+      human readable and mangled type names</a></span></dt>
+<dt><span class="section"><a href="examples.html#boost_typeindex.examples.storing_information_about_a_type">Storing
+      information about a type in container </a></span></dt>
+<dt><span class="section"><a href="examples.html#boost_typeindex.examples.getting_through_the_inheritance_">Getting
+      through the inheritance to receive a real type name </a></span></dt>
+<dt><span class="section"><a href="examples.html#boost_typeindex.examples.exact_type_matching_storing_type">Exact
+      type matching: storing type with const, volatile and reference qualifiers</a></span></dt>
+<dt><span class="section"><a href="examples.html#boost_typeindex.examples.table_of_raw_name_and_pretty_nam">Table
+      of raw_name() and pretty_name() outputs with and without RTTI </a></span></dt>
+</dl></div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_typeindex.examples.getting_human_readable_and_mangl"></a><a class="link" href="examples.html#boost_typeindex.examples.getting_human_readable_and_mangl" title="Getting human readable and mangled type names">Getting
+      human readable and mangled type names</a>
+</h3></div></div></div>
+<p>
+        The following example shows how short (mangled) and human readable type names
+        could be obtained from a type. Works with and without RTTI.
+      </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">type_index</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">iostream</span><span class="special">&gt;</span>
+
+<span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">&gt;</span>
+<span class="keyword">void</span> <span class="identifier">foo</span><span class="special">(</span><span class="identifier">T</span><span class="special">)</span> <span class="special">{</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"\n Short name: "</span> <span class="special">&lt;&lt;</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">typeindex</span><span class="special">::</span><span class="identifier">type_id</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;().</span><span class="identifier">raw_name</span><span class="special">();</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"\n Readable name: "</span> <span class="special">&lt;&lt;</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">typeindex</span><span class="special">::</span><span class="identifier">type_id</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;().</span><span class="identifier">pretty_name</span><span class="special">();</span>
+<span class="special">}</span>
+
+<span class="keyword">struct</span> <span class="identifier">user_defined_type</span><span class="special">{};</span>
+
+<span class="keyword">namespace</span> <span class="identifier">ns1</span> <span class="special">{</span> <span class="keyword">namespace</span> <span class="identifier">ns2</span> <span class="special">{</span>
+    <span class="keyword">struct</span> <span class="identifier">user_defined_type</span><span class="special">{};</span>
+<span class="special">}}</span> <span class="comment">// namespace ns1::ns2</span>
+
+<span class="keyword">namespace</span> <span class="special">{</span>
+    <span class="keyword">struct</span> <span class="identifier">in_anon_type</span><span class="special">{};</span>
+<span class="special">}</span> <span class="comment">// anonymous namespace</span>
+
+<span class="keyword">int</span> <span class="identifier">main</span><span class="special">()</span> <span class="special">{</span>
+    <span class="comment">// Call to</span>
+    <span class="identifier">foo</span><span class="special">(</span><span class="number">1</span><span class="special">);</span>
+    <span class="comment">// will output something like this:</span>
+    <span class="comment">//</span>
+    <span class="comment">// (RTTI on)                                            (RTTI off)</span>
+    <span class="comment">// Short name: i                                        Short name: int]</span>
+    <span class="comment">// Readable name: int                                   Readable name: int</span>
+
+    <span class="identifier">user_defined_type</span> <span class="identifier">t</span><span class="special">;</span>
+    <span class="identifier">foo</span><span class="special">(</span><span class="identifier">t</span><span class="special">);</span>
+    <span class="comment">// Will output:</span>
+    <span class="comment">//</span>
+    <span class="comment">// (RTTI on)                                            (RTTI off)</span>
+    <span class="comment">// Short name: 17user_defined_type                      user_defined_type]</span>
+    <span class="comment">// Readable name: user_defined_type                     user_defined_type</span>
+
+    <span class="identifier">ns1</span><span class="special">::</span><span class="identifier">ns2</span><span class="special">::</span><span class="identifier">user_defined_type</span> <span class="identifier">t_in_ns</span><span class="special">;</span>
+    <span class="identifier">foo</span><span class="special">(</span><span class="identifier">t_in_ns</span><span class="special">);</span>
+    <span class="comment">// Will output:</span>
+    <span class="comment">//</span>
+    <span class="comment">// (RTTI on)                                            (RTTI off)</span>
+    <span class="comment">// Short name: N3ns13ns217user_defined_typeE            ns1::ns2::user_defined_type]</span>
+    <span class="comment">// Readable name: ns1::ns2::user_defined_type           ns1::ns2::user_defined_type</span>
+
+    <span class="identifier">in_anon_type</span> <span class="identifier">anon_t</span><span class="special">;</span>
+    <span class="identifier">foo</span><span class="special">(</span><span class="identifier">anon_t</span><span class="special">);</span>
+    <span class="comment">// Will output:</span>
+    <span class="comment">//</span>
+    <span class="comment">// (RTTI on)                                            (RTTI off)</span>
+    <span class="comment">// Short name: N12_GLOBAL__N_112in_anon_typeE           {anonymous}::in_anon_type]</span>
+    <span class="comment">// Readable name: (anonymous namespace)::in_anon_type   {anonymous}::in_anon_type</span>
+<span class="special">}</span>
+</pre>
+<p>
+        Short names are very compiler dependant: some compiler will output <code class="computeroutput"><span class="special">.</span><span class="identifier">H</span></code>, others
+        <code class="computeroutput"><span class="identifier">i</span></code>.
+      </p>
+<p>
+        Readable names may also differ between compilers: <code class="computeroutput"><span class="keyword">struct</span>
+        <span class="identifier">user_defined_type</span></code>, <code class="computeroutput"><span class="identifier">user_defined_type</span></code>.
+      </p>
+<div class="warning"><table border="0" summary="Warning">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Warning]" src="http://www.boost.org/doc/libs/1_53_0/doc/src/images/warning.png"></td>
+<th align="left">Warning</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+          With RTTI off different classes with same names in anonymous namespace
+          may collapse. See 'RTTI emulation limitations'.
+        </p></td></tr>
+</table></div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_typeindex.examples.storing_information_about_a_type"></a><a class="link" href="examples.html#boost_typeindex.examples.storing_information_about_a_type" title="Storing information about a type in container">Storing
+      information about a type in container </a>
+</h3></div></div></div>
+<p>
+        The following example shows how an information about a type could be stored.
+        Example works with and without RTTI.
+      </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">type_index</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">unordered_set</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">functional</span><span class="special">/</span><span class="identifier">hash</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">cassert</span><span class="special">&gt;</span>
+
+<span class="keyword">int</span> <span class="identifier">main</span><span class="special">()</span> <span class="special">{</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">unordered_set</span><span class="special">&lt;</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">typeindex</span><span class="special">::</span><span class="identifier">type_index</span><span class="special">&gt;</span> <span class="identifier">types</span><span class="special">;</span>
+
+    <span class="comment">// Storing some `boost::type_info`s</span>
+    <span class="identifier">types</span><span class="special">.</span><span class="identifier">insert</span><span class="special">(</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">typeindex</span><span class="special">::</span><span class="identifier">type_id</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;());</span>
+    <span class="identifier">types</span><span class="special">.</span><span class="identifier">insert</span><span class="special">(</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">typeindex</span><span class="special">::</span><span class="identifier">type_id</span><span class="special">&lt;</span><span class="keyword">float</span><span class="special">&gt;());</span>
+
+    <span class="comment">// `types` variable contains two `boost::type_index`es:</span>
+    <span class="identifier">assert</span><span class="special">(</span><span class="identifier">types</span><span class="special">.</span><span class="identifier">size</span><span class="special">()</span> <span class="special">==</span> <span class="number">2</span><span class="special">);</span>
+
+    <span class="comment">// Const, volatile and reference will be striped from the type:</span>
+    <span class="keyword">bool</span> <span class="identifier">is_inserted</span> <span class="special">=</span> <span class="identifier">types</span><span class="special">.</span><span class="identifier">insert</span><span class="special">(</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">typeindex</span><span class="special">::</span><span class="identifier">type_id</span><span class="special">&lt;</span><span class="keyword">const</span> <span class="keyword">int</span><span class="special">&gt;()).</span><span class="identifier">second</span><span class="special">;</span>
+    <span class="identifier">assert</span><span class="special">(!</span><span class="identifier">is_inserted</span><span class="special">);</span>
+    <span class="identifier">assert</span><span class="special">(</span><span class="identifier">types</span><span class="special">.</span><span class="identifier">erase</span><span class="special">(</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">typeindex</span><span class="special">::</span><span class="identifier">type_id</span><span class="special">&lt;</span><span class="keyword">float</span><span class="special">&amp;&gt;())</span> <span class="special">==</span> <span class="number">1</span><span class="special">);</span>
+
+    <span class="comment">// We have erased the `float` type, only `int` remains</span>
+    <span class="identifier">assert</span><span class="special">(*</span><span class="identifier">types</span><span class="special">.</span><span class="identifier">begin</span><span class="special">()</span> <span class="special">==</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">typeindex</span><span class="special">::</span><span class="identifier">type_id</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;());</span>
+<span class="special">}</span>
+</pre>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_typeindex.examples.getting_through_the_inheritance_"></a><a class="link" href="examples.html#boost_typeindex.examples.getting_through_the_inheritance_" title="Getting through the inheritance to receive a real type name">Getting
+      through the inheritance to receive a real type name </a>
+</h3></div></div></div>
+<p>
+        The following example shows that <code class="computeroutput"><span class="identifier">type_info</span></code>
+        is able to store the real type, successfully getting through all the inheritances.
+      </p>
+<p>
+        Example works with and without RTTI."
+      </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">type_index</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">iostream</span><span class="special">&gt;</span>
+
+<span class="keyword">struct</span> <span class="identifier">A</span> <span class="special">{</span>
+    <span class="identifier">BOOST_TYPE_INDEX_REGISTER_CLASS</span>
+    <span class="keyword">virtual</span> <span class="special">~</span><span class="identifier">A</span><span class="special">(){}</span>
+<span class="special">};</span>
+<span class="keyword">struct</span> <span class="identifier">B</span><span class="special">:</span> <span class="keyword">public</span> <span class="identifier">A</span> <span class="special">{</span> <span class="identifier">BOOST_TYPE_INDEX_REGISTER_CLASS</span> <span class="special">};</span>
+<span class="keyword">struct</span> <span class="identifier">C</span><span class="special">:</span> <span class="keyword">public</span> <span class="identifier">B</span> <span class="special">{</span> <span class="identifier">BOOST_TYPE_INDEX_REGISTER_CLASS</span> <span class="special">};</span>
+
+<span class="keyword">void</span> <span class="identifier">print_real_type</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">A</span><span class="special">&amp;</span> <span class="identifier">a</span><span class="special">)</span> <span class="special">{</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">typeindex</span><span class="special">::</span><span class="identifier">type_id_runtime</span><span class="special">(</span><span class="identifier">a</span><span class="special">).</span><span class="identifier">pretty_name</span><span class="special">()</span> <span class="special">&lt;&lt;</span> <span class="char">'\n'</span><span class="special">;</span>
+<span class="special">}</span>
+
+<span class="keyword">int</span> <span class="identifier">main</span><span class="special">()</span> <span class="special">{</span>
+    <span class="identifier">C</span> <span class="identifier">c</span><span class="special">;</span>
+    <span class="keyword">const</span> <span class="identifier">A</span><span class="special">&amp;</span> <span class="identifier">c_as_a</span> <span class="special">=</span> <span class="identifier">c</span><span class="special">;</span>
+    <span class="identifier">print_real_type</span><span class="special">(</span><span class="identifier">c_as_a</span><span class="special">);</span>    <span class="comment">// Outputs `struct C`</span>
+    <span class="identifier">print_real_type</span><span class="special">(</span><span class="identifier">B</span><span class="special">());</span>       <span class="comment">// Outputs `struct B`</span>
+<span class="special">}</span>
+</pre>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_typeindex.examples.exact_type_matching_storing_type"></a><a class="link" href="examples.html#boost_typeindex.examples.exact_type_matching_storing_type" title="Exact type matching: storing type with const, volatile and reference qualifiers">Exact
+      type matching: storing type with const, volatile and reference qualifiers</a>
+</h3></div></div></div>
+<p>
+        The following example shows that <code class="computeroutput"><span class="identifier">type_index</span></code>
+        (and <code class="computeroutput"><span class="identifier">type_info</span></code>) is able to
+        store the exact type, without stripping const, volatile and references. Example
+        works with and without RTTI.
+      </p>
+<p>
+        In this example we'll create a class that stores a pointer to function and
+        remembers the exact type of the parameter the function accepts. When the
+        call to the bound function is made, he actual input parameter type is checked
+        against the stored parameter type and an exception is thrown in case of mismatch.
+      </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">type_index</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">iostream</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">stdexcept</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">cassert</span><span class="special">&gt;</span>
+
+<span class="keyword">class</span> <span class="identifier">type_erased_unary_function</span> <span class="special">{</span>
+    <span class="keyword">void</span><span class="special">*</span>                           <span class="identifier">function_ptr_</span><span class="special">;</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">typeindex</span><span class="special">::</span><span class="identifier">type_index</span>    <span class="identifier">exact_param_t_</span><span class="special">;</span>
+
+<span class="keyword">public</span><span class="special">:</span>
+    <span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">ParamT</span><span class="special">&gt;</span>
+    <span class="identifier">type_erased_unary_function</span><span class="special">(</span><span class="keyword">void</span><span class="special">(*</span><span class="identifier">ptr</span><span class="special">)(</span><span class="identifier">ParamT</span><span class="special">))</span>
+        <span class="special">:</span> <span class="identifier">function_ptr_</span><span class="special">(</span><span class="keyword">reinterpret_cast</span><span class="special">&lt;</span><span class="keyword">void</span><span class="special">*&gt;(</span><span class="identifier">ptr</span><span class="special">))</span> <span class="comment">// ptr - is a pointer to function returning `void` and accepting parameter of type `ParamT`</span>
+        <span class="special">,</span> <span class="identifier">exact_param_t_</span><span class="special">(</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">typeindex</span><span class="special">::</span><span class="identifier">type_id_with_cvr</span><span class="special">&lt;</span><span class="identifier">ParamT</span><span class="special">&gt;())</span>
+    <span class="special">{}</span>
+
+    <span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">ParamT</span><span class="special">&gt;</span>
+    <span class="keyword">void</span> <span class="identifier">call</span><span class="special">(</span><span class="identifier">ParamT</span> <span class="identifier">v</span><span class="special">)</span> <span class="special">{</span>
+        <span class="keyword">if</span> <span class="special">(</span><span class="identifier">exact_param_t_</span> <span class="special">!=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">typeindex</span><span class="special">::</span><span class="identifier">type_id_with_cvr</span><span class="special">&lt;</span><span class="identifier">ParamT</span><span class="special">&gt;())</span> <span class="special">{</span>
+            <span class="keyword">throw</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">runtime_error</span><span class="special">(</span><span class="string">"Incorrect `ParamT`"</span><span class="special">);</span>
+        <span class="special">}</span>
+
+        <span class="keyword">return</span> <span class="special">(</span><span class="keyword">reinterpret_cast</span><span class="special">&lt;</span><span class="keyword">void</span><span class="special">(*)(</span><span class="identifier">ParamT</span><span class="special">)&gt;(</span><span class="identifier">function_ptr_</span><span class="special">))(</span><span class="identifier">v</span><span class="special">);</span>
+    <span class="special">}</span>
+<span class="special">};</span>
+
+<span class="keyword">void</span> <span class="identifier">foo</span><span class="special">(</span><span class="keyword">int</span><span class="special">){}</span>
+
+<span class="keyword">int</span> <span class="identifier">main</span><span class="special">()</span> <span class="special">{</span>
+    <span class="identifier">type_erased_unary_function</span> <span class="identifier">func</span><span class="special">(&amp;</span><span class="identifier">foo</span><span class="special">);</span>
+    <span class="identifier">func</span><span class="special">.</span><span class="identifier">call</span><span class="special">(</span><span class="number">100</span><span class="special">);</span> <span class="comment">// OK, `100` has type `int`</span>
+
+    <span class="keyword">try</span> <span class="special">{</span>
+        <span class="keyword">int</span> <span class="identifier">i</span> <span class="special">=</span> <span class="number">100</span><span class="special">;</span>
+
+        <span class="comment">// An attempt to convert stored function to a function accepting reference</span>
+        <span class="identifier">func</span><span class="special">.</span><span class="identifier">call</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&amp;&gt;(</span><span class="identifier">i</span><span class="special">);</span> <span class="comment">// Will throw, because types `int&amp;` and `int` mismatch</span>
+
+        <span class="identifier">assert</span><span class="special">(</span><span class="keyword">false</span><span class="special">);</span>
+    <span class="special">}</span> <span class="keyword">catch</span> <span class="special">(</span><span class="keyword">const</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">runtime_error</span><span class="special">&amp;</span> <span class="comment">/*e*/</span><span class="special">)</span> <span class="special">{}</span>
+<span class="special">}</span>
+</pre>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_typeindex.examples.table_of_raw_name_and_pretty_nam"></a><a class="link" href="examples.html#boost_typeindex.examples.table_of_raw_name_and_pretty_nam" title="Table of raw_name() and pretty_name() outputs with and without RTTI">Table
+      of raw_name() and pretty_name() outputs with and without RTTI </a>
+</h3></div></div></div>
+<p>
+        The following example shows how different type names look when we explicitly
+        use classes for RTTI and RTT off.
+      </p>
+<p>
+        This example requires RTTI. For a more portable example see 'Getting human
+        readable and mangled type names':
+      </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">type_index</span><span class="special">/</span><span class="identifier">stl_type_index</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">type_index</span><span class="special">/</span><span class="identifier">ctti_type_index</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">iostream</span><span class="special">&gt;</span>
+
+<span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">&gt;</span>
+<span class="keyword">void</span> <span class="identifier">print</span><span class="special">(</span><span class="keyword">const</span> <span class="keyword">char</span><span class="special">*</span> <span class="identifier">name</span><span class="special">)</span> <span class="special">{</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">typeindex</span><span class="special">::</span><span class="identifier">stl_type_index</span> <span class="identifier">sti</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">typeindex</span><span class="special">::</span><span class="identifier">stl_type_index</span><span class="special">::</span><span class="identifier">type_id</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;();</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">typeindex</span><span class="special">::</span><span class="identifier">ctti_type_index</span> <span class="identifier">cti</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">typeindex</span><span class="special">::</span><span class="identifier">ctti_type_index</span><span class="special">::</span><span class="identifier">type_id</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;();</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"\t["</span> <span class="comment">/* start of the row */</span>
+        <span class="special">&lt;&lt;</span> <span class="string">"["</span> <span class="special">&lt;&lt;</span> <span class="identifier">name</span> <span class="special">&lt;&lt;</span> <span class="string">"]"</span>
+        <span class="special">&lt;&lt;</span> <span class="string">"[`"</span> <span class="special">&lt;&lt;</span> <span class="identifier">sti</span><span class="special">.</span><span class="identifier">raw_name</span><span class="special">()</span> <span class="special">&lt;&lt;</span> <span class="string">"`] "</span>
+        <span class="special">&lt;&lt;</span> <span class="string">"[`"</span> <span class="special">&lt;&lt;</span> <span class="identifier">sti</span><span class="special">.</span><span class="identifier">pretty_name</span><span class="special">()</span> <span class="special">&lt;&lt;</span> <span class="string">"`] "</span>
+        <span class="special">&lt;&lt;</span> <span class="string">"[`"</span> <span class="special">&lt;&lt;</span> <span class="identifier">cti</span><span class="special">.</span><span class="identifier">raw_name</span><span class="special">()</span> <span class="special">&lt;&lt;</span> <span class="string">"`] "</span>
+    <span class="special">&lt;&lt;</span> <span class="string">"]\n"</span> <span class="comment">/* end of the row */</span> <span class="special">;</span>
+<span class="special">}</span>
+
+<span class="keyword">struct</span> <span class="identifier">user_defined_type</span><span class="special">{};</span>
+
+<span class="keyword">namespace</span> <span class="identifier">ns1</span> <span class="special">{</span> <span class="keyword">namespace</span> <span class="identifier">ns2</span> <span class="special">{</span>
+    <span class="keyword">struct</span> <span class="identifier">user_defined_type</span><span class="special">{};</span>
+<span class="special">}}</span> <span class="comment">// namespace ns1::ns2</span>
+
+<span class="keyword">namespace</span> <span class="special">{</span>
+    <span class="keyword">struct</span> <span class="identifier">in_anon_type</span><span class="special">{};</span>
+<span class="special">}</span> <span class="comment">// anonymous namespace</span>
+
+<span class="keyword">namespace</span> <span class="identifier">ns3</span> <span class="special">{</span> <span class="keyword">namespace</span> <span class="special">{</span> <span class="keyword">namespace</span> <span class="identifier">ns4</span> <span class="special">{</span>
+    <span class="keyword">struct</span> <span class="identifier">in_anon_type</span><span class="special">{};</span>
+<span class="special">}}}</span> <span class="comment">// namespace ns3::{anonymous}::ns4</span>
+
+
+<span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T0</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">T1</span><span class="special">&gt;</span>
+<span class="keyword">class</span> <span class="identifier">templ</span> <span class="special">{};</span>
+
+<span class="keyword">template</span> <span class="special">&lt;&gt;</span>
+<span class="keyword">class</span> <span class="identifier">templ</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">,</span> <span class="keyword">int</span><span class="special">&gt;</span> <span class="special">{};</span>
+
+<span class="keyword">int</span> <span class="identifier">main</span><span class="special">()</span> <span class="special">{</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"[table:id Table of names\n"</span><span class="special">;</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"\t[[Type] [RTTI &amp; raw_name] [RTTI &amp; pretty_name] [noRTTI &amp; raw_name]]\n"</span><span class="special">;</span>
+
+    <span class="identifier">print</span><span class="special">&lt;</span><span class="identifier">user_defined_type</span><span class="special">&gt;(</span><span class="string">"User defined type"</span><span class="special">);</span>
+    <span class="identifier">print</span><span class="special">&lt;</span><span class="identifier">in_anon_type</span><span class="special">&gt;(</span><span class="string">"In anonymous namespace"</span><span class="special">);</span>
+    <span class="identifier">print</span><span class="special">&lt;</span><span class="identifier">ns3</span><span class="special">::</span><span class="identifier">ns4</span><span class="special">::</span><span class="identifier">in_anon_type</span><span class="special">&gt;(</span><span class="string">"In ns3::{anonymous}::ns4 namespace"</span><span class="special">);</span>
+    <span class="identifier">print</span><span class="special">&lt;</span><span class="identifier">templ</span><span class="special">&lt;</span><span class="keyword">short</span><span class="special">,</span> <span class="keyword">int</span><span class="special">&gt;</span> <span class="special">&gt;(</span><span class="string">"Template class"</span><span class="special">);</span>
+    <span class="identifier">print</span><span class="special">&lt;</span><span class="identifier">templ</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">,</span> <span class="keyword">int</span><span class="special">&gt;</span> <span class="special">&gt;(</span><span class="string">"Template class (full specialization)"</span><span class="special">);</span>
+    <span class="identifier">print</span><span class="special">&lt;</span><span class="identifier">templ</span><span class="special">&lt;</span>
+        <span class="identifier">templ</span><span class="special">&lt;</span><span class="keyword">char</span><span class="special">,</span> <span class="keyword">signed</span> <span class="keyword">char</span><span class="special">&gt;,</span>
+        <span class="identifier">templ</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">,</span> <span class="identifier">user_defined_type</span><span class="special">&gt;</span>
+    <span class="special">&gt;</span> <span class="special">&gt;(</span><span class="string">"Template class with templae classes"</span><span class="special">);</span>
+
+
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"]\n"</span><span class="special">;</span>
+<span class="special">}</span>
+</pre>
+<p>
+        Code from the example will produce the following table:
+      </p>
+<div class="table">
+<a name="boost_typeindex.examples.table_of_raw_name_and_pretty_nam.id"></a><p class="title"><b>Table&#160;1.2.&#160;Table of names</b></p>
+<div class="table-contents"><table class="table" summary="Table of names">
+<colgroup>
+<col>
+<col>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Type
+                </p>
+              </th>
+<th>
+                <p>
+                  RTTI &amp; raw_name
+                </p>
+              </th>
+<th>
+                <p>
+                  RTTI &amp; pretty_name
+                </p>
+              </th>
+<th>
+                <p>
+                  noRTTI &amp; raw_name
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  User defined type
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="number">17u</span><span class="identifier">ser_defined_type</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">user_defined_type</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">user_defined_type</span><span class="special">]</span></code>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  In anonymous namespace
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">N12_GLOBAL__N_112in_anon_typeE</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="special">(</span><span class="identifier">anonymous</span>
+                  <span class="keyword">namespace</span><span class="special">)::</span><span class="identifier">in_anon_type</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="special">{</span><span class="identifier">anonymous</span><span class="special">}::</span><span class="identifier">in_anon_type</span><span class="special">]</span></code>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  In ns3::{anonymous}::ns4 namespace
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">N3ns312_GLOBAL__N_13ns412in_anon_typeE</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">ns3</span><span class="special">::(</span><span class="identifier">anonymous</span> <span class="keyword">namespace</span><span class="special">)::</span><span class="identifier">ns4</span><span class="special">::</span><span class="identifier">in_anon_type</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">ns3</span><span class="special">::{</span><span class="identifier">anonymous</span><span class="special">}::</span><span class="identifier">ns4</span><span class="special">::</span><span class="identifier">in_anon_type</span><span class="special">]</span></code>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  Template class
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="number">5</span><span class="identifier">templIsiE</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">templ</span><span class="special">&lt;</span><span class="keyword">short</span><span class="special">,</span>
+                  <span class="keyword">int</span><span class="special">&gt;</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">templ</span><span class="special">&lt;</span><span class="keyword">short</span> <span class="keyword">int</span><span class="special">,</span> <span class="keyword">int</span><span class="special">&gt;]</span></code>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  Template class (full specialization)
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="number">5</span><span class="identifier">templIiiE</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">templ</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">,</span> <span class="keyword">int</span><span class="special">&gt;</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">templ</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">,</span> <span class="keyword">int</span><span class="special">&gt;]</span></code>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  Template class with template classes
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="number">5</span><span class="identifier">templIS_IcaES_Ii17user_defined_typeEE</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">templ</span><span class="special">&lt;</span><span class="identifier">templ</span><span class="special">&lt;</span><span class="keyword">char</span><span class="special">,</span>
+                  <span class="keyword">signed</span> <span class="keyword">char</span><span class="special">&gt;,</span> <span class="identifier">templ</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">,</span> <span class="identifier">user_defined_type</span><span class="special">&gt;</span> <span class="special">&gt;</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">templ</span><span class="special">&lt;</span><span class="identifier">templ</span><span class="special">&lt;</span><span class="keyword">char</span><span class="special">,</span>
+                  <span class="keyword">signed</span> <span class="keyword">char</span><span class="special">&gt;,</span> <span class="identifier">templ</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">,</span> <span class="identifier">user_defined_type</span><span class="special">&gt;</span> <span class="special">&gt;]</span></code>
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<br class="table-break"><p>
+        We have not show the "noRTTI &amp; pretty_name" column in the table
+        because it is almost equal to "noRTTI &amp; raw_name" column.
+      </p>
+<div class="warning"><table border="0" summary="Warning">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Warning]" src="http://www.boost.org/doc/libs/1_53_0/doc/src/images/warning.png"></td>
+<th align="left">Warning</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+          With RTTI off different classes with same names in anonymous namespace
+          may collapse. See 'RTTI emulation limitations'.
+        </p></td></tr>
+</table></div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2012-2014 Antony Polukhin<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="how_it_works.html"><img src="http://www.boost.org/doc/libs/1_53_0/doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="http://www.boost.org/doc/libs/1_53_0/doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="http://www.boost.org/doc/libs/1_53_0/doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../boost_typeindex_header_reference.html"><img src="http://www.boost.org/doc/libs/1_53_0/doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

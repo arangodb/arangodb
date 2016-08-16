@@ -1,0 +1,154 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="classboost_1_1geometry_1_1index_1_1adaptors_1_1detail_1_1query__range" kind="class" prot="public">
+    <compoundname>boost::geometry::index::adaptors::detail::query_range</compoundname>
+    <templateparamlist>
+      <param>
+        <type>typename Index</type>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="private-type">
+      <memberdef kind="typedef" id="classboost_1_1geometry_1_1index_1_1adaptors_1_1detail_1_1query__range_1aa15b32dec2ec2d7f23703864cc79d197" prot="private" static="no">
+        <type>int *</type>
+        <definition>typedef int* boost::geometry::index::adaptors::detail::query_range&lt; Index &gt;::iterator</definition>
+        <argsstring></argsstring>
+        <name>iterator</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/adaptors/query.hpp" line="32" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/adaptors/query.hpp" bodystart="32" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="typedef" id="classboost_1_1geometry_1_1index_1_1adaptors_1_1detail_1_1query__range_1a93d63a42f939505b746f8248e39896e8" prot="private" static="no">
+        <type>const int *</type>
+        <definition>typedef const int* boost::geometry::index::adaptors::detail::query_range&lt; Index &gt;::const_iterator</definition>
+        <argsstring></argsstring>
+        <name>const_iterator</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/adaptors/query.hpp" line="33" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/adaptors/query.hpp" bodystart="33" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="private-func">
+      <memberdef kind="function" id="classboost_1_1geometry_1_1index_1_1adaptors_1_1detail_1_1query__range_1a1cc5b35ad59744a4d4776a000fecdfb7" prot="private" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type></type>
+        <definition>boost::geometry::index::adaptors::detail::query_range&lt; Index &gt;::BOOST_MPL_ASSERT_MSG</definition>
+        <argsstring>((false), NOT_IMPLEMENTED_FOR_THIS_INDEX,(query_range))</argsstring>
+        <name>BOOST_MPL_ASSERT_MSG</name>
+        <param>
+          <type>(false)</type>
+        </param>
+        <param>
+          <type>NOT_IMPLEMENTED_FOR_THIS_INDEX</type>
+        </param>
+        <param>
+          <type>(query_range)</type>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/adaptors/query.hpp" line="30"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1index_1_1adaptors_1_1detail_1_1query__range_1a1b66699c911e6ed588f08be24a093941" prot="private" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Predicates</type>
+          </param>
+        </templateparamlist>
+        <type></type>
+        <definition>boost::geometry::index::adaptors::detail::query_range&lt; Index &gt;::query_range</definition>
+        <argsstring>(Index const &amp;, Predicates const &amp;)</argsstring>
+        <name>query_range</name>
+        <param>
+          <type>Index const &amp;</type>
+        </param>
+        <param>
+          <type>Predicates const &amp;</type>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/adaptors/query.hpp" line="39" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/adaptors/query.hpp" bodystart="36" bodyend="39"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1index_1_1adaptors_1_1detail_1_1query__range_1a256889ea4df8406bbaf6e109917f6cc1" prot="private" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>iterator</type>
+        <definition>iterator boost::geometry::index::adaptors::detail::query_range&lt; Index &gt;::begin</definition>
+        <argsstring>()</argsstring>
+        <name>begin</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/adaptors/query.hpp" line="41" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/adaptors/query.hpp" bodystart="41" bodyend="41"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1index_1_1adaptors_1_1detail_1_1query__range_1a78a04d2df33e70135ff84c58be339086" prot="private" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>iterator</type>
+        <definition>iterator boost::geometry::index::adaptors::detail::query_range&lt; Index &gt;::end</definition>
+        <argsstring>()</argsstring>
+        <name>end</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/adaptors/query.hpp" line="42" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/adaptors/query.hpp" bodystart="42" bodyend="42"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1index_1_1adaptors_1_1detail_1_1query__range_1ad3fddae943b6a196f4edf30c481cb406" prot="private" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <type>const_iterator</type>
+        <definition>const_iterator boost::geometry::index::adaptors::detail::query_range&lt; Index &gt;::begin</definition>
+        <argsstring>() const </argsstring>
+        <name>begin</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/adaptors/query.hpp" line="43" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/adaptors/query.hpp" bodystart="43" bodyend="43"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1index_1_1adaptors_1_1detail_1_1query__range_1ab1931e9cefb6c4357da677b4bed4ba51" prot="private" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <type>const_iterator</type>
+        <definition>const_iterator boost::geometry::index::adaptors::detail::query_range&lt; Index &gt;::end</definition>
+        <argsstring>() const </argsstring>
+        <name>end</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/adaptors/query.hpp" line="44" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/adaptors/query.hpp" bodystart="44" bodyend="44"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/index/adaptors/query.hpp" line="26" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/adaptors/query.hpp" bodystart="25" bodyend="45"/>
+    <listofallmembers>
+      <member refid="classboost_1_1geometry_1_1index_1_1adaptors_1_1detail_1_1query__range_1a256889ea4df8406bbaf6e109917f6cc1" prot="private" virt="non-virtual"><scope>boost::geometry::index::adaptors::detail::query_range</scope><name>begin</name></member>
+      <member refid="classboost_1_1geometry_1_1index_1_1adaptors_1_1detail_1_1query__range_1ad3fddae943b6a196f4edf30c481cb406" prot="private" virt="non-virtual"><scope>boost::geometry::index::adaptors::detail::query_range</scope><name>begin</name></member>
+      <member refid="classboost_1_1geometry_1_1index_1_1adaptors_1_1detail_1_1query__range_1a1cc5b35ad59744a4d4776a000fecdfb7" prot="private" virt="non-virtual"><scope>boost::geometry::index::adaptors::detail::query_range</scope><name>BOOST_MPL_ASSERT_MSG</name></member>
+      <member refid="classboost_1_1geometry_1_1index_1_1adaptors_1_1detail_1_1query__range_1a93d63a42f939505b746f8248e39896e8" prot="private" virt="non-virtual"><scope>boost::geometry::index::adaptors::detail::query_range</scope><name>const_iterator</name></member>
+      <member refid="classboost_1_1geometry_1_1index_1_1adaptors_1_1detail_1_1query__range_1a78a04d2df33e70135ff84c58be339086" prot="private" virt="non-virtual"><scope>boost::geometry::index::adaptors::detail::query_range</scope><name>end</name></member>
+      <member refid="classboost_1_1geometry_1_1index_1_1adaptors_1_1detail_1_1query__range_1ab1931e9cefb6c4357da677b4bed4ba51" prot="private" virt="non-virtual"><scope>boost::geometry::index::adaptors::detail::query_range</scope><name>end</name></member>
+      <member refid="classboost_1_1geometry_1_1index_1_1adaptors_1_1detail_1_1query__range_1aa15b32dec2ec2d7f23703864cc79d197" prot="private" virt="non-virtual"><scope>boost::geometry::index::adaptors::detail::query_range</scope><name>iterator</name></member>
+      <member refid="classboost_1_1geometry_1_1index_1_1adaptors_1_1detail_1_1query__range_1a1b66699c911e6ed588f08be24a093941" prot="private" virt="non-virtual"><scope>boost::geometry::index::adaptors::detail::query_range</scope><name>query_range</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

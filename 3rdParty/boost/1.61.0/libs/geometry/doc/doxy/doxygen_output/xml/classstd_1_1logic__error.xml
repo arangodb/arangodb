@@ -1,0 +1,58 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="classstd_1_1logic__error" kind="class" prot="public">
+    <compoundname>std::logic_error</compoundname>
+    <basecompoundref prot="public" virt="non-virtual">std::exception</basecompoundref>
+    <derivedcompoundref refid="classstd_1_1domain__error" prot="public" virt="non-virtual">std::domain_error</derivedcompoundref>
+    <derivedcompoundref refid="classstd_1_1invalid__argument" prot="public" virt="non-virtual">std::invalid_argument</derivedcompoundref>
+    <derivedcompoundref refid="classstd_1_1length__error" prot="public" virt="non-virtual">std::length_error</derivedcompoundref>
+    <derivedcompoundref refid="classstd_1_1out__of__range" prot="public" virt="non-virtual">std::out_of_range</derivedcompoundref>
+    <briefdescription>
+<para>STL class. </para>    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <inheritancegraph>
+      <node id="2004">
+        <label>std::logic_error</label>
+        <childnode refid="2005" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="2007">
+        <label>std::invalid_argument</label>
+        <childnode refid="2004" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="2009">
+        <label>std::out_of_range</label>
+        <childnode refid="2004" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="2006">
+        <label>std::domain_error</label>
+        <childnode refid="2004" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="2005">
+        <label>std::exception</label>
+      </node>
+      <node id="2008">
+        <label>std::length_error</label>
+        <childnode refid="2004" relation="public-inheritance">
+        </childnode>
+      </node>
+    </inheritancegraph>
+    <collaborationgraph>
+      <node id="2010">
+        <label>std::logic_error</label>
+        <childnode refid="2011" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="2011">
+        <label>std::exception</label>
+      </node>
+    </collaborationgraph>
+    <location file="[STL]" line="1"/>
+    <listofallmembers>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

@@ -711,7 +711,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
 
         bool const forceSync = state->willBeDropped(databaseId, collectionId);
         bool ok = arangodb::basics::VelocyPackHelper::velocyPackToFile(
-            filename.c_str(), payloadSlice, forceSync);
+            filename, payloadSlice, forceSync);
 
         if (!ok) {
           LOG(WARN) << "cannot create index " << indexId << ", collection " << collectionId << " in database " << databaseId;
@@ -1020,8 +1020,11 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
     }
 
     return true;
-  }
-  catch (...) {
+  } catch (std::exception const& ex) {
+    LOG(WARN) << "cannot replay marker: " << ex.what();
+    ++state->errorCount;
+    return state->canContinue();
+  } catch (...) {
     LOG(WARN) << "cannot replay marker";
     ++state->errorCount;
     return state->canContinue();

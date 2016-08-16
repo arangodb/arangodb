@@ -1,0 +1,278 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="group__centroid" kind="group">
+    <compoundname>centroid</compoundname>
+    <title>centroid: calculate centroid (center of gravity) of a geometry</title>
+    <innerclass refid="classboost_1_1geometry_1_1centroid__exception" prot="public">boost::geometry::centroid_exception</innerclass>
+    <innerclass refid="classboost_1_1geometry_1_1concept_1_1_centroid_strategy" prot="public">boost::geometry::concept::CentroidStrategy</innerclass>
+    <innerclass refid="structboost_1_1geometry_1_1strategy_1_1centroid_1_1services_1_1default__strategy" prot="public">boost::geometry::strategy::centroid::services::default_strategy</innerclass>
+      <sectiondef kind="func">
+      <memberdef kind="function" id="group__centroid_1ga3ec2c5e245c42ffaf28f1c88ea564c8c" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Geometry</type>
+          </param>
+          <param>
+            <type>typename Point</type>
+          </param>
+          <param>
+            <type>typename Strategy</type>
+          </param>
+        </templateparamlist>
+        <type>void</type>
+        <definition>void boost::geometry::centroid</definition>
+        <argsstring>(Geometry const &amp;geometry, Point &amp;c, Strategy const &amp;strategy)</argsstring>
+        <name>centroid</name>
+        <param>
+          <type>Geometry const &amp;</type>
+          <declname>geometry</declname>
+        </param>
+        <param>
+          <type>Point &amp;</type>
+          <declname>c</declname>
+        </param>
+        <param>
+          <type>Strategy const &amp;</type>
+          <declname>strategy</declname>
+        </param>
+        <briefdescription>
+<para>Calculates the centroid of a geometry using the specified strategy. </para>        </briefdescription>
+        <detaileddescription>
+<para>The free function centroid calculates the geometric center (or: center of mass) of a geometry. Reasons to specify a strategy include: use another coordinate system for calculations; construct the strategy beforehand (e.g. with the radius of the Earth); select a strategy when there are more than one available for a calculation. <parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>Geometry</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Any type fulfilling a Geometry Concept </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Point</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Any type fulfilling a Point Concept </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Strategy</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Any type fulfilling a Centroid Strategy Concept </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>geometry</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>A model of the specified concept </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>c</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>A model of the specified Point Concept which is set to the \1 </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>strategy</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>The strategy which will be used for centroid calculations</para></parameterdescription>
+</parameteritem>
+</parameterlist>
+ <qbk.distinguish>with strategy</qbk.distinguish>   <qbk>[include reference/algorithms/centroid.qbk]</qbk>   <qbk>[include reference/algorithms/centroid_strategies.qbk]</qbk>  } </para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/centroid.hpp" line="606" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/centroid.hpp" bodystart="604" bodyend="608"/>
+      </memberdef>
+      <memberdef kind="function" id="group__centroid_1ga0231bbe9c80e9009271245e31ce5496b" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Geometry</type>
+          </param>
+          <param>
+            <type>typename Point</type>
+          </param>
+        </templateparamlist>
+        <type>void</type>
+        <definition>void boost::geometry::centroid</definition>
+        <argsstring>(Geometry const &amp;geometry, Point &amp;c)</argsstring>
+        <name>centroid</name>
+        <param>
+          <type>Geometry const &amp;</type>
+          <declname>geometry</declname>
+        </param>
+        <param>
+          <type>Point &amp;</type>
+          <declname>c</declname>
+        </param>
+        <briefdescription>
+<para>Calculates the centroid of a geometry. </para>        </briefdescription>
+        <detaileddescription>
+<para>The free function centroid calculates the geometric center (or: center of mass) of a geometry. It uses the default strategy, based on the coordinate system of the geometry. <parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>Geometry</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Any type fulfilling a Geometry Concept </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Point</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Any type fulfilling a Point Concept </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>geometry</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>A model of the specified concept </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>c</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>The calculated centroid will be assigned to this point reference</para></parameterdescription>
+</parameteritem>
+</parameterlist>
+ <qbk>[include reference/algorithms/centroid.qbk]</qbk>   <qbk>
+[heading Example]
+[centroid]
+[centroid_output]
+</qbk>  </para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/centroid.hpp" line="629" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/centroid.hpp" bodystart="628" bodyend="631"/>
+      </memberdef>
+      <memberdef kind="function" id="group__centroid_1ga607a6c57dac30f7b2826f29f937a7fe4" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Point</type>
+          </param>
+          <param>
+            <type>typename Geometry</type>
+          </param>
+        </templateparamlist>
+        <type>Point</type>
+        <definition>Point boost::geometry::return_centroid</definition>
+        <argsstring>(Geometry const &amp;geometry)</argsstring>
+        <name>return_centroid</name>
+        <param>
+          <type>Geometry const &amp;</type>
+          <declname>geometry</declname>
+        </param>
+        <briefdescription>
+<para>Calculates the centroid of a geometry. </para>        </briefdescription>
+        <detaileddescription>
+<para>The free function centroid calculates the geometric center (or: center of mass) of a geometry. This version with the return_ prefix returns the centroid, and a template parameter must therefore be specified in the call.. <parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>Point</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Any type fulfilling a Point Concept </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Geometry</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Any type fulfilling a Geometry Concept </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>geometry</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>A model of the specified concept </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>The calculated \1</para></simplesect>
+ <qbk>[include reference/algorithms/centroid.qbk]</qbk>  </para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/centroid.hpp" line="647" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/centroid.hpp" bodystart="646" bodyend="651"/>
+      </memberdef>
+      <memberdef kind="function" id="group__centroid_1ga34a41b95d0bcc2ecb14e3093623386d3" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Point</type>
+          </param>
+          <param>
+            <type>typename Geometry</type>
+          </param>
+          <param>
+            <type>typename Strategy</type>
+          </param>
+        </templateparamlist>
+        <type>Point</type>
+        <definition>Point boost::geometry::return_centroid</definition>
+        <argsstring>(Geometry const &amp;geometry, Strategy const &amp;strategy)</argsstring>
+        <name>return_centroid</name>
+        <param>
+          <type>Geometry const &amp;</type>
+          <declname>geometry</declname>
+        </param>
+        <param>
+          <type>Strategy const &amp;</type>
+          <declname>strategy</declname>
+        </param>
+        <briefdescription>
+<para>Calculates the centroid of a geometry using the specified strategy. </para>        </briefdescription>
+        <detaileddescription>
+<para>The free function centroid calculates the geometric center (or: center of mass) of a geometry. This version with the return_ prefix returns the centroid, and a template parameter must therefore be specified in the call.. Reasons to specify a strategy include: use another coordinate system for calculations; construct the strategy beforehand (e.g. with the radius of the Earth); select a strategy when there are more than one available for a calculation. <parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>Point</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Any type fulfilling a Point Concept </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Geometry</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Any type fulfilling a Geometry Concept </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Strategy</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Any type fulfilling a centroid Strategy Concept </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>geometry</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>A model of the specified concept </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>strategy</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>The strategy which will be used for centroid calculations </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>The calculated \1</para></simplesect>
+ <qbk.distinguish>with strategy</qbk.distinguish>   <qbk>[include reference/algorithms/centroid.qbk]</qbk>   <qbk>[include reference/algorithms/centroid_strategies.qbk]</qbk>  </para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/centroid.hpp" line="670" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/centroid.hpp" bodystart="669" bodyend="674"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+  </compounddef>
+</doxygen>

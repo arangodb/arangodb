@@ -1,0 +1,40 @@
+<!--
+Copyright Louis Dionne 2013-2016
+Distributed under the Boost Software License, Version 1.0.
+(See accompanying file LICENSE.md or copy at http://boost.org/LICENSE_1_0.txt)
+-->
+
+<!-- boost-no-inspect -->
+
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+
+  <script type="text/javascript" src="https://code.jquery.com/jquery-latest.min.js"></script>
+  <script type="text/javascript" src="../doc/js/highcharts.js"></script>
+  <script type="text/javascript" src="../doc/js/highcharts-data.js"></script>
+  <script type="text/javascript" src="../doc/js/highcharts-exporting.js"></script>
+  <script type="text/javascript" src="../doc/js/chart.js"></script>
+
+  <script type="text/javascript">
+    var redrawChart = function(dataset) {
+      var path = "../build/benchmark/benchmark." + dataset + ".json";
+      $.getJSON(path, function(options) {
+        if ($("#container").highcharts())
+          $("#container").highcharts().destroy();
+
+        Hana.initChart($("#container"), options);
+        $('#container').highcharts().redraw();
+      });
+    };
+  </script>
+</head>
+
+<body>
+  <div id="container" style="min-width: 310px; height: 400px; margin: 0 auto"></div>
+
+  <input type="text" size=100 id="dataset" class="enter" value="" onchange="redrawChart(this.value)"/>
+</body>
+
+</html>

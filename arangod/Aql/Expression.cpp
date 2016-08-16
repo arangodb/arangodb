@@ -444,6 +444,12 @@ AqlValue Expression::executeSimpleExpression(
                                           regs, mustDestroy);
     case NODE_TYPE_OPERATOR_UNARY_NOT:
       return executeSimpleExpressionNot(node, trx, argv, startPos, vars, regs, mustDestroy);
+    
+    case NODE_TYPE_OPERATOR_UNARY_PLUS:
+      return executeSimpleExpressionPlus(node, trx, argv, startPos, vars, regs, mustDestroy);
+    
+    case NODE_TYPE_OPERATOR_UNARY_MINUS:
+      return executeSimpleExpressionMinus(node, trx, argv, startPos, vars, regs, mustDestroy);
 
     case NODE_TYPE_OPERATOR_BINARY_AND:
     case NODE_TYPE_OPERATOR_BINARY_OR:
@@ -945,6 +951,70 @@ AqlValue Expression::executeSimpleExpressionNot(
 
   mustDestroy = false; // only a boolean
   return AqlValue(!operandIsTrue);
+}
+
+/// @brief execute an expression of type SIMPLE with +
+AqlValue Expression::executeSimpleExpressionPlus(
+    AstNode const* node, arangodb::AqlTransaction* trx,
+    AqlItemBlock const* argv, size_t startPos,
+    std::vector<Variable const*> const& vars,
+    std::vector<RegisterId> const& regs, bool& mustDestroy) {
+
+  mustDestroy = false;
+  AqlValue operand =
+      executeSimpleExpression(node->getMember(0), trx, argv,
+                              startPos, vars, regs, mustDestroy, false);
+
+  AqlValueGuard guard(operand, mustDestroy);
+  
+  bool failed = false;
+  double value = operand.toDouble(trx, failed);
+
+  if (failed) {
+    value = 0.0;
+  }
+  
+  double result = +value;
+  if (std::isnan(result) || !std::isfinite(result) || result == HUGE_VAL || result == -HUGE_VAL) {
+    return AqlValue(VelocyPackHelper::NullValue());
+  }
+  
+  TransactionBuilderLeaser builder(trx);
+  mustDestroy = true; // builder = dynamic data
+  builder->add(VPackValue(result));
+  return AqlValue(*builder.get());
+}
+
+/// @brief execute an expression of type SIMPLE with -
+AqlValue Expression::executeSimpleExpressionMinus(
+    AstNode const* node, arangodb::AqlTransaction* trx,
+    AqlItemBlock const* argv, size_t startPos,
+    std::vector<Variable const*> const& vars,
+    std::vector<RegisterId> const& regs, bool& mustDestroy) {
+
+  mustDestroy = false;
+  AqlValue operand =
+      executeSimpleExpression(node->getMember(0), trx, argv,
+                              startPos, vars, regs, mustDestroy, false);
+
+  AqlValueGuard guard(operand, mustDestroy);
+  
+  bool failed = false;
+  double value = operand.toDouble(trx, failed);
+
+  if (failed) {
+    value = 0.0;
+  }
+  
+  double result = -value;
+  if (std::isnan(result) || !std::isfinite(result) || result == HUGE_VAL || result == -HUGE_VAL) {
+    return AqlValue(VelocyPackHelper::NullValue());
+  }
+  
+  TransactionBuilderLeaser builder(trx);
+  mustDestroy = true; // builder = dynamic data
+  builder->add(VPackValue(result));
+  return AqlValue(*builder.get());
 }
 
 /// @brief execute an expression of type SIMPLE with AND or OR

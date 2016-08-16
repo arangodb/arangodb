@@ -24,10 +24,11 @@
 #include "CollectionExport.h"
 #include "Basics/WriteLocker.h"
 #include "Indexes/PrimaryIndex.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/StorageEngine.h"
 #include "Utils/CollectionGuard.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utils/StandaloneTransactionContext.h"
-#include "VocBase/CompactorThread.h"
 #include "VocBase/Ditch.h"
 #include "VocBase/collection.h"
 #include "VocBase/vocbase.h"
@@ -64,13 +65,13 @@ CollectionExport::~CollectionExport() {
 }
 
 void CollectionExport::run(uint64_t maxWaitTime, size_t limit) {
-  {
-    // try to acquire the exclusive lock on the compaction
-    WRITE_LOCKER_EVENTUAL(locker, _document->_vocbase->_compactionBlockers._lock, 5000);
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
 
+  // try to acquire the exclusive lock on the compaction
+  engine->preventCompaction(_document->_vocbase, [this](TRI_vocbase_t* vocbase) {
     // create a ditch under the compaction lock
     _ditch = _document->ditches()->createDocumentDitch(false, __FILE__, __LINE__);
-  }
+  });
 
   // now we either have a ditch or not
   if (_ditch == nullptr) {

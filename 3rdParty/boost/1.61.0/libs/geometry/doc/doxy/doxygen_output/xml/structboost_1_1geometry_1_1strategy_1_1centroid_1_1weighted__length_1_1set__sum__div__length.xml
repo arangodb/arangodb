@@ -1,0 +1,98 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="structboost_1_1geometry_1_1strategy_1_1centroid_1_1weighted__length_1_1set__sum__div__length" kind="struct" prot="public">
+    <compoundname>boost::geometry::strategy::centroid::weighted_length::set_sum_div_length</compoundname>
+    <includes local="no">centroid_weighted_length.hpp</includes>
+      <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="structboost_1_1geometry_1_1strategy_1_1centroid_1_1weighted__length_1_1set__sum__div__length_1a5ec93f139a588c4495782976d04dd3cf" prot="public" static="no" mutable="no">
+        <type><ref refid="classboost_1_1geometry_1_1strategy_1_1centroid_1_1weighted__length_1aac1f35c9c83c933a40202e23a9418f2c" kindref="member">state_type</ref> const &amp;</type>
+        <definition>state_type const&amp; boost::geometry::strategy::centroid::weighted_length&lt; Point, PointOfSegment &gt;::set_sum_div_length::m_state</definition>
+        <argsstring></argsstring>
+        <name>m_state</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/centroid_weighted_length.hpp" line="118" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/centroid_weighted_length.hpp" bodystart="118" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="structboost_1_1geometry_1_1strategy_1_1centroid_1_1weighted__length_1_1set__sum__div__length_1aa5136289fb86ceb83b5c25d1a612751d" prot="public" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Pt</type>
+          </param>
+          <param>
+            <type>std::size_t</type>
+            <declname>Dimension</declname>
+            <defname>Dimension</defname>
+          </param>
+        </templateparamlist>
+        <type>void</type>
+        <definition>void boost::geometry::strategy::centroid::weighted_length&lt; Point, PointOfSegment &gt;::set_sum_div_length::apply</definition>
+        <argsstring>(Pt &amp;centroid) const </argsstring>
+        <name>apply</name>
+        <param>
+          <type>Pt &amp;</type>
+          <declname>centroid</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/centroid_weighted_length.hpp" line="124" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/centroid_weighted_length.hpp" bodystart="123" bodyend="132"/>
+      </memberdef>
+      <memberdef kind="function" id="structboost_1_1geometry_1_1strategy_1_1centroid_1_1weighted__length_1_1set__sum__div__length_1a33464562ea577f46db7e854f10962a98" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type></type>
+        <definition>boost::geometry::strategy::centroid::weighted_length&lt; Point, PointOfSegment &gt;::set_sum_div_length::set_sum_div_length</definition>
+        <argsstring>(state_type const &amp;state)</argsstring>
+        <name>set_sum_div_length</name>
+        <param>
+          <type><ref refid="classboost_1_1geometry_1_1strategy_1_1centroid_1_1weighted__length_1aac1f35c9c83c933a40202e23a9418f2c" kindref="member">state_type</ref> const &amp;</type>
+          <declname>state</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/centroid_weighted_length.hpp" line="121" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/centroid_weighted_length.hpp" bodystart="119" bodyend="121"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <collaborationgraph>
+      <node id="1193">
+        <label>boost::geometry::model::point&lt; Type, DimensionCount, cs::cartesian &gt;</label>
+        <link refid="classboost_1_1geometry_1_1model_1_1point"/>
+      </node>
+      <node id="1192">
+        <label>boost::geometry::strategy::centroid::detail::weighted_length_sums&lt; Type, DimensionCount &gt;</label>
+        <link refid="structboost_1_1geometry_1_1strategy_1_1centroid_1_1detail_1_1weighted__length__sums"/>
+        <childnode refid="1193" relation="usage">
+          <edgelabel>average_sum</edgelabel>
+        </childnode>
+      </node>
+      <node id="1191">
+        <label>boost::geometry::strategy::centroid::weighted_length&lt; Point, PointOfSegment &gt;::set_sum_div_length</label>
+        <link refid="structboost_1_1geometry_1_1strategy_1_1centroid_1_1weighted__length_1_1set__sum__div__length"/>
+        <childnode refid="1192" relation="usage">
+          <edgelabel>m_state</edgelabel>
+        </childnode>
+      </node>
+    </collaborationgraph>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/centroid_weighted_length.hpp" line="117" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/centroid_weighted_length.hpp" bodystart="116" bodyend="133"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1strategy_1_1centroid_1_1weighted__length_1_1set__sum__div__length_1aa5136289fb86ceb83b5c25d1a612751d" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::centroid::weighted_length::set_sum_div_length</scope><name>apply</name></member>
+      <member refid="structboost_1_1geometry_1_1strategy_1_1centroid_1_1weighted__length_1_1set__sum__div__length_1a5ec93f139a588c4495782976d04dd3cf" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::centroid::weighted_length::set_sum_div_length</scope><name>m_state</name></member>
+      <member refid="structboost_1_1geometry_1_1strategy_1_1centroid_1_1weighted__length_1_1set__sum__div__length_1a33464562ea577f46db7e854f10962a98" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::centroid::weighted_length::set_sum_div_length</scope><name>set_sum_div_length</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

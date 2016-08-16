@@ -1,0 +1,94 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>if_&lt;&gt;, and_&lt;&gt;, and not_&lt;&gt;</title>
+<link rel="stylesheet" href="../../../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../../../../index.html" title="Chapter&#160;1.&#160;Boost.Proto">
+<link rel="up" href="../expression_introspection.html" title="Expression Introspection: Defining a Grammar">
+<link rel="prev" href="fuzzy_and_exact_matches_of_terminals.html" title="Fuzzy and Exact Matches of Terminals">
+<link rel="next" href="switch.html" title="Improving Compile Times With switch_&lt;&gt;">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="fuzzy_and_exact_matches_of_terminals.html"><img src="../../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../expression_introspection.html"><img src="../../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../../index.html"><img src="../../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="switch.html"><img src="../../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="boost_proto.users_guide.intermediate_form.expression_introspection.if_and_not"></a><a class="link" href="if_and_not.html" title="if_&lt;&gt;, and_&lt;&gt;, and not_&lt;&gt;"><code class="literal">if_&lt;&gt;</code>,
+          <code class="literal">and_&lt;&gt;</code>, and <code class="literal">not_&lt;&gt;</code></a>
+</h5></div></div></div>
+<p>
+            We've already seen how to use expression generators like <code class="computeroutput"><span class="identifier">proto</span><span class="special">::</span><span class="identifier">terminal</span><span class="special">&lt;&gt;</span></code>
+            and <code class="computeroutput"><span class="identifier">proto</span><span class="special">::</span><span class="identifier">shift_right</span><span class="special">&lt;&gt;</span></code>
+            as grammars. We've also seen <code class="computeroutput"><a class="link" href="../../../../boost/proto/or_.html" title="Struct template or_">proto::or_&lt;&gt;</a></code>,
+            which we can use to express a set of alternate grammars. There are a
+            few others of interest; in particular, <code class="computeroutput"><a class="link" href="../../../../boost/proto/if_.html" title="Struct template if_">proto::if_&lt;&gt;</a></code>,
+            <code class="computeroutput"><a class="link" href="../../../../boost/proto/and_.html" title="Struct template and_">proto::and_&lt;&gt;</a></code> and <code class="computeroutput"><a class="link" href="../../../../boost/proto/not_.html" title="Struct template not_">proto::not_&lt;&gt;</a></code>.
+          </p>
+<p>
+            The <code class="computeroutput"><a class="link" href="../../../../boost/proto/not_.html" title="Struct template not_">proto::not_&lt;&gt;</a></code> template is the simplest.
+            It takes a grammar as a template parameter and logically negates it;
+            <code class="computeroutput"><span class="identifier">not_</span><span class="special">&lt;</span><span class="identifier">Grammar</span><span class="special">&gt;</span></code>
+            will match any expression that <code class="computeroutput"><span class="identifier">Grammar</span></code>
+            does <span class="emphasis"><em>not</em></span> match.
+          </p>
+<p>
+            The <code class="computeroutput"><a class="link" href="../../../../boost/proto/if_.html" title="Struct template if_">proto::if_&lt;&gt;</a></code> template is used
+            together with a Proto transform that is evaluated against expression
+            types to find matches. (Proto transforms will be described later.)
+          </p>
+<p>
+            The <code class="computeroutput"><a class="link" href="../../../../boost/proto/and_.html" title="Struct template and_">proto::and_&lt;&gt;</a></code> template is like
+            <code class="computeroutput"><a class="link" href="../../../../boost/proto/or_.html" title="Struct template or_">proto::or_&lt;&gt;</a></code>, except that each
+            argument of the <code class="computeroutput"><a class="link" href="../../../../boost/proto/and_.html" title="Struct template and_">proto::and_&lt;&gt;</a></code> must match in order
+            for the <code class="computeroutput"><a class="link" href="../../../../boost/proto/and_.html" title="Struct template and_">proto::and_&lt;&gt;</a></code> to match. As an example,
+            consider the definition of <code class="computeroutput"><span class="identifier">CharString</span></code>
+            above that uses <code class="computeroutput"><a class="link" href="../../../../boost/proto/exact.html" title="Struct template exact">proto::exact&lt;&gt;</a></code>. It could have been
+            written without <code class="computeroutput"><a class="link" href="../../../../boost/proto/exact.html" title="Struct template exact">proto::exact&lt;&gt;</a></code> as follows:
+          </p>
+<pre class="programlisting"><span class="keyword">struct</span> <span class="identifier">CharString</span>
+  <span class="special">:</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">and_</span><span class="special">&lt;</span>
+        <span class="identifier">proto</span><span class="special">::</span><span class="identifier">terminal</span><span class="special">&lt;</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">_</span> <span class="special">&gt;</span>
+      <span class="special">,</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">if_</span><span class="special">&lt;</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">is_same</span><span class="special">&lt;</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">_value</span><span class="special">,</span> <span class="keyword">char</span> <span class="keyword">const</span> <span class="special">*</span> <span class="special">&gt;()</span> <span class="special">&gt;</span>
+    <span class="special">&gt;</span>
+<span class="special">{};</span>
+</pre>
+<p>
+            This says that a <code class="computeroutput"><span class="identifier">CharString</span></code>
+            must be a terminal, <span class="emphasis"><em>and</em></span> its value type must be the
+            same as <code class="computeroutput"><span class="keyword">char</span> <span class="keyword">const</span>
+            <span class="special">*</span></code>. Notice the template argument
+            of <code class="computeroutput"><a class="link" href="../../../../boost/proto/if_.html" title="Struct template if_">proto::if_&lt;&gt;</a></code>: <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">is_same</span><span class="special">&lt;</span> <span class="identifier">proto</span><span class="special">::</span><span class="identifier">_value</span><span class="special">,</span> <span class="keyword">char</span> <span class="keyword">const</span> <span class="special">*</span> <span class="special">&gt;()</span></code>. This is Proto transform that compares
+            the value type of a terminal to <code class="computeroutput"><span class="keyword">char</span>
+            <span class="keyword">const</span> <span class="special">*</span></code>.
+          </p>
+<p>
+            The <code class="computeroutput"><a class="link" href="../../../../boost/proto/if_.html" title="Struct template if_">proto::if_&lt;&gt;</a></code> template has a couple
+            of variants. In addition to <code class="computeroutput"><span class="identifier">if_</span><span class="special">&lt;</span><span class="identifier">Condition</span><span class="special">&gt;</span></code> you can also say <code class="computeroutput"><span class="identifier">if_</span><span class="special">&lt;</span><span class="identifier">Condition</span><span class="special">,</span> <span class="identifier">ThenGrammar</span><span class="special">&gt;</span></code> and <code class="computeroutput"><span class="identifier">if_</span><span class="special">&lt;</span><span class="identifier">Condition</span><span class="special">,</span> <span class="identifier">ThenGrammar</span><span class="special">,</span> <span class="identifier">ElseGrammar</span><span class="special">&gt;</span></code>. These let you select one sub-grammar
+            or another based on the <code class="computeroutput"><span class="identifier">Condition</span></code>.
+          </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2008 Eric Niebler<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="fuzzy_and_exact_matches_of_terminals.html"><img src="../../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../expression_introspection.html"><img src="../../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../../index.html"><img src="../../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="switch.html"><img src="../../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

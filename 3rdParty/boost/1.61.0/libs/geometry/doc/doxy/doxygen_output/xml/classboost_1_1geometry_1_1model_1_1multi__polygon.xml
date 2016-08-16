@@ -1,0 +1,103 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="classboost_1_1geometry_1_1model_1_1multi__polygon" kind="class" prot="public">
+    <compoundname>boost::geometry::model::multi_polygon</compoundname>
+    <includes local="no">multi_polygon.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename Polygon</type>
+      </param>
+      <param>
+        <type>template&lt; typename, typename &gt; class</type>
+        <declname>Container</declname>
+        <defname>Container</defname>
+        <defval>std::vector</defval>
+      </param>
+      <param>
+        <type>template&lt; typename &gt; class</type>
+        <declname>Allocator</declname>
+        <defname>Allocator</defname>
+        <defval>std::allocator</defval>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="private-type">
+      <memberdef kind="typedef" id="classboost_1_1geometry_1_1model_1_1multi__polygon_1ab1696fd7e5e66c4e8deb1f3466299b74" prot="private" static="no">
+        <type>Container&lt; Polygon, Allocator&lt; Polygon &gt; &gt;</type>
+        <definition>typedef Container&lt;Polygon, Allocator&lt;Polygon&gt; &gt; boost::geometry::model::multi_polygon&lt; Polygon, Container, Allocator &gt;::base_type</definition>
+        <argsstring></argsstring>
+        <name>base_type</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/multi_polygon.hpp" line="64" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/multi_polygon.hpp" bodystart="64" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="private-func">
+      <memberdef kind="function" id="classboost_1_1geometry_1_1model_1_1multi__polygon_1a9feddbc7a9075d7c1ef8ff40f7c14b1c" prot="private" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type></type>
+        <definition>boost::geometry::model::multi_polygon&lt; Polygon, Container, Allocator &gt;::BOOST_CONCEPT_ASSERT</definition>
+        <argsstring>((concept::Polygon&lt; Polygon &gt;))</argsstring>
+        <name>BOOST_CONCEPT_ASSERT</name>
+        <param>
+          <type>(<ref refid="classboost_1_1geometry_1_1concept_1_1_polygon" kindref="compound">concept::Polygon</ref>&lt; Polygon &gt;)</type>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/multi_polygon.hpp" line="57"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="classboost_1_1geometry_1_1model_1_1multi__polygon_1ac1410fc60a6af27d5956aa60d57b71f5" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type></type>
+        <definition>boost::geometry::model::multi_polygon&lt; Polygon, Container, Allocator &gt;::multi_polygon</definition>
+        <argsstring>()</argsstring>
+        <name>multi_polygon</name>
+        <briefdescription>
+<para>Default constructor, creating an empty \1. </para>        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/multi_polygon.hpp" line="70" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/multi_polygon.hpp" bodystart="68" bodyend="70"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1model_1_1multi__polygon_1a90758f0fd28644a647efb91092ad811a" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type></type>
+        <definition>boost::geometry::model::multi_polygon&lt; Polygon, Container, Allocator &gt;::multi_polygon</definition>
+        <argsstring>(std::initializer_list&lt; Polygon &gt; l)</argsstring>
+        <name>multi_polygon</name>
+        <param>
+          <type>std::initializer_list&lt; Polygon &gt;</type>
+          <declname>l</declname>
+        </param>
+        <briefdescription>
+<para>Constructor taking std::initializer_list, filling the \1. </para>        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/multi_polygon.hpp" line="75" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/multi_polygon.hpp" bodystart="73" bodyend="75"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+<para><ref refid="classboost_1_1geometry_1_1model_1_1multi__polygon" kindref="compound">multi_polygon</ref>, a collection of polygons </para>    </briefdescription>
+    <detaileddescription>
+<para>Multi-polygon can be used to group polygons belonging to each other, e.g. Hawaii</para><para> <qbk>[include reference/geometries/multi_polygon.qbk]</qbk>   <qbk.before.synopsis>
+[heading Model of]
+[link geometry.reference.concepts.concept_multi_polygon MultiPolygon Concept]
+</qbk.before.synopsis>  </para>    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/multi_polygon.hpp" line="56" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/multi_polygon.hpp" bodystart="55" bodyend="91"/>
+    <listofallmembers>
+      <member refid="classboost_1_1geometry_1_1model_1_1multi__polygon_1ab1696fd7e5e66c4e8deb1f3466299b74" prot="private" virt="non-virtual"><scope>boost::geometry::model::multi_polygon</scope><name>base_type</name></member>
+      <member refid="classboost_1_1geometry_1_1model_1_1multi__polygon_1a9feddbc7a9075d7c1ef8ff40f7c14b1c" prot="private" virt="non-virtual"><scope>boost::geometry::model::multi_polygon</scope><name>BOOST_CONCEPT_ASSERT</name></member>
+      <member refid="classboost_1_1geometry_1_1model_1_1multi__polygon_1ac1410fc60a6af27d5956aa60d57b71f5" prot="public" virt="non-virtual"><scope>boost::geometry::model::multi_polygon</scope><name>multi_polygon</name></member>
+      <member refid="classboost_1_1geometry_1_1model_1_1multi__polygon_1a90758f0fd28644a647efb91092ad811a" prot="public" virt="non-virtual"><scope>boost::geometry::model::multi_polygon</scope><name>multi_polygon</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

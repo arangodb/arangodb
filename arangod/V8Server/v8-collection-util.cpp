@@ -104,7 +104,7 @@ static void WeakCollectionCallback(const v8::WeakCallbackData<
   v8g->JSCollections[collection].Reset();
   v8g->JSCollections.erase(collection);
 
-  if (!collection->_isLocal) {
+  if (!collection->isLocal()) {
     delete collection;
   }
 }

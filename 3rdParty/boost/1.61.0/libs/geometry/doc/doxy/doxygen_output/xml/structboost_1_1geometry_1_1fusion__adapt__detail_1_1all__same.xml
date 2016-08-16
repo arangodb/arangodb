@@ -1,0 +1,19 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="structboost_1_1geometry_1_1fusion__adapt__detail_1_1all__same" kind="struct" prot="public">
+    <compoundname>boost::geometry::fusion_adapt_detail::all_same</compoundname>
+    <includes local="no">boost_fusion.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>class Sequence</type>
+      </param>
+    </templateparamlist>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/adapted/boost_fusion.hpp" line="65" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/adapted/boost_fusion.hpp" bodystart="55" bodyend="65"/>
+    <listofallmembers>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

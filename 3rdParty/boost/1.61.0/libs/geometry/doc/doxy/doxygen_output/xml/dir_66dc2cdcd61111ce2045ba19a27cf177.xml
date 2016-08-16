@@ -1,0 +1,16 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="dir_66dc2cdcd61111ce2045ba19a27cf177" kind="dir">
+    <compoundname>/home/travis/build/boostorg/boost/boost/geometry/views/</compoundname>
+    <innerfile refid="box__view_8hpp">box_view.hpp</innerfile>
+    <innerfile refid="closeable__view_8hpp">closeable_view.hpp</innerfile>
+    <innerfile refid="identity__view_8hpp">identity_view.hpp</innerfile>
+    <innerfile refid="reversible__view_8hpp">reversible_view.hpp</innerfile>
+    <innerfile refid="segment__view_8hpp">segment_view.hpp</innerfile>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/views/"/>
+  </compounddef>
+</doxygen>

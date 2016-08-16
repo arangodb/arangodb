@@ -1,0 +1,185 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="point__in__poly__crossings__multiply_8hpp" kind="file">
+    <compoundname>point_in_poly_crossings_multiply.hpp</compoundname>
+    <includes refid="coordinate__type_8hpp" local="no">boost/geometry/core/coordinate_type.hpp</includes>
+    <includes refid="select__calculation__type_8hpp" local="no">boost/geometry/util/select_calculation_type.hpp</includes>
+    <includedby refid="strategies_8hpp" local="no">/home/travis/build/boostorg/boost/boost/geometry/strategies/strategies.hpp</includedby>
+    <incdepgraph>
+      <node id="57799">
+        <label>boost/type_traits/remove_const.hpp</label>
+      </node>
+      <node id="57802">
+        <label>boost/type_traits/is_const.hpp</label>
+      </node>
+      <node id="57801">
+        <label>boost/mpl/if.hpp</label>
+      </node>
+      <node id="57795">
+        <label>boost/geometry/core/coordinate_type.hpp</label>
+        <link refid="coordinate__type_8hpp"/>
+        <childnode refid="57796" relation="include">
+        </childnode>
+        <childnode refid="57797" relation="include">
+        </childnode>
+        <childnode refid="57804" relation="include">
+        </childnode>
+        <childnode refid="57806" relation="include">
+        </childnode>
+        <childnode refid="57808" relation="include">
+        </childnode>
+      </node>
+      <node id="57796">
+        <label>boost/mpl/assert.hpp</label>
+      </node>
+      <node id="57803">
+        <label>boost/type_traits/remove_reference.hpp</label>
+      </node>
+      <node id="57808">
+        <label>boost/geometry/util/promote_floating_point.hpp</label>
+        <link refid="promote__floating__point_8hpp"/>
+        <childnode refid="57801" relation="include">
+        </childnode>
+        <childnode refid="57809" relation="include">
+        </childnode>
+      </node>
+      <node id="57805">
+        <label>boost/geometry/core/tags.hpp</label>
+        <link refid="core_2tags_8hpp"/>
+      </node>
+      <node id="57811">
+        <label>boost/type_traits/is_void.hpp</label>
+      </node>
+      <node id="57815">
+        <label>boost/type_traits/is_fundamental.hpp</label>
+      </node>
+      <node id="57794">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/point_in_poly_crossings_multiply.hpp</label>
+        <link refid="point_in_poly_crossings_multiply.hpp"/>
+        <childnode refid="57795" relation="include">
+        </childnode>
+        <childnode refid="57810" relation="include">
+        </childnode>
+      </node>
+      <node id="57812">
+        <label>boost/geometry/util/select_coordinate_type.hpp</label>
+        <link refid="select__coordinate__type_8hpp"/>
+        <childnode refid="57795" relation="include">
+        </childnode>
+        <childnode refid="57813" relation="include">
+        </childnode>
+      </node>
+      <node id="57797">
+        <label>boost/geometry/core/point_type.hpp</label>
+        <link refid="point__type_8hpp"/>
+        <childnode refid="57796" relation="include">
+        </childnode>
+        <childnode refid="57798" relation="include">
+        </childnode>
+        <childnode refid="57799" relation="include">
+        </childnode>
+        <childnode refid="57800" relation="include">
+        </childnode>
+        <childnode refid="57804" relation="include">
+        </childnode>
+        <childnode refid="57805" relation="include">
+        </childnode>
+        <childnode refid="57806" relation="include">
+        </childnode>
+      </node>
+      <node id="57798">
+        <label>boost/range/value_type.hpp</label>
+      </node>
+      <node id="57800">
+        <label>boost/geometry/core/ring_type.hpp</label>
+        <link refid="ring__type_8hpp"/>
+        <childnode refid="57796" relation="include">
+        </childnode>
+        <childnode refid="57801" relation="include">
+        </childnode>
+        <childnode refid="57798" relation="include">
+        </childnode>
+        <childnode refid="57802" relation="include">
+        </childnode>
+        <childnode refid="57799" relation="include">
+        </childnode>
+        <childnode refid="57803" relation="include">
+        </childnode>
+        <childnode refid="57804" relation="include">
+        </childnode>
+        <childnode refid="57805" relation="include">
+        </childnode>
+      </node>
+      <node id="57809">
+        <label>boost/type_traits/is_integral.hpp</label>
+      </node>
+      <node id="57810">
+        <label>boost/geometry/util/select_calculation_type.hpp</label>
+        <link refid="select__calculation__type_8hpp"/>
+        <childnode refid="57801" relation="include">
+        </childnode>
+        <childnode refid="57811" relation="include">
+        </childnode>
+        <childnode refid="57812" relation="include">
+        </childnode>
+      </node>
+      <node id="57814">
+        <label>boost/type_traits/is_floating_point.hpp</label>
+      </node>
+      <node id="57804">
+        <label>boost/geometry/core/tag.hpp</label>
+        <link refid="tag_8hpp"/>
+        <childnode refid="57805" relation="include">
+        </childnode>
+        <childnode refid="57806" relation="include">
+        </childnode>
+      </node>
+      <node id="57806">
+        <label>boost/geometry/util/bare_type.hpp</label>
+        <link refid="bare__type_8hpp"/>
+        <childnode refid="57799" relation="include">
+        </childnode>
+        <childnode refid="57807" relation="include">
+        </childnode>
+        <childnode refid="57803" relation="include">
+        </childnode>
+      </node>
+      <node id="57807">
+        <label>boost/type_traits/remove_pointer.hpp</label>
+      </node>
+      <node id="57813">
+        <label>boost/geometry/util/select_most_precise.hpp</label>
+        <link refid="select__most__precise_8hpp"/>
+        <childnode refid="57801" relation="include">
+        </childnode>
+        <childnode refid="57814" relation="include">
+        </childnode>
+        <childnode refid="57815" relation="include">
+        </childnode>
+      </node>
+    </incdepgraph>
+    <invincdepgraph>
+      <node id="57817">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/strategies/strategies.hpp</label>
+        <link refid="strategies_8hpp"/>
+      </node>
+      <node id="57816">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/point_in_poly_crossings_multiply.hpp</label>
+        <link refid="point_in_poly_crossings_multiply.hpp"/>
+        <childnode refid="57817" relation="include">
+        </childnode>
+      </node>
+    </invincdepgraph>
+    <innerclass refid="classboost_1_1geometry_1_1strategy_1_1within_1_1crossings__multiply" prot="public">boost::geometry::strategy::within::crossings_multiply</innerclass>
+    <innerclass refid="classboost_1_1geometry_1_1strategy_1_1within_1_1crossings__multiply_1_1flags" prot="private">boost::geometry::strategy::within::crossings_multiply::flags</innerclass>
+    <innernamespace refid="namespaceboost">boost</innernamespace>
+    <innernamespace refid="namespaceboost_1_1geometry">boost::geometry</innernamespace>
+    <innernamespace refid="namespaceboost_1_1geometry_1_1strategy">boost::geometry::strategy</innernamespace>
+    <innernamespace refid="namespaceboost_1_1geometry_1_1strategy_1_1within">boost::geometry::strategy::within</innernamespace>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/point_in_poly_crossings_multiply.hpp"/>
+  </compounddef>
+</doxygen>

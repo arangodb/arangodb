@@ -311,7 +311,7 @@ struct TRI_vocbase_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_THROW_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(collection) \
-  if (collection != nullptr && !collection->_isLocal) {               \
+  if (collection != nullptr && !collection->isLocal()) {              \
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);                \
   }
 

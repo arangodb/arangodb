@@ -1,0 +1,55 @@
+[/
+  Copyright (c) 2014 Glen Joseph Fernandes
+  glenfe at live dot com
+
+  Distributed under the Boost Software License,
+  Version 1.0. (See accompanying file LICENSE_1_0.txt
+  or copy at http://boost.org/LICENSE_1_0.txt)
+]
+
+[library Boost.Core
+  [quickbook 1.6]
+  [id core]
+  [copyright 2014 Peter Dimov]
+  [copyright 2014 Glen Fernandes]
+  [copyright 2014 Andrey Semashev]
+  [dirname core]
+  [license Distributed under the
+    [@http://boost.org/LICENSE_1_0.txt Boost Software License,
+      Version 1.0].
+  ]
+]
+
+[template simplesect[title]
+[block '''<simplesect><title>'''[title]'''</title>''']]
+
+[template endsimplesect[]
+[block '''</simplesect>''']]
+
+[section Introduction]
+
+The Boost.Core library is a collection of core utilities. The
+criteria for inclusion is that the utility component be:
+
+* simple,
+* used by other Boost libraries, and
+* not dependent on any other Boost modules except Core
+  itself, Config, Assert, Static Assert, or Predef.
+
+[endsect]
+
+[include addressof.qbk]
+[include checked_delete.qbk]
+[include demangle.qbk]
+[include enable_if.qbk]
+[include explicit_operator_bool.qbk]
+[include ignore_unused.qbk]
+[include is_same.qbk]
+[include lightweight_test.qbk]
+[include no_exceptions_support.qbk]
+[include noncopyable.qbk]
+[include null_deleter.qbk]
+[include ref.qbk]
+[include scoped_enum.qbk]
+[include swap.qbk]
+[include typeinfo.qbk]

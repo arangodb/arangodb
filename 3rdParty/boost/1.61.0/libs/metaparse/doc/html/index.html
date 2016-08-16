@@ -1,0 +1,177 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Boost.Metaparse</title>
+<link rel="stylesheet" href="../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="index.html" title="Boost.Metaparse">
+<link rel="next" href="metaparse/related_publications_and_blogs.html" title="Related publications and blogs">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../boost.png"></td>
+<td align="center"><a href="../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav"><a accesskey="n" href="metaparse/related_publications_and_blogs.html"><img src="../../../../doc/src/images/next.png" alt="Next"></a></div>
+<div class="chapter">
+<div class="titlepage"><div>
+<div><h2 class="title">
+<a name="metaparse"></a>Boost.Metaparse</h2></div>
+<div><div class="author"><h3 class="author">
+<span class="firstname">Abel</span> <span class="surname">Sinkovics</span>
+</h3></div></div>
+<div><p class="copyright">Copyright &#169; 2015 Abel Sinkovics</p></div>
+<div><div class="legalnotice">
+<a name="metaparse.legal"></a><p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></div>
+</div></div>
+<div class="toc">
+<p><b>Table of Contents</b></p>
+<dl>
+<dt><span class="section"><a href="index.html#metaparse.description">Description</a></span></dt>
+<dt><span class="section"><a href="metaparse/related_publications_and_blogs.html">Related publications
+    and blogs</a></span></dt>
+<dt><span class="section"><a href="metaparse/preface.html">Preface</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="metaparse/preface.html#metaparse.preface.description">Description</a></span></dt>
+<dt><span class="section"><a href="metaparse/preface.html#metaparse.preface.scope">Scope</a></span></dt>
+<dt><span class="section"><a href="metaparse/preface.html#metaparse.preface.advantages_of_using_this_library">Advantages
+      of using this library</a></span></dt>
+<dt><span class="section"><a href="metaparse/preface.html#metaparse.preface.cost_of_using_metaparse">Cost of using
+      Metaparse</a></span></dt>
+<dt><span class="section"><a href="metaparse/preface.html#metaparse.preface.supported_platforms">Supported platforms</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="metaparse/getting_started_with_boost_metap.html">Getting
+    started with Boost.Metaparse</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="metaparse/getting_started_with_boost_metap.html#metaparse.getting_started_with_boost_metap.1_introduction">1.
+      Introduction</a></span></dt>
+<dt><span class="section"><a href="metaparse/getting_started_with_boost_metap.html#metaparse.getting_started_with_boost_metap.2_the_text_to_parse">2.
+      The text to parse</a></span></dt>
+<dt><span class="section"><a href="metaparse/getting_started_with_boost_metap.html#metaparse.getting_started_with_boost_metap.3_creating_a_simple_parser">3.
+      Creating a simple parser</a></span></dt>
+<dt><span class="section"><a href="metaparse/getting_started_with_boost_metap.html#metaparse.getting_started_with_boost_metap.4_parsing_simple_expressions">4.
+      Parsing simple expressions</a></span></dt>
+<dt><span class="section"><a href="metaparse/getting_started_with_boost_metap.html#metaparse.getting_started_with_boost_metap.5_parsing_longer_expressions">5.
+      Parsing longer expressions</a></span></dt>
+<dt><span class="section"><a href="metaparse/getting_started_with_boost_metap.html#metaparse.getting_started_with_boost_metap.6_adding_support_for_other_opera">6.
+      Adding support for other operators</a></span></dt>
+<dt><span class="section"><a href="metaparse/getting_started_with_boost_metap.html#metaparse.getting_started_with_boost_metap.7_dealing_with_precedence">7.
+      Dealing with precedence</a></span></dt>
+<dt><span class="section"><a href="metaparse/getting_started_with_boost_metap.html#metaparse.getting_started_with_boost_metap.8_dealing_with_associativity">8.
+      Dealing with associativity</a></span></dt>
+<dt><span class="section"><a href="metaparse/getting_started_with_boost_metap.html#metaparse.getting_started_with_boost_metap.9_dealing_with_unary_operators">9.
+      Dealing with unary operators</a></span></dt>
+<dt><span class="section"><a href="metaparse/getting_started_with_boost_metap.html#metaparse.getting_started_with_boost_metap.10_dealing_with_parens">10.
+      Dealing with parens</a></span></dt>
+<dt><span class="section"><a href="metaparse/getting_started_with_boost_metap.html#metaparse.getting_started_with_boost_metap.11_dealing_with_invalid_input">11.
+      Dealing with invalid input</a></span></dt>
+<dt><span class="section"><a href="metaparse/getting_started_with_boost_metap.html#metaparse.getting_started_with_boost_metap.12_summary">12.
+      Summary</a></span></dt>
+<dt><span class="section"><a href="metaparse/getting_started_with_boost_metap.html#metaparse.getting_started_with_boost_metap.copy_paste_friendly_code_example">Copy-paste
+      friendly code examples</a></span></dt>
+<dt><span class="section"><a href="metaparse/getting_started_with_boost_metap.html#metaparse.getting_started_with_boost_metap.definitions_before_each_section">Definitions
+      before each section</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="metaparse/user_manual.html">User manual</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="metaparse/user_manual.html#metaparse.user_manual.what_is_a_parser">What is a parser</a></span></dt>
+<dt><span class="section"><a href="metaparse/user_manual.html#metaparse.user_manual.parsing_based_on_constexpr">Parsing
+      based on <code class="computeroutput"><span class="keyword">constexpr</span></code></a></span></dt>
+<dt><span class="section"><a href="metaparse/user_manual.html#metaparse.user_manual.what_types_of_grammars_can_be_us">What
+      types of grammars can be used?</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="metaparse/versioning.html">Versioning</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="metaparse/versioning.html#metaparse.versioning.template_classes">Template classes</a></span></dt>
+<dt><span class="section"><a href="metaparse/versioning.html#metaparse.versioning.macros">Macros</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="metaparse/performance.html">Performance</a></span></dt>
+<dt><span class="section"><a href="metaparse/the_design_of_the_library.html">The design of the
+    library</a></span></dt>
+<dd><dl><dt><span class="section"><a href="metaparse/the_design_of_the_library.html#metaparse.the_design_of_the_library.design_rationale">Design
+      rationale</a></span></dt></dl></dd>
+<dt><span class="section"><a href="metaparse/reference.html">Reference</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="metaparse/reference.html#metaparse.reference.parsers_and_combinators_provided">Parsers
+      and combinators provided by the library</a></span></dt>
+<dt><span class="section"><a href="metaparse/reference.html#metaparse.reference.compile_time_data_structures_and">Compile-time
+      data structures and values</a></span></dt>
+<dt><span class="section"><a href="metaparse/reference.html#metaparse.reference.string">String</a></span></dt>
+<dt><span class="section"><a href="metaparse/reference.html#metaparse.reference.errors">Errors</a></span></dt>
+<dt><span class="section"><a href="metaparse/reference.html#metaparse.reference.tags">Tags</a></span></dt>
+<dt><span class="section"><a href="metaparse/reference.html#metaparse.reference.utilities">Utilities</a></span></dt>
+<dt><span class="section"><a href="metaparse/reference.html#metaparse.reference.terms_used_by_the_library">Terms
+      used by the library</a></span></dt>
+<dt><span class="section"><a href="metaparse/reference.html#metaparse.reference.alphabetical">Alphabetical</a></span></dt>
+</dl></dd>
+</dl>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="metaparse.description"></a><a class="link" href="index.html#metaparse.description" title="Description">Description</a>
+</h2></div></div></div>
+<p>
+      Metaparse is a parser generator library for template metaprograms. The purpose
+      of this library is to support the creation of parsers that parse at compile
+      time. This library is intended to be used for embedded domain specific language
+      creation for C++. The input of the generated parser is a compile time string,
+      see <a class="link" href="metaparse/reference.html#string"><code class="computeroutput"><span class="identifier">string</span></code></a>.
+      The result of the parsing process is either an error or any other result the
+      writer of the parser specifies.
+    </p>
+<p>
+      The library is similar to Boost.Spirit, however while parsers built with Spirit
+      parse at run-time, parsers built with Metaparse parse at compile-time. Parsers
+      built with Metaparse can output:
+    </p>
+<div class="itemizedlist"><ul class="itemizedlist" type="disc">
+<li class="listitem">
+          types
+        </li>
+<li class="listitem">
+          constant values
+        </li>
+<li class="listitem">
+          objects (types with public static members)
+        </li>
+<li class="listitem">
+          callable C++ functions (types with public static method)
+        </li>
+<li class="listitem">
+          template metafunction classes
+        </li>
+</ul></div>
+<p>
+      See section <a class="link" href="metaparse/user_manual.html#result_types">What can be built from a compile-time
+      string?</a> for further details.
+    </p>
+<p>
+      Based on C++11 features the library can provide advanced utilities for defining
+      the input string, the rest of the library works on C++98-based compilers as
+      well. Note that if you build the tests and examples with Boost.Build using
+      GCC or Clang, the compiler will not have C++11 (or newer) enabled. To build
+      the tests and examples in C++11-mode, you need to run <code class="computeroutput"><span class="identifier">b2</span>
+      <span class="identifier">cxxflags</span><span class="special">=</span><span class="string">"-std=c++11"</span></code>.
+    </p>
+<p>
+      An external tutorial can be found at <a href="https://github.com/sabel83/metaparse_tutorial#metaparse-tutorial" target="_top">https://github.com/sabel83/metaparse_tutorial#metaparse-tutorial</a>
+    </p>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"><p><small>Last revised: May 05, 2016 at 21:19:18 GMT</small></p></td>
+<td align="right"><div class="copyright-footer"></div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav"><a accesskey="n" href="metaparse/related_publications_and_blogs.html"><img src="../../../../doc/src/images/next.png" alt="Next"></a></div>
+</body>
+</html>

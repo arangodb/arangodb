@@ -1,0 +1,48 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="structboost_1_1geometry_1_1point__order" kind="struct" prot="public">
+    <compoundname>boost::geometry::point_order</compoundname>
+    <includes local="no">point_order.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename Geometry</type>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-static-attrib">
+      <memberdef kind="variable" id="structboost_1_1geometry_1_1point__order_1ad8c83f53d68d8cd7158a9b1d82f9143e" prot="public" static="yes" mutable="no">
+        <type>const <ref refid="group__enum_1ga0af1c124acb76f0892024d6d4ab2bc8c" kindref="member">order_selector</ref></type>
+        <definition>const order_selector boost::geometry::point_order&lt; Geometry &gt;::value</definition>
+        <argsstring></argsstring>
+        <name>value</name>
+        <initializer> core_dispatch::point_order
+        &lt;
+            typename <ref refid="structboost_1_1geometry_1_1tag" kindref="compound">tag</ref>&lt;Geometry&gt;::type,
+            typename <ref refid="structboost_1_1geometry_1_1util_1_1bare__type" kindref="compound">util::bare_type</ref>&lt;Geometry&gt;::type
+        &gt;::<ref refid="structboost_1_1geometry_1_1point__order_1ad8c83f53d68d8cd7158a9b1d82f9143e" kindref="member">value</ref></initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/core/point_order.hpp" line="181" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/core/point_order.hpp" bodystart="177" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+<para>Metafunction defining [*value] as the point order (clockwise, counterclockwise) of the \3. </para>    </briefdescription>
+    <detaileddescription>
+<para><parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>Geometry</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Any type fulfilling a Geometry Concept</para></parameterdescription>
+</parameteritem>
+</parameterlist>
+ <qbk>[include reference/core/point_order.qbk]</qbk>  </para>    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/core/point_order.hpp" line="176" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/core/point_order.hpp" bodystart="175" bodyend="182"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1point__order_1ad8c83f53d68d8cd7158a9b1d82f9143e" prot="public" virt="non-virtual"><scope>boost::geometry::point_order</scope><name>value</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

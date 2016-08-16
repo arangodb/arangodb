@@ -1,0 +1,16 @@
+{
+    "key": "signals",
+    "status": "deprecated",
+    "name": "Signals",
+    "authors": [
+        "Doug Gregor"
+    ],
+    "description": "Managed signals & slots callback implementation.",
+    "category": [
+        "Function-objects",
+        "Patterns"
+    ],
+    "maintainers": [
+        "Douglas Gregor <dgregor -at- cs.indiana.edu>"
+    ]
+}

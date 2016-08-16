@@ -1,0 +1,14 @@
+{
+    "key": "coroutine2",
+    "name": "Coroutine2",
+    "authors": [
+        "Oliver Kowalke"
+    ],
+    "description": "(C++14) Coroutine library.",
+    "category": [
+        "Concurrent"
+    ],
+    "maintainers": [
+        "Oliver Kowalke <oliver.kowalke -at- gmail.com>"
+    ]
+}

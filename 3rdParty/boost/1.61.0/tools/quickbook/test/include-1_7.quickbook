@@ -1,0 +1,18 @@
+[article Include Test
+    [quickbook 1.7]
+    [id include-test]
+]
+
+[include include-inc.quickbook]
+[include:foo include-inc.quickbook]
+
+[template id2[] include-inc]
+[include:foo0 [id2].quickbook]
+
+[def __defined__]
+
+[? __undefined__ [include:foo1 include-inc.quickbook] ]
+[? __undefined__ [include:foo1 not-a-file.quickbook] ]
+[? __defined__
+  Just trying including in a conditional macro. [include:foo2 include-inc.quickbook]
+  With some text around it.]

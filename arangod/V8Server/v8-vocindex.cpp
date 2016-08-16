@@ -1438,8 +1438,13 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
       TRI_V8_THROW_EXCEPTION(res);
     }
 
-    infoSlice = builder.slice();
+  } else {
+    // create an empty properties object
+    builder.openObject();
+    builder.close();
   }
+    
+  infoSlice = builder.slice();
 
   VocbaseCollectionInfo parameters(vocbase, name.c_str(), collectionType,
                                    infoSlice, false);

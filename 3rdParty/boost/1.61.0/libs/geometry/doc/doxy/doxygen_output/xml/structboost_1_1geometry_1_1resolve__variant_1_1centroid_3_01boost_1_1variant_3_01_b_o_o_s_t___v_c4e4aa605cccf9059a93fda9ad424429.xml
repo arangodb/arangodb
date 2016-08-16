@@ -1,0 +1,99 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
+  <compounddef id="structboost_1_1geometry_1_1resolve__variant_1_1centroid_3_01boost_1_1variant_3_01_b_o_o_s_t___v_c4e4aa605cccf9059a93fda9ad424429" kind="struct" prot="public">
+    <compoundname>boost::geometry::resolve_variant::centroid&lt; boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; &gt;::visitor</compoundname>
+    <includes local="no">centroid.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename Point</type>
+      </param>
+      <param>
+        <type>typename Strategy</type>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="structboost_1_1geometry_1_1resolve__variant_1_1centroid_3_01boost_1_1variant_3_01_b_o_o_s_t___v_c4e4aa605cccf9059a93fda9ad424429_1a089d8ae8b334efc2d583ad59aa550588" prot="public" static="no" mutable="no">
+        <type>Point &amp;</type>
+        <definition>Point&amp; boost::geometry::resolve_variant::centroid&lt; boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; &gt;::visitor&lt; Point, Strategy &gt;::m_out</definition>
+        <argsstring></argsstring>
+        <name>m_out</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/centroid.hpp" line="559" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/centroid.hpp" bodystart="559" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structboost_1_1geometry_1_1resolve__variant_1_1centroid_3_01boost_1_1variant_3_01_b_o_o_s_t___v_c4e4aa605cccf9059a93fda9ad424429_1ab73b3794054556dd157dcc201b57233a" prot="public" static="no" mutable="no">
+        <type>Strategy const &amp;</type>
+        <definition>Strategy const&amp; boost::geometry::resolve_variant::centroid&lt; boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; &gt;::visitor&lt; Point, Strategy &gt;::m_strategy</definition>
+        <argsstring></argsstring>
+        <name>m_strategy</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/centroid.hpp" line="560" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/centroid.hpp" bodystart="560" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="structboost_1_1geometry_1_1resolve__variant_1_1centroid_3_01boost_1_1variant_3_01_b_o_o_s_t___v_c4e4aa605cccf9059a93fda9ad424429_1a168fff22a51252e176dfe9c6f5b42483" prot="public" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Geometry</type>
+          </param>
+        </templateparamlist>
+        <type>void</type>
+        <definition>void boost::geometry::resolve_variant::centroid&lt; boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; &gt;::visitor&lt; Point, Strategy &gt;::operator()</definition>
+        <argsstring>(Geometry const &amp;geometry) const </argsstring>
+        <name>operator()</name>
+        <param>
+          <type>Geometry const &amp;</type>
+          <declname>geometry</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/centroid.hpp" line="568" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/centroid.hpp" bodystart="567" bodyend="570"/>
+      </memberdef>
+      <memberdef kind="function" id="structboost_1_1geometry_1_1resolve__variant_1_1centroid_3_01boost_1_1variant_3_01_b_o_o_s_t___v_c4e4aa605cccf9059a93fda9ad424429_1ad0855bb73ac7013ba499e29dcca38d33" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type></type>
+        <definition>boost::geometry::resolve_variant::centroid&lt; boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; &gt;::visitor&lt; Point, Strategy &gt;::visitor</definition>
+        <argsstring>(Point &amp;out, Strategy const &amp;strategy)</argsstring>
+        <name>visitor</name>
+        <param>
+          <type>Point &amp;</type>
+          <declname>out</declname>
+        </param>
+        <param>
+          <type>Strategy const &amp;</type>
+          <declname>strategy</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/centroid.hpp" line="564" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/centroid.hpp" bodystart="562" bodyend="564"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/centroid.hpp" line="558" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/centroid.hpp" bodystart="557" bodyend="571"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1resolve__variant_1_1centroid_3_01boost_1_1variant_3_01_b_o_o_s_t___v_c4e4aa605cccf9059a93fda9ad424429_1a089d8ae8b334efc2d583ad59aa550588" prot="public" virt="non-virtual"><scope>boost::geometry::resolve_variant::centroid&lt; boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; &gt;::visitor</scope><name>m_out</name></member>
+      <member refid="structboost_1_1geometry_1_1resolve__variant_1_1centroid_3_01boost_1_1variant_3_01_b_o_o_s_t___v_c4e4aa605cccf9059a93fda9ad424429_1ab73b3794054556dd157dcc201b57233a" prot="public" virt="non-virtual"><scope>boost::geometry::resolve_variant::centroid&lt; boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; &gt;::visitor</scope><name>m_strategy</name></member>
+      <member refid="structboost_1_1geometry_1_1resolve__variant_1_1centroid_3_01boost_1_1variant_3_01_b_o_o_s_t___v_c4e4aa605cccf9059a93fda9ad424429_1a168fff22a51252e176dfe9c6f5b42483" prot="public" virt="non-virtual"><scope>boost::geometry::resolve_variant::centroid&lt; boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; &gt;::visitor</scope><name>operator()</name></member>
+      <member refid="structboost_1_1geometry_1_1resolve__variant_1_1centroid_3_01boost_1_1variant_3_01_b_o_o_s_t___v_c4e4aa605cccf9059a93fda9ad424429_1ad0855bb73ac7013ba499e29dcca38d33" prot="public" virt="non-virtual"><scope>boost::geometry::resolve_variant::centroid&lt; boost::variant&lt; BOOST_VARIANT_ENUM_PARAMS(T)&gt; &gt;::visitor</scope><name>visitor</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

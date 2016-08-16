@@ -1,0 +1,129 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Bitwise comparison</title>
+<link rel="stylesheet" href="../../../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../../../index.html" title="Boost.Test">
+<link rel="up" href="../extended_comparison.html" title="Extended comparisons support">
+<link rel="prev" href="collections.html" title="Collections comparison">
+<link rel="next" href="../exception_correctness.html" title="Exception correctness">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="collections.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../extended_comparison.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../exception_correctness.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="boost_test.testing_tools.extended_comparison.bitwise"></a><a class="link" href="bitwise.html" title="Bitwise comparison">Bitwise
+        comparison</a>
+</h4></div></div></div>
+<div class="caution"><table border="0" summary="Caution">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Caution]" src="../../../../../../../doc/src/images/caution.png"></td>
+<th align="left">Caution</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+            this feature is not available for non C++11 compilers.
+          </p></td></tr>
+</table></div>
+<p>
+          The manipulator <code class="computeroutput"><a class="link" href="../../../boost/test_tools/bitwise.html" title="Struct bitwise">boost::test_tools::bitwise</a></code>
+          can be provided to the <a class="link" href="../../utf_reference/testing_tool_ref/assertion_boost_test_universal_macro.html" title="BOOST_TEST"><code class="computeroutput"><span class="identifier">BOOST_TEST</span></code></a> macro in order to have
+          a bitwise comparison of the operands. In that case, the <span class="emphasis"><em>Unit
+          Test Framework</em></span> indicates the bit indices where the two operands
+          do not match.
+        </p>
+<h6>
+<a name="boost_test.testing_tools.extended_comparison.bitwise.h0"></a>
+          <span><a name="boost_test.testing_tools.extended_comparison.bitwise.example_descr"></a></span><a class="link" href="bitwise.html#boost_test.testing_tools.extended_comparison.bitwise.example_descr">Example:
+          BOOST_TEST bitwise comparison</a>
+        </h6>
+<div class="informaltable"><table class="table">
+<colgroup><col></colgroup>
+<thead><tr><th>
+                  <p>
+                    Code
+                  </p>
+                </th></tr></thead>
+<tbody><tr><td>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="preprocessor">#define</span> <span class="identifier">BOOST_TEST_MODULE</span> <span class="identifier">boost_test_bitwise</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">test</span><span class="special">/</span><span class="identifier">included</span><span class="special">/</span><span class="identifier">unit_test</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">sstream</span><span class="special">&gt;</span>
+
+<span class="identifier">BOOST_AUTO_TEST_CASE</span><span class="special">(</span><span class="identifier">test_bitwise</span><span class="special">)</span>
+<span class="special">{</span>
+  <span class="keyword">namespace</span> <span class="identifier">tt</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">test_tools</span><span class="special">;</span>
+  <span class="keyword">int</span> <span class="identifier">a</span> <span class="special">=</span> <span class="number">0xAB</span><span class="special">;</span>
+  <span class="identifier">BOOST_TEST</span><span class="special">(</span> <span class="identifier">a</span> <span class="special">==</span> <span class="special">(</span><span class="identifier">a</span> <span class="special">&amp;</span> <span class="special">~</span><span class="number">1</span><span class="special">),</span> <span class="identifier">tt</span><span class="special">::</span><span class="identifier">bitwise</span><span class="special">()</span> <span class="special">);</span>
+  <span class="identifier">BOOST_TEST</span><span class="special">(</span> <span class="identifier">a</span> <span class="special">==</span> <span class="identifier">a</span> <span class="special">+</span> <span class="number">1</span><span class="special">,</span> <span class="identifier">tt</span><span class="special">::</span><span class="identifier">bitwise</span><span class="special">()</span> <span class="special">);</span>
+  <span class="identifier">BOOST_TEST</span><span class="special">(</span> <span class="identifier">a</span> <span class="special">!=</span> <span class="identifier">a</span> <span class="special">+</span> <span class="number">1</span><span class="special">,</span> <span class="identifier">tt</span><span class="special">::</span><span class="identifier">bitwise</span><span class="special">()</span> <span class="special">);</span>
+  <span class="keyword">int</span> <span class="identifier">b</span> <span class="special">=</span> <span class="number">0x88</span><span class="special">;</span>
+  <span class="identifier">BOOST_TEST</span><span class="special">(</span> <span class="identifier">a</span> <span class="special">==</span> <span class="identifier">b</span><span class="special">,</span> <span class="identifier">tt</span><span class="special">::</span><span class="identifier">bitwise</span><span class="special">()</span> <span class="special">);</span>
+<span class="special">}</span>
+</pre>
+                </td></tr></tbody>
+</table></div>
+<div class="informaltable"><table class="table">
+<colgroup><col></colgroup>
+<thead><tr><th>
+                  <p>
+                    Output
+                  </p>
+                </th></tr></thead>
+<tbody><tr><td>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="special">&gt;</span> <span class="special">./</span><span class="identifier">boost_test_bitwise</span> <span class="special">--</span><span class="identifier">log_level</span><span class="special">=</span><span class="identifier">all</span>
+<span class="identifier">Running</span> <span class="number">1</span> <span class="identifier">test</span> <span class="keyword">case</span><span class="special">...</span>
+<span class="identifier">Entering</span> <span class="identifier">test</span> <span class="identifier">module</span> <span class="string">"boost_test_bitwise"</span>
+<span class="identifier">test</span><span class="special">.</span><span class="identifier">cpp</span><span class="special">(</span><span class="number">13</span><span class="special">):</span> <span class="identifier">Entering</span> <span class="identifier">test</span> <span class="keyword">case</span> <span class="string">"test_bitwise"</span>
+<span class="identifier">test</span><span class="special">.</span><span class="identifier">cpp</span><span class="special">(</span><span class="number">17</span><span class="special">):</span> <span class="identifier">error</span><span class="special">:</span> <span class="identifier">in</span> <span class="string">"test_bitwise"</span><span class="special">:</span> <span class="identifier">check</span> <span class="identifier">a</span> <span class="special">==</span> <span class="special">(</span><span class="identifier">a</span> <span class="special">&amp;</span> <span class="special">~</span><span class="number">1</span><span class="special">)</span> <span class="identifier">has</span> <span class="identifier">failed</span> <span class="special">[</span><span class="number">171</span> <span class="special">!=</span> <span class="number">170</span><span class="special">].</span> <span class="identifier">Bitwise</span> <span class="identifier">comparison</span> <span class="identifier">failed</span>
+<span class="identifier">Mismatch</span> <span class="identifier">at</span> <span class="identifier">position</span> <span class="number">0</span>
+<span class="identifier">test</span><span class="special">.</span><span class="identifier">cpp</span><span class="special">(</span><span class="number">18</span><span class="special">):</span> <span class="identifier">error</span><span class="special">:</span> <span class="identifier">in</span> <span class="string">"test_bitwise"</span><span class="special">:</span> <span class="identifier">check</span> <span class="identifier">a</span> <span class="special">==</span> <span class="identifier">a</span> <span class="special">+</span> <span class="number">1</span> <span class="identifier">has</span> <span class="identifier">failed</span> <span class="special">[</span><span class="number">171</span> <span class="special">!=</span> <span class="number">172</span><span class="special">].</span> <span class="identifier">Bitwise</span> <span class="identifier">comparison</span> <span class="identifier">failed</span>
+<span class="identifier">Mismatch</span> <span class="identifier">at</span> <span class="identifier">position</span> <span class="number">0</span>
+<span class="identifier">Mismatch</span> <span class="identifier">at</span> <span class="identifier">position</span> <span class="number">1</span>
+<span class="identifier">Mismatch</span> <span class="identifier">at</span> <span class="identifier">position</span> <span class="number">2</span>
+<span class="identifier">test</span><span class="special">.</span><span class="identifier">cpp</span><span class="special">(</span><span class="number">19</span><span class="special">):</span> <span class="identifier">info</span><span class="special">:</span> <span class="identifier">check</span> <span class="identifier">a</span> <span class="special">!=</span> <span class="identifier">a</span> <span class="special">+</span> <span class="number">1</span> <span class="identifier">has</span> <span class="identifier">passed</span>
+<span class="identifier">test</span><span class="special">.</span><span class="identifier">cpp</span><span class="special">(</span><span class="number">21</span><span class="special">):</span> <span class="identifier">error</span><span class="special">:</span> <span class="identifier">in</span> <span class="string">"test_bitwise"</span><span class="special">:</span> <span class="identifier">check</span> <span class="identifier">a</span> <span class="special">==</span> <span class="identifier">b</span> <span class="identifier">has</span> <span class="identifier">failed</span> <span class="special">[</span><span class="number">171</span> <span class="special">!=</span> <span class="number">136</span><span class="special">].</span> <span class="identifier">Bitwise</span> <span class="identifier">comparison</span> <span class="identifier">failed</span>
+<span class="identifier">Mismatch</span> <span class="identifier">at</span> <span class="identifier">position</span> <span class="number">0</span>
+<span class="identifier">Mismatch</span> <span class="identifier">at</span> <span class="identifier">position</span> <span class="number">1</span>
+<span class="identifier">Mismatch</span> <span class="identifier">at</span> <span class="identifier">position</span> <span class="number">5</span>
+<span class="identifier">test</span><span class="special">.</span><span class="identifier">cpp</span><span class="special">(</span><span class="number">13</span><span class="special">):</span> <span class="identifier">Leaving</span> <span class="identifier">test</span> <span class="keyword">case</span> <span class="string">"test_bitwise"</span><span class="special">;</span> <span class="identifier">testing</span> <span class="identifier">time</span><span class="special">:</span> <span class="number">627u</span><span class="identifier">s</span>
+<span class="identifier">Leaving</span> <span class="identifier">test</span> <span class="identifier">module</span> <span class="string">"boost_test_bitwise"</span><span class="special">;</span> <span class="identifier">testing</span> <span class="identifier">time</span><span class="special">:</span> <span class="number">772u</span><span class="identifier">s</span>
+
+<span class="special">***</span> <span class="number">3</span> <span class="identifier">failures</span> <span class="identifier">are</span> <span class="identifier">detected</span> <span class="identifier">in</span> <span class="identifier">the</span> <span class="identifier">test</span> <span class="identifier">module</span> <span class="string">"boost_test_bitwise"</span>
+</pre>
+                </td></tr></tbody>
+</table></div>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+            the indices start at least significant bit.
+          </p></td></tr>
+</table></div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2001-2016 Boost.Test contributors<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="collections.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../extended_comparison.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../exception_correctness.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

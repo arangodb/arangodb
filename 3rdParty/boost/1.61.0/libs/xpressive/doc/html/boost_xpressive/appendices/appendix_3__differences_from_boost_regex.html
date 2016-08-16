@@ -1,0 +1,122 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Appendix 3: Differences from Boost.Regex</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../../index.html" title="Chapter&#160;1.&#160;Boost.Xpressive">
+<link rel="up" href="../../xpressive/appendices.html" title="Appendices">
+<link rel="prev" href="appendix_2__not_yet_implemented.html" title="Appendix 2: Not Yet Implemented">
+<link rel="next" href="perf.html" title="Appendix 4: Performance Comparison">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="appendix_2__not_yet_implemented.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../xpressive/appendices.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="perf.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_xpressive.appendices.appendix_3__differences_from_boost_regex"></a><a class="link" href="appendix_3__differences_from_boost_regex.html" title="Appendix 3: Differences from Boost.Regex">Appendix
+      3: Differences from Boost.Regex</a>
+</h3></div></div></div>
+<p>
+        Since many of xpressive's users are likely to be familiar with the <a href="../../../../libs/regex" target="_top">Boost.Regex</a> library, I would be remiss if
+        I failed to point out some important differences between xpressive and <a href="../../../../libs/regex" target="_top">Boost.Regex</a>. In particular:<br>
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" type="disc">
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">xpressive</span><span class="special">::</span><span class="identifier">basic_regex</span><span class="special">&lt;&gt;</span></code>
+            is a template on the iterator type, not the character type.
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">xpressive</span><span class="special">::</span><span class="identifier">basic_regex</span><span class="special">&lt;&gt;</span></code>
+            cannot be constructed directly from a string; rather, you must use <code class="computeroutput"><span class="identifier">basic_regex</span><span class="special">::</span><span class="identifier">compile</span><span class="special">()</span></code>
+            or <code class="computeroutput"><span class="identifier">regex_compiler</span><span class="special">&lt;&gt;</span></code>
+            to build a regex object from a string.
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">xpressive</span><span class="special">::</span><span class="identifier">basic_regex</span><span class="special">&lt;&gt;</span></code>
+            does not have an <code class="computeroutput"><span class="identifier">imbue</span><span class="special">()</span></code> member function; rather, the <code class="computeroutput"><span class="identifier">imbue</span><span class="special">()</span></code>
+            member function is in the <code class="computeroutput"><span class="identifier">xpressive</span><span class="special">::</span><span class="identifier">regex_compiler</span><span class="special">&lt;&gt;</span></code> factory.
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">basic_regex</span><span class="special">&lt;&gt;</span></code>
+            has a subset of <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">basic_string</span><span class="special">&lt;&gt;</span></code>'s
+            members. <code class="computeroutput"><span class="identifier">xpressive</span><span class="special">::</span><span class="identifier">basic_regex</span><span class="special">&lt;&gt;</span></code>
+            does not. The members lacking are: <code class="computeroutput"><span class="identifier">assign</span><span class="special">()</span></code>, <code class="computeroutput"><span class="keyword">operator</span><span class="special">[]()</span></code>, <code class="computeroutput"><span class="identifier">max_size</span><span class="special">()</span></code>, <code class="computeroutput"><span class="identifier">begin</span><span class="special">()</span></code>, <code class="computeroutput"><span class="identifier">end</span><span class="special">()</span></code>, <code class="computeroutput"><span class="identifier">size</span><span class="special">()</span></code>, <code class="computeroutput"><span class="identifier">compare</span><span class="special">()</span></code>, and <code class="computeroutput"><span class="keyword">operator</span><span class="special">=(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">basic_string</span><span class="special">&lt;&gt;)</span></code>.
+          </li>
+<li class="listitem">
+            Other member functions that exist in <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">basic_regex</span><span class="special">&lt;&gt;</span></code> but do not exist in <code class="computeroutput"><span class="identifier">xpressive</span><span class="special">::</span><span class="identifier">basic_regex</span><span class="special">&lt;&gt;</span></code>
+            are: <code class="computeroutput"><span class="identifier">set_expression</span><span class="special">()</span></code>,
+            <code class="computeroutput"><span class="identifier">get_allocator</span><span class="special">()</span></code>,
+            <code class="computeroutput"><span class="identifier">imbue</span><span class="special">()</span></code>,
+            <code class="computeroutput"><span class="identifier">getloc</span><span class="special">()</span></code>,
+            <code class="computeroutput"><span class="identifier">getflags</span><span class="special">()</span></code>,
+            and <code class="computeroutput"><span class="identifier">str</span><span class="special">()</span></code>.
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">xpressive</span><span class="special">::</span><span class="identifier">basic_regex</span><span class="special">&lt;&gt;</span></code>
+            does not have a RegexTraits template parameter. Customization of regex
+            syntax and localization behavior will be controlled by <code class="computeroutput"><span class="identifier">regex_compiler</span><span class="special">&lt;&gt;</span></code>
+            and a custom regex facet for <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">locale</span></code>.
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">xpressive</span><span class="special">::</span><span class="identifier">basic_regex</span><span class="special">&lt;&gt;</span></code>
+            and <code class="computeroutput"><span class="identifier">xpressive</span><span class="special">::</span><span class="identifier">match_results</span><span class="special">&lt;&gt;</span></code>
+            do not have an Allocator template parameter. This is by design.
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">match_not_dot_null</span></code> and
+            <code class="computeroutput"><span class="identifier">match_not_dot_newline</span></code>
+            have moved from the <code class="computeroutput"><span class="identifier">match_flag_type</span></code>
+            enum to the <code class="computeroutput"><span class="identifier">syntax_option_type</span></code>
+            enum, and they have changed names to <code class="computeroutput"><span class="identifier">not_dot_null</span></code>
+            and <code class="computeroutput"><span class="identifier">not_dot_newline</span></code>.
+          </li>
+<li class="listitem">
+            The following <code class="computeroutput"><span class="identifier">syntax_option_type</span></code>
+            enumeration values are not supported: <code class="computeroutput"><span class="identifier">escape_in_lists</span></code>,
+            <code class="computeroutput"><span class="identifier">char_classes</span></code>, <code class="computeroutput"><span class="identifier">intervals</span></code>, <code class="computeroutput"><span class="identifier">limited_ops</span></code>,
+            <code class="computeroutput"><span class="identifier">newline_alt</span></code>, <code class="computeroutput"><span class="identifier">bk_plus_qm</span></code>, <code class="computeroutput"><span class="identifier">bk_braces</span></code>,
+            <code class="computeroutput"><span class="identifier">bk_parens</span></code>, <code class="computeroutput"><span class="identifier">bk_refs</span></code>, <code class="computeroutput"><span class="identifier">bk_vbar</span></code>,
+            <code class="computeroutput"><span class="identifier">use_except</span></code>, <code class="computeroutput"><span class="identifier">failbit</span></code>, <code class="computeroutput"><span class="identifier">literal</span></code>,
+            <code class="computeroutput"><span class="identifier">perlex</span></code>, <code class="computeroutput"><span class="identifier">basic</span></code>, <code class="computeroutput"><span class="identifier">extended</span></code>,
+            <code class="computeroutput"><span class="identifier">emacs</span></code>, <code class="computeroutput"><span class="identifier">awk</span></code>, <code class="computeroutput"><span class="identifier">grep</span></code>
+            ,<code class="computeroutput"><span class="identifier">egrep</span></code>, <code class="computeroutput"><span class="identifier">sed</span></code>, <code class="computeroutput"><span class="identifier">JavaScript</span></code>,
+            <code class="computeroutput"><span class="identifier">JScript</span></code>.
+          </li>
+<li class="listitem">
+            The following <code class="computeroutput"><span class="identifier">match_flag_type</span></code>
+            enumeration values are not supported: <code class="computeroutput"><span class="identifier">match_not_bob</span></code>,
+            <code class="computeroutput"><span class="identifier">match_not_eob</span></code>, <code class="computeroutput"><span class="identifier">match_perl</span></code>, <code class="computeroutput"><span class="identifier">match_posix</span></code>,
+            and <code class="computeroutput"><span class="identifier">match_extra</span></code>.
+          </li>
+</ul></div>
+<p>
+        Also, in the current implementation, the regex algorithms in xpressive will
+        not detect pathological behavior and abort by throwing an exception. It is
+        up to you to write efficient patterns that do not behave pathologically.
+      </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2007 Eric Niebler<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="appendix_2__not_yet_implemented.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../xpressive/appendices.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="perf.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>
