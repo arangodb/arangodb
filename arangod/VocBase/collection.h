@@ -107,15 +107,6 @@ struct TRI_doc_collection_info_t {
   char _lastCompactionStamp[21];
 };
 
-/// @brief state of the datafile
-enum TRI_col_state_e {
-  TRI_COL_STATE_CLOSED = 1,      // collection is closed
-  TRI_COL_STATE_READ = 2,        // collection is opened read only
-  TRI_COL_STATE_WRITE = 3,       // collection is opened read/append
-  TRI_COL_STATE_OPEN_ERROR = 4,  // an error has occurred while opening
-  TRI_COL_STATE_WRITE_ERROR = 5  // an error has occurred while writing
-};
-
 /// @brief collection version
 typedef uint32_t TRI_col_version_t;
 
@@ -550,7 +541,6 @@ struct TRI_collection_t {
   arangodb::basics::ReadWriteLock _infoLock;
   arangodb::VocbaseCollectionInfo _info;
 
-  TRI_col_state_e _state;  // state of the collection
   int _lastError;          // last (critical) error
  
  private: 

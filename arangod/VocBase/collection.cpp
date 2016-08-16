@@ -146,7 +146,6 @@ TRI_collection_t::TRI_collection_t(TRI_vocbase_t* vocbase,
       : _vocbase(vocbase), 
         _tickMax(0),
         _info(parameters), 
-        _state(TRI_COL_STATE_WRITE), 
         _lastError(TRI_ERROR_NO_ERROR),
         _masterPointers(),
         _uncollectedLogfileEntries(0),
@@ -783,10 +782,6 @@ int TRI_collection_t::rotateActiveJournal() {
   TRI_datafile_t* datafile = _journals[0];
   TRI_ASSERT(datafile != nullptr);
 
-  if (_state != TRI_COL_STATE_WRITE) {
-    return TRI_ERROR_ARANGO_NO_JOURNAL;
-  }
-
   // make sure we have enough room in the target vector before we go on
   _datafiles.reserve(_datafiles.size() + 1);
 
@@ -872,7 +867,7 @@ int TRI_collection_t::reserveJournalSpace(TRI_voc_tick_t tick,
     targetSize *= 2;
   }
 
-  while (_state == TRI_COL_STATE_WRITE) {
+  while (true) {
     TRI_datafile_t* datafile = nullptr;
 
     if (_journals.empty()) {
