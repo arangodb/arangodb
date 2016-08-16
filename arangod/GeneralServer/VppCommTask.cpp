@@ -358,7 +358,7 @@ bool VppCommTask::processRead() {
   std::size_t processedDataLen =
       std::distance(_readBuffer->begin(), prv._readBufferCursor);
   if (processedDataLen > prv._cleanupLength) {
-    _readBuffer->move_front(prv._cleanupLength);
+    _readBuffer->move_front(processedDataLen);
     prv._readBufferCursor = nullptr;  // the positon will be set at the
                                       // begin of this function
   }
