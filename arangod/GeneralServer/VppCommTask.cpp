@@ -370,7 +370,7 @@ bool VppCommTask::processRead() {
     _request = new VppRequest(_connectionInfo, std::move(message));
     GeneralServerFeature::HANDLER_FACTORY->setRequestContext(_request);
 
-    //make sure we have a dabase
+    // make sure we have a dabase
     if (_request->requestContext() == nullptr) {
       handleSimpleError(GeneralResponse::ResponseCode::NOT_FOUND,
                         TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
