@@ -444,6 +444,12 @@ AqlValue Expression::executeSimpleExpression(
                                           regs, mustDestroy);
     case NODE_TYPE_OPERATOR_UNARY_NOT:
       return executeSimpleExpressionNot(node, trx, argv, startPos, vars, regs, mustDestroy);
+    
+    case NODE_TYPE_OPERATOR_UNARY_PLUS:
+      return executeSimpleExpressionPlus(node, trx, argv, startPos, vars, regs, mustDestroy);
+    
+    case NODE_TYPE_OPERATOR_UNARY_MINUS:
+      return executeSimpleExpressionMinus(node, trx, argv, startPos, vars, regs, mustDestroy);
 
     case NODE_TYPE_OPERATOR_BINARY_AND:
     case NODE_TYPE_OPERATOR_BINARY_OR:
@@ -558,9 +564,9 @@ AqlValue Expression::executeSimpleExpressionIndexedAccess(
   // etc.
   TRI_ASSERT(node->numMembers() == 2);
 
-  auto member = node->getMember(0);
-  auto index = node->getMember(1);
-
+  auto member = node->getMemberUnchecked(0);
+  auto index = node->getMemberUnchecked(1);
+  
   mustDestroy = false; 
   AqlValue result = executeSimpleExpression(member, trx, argv,
                                             startPos, vars, regs, mustDestroy, false);
@@ -815,7 +821,7 @@ AqlValue Expression::executeSimpleExpressionReference(
   auto v = static_cast<Variable const*>(node->getData());
   TRI_ASSERT(v != nullptr);
 
-  {
+  if (!_variables.empty()) {
     auto it = _variables.find(v);
 
     if (it != _variables.end()) {
@@ -825,7 +831,7 @@ AqlValue Expression::executeSimpleExpressionReference(
   }
 
   size_t i = 0;
-  for (auto it = vars.begin(); it != vars.end(); ++it, ++i) {
+  for (auto it = vars.begin(), it2 = vars.end(); it != it2; ++it, ++i) {
     if ((*it)->id == v->id) {
       if (doCopy) {
         mustDestroy = true; // as we are copying
@@ -945,6 +951,84 @@ AqlValue Expression::executeSimpleExpressionNot(
 
   mustDestroy = false; // only a boolean
   return AqlValue(!operandIsTrue);
+}
+
+/// @brief execute an expression of type SIMPLE with +
+AqlValue Expression::executeSimpleExpressionPlus(
+    AstNode const* node, arangodb::AqlTransaction* trx,
+    AqlItemBlock const* argv, size_t startPos,
+    std::vector<Variable const*> const& vars,
+    std::vector<RegisterId> const& regs, bool& mustDestroy) {
+
+  mustDestroy = false;
+  AqlValue operand =
+      executeSimpleExpression(node->getMember(0), trx, argv,
+                              startPos, vars, regs, mustDestroy, false);
+
+  AqlValueGuard guard(operand, mustDestroy);
+  
+  if (operand.isNumber()) {
+    VPackSlice const s = operand.slice();
+
+    if (s.isSmallInt() || s.isInt()) {
+      // can use int64
+      return AqlValue(s.getNumber<int64_t>());
+    } else if (s.isUInt()) {
+      // can use uint64
+      return AqlValue(s.getNumber<uint64_t>());
+    }
+    // fallthrouh intentional
+  }
+
+  // use a double value for all other cases
+  bool failed = false;
+  double value = operand.toDouble(trx, failed);
+
+  if (failed) {
+    value = 0.0;
+  }
+  
+  return AqlValue(+value);
+}
+
+/// @brief execute an expression of type SIMPLE with -
+AqlValue Expression::executeSimpleExpressionMinus(
+    AstNode const* node, arangodb::AqlTransaction* trx,
+    AqlItemBlock const* argv, size_t startPos,
+    std::vector<Variable const*> const& vars,
+    std::vector<RegisterId> const& regs, bool& mustDestroy) {
+
+  mustDestroy = false;
+  AqlValue operand =
+      executeSimpleExpression(node->getMember(0), trx, argv,
+                              startPos, vars, regs, mustDestroy, false);
+
+  AqlValueGuard guard(operand, mustDestroy);
+    
+  if (operand.isNumber()) {
+    VPackSlice const s = operand.slice();
+    if (s.isSmallInt()) {
+      // can use int64
+      return AqlValue(-s.getNumber<int64_t>());
+    } else if (s.isInt()) {
+      int64_t v = s.getNumber<int64_t>();
+      if (v != INT64_MIN) {
+        // can use int64
+        return AqlValue(-v);
+      }
+    }
+    // fallthrouh intentional
+  }
+ 
+  // TODO: handle integer values separately here 
+  bool failed = false;
+  double value = operand.toDouble(trx, failed);
+
+  if (failed) {
+    value = 0.0;
+  }
+  
+  return AqlValue(-value);
 }
 
 /// @brief execute an expression of type SIMPLE with AND or OR
