@@ -36,6 +36,7 @@
 #include "Logger/Logger.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
+#include "Rest/VppResponse.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -66,11 +67,11 @@ GeneralCommTask::~GeneralCommTask() {
   for (auto& i : _writeBuffersStats) {
     TRI_ReleaseRequestStatistics(i);
   }
-
-  httpClearRequest();
 }
 
 void GeneralCommTask::signalTask(TaskData* data) {
+  // used to output text
+
   // data response
   if (data->_type == TaskData::TASK_DATA_RESPONSE) {
     data->RequestStatisticsAgent::transferTo(this);
@@ -87,12 +88,21 @@ void GeneralCommTask::signalTask(TaskData* data) {
 
   // buffer response
   else if (data->_type == TaskData::TASK_DATA_BUFFER) {
+    std::unique_ptr<GeneralResponse> response;
+    if (transportType() == Endpoint::TransportType::VPP) {
+      response = std::unique_ptr<VppResponse>(new VppResponse(
+          GeneralResponse::ResponseCode::OK, 0 /*id unset FIXME?*/));
+    } else {
+      response = std::unique_ptr<HttpResponse>(
+          new HttpResponse(GeneralResponse::ResponseCode::OK));
+    }
+
     data->RequestStatisticsAgent::transferTo(this);
-    HttpResponse response(GeneralResponse::ResponseCode::OK);
     velocypack::Slice slice(data->_buffer->data());
 
-    response.setPayload(slice, true, VPackOptions::Defaults);
-    processResponse(&response);
+    // FIXME (obi) contentType - text set header/meta information?
+    response->setPayload(slice, true, VPackOptions::Defaults);
+    processResponse(response.get());
     processRead();
   }
 
@@ -155,7 +165,6 @@ void GeneralCommTask::fillWriteBuffer() {
 
 void GeneralCommTask::executeRequest(GeneralRequest* request,
                                      GeneralResponse* response) {
-  // create a handler for this request
   WorkItem::uptr<RestHandler> handler(
       GeneralServerFeature::HANDLER_FACTORY->createHandler(request, response));
 
@@ -165,7 +174,8 @@ void GeneralCommTask::executeRequest(GeneralRequest* request,
     httpClearRequest();
     delete response;
 
-    handleSimpleError(GeneralResponse::ResponseCode::NOT_FOUND, 0);
+    handleSimpleError(GeneralResponse::ResponseCode::NOT_FOUND,
+                      request->messageId());
     return;
   }
 
@@ -176,9 +186,10 @@ void GeneralCommTask::executeRequest(GeneralRequest* request,
   std::string const& asyncExecution =
       request->header(StaticStrings::Async, found);
 
+  // TODO(fc)
   // the responsibility for the request has been moved to the handler
-  // TODO(fc) _request should
-  //_request = nullptr;
+  // so we give up ownage here by setting _request = nullptr
+  httpNullRequest();  // http specific - should be removed FIXME
 
   // async execution
   bool ok = false;
@@ -215,13 +226,15 @@ void GeneralCommTask::executeRequest(GeneralRequest* request,
   }
 
   if (!ok) {
-    handleSimpleError(GeneralResponse::ResponseCode::SERVER_ERROR, 0);
+    handleSimpleError(GeneralResponse::ResponseCode::SERVER_ERROR,
+                      request->messageId());
   }
 }
 
 void GeneralCommTask::processResponse(GeneralResponse* response) {
   if (response == nullptr) {
-    handleSimpleError(GeneralResponse::ResponseCode::SERVER_ERROR, 0);
+    handleSimpleError(GeneralResponse::ResponseCode::SERVER_ERROR,
+                      response->messageId());
   } else {
     addResponse(response, false);
   }

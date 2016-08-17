@@ -368,14 +368,16 @@ bool VppCommTask::processRead() {
         << "got request:" << message._header.toJson();
 
     // the handler will take ownersip of this pointer
-    VppRequest* request = new VppRequest(_connectionInfo, std::move(message));
+    VppRequest* request = new VppRequest(_connectionInfo, std::move(message),
+                                         chunkHeader._messageID);
     GeneralServerFeature::HANDLER_FACTORY->setRequestContext(request);
 
     // make sure we have a dabase
     if (request->requestContext() == nullptr) {
       handleSimpleError(GeneralResponse::ResponseCode::NOT_FOUND,
                         TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
-                        TRI_errno_string(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND));
+                        TRI_errno_string(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND),
+                        chunkHeader._messageID);
     } else {
       request->setClientTaskId(_taskId);
       _protocolVersion = request->protocolVersion();
@@ -426,19 +428,11 @@ void VppCommTask::resetState(bool close) {
 //   return context->authenticate();
 // }
 
-// convert internal GeneralRequest to VppRequest
-// VppRequest* VppCommTask::requestAsVpp() {
-//   VppRequest* request = dynamic_cast<VppRequest*>(_request);
-//   if (request == nullptr) {
-//     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
-//   }
-//   return request;
-// };
-
 void VppCommTask::handleSimpleError(GeneralResponse::ResponseCode responseCode,
                                     int errorNum,
-                                    std::string const& errorMessage) {
-  VppResponse response(responseCode, 0);  // FIXME!!!!!!
+                                    std::string const& errorMessage,
+                                    uint64_t messageId) {
+  VppResponse response(responseCode, messageId);
 
   VPackBuilder builder;
   builder.openObject();

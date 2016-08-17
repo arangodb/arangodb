@@ -59,12 +59,14 @@ class VppRequest : public GeneralRequest {
   friend class RestBatchHandler;  // TODO must be removed
 
  private:
-  VppRequest(ConnectionInfo const& connectionInfo, VPackMessage&& message);
+  VppRequest(ConnectionInfo const& connectionInfo, VPackMessage&& message,
+             uint64_t messageId);
 
  public:
   ~VppRequest() {}
 
  public:
+  virtual uint64_t messageId() { return _messageId; }
   VPackSlice payload(arangodb::velocypack::Options const*) override;
 
   int64_t contentLength() const override {
@@ -98,6 +100,7 @@ class VppRequest : public GeneralRequest {
   // values are query parameters
   std::unordered_map<std::string, std::string> _values;
   std::unordered_map<std::string, std::vector<std::string>> _arrayValues;
+  uint64_t _messageId;
   const std::unordered_map<std::string, std::string> _cookies;  // TODO remove
 
   void parseHeaderInformation();

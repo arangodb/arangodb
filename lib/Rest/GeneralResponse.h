@@ -183,6 +183,8 @@ class GeneralResponse {
   }
 
  public:
+  virtual uint64_t messageId() { return 1; }
+
   virtual void reset(ResponseCode) = 0;
 
   // generates the response body, sets the content type; this might

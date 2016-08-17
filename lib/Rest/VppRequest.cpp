@@ -58,10 +58,11 @@ std::string const& lookupStringInMap(
 }
 
 VppRequest::VppRequest(ConnectionInfo const& connectionInfo,
-                       VPackMessage&& message)
+                       VPackMessage&& message, uint64_t messageId)
     : GeneralRequest(connectionInfo),
       _message(std::move(message)),
-      _headers(nullptr) {
+      _headers(nullptr),
+      _messageId(messageId) {
   _protocol = "vpp";
   _contentType = ContentType::VPACK;
   _contentTypeResponse = ContentType::VPACK;

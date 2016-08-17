@@ -68,7 +68,8 @@ class VppCommTask : public GeneralCommTask {
     addResponse(&response, true);
   }
   void handleSimpleError(GeneralResponse::ResponseCode, int code,
-                         std::string const& errorMessage) override;
+                         std::string const& errorMessage,
+                         uint64_t messageId) override;
 
  private:
   // resets the internal state this method can be called to clean up when the

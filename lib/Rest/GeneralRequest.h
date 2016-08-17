@@ -32,6 +32,7 @@
 #include <velocypack/Dumper.h>
 #include <velocypack/Options.h>
 #include <velocypack/velocypack-aliases.h>
+#include <limits>
 
 namespace arangodb {
 namespace velocypack {
@@ -164,6 +165,11 @@ class GeneralRequest {
 
   std::vector<std::string> const& suffix() const { return _suffix; }
   void addSuffix(std::string&& part);
+
+  // VIRTUAL //////////////////////////////////////////////
+  // return 0 for protocols that
+  // do not care about message ids
+  virtual uint64_t messageId() { return 1; }
 
   virtual arangodb::Endpoint::TransportType transportType() = 0;
   virtual int64_t contentLength() const = 0;

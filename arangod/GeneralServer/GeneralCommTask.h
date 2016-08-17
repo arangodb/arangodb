@@ -22,8 +22,8 @@
 /// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_HTTP_SERVER_HTTP_COMM_TASK_H
-#define ARANGOD_HTTP_SERVER_HTTP_COMM_TASK_H 1
+#ifndef ARANGOD_GENERAL_SERVER_GENERAL_COMM_TASK_H
+#define ARANGOD_GENERAL_SERVER_GENERAL_COMM_TASK_H 1
 
 #include "Scheduler/SocketTask.h"
 
@@ -149,6 +149,7 @@ class GeneralCommTask : public SocketTask, public RequestStatisticsAgent {
 
  protected:
   virtual void httpClearRequest(){};  // should be removed
+  virtual void httpNullRequest(){};   // should be removed
   void executeRequest(GeneralRequest*, GeneralResponse*);
 
   // TODO(fc) move to SocketTask
@@ -161,7 +162,8 @@ class GeneralCommTask : public SocketTask, public RequestStatisticsAgent {
   virtual void handleSimpleError(GeneralResponse::ResponseCode,
                                  uint64_t messagid) = 0;
   virtual void handleSimpleError(GeneralResponse::ResponseCode, int code,
-                                 std::string const& errorMessage) = 0;
+                                 std::string const& errorMessage,
+                                 uint64_t messageId) = 0;
   void fillWriteBuffer();  // fills SocketTasks _writeBuffer
                            // _writeBufferStatistics from
                            // _writeBuffers/_writeBuffersStats

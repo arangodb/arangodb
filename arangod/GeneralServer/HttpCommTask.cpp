@@ -230,7 +230,7 @@ bool HttpCommTask::processRead() {
       // header is too large
       handleSimpleError(
           GeneralResponse::ResponseCode::REQUEST_HEADER_FIELDS_TOO_LARGE,
-          0);  // FIXME messageid not required
+          1);  // ID does not matter for http (http default is 1)
 
       return false;
     }
@@ -260,7 +260,7 @@ bool HttpCommTask::processRead() {
           _protocolVersion != GeneralRequest::ProtocolVersion::HTTP_1_1) {
         handleSimpleError(
             GeneralResponse::ResponseCode::HTTP_VERSION_NOT_SUPPORTED,
-            0);  // FIXME
+            1);  // FIXME
 
         return false;
       }
@@ -270,7 +270,7 @@ bool HttpCommTask::processRead() {
 
       if (_fullUrl.size() > 16384) {
         handleSimpleError(GeneralResponse::ResponseCode::REQUEST_URI_TOO_LONG,
-                          0);  // FIXME
+                          1);  // FIXME
         return false;
       }
 
@@ -373,7 +373,7 @@ bool HttpCommTask::processRead() {
 
           // bad request, method not allowed
           handleSimpleError(GeneralResponse::ResponseCode::METHOD_NOT_ALLOWED,
-                            0);  // FIXME
+                            1);
           return false;
         }
       }
@@ -495,12 +495,12 @@ bool HttpCommTask::processRead() {
   // not found
   else if (authResult == GeneralResponse::ResponseCode::NOT_FOUND) {
     handleSimpleError(authResult, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
-                      TRI_errno_string(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND));
+                      TRI_errno_string(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND), 1);
   }
   // forbidden
   else if (authResult == GeneralResponse::ResponseCode::FORBIDDEN) {
     handleSimpleError(authResult, TRI_ERROR_USER_CHANGE_PASSWORD,
-                      "change password");
+                      "change password", 1);
   }
   // not authenticated
   else {
@@ -600,8 +600,7 @@ bool HttpCommTask::checkContentLength(bool expectContentLength) {
 
   if (bodyLength < 0) {
     // bad request, body length is < 0. this is a client error
-    handleSimpleError(GeneralResponse::ResponseCode::LENGTH_REQUIRED,
-                      0);  // FIXME
+    handleSimpleError(GeneralResponse::ResponseCode::LENGTH_REQUIRED);
     return false;
   }
 
@@ -792,7 +791,9 @@ HttpRequest* HttpCommTask::requestAsHttp() {
 
 void HttpCommTask::handleSimpleError(GeneralResponse::ResponseCode responseCode,
                                      int errorNum,
-                                     std::string const& errorMessage) {
+                                     std::string const& errorMessage,
+                                     uint64_t messageId) {
+  (void)messageId;
   HttpResponse response(responseCode);
 
   VPackBuilder builder;
@@ -812,8 +813,8 @@ void HttpCommTask::handleSimpleError(GeneralResponse::ResponseCode responseCode,
 }
 
 void HttpCommTask::clearRequest() {
-  if (_request != nullptr) {
+  if (_request) {
     delete _request;
+    _request = nullptr;
   }
-  _request = nullptr;
 }
