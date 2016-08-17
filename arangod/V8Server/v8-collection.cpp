@@ -171,23 +171,18 @@ static int ParseDocumentOrDocumentHandle(v8::Isolate* isolate,
   if (collection == nullptr) {
     // no collection object was passed, now check the user-supplied collection
     // name
-
-    std::shared_ptr<LogicalCollection> col;
-
     if (ServerState::instance()->isCoordinator()) {
       ClusterInfo* ci = ClusterInfo::instance();
-      col = ci->getCollection(vocbase->name(), collectionName);
+      std::shared_ptr<LogicalCollection> col =
+          ci->getCollection(vocbase->name(), collectionName);
+      collection = col.get();
     } else {
-      col = nullptr;
-#warning FIXME
-      // col = resolver->getCollectionStruct(collectionName);
+      collection = resolver->getCollectionStruct(collectionName);
     }
-    if (col == nullptr) {
+    if (collection == nullptr) {
       // collection not found
       return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
     }
-
-    collection = col.get();
   }
 
   TRI_ASSERT(collection != nullptr);

@@ -108,7 +108,7 @@ class LogicalCollection {
   std::shared_ptr<ShardMap> shardIds() const;
 
   // SECTION: Modification Functions
-  void rename(std::string const&);
+  int rename(std::string const&);
   void drop();
 
   void setStatus(TRI_vocbase_col_status_e);
@@ -201,7 +201,7 @@ class LogicalCollection {
  public:
   TRI_collection_t* _collection;
 
-  arangodb::basics::ReadWriteLock _lock;  // lock protecting the status and name
+  mutable arangodb::basics::ReadWriteLock _lock;  // lock protecting the status and name
 
 };
 }  // namespace arangodb

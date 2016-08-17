@@ -223,7 +223,6 @@ bool TRI_vocbase_t::unregisterCollection(arangodb::LogicalCollection* collection
 
   WRITE_LOCKER(writeLocker, _collectionsLock);
 
-  LOG(ERR) << "Attempt to unregister " << collection->cid() << " with name " << colName;
   // pre-condition
   TRI_ASSERT(_collectionsByName.size() == _collectionsById.size());
 
@@ -494,6 +493,7 @@ arangodb::LogicalCollection* TRI_vocbase_t::createCollectionWorker(
 int TRI_vocbase_t::renameCollectionWorker(
     arangodb::LogicalCollection* collection, std::string const& oldName,
     std::string const& newName) {
+  TRI_ASSERT(false);
   // cannot rename a corrupted collection
   if (collection->status() == TRI_VOC_COL_STATUS_CORRUPTED) {
     return TRI_ERROR_ARANGO_CORRUPTED_COLLECTION;
@@ -1257,11 +1257,7 @@ int TRI_vocbase_t::renameCollection(arangodb::LogicalCollection* collection,
   }
 
   // lock collection because we are going to copy its current name
-  std::string oldName;
-  {
-    READ_LOCKER(readLocker, collection->_lock);
-    oldName = collection->name();
-  }
+  std::string oldName = collection->name();
 
   // old name should be different
 
@@ -1290,14 +1286,30 @@ int TRI_vocbase_t::renameCollection(arangodb::LogicalCollection* collection,
   }
 
   READ_LOCKER(readLocker, _inventoryLock);
-
-  int res;
-  {
-    WRITE_LOCKER_EVENTUAL(locker, collection->_lock, 1000);
-    res = renameCollectionWorker(collection, oldName, newName);
+  int res = collection->rename(newName);
+  if (res != TRI_ERROR_NO_ERROR) {
+    // Renaming failed
+    return res;
   }
 
-  if (res == TRI_ERROR_NO_ERROR && writeMarker) {
+  {
+    WRITE_LOCKER(writeLocker, _collectionsLock);
+  // The collection is renamed. Now swap cache entries.
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    auto it2 =
+#endif
+        _collectionsByName.emplace(newName, collection);
+    TRI_ASSERT(it2.second);
+
+    _collectionsByName.erase(oldName);
+    TRI_ASSERT(_collectionsByName.size() == _collectionsById.size());
+  }
+
+  // invalidate all entries for the two collections
+  arangodb::aql::QueryCache::instance()->invalidate(
+      this, std::vector<std::string>{oldName, newName});
+
+  if (writeMarker) {
     // now log the operation
     try {
       VPackBuilder builder;

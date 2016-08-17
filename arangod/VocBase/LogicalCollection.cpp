@@ -28,6 +28,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
+#include "Cluster/ServerState.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "VocBase/collection.h"
@@ -206,6 +207,8 @@ TRI_col_type_e LogicalCollection::type() const {
 }
 
 std::string const& LogicalCollection::name() const {
+  // TODO Activate this lock. Right now we have some locks outside.
+  // READ_LOCKER(readLocker, _lock);
   return _name;
 }
 
@@ -330,10 +333,61 @@ std::shared_ptr<ShardMap> LogicalCollection::shardIds() const {
 }
 
 // SECTION: Modification Functions
-void LogicalCollection::rename(std::string const& newName) {
-  TRI_ASSERT(false);
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+int LogicalCollection::rename(std::string const& newName) {
+  // Should only be called from inside vocbase.
+  // Otherwise caching is destroyed.
+  TRI_ASSERT(!ServerState::instance()->isCoordinator()); // NOT YET IMPLEMENTED
+
+  WRITE_LOCKER_EVENTUAL(locker, _lock, 1000);
+
+  // Check for illeagal states.
+  switch (_status) {
+    case TRI_VOC_COL_STATUS_CORRUPTED:
+      return TRI_ERROR_ARANGO_CORRUPTED_COLLECTION;
+    case TRI_VOC_COL_STATUS_DELETED:
+      return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+    default:
+      // Fall through intentional
+      break;
+  }
+
+  // Check for duplicate name
+  auto other = _vocbase->lookupCollection(newName);
+  if (other != nullptr) {
+    return TRI_ERROR_ARANGO_DUPLICATE_NAME;
+  }
+
+  // actually rename.
+  switch (_status) {
+    case TRI_VOC_COL_STATUS_UNLOADED:
+      // Nothing to do for this state
+      break;
+    case TRI_VOC_COL_STATUS_LOADED:
+    case TRI_VOC_COL_STATUS_UNLOADING:
+    case TRI_VOC_COL_STATUS_LOADING: {
+      // TODO This will be removed. _collection ain't dead yet.
+      TRI_ASSERT(_collection != nullptr);
+      int res = _collection->rename(newName);
+
+      if (res != TRI_ERROR_NO_ERROR) {
+        return res;
+      }
+      break;
+    }
+    default:
+      // Unknown status
+      return TRI_ERROR_INTERNAL;
+  }
+
+
+  // Okay we can finally rename safely
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  engine->renameCollection(_vocbase, _cid, newName); 
   _name = newName;
+
+  // CHECK if this ordering is okay. Before change the version was increased after swapping in vocbase mapping.
+  increaseVersion();
+  return TRI_ERROR_NO_ERROR;
 }
 
 void LogicalCollection::drop() {
