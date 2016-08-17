@@ -549,7 +549,6 @@
         // get cached query if available
         var queryObject = this.getCachedQuery();
         var self = this;
-        console.log(queryObject);
 
         if (queryObject !== null && queryObject !== undefined && queryObject !== '') {
           this.aqlEditor.setValue(queryObject.query, 1);
@@ -1584,7 +1583,7 @@
         window.progressView.hide();
 
         var result = self.analyseQuery(data.result);
-        console.log('Using ' + result.defaultType + ' as data format.');
+        // console.log('Using ' + result.defaultType + ' as data format.');
         if (result.defaultType === 'table') {
           $('#outputEditorWrapper' + counter + ' .arangoToolbarTop').after(
             '<div id="outputTable' + counter + '" class="outputTable"></div>'
