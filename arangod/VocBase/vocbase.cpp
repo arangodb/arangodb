@@ -59,10 +59,6 @@
 #include "VocBase/transaction.h"
 #include "Wal/LogfileManager.h"
 
-#ifdef ARANGODB_ENABLE_ROCKSDB
-#include "Indexes/RocksDBFeature.h"
-#endif
-
 using namespace arangodb;
 using namespace arangodb::basics;
 
@@ -291,8 +287,7 @@ bool TRI_vocbase_t::UnloadCollectionCallback(TRI_collection_t* col, void* data) 
 }
 
 /// @brief drops a collection
-bool TRI_vocbase_t::DropCollectionCallback(TRI_collection_t* col, void* data) {
-  TRI_vocbase_col_t* collection = static_cast<TRI_vocbase_col_t*>(data);
+bool TRI_vocbase_t::DropCollectionCallback(TRI_vocbase_col_t* collection) {
   std::string const name(collection->name());
 
   {
@@ -312,7 +307,7 @@ bool TRI_vocbase_t::DropCollectionCallback(TRI_collection_t* col, void* data) {
       if (res != TRI_ERROR_NO_ERROR) {
         LOG(ERR) << "failed to close collection '" << name
                 << "': " << TRI_last_error();
-        return true;
+        return false;
       }
 
       delete document;
@@ -321,10 +316,7 @@ bool TRI_vocbase_t::DropCollectionCallback(TRI_collection_t* col, void* data) {
     }
   } // release status lock
 
-  // .............................................................................
   // remove from list of collections
-  // .............................................................................
-
   TRI_vocbase_t* vocbase = collection->_vocbase;
 
   {
@@ -343,86 +335,9 @@ bool TRI_vocbase_t::DropCollectionCallback(TRI_collection_t* col, void* data) {
     } catch (...) {
     }
   }
-  
-  // delete persistent indexes    
-#ifdef ARANGODB_ENABLE_ROCKSDB
-  RocksDBFeature::dropCollection(vocbase->id(), collection->cid());
-#endif
-
-  // .............................................................................
-  // rename collection directory
-  // .............................................................................
-
-  if (!collection->path().empty()) {
-    std::string const collectionPath = collection->path();
-
-#ifdef _WIN32
-    size_t pos = collectionPath.find_last_of('\\');
-#else
-    size_t pos = collectionPath.find_last_of('/');
-#endif
-
-    bool invalid = false;
-
-    if (pos == std::string::npos || pos + 1 >= collectionPath.size()) {
-      invalid = true;
-    }
-
-    std::string path;
-    std::string relName;
-    if (!invalid) {
-      // extract path part
-      if (pos > 0) {
-        path = collectionPath.substr(0, pos); 
-      }
-
-      // extract relative filename
-      relName = collectionPath.substr(pos + 1);
-
-      if (!StringUtils::isPrefix(relName, "collection-") || 
-          StringUtils::isSuffix(relName, ".tmp")) {
-        invalid = true;
-      }
-    }
-
-    if (!invalid) {
-      // prefix the collection name with "deleted-"
-
-      std::string const newFilename = 
-        FileUtils::buildFilename(path, "deleted-" + relName.substr(std::string("collection-").size()));
-
-      // check if target directory already exists
-      if (TRI_IsDirectory(newFilename.c_str())) {
-        // remove existing target directory
-        TRI_RemoveDirectory(newFilename.c_str());
-      }
-
-      // perform the rename
-      int res = TRI_RenameFile(collection->path().c_str(), newFilename.c_str());
-
-      LOG(TRACE) << "renaming collection directory from '"
-                 << collection->path() << "' to '" << newFilename << "'";
-
-      if (res != TRI_ERROR_NO_ERROR) {
-        LOG(ERR) << "cannot rename dropped collection '" << name
-                 << "' from '" << collection->path() << "' to '"
-                 << newFilename << "': " << TRI_errno_string(res);
-      } else {
-        LOG(DEBUG) << "wiping dropped collection '" << name
-                   << "' from disk";
-
-        res = TRI_RemoveDirectory(newFilename.c_str());
-
-        if (res != TRI_ERROR_NO_ERROR) {
-          LOG(ERR) << "cannot wipe dropped collection '" << name
-                   << "' from disk: " << TRI_errno_string(res);
-        }
-      }
-    } else {
-      LOG(ERR) << "cannot rename dropped collection '" << name
-               << "': unknown path '" << collection->path() << "'";
-    }
-  }
+      
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  engine->dropCollection(vocbase, collection);
 
   return true;
 }
@@ -762,7 +677,7 @@ int TRI_vocbase_t::dropCollectionWorker(TRI_vocbase_col_t* collection,
       writeDropCollectionMarker(collection->_cid, collection->name());
     }
 
-    DropCollectionCallback(nullptr, collection);
+    DropCollectionCallback(collection);
 
     return TRI_ERROR_NO_ERROR;
   }
@@ -1205,11 +1120,11 @@ int TRI_vocbase_t::dropCollection(TRI_vocbase_col_t* collection, bool writeMarke
 
     if (state == DROP_PERFORM) {
       if (arangodb::wal::LogfileManager::instance()->isInRecovery()) {
-        DropCollectionCallback(nullptr, collection);
+        DropCollectionCallback(collection);
       } else {
         // add callback for dropping
         collection->_collection->ditches()->createDropCollectionDitch(
-            collection->_collection, collection, DropCollectionCallback,
+            collection, DropCollectionCallback,
             __FILE__, __LINE__);
 
         // wake up the cleanup thread

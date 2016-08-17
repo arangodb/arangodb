@@ -117,12 +117,11 @@ UnloadCollectionDitch::UnloadCollectionDitch(
 UnloadCollectionDitch::~UnloadCollectionDitch() {}
 
 DropCollectionDitch::DropCollectionDitch(
-    Ditches* ditches, TRI_collection_t* collection, void* data,
-    std::function<bool(TRI_collection_t*, void*)> callback,
+    Ditches* ditches, TRI_vocbase_col_t* collection,
+    std::function<bool(TRI_vocbase_col_t*)> callback,
     char const* filename, int line)
     : Ditch(ditches, filename, line),
       _collection(collection),
-      _data(data),
       _callback(callback) {}
 
 DropCollectionDitch::~DropCollectionDitch() {}
@@ -331,7 +330,7 @@ void Ditches::freeDocumentDitch(DocumentDitch* ditch, bool fromTransaction) {
 
   bool shouldFree = false;
   {
-    MUTEX_LOCKER(mutexLocker, _lock);  // FIX_MUTEX
+    MUTEX_LOCKER(mutexLocker, _lock); 
 
     // First see who might still be using the ditch:
     if (fromTransaction) {
@@ -475,11 +474,11 @@ UnloadCollectionDitch* Ditches::createUnloadCollectionDitch(
 ////////////////////////////////////////////////////////////////////////////////
 
 DropCollectionDitch* Ditches::createDropCollectionDitch(
-    TRI_collection_t* collection, void* data,
-    std::function<bool(TRI_collection_t*, void*)> callback,
+    TRI_vocbase_col_t* collection,
+    std::function<bool(TRI_vocbase_col_t*)> callback,
     char const* filename, int line) {
   try {
-    auto ditch = new DropCollectionDitch(this, collection, data, callback,
+    auto ditch = new DropCollectionDitch(this, collection, callback,
                                          filename, line);
     link(ditch);
 

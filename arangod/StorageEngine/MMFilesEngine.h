@@ -153,8 +153,10 @@ class MMFilesEngine final : public StorageEngine {
   // the actual deletion.
   // the WAL entry for collection deletion will be written *after* the call
   // to "dropCollection" returns
-  void dropCollection(TRI_voc_tick_t databaseId, TRI_voc_cid_t id, 
-                      std::function<bool()> const& canRemovePhysically) override;
+  void prepareDropCollection(TRI_vocbase_t* vocbase, TRI_vocbase_col_t* collection) override;
+  
+  // perform a physical deletion of the collection
+  void dropCollection(TRI_vocbase_t* vocbase, TRI_vocbase_col_t* collection) override;
   
   // asks the storage engine to rename the collection as specified in the VPack
   // Slice object and persist the renaming info. It is guaranteed by the server 

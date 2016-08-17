@@ -316,7 +316,7 @@ struct TRI_vocbase_t {
   int dropCollection(TRI_vocbase_col_t* collection, bool writeMarker);
 
   /// @brief callback for collection dropping
-  static bool DropCollectionCallback(TRI_collection_t* col, void* data);
+  static bool DropCollectionCallback(TRI_vocbase_col_t* collection);
 
   /// @brief unloads a collection
   int unloadCollection(TRI_vocbase_col_t* collection, bool force);

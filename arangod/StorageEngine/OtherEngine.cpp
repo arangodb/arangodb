@@ -121,8 +121,11 @@ std::string OtherEngine::createCollection(TRI_vocbase_t* vocbase, TRI_voc_cid_t 
 // the actual deletion.
 // the WAL entry for collection deletion will be written *after* the call
 // to "dropCollection" returns
-void OtherEngine::dropCollection(TRI_voc_tick_t databaseId, TRI_voc_cid_t id, 
-                                 std::function<bool()> const& canRemovePhysically) {
+void OtherEngine::prepareDropCollection(TRI_vocbase_t* vocbase, TRI_vocbase_col_t* collection) {
+}
+
+// perform a physical deletion of the collection
+void OtherEngine::dropCollection(TRI_vocbase_t* vocbase, TRI_vocbase_col_t* collection) {
 }
 
 // asks the storage engine to rename the collection as specified in the VPack
