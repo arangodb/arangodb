@@ -787,13 +787,18 @@ int TRI_collection_t::rotateActiveJournal() {
   _datafiles.reserve(_datafiles.size() + 1);
 
   int res = sealDatafile(datafile, false);
+ 
+  if (res != TRI_ERROR_NO_ERROR) {
+    return res;
+  }
+   
+  // shouldn't throw as we reserved enough space before
+  _datafiles.emplace_back(datafile);
+
 
   TRI_ASSERT(!_journals.empty());
   _journals.erase(_journals.begin());
   TRI_ASSERT(_journals.empty());
-
-  // shouldn't throw as we reserved enough space before
-  _datafiles.emplace_back(datafile);
 
   return res;
 }
