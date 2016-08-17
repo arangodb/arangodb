@@ -186,7 +186,7 @@ class MMFilesEngine final : public StorageEngine {
   // creation requests will not fail.
   // the WAL entry for the index creation will be written *after* the call
   // to "createIndex" returns
-  void createIndex(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId,
+  void createIndex(TRI_vocbase_t* vocbase, TRI_voc_cid_t collectionId,
                    TRI_idx_iid_t id, arangodb::velocypack::Slice const& data) override;
 
   // asks the storage engine to drop the specified index and persist the deletion 

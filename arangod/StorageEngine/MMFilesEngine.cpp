@@ -736,8 +736,19 @@ void MMFilesEngine::changeCollection(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
 // creation requests will not fail.
 // the WAL entry for the index creation will be written *after* the call
 // to "createIndex" returns
-void MMFilesEngine::createIndex(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId,
+void MMFilesEngine::createIndex(TRI_vocbase_t* vocbase, TRI_voc_cid_t collectionId,
                                 TRI_idx_iid_t id, arangodb::velocypack::Slice const& data) {
+  // construct filename
+  std::string const filename = indexFilename(vocbase->id(), collectionId, id);
+
+  // and save
+  bool const doSync = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database")->forceSyncProperties();
+  bool ok = arangodb::basics::VelocyPackHelper::velocyPackToFile(filename, data, doSync);
+
+  if (!ok) {
+    LOG(ERR) << "cannot save index definition: " << TRI_last_error();
+    THROW_ARANGO_EXCEPTION(TRI_errno());
+  }
 }
 
 // asks the storage engine to drop the specified index and persist the deletion 

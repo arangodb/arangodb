@@ -157,7 +157,7 @@ void OtherEngine::changeCollection(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
 // creation requests will not fail.
 // the WAL entry for the index creation will be written *after* the call
 // to "createIndex" returns
-void OtherEngine::createIndex(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId,
+void OtherEngine::createIndex(TRI_vocbase_t* vocbase, TRI_voc_cid_t collectionId,
                               TRI_idx_iid_t id, arangodb::velocypack::Slice const& data) {
 }
 
