@@ -207,24 +207,21 @@
       this._uploadData = data;
     }
     if (data && window.modalView.modalTestAll()) {
-      var mount, flag;
+      var mount, flag, isLegacy;
       if (this._upgrade) {
         mount = this.mount;
-        flag = $('#new-app-teardown').prop('checked');
+        flag = Boolean($('#new-app-teardown').prop('checked'));
       } else {
         mount = window.arangoHelper.escapeHtml($('#new-app-mount').val());
       }
-      if (flag !== undefined) {
-        this.collection.installFromZip(data.filename, mount, installCallback.bind(this), flag);
-      } else {
-        this.collection.installFromZip(data.filename, mount, installCallback.bind(this));
-      }
+      isLegacy = Boolean($('#zip-app-islegacy').prop('checked'));
+      this.collection.installFromZip(data.filename, mount, installCallback.bind(this), isLegacy, flag);
     }
   };
 
   var installFoxxFromGithub = function () {
     if (window.modalView.modalTestAll()) {
-      var url, version, mount, flag;
+      var url, version, mount, flag, isLegacy;
       if (this._upgrade) {
         mount = this.mount;
         flag = $('#new-app-teardown').prop('checked');
@@ -248,11 +245,8 @@
         return;
       }
       // send server req through collection
-      if (flag !== undefined) {
-        this.collection.installFromGithub(info, mount, installCallback.bind(this), flag);
-      } else {
-        this.collection.installFromGithub(info, mount, installCallback.bind(this));
-      }
+      isLegacy = Boolean($('#github-app-islegacy').prop('checked'));
+      this.collection.installFromGithub(info, mount, installCallback.bind(this), isLegacy, flag);
     }
   };
 
@@ -278,11 +272,7 @@
         license: window.arangoHelper.escapeHtml($('#new-app-license').val()),
         description: window.arangoHelper.escapeHtml($('#new-app-description').val())
       };
-      if (flag !== undefined) {
-        this.collection.generate(info, mount, installCallback.bind(this), flag);
-      } else {
-        this.collection.generate(info, mount, installCallback.bind(this));
-      }
+      this.collection.generate(info, mount, installCallback.bind(this), flag);
     }
   };
 
