@@ -25,6 +25,7 @@
 
 #include "Basics/StringBuffer.h"
 #include "Basics/HybridLogicalClock.h"
+#include "Basics/VelocyPackHelper.h"
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "GeneralServer/RestHandler.h"
@@ -137,18 +138,20 @@ std::unique_ptr<basics::StringBuffer> createChunkForNetworkSingle(
   return createChunkForNetworkDetail(slices, true, 1, id, 0 /*unused*/);
 }
 
-std::unique_ptr<basics::StringBuffer> createChunkForNetworkMultiFirst(
-    std::vector<VPackSlice> const& slices, uint64_t id, uint32_t numberOfChunks,
-    uint32_t totalMessageLength) {
-  return createChunkForNetworkDetail(slices, true, numberOfChunks, id,
-                                     totalMessageLength);
-}
-
-std::unique_ptr<basics::StringBuffer> createChunkForNetworkMultiFollow(
-    std::vector<VPackSlice> const& slices, uint64_t id, uint32_t chunkNumber,
-    uint32_t totalMessageLength) {
-  return createChunkForNetworkDetail(slices, false, chunkNumber, id, 0);
-}
+// TODO FIXME make use of these functions
+// std::unique_ptr<basics::StringBuffer> createChunkForNetworkMultiFirst(
+//     std::vector<VPackSlice> const& slices, uint64_t id, uint32_t
+//     numberOfChunks,
+//     uint32_t totalMessageLength) {
+//   return createChunkForNetworkDetail(slices, true, numberOfChunks, id,
+//                                      totalMessageLength);
+// }
+//
+// std::unique_ptr<basics::StringBuffer> createChunkForNetworkMultiFollow(
+//     std::vector<VPackSlice> const& slices, uint64_t id, uint32_t chunkNumber,
+//     uint32_t totalMessageLength) {
+//   return createChunkForNetworkDetail(slices, false, chunkNumber, id, 0);
+// }
 }
 
 VppCommTask::VppCommTask(GeneralServer* server, TRI_socket_t sock,
@@ -156,7 +159,10 @@ VppCommTask::VppCommTask(GeneralServer* server, TRI_socket_t sock,
     : Task("VppCommTask"),
       GeneralCommTask(server, sock, std::move(info), timeout) {
   _protocol = "vpp";
-  // connectionStatisticsAgentSetVpp();
+  _readBuffer->reserve(
+      _bufferLength);  // ATTENTION <- this is required so we do not
+                       // loose information during a resize
+                       // connectionStatisticsAgentSetVpp();
 }
 
 void VppCommTask::addResponse(VppResponse* response, bool isError) {
@@ -172,17 +178,24 @@ void VppCommTask::addResponse(VppResponse* response, bool isError) {
   std::vector<VPackSlice> slices;
   slices.push_back(response_message._header);
 
+  VPackBuilder builder;
   if (response_message._generateBody) {
-    slices.push_back(response_message._payload);
+    builder = basics::VelocyPackHelper::sanitizeExternalsChecked(
+        response_message._payload);
+    slices.push_back(builder.slice());
   }
 
   // FIXME (obi)
   // If the message is big we will create many small chunks in a loop.
   // For the first tests we just send single Messages
 
-  LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "got request:";
+  LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "got response:";
   for (auto const& slice : slices) {
-    LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << slice.toJson();
+    try {
+      LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << slice.toJson();
+    } catch (arangodb::velocypack::Exception const& e) {
+      std::cout << "obi exception" << e.what();
+    }
   }
 
   // adds chunk header infromation and creates SingBuffer* that can be
@@ -345,7 +358,7 @@ bool VppCommTask::processRead() {
   std::size_t processedDataLen =
       std::distance(_readBuffer->begin(), prv._readBufferCursor);
   if (processedDataLen > prv._cleanupLength) {
-    _readBuffer->move_front(prv._cleanupLength);
+    _readBuffer->move_front(processedDataLen);
     prv._readBufferCursor = nullptr;  // the positon will be set at the
                                       // begin of this function
   }
@@ -358,11 +371,17 @@ bool VppCommTask::processRead() {
         << "got request:" << message._header.toJson();
     _request = new VppRequest(_connectionInfo, std::move(message));
     GeneralServerFeature::HANDLER_FACTORY->setRequestContext(_request);
-    _request->setClientTaskId(_taskId);
-    _protocolVersion = _request->protocolVersion();
-    executeRequest(_request,
-                   new VppResponse(GeneralResponse::ResponseCode::SERVER_ERROR,
-                                   chunkHeader._messageID));
+    if (_request->requestContext() == nullptr) {
+      handleSimpleError(GeneralResponse::ResponseCode::NOT_FOUND,
+                        TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
+                        TRI_errno_string(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND));
+    } else {
+      _request->setClientTaskId(_taskId);
+      _protocolVersion = _request->protocolVersion();
+      executeRequest(
+          _request, new VppResponse(GeneralResponse::ResponseCode::SERVER_ERROR,
+                                    chunkHeader._messageID));
+    }
   }
 
   if (read_maybe_only_part_of_buffer) {

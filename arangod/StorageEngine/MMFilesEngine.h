@@ -25,11 +25,13 @@
 #define ARANGOD_STORAGE_ENGINE_MMFILES_ENGINE_H 1
 
 #include "Basics/Common.h"
+#include "Basics/Mutex.h"
 #include "StorageEngine/StorageEngine.h"
 
 #include <velocypack/Builder.h>
 
 namespace arangodb {
+class CompactorThread;
 
 /// @brief collection file structure
 struct MMFilesEngineCollectionFiles {
@@ -85,7 +87,7 @@ class MMFilesEngine final : public StorageEngine {
   // for each database
   int getCollectionsAndIndexes(TRI_vocbase_t* vocbase, arangodb::velocypack::Builder& result,
                                bool wasCleanShutdown, bool isUpgrade) override;
-
+  
   // determine the maximum revision id previously handed out by the storage
   // engine. this value is used as a lower bound for further HLC values handed out by
   // the server. called at server start only, after getDatabases() and getCollectionsAndIndexes()
@@ -193,7 +195,7 @@ class MMFilesEngine final : public StorageEngine {
   // the actual deletion.
   // the WAL entry for index deletion will be written *after* the call
   // to "dropIndex" returns
-  void dropIndex(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId,
+  void dropIndex(TRI_vocbase_t* vocbase, TRI_voc_cid_t collectionId,
                  TRI_idx_iid_t id) override;
 
   // document operations
@@ -242,6 +244,10 @@ class MMFilesEngine final : public StorageEngine {
                             std::function<void(TRI_vocbase_t*)> const& callback,
                             bool checkForActiveBlockers) override;
   
+  int shutdownDatabase(TRI_vocbase_t* vocbase) override;
+  
+  int openCollection(TRI_vocbase_t* vocbase, TRI_collection_t* collection, bool ignoreErrors) override;
+
  private:
   void verifyDirectories(); 
   std::vector<std::string> getDatabaseNames() const;
@@ -252,14 +258,16 @@ class MMFilesEngine final : public StorageEngine {
   /// @brief save a parameter.json file for a database
   int saveDatabaseParameters(TRI_voc_tick_t id, std::string const& name, bool deleted);
   
-  arangodb::velocypack::Builder databaseToVelocyPack(TRI_voc_tick_t id, 
+  arangodb::velocypack::Builder databaseToVelocyPack(TRI_voc_tick_t databaseId, 
                                                      std::string const& name, 
                                                      bool deleted) const;
 
-  std::string databaseDirectory(TRI_voc_tick_t id) const;
-  std::string databaseParametersFilename(TRI_voc_tick_t id) const;
-  std::string collectionDirectory(TRI_voc_tick_t id, TRI_voc_cid_t cid) const;
-  std::string collectionParametersFilename(TRI_voc_tick_t id, TRI_voc_cid_t cid) const;
+  std::string databaseDirectory(TRI_voc_tick_t databaseId) const;
+  std::string databaseParametersFilename(TRI_voc_tick_t databaseId) const;
+  std::string collectionDirectory(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId) const;
+  std::string collectionParametersFilename(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId) const;
+  std::string indexFilename(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId, TRI_idx_iid_t indexId) const;
+  std::string indexFilename(TRI_idx_iid_t indexId) const;
 
   int openDatabases();
 
@@ -293,6 +301,13 @@ class MMFilesEngine final : public StorageEngine {
                           bool forceSync) const;
   VocbaseCollectionInfo loadCollectionInfo(TRI_vocbase_t* vocbase,
     std::string const& collectionName, std::string const& path, bool versionWarning);
+ 
+  // start the compactor thread for the database 
+  int startCompactor(TRI_vocbase_t* vocbase);
+  // stop the compactor thread for the database
+  int stopCompactor(TRI_vocbase_t* vocbase);
+  // stop and delete the compactor thread for the database
+  int deleteCompactor(TRI_vocbase_t* vocbase);
 
  public:
   static std::string const EngineName;
@@ -317,8 +332,13 @@ class MMFilesEngine final : public StorageEngine {
 
   // lock for compaction blockers
   arangodb::basics::ReadWriteLock _compactionBlockersLock;
-  // cross-database map of compaction blockers
-  std::unordered_map<TRI_voc_tick_t, std::vector<CompactionBlocker>> _compactionBlockers;
+  // cross-database map of compaction blockers, protected by _compactionBlockersLock
+  std::unordered_map<TRI_vocbase_t*, std::vector<CompactionBlocker>> _compactionBlockers;
+  
+  // lock for threads
+  arangodb::Mutex _threadsLock;
+  // per-database compactor threads, protected by _threadsLock
+  std::unordered_map<TRI_vocbase_t*, CompactorThread*> _compactorThreads;
 };
 
 }

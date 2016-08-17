@@ -83,11 +83,12 @@ class VppCommTask : public GeneralCommTask {
   };
   std::unordered_map<MessageID, IncompleteVPackMessage> _incompleteMessages;
 
+  static size_t const _bufferLength = 4096UL;
   struct ProcessReadVariables {
     ProcessReadVariables()
         : _currentChunkLength(0),
           _readBufferCursor(nullptr),
-          _cleanupLength(4096UL) {}
+          _cleanupLength(_bufferLength / 2) {}
     uint32_t
         _currentChunkLength;     // size of chunk processed or 0 when expecting
                                  // new chunk

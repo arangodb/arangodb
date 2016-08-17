@@ -1646,7 +1646,7 @@ TRI_datafile_t* TRI_OpenDatafile(char const* filename, bool ignoreFailures) {
 /// @brief closes a datafile and all memory regions
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_CloseDatafile(TRI_datafile_t* datafile) {
+int TRI_CloseDatafile(TRI_datafile_t* datafile) {
   if (datafile->_state == TRI_DF_STATE_READ ||
       datafile->_state == TRI_DF_STATE_WRITE) {
     int res = TRI_UNMMFile(datafile->_data, datafile->_initSize, datafile->_fd,
@@ -1656,7 +1656,7 @@ bool TRI_CloseDatafile(TRI_datafile_t* datafile) {
       LOG(ERR) << "munmap failed with: " << res;
       datafile->_state = TRI_DF_STATE_WRITE_ERROR;
       datafile->_lastError = res;
-      return false;
+      return res;
     }
 
     datafile->close(datafile);
@@ -1664,21 +1664,23 @@ bool TRI_CloseDatafile(TRI_datafile_t* datafile) {
     datafile->_next = nullptr;
     datafile->_fd = -1;
 
-    return true;
-  } else if (datafile->_state == TRI_DF_STATE_CLOSED) {
+    return TRI_ERROR_NO_ERROR;
+  } 
+  
+  if (datafile->_state == TRI_DF_STATE_CLOSED) {
     LOG(WARN) << "closing an already closed datafile '" << datafile->getName(datafile) << "'";
-    return true;
-  } else {
-    TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_STATE);
-    return false;
-  }
+    return TRI_ERROR_NO_ERROR;
+  } 
+  
+  TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_STATE);
+  return TRI_ERROR_ARANGO_ILLEGAL_STATE;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief renames a datafile
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_RenameDatafile(TRI_datafile_t* datafile, char const* filename) {
+int TRI_RenameDatafile(TRI_datafile_t* datafile, char const* filename) {
   // this function must not be called for non-physical datafiles
   TRI_ASSERT(datafile->isPhysical(datafile));
   TRI_ASSERT(filename != nullptr);
@@ -1688,7 +1690,7 @@ bool TRI_RenameDatafile(TRI_datafile_t* datafile, char const* filename) {
 
     datafile->_lastError =
         TRI_set_errno(TRI_ERROR_ARANGO_DATAFILE_ALREADY_EXISTS);
-    return false;
+    return TRI_ERROR_ARANGO_DATAFILE_ALREADY_EXISTS;
   }
 
   int res = TRI_RenameFile(datafile->_filename, filename);
@@ -1697,13 +1699,13 @@ bool TRI_RenameDatafile(TRI_datafile_t* datafile, char const* filename) {
     datafile->_state = TRI_DF_STATE_RENAME_ERROR;
     datafile->_lastError = TRI_set_errno(TRI_ERROR_SYS_ERROR);
 
-    return false;
+    return res;
   }
 
   TRI_FreeString(TRI_CORE_MEM_ZONE, datafile->_filename);
   datafile->_filename = TRI_DuplicateString(filename);
 
-  return true;
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

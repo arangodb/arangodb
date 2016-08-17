@@ -70,6 +70,9 @@ class HttpRequest : public GeneralRequest {
   bool isHttp11() const { return _version == ProtocolVersion::HTTP_1_1; }
 
  public:
+  arangodb::Endpoint::TransportType transportType() override {
+    return arangodb::Endpoint::TransportType::HTTP;
+  }
   // the content length
   int64_t contentLength() const override { return _contentLength; }
 

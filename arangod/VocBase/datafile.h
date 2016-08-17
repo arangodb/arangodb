@@ -466,7 +466,7 @@ TRI_datafile_t* TRI_OpenDatafile(char const*, bool);
 /// @brief closes a datafile and all memory regions
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_CloseDatafile(TRI_datafile_t* datafile);
+int TRI_CloseDatafile(TRI_datafile_t* datafile);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief seals a database, writes a footer, sets it to read-only
@@ -478,7 +478,7 @@ int TRI_SealDatafile(TRI_datafile_t* datafile) TRI_WARN_UNUSED_RESULT;
 /// @brief renames a datafile
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_RenameDatafile(TRI_datafile_t* datafile, char const* filename);
+int TRI_RenameDatafile(TRI_datafile_t* datafile, char const* filename);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief truncates a datafile and seals it, only called by arango-dfdd

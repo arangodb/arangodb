@@ -66,7 +66,7 @@ BOOST_FIXTURE_TEST_SUITE(CStructureSizeTest, CStructureSizeSetup)
 ////////////////////////////////////////////////////////////////////////////////
 
 BOOST_AUTO_TEST_CASE (tst_basic_elements) {
-  BOOST_CHECK_EQUAL(4, (int) sizeof(TRI_col_type_t));
+  BOOST_CHECK_EQUAL(4, (int) sizeof(TRI_col_type_e));
   BOOST_CHECK_EQUAL(1, (int) sizeof(TRI_df_marker_type_t));
   BOOST_CHECK_EQUAL(4, (int) sizeof(TRI_df_version_t));
   BOOST_CHECK_EQUAL(8, (int) sizeof(TRI_voc_cid_t));

@@ -134,6 +134,8 @@ struct TRI_vpack_sub_t {
   VPackSlice slice(TRI_doc_mptr_t const* mptr) const;
 };
 
+static_assert(sizeof(TRI_vpack_sub_t) == 12, "invalid size of TRI_vpack_sub_t");
+
 /// @brief fill a TRI_vpack_sub_t structure with a subvalue
 void TRI_FillVPackSub(TRI_vpack_sub_t* sub, 
                       VPackSlice const base, VPackSlice const value) noexcept;

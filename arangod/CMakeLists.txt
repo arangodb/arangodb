@@ -271,6 +271,7 @@ add_executable(${BIN_ARANGOD}
   Scheduler/TimerTask.cpp
   Statistics/StatisticsFeature.cpp
   Statistics/statistics.cpp
+  StorageEngine/CompactorThread.cpp
   StorageEngine/EngineSelectorFeature.cpp
   StorageEngine/MMFilesEngine.cpp
   StorageEngine/OtherEngine.cpp
@@ -310,7 +311,6 @@ add_executable(${BIN_ARANGOD}
   V8Server/v8-vocindex.cpp
   VocBase/AuthInfo.cpp
   VocBase/CleanupThread.cpp
-  VocBase/CompactorThread.cpp
   VocBase/DatafileStatistics.cpp
   VocBase/Ditch.cpp
   VocBase/EdgeCollectionInfo.cpp

@@ -82,7 +82,7 @@ class StorageEngine : public application_features::ApplicationFeature {
   // for each database
   virtual int getCollectionsAndIndexes(TRI_vocbase_t* vocbase, arangodb::velocypack::Builder& result, 
                                        bool wasCleanShutdown, bool isUpgrade) = 0;
-
+ 
   // determine the maximum revision id previously handed out by the storage
   // engine. this value is used as a lower bound for further HLC values handed out by
   // the server. called at server start only, after getDatabases() and getCollectionsAndIndexes()
@@ -186,7 +186,7 @@ class StorageEngine : public application_features::ApplicationFeature {
   // the actual deletion.
   // the WAL entry for index deletion will be written *after* the call
   // to "dropIndex" returns
-  virtual void dropIndex(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId,
+  virtual void dropIndex(TRI_vocbase_t* vocbase, TRI_voc_cid_t collectionId,
                          TRI_idx_iid_t id) = 0;
 
   // document operations
@@ -231,6 +231,10 @@ class StorageEngine : public application_features::ApplicationFeature {
   virtual bool tryPreventCompaction(TRI_vocbase_t* vocbase,
                                     std::function<void(TRI_vocbase_t*)> const& callback,
                                     bool checkForActiveBlockers) = 0;
+  
+  virtual int shutdownDatabase(TRI_vocbase_t* vocbase) = 0; 
+  
+  virtual int openCollection(TRI_vocbase_t* vocbase, TRI_collection_t* collection, bool ignoreErrors) = 0;
   
  protected:
   arangodb::LogicalCollection* registerCollection(bool doLock, TRI_vocbase_t* vocbase, TRI_col_type_e type, TRI_voc_cid_t cid, 

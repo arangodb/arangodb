@@ -47,10 +47,9 @@ class VelocyPackHelper {
   ~VelocyPackHelper() = delete;
 
  public:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief static initializer for all VPack values
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief static initializer for all VPack values
+  ////////////////////////////////////////////////////////////////////////////////
 
   static void initialize();
   static void disableAssemblerFunctions();
@@ -66,20 +65,21 @@ class VelocyPackHelper {
     size_t operator()(arangodb::velocypack::Slice const&) const noexcept;
   };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief equality comparator for VelocyPack values
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief equality comparator for VelocyPack values
+  ////////////////////////////////////////////////////////////////////////////////
 
   struct VPackEqual {
-    private:
-      arangodb::velocypack::Options const* _options;
-    public:
-     VPackEqual() : _options(nullptr) {}
-     explicit VPackEqual(arangodb::velocypack::Options const* opts)
-         : _options(opts) {}
+   private:
+    arangodb::velocypack::Options const* _options;
 
-     bool operator()(arangodb::velocypack::Slice const&,
-                     arangodb::velocypack::Slice const&) const;
+   public:
+    VPackEqual() : _options(nullptr) {}
+    explicit VPackEqual(arangodb::velocypack::Options const* opts)
+        : _options(opts) {}
+
+    bool operator()(arangodb::velocypack::Slice const&,
+                    arangodb::velocypack::Slice const&) const;
   };
 
   struct VPackStringEqual {
@@ -87,9 +87,9 @@ class VelocyPackHelper {
                     arangodb::velocypack::Slice const&) const noexcept;
   };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief less comparator for VelocyPack values
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief less comparator for VelocyPack values
+  ////////////////////////////////////////////////////////////////////////////////
 
   template <bool useUtf8>
   struct VPackLess {
@@ -159,7 +159,7 @@ class VelocyPackHelper {
   struct AttributeSorterUTF8 {
     bool operator()(std::string const& l, std::string const& r) const;
   };
-  
+
   struct AttributeSorterBinary {
     bool operator()(std::string const& l, std::string const& r) const;
   };
@@ -206,8 +206,9 @@ class VelocyPackHelper {
   //////////////////////////////////////////////////////////////////////////////
 
   static std::string checkAndGetStringValue(VPackSlice const&, char const*);
-  
-  static std::string checkAndGetStringValue(VPackSlice const&, std::string const&);
+
+  static std::string checkAndGetStringValue(VPackSlice const&,
+                                            std::string const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns a Numeric sub-element, or throws if <name> does not exist
@@ -243,8 +244,10 @@ class VelocyPackHelper {
   /// or it is not a string
   //////////////////////////////////////////////////////////////////////////////
 
-  static std::string getStringValue(VPackSlice, char const*, std::string const&);
-  static std::string getStringValue(VPackSlice, std::string const&, std::string const&);
+  static std::string getStringValue(VPackSlice, char const*,
+                                    std::string const&);
+  static std::string getStringValue(VPackSlice, std::string const&,
+                                    std::string const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief convert a Object sub value into a uint64
@@ -256,7 +259,8 @@ class VelocyPackHelper {
   /// @brief Build TRI_json_t from VelocyPack. Just a temporary solution
   //////////////////////////////////////////////////////////////////////////////
 
-  static TRI_json_t* velocyPackToJson(VPackSlice const&, VPackOptions const* = &VPackOptions::Defaults);
+  static TRI_json_t* velocyPackToJson(
+      VPackSlice const&, VPackOptions const* = &VPackOptions::Defaults);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief parses a json file to VelocyPack
@@ -268,7 +272,7 @@ class VelocyPackHelper {
   /// @brief writes a VelocyPack to a file
   //////////////////////////////////////////////////////////////////////////////
 
-  static bool velocyPackToFile(std::string const& filename, 
+  static bool velocyPackToFile(std::string const& filename,
                                VPackSlice const& slice, bool syncFile);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -284,8 +288,9 @@ class VelocyPackHelper {
   //////////////////////////////////////////////////////////////////////////////
 
   static int compare(arangodb::velocypack::Slice lhs,
-                     arangodb::velocypack::Slice rhs,
-                     bool useUTF8, arangodb::velocypack::Options const* options = &arangodb::velocypack::Options::Defaults,
+                     arangodb::velocypack::Slice rhs, bool useUTF8,
+                     arangodb::velocypack::Options const* options =
+                         &arangodb::velocypack::Options::Defaults,
                      arangodb::velocypack::Slice const* lhsBase = nullptr,
                      arangodb::velocypack::Slice const* rhsBase = nullptr);
 
@@ -325,7 +330,7 @@ class VelocyPackHelper {
     }
     return arangodb::velocypack::Slice::falseSlice();
   }
-  
+
   static inline arangodb::velocypack::Slice ZeroValue() {
     return arangodb::velocypack::Slice::zeroSlice();
   }
@@ -350,6 +355,10 @@ class VelocyPackHelper {
   static void SanitizeExternals(arangodb::velocypack::Slice const,
                                 arangodb::velocypack::Builder&);
 
+  static bool hasExternals(arangodb::velocypack::Slice const);
+  static VPackBuilder sanitizeExternalsChecked(
+      arangodb::velocypack::Slice const, bool checkExternals = true);
+
   static uint8_t const KeyAttribute = 0x31;
   static uint8_t const RevAttribute = 0x32;
   static uint8_t const IdAttribute = 0x33;
@@ -358,10 +367,12 @@ class VelocyPackHelper {
 
   static uint8_t const AttributeBase = 0x30;
 
-  static_assert(KeyAttribute < RevAttribute, "invalid value for _key attribute");
+  static_assert(KeyAttribute < RevAttribute,
+                "invalid value for _key attribute");
   static_assert(RevAttribute < IdAttribute, "invalid value for _rev attribute");
   static_assert(IdAttribute < FromAttribute, "invalid value for _id attribute");
-  static_assert(FromAttribute < ToAttribute, "invalid value for _from attribute");
+  static_assert(FromAttribute < ToAttribute,
+                "invalid value for _from attribute");
 };
 }
 }
@@ -371,6 +382,6 @@ class VelocyPackHelper {
 //////////////////////////////////////////////////////////////////////////////
 
 arangodb::LoggerStream& operator<<(arangodb::LoggerStream&,
-  arangodb::velocypack::Slice const&);
+                                   arangodb::velocypack::Slice const&);
 
 #endif

@@ -1487,7 +1487,7 @@ class AssocMulti {
   //////////////////////////////////////////////////////////////////////////////
 
   inline IndexType hashToIndex(uint64_t const h) const {
-    return static_cast<IndexType>(sizeof(IndexType) == 8 ? h : TRI_64to32(h));
+    return static_cast<IndexType>(sizeof(IndexType) == 8 ? h : TRI_64To32(h));
   }
 };
 
