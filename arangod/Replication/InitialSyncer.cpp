@@ -1628,9 +1628,7 @@ int InitialSyncer::changeCollection(arangodb::LogicalCollection* col,
   arangodb::CollectionGuard guard(_vocbase, col->cid());
   bool doSync = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database")->forceSyncProperties();
 
-  return TRI_ERROR_NOT_IMPLEMENTED;
-#warning FIXME
-  // return guard.collection()->_collection->updateCollectionInfo(_vocbase, slice, doSync);
+  return guard.collection()->_collection->updateCollectionInfo(_vocbase, slice, doSync);
 }
  
 ////////////////////////////////////////////////////////////////////////////////

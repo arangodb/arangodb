@@ -1240,7 +1240,7 @@ static void JS_DropIndexVocbaseCol(
 static void GetIndexesCoordinator(
     v8::FunctionCallbackInfo<v8::Value> const& args,
     arangodb::LogicalCollection const* collection) {
-#warning This may be obsolete.
+  // warning This may be obsolete.
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 

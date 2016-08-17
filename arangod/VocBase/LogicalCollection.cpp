@@ -458,7 +458,6 @@ void LogicalCollection::increaseVersion() {
 }
 
 int LogicalCollection::update(VPackSlice const&, bool, TRI_vocbase_t const*) {
-#warning should be cluster aware
   return TRI_ERROR_NOT_IMPLEMENTED;
   /*
   return ClusterInfo::instance()->setCollectionPropertiesCoordinator(

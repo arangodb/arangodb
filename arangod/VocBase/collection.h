@@ -73,9 +73,6 @@ struct DocumentOperation;
 /// @brief predefined collection name for users
 #define TRI_COL_NAME_USERS "_users"
 
-/// @brief predefined collection name for statistics
-#define TRI_COL_NAME_STATISTICS "_statistics"
-
 /// @brief collection info
 struct TRI_doc_collection_info_t {
   TRI_voc_ssize_t _numberDatafiles;

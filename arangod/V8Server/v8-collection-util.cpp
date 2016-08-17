@@ -53,7 +53,6 @@ bool EqualCollection(CollectionNameResolver const* resolver,
     return true;
   }
 
-#warning In which cases can we actually get here?
   // Shouldn't it just be: If we are on DBServer we also have to check for global ID
   // name and cid should be the shard.
   if (ServerState::instance()->isCoordinator()) {
@@ -166,7 +165,6 @@ v8::Handle<v8::Object> WrapCollection(v8::Isolate* isolate,
     result->ForceSet(_IdKey, V8CollectionId(isolate, collection->cid()),
                      v8::ReadOnly);
     result->Set(_DbNameKey, TRI_V8_STRING(collection->vocbase()->name().c_str()));
-#warning Hardcoded version. Do we need it?! Ask Jan.
     result->ForceSet(
         VersionKeyHidden,
         v8::Integer::NewFromUnsigned(isolate, 5),

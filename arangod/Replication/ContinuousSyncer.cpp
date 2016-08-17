@@ -784,9 +784,7 @@ int ContinuousSyncer::changeCollection(VPackSlice const& slice) {
 
   arangodb::CollectionGuard guard(_vocbase, cid);
   bool doSync = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database")->forceSyncProperties();
-  return TRI_ERROR_NOT_IMPLEMENTED;
-#warning FIXME
-  // return guard.collection()->_collection->updateCollectionInfo(_vocbase, data, doSync);
+  return guard.collection()->_collection->updateCollectionInfo(_vocbase, data, doSync);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
