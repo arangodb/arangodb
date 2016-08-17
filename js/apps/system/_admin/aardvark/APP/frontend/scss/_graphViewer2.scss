@@ -77,7 +77,16 @@
 
   svg {
     #wheelnav-nodeContextMenu-title-0 {
-      transform: translate(24px, 14px) scale(.7) !important;
+      // transform: translate(24px, 14px) scale(.7) !important;
+    }
+
+    #wheelnav-nodeContextMenu-slice-0,
+    #wheelnav-nodeContextMenu-slice-1,
+    #wheelnav-nodeContextMenu-slice-2,
+    #wheelnav-nodeContextMenu-slice-3,
+    #wheelnav-nodeContextMenu-slice-4,
+    #wheelnav-nodeContextMenu-slice-5 {
+      opacity: .8;
     }
 
     #wheelnav-nodeContextMenu-title-0,
@@ -87,10 +96,6 @@
     #wheelnav-nodeContextMenu-title-4,
     #wheelnav-nodeContextMenu-title-5 {
       fill: $c-white;
-
-      &:hover {
-        fill: $c-positive;
-      }
     }
   }
 }
