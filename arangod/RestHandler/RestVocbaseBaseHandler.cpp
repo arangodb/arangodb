@@ -340,9 +340,9 @@ void RestVocbaseBaseHandler::generateDocument(VPackSlice const& input,
   }
 
   try {
-    _response->setPayload(meta::enumToEnum<GeneralResponse::ContentType>(
-                              _request->contentTypeResponse()),
-                          document, generateBody, *options);
+    _response->setContentType(meta::enumToEnum<GeneralResponse::ContentType>(
+        _request->contentTypeResponse()));
+    _response->setPayload(document, generateBody, *options);
   } catch (...) {
     generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
                   TRI_ERROR_INTERNAL, "cannot generate output");

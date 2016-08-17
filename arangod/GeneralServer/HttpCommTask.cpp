@@ -63,6 +63,13 @@ HttpCommTask::HttpCommTask(GeneralServer* server, TRI_socket_t sock,
   connectionStatisticsAgentSetHttp();
 }
 
+void HttpCommTask::handleSimpleError(GeneralResponse::ResponseCode code,
+                                     uint64_t id) {
+  (void)id;  // id is not used for this protocol
+  HttpResponse response(code);
+  addResponse(&response, true);
+}
+
 void HttpCommTask::addResponse(HttpResponse* response, bool isError) {
   _requestPending = false;
   _isChunked = false;
@@ -222,7 +229,9 @@ bool HttpCommTask::processRead() {
 
       // header is too large
       handleSimpleError(
-          GeneralResponse::ResponseCode::REQUEST_HEADER_FIELDS_TOO_LARGE);
+          GeneralResponse::ResponseCode::REQUEST_HEADER_FIELDS_TOO_LARGE,
+          0);  // FIXME messageid not required
+
       return false;
     }
 
@@ -250,7 +259,9 @@ bool HttpCommTask::processRead() {
       if (_protocolVersion != GeneralRequest::ProtocolVersion::HTTP_1_0 &&
           _protocolVersion != GeneralRequest::ProtocolVersion::HTTP_1_1) {
         handleSimpleError(
-            GeneralResponse::ResponseCode::HTTP_VERSION_NOT_SUPPORTED);
+            GeneralResponse::ResponseCode::HTTP_VERSION_NOT_SUPPORTED,
+            0);  // FIXME
+
         return false;
       }
 
@@ -258,7 +269,8 @@ bool HttpCommTask::processRead() {
       _fullUrl = _request->fullUrl();
 
       if (_fullUrl.size() > 16384) {
-        handleSimpleError(GeneralResponse::ResponseCode::REQUEST_URI_TOO_LONG);
+        handleSimpleError(GeneralResponse::ResponseCode::REQUEST_URI_TOO_LONG,
+                          0);  // FIXME
         return false;
       }
 
@@ -360,7 +372,8 @@ bool HttpCommTask::processRead() {
           TRI_invalidatesocket(&_commSocket);
 
           // bad request, method not allowed
-          handleSimpleError(GeneralResponse::ResponseCode::METHOD_NOT_ALLOWED);
+          handleSimpleError(GeneralResponse::ResponseCode::METHOD_NOT_ALLOWED,
+                            0);  // FIXME
           return false;
         }
       }
@@ -587,7 +600,8 @@ bool HttpCommTask::checkContentLength(bool expectContentLength) {
 
   if (bodyLength < 0) {
     // bad request, body length is < 0. this is a client error
-    handleSimpleError(GeneralResponse::ResponseCode::LENGTH_REQUIRED);
+    handleSimpleError(GeneralResponse::ResponseCode::LENGTH_REQUIRED,
+                      0);  // FIXME
     return false;
   }
 
@@ -604,7 +618,8 @@ bool HttpCommTask::checkContentLength(bool expectContentLength) {
               << ", request body size is " << bodyLength;
 
     // request entity too large
-    handleSimpleError(GeneralResponse::ResponseCode::REQUEST_ENTITY_TOO_LARGE);
+    handleSimpleError(GeneralResponse::ResponseCode::REQUEST_ENTITY_TOO_LARGE,
+                      0);  // FIXME
     return false;
   }
 
@@ -774,3 +789,31 @@ HttpRequest* HttpCommTask::requestAsHttp() {
   }
   return request;
 };
+
+void HttpCommTask::handleSimpleError(GeneralResponse::ResponseCode responseCode,
+                                     int errorNum,
+                                     std::string const& errorMessage) {
+  HttpResponse response(responseCode);
+
+  VPackBuilder builder;
+  builder.openObject();
+  builder.add(StaticStrings::Error, VPackValue(true));
+  builder.add(StaticStrings::ErrorNum, VPackValue(errorNum));
+  builder.add(StaticStrings::ErrorMessage, VPackValue(errorMessage));
+  builder.add(StaticStrings::Code, VPackValue((int)responseCode));
+  builder.close();
+
+  try {
+    response.setPayload(builder.slice(), true, VPackOptions::Defaults);
+    processResponse(&response);
+  } catch (...) {
+    addResponse(&response, true);
+  }
+}
+
+void HttpCommTask::clearRequest() {
+  if (_request != nullptr) {
+    delete _request;
+  }
+  _request = nullptr;
+}

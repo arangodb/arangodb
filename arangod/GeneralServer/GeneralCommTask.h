@@ -134,6 +134,7 @@ class GeneralCommTask : public SocketTask, public RequestStatisticsAgent {
 
   // write data from request into _writeBuffers and call fillWriteBuffer
   virtual void addResponse(GeneralResponse*, bool error) = 0;
+  virtual arangodb::Endpoint::TransportType transportType() = 0;
 
  protected:
   virtual ~GeneralCommTask();
@@ -147,6 +148,7 @@ class GeneralCommTask : public SocketTask, public RequestStatisticsAgent {
   virtual void handleChunk(char const*, size_t) = 0;
 
  protected:
+  virtual void httpClearRequest(){};  // should be removed
   void executeRequest(GeneralRequest*, GeneralResponse*);
 
   // TODO(fc) move to SocketTask
@@ -156,21 +158,13 @@ class GeneralCommTask : public SocketTask, public RequestStatisticsAgent {
 
   void processResponse(GeneralResponse*);
 
-  void handleSimpleError(GeneralResponse::ResponseCode);
-  void handleSimpleError(GeneralResponse::ResponseCode, int code,
-                         std::string const& errorMessage);
-
+  virtual void handleSimpleError(GeneralResponse::ResponseCode,
+                                 uint64_t messagid) = 0;
+  virtual void handleSimpleError(GeneralResponse::ResponseCode, int code,
+                                 std::string const& errorMessage) = 0;
   void fillWriteBuffer();  // fills SocketTasks _writeBuffer
                            // _writeBufferStatistics from
                            // _writeBuffers/_writeBuffersStats
-
-  // clears the request object, TODO(fc) see below
-  void clearRequest() {
-    if (_request != nullptr) {
-      delete _request;
-    }
-    _request = nullptr;
-  }
 
  private:
   void handleTimeout() override final { _clientClosed = true; }
@@ -180,10 +174,6 @@ class GeneralCommTask : public SocketTask, public RequestStatisticsAgent {
  protected:
   // for asynchronous requests
   GeneralServer* const _server;
-
-  // the request with possible incomplete body
-  // TODO(fc) needs to be removed, depends on the underlying protocol
-  GeneralRequest* _request = nullptr;
 
   // information about the client
   ConnectionInfo _connectionInfo;

@@ -74,8 +74,7 @@ class HttpResponse : public GeneralResponse {
  public:
   void reset(ResponseCode code) override final;
 
-  void setPayload(ContentType, arangodb::velocypack::Slice const&,
-                  bool generateBody,
+  void setPayload(arangodb::velocypack::Slice const&, bool generateBody,
                   arangodb::velocypack::Options const&) override final;
 
   arangodb::Endpoint::TransportType transportType() override {

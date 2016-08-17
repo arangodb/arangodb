@@ -67,7 +67,7 @@ GeneralCommTask::~GeneralCommTask() {
     TRI_ReleaseRequestStatistics(i);
   }
 
-  clearRequest();
+  httpClearRequest();
 }
 
 void GeneralCommTask::signalTask(TaskData* data) {
@@ -81,7 +81,7 @@ void GeneralCommTask::signalTask(TaskData* data) {
       processResponse(response);
       processRead();
     } else {
-      handleSimpleError(GeneralResponse::ResponseCode::SERVER_ERROR);
+      handleSimpleError(GeneralResponse::ResponseCode::SERVER_ERROR, 0);
     }
   }
 
@@ -91,9 +91,7 @@ void GeneralCommTask::signalTask(TaskData* data) {
     HttpResponse response(GeneralResponse::ResponseCode::OK);
     velocypack::Slice slice(data->_buffer->data());
 
-    response.setPayload(meta::enumToEnum<GeneralResponse::ContentType>(
-                            _request->contentTypeResponse()),
-                        slice, true, VPackOptions::Defaults);
+    response.setPayload(slice, true, VPackOptions::Defaults);
     processResponse(&response);
     processRead();
   }
@@ -164,10 +162,10 @@ void GeneralCommTask::executeRequest(GeneralRequest* request,
   if (handler == nullptr) {
     LOG(TRACE) << "no handler is known, giving up";
 
-    clearRequest();
+    httpClearRequest();
     delete response;
 
-    handleSimpleError(GeneralResponse::ResponseCode::NOT_FOUND);
+    handleSimpleError(GeneralResponse::ResponseCode::NOT_FOUND, 0);
     return;
   }
 
@@ -180,7 +178,7 @@ void GeneralCommTask::executeRequest(GeneralRequest* request,
 
   // the responsibility for the request has been moved to the handler
   // TODO(fc) _request should
-  _request = nullptr;
+  //_request = nullptr;
 
   // async execution
   bool ok = false;
@@ -217,44 +215,15 @@ void GeneralCommTask::executeRequest(GeneralRequest* request,
   }
 
   if (!ok) {
-    handleSimpleError(GeneralResponse::ResponseCode::SERVER_ERROR);
+    handleSimpleError(GeneralResponse::ResponseCode::SERVER_ERROR, 0);
   }
 }
 
 void GeneralCommTask::processResponse(GeneralResponse* response) {
   if (response == nullptr) {
-    handleSimpleError(GeneralResponse::ResponseCode::SERVER_ERROR);
+    handleSimpleError(GeneralResponse::ResponseCode::SERVER_ERROR, 0);
   } else {
     addResponse(response, false);
-  }
-}
-
-void GeneralCommTask::handleSimpleError(GeneralResponse::ResponseCode code) {
-  HttpResponse response(code);
-  addResponse(&response, true);
-}
-
-void GeneralCommTask::handleSimpleError(
-    GeneralResponse::ResponseCode responseCode, int errorNum,
-    std::string const& errorMessage) {
-  HttpResponse response(responseCode);
-
-  VPackBuilder builder;
-  builder.openObject();
-  builder.add(StaticStrings::Error, VPackValue(true));
-  builder.add(StaticStrings::ErrorNum, VPackValue(errorNum));
-  builder.add(StaticStrings::ErrorMessage, VPackValue(errorMessage));
-  builder.add(StaticStrings::Code, VPackValue((int)responseCode));
-  builder.close();
-
-  try {
-    response.setPayload(meta::enumToEnum<GeneralResponse::ContentType>(
-                            _request->contentTypeResponse()),
-                        builder.slice(), true, VPackOptions::Defaults);
-    clearRequest();
-    processResponse(&response);
-  } catch (...) {
-    addResponse(&response, true);
   }
 }
 

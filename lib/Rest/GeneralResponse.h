@@ -187,8 +187,7 @@ class GeneralResponse {
 
   // generates the response body, sets the content type; this might
   // throw an error
-  virtual void setPayload(ContentType contentType,
-                          arangodb::velocypack::Slice const&,
+  virtual void setPayload(arangodb::velocypack::Slice const&,
                           bool generateBody = true,
                           arangodb::velocypack::Options const& = arangodb::
                               velocypack::Options::Defaults) = 0;

@@ -367,20 +367,21 @@ bool VppCommTask::processRead() {
     LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
         << "got request:" << message._header.toJson();
 
-    _request = new VppRequest(_connectionInfo, std::move(message));
-    GeneralServerFeature::HANDLER_FACTORY->setRequestContext(_request);
+    // the handler will take ownersip of this pointer
+    VppRequest* request = new VppRequest(_connectionInfo, std::move(message));
+    GeneralServerFeature::HANDLER_FACTORY->setRequestContext(request);
 
     // make sure we have a dabase
-    if (_request->requestContext() == nullptr) {
+    if (request->requestContext() == nullptr) {
       handleSimpleError(GeneralResponse::ResponseCode::NOT_FOUND,
                         TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
                         TRI_errno_string(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND));
     } else {
-      _request->setClientTaskId(_taskId);
-      _protocolVersion = _request->protocolVersion();
+      request->setClientTaskId(_taskId);
+      _protocolVersion = request->protocolVersion();
       executeRequest(
-          _request, new VppResponse(GeneralResponse::ResponseCode::SERVER_ERROR,
-                                    chunkHeader._messageID));
+          request, new VppResponse(GeneralResponse::ResponseCode::SERVER_ERROR,
+                                   chunkHeader._messageID));
     }
   }
 
@@ -426,10 +427,31 @@ void VppCommTask::resetState(bool close) {
 // }
 
 // convert internal GeneralRequest to VppRequest
-VppRequest* VppCommTask::requestAsVpp() {
-  VppRequest* request = dynamic_cast<VppRequest*>(_request);
-  if (request == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+// VppRequest* VppCommTask::requestAsVpp() {
+//   VppRequest* request = dynamic_cast<VppRequest*>(_request);
+//   if (request == nullptr) {
+//     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+//   }
+//   return request;
+// };
+
+void VppCommTask::handleSimpleError(GeneralResponse::ResponseCode responseCode,
+                                    int errorNum,
+                                    std::string const& errorMessage) {
+  VppResponse response(responseCode, 0);  // FIXME!!!!!!
+
+  VPackBuilder builder;
+  builder.openObject();
+  builder.add(StaticStrings::Error, VPackValue(true));
+  builder.add(StaticStrings::ErrorNum, VPackValue(errorNum));
+  builder.add(StaticStrings::ErrorMessage, VPackValue(errorMessage));
+  builder.add(StaticStrings::Code, VPackValue((int)responseCode));
+  builder.close();
+
+  try {
+    response.setPayload(builder.slice(), true, VPackOptions::Defaults);
+    processResponse(&response);
+  } catch (...) {
+    addResponse(&response, true);
   }
-  return request;
-};
+}

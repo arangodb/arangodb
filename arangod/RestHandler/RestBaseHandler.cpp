@@ -141,9 +141,9 @@ void RestBaseHandler::writeResult(arangodb::velocypack::Slice const& slice,
                                   VPackOptions const& options) {
   try {
     TRI_ASSERT(options.escapeUnicode);
-    _response->setPayload(meta::enumToEnum<GeneralResponse::ContentType>(
-                              _request->contentTypeResponse()),
-                          slice, true, options);
+    _response->setContentType(meta::enumToEnum<GeneralResponse::ContentType>(
+        _request->contentTypeResponse()));
+    _response->setPayload(slice, true, options);
   } catch (std::exception const& ex) {
     generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
                   TRI_ERROR_INTERNAL, ex.what());
