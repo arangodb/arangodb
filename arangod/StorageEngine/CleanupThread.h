@@ -21,8 +21,8 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_VOC_BASE_CLEANUP_THREAD_H
-#define ARANGOD_VOC_BASE_CLEANUP_THREAD_H 1
+#ifndef ARANGOD_STORAGE_ENGINE_CLEANUP_THREAD_H
+#define ARANGOD_STORAGE_ENGINE_CLEANUP_THREAD_H 1
 
 #include "Basics/Common.h"
 #include "Basics/ConditionVariable.h"

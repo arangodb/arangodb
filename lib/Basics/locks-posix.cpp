@@ -82,7 +82,8 @@ void TRI_LockMutex(TRI_mutex_t* mutex) {
     if (rc == EDEADLK) {
       LOG(ERR) << "mutex deadlock detected";
     }
-    LOG(FATAL) << "could not lock the mutex: " << strerror(rc); FATAL_ERROR_EXIT();
+    LOG(FATAL) << "could not lock the mutex: " << strerror(rc); 
+    FATAL_ERROR_EXIT();
   }
 }
 
@@ -94,7 +95,8 @@ void TRI_UnlockMutex(TRI_mutex_t* mutex) {
   int rc = pthread_mutex_unlock(mutex);
 
   if (rc != 0) {
-    LOG(FATAL) << "could not release the mutex: " << strerror(rc); FATAL_ERROR_EXIT();
+    LOG(FATAL) << "could not release the mutex: " << strerror(rc); 
+    FATAL_ERROR_EXIT();
   }
 }
 
@@ -178,7 +180,8 @@ again:
     LOG(ERR) << "could not read-lock the read-write lock: " << strerror(rc);
     TRI_ASSERT(false);
 #endif
-    LOG(FATAL) << "could not read-lock the read-write lock: " << strerror(rc); FATAL_ERROR_EXIT();
+    LOG(FATAL) << "could not read-lock the read-write lock: " << strerror(rc); 
+    FATAL_ERROR_EXIT();
   }
 
 #ifdef TRI_TRACE_LOCKS
@@ -198,7 +201,8 @@ void TRI_ReadUnlockReadWriteLock(TRI_read_write_lock_t* lock) {
     LOG(ERR) << "could not read-unlock the read-write lock: " << strerror(rc);
     TRI_ASSERT(false);
 #endif
-    LOG(FATAL) << "could not read-unlock the read-write lock: " << strerror(rc); FATAL_ERROR_EXIT();
+    LOG(FATAL) << "could not read-unlock the read-write lock: " << strerror(rc); 
+    FATAL_ERROR_EXIT();
   }
 
 #ifdef TRI_TRACE_LOCKS

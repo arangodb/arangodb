@@ -52,7 +52,6 @@
 #include "Utils/CollectionKeysRepository.h"
 #include "Utils/CursorRepository.h"
 #include "V8Server/v8-user-structures.h"
-#include "VocBase/CleanupThread.h"
 #include "VocBase/Ditch.h"
 #include "VocBase/collection.h"
 #include "VocBase/replication-applier.h"
@@ -108,9 +107,8 @@ TRI_vocbase_col_t::~TRI_vocbase_col_t() {}
           
 /// @brief signal the cleanup thread to wake up
 void TRI_vocbase_t::signalCleanup() {
-  if (_cleanupThread) {
-    _cleanupThread->signal();
-  }
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  engine->signalCleanup(this);
 }
 
 /// @brief adds a new collection
@@ -909,15 +907,6 @@ void TRI_vocbase_t::shutdown() {
   // this will signal the cleanup thread to do one last iteration
   setState(TRI_vocbase_t::State::SHUTDOWN_CLEANUP);
 
-  if (_cleanupThread != nullptr) {
-    _cleanupThread->beginShutdown();  
-    _cleanupThread->signal();
-
-    while (_cleanupThread->isRunning()) {
-      usleep(5000);
-    }
-  }
-
   // free dead collections (already dropped but pointers still around)
   for (auto& collection : _deadCollections) {
     delete collection;
@@ -927,8 +916,6 @@ void TRI_vocbase_t::shutdown() {
   for (auto& collection : _collections) {
     delete collection;
   }
-  
-  _cleanupThread.reset();
 }
 
 /// @brief returns names of all known (document) collections
@@ -1128,6 +1115,8 @@ TRI_vocbase_col_t* TRI_vocbase_t::createCollection(
 
 /// @brief unloads a collection
 int TRI_vocbase_t::unloadCollection(TRI_vocbase_col_t* collection, bool force) {
+  TRI_voc_cid_t cid = collection->cid();
+
   {
     WRITE_LOCKER_EVENTUAL(locker, collection->_lock, 1000);
 
@@ -1190,9 +1179,8 @@ int TRI_vocbase_t::unloadCollection(TRI_vocbase_col_t* collection, bool force) {
   } // release locks
 
   // wake up the cleanup thread
-  if (_cleanupThread) {
-    _cleanupThread->signal();
-  }
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  engine->unloadCollection(this, cid);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -1225,9 +1213,8 @@ int TRI_vocbase_t::dropCollection(TRI_vocbase_col_t* collection, bool writeMarke
             __FILE__, __LINE__);
 
         // wake up the cleanup thread
-        if (_cleanupThread) {
-          _cleanupThread->signal();
-        }
+        StorageEngine* engine = EngineSelectorFeature::ENGINE;
+        engine->signalCleanup(collection->_vocbase);
       }
     }
 

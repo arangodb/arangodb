@@ -174,6 +174,10 @@ class OtherEngine final : public StorageEngine {
   // to "dropIndex" returns
   void dropIndex(TRI_vocbase_t* vocbase, TRI_voc_cid_t collectionId,
                  TRI_idx_iid_t id) override;
+  
+  void unloadCollection(TRI_vocbase_t* vocbase, TRI_voc_cid_t collectionId) override {}
+  
+  void signalCleanup(TRI_vocbase_t* vocbase) override {}
 
   // document operations
   // -------------------

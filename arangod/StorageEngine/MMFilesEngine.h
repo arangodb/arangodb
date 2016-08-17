@@ -31,6 +31,7 @@
 #include <velocypack/Builder.h>
 
 namespace arangodb {
+class CleanupThread;
 class CompactorThread;
 
 /// @brief collection file structure
@@ -197,6 +198,10 @@ class MMFilesEngine final : public StorageEngine {
   // to "dropIndex" returns
   void dropIndex(TRI_vocbase_t* vocbase, TRI_voc_cid_t collectionId,
                  TRI_idx_iid_t id) override;
+  
+  void unloadCollection(TRI_vocbase_t* vocbase, TRI_voc_cid_t collectionId) override;
+  
+  void signalCleanup(TRI_vocbase_t* vocbase) override;
 
   // document operations
   // -------------------
@@ -301,13 +306,18 @@ class MMFilesEngine final : public StorageEngine {
                           bool forceSync) const;
   VocbaseCollectionInfo loadCollectionInfo(TRI_vocbase_t* vocbase,
     std::string const& collectionName, std::string const& path, bool versionWarning);
+  
+  // start the cleanup thread for the database 
+  int startCleanup(TRI_vocbase_t* vocbase);
+  // stop and delete the cleanup thread for the database 
+  int stopCleanup(TRI_vocbase_t* vocbase);
  
   // start the compactor thread for the database 
   int startCompactor(TRI_vocbase_t* vocbase);
-  // stop the compactor thread for the database
-  int stopCompactor(TRI_vocbase_t* vocbase);
+  // signal the compactor thread to stop
+  int beginShutdownCompactor(TRI_vocbase_t* vocbase);
   // stop and delete the compactor thread for the database
-  int deleteCompactor(TRI_vocbase_t* vocbase);
+  int stopCompactor(TRI_vocbase_t* vocbase);
 
  public:
   static std::string const EngineName;
@@ -339,6 +349,8 @@ class MMFilesEngine final : public StorageEngine {
   arangodb::Mutex _threadsLock;
   // per-database compactor threads, protected by _threadsLock
   std::unordered_map<TRI_vocbase_t*, CompactorThread*> _compactorThreads;
+  // per-database cleanup threads, protected by _threadsLock
+  std::unordered_map<TRI_vocbase_t*, CleanupThread*> _cleanupThreads;
 };
 
 }

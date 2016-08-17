@@ -189,6 +189,10 @@ class StorageEngine : public application_features::ApplicationFeature {
   virtual void dropIndex(TRI_vocbase_t* vocbase, TRI_voc_cid_t collectionId,
                          TRI_idx_iid_t id) = 0;
 
+  virtual void unloadCollection(TRI_vocbase_t* vocbase, TRI_voc_cid_t collectionId) = 0;
+  
+  virtual void signalCleanup(TRI_vocbase_t* vocbase) = 0;
+
   // document operations
   // -------------------
 
