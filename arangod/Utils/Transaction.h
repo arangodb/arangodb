@@ -280,11 +280,7 @@ class Transaction {
   /// @brief return a collection name
   //////////////////////////////////////////////////////////////////////////////
 
-  std::string name(TRI_voc_cid_t cid) const {
-    auto c = trxCollection(cid);
-    TRI_ASSERT(c != nullptr);
-    return c->_collection->name();
-  }
+  std::string name(TRI_voc_cid_t cid) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief order a ditch for a collection
@@ -415,7 +411,7 @@ class Transaction {
 
   bool isEdgeCollection(std::string const& collectionName);
   bool isDocumentCollection(std::string const& collectionName);
-  TRI_col_type_t getCollectionType(std::string const& collectionName);
+  TRI_col_type_e getCollectionType(std::string const& collectionName);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the name of a collection

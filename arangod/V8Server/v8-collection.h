@@ -28,11 +28,15 @@
 #include "Utils/CollectionNameResolver.h"
 #include "v8-vocbase.h"
 
+namespace arangodb {
+class LogicalCollection;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief releases a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-void ReleaseCollection(TRI_vocbase_col_t const* collection);
+void ReleaseCollection(arangodb::LogicalCollection const* collection);
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief check if a name belongs to a collection
@@ -40,14 +44,7 @@ void ReleaseCollection(TRI_vocbase_col_t const* collection);
 
 bool EqualCollection(arangodb::CollectionNameResolver const* resolver,
                      std::string const& collectionName,
-                     TRI_vocbase_col_t const* collection);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief wraps a TRI_vocbase_col_t
-////////////////////////////////////////////////////////////////////////////////
-
-v8::Handle<v8::Object> WrapCollection(v8::Isolate* isolate,
-                                      TRI_vocbase_col_t const* collection);
+                     arangodb::LogicalCollection const* collection);
 
 /// @brief wraps a LogicalCollection
 

@@ -1096,7 +1096,7 @@ TRI_vocbase_t* MMFilesEngine::openExistingDatabase(TRI_voc_tick_t id, std::strin
     
     // we found a collection that is still active
     std::string const directory = it.get("path").copyString();
-    TRI_vocbase_col_t* c = nullptr;
+    arangodb::LogicalCollection* c = nullptr;
 
     TRI_ASSERT(info.id() != 0);
     try {

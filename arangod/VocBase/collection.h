@@ -266,7 +266,7 @@ struct TRI_collection_t {
   static TRI_collection_t* create(TRI_vocbase_t*, arangodb::VocbaseCollectionInfo&, TRI_voc_cid_t);
 
   /// @brief opens an existing collection
-  static TRI_collection_t* open(TRI_vocbase_t*, TRI_vocbase_col_t*, bool);
+  static TRI_collection_t* open(TRI_vocbase_t*, arangodb::LogicalCollection*, bool);
 
   /// @brief determine whether a collection name is a system collection name
   static inline bool IsSystemName(std::string const& name) {
@@ -387,7 +387,7 @@ struct TRI_collection_t {
 
   /// @brief fill the additional (non-primary) indexes
   int fillIndexes(arangodb::Transaction* trx,
-                  TRI_vocbase_col_t* collection);
+                  arangodb::LogicalCollection* collection);
 
   /// @brief initializes an index with all existing documents
   int fillIndex(arangodb::Transaction* trx,

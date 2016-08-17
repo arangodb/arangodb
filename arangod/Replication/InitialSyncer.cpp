@@ -37,6 +37,7 @@
 #include "Utils/CollectionGuard.h"
 #include "VocBase/DatafileHelper.h"
 #include "VocBase/collection.h"
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
 
@@ -587,7 +588,7 @@ int InitialSyncer::applyCollectionDump(
 ////////////////////////////////////////////////////////////////////////////////
 
 int InitialSyncer::handleCollectionDump(
-    TRI_vocbase_col_t* col, std::string const& cid,
+    arangodb::LogicalCollection* col, std::string const& cid,
     std::string const& collectionName, TRI_voc_tick_t maxTick,
     std::string& errorMsg) {
   std::string appendix;
@@ -772,7 +773,7 @@ int InitialSyncer::handleCollectionDump(
     }
 
     if (res == TRI_ERROR_NO_ERROR) {
-      SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), col->_cid, TRI_TRANSACTION_WRITE);
+      SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), col->cid(), TRI_TRANSACTION_WRITE);
       
       res = trx.begin();
 
@@ -782,7 +783,7 @@ int InitialSyncer::handleCollectionDump(
         return res;
       }
      
-      trx.orderDitch(col->_cid); // will throw when it fails
+      trx.orderDitch(col->cid()); // will throw when it fails
 
       if (res == TRI_ERROR_NO_ERROR) {
         res = applyCollectionDump(trx, collectionName, response.get(), markersProcessed, errorMsg);
@@ -819,7 +820,7 @@ int InitialSyncer::handleCollectionDump(
 ////////////////////////////////////////////////////////////////////////////////
 
 int InitialSyncer::handleCollectionSync(
-    TRI_vocbase_col_t* col, std::string const& cid, 
+    arangodb::LogicalCollection* col, std::string const& cid, 
     std::string const& collectionName, TRI_voc_tick_t maxTick,
     std::string& errorMsg) {
   sendExtendBatch();
@@ -976,7 +977,7 @@ int InitialSyncer::handleCollectionSync(
 
   if (count.getNumber<size_t>() <= 0) {
     // remote collection has no documents. now truncate our local collection
-    SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), col->_cid, TRI_TRANSACTION_WRITE);
+    SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), col->cid(), TRI_TRANSACTION_WRITE);
 
     int res = trx.begin();
 
@@ -1019,7 +1020,7 @@ int InitialSyncer::handleCollectionSync(
 /// @brief incrementally fetch data from a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-int InitialSyncer::handleSyncKeys(TRI_vocbase_col_t* col,
+int InitialSyncer::handleSyncKeys(arangodb::LogicalCollection* col,
     std::string const& keysId, std::string const& cid,
     std::string const& collectionName, TRI_voc_tick_t maxTick,
     std::string& errorMsg) {
@@ -1037,7 +1038,7 @@ int InitialSyncer::handleSyncKeys(TRI_vocbase_col_t* col,
   // acquire a replication ditch so no datafiles are thrown away from now on
   // note: the ditch also protects against unloading the collection
   {    
-    SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), col->_cid, TRI_TRANSACTION_READ);
+    SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), col->cid(), TRI_TRANSACTION_READ);
   
     int res = trx.begin();
   
@@ -1060,7 +1061,7 @@ int InitialSyncer::handleSyncKeys(TRI_vocbase_col_t* col,
   TRI_DEFER(document->ditches()->freeDitch(ditch));
 
   {
-    SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), col->_cid, TRI_TRANSACTION_READ);
+    SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), col->cid(), TRI_TRANSACTION_READ);
   
     int res = trx.begin();
   
@@ -1194,7 +1195,7 @@ int InitialSyncer::handleSyncKeys(TRI_vocbase_col_t* col,
   // remove all keys that are below first remote key or beyond last remote key
   if (n > 0) {
     // first chunk
-    SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), col->_cid, TRI_TRANSACTION_WRITE);
+    SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), col->cid(), TRI_TRANSACTION_WRITE);
   
     int res = trx.begin();
   
@@ -1265,7 +1266,7 @@ int InitialSyncer::handleSyncKeys(TRI_vocbase_col_t* col,
       return TRI_ERROR_REPLICATION_APPLIER_STOPPED;
     }
     
-    SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), col->_cid, TRI_TRANSACTION_WRITE);
+    SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), col->cid(), TRI_TRANSACTION_WRITE);
   
     int res = trx.begin();
   
@@ -1274,7 +1275,7 @@ int InitialSyncer::handleSyncKeys(TRI_vocbase_col_t* col,
       return res;
     }
     
-    trx.orderDitch(col->_cid); // will throw when it fails
+    trx.orderDitch(col->cid()); // will throw when it fails
     
     auto idx = trx.documentCollection()->primaryIndex();
 
@@ -1622,19 +1623,22 @@ int InitialSyncer::handleSyncKeys(TRI_vocbase_col_t* col,
 /// provided
 ////////////////////////////////////////////////////////////////////////////////
 
-int InitialSyncer::changeCollection(TRI_vocbase_col_t* col,
+int InitialSyncer::changeCollection(arangodb::LogicalCollection* col,
                                     VPackSlice const& slice) {
-  arangodb::CollectionGuard guard(_vocbase, col->_cid);
+  arangodb::CollectionGuard guard(_vocbase, col->cid());
   bool doSync = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database")->forceSyncProperties();
-  return guard.collection()->_collection->updateCollectionInfo(_vocbase, slice, doSync);
+
+  return TRI_ERROR_NOT_IMPLEMENTED;
+#warning FIXME
+  // return guard.collection()->_collection->updateCollectionInfo(_vocbase, slice, doSync);
 }
  
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief determine the number of documents in a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-int64_t InitialSyncer::getSize(TRI_vocbase_col_t* col) {
-  SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), col->_cid, TRI_TRANSACTION_READ);
+int64_t InitialSyncer::getSize(arangodb::LogicalCollection* col) {
+  SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), col->cid(), TRI_TRANSACTION_READ);
 
   int res = trx.begin();
 
@@ -1707,7 +1711,7 @@ int InitialSyncer::handleCollection(VPackSlice const& parameters,
   if (phase == PHASE_DROP_CREATE) {
     if (!incremental) {
       // first look up the collection by the cid
-      TRI_vocbase_col_t* col = getCollectionByIdOrName(cid, masterName);
+      arangodb::LogicalCollection* col = getCollectionByIdOrName(cid, masterName);
 
       if (col != nullptr) {
         bool truncate = false;
@@ -1723,7 +1727,7 @@ int InitialSyncer::handleCollection(VPackSlice const& parameters,
           // system collection
           setProgress("truncating " + collectionMsg);
 
-          SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), col->_cid, TRI_TRANSACTION_WRITE);
+          SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), col->cid(), TRI_TRANSACTION_WRITE);
 
           int res = trx.begin();
 
@@ -1768,7 +1772,7 @@ int InitialSyncer::handleCollection(VPackSlice const& parameters,
       }
     }
 
-    TRI_vocbase_col_t* col = nullptr;
+    arangodb::LogicalCollection* col = nullptr;
 
     if (incremental) {
       col = getCollectionByIdOrName(cid, masterName);
@@ -1804,7 +1808,7 @@ int InitialSyncer::handleCollection(VPackSlice const& parameters,
     std::string const progress = "dumping data for " + collectionMsg;
     setProgress(progress.c_str());
 
-    TRI_vocbase_col_t* col = getCollectionByIdOrName(cid, masterName);
+    arangodb::LogicalCollection* col = getCollectionByIdOrName(cid, masterName);
 
     if (col == nullptr) {
       errorMsg = "cannot dump: " + collectionMsg + " not found";
@@ -1838,7 +1842,7 @@ int InitialSyncer::handleCollection(VPackSlice const& parameters,
           setProgress(progress);
 
           try {
-            SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), col->_cid, TRI_TRANSACTION_WRITE);
+            SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), col->cid(), TRI_TRANSACTION_WRITE);
       
             res = trx.begin();
 
@@ -1847,7 +1851,7 @@ int InitialSyncer::handleCollection(VPackSlice const& parameters,
               return res;
             }
 
-            trx.orderDitch(col->_cid); // will throw when it fails
+            trx.orderDitch(col->cid()); // will throw when it fails
       
             TRI_collection_t* document = trx.documentCollection();
             TRI_ASSERT(document != nullptr);

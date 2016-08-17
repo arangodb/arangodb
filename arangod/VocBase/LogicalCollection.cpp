@@ -23,9 +23,14 @@
 
 #include "LogicalCollection.h"
 
+#include "Basics/ReadLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/WriteLocker.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/StorageEngine.h"
+#include "VocBase/collection.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
@@ -81,40 +86,51 @@ static int GetObjectLength(VPackSlice info, std::string const& name, int def) {
   return static_cast<int>(info.length());
 }
 
-/*
-LogicalCollection::LogicalCollection() :
-  _cid(0),
-  _planId(0),
-  _type(TRI_COL_TYPE_UNKNOWN),
-  _name(""),
-  _status(TRI_VOC_COL_STATUS_CORRUPTED),
-  _isDeleted(true),
-  _doCompact(false),
-  _isSystem(false),
-  _isVolatile(false),
-  _waitForSync(false),
-  _keyOptions(nullptr),
-  _indexBuckets(0),
-  _indexes(nullptr),
-  _replicationFactor(0),
-  _numberOfShards(0),
-  _allowUserKeys(false),
-  _physical(nullptr) {
-  // TODO FIXME
-}
-*/
+// @brief Constructor used in DBServer/SingleServer case.
+LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
+                                     TRI_col_type_e type, TRI_voc_cid_t cid,
+                                     std::string const& name,
+                                     TRI_voc_cid_t planId,
+                                     std::string const& path, bool isLocal)
+    : _internalVersion(0),
+      _cid(cid),
+      _planId(planId),
+      _type(type),
+      _name(name),
+      _status(TRI_VOC_COL_STATUS_CORRUPTED),
+      _isLocal(isLocal),
+      // THESE VALUES HAVE ARBITRARY VALUES. FIX THEM.
+      _isDeleted(false),
+      _doCompact(false),
+      _isSystem(TRI_collection_t::IsSystemName(name)),
+      _isVolatile(false),
+      _waitForSync(false),
+      _keyOptions(nullptr),
+      _indexBuckets(1),
+      _replicationFactor(0),
+      _numberOfShards(1),
+      _allowUserKeys(true),
+      _shardIds(new ShardMap()),
+      _vocbase(vocbase),
+      // END OF ARBITRARY
+      _path(path),
+      _physical(nullptr),
+      _collection(nullptr),
+      _lock() {}
 
 // @brief Constructor used in coordinator case.
 // The Slice contains the part of the plan that
 // is relevant for this collection.
-LogicalCollection::LogicalCollection(VPackSlice info)
-    : _cid(basics::StringUtils::uint64(ReadStringValue(info, "id", "0"))),
+LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase, VPackSlice info)
+    : _internalVersion(0),
+      _cid(basics::StringUtils::uint64(ReadStringValue(info, "id", "0"))),
       _planId(_cid),
       _type(
           ReadNumericValue<TRI_col_type_e>(info, "type", TRI_COL_TYPE_UNKNOWN)),
       _name(ReadStringValue(info, "name", "")),
       _status(ReadNumericValue<TRI_vocbase_col_status_e>(
           info, "status", TRI_VOC_COL_STATUS_CORRUPTED)),
+      _isLocal(false),
       _isDeleted(ReadBooleanValue(info, "deleted", false)),
       _doCompact(ReadBooleanValue(info, "doCompact", false)),
       _isSystem(ReadBooleanValue(info, "isSystem", false)),
@@ -127,7 +143,10 @@ LogicalCollection::LogicalCollection(VPackSlice info)
       _numberOfShards(GetObjectLength(info, "shards", 0)),
       _allowUserKeys(ReadBooleanValue(info, "allowUserKeys", true)),
       _shardIds(new ShardMap()),
-      _physical(nullptr) {
+      _vocbase(vocbase),
+      _physical(nullptr),
+      _collection(nullptr),
+      _lock() {
   if (info.isObject()) {
     // Otherwise the cluster communication is broken.
     // We cannot store anything further.
@@ -166,6 +185,10 @@ size_t LogicalCollection::journalSize() const {
 
 // SECTION: Meta Information
 
+uint32_t LogicalCollection::version() const {
+  return _internalVersion;
+}
+
 TRI_voc_cid_t LogicalCollection::cid() const {
   return _cid;
 }
@@ -186,12 +209,37 @@ std::string const& LogicalCollection::name() const {
   return _name;
 }
 
-TRI_vocbase_col_status_e LogicalCollection::status() const {
+std::string const& LogicalCollection::dbName() const {
+  TRI_ASSERT(_vocbase != nullptr);
+  return _vocbase->name();
+}
+
+std::string const& LogicalCollection::path() const {
+  return _path;
+}
+
+TRI_vocbase_col_status_e LogicalCollection::status() {
   return _status;
 }
 
+TRI_vocbase_col_status_e LogicalCollection::getStatusLocked() {
+  READ_LOCKER(readLocker, _lock);
+  return _status;
+}
+
+TRI_vocbase_col_status_e LogicalCollection::tryFetchStatus(bool& didFetch) {
+  TRY_READ_LOCKER(locker, _lock);
+  if (locker.isLocked()) {
+    didFetch = true;
+    return _status;
+  }
+  didFetch = false;
+  return TRI_VOC_COL_STATUS_CORRUPTED;
+}
+
 /// @brief returns a translation of a collection status
-std::string const LogicalCollection::statusString() const {
+std::string const LogicalCollection::statusString() {
+  READ_LOCKER(readLocker, _lock);
   switch (_status) {
     case TRI_VOC_COL_STATUS_UNLOADED:
       return "unloaded";
@@ -211,6 +259,10 @@ std::string const LogicalCollection::statusString() const {
 }
 
 // SECTION: Properties
+
+bool LogicalCollection::isLocal() const {
+  return _isLocal;
+}
 
 bool LogicalCollection::deleted() const {
   return _isDeleted;
@@ -279,6 +331,7 @@ std::shared_ptr<ShardMap> LogicalCollection::shardIds() const {
 
 // SECTION: Modification Functions
 void LogicalCollection::rename(std::string const& newName) {
+  TRI_ASSERT(false);
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   _name = newName;
 }
@@ -286,6 +339,16 @@ void LogicalCollection::rename(std::string const& newName) {
 void LogicalCollection::drop() {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   _isDeleted = true;
+}
+
+void LogicalCollection::setStatus(TRI_vocbase_col_status_e status) {
+  _status = status;
+
+  if (status == TRI_VOC_COL_STATUS_LOADED) {
+    _internalVersion = 0;
+  } else if (status == TRI_VOC_COL_STATUS_UNLOADED) {
+    _collection = nullptr;
+  }
 }
 
 void LogicalCollection::toVelocyPack(VPackBuilder& result) const {
@@ -323,8 +386,21 @@ void LogicalCollection::toVelocyPack(VPackBuilder& result) const {
   result.close(); // Base Object
 }
 
+void LogicalCollection::toVelocyPack(VPackBuilder& builder, bool includeIndexes,
+                                     TRI_voc_tick_t maxTick) {
+  TRI_ASSERT(!builder.isClosed());
+  
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  engine->getCollectionInfo(_vocbase, _cid, builder, includeIndexes, maxTick);
+}
+
+
 TRI_vocbase_t* LogicalCollection::vocbase() const {
   return _vocbase;
+}
+
+void LogicalCollection::increaseVersion() {
+  ++_internalVersion;
 }
 
 int LogicalCollection::update(VPackSlice const&, bool, TRI_vocbase_t const*) {

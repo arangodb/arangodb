@@ -29,10 +29,9 @@
 #include "RestHandler/RestVocbaseBaseHandler.h"
 #include "VocBase/replication-common.h"
 
-class TRI_vocbase_col_t;
-
 namespace arangodb {
 class CollectionNameResolver;
+class LogicalCollection;
 class Transaction;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -54,14 +53,14 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   /// because edges depend on vertices being there), then name
   //////////////////////////////////////////////////////////////////////////////
 
-  static bool sortCollections(TRI_vocbase_col_t const*,
-                              TRI_vocbase_col_t const*);
+  static bool sortCollections(arangodb::LogicalCollection const*,
+                              arangodb::LogicalCollection const*);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief filter a collection based on collection attributes
   //////////////////////////////////////////////////////////////////////////////
 
-  static bool filterCollection(TRI_vocbase_col_t*, void*);
+  static bool filterCollection(arangodb::LogicalCollection*, void*);
 
  private:
   //////////////////////////////////////////////////////////////////////////////
@@ -159,7 +158,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   /// @brief creates a collection, based on the VelocyPack provided TODO: MOVE
   //////////////////////////////////////////////////////////////////////////////
 
-  int createCollection(VPackSlice const&, TRI_vocbase_col_t**, bool);
+  int createCollection(VPackSlice const&, arangodb::LogicalCollection**, bool);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief handle a restore command for a specific collection

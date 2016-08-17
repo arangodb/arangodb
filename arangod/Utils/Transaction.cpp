@@ -1073,6 +1073,13 @@ int Transaction::finish(int errorNum) {
   return errorNum;
 }
 
+std::string Transaction::name(TRI_voc_cid_t cid) const {
+  auto c = trxCollection(cid);
+  TRI_ASSERT(c != nullptr);
+  return c->_collection->name();
+}
+
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief read any (random) document
 ////////////////////////////////////////////////////////////////////////////////
@@ -1203,7 +1210,7 @@ bool Transaction::isDocumentCollection(std::string const& collectionName) {
 /// @brief return the type of a collection
 //////////////////////////////////////////////////////////////////////////////
   
-TRI_col_type_t Transaction::getCollectionType(std::string const& collectionName) {
+TRI_col_type_e Transaction::getCollectionType(std::string const& collectionName) {
   if (ServerState::isCoordinator(_serverRole)) {
     return resolver()->getCollectionTypeCluster(collectionName);
   }

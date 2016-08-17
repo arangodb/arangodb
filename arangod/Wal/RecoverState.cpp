@@ -35,6 +35,7 @@
 #include "Utils/StandaloneTransactionContext.h"
 #include "VocBase/collection.h"
 #include "VocBase/DatafileHelper.h"
+#include "VocBase/LogicalCollection.h"
 #include "Wal/LogfileManager.h"
 #include "Wal/Slots.h"
 
@@ -94,8 +95,8 @@ void RecoverState::releaseResources() {
   // release all collections
   for (auto it = openedCollections.begin(); it != openedCollections.end();
        ++it) {
-    TRI_vocbase_col_t* collection = (*it).second;
-    collection->_vocbase->releaseCollection(collection);
+    arangodb::LogicalCollection* collection = it->second;
+    collection->vocbase()->releaseCollection(collection);
   }
 
   openedCollections.clear();
@@ -142,13 +143,13 @@ TRI_vocbase_t* RecoverState::releaseDatabase(TRI_voc_tick_t databaseId) {
   auto it2 = openedCollections.begin();
 
   while (it2 != openedCollections.end()) {
-    TRI_vocbase_col_t* collection = (*it2).second;
+    arangodb::LogicalCollection* collection = it2->second;
 
     TRI_ASSERT(collection != nullptr);
 
-    if (collection->_vocbase->id() == databaseId) {
+    if (collection->vocbase()->id() == databaseId) {
       // correct database, now release the collection
-      TRI_ASSERT(vocbase == collection->_vocbase);
+      TRI_ASSERT(vocbase == collection->vocbase());
       vocbase->releaseCollection(collection);
       // get new iterator position
       it2 = openedCollections.erase(it2);
@@ -165,26 +166,25 @@ TRI_vocbase_t* RecoverState::releaseDatabase(TRI_voc_tick_t databaseId) {
 }
 
 /// @brief release a collection (so it can be dropped)
-TRI_vocbase_col_t* RecoverState::releaseCollection(TRI_voc_cid_t collectionId) {
+arangodb::LogicalCollection* RecoverState::releaseCollection(TRI_voc_cid_t collectionId) {
   auto it = openedCollections.find(collectionId);
 
   if (it == openedCollections.end()) {
     return nullptr;
   }
 
-  TRI_vocbase_col_t* collection = (*it).second;
+  arangodb::LogicalCollection* collection = it->second;
 
   TRI_ASSERT(collection != nullptr);
-  collection->_vocbase->releaseCollection(collection);
+  collection->vocbase()->releaseCollection(collection);
   openedCollections.erase(collectionId);
 
   return collection;
 }
 
 /// @brief gets a collection (and inserts it into the cache if not in it)
-TRI_vocbase_col_t* RecoverState::useCollection(TRI_vocbase_t* vocbase,
-                                               TRI_voc_cid_t collectionId,
-                                               int& res) {
+arangodb::LogicalCollection* RecoverState::useCollection(
+    TRI_vocbase_t* vocbase, TRI_voc_cid_t collectionId, int& res) {
   auto it = openedCollections.find(collectionId);
 
   if (it != openedCollections.end()) {
@@ -194,7 +194,7 @@ TRI_vocbase_col_t* RecoverState::useCollection(TRI_vocbase_t* vocbase,
 
   TRI_set_errno(TRI_ERROR_NO_ERROR);
   TRI_vocbase_col_status_e status;  // ignored here
-  TRI_vocbase_col_t* collection = vocbase->useCollection(collectionId, status);
+  arangodb::LogicalCollection* collection = vocbase->useCollection(collectionId, status);
 
   if (collection == nullptr) {
     res = TRI_errno();
@@ -231,7 +231,7 @@ TRI_collection_t* RecoverState::getCollection(
   }
 
   int res;
-  TRI_vocbase_col_t* collection = useCollection(vocbase, collectionId, res);
+  arangodb::LogicalCollection* collection = useCollection(vocbase, collectionId, res);
 
   if (collection == nullptr) {
     LOG(TRACE) << "collection " << collectionId << " of database " << databaseId << " not found";
@@ -258,7 +258,7 @@ int RecoverState::executeSingleOperation(
   }
 
   int res;
-  TRI_vocbase_col_t* collection = useCollection(vocbase, collectionId, res);
+  arangodb::LogicalCollection* collection = useCollection(vocbase, collectionId, res);
 
   if (collection == nullptr || collection->_collection == nullptr) {
     if (res == TRI_ERROR_ARANGO_CORRUPTED_COLLECTION) {
@@ -571,7 +571,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
           return true;
         }
 
-        TRI_vocbase_col_t* collection = state->releaseCollection(collectionId);
+        arangodb::LogicalCollection* collection = state->releaseCollection(collectionId);
 
         if (collection == nullptr) {
           collection = vocbase->lookupCollection(collectionId);
@@ -592,10 +592,10 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
         std::string name = nameSlice.copyString();
 
         // check if other collection exist with target name
-        TRI_vocbase_col_t* other = vocbase->lookupCollection(name);
+        arangodb::LogicalCollection* other = vocbase->lookupCollection(name);
 
         if (other != nullptr) {
-          TRI_voc_cid_t otherCid = other->_cid;
+          TRI_voc_cid_t otherCid = other->cid();
           state->releaseCollection(otherCid);
           vocbase->dropCollection(other, false);
         }
@@ -694,7 +694,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
           return true;
         }
         
-        TRI_vocbase_col_t* col = vocbase->lookupCollection(collectionId);
+        arangodb::LogicalCollection* col = vocbase->lookupCollection(collectionId);
 
         if (col == nullptr) {
           // if the underlying collection gone, we can go on
@@ -762,7 +762,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
           return true;
         }
 
-        TRI_vocbase_col_t* collection = state->releaseCollection(collectionId);
+        arangodb::LogicalCollection* collection = state->releaseCollection(collectionId);
 
         if (collection == nullptr) {
           collection = vocbase->lookupCollection(collectionId);
@@ -787,7 +787,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
           collection = vocbase->lookupCollection(name);
 
           if (collection != nullptr) {  
-            TRI_voc_cid_t otherCid = collection->_cid;
+            TRI_voc_cid_t otherCid = collection->cid();
 
             state->releaseCollection(otherCid);
             vocbase->dropCollection(collection, false);
@@ -929,7 +929,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
           return true;
         }
 
-        TRI_vocbase_col_t* col = vocbase->lookupCollection(collectionId);
+        arangodb::LogicalCollection* col = vocbase->lookupCollection(collectionId);
 
         if (col == nullptr) {
           // if the underlying collection gone, we can go on
@@ -970,7 +970,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
         }
 
         // ignore any potential error returned by this call
-        TRI_vocbase_col_t* collection = state->releaseCollection(collectionId);
+        arangodb::LogicalCollection* collection = state->releaseCollection(collectionId);
 
         if (collection == nullptr) {
           collection = vocbase->lookupCollection(collectionId);
@@ -1147,7 +1147,7 @@ int RecoverState::fillIndexes() {
   // release all collections
   for (auto it = openedCollections.begin(); it != openedCollections.end();
        ++it) {
-    TRI_vocbase_col_t* collection = (*it).second;
+    arangodb::LogicalCollection* collection = (*it).second;
     TRI_collection_t* document = collection->_collection;
 
     TRI_ASSERT(document != nullptr);
@@ -1155,7 +1155,7 @@ int RecoverState::fillIndexes() {
     // activate secondary indexes
     document->useSecondaryIndexes(true);
 
-    arangodb::SingleCollectionTransaction trx(arangodb::StandaloneTransactionContext::Create(collection->_vocbase),
+    arangodb::SingleCollectionTransaction trx(arangodb::StandaloneTransactionContext::Create(collection->vocbase()),
         document->_info.id(), TRI_TRANSACTION_WRITE);
 
     int res = document->fillIndexes(&trx, collection);

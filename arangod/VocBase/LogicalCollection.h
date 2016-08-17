@@ -46,12 +46,17 @@ class PhysicalCollection;
 class LogicalCollection {
  public:
 
-  // CTOR needs planId, cid
-  explicit LogicalCollection(arangodb::velocypack::Slice);
+  LogicalCollection(TRI_vocbase_t* vocbase, TRI_col_type_e type,
+                    TRI_voc_cid_t cid, std::string const& name, TRI_voc_cid_t planId,
+                    std::string const& path, bool isLocal);
+
+  LogicalCollection(TRI_vocbase_t*, arangodb::velocypack::Slice);
 
   ~LogicalCollection();
 
   // SECTION: Meta Information
+  uint32_t version() const;
+
   TRI_voc_cid_t cid() const;
   std::string cid_as_string() const;
 
@@ -60,14 +65,23 @@ class LogicalCollection {
   TRI_col_type_e type() const;
 
   std::string const& name() const;
+  std::string const& dbName() const;
+  std::string const& path() const;
 
-  TRI_vocbase_col_status_e status() const;
-  std::string const statusString() const;
+  TRI_vocbase_col_status_e status();
+  TRI_vocbase_col_status_e getStatusLocked();
+
+  /// @brief try to fetch the collection status under a lock
+  /// the boolean value will be set to true if the lock could be acquired
+  /// if the boolean is false, the return value is always TRI_VOC_COL_STATUS_CORRUPTED 
+  TRI_vocbase_col_status_e tryFetchStatus(bool&);
+  std::string const statusString();
 
   // TODO this should be part of physical collection!
   size_t journalSize() const;
 
   // SECTION: Properties
+  bool isLocal() const;
   bool deleted() const;
   bool doCompact() const;
   bool isSystem() const;
@@ -97,9 +111,14 @@ class LogicalCollection {
   void rename(std::string const&);
   void drop();
 
+  void setStatus(TRI_vocbase_col_status_e);
 
   // SECTION: Serialisation
   void toVelocyPack(arangodb::velocypack::Builder&) const;
+
+  /// @brief transform the information for this collection to velocypack
+  ///        The builder has to be an opened Type::Object
+  void toVelocyPack(arangodb::velocypack::Builder&, bool, TRI_voc_tick_t);
 
   TRI_vocbase_t* vocbase() const;
 
@@ -110,6 +129,7 @@ class LogicalCollection {
   int saveToFile(bool) const;
 
   // Update this collection.
+  void increaseVersion();
   int update(arangodb::velocypack::Slice const&, bool, TRI_vocbase_t const*);
   int update(VocbaseCollectionInfo const&);
 
@@ -119,6 +139,9 @@ class LogicalCollection {
   // SECTION: Private variables
 
   // SECTION: Meta Information
+  //
+  // @brief Internal version used for caching
+  uint32_t _internalVersion;
 
   // @brief Local collection id
   TRI_voc_cid_t const _cid;
@@ -136,6 +159,7 @@ class LogicalCollection {
   TRI_vocbase_col_status_e _status;
 
   // SECTION: Properties
+  bool _isLocal;
   bool _isDeleted;
   bool _doCompact;
   bool const _isSystem;
@@ -169,7 +193,16 @@ class LogicalCollection {
 
   TRI_vocbase_t* _vocbase;
 
+  // SECTION: Local Only
+  std::string const _path;
   PhysicalCollection* _physical;
+
+// TODO REMOVE ME!
+ public:
+  TRI_collection_t* _collection;
+
+  arangodb::basics::ReadWriteLock _lock;  // lock protecting the status and name
+
 };
 }  // namespace arangodb
 

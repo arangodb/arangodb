@@ -38,6 +38,7 @@
 #include "VocBase/DatafileHelper.h"
 #include "VocBase/DatafileStatistics.h"
 #include "VocBase/collection.h"
+#include "VocBase/LogicalCollection.h"
 #include "Wal/Logfile.h"
 #include "Wal/LogfileManager.h"
 
@@ -631,7 +632,7 @@ int CollectorThread::processCollectionOperations(CollectorCache* cache) {
   TRI_ASSERT(vocbase != nullptr);
 
   arangodb::CollectionGuard collectionGuard(vocbase, cache->collectionId, true);
-  TRI_vocbase_col_t* collection = collectionGuard.collection();
+  arangodb::LogicalCollection* collection = collectionGuard.collection();
 
   TRI_ASSERT(collection != nullptr);
 
@@ -858,7 +859,7 @@ int CollectorThread::transferMarkers(Logfile* logfile,
   TRI_ASSERT(vocbase != nullptr);
 
   arangodb::CollectionGuard collectionGuard(vocbase, collectionId, true);
-  TRI_vocbase_col_t* collection = collectionGuard.collection();
+  arangodb::LogicalCollection* collection = collectionGuard.collection();
   TRI_ASSERT(collection != nullptr);
 
   TRI_collection_t* document = collection->_collection;

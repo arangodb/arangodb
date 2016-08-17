@@ -58,6 +58,7 @@
 #include "VocBase/DatafileHelper.h"
 #include "VocBase/IndexPoolFeature.h"
 #include "VocBase/KeyGenerator.h"
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 #include "Wal/DocumentOperation.h"
@@ -1625,45 +1626,6 @@ bool TRI_collection_t::closeDataFiles(std::vector<TRI_datafile_t*> const& files)
 /// @brief get the full directory name for a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static std::string GetCollectionDirectory(std::string const& path, TRI_voc_cid_t cid) {
-  std::string filename("collection-");
-  filename.append(std::to_string(cid));
-  filename.push_back('-');
-  filename.append(std::to_string(RandomGenerator::interval(UINT32_MAX)));
-
-  return arangodb::basics::FileUtils::buildFilename(path, filename);
-}
-
-VocbaseCollectionInfo::VocbaseCollectionInfo(CollectionInfo const& other)
-    : _version(TRI_COL_VERSION),
-      _type(other.type()),
-      _revision(0),      // not known in the cluster case on the coordinator
-      _cid(other.id()),  // this is on the coordinator and describes a
-                         // cluster-wide collection, for safety reasons,
-                         // we also set _cid
-      _planId(other.id()),
-      _maximalSize(other.journalSize()),
-      _initialCount(-1),
-      _indexBuckets(other.indexBuckets()),
-      _keyOptions(nullptr),
-      _isSystem(other.isSystem()),
-      _deleted(other.deleted()),
-      _doCompact(other.doCompact()),
-      _isVolatile(other.isVolatile()),
-      _waitForSync(other.waitForSync()) {
-  std::string const name = other.name();
-  memset(_name, 0, sizeof(_name));
-  memcpy(_name, name.c_str(), name.size());
-
-  VPackSlice keyOptionsSlice(other.keyOptions());
-
-  if (!keyOptionsSlice.isNone()) {
-    VPackBuilder builder;
-    builder.add(keyOptionsSlice);
-    _keyOptions = builder.steal();
-  }
-}
-
 VocbaseCollectionInfo::VocbaseCollectionInfo(TRI_vocbase_t* vocbase,
                                              std::string const& name,
                                              TRI_col_type_e type,
@@ -2183,7 +2145,7 @@ int TRI_collection_t::cleanupIndexes() {
 
 /// @brief fill the additional (non-primary) indexes
 int TRI_collection_t::fillIndexes(arangodb::Transaction* trx,
-                                  TRI_vocbase_col_t* collection) {
+                                  arangodb::LogicalCollection* collection) {
   // distribute the work to index threads plus this thread
   auto const& indexes = allIndexes();
   size_t const n = indexes.size();
@@ -5278,7 +5240,7 @@ TRI_collection_t* TRI_collection_t::create(
 
 /// @brief opens an existing collection
 TRI_collection_t* TRI_collection_t::open(TRI_vocbase_t* vocbase,
-                                         TRI_vocbase_col_t* col,
+                                         arangodb::LogicalCollection* col,
                                          bool ignoreErrors) {
   VPackBuilder builder;
   StorageEngine* engine = EngineSelectorFeature::ENGINE;

@@ -31,6 +31,7 @@
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterInfo.h"
 #include "Indexes/Index.h"
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/Traverser.h"
 #include "VocBase/ticks.h"
 

@@ -31,10 +31,10 @@
 
 class TRI_replication_applier_configuration_t;
 struct TRI_vocbase_t;
-class TRI_vocbase_col_t;
 
 namespace arangodb {
 class Endpoint;
+class LogicalCollection;
 
 namespace velocypack {
 class Slice;
@@ -123,8 +123,9 @@ class Syncer {
   ///////////////////////////////////////////////////////////////////////////////
   /// @brief extract the collection by either id or name, may return nullptr!
   ////////////////////////////////////////////////////////////////////////////////
-  
-  TRI_vocbase_col_t* getCollectionByIdOrName(TRI_voc_cid_t cid, std::string const& name);
+
+  arangodb::LogicalCollection* getCollectionByIdOrName(TRI_voc_cid_t cid,
+                                                       std::string const& name);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief apply a single marker from the collection dump
@@ -141,7 +142,8 @@ class Syncer {
   /// @brief creates a collection, based on the VelocyPack provided
   //////////////////////////////////////////////////////////////////////////////
 
-  int createCollection(arangodb::velocypack::Slice const&, TRI_vocbase_col_t**);
+  int createCollection(arangodb::velocypack::Slice const&,
+                       arangodb::LogicalCollection**);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief drops a collection, based on the VelocyPack provided

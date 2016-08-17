@@ -34,6 +34,7 @@
 #include "Utils/CursorRepository.h"
 #include "VocBase/Ditch.h"
 #include "VocBase/collection.h"
+#include "VocBase/LogicalCollection.h"
 #include "Wal/LogfileManager.h"
 
 using namespace arangodb;
@@ -53,7 +54,7 @@ void CleanupThread::run() {
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   uint64_t iterations = 0;
 
-  std::vector<TRI_vocbase_col_t*> collections;
+  std::vector<arangodb::LogicalCollection*> collections;
 
   while (true) {
     // keep initial _state value as vocbase->_state might change during cleanup
@@ -148,7 +149,7 @@ void CleanupThread::cleanupCursors(bool force) {
 }
 
 /// @brief checks all datafiles of a collection
-void CleanupThread::cleanupCollection(TRI_vocbase_col_t* collection,
+void CleanupThread::cleanupCollection(arangodb::LogicalCollection* collection,
                                       TRI_collection_t* document) {
   // unload operations can normally only be executed when a collection is fully
   // garbage collected

@@ -37,6 +37,7 @@
 #include "Utils/CollectionGuard.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/collection.h"
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/transaction.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
@@ -490,12 +491,12 @@ int ContinuousSyncer::processDocument(TRI_replication_operation_e type,
     std::string const cnameString = cname.copyString();
     isSystem = (!cnameString.empty() && cnameString[0] == '_');
 
-    TRI_vocbase_col_t* col = getCollectionByIdOrName(cid, cnameString);
+    arangodb::LogicalCollection* col = getCollectionByIdOrName(cid, cnameString);
 
-    if (col != nullptr && col->_cid != cid) {
+    if (col != nullptr && col->cid() != cid) {
       // cid change? this may happen for system collections or if we restored
       // from a dump
-      cid = col->_cid;
+      cid = col->cid();
     }
   }
 
@@ -749,7 +750,7 @@ int ContinuousSyncer::renameCollection(VPackSlice const& slice) {
   }
 
   TRI_voc_cid_t const cid = getCid(slice);
-  TRI_vocbase_col_t* col = getCollectionByIdOrName(cid, cname);
+  arangodb::LogicalCollection* col = getCollectionByIdOrName(cid, cname);
 
   if (col == nullptr) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
@@ -770,7 +771,7 @@ int ContinuousSyncer::changeCollection(VPackSlice const& slice) {
 
   TRI_voc_cid_t cid = getCid(slice);
   std::string const cname = getCName(slice);
-  TRI_vocbase_col_t* col = getCollectionByIdOrName(cid, cname);
+  arangodb::LogicalCollection* col = getCollectionByIdOrName(cid, cname);
   
   if (col == nullptr) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
@@ -783,7 +784,9 @@ int ContinuousSyncer::changeCollection(VPackSlice const& slice) {
 
   arangodb::CollectionGuard guard(_vocbase, cid);
   bool doSync = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database")->forceSyncProperties();
-  return guard.collection()->_collection->updateCollectionInfo(_vocbase, data, doSync);
+  return TRI_ERROR_NOT_IMPLEMENTED;
+#warning FIXME
+  // return guard.collection()->_collection->updateCollectionInfo(_vocbase, data, doSync);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

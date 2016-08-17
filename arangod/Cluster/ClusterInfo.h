@@ -32,7 +32,6 @@
 #include "Basics/ReadWriteLock.h"
 #include "Cluster/AgencyComm.h"
 #include "Cluster/AgencyCallbackRegistry.h"
-#include "VocBase/LogicalCollection.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
@@ -306,8 +305,7 @@ class ClusterInfo {
   /// @brief ask about all collections
   //////////////////////////////////////////////////////////////////////////////
 
-  std::vector<std::shared_ptr<LogicalCollection>> const getCollections(
-      DatabaseID const&);
+  std::vector<LogicalCollection*> const getCollections(DatabaseID const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief (re-)load the information about current collections from the agency

@@ -23,6 +23,7 @@
 
 #include "v8-vocindex.h"
 #include "Basics/conversions.h"
+#include "Basics/ReadLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
 #include "Basics/VelocyPackHelper.h"
@@ -45,6 +46,7 @@
 #include "V8Server/v8-vocbase.h"
 #include "V8Server/v8-vocbaseprivate.h"
 #include "VocBase/modes.h"
+#include "VocBase/LogicalCollection.h"
 
 #ifdef ARANGODB_ENABLE_ROCKSDB
 #include "Indexes/RocksDBIndex.h"
@@ -453,7 +455,7 @@ static int EnhanceIndexJson(v8::FunctionCallbackInfo<v8::Value> const& args,
 
 static void EnsureIndexCoordinator(
     v8::FunctionCallbackInfo<v8::Value> const& args,
-    TRI_vocbase_col_t const* collection, VPackSlice const slice, bool create) {
+    LogicalCollection const* collection, VPackSlice const slice, bool create) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
@@ -461,7 +463,7 @@ static void EnsureIndexCoordinator(
   TRI_ASSERT(!slice.isNone());
 
   std::string const databaseName(collection->dbName());
-  std::string const cid = StringUtils::itoa(collection->_cid);
+  std::string const cid = collection->cid_as_string();
   std::string const collectionName(collection->name());
 
   VPackBuilder resultBuilder;
@@ -492,7 +494,7 @@ static void EnsureIndexCoordinator(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void EnsureIndexLocal(v8::FunctionCallbackInfo<v8::Value> const& args,
-                             TRI_vocbase_col_t const* collection,
+                             arangodb::LogicalCollection const* collection,
                              VPackSlice const& slice, bool create) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
@@ -579,9 +581,11 @@ static void EnsureIndexLocal(v8::FunctionCallbackInfo<v8::Value> const& args,
     }
   }
   
-  READ_LOCKER(readLocker, collection->_vocbase->_inventoryLock);
+  READ_LOCKER(readLocker, collection->vocbase()->_inventoryLock);
 
-  SingleCollectionTransaction trx(V8TransactionContext::Create(collection->_vocbase, true), collection->_cid, create ? TRI_TRANSACTION_WRITE : TRI_TRANSACTION_READ);
+  SingleCollectionTransaction trx(
+      V8TransactionContext::Create(collection->vocbase(), true),
+      collection->cid(), create ? TRI_TRANSACTION_WRITE : TRI_TRANSACTION_READ);
 
   int res = trx.begin();
 
@@ -772,8 +776,8 @@ static void EnsureIndex(v8::FunctionCallbackInfo<v8::Value> const& args,
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
-  TRI_vocbase_col_t* collection =
-      TRI_UnwrapClass<TRI_vocbase_col_t>(args.Holder(), WRP_VOCBASE_COL_TYPE);
+  arangodb::LogicalCollection* collection =
+      TRI_UnwrapClass<arangodb::LogicalCollection>(args.Holder(), WRP_VOCBASE_COL_TYPE);
 
   if (collection == nullptr) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
@@ -1119,7 +1123,7 @@ static void JS_LookupIndexVocbaseCol(
 
 static void DropIndexCoordinator(
     v8::FunctionCallbackInfo<v8::Value> const& args,
-    TRI_vocbase_col_t const* collection, v8::Handle<v8::Value> const val) {
+    arangodb::LogicalCollection const* collection, v8::Handle<v8::Value> const val) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
@@ -1147,7 +1151,7 @@ static void DropIndexCoordinator(
   }
 
   if (!collectionName.empty()) {
-    CollectionNameResolver resolver(collection->_vocbase);
+    CollectionNameResolver resolver(collection->vocbase());
 
     if (!EqualCollection(&resolver, collectionName, collection)) {
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_CROSS_COLLECTION_REQUEST);
@@ -1155,7 +1159,7 @@ static void DropIndexCoordinator(
   }
 
   std::string const databaseName(collection->dbName());
-  std::string const cid = StringUtils::itoa(collection->_cid);
+  std::string const cid = collection->cid_as_string();
   std::string errorMsg;
 
   int res = ClusterInfo::instance()->dropIndexCoordinator(databaseName, cid,
@@ -1178,8 +1182,8 @@ static void JS_DropIndexVocbaseCol(
 
   PREVENT_EMBEDDED_TRANSACTION();
 
-  TRI_vocbase_col_t* collection =
-      TRI_UnwrapClass<TRI_vocbase_col_t>(args.Holder(), WRP_VOCBASE_COL_TYPE);
+  arangodb::LogicalCollection* collection =
+      TRI_UnwrapClass<arangodb::LogicalCollection>(args.Holder(), WRP_VOCBASE_COL_TYPE);
 
   if (collection == nullptr) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
@@ -1194,9 +1198,11 @@ static void JS_DropIndexVocbaseCol(
     return;
   }
   
-  READ_LOCKER(readLocker, collection->_vocbase->_inventoryLock);
+  READ_LOCKER(readLocker, collection->vocbase()->_inventoryLock);
 
-  SingleCollectionTransaction trx(V8TransactionContext::Create(collection->_vocbase, true), collection->_cid, TRI_TRANSACTION_WRITE);
+  SingleCollectionTransaction trx(
+      V8TransactionContext::Create(collection->vocbase(), true),
+      collection->cid(), TRI_TRANSACTION_WRITE);
 
   int res = trx.begin();
 
@@ -1233,12 +1239,13 @@ static void JS_DropIndexVocbaseCol(
 
 static void GetIndexesCoordinator(
     v8::FunctionCallbackInfo<v8::Value> const& args,
-    TRI_vocbase_col_t const* collection) {
+    arangodb::LogicalCollection const* collection) {
+#warning This may be obsolete.
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
   std::string const databaseName(collection->dbName());
-  std::string const cid = StringUtils::itoa(collection->_cid);
+  std::string const cid = collection->cid_as_string();
   std::string const collectionName(collection->name());
 
   std::shared_ptr<LogicalCollection> c =
@@ -1273,8 +1280,8 @@ static void JS_GetIndexesVocbaseCol(
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  TRI_vocbase_col_t* collection =
-      TRI_UnwrapClass<TRI_vocbase_col_t>(args.Holder(), WRP_VOCBASE_COL_TYPE);
+  arangodb::LogicalCollection* collection =
+      TRI_UnwrapClass<arangodb::LogicalCollection>(args.Holder(), WRP_VOCBASE_COL_TYPE);
 
   if (collection == nullptr) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
@@ -1290,7 +1297,9 @@ static void JS_GetIndexesVocbaseCol(
     withFigures = TRI_ObjectToBoolean(args[0]);
   }
 
-  SingleCollectionTransaction trx(V8TransactionContext::Create(collection->_vocbase, true), collection->_cid, TRI_TRANSACTION_READ);
+  SingleCollectionTransaction trx(
+      V8TransactionContext::Create(collection->vocbase(), true),
+      collection->cid(), TRI_TRANSACTION_READ);
 
   int res = trx.begin();
 
@@ -1330,7 +1339,7 @@ static void JS_GetIndexesVocbaseCol(
 
 arangodb::Index* TRI_LookupIndexByHandle(
     v8::Isolate* isolate, arangodb::CollectionNameResolver const* resolver,
-    TRI_vocbase_col_t const* collection, v8::Handle<v8::Value> const val,
+    arangodb::LogicalCollection const* collection, v8::Handle<v8::Value> const val,
     bool ignoreNotFound) {
   // reset the collection identifier
   std::string collectionName;
@@ -1455,7 +1464,8 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
     return;
   }
 
-  TRI_vocbase_col_t const* collection = vocbase->createCollection(parameters, parameters.id(), true);
+  arangodb::LogicalCollection const* collection =
+      vocbase->createCollection(parameters, parameters.id(), true);
 
   if (collection == nullptr) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_errno(), "cannot create collection");

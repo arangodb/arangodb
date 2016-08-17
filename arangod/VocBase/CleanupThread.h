@@ -29,10 +29,10 @@
 #include "Basics/Thread.h"
 
 struct TRI_collection_t;
-class TRI_vocbase_col_t;
 struct TRI_vocbase_t;
 
 namespace arangodb {
+class LogicalCollection;
 
 class CleanupThread : public Thread {
  public:
@@ -58,7 +58,8 @@ class CleanupThread : public Thread {
   void cleanupCursors(bool force);
 
   /// @brief checks all datafiles of a collection
-  void cleanupCollection(TRI_vocbase_col_t* collection, TRI_collection_t* document);
+  void cleanupCollection(arangodb::LogicalCollection* collection,
+                         TRI_collection_t* document);
 
  private:
   TRI_vocbase_t* _vocbase;

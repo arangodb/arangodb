@@ -116,10 +116,10 @@ struct RecoverState {
   TRI_vocbase_t* releaseDatabase(TRI_voc_tick_t);
 
   /// @brief release a collection (so it can be dropped)
-  TRI_vocbase_col_t* releaseCollection(TRI_voc_cid_t);
+  arangodb::LogicalCollection* releaseCollection(TRI_voc_cid_t);
 
   /// @brief gets a collection (and inserts it into the cache if not in it)
-  TRI_vocbase_col_t* useCollection(TRI_vocbase_t*, TRI_voc_cid_t, int&);
+  arangodb::LogicalCollection* useCollection(TRI_vocbase_t*, TRI_voc_cid_t, int&);
 
   /// @brief looks up a collection
   /// the collection will be opened after this call and inserted into a local
@@ -165,7 +165,7 @@ struct RecoverState {
 
   TRI_voc_tick_t lastTick;
   std::vector<Logfile*> logfilesToProcess;
-  std::unordered_map<TRI_voc_cid_t, TRI_vocbase_col_t*> openedCollections;
+  std::unordered_map<TRI_voc_cid_t, arangodb::LogicalCollection*> openedCollections;
   std::unordered_map<TRI_voc_tick_t, TRI_vocbase_t*> openedDatabases;
   std::vector<std::string> emptyLogfiles;
 

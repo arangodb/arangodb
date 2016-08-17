@@ -56,7 +56,7 @@ class VppCommTask : public GeneralCommTask {
 
  protected:
   void completedWriteBuffer() override final;
-  virtual void handleChunk(char const*, size_t) {}
+  virtual void handleChunk(char const*, size_t) override {}
 
  private:
   // resets the internal state this method can be called to clean up when the

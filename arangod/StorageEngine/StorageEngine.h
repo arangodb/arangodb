@@ -233,7 +233,7 @@ class StorageEngine : public application_features::ApplicationFeature {
                                     bool checkForActiveBlockers) = 0;
   
  protected:
-  TRI_vocbase_col_t* registerCollection(bool doLock, TRI_vocbase_t* vocbase, TRI_col_type_e type, TRI_voc_cid_t cid, 
+  arangodb::LogicalCollection* registerCollection(bool doLock, TRI_vocbase_t* vocbase, TRI_col_type_e type, TRI_voc_cid_t cid, 
                                         std::string const& name, TRI_voc_cid_t planId, std::string const& path) {
     return vocbase->registerCollection(doLock, type, cid, name, planId, path);
   }

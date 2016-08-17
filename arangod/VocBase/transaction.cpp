@@ -31,6 +31,7 @@
 #include "Wal/DocumentOperation.h"
 #include "Wal/LogfileManager.h"
 #include "Utils/Transaction.h"
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/modes.h"
 
 #ifdef ARANGODB_ENABLE_ROCKSDB

@@ -52,10 +52,7 @@ struct Collection {
   inline void resetCurrentShard() { currentShard = ""; }
 
   /// @brief get the collection id
-  inline TRI_voc_cid_t cid() const {
-    TRI_ASSERT(collection != nullptr);
-    return collection->_cid;
-  }
+  TRI_voc_cid_t cid() const;
 
   /// @brief returns the name of the collection, translated for the sharding
   /// case. this will return currentShard if it is set, and name otherwise
@@ -89,11 +86,11 @@ struct Collection {
   bool usesDefaultSharding() const;
 
   /// @brief set the underlying collection
-  void setCollection(TRI_vocbase_col_t* coll) { collection = coll; }
+  void setCollection(arangodb::LogicalCollection* coll) { collection = coll; }
 
  private:
 
-  TRI_vocbase_col_t* collection;
+  arangodb::LogicalCollection* collection;
 
   /// @brief currently handled shard. this is a temporary variable that will
   /// only be filled during plan creation

@@ -39,7 +39,6 @@
 
 struct TRI_collection_t;
 class TRI_replication_applier_t;
-class TRI_vocbase_col_t;
 
 namespace arangodb {
 namespace velocypack {
@@ -56,6 +55,8 @@ class CollectionKeysRepository;
 class CursorRepository;
 class StorageEngine;
 class Thread;
+
+class LogicalCollection;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -110,7 +111,7 @@ constexpr char TRI_INDEX_HANDLE_SEPARATOR_CHR = '/';
 constexpr auto TRI_INDEX_HANDLE_SEPARATOR_STR = "/";
 
 /// @brief collection enum
-enum TRI_col_type_e {
+enum TRI_col_type_e : uint32_t{
   TRI_COL_TYPE_UNKNOWN = 0, // only used to signal an invalid collection type
   TRI_COL_TYPE_DOCUMENT = 2,
   TRI_COL_TYPE_EDGE = 3
@@ -170,13 +171,13 @@ struct TRI_vocbase_t {
   bool _isOwnAppsDirectory;
   
   arangodb::basics::ReadWriteLock _collectionsLock;  // collection iterator lock
-  std::vector<TRI_vocbase_col_t*> _collections;  // pointers to ALL collections
-  std::vector<TRI_vocbase_col_t*> _deadCollections;  // pointers to collections
+  std::vector<arangodb::LogicalCollection*> _collections;  // pointers to ALL collections
+  std::vector<arangodb::LogicalCollection*> _deadCollections;  // pointers to collections
                                                      // dropped that can be
                                                      // removed later
  
-  std::unordered_map<std::string, TRI_vocbase_col_t*> _collectionsByName;  // collections by name
-  std::unordered_map<TRI_voc_cid_t, TRI_vocbase_col_t*> _collectionsById;    // collections by id
+  std::unordered_map<std::string, arangodb::LogicalCollection*> _collectionsByName;  // collections by name
+  std::unordered_map<TRI_voc_cid_t, arangodb::LogicalCollection*> _collectionsById;    // collections by id
   
   std::unique_ptr<arangodb::aql::QueryList> _queries;
   std::unique_ptr<arangodb::CursorRepository> _cursorRepository;
@@ -283,7 +284,7 @@ struct TRI_vocbase_t {
   void shutdown();
 
   /// @brief returns all known collections
-  std::vector<TRI_vocbase_col_t*> collections();
+  std::vector<arangodb::LogicalCollection*> collections();
 
   /// @brief returns names of all known collections
   std::vector<std::string> collectionNames();
@@ -294,19 +295,19 @@ struct TRI_vocbase_t {
   std::string collectionName(TRI_voc_cid_t id);
 
   /// @brief looks up a collection by name
-  TRI_vocbase_col_t* lookupCollection(std::string const& name);
+  arangodb::LogicalCollection* lookupCollection(std::string const& name);
   /// @brief looks up a collection by identifier
-  TRI_vocbase_col_t* lookupCollection(TRI_voc_cid_t id);
+  arangodb::LogicalCollection* lookupCollection(TRI_voc_cid_t id);
 
   /// @brief returns all known collections with their parameters
   /// and optionally indexes
   /// the result is sorted by type and name (vertices before edges)
   std::shared_ptr<arangodb::velocypack::Builder> inventory(
-    TRI_voc_tick_t, bool (*)(TRI_vocbase_col_t*, void*), void*,
-    bool, std::function<bool(TRI_vocbase_col_t*, TRI_vocbase_col_t*)>);
+    TRI_voc_tick_t, bool (*)(arangodb::LogicalCollection*, void*), void*,
+    bool, std::function<bool(arangodb::LogicalCollection*, arangodb::LogicalCollection*)>);
 
   /// @brief renames a collection
-  int renameCollection(TRI_vocbase_col_t* collection, std::string const& newName,
+  int renameCollection(arangodb::LogicalCollection* collection, std::string const& newName,
                        bool doOverride, bool writeMarker);
 
   /// @brief creates a new collection from parameter set
@@ -314,18 +315,18 @@ struct TRI_vocbase_t {
   /// this means that the system will assign a new collection id automatically
   /// using a cid of > 0 is supported to import dumps from other servers etc.
   /// but the functionality is not advertised
-  TRI_vocbase_col_t* createCollection(arangodb::VocbaseCollectionInfo& parameters,
-                                      TRI_voc_cid_t cid, bool writeMarker);
-
+  arangodb::LogicalCollection* createCollection(
+      arangodb::VocbaseCollectionInfo& parameters, TRI_voc_cid_t cid,
+      bool writeMarker);
 
   /// @brief drops a collection
-  int dropCollection(TRI_vocbase_col_t* collection, bool writeMarker);
+  int dropCollection(arangodb::LogicalCollection* collection, bool writeMarker);
 
   /// @brief callback for collection dropping
   static bool DropCollectionCallback(TRI_collection_t* col, void* data);
 
   /// @brief unloads a collection
-  int unloadCollection(TRI_vocbase_col_t* collection, bool force);
+  int unloadCollection(arangodb::LogicalCollection* collection, bool force);
   
   /// @brief callback for unloading a collection
   static bool UnloadCollectionCallback(TRI_collection_t* col, void* data);
@@ -333,53 +334,51 @@ struct TRI_vocbase_t {
   /// @brief locks a collection for usage, loading or manifesting it
   /// Note that this will READ lock the collection you have to release the
   /// collection lock by yourself.
-  int useCollection(TRI_vocbase_col_t* collection, TRI_vocbase_col_status_e&);
+  int useCollection(arangodb::LogicalCollection* collection, TRI_vocbase_col_status_e&);
 
   /// @brief locks a collection for usage by id
   /// Note that this will READ lock the collection you have to release the
   /// collection lock by yourself and call @ref TRI_ReleaseCollectionVocBase
   /// when you are done with the collection.
-  TRI_vocbase_col_t* useCollection(TRI_voc_cid_t cid, TRI_vocbase_col_status_e&);
+  arangodb::LogicalCollection* useCollection(TRI_voc_cid_t cid, TRI_vocbase_col_status_e&);
 
   /// @brief locks a collection for usage by name
   /// Note that this will READ lock the collection you have to release the
   /// collection lock by yourself and call @ref TRI_ReleaseCollectionVocBase
   /// when you are done with the collection.
-  TRI_vocbase_col_t* useCollection(std::string const& name, TRI_vocbase_col_status_e&);
+  arangodb::LogicalCollection* useCollection(std::string const& name, TRI_vocbase_col_status_e&);
 
   /// @brief releases a collection from usage
-  void releaseCollection(TRI_vocbase_col_t* collection);
+  void releaseCollection(arangodb::LogicalCollection* collection);
 
  private:
-  int loadCollection(TRI_vocbase_col_t* collection,
+  int loadCollection(arangodb::LogicalCollection* collection,
                      TRI_vocbase_col_status_e& status,
                      bool setStatus = true);
 
   /// @brief adds a new collection
   /// caller must hold _collectionsLock in write mode or set doLock
-  TRI_vocbase_col_t* registerCollection(bool doLock,
-                                        TRI_col_type_e type, TRI_voc_cid_t cid,
-                                        std::string const& name,
-                                        TRI_voc_cid_t planId,
-                                        std::string const& path);
+  arangodb::LogicalCollection* registerCollection(
+      bool doLock, TRI_col_type_e type, TRI_voc_cid_t cid,
+      std::string const& name, TRI_voc_cid_t planId, std::string const& path);
 
   /// @brief removes a collection from the global list of collections
   /// This function is called when a collection is dropped.
-  bool unregisterCollection(TRI_vocbase_col_t* collection);
+  bool unregisterCollection(arangodb::LogicalCollection* collection);
 
   /// @brief creates a new collection, worker function
-  TRI_vocbase_col_t* createCollectionWorker(
-      arangodb::VocbaseCollectionInfo& parameters,
-      TRI_voc_cid_t& cid, bool writeMarker, VPackBuilder& builder);
+  arangodb::LogicalCollection* createCollectionWorker(
+      arangodb::VocbaseCollectionInfo& parameters, TRI_voc_cid_t& cid,
+      bool writeMarker, VPackBuilder& builder);
 
   /// @brief renames a collection, worker function
-  int renameCollectionWorker(TRI_vocbase_col_t* collection, 
+  int renameCollectionWorker(arangodb::LogicalCollection* collection,
                              std::string const& oldName,
                              std::string const& newName);
 
   /// @brief drops a collection, worker function
-  int dropCollectionWorker(TRI_vocbase_col_t* collection,
-                            bool writeMarker, DropState& state);
+  int dropCollectionWorker(arangodb::LogicalCollection* collection,
+                           bool writeMarker, DropState& state);
 
   /// @brief write a drop collection marker into the log
   int writeDropCollectionMarker(TRI_voc_cid_t collectionId,
@@ -424,7 +423,7 @@ class TRI_vocbase_col_t {
   TRI_vocbase_t* vocbase() const { return _vocbase; }
   TRI_voc_cid_t cid() const { return _cid; }
   TRI_voc_cid_t planId() const { return _planId; }
-  TRI_col_type_t type() const { return _type; }
+  TRI_col_type_e type() const { return _type; }
   TRI_vocbase_col_status_e status() const { return _status; }
   uint32_t internalVersion() const { return _internalVersion; }
   std::string const& dbName() const { return _dbName; }
@@ -466,7 +465,7 @@ class TRI_vocbase_col_t {
   TRI_voc_cid_t const _cid;     // local collection identifier
  private:
   TRI_voc_cid_t _planId;  // cluster-wide collection identifier
-  TRI_col_type_t _type;   // collection type
+  TRI_col_type_e _type;   // collection type
   uint32_t _internalVersion;  // is incremented when a collection is renamed
   // this is used to prevent caching of collection objects
   // with "wrong" names in the "db" object

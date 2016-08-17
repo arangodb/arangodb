@@ -23,6 +23,7 @@
 
 #include "AqlTransaction.h"
 #include "CollectionNameResolver.h"
+#include "VocBase/LogicalCollection.h"
 
 using namespace arangodb;
 
@@ -54,23 +55,30 @@ int AqlTransaction::processCollectionCoordinator(aql::Collection*  collection) {
 /// @brief add a regular collection to the transaction
 
 int AqlTransaction::processCollectionNormal(aql::Collection* collection) {
-  TRI_vocbase_col_t const* col =
+  arangodb::LogicalCollection const* col =
       this->resolver()->getCollectionStruct(collection->getName());
   TRI_voc_cid_t cid = 0;
 
   if (col != nullptr) {
-    cid = col->_cid;
+    cid = col->cid();
   }
 
   int res =
       this->addCollection(cid, collection->getName(), collection->accessType);
 
   if (res == TRI_ERROR_NO_ERROR && col != nullptr) {
-    collection->setCollection(const_cast<TRI_vocbase_col_t*>(col));
+    collection->setCollection(const_cast<arangodb::LogicalCollection*>(col));
   }
 
   return res;
 }
+
+TRI_collection_t* AqlTransaction::documentCollection(TRI_voc_cid_t cid) {
+  TRI_transaction_collection_t* trxColl = this->trxCollection(cid);
+  TRI_ASSERT(trxColl != nullptr);
+  return trxColl->_collection->_collection;
+  }
+
 
 /// @brief lockCollections, this is needed in a corner case in AQL: we need
 /// to lock all shards in a controlled way when we set up a distributed

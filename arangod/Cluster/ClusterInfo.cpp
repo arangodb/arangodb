@@ -41,7 +41,9 @@
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "Rest/HttpResponse.h"
+#include "RestServer/DatabaseFeature.h"
 #include "VocBase/collection.h"
+#include "VocBase/LogicalCollection.h"
 
 #ifdef _WIN32
 // turn off warnings about too long type name for debug symbols blabla in MSVC
@@ -377,6 +379,9 @@ std::vector<DatabaseID> ClusterInfo::databases(bool reload) {
 static std::string const prefixPlan = "Plan";
 
 void ClusterInfo::loadPlan() {
+  DatabaseFeature* databaseFeature =
+      application_features::ApplicationServer::getFeature<DatabaseFeature>(
+          "Database");
   uint64_t storedVersion = _planProt.version;
   MUTEX_LOCKER(mutexLocker, _planProt.mutex);
   if (_planProt.version > storedVersion) {
@@ -425,6 +430,13 @@ void ClusterInfo::loadPlan() {
           }
           DatabaseCollections databaseCollections;
           std::string const databaseName = databasePairSlice.key.copyString();
+          TRI_vocbase_t* vocbase = databaseFeature->lookupDatabase(databaseName);
+          TRI_ASSERT(vocbase != nullptr);
+          if (vocbase == nullptr) {
+            // No database with this name found.
+            // We have an invalid state here.
+            continue;
+          }
 
           for (auto const& collectionPairSlice: VPackObjectIterator(collectionsSlice)) {
             VPackSlice const& collectionSlice = collectionPairSlice.value;
@@ -433,7 +445,7 @@ void ClusterInfo::loadPlan() {
             }
             
             std::string const collectionId = collectionPairSlice.key.copyString();
-            auto newCollection = std::make_shared<LogicalCollection>(collectionSlice);
+            auto newCollection = std::make_shared<LogicalCollection>(vocbase, collectionSlice);
             std::string const collectionName = newCollection->name();
             
             // mop: register with name as well as with id
@@ -647,9 +659,9 @@ std::shared_ptr<LogicalCollection> ClusterInfo::getCollection(
 /// @brief ask about all collections
 ////////////////////////////////////////////////////////////////////////////////
 
-std::vector<std::shared_ptr<LogicalCollection>> const ClusterInfo::getCollections(
+std::vector<LogicalCollection*> const ClusterInfo::getCollections(
     DatabaseID const& databaseID) {
-  std::vector<std::shared_ptr<LogicalCollection>> result;
+  std::vector<LogicalCollection*> result;
 
   // always reload
   loadPlan();
@@ -669,7 +681,7 @@ std::vector<std::shared_ptr<LogicalCollection>> const ClusterInfo::getCollection
 
     if (c < '0' || c > '9') {
       // skip collections indexed by id
-      result.push_back((*it2).second);
+      result.push_back((*it2).second.get());
     }
 
     ++it2;

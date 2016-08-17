@@ -42,7 +42,7 @@
 extern int32_t const WRP_VOCBASE_TYPE;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief wrapped class for TRI_vocbase_col_t
+/// @brief wrapped class for LogicalCollection
 ///
 /// Layout:
 /// - SLOT_CLASS_TYPE

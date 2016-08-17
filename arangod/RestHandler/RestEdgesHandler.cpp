@@ -202,7 +202,7 @@ bool RestEdgesHandler::readEdges(
 
   std::string collectionName = suffix[0];
   CollectionNameResolver resolver(_vocbase);
-  TRI_col_type_t colType = resolver.getCollectionTypeCluster(collectionName);
+  TRI_col_type_e colType = resolver.getCollectionTypeCluster(collectionName);
   if (colType == TRI_COL_TYPE_UNKNOWN) {
     generateError(GeneralResponse::ResponseCode::NOT_FOUND,
                   TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
@@ -367,7 +367,7 @@ bool RestEdgesHandler::readEdgesForMultipleVertices() {
 
   std::string collectionName = suffix[0];
   CollectionNameResolver resolver(_vocbase);
-  TRI_col_type_t colType = resolver.getCollectionTypeCluster(collectionName);
+  TRI_col_type_e colType = resolver.getCollectionTypeCluster(collectionName);
 
   if (colType == TRI_COL_TYPE_UNKNOWN) {
     generateError(GeneralResponse::ResponseCode::NOT_FOUND,
