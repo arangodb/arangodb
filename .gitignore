@@ -118,6 +118,11 @@ js/apps/system/_admin/aardvark/APP/frontend/build/style.css
 js/apps/system/_admin/aardvark/APP/frontend/build/scripts.html.part
 
 3rdParty/etcd/src/
+3rdParty/boost/1.61.0/b2
+3rdParty/boost/1.61.0/bin.v2/
+3rdParty/boost/1.61.0/bjam
+3rdParty/boost/1.61.0/project-config.jam
+3rdParty/boost/1.61.0/stage/
 
 .gdb-history
 npm-debug.log
