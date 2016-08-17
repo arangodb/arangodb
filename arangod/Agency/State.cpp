@@ -764,14 +764,17 @@ bool State::persistActiveAgents(
   for (size_t i = 0; i < ids.size()-1; ++i) {
     aql << "\"" << ids.at(i) << "\",";
   }
-  aql << "\"" << ids.back() << "\"]}} IN configuration')";
+  aql << "\"" << ids.back() << "\"]}} IN configuration";
+  std::string aqlStr = aql.str();
+
+  LOG(WARN) << aql.str().c_str() << aql.str().size();
+  LOG(WARN) << aqlStr.size();
 
   arangodb::aql::Query query(
-    false, _vocbase, aql.str().c_str(), aql.str().size(), bindVars, nullptr,
+    false, _vocbase, aqlStr.c_str(), aqlStr.size(), bindVars, nullptr,
     arangodb::aql::PART_MAIN);
 
   auto queryResult = query.execute(QueryRegistryFeature::QUERY_REGISTRY);
-
   if (queryResult.code != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
   }

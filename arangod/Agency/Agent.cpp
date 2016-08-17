@@ -356,7 +356,14 @@ bool Agent::activateAgency() {
         break;
       }
     }
-    return _state.persistActiveAgents(_config.active);
+    bool persisted = false;
+    try {
+      persisted = _state.persistActiveAgents(_config.active);
+    } catch (std::exception const& e) {
+      LOG_TOPIC(FATAL, Logger::AGENCY) <<
+        "Failed to persist active agency: " << e.what();      
+    }
+    return persisted;
   }
   return true;
 }
@@ -609,7 +616,7 @@ Agent& Agent::operator=(VPackSlice const& compaction) {
 
 /// Are we still starting up?
 bool Agent::booting() {
-  MUTEX_LOCKER(mutexLocker, _cfgLock);
+//  MUTEX_LOCKER(mutexLocker, _cfgLock);
   return (_config.poolSize > _config.pool.size());
 }
 
