@@ -304,6 +304,7 @@ struct TRI_collection_t {
   /// @brief sync the active journal - will do nothing if there is no journal
   /// or if the journal is volatile
   int syncActiveJournal();
+
   int reserveJournalSpace(TRI_voc_tick_t tick, TRI_voc_size_t size,
                           char*& resultPosition, TRI_datafile_t*& resultDatafile);
 
