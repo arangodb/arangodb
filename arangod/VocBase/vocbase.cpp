@@ -71,43 +71,6 @@ using namespace arangodb::basics;
 
 static std::atomic<bool> ThrowCollectionNotLoaded(false);
 
-/// @brief collection constructor
-TRI_vocbase_col_t::TRI_vocbase_col_t(TRI_vocbase_t* vocbase, TRI_col_type_e type,
-                                     TRI_voc_cid_t cid, std::string const& name,
-                                     TRI_voc_cid_t planId, std::string const& path,
-                                     bool isLocal) 
-    : _vocbase(vocbase),
-      _cid(cid),
-      _planId(planId),
-      _type(type),
-      _internalVersion(0),
-      _lock(),
-      _status(TRI_VOC_COL_STATUS_CORRUPTED),
-      _collection(nullptr),
-      _dbName(vocbase->name()),
-      _name(name),
-      _path(path),
-      _isLocal(isLocal),
-      _canDrop(true),
-      _canRename(true) {
-  // check for special system collection names
-  if (TRI_collection_t::IsSystemName(name)) {
-    // a few system collections have special behavior
-    if (TRI_EqualString(name.c_str(), TRI_COL_NAME_USERS) ||
-        TRI_IsPrefixString(name.c_str(), TRI_COL_NAME_STATISTICS)) {
-      // these collections cannot be dropped or renamed
-      _canDrop = false;
-      _canRename = false;
-    }
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief collection destructor
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_vocbase_col_t::~TRI_vocbase_col_t() {}
-          
 /// @brief signal the cleanup thread to wake up
 void TRI_vocbase_t::signalCleanup() {
   if (_cleanupThread) {
@@ -489,83 +452,6 @@ arangodb::LogicalCollection* TRI_vocbase_t::createCollectionWorker(
   return collection;
 }
 
-/// @brief renames a collection, worker function
-int TRI_vocbase_t::renameCollectionWorker(
-    arangodb::LogicalCollection* collection, std::string const& oldName,
-    std::string const& newName) {
-  TRI_ASSERT(false);
-  // cannot rename a corrupted collection
-  if (collection->status() == TRI_VOC_COL_STATUS_CORRUPTED) {
-    return TRI_ERROR_ARANGO_CORRUPTED_COLLECTION;
-  }
-
-  // cannot rename a deleted collection
-  if (collection->status() == TRI_VOC_COL_STATUS_DELETED) {
-    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
-  }
-    
-  {
-    WRITE_LOCKER(writeLocker, _collectionsLock);
-
-    // check if the new name is unused
-    auto it = _collectionsByName.find(newName);
-
-    if (it != _collectionsByName.end()) {
-      return TRI_ERROR_ARANGO_DUPLICATE_NAME;
-    }
-
-    if (collection->status() == TRI_VOC_COL_STATUS_UNLOADED) {
-      // collection is unloaded
-      collection->rename(newName);
-      // TODO This should happen inside of RENAME
-
-      StorageEngine* engine = EngineSelectorFeature::ENGINE;
-      engine->renameCollection(this, collection->cid(), newName); 
-      // fall-through intentional
-    }
-    else if (collection->status() == TRI_VOC_COL_STATUS_LOADED ||
-             collection->status() == TRI_VOC_COL_STATUS_UNLOADING ||
-             collection->status() == TRI_VOC_COL_STATUS_LOADING) {
-      // collection is loaded
-      TRI_ASSERT(collection->_collection != nullptr);
-      int res = collection->_collection->rename(newName);
-
-      if (res != TRI_ERROR_NO_ERROR) {
-        return res;
-      }
-      
-      StorageEngine* engine = EngineSelectorFeature::ENGINE;
-      engine->renameCollection(this, collection->cid(), newName); 
-      // fall-through intentional
-    }
-    else {
-      // unknown status
-      return TRI_ERROR_INTERNAL;
-    }
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    auto it2 =
-#endif
-    _collectionsByName.emplace(newName, collection);
-    TRI_ASSERT(it2.second);
-    
-    _collectionsByName.erase(oldName);
-    TRI_ASSERT(_collectionsByName.size() == _collectionsById.size());
-
-    collection->rename(newName);
-  }  // _colllectionsLock
-
-  // to prevent caching returning now invalid old collection name in db's
-  // NamedPropertyAccessor, i.e. db.<old-collection-name>
-  collection->increaseVersion();
-
-  // invalidate all entries for the two collections
-  arangodb::aql::QueryCache::instance()->invalidate(
-      this, std::vector<std::string>{oldName, newName});
-
-  return TRI_ERROR_NO_ERROR;
-}
-
 /// @brief loads an existing collection
 /// Note that this will READ lock the collection. You have to release the
 /// collection lock by yourself.
@@ -811,69 +697,6 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
 
   // unknown status
   return TRI_ERROR_INTERNAL;
-}
-
-/// @brief try to fetch the collection status under a lock
-/// the boolean value will be set to true if the lock could be acquired
-/// if the boolean is false, the return value is always TRI_VOC_COL_STATUS_CORRUPTED 
-TRI_vocbase_col_status_e TRI_vocbase_col_t::tryFetchStatus(bool& found) {
-  TRY_READ_LOCKER(locker, _lock);
-  if (locker.isLocked()) {
-    found = true;
-    return _status;
-  }
-  found = false;
-  return TRI_VOC_COL_STATUS_CORRUPTED;
-}
-
-void TRI_vocbase_col_t::toVelocyPack(VPackBuilder& builder, bool includeIndexes,
-                                     TRI_voc_tick_t maxTick) {
-  TRI_ASSERT(!builder.isClosed());
-  
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  engine->getCollectionInfo(_vocbase, _cid, builder, includeIndexes, maxTick);
-}
-
-std::shared_ptr<VPackBuilder> TRI_vocbase_col_t::toVelocyPack(
-    bool includeIndexes, TRI_voc_tick_t maxTick) {
-  auto builder = std::make_shared<VPackBuilder>();
-  {
-    VPackObjectBuilder b(builder.get());
-    toVelocyPack(*builder, includeIndexes, maxTick);
-  }
-
-  return builder;
-}
-
-/// @brief returns a translation of a collection status
-char const* TRI_vocbase_col_t::statusString(TRI_vocbase_col_status_e status) {
-  switch (status) {
-    case TRI_VOC_COL_STATUS_UNLOADED:
-      return "unloaded";
-    case TRI_VOC_COL_STATUS_LOADED:
-      return "loaded";
-    case TRI_VOC_COL_STATUS_UNLOADING:
-      return "unloading";
-    case TRI_VOC_COL_STATUS_DELETED:
-      return "deleted";
-    case TRI_VOC_COL_STATUS_LOADING:
-      return "loading";
-    case TRI_VOC_COL_STATUS_CORRUPTED:
-    case TRI_VOC_COL_STATUS_NEW_BORN:
-    default:
-      return "unknown";
-  }
-}
-   
-/// @brief set the collection status from the outside
-void TRI_vocbase_col_t::setStatus(TRI_vocbase_col_status_e status) {
-  _status = status; 
-
-  if (status == TRI_VOC_COL_STATUS_LOADED) {
-    _internalVersion = 0;
-  } else if (status == TRI_VOC_COL_STATUS_UNLOADED) {
-    _collection = nullptr;
-  }
 }
 
 /// @brief closes a database and all collections

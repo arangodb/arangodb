@@ -54,6 +54,10 @@ class LogicalCollection {
 
   ~LogicalCollection();
 
+  LogicalCollection(LogicalCollection const&) = delete;
+  LogicalCollection& operator=(LogicalCollection const&) = delete;
+  LogicalCollection() = delete;
+
   // SECTION: Meta Information
   uint32_t version() const;
 

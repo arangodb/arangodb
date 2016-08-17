@@ -369,11 +369,6 @@ struct TRI_vocbase_t {
       arangodb::VocbaseCollectionInfo& parameters, TRI_voc_cid_t& cid,
       bool writeMarker, VPackBuilder& builder);
 
-  /// @brief renames a collection, worker function
-  int renameCollectionWorker(arangodb::LogicalCollection* collection,
-                             std::string const& oldName,
-                             std::string const& newName);
-
   /// @brief drops a collection, worker function
   int dropCollectionWorker(arangodb::LogicalCollection* collection,
                            bool writeMarker, DropState& state);
@@ -402,87 +397,6 @@ class VocbaseGuard {
 
  private:
   TRI_vocbase_t* _vocbase;
-};
-
-/// @brief collection container
-class TRI_vocbase_col_t {
- public:
-  TRI_vocbase_col_t(TRI_vocbase_col_t const&) = delete;
-  TRI_vocbase_col_t& operator=(TRI_vocbase_col_t const&) = delete;
-  TRI_vocbase_col_t() = delete;
-
-  TRI_vocbase_col_t(TRI_vocbase_t* vocbase, TRI_col_type_e type,
-                    TRI_voc_cid_t cid, std::string const& name, TRI_voc_cid_t planId,
-                    std::string const& path, bool isLocal);
-  ~TRI_vocbase_col_t();
-
-  // Leftover from struct
- public:
-  TRI_vocbase_t* vocbase() const { return _vocbase; }
-  TRI_voc_cid_t cid() const { return _cid; }
-  TRI_voc_cid_t planId() const { return _planId; }
-  TRI_col_type_e type() const { return _type; }
-  TRI_vocbase_col_status_e status() const { return _status; }
-  uint32_t internalVersion() const { return _internalVersion; }
-  std::string const& dbName() const { return _dbName; }
-  std::string name() const { return _name; }
-  std::string const& path() const { return _path; }
-  bool isLocal() const { return _isLocal; }
-  bool canDrop() const { return _canDrop; }
-  bool canRename() const { return _canRename; }
-
- public:
-  
-  void increaseVersion() { ++_internalVersion; }
-
-  /// @brief returns a translation of a collection status
-  char const* statusString() const { return statusString(_status); }
-  static char const* statusString(TRI_vocbase_col_status_e status);
-  
-  /// @brief set the collection status from the outside
-  void setStatus(TRI_vocbase_col_status_e status);
-
-  /// @brief set the collection name from the outside
-  void setName(std::string const& name) { _name = name; }
-
-  /// @brief try to fetch the collection status under a lock
-  /// the boolean value will be set to true if the lock could be acquired
-  /// if the boolean is false, the return value is always TRI_VOC_COL_STATUS_CORRUPTED 
-  TRI_vocbase_col_status_e tryFetchStatus(bool& found);
-
-  /// @brief transform the information for this collection to velocypack
-  std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack(bool,
-                                                              TRI_voc_tick_t);
-
-  /// @brief transform the information for this collection to velocypack
-  ///        The builder has to be an opened Type::Object
-  void toVelocyPack(arangodb::velocypack::Builder&, bool, TRI_voc_tick_t);
- 
- public:
-  TRI_vocbase_t* const _vocbase;
-  TRI_voc_cid_t const _cid;     // local collection identifier
- private:
-  TRI_voc_cid_t _planId;  // cluster-wide collection identifier
-  TRI_col_type_e _type;   // collection type
-  uint32_t _internalVersion;  // is incremented when a collection is renamed
-  // this is used to prevent caching of collection objects
-  // with "wrong" names in the "db" object
- public:
-  arangodb::basics::ReadWriteLock _lock;  // lock protecting the status and name
-
- private:
-  TRI_vocbase_col_status_e _status;  // status of the collection
- public:
-  TRI_collection_t* _collection;  // NULL or pointer to loaded collection
- private:
-  std::string const _dbName;  // name of the database
-  std::string _name;          // name of the collection
-  std::string const _path;    // storage path
-
-  bool _isLocal;    // if true, the collection is local. if false,
-                    // the collection is a remote (cluster) collection
-  bool _canDrop;    // true if the collection can be dropped
-  bool _canRename;  // true if the collection can be renamed
 };
 
 ////////////////////////////////////////////////////////////////////////////////
