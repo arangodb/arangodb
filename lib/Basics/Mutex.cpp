@@ -73,7 +73,8 @@ void Mutex::lock() {
       LOG(ERR) << "mutex deadlock detected";
     }
 
-    LOG(FATAL) << "could not lock the mutex: " << strerror(rc); FATAL_ERROR_EXIT();
+    LOG(FATAL) << "could not lock the mutex: " << strerror(rc); 
+    FATAL_ERROR_EXIT();
   }
 }
 

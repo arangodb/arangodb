@@ -194,7 +194,7 @@ static inline uint64_t TRI_DecModU64(uint64_t i, uint64_t len) {
 /// @brief a trivial hash function for uint64_t to uint32_t
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline uint32_t TRI_64to32(uint64_t x) {
+static inline uint32_t TRI_64To32(uint64_t x) {
   return static_cast<uint32_t>(x >> 32) ^ static_cast<uint32_t>(x);
 }
 
@@ -254,16 +254,6 @@ static inline uint32_t TRI_64to32(uint64_t x) {
 #else
 inline void ADB_WindowsEntryFunction() {}
 inline void ADB_WindowsExitFunction(int exitCode, void* data) {}
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief struct alignas(x) ... does not work in Visual Studio 2013
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef _WIN32
-#define TRI_ALIGNAS(x)
-#else
-#define TRI_ALIGNAS(x) alignas(x)
 #endif
 
 // -----------------------------------------------------------------------------

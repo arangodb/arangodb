@@ -718,8 +718,6 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
           ++state->errorCount;
           return state->canContinue();
         } else {
-          document->addIndexFile(filename);
-    
           arangodb::SingleCollectionTransaction trx(arangodb::StandaloneTransactionContext::Create(vocbase),
             collectionId, TRI_TRANSACTION_WRITE);
           int res = document->indexFromVelocyPack(&trx, payloadSlice, nullptr);
@@ -938,8 +936,6 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
 
         // ignore any potential error returned by this call
         document->dropIndex(indexId, false);
-        document->removeIndexFileFromVector(indexId); // TODO
-        document->removeIndex(indexId);
 
 #ifdef ARANGODB_ENABLE_ROCKSDB
         RocksDBFeature::dropIndex(databaseId, collectionId, indexId);

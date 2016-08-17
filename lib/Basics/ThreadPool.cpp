@@ -63,7 +63,10 @@ ThreadPool::ThreadPool(size_t size, std::string const& name)
 
 ThreadPool::~ThreadPool() {
   _stopping = true;
-  _condition.broadcast();
+  {
+    CONDITION_LOCKER(guard, _condition);
+    _condition.broadcast();
+  }
 
   for (auto* it : _threads) {
     it->waitForDone();

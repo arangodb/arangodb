@@ -168,7 +168,7 @@
                 edges[edge._id] = {
                   id: edge._id,
                   source: edge._from,
-                  label: edge._key,
+                  // label: edge._key,
                   color: '#cccccc',
                   target: edge._to
                 };
@@ -179,7 +179,7 @@
               vertices[node._id] = {
                 id: node._id,
                 label: node._key,
-                size: 0.3,
+                // size: 0.3,
                 color: '#2ecc71',
                 x: Math.random(),
                 y: Math.random()
@@ -203,7 +203,7 @@
           returnObj.edges.push({
             id: edge._id,
             source: edge._from,
-            label: edge._key,
+            // label: edge._key,
             color: '#cccccc',
             target: edge._to
           });
@@ -776,7 +776,7 @@
       });
     },
 
-    // right click background context menu
+    // right click nodes context menu
     createNodesContextMenu: function (e) {
       var self = this;
 
@@ -855,9 +855,9 @@
         wheel.slicePathFunction = slicePath().DonutSlice;
         wheel.createWheel([icon.plus, icon.arrowleft2]);
 
+        // add menu events
         wheel.navItems[0].selected = false;
         wheel.navItems[0].hovered = false;
-        // add menu events
 
         // function 0: add node
         wheel.navItems[0].navigateFunction = function (e) {
@@ -907,9 +907,9 @@
         wheel.slicePathFunction = slicePath().DonutSlice;
         wheel.createWheel([icon.edit, icon.trash]);
 
+        // add menu events
         wheel.navItems[0].selected = false;
         wheel.navItems[0].hovered = false;
-        // add menu events
 
         // function 0: edit
         wheel.navItems[0].navigateFunction = function (e) {
@@ -939,8 +939,9 @@
     // right click node context menu
     createNodeContextMenu: function (nodeId, e) {
       var self = this;
-      var x; var y;
+      var x; var y; var size;
 
+      // case canvas
       _.each(e.data.node, function (val, key) {
         if (key.substr(0, 8) === 'renderer' && key.charAt(key.length - 1) === 'x') {
           x = val;
@@ -948,10 +949,30 @@
         if (key.substr(0, 8) === 'renderer' && key.charAt(key.length - 1) === 'y') {
           y = val;
         }
+        if (key.substr(0, 8) === 'renderer' && key.charAt(key.length - 1) === 'e') {
+          size = val;
+        }
       });
 
-      this.clearOldContextMenu();
+      if (x === undefined && y === undefined) {
+        // case webgl
+        _.each(e.data.node, function (val, key) {
+          if (key.substr(0, 8) === 'read_cam' && key.charAt(key.length - 1) === 'x') {
+            x = val + $('#graph-container').width() / 2;
+          }
+          if (key.substr(0, 8) === 'read_cam' && key.charAt(key.length - 1) === 'y') {
+            y = val + $('#graph-container').height() / 2;
+          }
+        });
+      }
 
+      var radius = size * 2.5;
+
+      if (radius < 75) {
+        radius = 75;
+      }
+
+      this.clearOldContextMenu();
       var generateMenu = function (e, nodeId) {
         var hotaru = ['#364C4A', '#497C7F', '#92C5C0', '#858168', '#CCBCA5'];
 
@@ -959,64 +980,80 @@
 
         var wheel = new Wheelnav('nodeContextMenu');
         wheel.maxPercent = 1.0;
-        wheel.wheelRadius = 50;
+        wheel.wheelRadius = radius;
         wheel.clockwise = false;
         wheel.colors = hotaru;
-        wheel.multiSelect = true;
+        wheel.multiSelect = false;
         wheel.clickModeRotate = false;
+        wheel.sliceHoverAttr = {stroke: '#fff', 'stroke-width': 2};
         wheel.slicePathFunction = slicePath().DonutSlice;
         wheel.createWheel([icon.edit, icon.trash, icon.flag, icon.connect, icon.expand]);
 
-        wheel.navItems[0].selected = false;
-        wheel.navItems[0].hovered = false;
-        // add menu events
+        window.setTimeout(function () {
+          // add menu events
 
-        // function 0: edit
-        wheel.navItems[0].navigateFunction = function (e) {
-          self.clearOldContextMenu();
-          self.editNode(nodeId);
-        };
+          // function 0: edit
+          wheel.navItems[0].navigateFunction = function (e) {
+            self.clearOldContextMenu();
+            self.editNode(nodeId);
+          };
 
-        // function 1: delete
-        wheel.navItems[1].navigateFunction = function (e) {
-          self.clearOldContextMenu();
-          self.deleteNodeModal(nodeId);
-        };
+          // function 1: delete
+          wheel.navItems[1].navigateFunction = function (e) {
+            self.clearOldContextMenu();
+            self.deleteNodeModal(nodeId);
+          };
 
-        // function 2: mark as start node
-        wheel.navItems[2].navigateFunction = function (e) {
-          self.clearOldContextMenu();
-          self.setStartNode(nodeId);
-        };
+          // function 2: mark as start node
+          wheel.navItems[2].navigateFunction = function (e) {
+            self.clearOldContextMenu();
+            self.setStartNode(nodeId);
+          };
 
-        // function 3: create edge
-        wheel.navItems[3].navigateFunction = function (e) {
-          self.contextState.createEdge = true;
-          self.contextState._from = nodeId;
-          self.contextState.fromX = x;
-          self.contextState.fromY = y;
+          // function 3: create edge
+          wheel.navItems[3].navigateFunction = function (e) {
+            self.contextState.createEdge = true;
+            self.contextState._from = nodeId;
+            self.contextState.fromX = x;
+            self.contextState.fromY = y;
 
-          var c = document.getElementsByClassName('sigma-mouse')[0];
-          c.addEventListener('mousemove', self.drawLine.bind(this), false);
+            var c = document.getElementsByClassName('sigma-mouse')[0];
+            c.addEventListener('mousemove', self.drawLine.bind(this), false);
 
-          self.clearOldContextMenu();
-        };
+            self.clearOldContextMenu();
+          };
 
-        // function 4: mark as start node
-        wheel.navItems[4].navigateFunction = function (e) {
-          self.clearOldContextMenu();
-          self.expandNode(nodeId);
-        };
+          // function 4: mark as start node
+          wheel.navItems[4].navigateFunction = function (e) {
+            self.clearOldContextMenu();
+            self.expandNode(nodeId);
+          };
 
-        // deselect active default entry
-        wheel.navItems[0].selected = false;
-        wheel.navItems[0].hovered = false;
+          // on hover
+          /* TODO
+          wheel.navItems[0].navSlice.mouseover(function (a) {
+            $(a.target).css('opacity', '1');
+          });
+          wheel.navItems[0].navSlice.mouseout(function (a) {
+            $(a.target).css('opacity', '0.8');
+          });
+          */
+
+          // deselect active default entry
+          wheel.navItems[0].selected = false;
+          wheel.navItems[0].hovered = false;
+        }, 300);
       };
 
-      $('#nodeContextMenu').css('left', x + 115);
-      $('#nodeContextMenu').css('top', y + 71);
-      $('#nodeContextMenu').width(100);
-      $('#nodeContextMenu').height(100);
+      var offset = $('#graph-container').offset();
+      $('#nodeContextMenu').width(radius * 2);
+      $('#nodeContextMenu').height(radius * 2);
+      // $('#nodeContextMenu').css('left', e.data.captor.clientX - radius);
+      // $('#nodeContextMenu').css('top', e.data.captor.clientY - radius);
+      // $('#nodeContextMenu').css('left', x + 150 + 15 - radius);
+      // $('#nodeContextMenu').css('top', y + 60 + 42 + 15 - radius);
+      $('#nodeContextMenu').css('left', x + offset.left - radius);
+      $('#nodeContextMenu').css('top', y + offset.top - radius);
 
       generateMenu(e, nodeId);
     },
@@ -1268,21 +1305,23 @@
 
       // sigmajs graph settings
       var settings = {
+        scalingMode: 'inside',
         borderSize: 3,
         defaultNodeBorderColor: '#8c8c8c',
         doubleClickEnabled: false,
         minNodeSize: 5,
         maxNodeSize: 50,
         batchEdgesDrawing: true,
-        minEdgeSize: 1,
-        maxEdgeSize: 4,
+        minEdgeSize: 10,
+        maxEdgeSize: 20,
         enableEdgeHovering: true,
         edgeHoverColor: '#8c8c8c',
         defaultEdgeHoverColor: '#8c8c8c',
         defaultEdgeType: 'arrow',
         edgeHoverSizeRatio: 2,
         edgeHoverExtremities: true,
-        nodesPowRatio: 1,
+        nodesPowRatio: 0.5,
+        // edgesPowRatio: 1.5,
         // lasso settings
         autoRescale: true,
         mouseEnabled: true,
@@ -1323,14 +1362,24 @@
         }
       }
 
+      if (aqlMode) {
+        // aql editor settings
+        renderer = 'webgl';
+
+        if (graph.nodes.length < 500) {
+          algorithm = 'fruchtermann';
+        } else {
+          settings.scalingMode = 'outside';
+        }
+
+        settings.drawEdgeLabels = false;
+        settings.minNodeSize = 2;
+        settings.maxNodeSize = 5;
+      }
+
       // adjust display settings for webgl renderer
       if (renderer === 'webgl') {
         settings.enableEdgeHovering = false;
-      }
-
-      if (aqlMode) {
-        settings.minNodeSize = 2;
-        settings.maxNodeSize = 4;
       }
 
       // create sigma graph
@@ -1385,23 +1434,7 @@
       }
 
       // for canvas renderer allow graph editing
-      if (renderer === 'canvas') {
-        // render parallel edges
-        if (this.graphConfig) {
-          if (this.graphConfig.edgeType === 'curve') {
-            sigma.canvas.edges.autoCurve(s);
-          }
-        }
-
-        if (!self.aqlMode) {
-          s.bind('rightClickStage', function (e) {
-            self.addNodeX = e.data.captor.x;
-            self.addNodeY = e.data.captor.y;
-            self.createContextMenu(e);
-            self.clearMouseCanvas();
-          });
-        }
-
+      if (!self.aqlMode) {
         var showAttributes = function (e, node) {
           $('.nodeInfoDiv').remove();
 
@@ -1434,33 +1467,17 @@
           }
         };
 
-        s.bind('overNode', function (e) {
-          if (self.contextState.createEdge === true) {
-            self.newEdgeColor = '#ff0000';
-          } else {
-            self.newEdgeColor = '#000000';
-          }
+        s.bind('rightClickStage', function (e) {
+          self.addNodeX = e.data.captor.x;
+          self.addNodeY = e.data.captor.y;
+          self.createContextMenu(e);
+          self.clearMouseCanvas();
         });
 
-        s.bind('clickEdge', function (e) {
-          showAttributes(e, false);
+        s.bind('rightClickNode', function (e) {
+          var nodeId = e.data.node.id;
+          self.createNodeContextMenu(nodeId, e);
         });
-
-        /*
-        s.bind('outNode', function (e) {
-          if (self.contextState.createEdge === false) {
-            $('.nodeInfoDiv').remove();
-          }
-        });
-        */
-
-        /*
-        s.bind('outEdge', function (e) {
-          if (self.contextState.createEdge === false) {
-            $('.nodeInfoDiv').remove();
-          }
-        });
-       */
 
         s.bind('clickNode', function (e) {
           if (self.contextState.createEdge === true) {
@@ -1475,42 +1492,69 @@
           } else {
             if (!self.dragging) {
               // halo on active nodes:
-              self.currentGraph.renderers[0].halo({
-                nodes: self.currentGraph.graph.nodes(),
-                nodeHaloColor: '#DF0101',
-                nodeHaloSize: 100
-              });
+              if (renderer === 'canvas') {
+                self.currentGraph.renderers[0].halo({
+                  nodes: self.currentGraph.graph.nodes(),
+                  nodeHaloColor: '#DF0101',
+                  nodeHaloSize: 100
+                });
+              }
 
               showAttributes(e, true);
               self.activeNodes = [e.data.node];
-              s.renderers[0].halo({
-                nodes: [e.data.node]
-              });
+
+              if (renderer === 'canvas') {
+                s.renderers[0].halo({
+                  nodes: [e.data.node]
+                });
+              }
             }
           }
         });
 
-        s.renderers[0].bind('render', function (e) {
+        s.bind('clickStage', function () {
+          self.clearOldContextMenu(true);
+          self.clearMouseCanvas();
           s.renderers[0].halo({
             nodes: self.activeNodes
           });
         });
+      }
 
-        if (!this.aqlMode) {
-          s.bind('rightClickNode', function (e) {
-            var nodeId = e.data.node.id;
-            self.createNodeContextMenu(nodeId, e);
-          });
-        }
+      s.bind('doubleClickStage', function () {
+        self.activeNodes = [];
 
+        s.graph.nodes().forEach(function (n) {
+          n.color = n.originalColor;
+        });
+
+        s.graph.edges().forEach(function (e) {
+          e.color = e.originalColor;
+        });
+
+        $('.nodeInfoDiv').remove();
+        s.refresh();
+      });
+
+      if (renderer === 'canvas') {
+        // render parallel edges
         if (this.graphConfig) {
-          if (this.graphConfig.edgeEditable) {
-            s.bind('rightClickEdge', function (e) {
-              var edgeId = e.data.edge.id;
-              self.createEdgeContextMenu(edgeId, e);
-            });
+          if (this.graphConfig.edgeType === 'curve') {
+            sigma.canvas.edges.autoCurve(s);
           }
         }
+
+        s.bind('overNode', function (e) {
+          if (self.contextState.createEdge === true) {
+            self.newEdgeColor = '#ff0000';
+          } else {
+            self.newEdgeColor = '#000000';
+          }
+        });
+
+        s.bind('clickEdge', function (e) {
+          showAttributes(e, false);
+        });
 
         s.bind('doubleClickNode', function (e) {
           var nodeId = e.data.node.id;
@@ -1535,29 +1579,27 @@
 
           s.refresh();
         });
-
-        s.bind('doubleClickStage', function () {
-          self.activeNodes = [];
-
-          s.graph.nodes().forEach(function (n) {
-            n.color = n.originalColor;
-          });
-
-          s.graph.edges().forEach(function (e) {
-            e.color = e.originalColor;
-          });
-
-          $('.nodeInfoDiv').remove();
-          s.refresh();
-        });
-
-        s.bind('clickStage', function () {
-          self.clearOldContextMenu(true);
-          self.clearMouseCanvas();
+        s.renderers[0].bind('render', function (e) {
           s.renderers[0].halo({
             nodes: self.activeNodes
           });
         });
+
+        if (!this.aqlMode) {
+          s.bind('rightClickNode', function (e) {
+            var nodeId = e.data.node.id;
+            self.createNodeContextMenu(nodeId, e);
+          });
+        }
+
+        if (this.graphConfig) {
+          if (this.graphConfig.edgeEditable) {
+            s.bind('rightClickEdge', function (e) {
+              var edgeId = e.data.edge.id;
+              self.createEdgeContextMenu(edgeId, e);
+            });
+          }
+        }
       }
 
       // Initialize the dragNodes plugin:
@@ -1657,9 +1699,9 @@
             // make nodes a bit bigger
             var maxNodeSize = s.settings('maxNodeSize');
             var factor = 1;
-            var length = s.graph.nodes().length;
+            // var length = s.graph.nodes().length;
 
-            factor = 0.5;
+            factor = 0.35;
             maxNodeSize = maxNodeSize * factor;
             s.settings('maxNodeSize', maxNodeSize);
             s.refresh({});
@@ -1732,10 +1774,17 @@
       $('#toggleForce .fa').removeClass('fa-play').addClass('fa-pause');
       $('#toggleForce span').html('Stop layout');
       this.layouting = true;
-      this.currentGraph.startForceAtlas2({
-        worker: true
-      });
-      sigma.plugins.dragNodes(this.currentGraph, this.currentGraph.renderers[0]);
+      if (this.aqlMode) {
+        this.currentGraph.startForceAtlas2({
+          worker: true,
+          edgeWeightInfluence: 2
+        });
+      } else {
+        this.currentGraph.startForceAtlas2({
+          worker: true
+        });
+      }
+      // sigma.plugins.dragNodes(this.currentGraph, this.currentGraph.renderers[0]);
     },
 
     stopLayout: function () {

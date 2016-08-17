@@ -36,15 +36,19 @@ devel
 
 * Foxx OAuth2 module now correctly passes the `access_token` to the OAuth2 server
 
-* added timezone module
+* added iconv-lite and timezone modules
 
 
 v3.0.5 (XXXX-XX-XX)
 -------------------
 
+* execute AQL ternary operator via C++ if possible
+
 * fixed issue #1977
 
 * fixed extraction of _id attribute in AQL traversal conditions
+
+* fix SSL agency endpoint
 
 
 v3.0.4 (2016-08-01)

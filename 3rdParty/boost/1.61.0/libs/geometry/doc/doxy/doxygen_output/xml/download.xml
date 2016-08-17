@@ -1,9 +1,0 @@
-<?xml version='1.0' encoding='UTF-8' standalone='no'?>
-<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.7.6.1">
-  <compounddef id="download" kind="page">
-    <compoundname>download</compoundname>
-    <title>Download Boost.Geometry</title>
-    <detaileddescription>
-<para>The library can be downloaded from Boost SVN. There is anonymous SVN access.</para><para>The command</para><para><computeroutput>svn co <ulink url="https://svn.boost.org/svn/boost/sandbox/geometry">https://svn.boost.org/svn/boost/sandbox/geometry</ulink> geometry</computeroutput></para><para>will download the library to your machine.</para><para>The library can also be downloaded from Geodan SVN. <emphasis>This will be moved to osgeo SVN</emphasis> </para>    </detaileddescription>
-  </compounddef>
-</doxygen>

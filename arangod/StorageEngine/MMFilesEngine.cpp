@@ -23,6 +23,7 @@
 
 #include "MMFilesEngine.h"
 #include "Basics/FileUtils.h"
+#include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
@@ -30,10 +31,11 @@
 #include "Random/RandomGenerator.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
+#include "StorageEngine/CleanupThread.h"
+#include "StorageEngine/CompactorThread.h"
 #include "StorageEngine/EngineSelectorFeature.h"
-#include "VocBase/CleanupThread.h"
-#include "VocBase/CompactorThread.h"
 #include "VocBase/collection.h"
+#include "VocBase/datafile.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 #include "Wal/LogfileManager.h"
@@ -82,6 +84,17 @@ static uint64_t getNumericFilenamePartFromDatabase(std::string const& filename) 
 
   return basics::StringUtils::uint64(pos + 1);
 }
+
+static uint64_t getNumericFilenamePartFromDatafile(TRI_datafile_t const* datafile) {
+  return getNumericFilenamePartFromDatafile(datafile->getName(datafile));
+}
+
+
+struct DatafileComparator {
+  bool operator()(TRI_datafile_t const* lhs, TRI_datafile_t const* rhs) const {
+    return getNumericFilenamePartFromDatafile(lhs) < getNumericFilenamePartFromDatafile(rhs);
+  }
+};
 
 /// @brief compare two filenames, based on the numeric part contained in
 /// the filename. this is used to sort database filenames on startup
@@ -178,13 +191,8 @@ void MMFilesEngine::recoveryDone(TRI_vocbase_t* vocbase) {
   if (!databaseFeature->checkVersion() && !databaseFeature->upgrade()) {
     // start compactor thread
     LOG(TRACE) << "starting compactor for database '" << vocbase->name() << "'";
-    TRI_ASSERT(vocbase->_compactorThread == nullptr);
-    vocbase->_compactorThread.reset(new CompactorThread(vocbase));
-  
-    if (!vocbase->_compactorThread->start()) {
-      LOG(ERR) << "could not start compactor thread";
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-    }
+
+    startCompactor(vocbase);
   }
 
   // delete all collection files from collections marked as deleted
@@ -445,7 +453,7 @@ int MMFilesEngine::getCollectionsAndIndexes(TRI_vocbase_t* vocbase,
         continue;
       }
 
-      if (info.version() < TRI_COL_VERSION && !isUpgrade) {
+      if (info.version() < VocbaseCollectionInfo::version() && !isUpgrade) {
         // collection is too "old"
         LOG(ERR) << "collection '" << info.name()
                  << "' has a too old version. Please start the server "
@@ -530,11 +538,17 @@ TRI_vocbase_t* MMFilesEngine::createDatabase(TRI_voc_tick_t id, arangodb::velocy
 // the WAL entry for database deletion will be written *after* the call
 // to "prepareDropDatabase" returns
 int MMFilesEngine::prepareDropDatabase(TRI_vocbase_t* vocbase) {
+  // signal the compactor thread to finish
+  beginShutdownCompactor(vocbase);
+
   return saveDatabaseParameters(vocbase->id(), vocbase->name(), true);
 }
 
 // perform a physical deletion of the database      
 int MMFilesEngine::dropDatabase(TRI_vocbase_t* vocbase) {
+  // stop compactor thread
+  shutdownDatabase(vocbase);
+
   _collectionPaths.erase(vocbase->id());
 
   return dropDatabaseDirectory(databaseDirectory(vocbase->id()));
@@ -733,8 +747,32 @@ void MMFilesEngine::createIndex(TRI_voc_tick_t databaseId, TRI_voc_cid_t collect
 // the actual deletion.
 // the WAL entry for index deletion will be written *after* the call
 // to "dropIndex" returns
-void MMFilesEngine::dropIndex(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId,
+void MMFilesEngine::dropIndex(TRI_vocbase_t* vocbase, TRI_voc_cid_t collectionId,
                               TRI_idx_iid_t id) {
+  // construct filename
+  std::string const filename = indexFilename(vocbase->id(), collectionId, id);
+
+  int res = TRI_UnlinkFile(filename.c_str());
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    LOG(ERR) << "cannot remove index definition: " << TRI_errno_string(res);
+  }
+}
+  
+void MMFilesEngine::unloadCollection(TRI_vocbase_t* vocbase, TRI_voc_cid_t collectionId) {
+  signalCleanup(vocbase);
+}
+
+void MMFilesEngine::signalCleanup(TRI_vocbase_t* vocbase) {
+  MUTEX_LOCKER(locker, _threadsLock);
+
+  auto it = _cleanupThreads.find(vocbase);
+  
+  if (it == _cleanupThreads.end()) {
+    return;
+  }
+
+  (*it).second->signal();
 }
 
 // iterate all documents of the underlying collection
@@ -1071,8 +1109,19 @@ std::string MMFilesEngine::collectionDirectory(TRI_voc_tick_t databaseId, TRI_vo
   return (*it2).second;
 }
 
+/// @brief build a parameters filename (absolute path)
 std::string MMFilesEngine::collectionParametersFilename(TRI_voc_tick_t databaseId, TRI_voc_cid_t id) const {
   return basics::FileUtils::buildFilename(collectionDirectory(databaseId, id), parametersFilename());
+}
+
+/// @brief build an index filename (absolute path)
+std::string MMFilesEngine::indexFilename(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId, TRI_idx_iid_t id) const {
+  return basics::FileUtils::buildFilename(collectionDirectory(databaseId, collectionId), indexFilename(id));
+}
+
+/// @brief build an index filename (relative path)
+std::string MMFilesEngine::indexFilename(TRI_idx_iid_t id) const {
+  return std::string("index-") + std::to_string(id) + ".json";
 }
 
 /// @brief open an existing database. internal function
@@ -1121,13 +1170,7 @@ TRI_vocbase_t* MMFilesEngine::openExistingDatabase(TRI_voc_tick_t id, std::strin
   }
 
   // start cleanup thread
-  TRI_ASSERT(vocbase->_cleanupThread == nullptr);
-  vocbase->_cleanupThread.reset(new CleanupThread(vocbase.get()));
-
-  if (!vocbase->_cleanupThread->start()) {
-    LOG(ERR) << "could not start cleanup thread";
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
+  startCleanup(vocbase.get());
     
   return vocbase.release();
 }
@@ -1288,7 +1331,7 @@ VocbaseCollectionInfo MMFilesEngine::loadCollectionInfo(TRI_vocbase_t* vocbase,
   VocbaseCollectionInfo info(vocbase, collectionName, slice, isSystemValue);
   
   // warn about wrong version of the collection
-  if (versionWarning && info.version() < TRI_COL_VERSION) {
+  if (versionWarning && info.version() < VocbaseCollectionInfo::version()) {
     if (info.name()[0] != '\0') {
       // only warn if the collection version is older than expected, and if it's
       // not a shape collection
@@ -1309,7 +1352,7 @@ bool MMFilesEngine::cleanupCompactionBlockers(TRI_vocbase_t* vocbase) {
     return false;
   }
 
-  auto it = _compactionBlockers.find(vocbase->id());
+  auto it = _compactionBlockers.find(vocbase);
 
   if (it == _compactionBlockers.end()) {
     // no entry for this database
@@ -1354,10 +1397,10 @@ int MMFilesEngine::insertCompactionBlocker(TRI_vocbase_t* vocbase, double ttl,
   {
     WRITE_LOCKER_EVENTUAL(locker, _compactionBlockersLock, 1000); 
 
-    auto it = _compactionBlockers.find(vocbase->id());
+    auto it = _compactionBlockers.find(vocbase);
 
     if (it == _compactionBlockers.end()) {
-      it = _compactionBlockers.emplace(vocbase->id(), std::vector<CompactionBlocker>()).first;
+      it = _compactionBlockers.emplace(vocbase, std::vector<CompactionBlocker>()).first;
     }
 
     (*it).second.emplace_back(blocker);
@@ -1377,7 +1420,7 @@ int MMFilesEngine::extendCompactionBlocker(TRI_vocbase_t* vocbase, TRI_voc_tick_
 
   WRITE_LOCKER_EVENTUAL(locker, _compactionBlockersLock, 1000); 
 
-  auto it = _compactionBlockers.find(vocbase->id());
+  auto it = _compactionBlockers.find(vocbase);
 
   if (it == _compactionBlockers.end()) {
     return TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
@@ -1398,7 +1441,7 @@ int MMFilesEngine::removeCompactionBlocker(TRI_vocbase_t* vocbase,
                                            TRI_voc_tick_t id) {
   WRITE_LOCKER_EVENTUAL(locker, _compactionBlockersLock, 1000); 
   
-  auto it = _compactionBlockers.find(vocbase->id());
+  auto it = _compactionBlockers.find(vocbase);
 
   if (it == _compactionBlockers.end()) {
     return TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
@@ -1438,7 +1481,7 @@ bool MMFilesEngine::tryPreventCompaction(TRI_vocbase_t* vocbase,
       double const now = TRI_microtime();
 
       // check if we have a still-valid compaction blocker
-      auto it = _compactionBlockers.find(vocbase->id());
+      auto it = _compactionBlockers.find(vocbase);
 
       if (it != _compactionBlockers.end()) {
         for (auto const& blocker : (*it).second) {
@@ -1453,4 +1496,386 @@ bool MMFilesEngine::tryPreventCompaction(TRI_vocbase_t* vocbase,
     return true;
   }
   return false;
+}
+
+int MMFilesEngine::shutdownDatabase(TRI_vocbase_t* vocbase) {
+  try {
+    stopCompactor(vocbase);
+    return stopCleanup(vocbase);
+  } catch (basics::Exception const& ex) {
+    return ex.code();
+  } catch (...) {
+    return TRI_ERROR_INTERNAL;
+  }
+}
+
+// start the cleanup thread for the database 
+int MMFilesEngine::startCleanup(TRI_vocbase_t* vocbase) {
+  std::unique_ptr<CleanupThread> thread;
+
+  {
+    MUTEX_LOCKER(locker, _threadsLock);
+
+    thread.reset(new CleanupThread(vocbase));
+    _cleanupThreads.emplace(vocbase, thread.get());
+  }
+  
+  TRI_ASSERT(thread != nullptr);
+
+  if (!thread->start()) {
+    LOG(ERR) << "could not start cleanup thread";
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+  
+  thread.release();
+  return TRI_ERROR_NO_ERROR;
+}
+
+// stop and delete the cleanup thread for the database
+int MMFilesEngine::stopCleanup(TRI_vocbase_t* vocbase) {
+  CleanupThread* thread = nullptr;
+  
+  {
+    MUTEX_LOCKER(locker, _threadsLock);
+
+    auto it = _cleanupThreads.find(vocbase);
+    
+    if (it == _cleanupThreads.end()) {
+      // already stopped
+      return TRI_ERROR_NO_ERROR;
+    }
+
+    thread = (*it).second;
+    _cleanupThreads.erase(it);
+  }
+
+  TRI_ASSERT(thread != nullptr);
+
+  thread->beginShutdown();
+  thread->signal();
+
+  while (thread->isRunning()) {
+    usleep(5000);
+  }
+
+  delete thread;
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+// start the compactor thread for the database 
+int MMFilesEngine::startCompactor(TRI_vocbase_t* vocbase) {
+  std::unique_ptr<CompactorThread> thread;
+
+  {
+    MUTEX_LOCKER(locker, _threadsLock);
+    auto it = _compactorThreads.find(vocbase);
+
+    if (it != _compactorThreads.end()) {
+      return TRI_ERROR_INTERNAL;
+    }
+
+    thread.reset(new CompactorThread(vocbase));
+    _compactorThreads.emplace(vocbase, thread.get());
+  }
+
+  TRI_ASSERT(thread != nullptr);
+
+  if (!thread->start()) {
+    LOG(ERR) << "could not start compactor thread";
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+
+  thread.release();
+  return TRI_ERROR_NO_ERROR;
+}
+
+// signal the compactor thread to stop
+int MMFilesEngine::beginShutdownCompactor(TRI_vocbase_t* vocbase) {
+  CompactorThread* thread = nullptr;
+  
+  {
+    MUTEX_LOCKER(locker, _threadsLock);
+
+    auto it = _compactorThreads.find(vocbase);
+    
+    if (it == _compactorThreads.end()) {
+      // already stopped
+      return TRI_ERROR_NO_ERROR;
+    }
+
+    thread = (*it).second;
+  }
+
+  TRI_ASSERT(thread != nullptr);
+
+  thread->beginShutdown();
+  thread->signal();
+  
+  return TRI_ERROR_NO_ERROR;
+}
+
+// stop and delete the compactor thread for the database
+int MMFilesEngine::stopCompactor(TRI_vocbase_t* vocbase) {
+  CompactorThread* thread = nullptr;
+  
+  {
+    MUTEX_LOCKER(locker, _threadsLock);
+
+    auto it = _compactorThreads.find(vocbase);
+    
+    if (it == _compactorThreads.end()) {
+      // already stopped
+      return TRI_ERROR_NO_ERROR;
+    }
+
+    thread = (*it).second;
+    _compactorThreads.erase(it);
+  }
+
+  TRI_ASSERT(thread != nullptr);
+
+  thread->beginShutdown();
+  thread->signal();
+
+  while (thread->isRunning()) {
+    usleep(5000);
+  }
+
+  delete thread;
+  
+  return TRI_ERROR_NO_ERROR;
+}
+
+/// @brief checks a collection
+int MMFilesEngine::openCollection(TRI_vocbase_t* vocbase, TRI_collection_t* collection, bool ignoreErrors) {
+  LOG_TOPIC(TRACE, Logger::DATAFILES) << "check collection directory '"
+                                      << collection->path() << "'";
+
+  std::vector<TRI_datafile_t*> all;
+  std::vector<TRI_datafile_t*> compactors;
+  std::vector<TRI_datafile_t*> datafiles;
+  std::vector<TRI_datafile_t*> journals;
+  std::vector<TRI_datafile_t*> sealed;
+  bool stop = false;
+
+  TRI_ASSERT(collection->_info.id() != 0);
+
+  // check files within the directory
+  std::vector<std::string> files = TRI_FilesDirectory(collection->path().c_str());
+
+  for (auto const& file : files) {
+    std::vector<std::string> parts = StringUtils::split(file, '.');
+
+    if (parts.size() < 2 || parts.size() > 3 || parts[0].empty()) {
+      LOG_TOPIC(DEBUG, Logger::DATAFILES)
+          << "ignoring file '" << file
+          << "' because it does not look like a datafile";
+      continue;
+    }
+
+    std::string extension = parts[1];
+    std::string isDead = (parts.size() > 2) ? parts[2] : "";
+
+    std::vector<std::string> next = StringUtils::split(parts[0], "-");
+
+    if (next.size() < 2) {
+      LOG_TOPIC(DEBUG, Logger::DATAFILES)
+          << "ignoring file '" << file
+          << "' because it does not look like a datafile";
+      continue;
+    }
+
+    std::string filename =
+        FileUtils::buildFilename(collection->path(), file);
+    std::string filetype = next[0];
+    next.erase(next.begin());
+    std::string qualifier = StringUtils::join(next, '-');
+
+    // .............................................................................
+    // file is dead
+    // .............................................................................
+
+    if (!isDead.empty() || filetype == "temp") {
+      if (isDead == "dead" || filetype == "temp") {
+        LOG_TOPIC(TRACE, Logger::DATAFILES)
+            << "found temporary file '" << filename
+            << "', which is probably a left-over. deleting it";
+        FileUtils::remove(filename);
+        continue;
+      } else {
+        LOG_TOPIC(DEBUG, Logger::DATAFILES)
+            << "ignoring file '" << file
+            << "' because it does not look like a datafile";
+        continue;
+      }
+    }
+
+    // file is an index. indexes are handled elsewhere
+    if (filetype == "index" && extension == "json") {
+      continue;
+    }
+
+    // file is a journal or datafile, open the datafile
+    if (extension == "db") {
+      // found a compaction file. now rename it back
+      if (filetype == "compaction") {
+        std::string relName = "datafile-" + qualifier + "." + extension;
+        std::string newName =
+            FileUtils::buildFilename(collection->path(), relName);
+
+        if (FileUtils::exists(newName)) {
+          // we have a compaction-xxxx and a datafile-xxxx file. we'll keep
+          // the datafile
+          FileUtils::remove(filename);
+
+          LOG_TOPIC(WARN, Logger::DATAFILES)
+              << "removing unfinished compaction file '" << filename << "'";
+          continue;
+        } else {
+          // this should fail, but shouldn't do any harm either...
+          FileUtils::remove(newName);
+
+          int res = TRI_RenameFile(filename.c_str(), newName.c_str());
+
+          if (res != TRI_ERROR_NO_ERROR) {
+            LOG_TOPIC(ERR, Logger::DATAFILES)
+                << "unable to rename compaction file '" << filename << "' to '"
+                << newName << "'";
+            stop = true;
+            break;
+          }
+        }
+
+        // reuse newName
+        filename = newName;
+      }
+
+      TRI_datafile_t* datafile =
+          TRI_OpenDatafile(filename.c_str(), ignoreErrors);
+
+      if (datafile == nullptr) {
+        LOG_TOPIC(ERR, Logger::DATAFILES) << "cannot open datafile '"
+                                          << filename
+                                          << "': " << TRI_last_error();
+
+        stop = true;
+        break;
+      }
+
+      all.emplace_back(datafile);
+
+      // check the document header
+      char const* ptr = datafile->_data;
+
+      // skip the datafile header
+      ptr +=
+          DatafileHelper::AlignedSize<size_t>(sizeof(TRI_df_header_marker_t));
+      TRI_col_header_marker_t const* cm =
+          reinterpret_cast<TRI_col_header_marker_t const*>(ptr);
+
+      if (cm->base.getType() != TRI_DF_MARKER_COL_HEADER) {
+        LOG(ERR) << "collection header mismatch in file '" << filename
+                 << "', expected TRI_DF_MARKER_COL_HEADER, found "
+                 << cm->base.getType();
+
+        stop = true;
+        break;
+      }
+
+      if (cm->_cid != collection->_info.id()) {
+        LOG(ERR) << "collection identifier mismatch, expected "
+                 << collection->_info.id() << ", found " << cm->_cid;
+
+        stop = true;
+        break;
+      }
+
+      // file is a journal
+      if (filetype == "journal") {
+        if (datafile->_isSealed) {
+          if (datafile->_state != TRI_DF_STATE_READ) {
+            LOG_TOPIC(WARN, Logger::DATAFILES)
+                << "strange, journal '" << filename
+                << "' is already sealed; must be a left over; will use "
+                   "it as datafile";
+          }
+
+          sealed.emplace_back(datafile);
+        } else {
+          journals.emplace_back(datafile);
+        }
+      }
+
+      // file is a compactor
+      else if (filetype == "compactor") {
+        // ignore
+      }
+
+      // file is a datafile (or was a compaction file)
+      else if (filetype == "datafile" || filetype == "compaction") {
+        if (!datafile->_isSealed) {
+          LOG_TOPIC(ERR, Logger::DATAFILES)
+              << "datafile '" << filename
+              << "' is not sealed, this should never happen";
+          stop = true;
+          break;
+        } else {
+          datafiles.emplace_back(datafile);
+        }
+      }
+
+      else {
+        LOG_TOPIC(ERR, Logger::DATAFILES) << "unknown datafile '" << file
+                                          << "'";
+      }
+    } else {
+      LOG_TOPIC(ERR, Logger::DATAFILES) << "unknown datafile '" << file << "'";
+    }
+  }
+
+  // convert the sealed journals into datafiles
+  if (!stop) {
+    for (auto& datafile : sealed) {
+      std::string dname("datafile-" + std::to_string(datafile->_fid) + ".db");
+      std::string filename = arangodb::basics::FileUtils::buildFilename(collection->path(), dname);
+
+      int res = TRI_RenameDatafile(datafile, filename.c_str());
+
+      if (res == TRI_ERROR_NO_ERROR) {
+        datafiles.emplace_back(datafile);
+        LOG(DEBUG) << "renamed sealed journal to '" << filename << "'";
+      } else {
+        stop = true;
+        LOG(ERR) << "cannot rename sealed log-file to " << filename
+                 << ", this should not happen: " << TRI_errno_string(res);
+        break;
+      }
+    }
+  }
+
+  // stop if necessary
+  if (stop) {
+    for (auto& datafile : all) {
+      LOG(TRACE) << "closing datafile '" << datafile->_filename << "'";
+
+      TRI_CloseDatafile(datafile);
+      TRI_FreeDatafile(datafile);
+    }
+
+    return TRI_ERROR_INTERNAL;
+  }
+
+  // sort the datafiles
+  // this allows us to iterate them in the correct order
+  std::sort(datafiles.begin(), datafiles.end(), DatafileComparator());
+  std::sort(journals.begin(), journals.end(), DatafileComparator());
+  std::sort(compactors.begin(), compactors.end(), DatafileComparator());
+
+  // add the datafiles and journals
+  collection->_datafiles = datafiles;
+  collection->_journals = journals;
+  collection->_compactors = compactors;
+
+  return TRI_ERROR_NO_ERROR;
 }

@@ -71,9 +71,6 @@ struct DocumentOperation;
 }
 }
 
-/// @brief current collection version
-#define TRI_COL_VERSION 5
-
 /// @brief predefined collection name for users
 #define TRI_COL_NAME_USERS "_users"
 
@@ -107,24 +104,11 @@ struct TRI_doc_collection_info_t {
   char _lastCompactionStamp[21];
 };
 
-/// @brief state of the datafile
-enum TRI_col_state_e {
-  TRI_COL_STATE_CLOSED = 1,      // collection is closed
-  TRI_COL_STATE_READ = 2,        // collection is opened read only
-  TRI_COL_STATE_WRITE = 3,       // collection is opened read/append
-  TRI_COL_STATE_OPEN_ERROR = 4,  // an error has occurred while opening
-  TRI_COL_STATE_WRITE_ERROR = 5  // an error has occurred while writing
-};
-
-/// @brief collection version
-typedef uint32_t TRI_col_version_t;
-
 namespace arangodb {
 
 /// @brief collection info block saved to disk as json
 class VocbaseCollectionInfo {
  private:
-  TRI_col_version_t _version;   // collection version
   TRI_col_type_e _type;         // collection type
   TRI_voc_rid_t _revision;      // last revision id written
   TRI_voc_cid_t _cid;           // local collection identifier
@@ -165,7 +149,7 @@ class VocbaseCollectionInfo {
   void toVelocyPack(VPackBuilder& builder) const;
 
   // collection version
-  TRI_col_version_t version() const;
+  static constexpr uint32_t version() { return 5; }
 
   // collection type
   TRI_col_type_e type() const;
@@ -213,8 +197,6 @@ class VocbaseCollectionInfo {
 
   // If true waits for mysnc
   bool waitForSync() const;
-
-  void setVersion(TRI_col_version_t);
 
   // Changes the name. Should only be called by TRI_collection_t::rename()
   // Use with caution!
@@ -300,13 +282,7 @@ struct TRI_collection_t {
   arangodb::Index* lookupIndex(TRI_idx_iid_t) const;
   arangodb::PrimaryIndex* primaryIndex();
   arangodb::EdgeIndex* edgeIndex();
-  arangodb::Index* removeIndex(TRI_idx_iid_t);
  
-  /// @brief enumerate all indexes of the collection, but don't fill them yet
-  int detectIndexes(arangodb::Transaction*);
- 
-  void iterateIndexes(std::function<bool(std::string const&, void*)> const&, void*);
-  
   TRI_doc_collection_info_t* figures();
 
   int beginRead();
@@ -340,11 +316,11 @@ struct TRI_collection_t {
 
   bool removeCompactor(TRI_datafile_t*);
   bool removeDatafile(TRI_datafile_t*);
-  void addIndexFile(std::string const&);
-  bool removeIndexFile(TRI_idx_iid_t id);
-  bool removeIndexFileFromVector(TRI_idx_iid_t id);
   std::string const& path() const { return _path; }
   std::string label() const;
+
+  double lastCompaction() const { return _lastCompaction; }
+  void lastCompaction(double value) { _lastCompaction = value; }
   
   std::unique_ptr<arangodb::FollowerInfo> const& followers() const {
     return _followers;
@@ -464,6 +440,13 @@ struct TRI_collection_t {
   int unload(bool updateStatus);
 
  private:
+  bool openIndex(VPackSlice const& description, arangodb::Transaction* trx);
+
+  /// @brief enumerate all indexes of the collection, but don't fill them yet
+  int detectIndexes(arangodb::Transaction*);
+
+  arangodb::Index* removeIndex(TRI_idx_iid_t);
+
   int lookupDocument(arangodb::Transaction*, arangodb::velocypack::Slice const,
                      TRI_doc_mptr_t*&);
   int checkRevision(arangodb::Transaction*, arangodb::velocypack::Slice const,
@@ -549,9 +532,6 @@ struct TRI_collection_t {
   arangodb::basics::ReadWriteLock _infoLock;
   arangodb::VocbaseCollectionInfo _info;
 
-  TRI_col_state_e _state;  // state of the collection
-  int _lastError;          // last (critical) error
- 
  private: 
   std::string _path;
 
@@ -568,8 +548,6 @@ struct TRI_collection_t {
   
   arangodb::DatafileStatistics _datafileStatistics;
   
-  mutable arangodb::Ditches _ditches;
-
   arangodb::MasterPointers _masterPointers;
 
   std::unique_ptr<arangodb::KeyGenerator> _keyGenerator;
@@ -577,9 +555,10 @@ struct TRI_collection_t {
   std::atomic<int64_t> _uncollectedLogfileEntries;
   int64_t _numberDocuments;
   arangodb::basics::ReadWriteLock _compactionLock;
-  double _lastCompaction;
   
  private:
+  mutable arangodb::Ditches _ditches;
+
   std::vector<arangodb::Index*> _indexes;
 
   // whether or not any of the indexes may need to be garbage-collected
@@ -595,14 +574,13 @@ struct TRI_collection_t {
   size_t _nextCompactionStartIndex;
   char const* _lastCompactionStatus;
   char _lastCompactionStamp[21];
+  double _lastCompaction;
 
   // whether or not secondary indexes should be filled
   bool _useSecondaryIndexes;
   
   // lock for indexes
   arangodb::basics::ReadWriteLock _lock;
-
-  std::vector<std::string> _indexFiles;   // all index filenames
 };
 
 #endif

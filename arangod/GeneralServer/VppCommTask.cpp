@@ -180,7 +180,7 @@ void VppCommTask::addResponse(VppResponse* response, bool isError) {
 
   VPackBuilder builder;
   if (response_message._generateBody) {
-    builder = basics::VelocyPackHelper::stanitizeExternalsChecked(
+    builder = basics::VelocyPackHelper::sanitizeExternalsChecked(
         response_message._payload);
     slices.push_back(builder.slice());
   }

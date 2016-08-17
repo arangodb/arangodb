@@ -48,14 +48,11 @@ class Builder;
 namespace aql {
 class QueryList;
 }
-class CleanupThread;
 class CollectionNameResolver;
-class CompactorThread;
 class VocbaseCollectionInfo;
 class CollectionKeysRepository;
 class CursorRepository;
 class StorageEngine;
-class Thread;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -197,9 +194,6 @@ struct TRI_vocbase_t {
 
   // structures for user-defined volatile data
   void* _userStructures;
-
-  std::unique_ptr<arangodb::CompactorThread> _compactorThread;
-  std::unique_ptr<arangodb::CleanupThread> _cleanupThread;
 
  public:
   /// @brief checks if a database name is allowed
