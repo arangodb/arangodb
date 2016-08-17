@@ -31,7 +31,6 @@
 #include "Job.h"
 #include "Store.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
 #include "VocBase/server.h"
 
@@ -39,7 +38,6 @@
 using namespace arangodb;
 
 using namespace arangodb::consensus;
-using namespace arangodb::application_features;
 
 std::string Supervision::_agencyPrefix = "/arango";
 
@@ -328,72 +326,45 @@ bool Supervision::doChecks() {
 }
 
 void Supervision::run() {
+
   CONDITION_LOCKER(guard, _cv);
   TRI_ASSERT(_agent != nullptr);
   
-  // Get agency prefix after cluster init
-  if (_jobId == 0) {
-    // We need the agency prefix to work, but it is only initialized by
-    // some other server in the cluster. Since the supervision does not
-    // make sense at all without other ArangoDB servers, we wait pretty
-    // long here before giving up:
-    if (!updateAgencyPrefix(1000, 1)) {
-      LOG_TOPIC(ERR, Logger::AGENCY)
-        << "Cannot get prefix from Agency. Stopping supervision for good.";
-      return;
-    }
-  }
-  
   while (!this->isStopping()) {
-    updateSnapshot();
-    if (isShuttingDown()) {
-      handleShutdown();
-    } else if (_agent->leading()) {
-      if (!handleJobs()) {
+    
+    // Get agency prefix after cluster init
+    if (_jobId == 0) {
+      // We need the agency prefix to work, but it is only initialized by
+      // some other server in the cluster. Since the supervision does not
+      // make sense at all without other ArangoDB servers, we wait pretty
+      // long here before giving up:
+      if (!updateAgencyPrefix(1000, 1)) {
+        LOG_TOPIC(DEBUG, Logger::AGENCY)
+          << "Cannot get prefix from Agency. Stopping supervision for good.";
         break;
       }
     }
-    _cv.wait(_frequency * 1000000);
-  }
-}
-
-bool Supervision::isShuttingDown() {
-  try {
-    return _snapshot("/Shutdown").getBool();
-  } catch (...) {
-    return false;
-  }
-}
-
-void Supervision::handleShutdown() {
-  LOG_TOPIC(DEBUG, Logger::AGENCY) << "Initiating shutdown";
-  Node::Children const& serversRegistered = _snapshot(currentServersRegisteredPrefix).children();
-  bool serversCleared = true;
-  for (auto const& server : serversRegistered) {
-    if (server.first == "Version") {
-      continue;
+    
+    // Get bunch of job IDs from agency for future jobs
+    if (_jobId == 0 || _jobId == _jobIdMax) {
+      getUniqueIds();  // cannot fail but only hang
     }
-    LOG_TOPIC(DEBUG, Logger::AGENCY)
-      << "Waiting for " << server.first << " to shutdown";
+    
+    // Do nothing unless leader 
+    if (_agent->leading()) {
+      _cv.wait(_frequency * 1000000); 
+    } else {
+      _cv.wait();
+    }
+    
+    // Do supervision
+    updateSnapshot();
+    doChecks();
+    shrinkCluster();
+    workJobs();
+    
   }
 
-  if (serversCleared) {
-    ApplicationServer::server->beginShutdown();
-  }
-}
-
-bool Supervision::handleJobs() {
-  // Get bunch of job IDs from agency for future jobs
-  if (_jobId == 0 || _jobId == _jobIdMax) {
-    getUniqueIds();  // cannot fail but only hang
-  }
-
-  // Do supervision
-  doChecks();
-  shrinkCluster();
-  workJobs();
-  
-  return true;
 }
 
 void Supervision::workJobs() {

@@ -201,13 +201,6 @@ const time = require('internal').time;
 const toArgv = require('internal').toArgv;
 const wait = require('internal').wait;
 const platform = require('internal').platform;
-const endpointToURL = require('@arangodb/common.js').endpointToURL;
-
-const findFreePort = require('@arangodb/testing/utils.js').findFreePort;
-const startArango = require('@arangodb/testing/utils.js').startArango;
-const makeArgsArangod = require('@arangodb/testing/utils.js').makeArgsArangod;
-const executeArangod = require('@arangodb/testing/utils.js').executeArangod;
-const makeAuthorizationHeaders = require('@arangodb/testing/utils.js').makeAuthorizationHeaders;
 
 const BLUE = require('internal').COLORS.COLOR_BLUE;
 const CYAN = require('internal').COLORS.COLOR_CYAN;
@@ -289,6 +282,34 @@ function makeResults (testname) {
 }
 
 // //////////////////////////////////////////////////////////////////////////////
+// / @brief arguments for testing (server)
+// //////////////////////////////////////////////////////////////////////////////
+
+function makeArgsArangod (options, appDir) {
+  if (appDir === undefined) {
+    appDir = fs.getTempPath();
+  }
+
+  fs.makeDirectoryRecursive(appDir, true);
+
+  return {
+    'configuration': 'none',
+    'database.force-sync-properties': 'false',
+    'database.maximal-journal-size': '1048576',
+    'javascript.app-path': appDir,
+    'javascript.startup-directory': JS_DIR,
+    'javascript.v8-contexts': '5',
+    'http.trusted-origin': options.httpTrustedOrigin || 'all',
+    'log.level': 'warn',
+    'log.level=replication=warn': null,
+    'server.allow-use-database': 'true',
+    'server.authentication': 'false',
+    'server.threads': '20',
+    'ssl.keyfile': PEM_FILE
+  };
+}
+
+// //////////////////////////////////////////////////////////////////////////////
 // / @brief arguments for testing (client)
 // //////////////////////////////////////////////////////////////////////////////
 
@@ -300,6 +321,36 @@ function makeArgsArangosh (options) {
     'server.password': options.password,
     'flatCommands': ['--console.colors', 'false', '--quiet']
   };
+}
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief adds authorization headers
+// //////////////////////////////////////////////////////////////////////////////
+
+function makeAuthorizationHeaders (options) {
+  return {
+    'headers': {
+      'Authorization': 'Basic ' + base64Encode(options.username + ':' +
+          options.password)
+    }
+  };
+}
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief converts endpoints to URL
+// //////////////////////////////////////////////////////////////////////////////
+
+function endpointToURL (endpoint) {
+  if (endpoint.substr(0, 6) === 'ssl://') {
+    return 'https://' + endpoint.substr(6);
+  }
+
+  const pos = endpoint.indexOf('://');
+
+  if (pos === -1) {
+    return 'http://' + endpoint;
+  }
+
+  return 'http' + endpoint.substr(pos);
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -540,6 +591,29 @@ function cleanupDBDirectories (options) {
 }
 
 // //////////////////////////////////////////////////////////////////////////////
+// / @brief finds a free port
+// //////////////////////////////////////////////////////////////////////////////
+
+function findFreePort (maxPort) {
+  if (typeof maxPort !== 'number') {
+    maxPort = 32768;
+  }
+  if (maxPort < 2048) {
+    maxPort = 2048;
+  }
+  while (true) {
+    const port = Math.floor(Math.random() * (maxPort - 1024)) + 1024;
+    const free = testPort('tcp://0.0.0.0:' + port);
+
+    if (free) {
+      return port;
+    }
+  }
+
+  return 8529;
+}
+
+// //////////////////////////////////////////////////////////////////////////////
 // / @brief build a unix path
 // //////////////////////////////////////////////////////////////////////////////
 
@@ -559,7 +633,7 @@ function makePathGeneric (path) {
 // / @brief runs a remote unittest file using /_admin/execute
 // //////////////////////////////////////////////////////////////////////////////
 
-function runThere (options, endpoint, file) {
+function runThere (options, instanceInfo, file) {
   try {
     let testCode;
 
@@ -581,7 +655,7 @@ function runThere (options, endpoint, file) {
 
     httpOptions.returnBodyOnError = true;
 
-    const reply = download(endpointToURL(endpoint) + '/_admin/execute?returnAsJSON=true',
+    const reply = download(instanceInfo.url + '/_admin/execute?returnAsJSON=true',
       testCode,
       httpOptions);
 
@@ -614,27 +688,10 @@ runThere.info = 'runThere';
 // / @brief runs a list of tests
 // //////////////////////////////////////////////////////////////////////////////
 
-function performTests(options, testList, testname, runFn, instanceManager) {
-  if (!instanceManager) {
-    let instanceInfo;
-    instanceManager = {
-      start: function() {
-        instanceInfo = startInstance('tcp', options, {}, testname);
-        return instanceInfo !== false;
-      },
-      check: function() {
-        return checkInstanceAlive(instanceInfo, options);
-      },
-      getEndpoint: function() {
-        return instanceInfo.endpoint;
-      },
-      cleanup: function() {
-        shutdownInstance(instanceInfo, options);
-      }
-    }
-  }
+function performTests (options, testList, testname, runFn) {
+  let instanceInfo = startInstance('tcp', options, {}, testname);
 
-  if (instanceManager && instanceManager.start() === false) {
+  if (instanceInfo === false) {
     return {
       setup: {
         status: false,
@@ -656,65 +713,77 @@ function performTests(options, testList, testname, runFn, instanceManager) {
 
   let results = {};
   let continueTesting = true;
-  
-  let logFn;
-  if (options.extremeVerbosity) {
-    logFn = (testname, reason) => {
-      print('Skipped ' + testname + ' because of ' + reason);
+
+  for (let i = 0; i < testList.length; i++) {
+    let te = testList[i];
+    let filtered = {};
+
+    if (filterTestcaseByOptions(te, options, filtered)) {
+      let first = true;
+      let loopCount = 0;
+
+      while (first || options.loopEternal) {
+        if (!continueTesting) {
+          print('oops!');
+          print('Skipping, ' + te + ' server is gone.');
+
+          results[te] = {
+            status: false,
+            message: instanceInfo.exitStatus
+          };
+
+          instanceInfo.exitStatus = 'server is gone.';
+
+          break;
+        }
+
+        print('\n' + Date() + ' ' + runFn.info + ': Trying', te, '...');
+        let reply = runFn(options, instanceInfo, te);
+
+        if (reply.hasOwnProperty('status')) {
+          results[te] = reply;
+
+          if (results[te].status === false) {
+            options.cleanup = false;
+          }
+
+          if (!reply.status && !options.force) {
+            break;
+          }
+        } else {
+          results[te] = {
+            status: false,
+            message: reply
+          };
+
+          if (!options.force) {
+            break;
+          }
+        }
+
+        continueTesting = checkInstanceAlive(instanceInfo, options);
+
+        first = false;
+
+        if (options.loopEternal) {
+          if (loopCount % options.loopSleepWhen === 0) {
+            print('sleeping...');
+            sleep(options.loopSleepSec);
+            print('continuing.');
+          }
+
+          ++loopCount;
+        }
+      }
+    } else {
+      if (options.extremeVerbosity) {
+        print('Skipped ' + te + ' because of ' + filtered.filter);
+      }
     }
-  } else {
-    logFn = function() {};
-  }
-  let testcases = testList.filter(testcase => {
-    return filterTestcaseByOptions(testcase, options, logFn);
-  });
-
-  let endpoint = instanceManager.getEndpoint();
-
-  for (let i = 0; i < testcases.length; i++) {
-    let te = testcases[i];
-    let loopCount = 0;
-    do {
-      print('\n' + Date() + ' ' + runFn.info + ': Trying', te, '...');
-      let reply = runFn(options, endpoint, te);
-
-      if (reply.hasOwnProperty('status')) {
-        results[te] = reply;
-
-        if (results[te].status === false) {
-          options.cleanup = false;
-        }
-
-        if (!reply.status && !options.force) {
-          break;
-        }
-      } else {
-        results[te] = {
-          status: false,
-          message: reply
-        };
-
-        if (!options.force) {
-          break;
-        }
-      }
-
-      continueTesting = instanceManager.check();
-
-      if (options.loopEternal) {
-        if (loopCount % options.loopSleepWhen === 0) {
-          print('sleeping...');
-          sleep(options.loopSleepSec);
-          print('continuing.');
-        }
-
-        ++loopCount;
-      }
-    } while (options.loopEternal);
   }
 
   print('Shutting down...');
-  instanceManager.cleanup();
+  shutdownInstance(instanceInfo, options);
   print('done.');
 
   return results;
@@ -804,6 +873,43 @@ function runStressTest (options, command, testname) {
   print('done.');
 
   return {};
+}
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief executes a command, possible with valgrind
+// //////////////////////////////////////////////////////////////////////////////
+
+function executeArangod (cmd, args, options) {
+  if (options.valgrind) {
+    let valgrindOpts = {};
+
+    if (options.valgrindArgs) {
+      valgrindOpts = options.valgrindArgs;
+    }
+
+    let testfn = options.valgrindFileBase;
+
+    if (testfn.length > 0) {
+      testfn += '_';
+    }
+
+    if (valgrindOpts.xml === 'yes') {
+      valgrindOpts['xml-file'] = testfn + '.%p.xml';
+    }
+
+    valgrindOpts['log-file'] = testfn + '.%p.valgrind.log';
+
+    args = toArgv(valgrindOpts, true).concat([cmd]).concat(args);
+    cmd = options.valgrind;
+  } else if (options.rr) {
+    args = [cmd].concat(args);
+    cmd = 'rr';
+  }
+
+  if (options.extremeVerbosity) {
+    print('starting process ' + cmd + ' with arguments: ' + JSON.stringify(args));
+  }
+  return executeExternal(cmd, args);
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -910,11 +1016,9 @@ function executeAndWait (cmd, args, options, valgrindTest) {
 // / @brief runs file in arangosh
 // //////////////////////////////////////////////////////////////////////////////
 
-function runInArangosh (options, endpoint, file, addArgs) {
+function runInArangosh (options, instanceInfo, file, addArgs) {
   let args = makeArgsArangosh(options);
-  if (endpoint) {
-    args['server.endpoint'] = endpoint;
-  }
+  args['server.endpoint'] = instanceInfo.endpoint;
   args['javascript.unit-tests'] = fs.join(TOP_DIR, file);
 
   if (!options.verbose) {
@@ -924,6 +1028,7 @@ function runInArangosh (options, endpoint, file, addArgs) {
   if (addArgs !== undefined) {
     args = Object.assign(args, addArgs);
   }
+  fs.write('instanceinfo.json', JSON.stringify(instanceInfo));
   let rc = executeAndWait(ARANGOSH_BIN, toArgv(args), options);
 
   let result;
@@ -942,8 +1047,8 @@ function runInArangosh (options, endpoint, file, addArgs) {
 }
 
 function createArangoshRunner(args) {
-  let runner = function(options, endpoint, file) {
-    return runInArangosh(options, endpoint, file, args);
+  let runner = function(options, instanceInfo, file) {
+    return runInArangosh(options, instanceInfo, file, args);
   };
   runner.info = 'arangosh';
   return runner;
@@ -1238,6 +1343,75 @@ function startInstanceCluster (instanceInfo, protocol, options,
   arango.reconnect(instanceInfo.endpoint, '_system', 'root', '');
 
   return true;
+}
+
+function startArango (protocol, options, addArgs, rootDir, role) {
+  const dataDir = fs.join(rootDir, 'data');
+  const appDir = fs.join(rootDir, 'apps');
+
+  fs.makeDirectoryRecursive(dataDir);
+  fs.makeDirectoryRecursive(appDir);
+
+  let args = makeArgsArangod(options, appDir);
+  let endpoint;
+  let port;
+
+  if (!addArgs['server.endpoint']) {
+    port = findFreePort(options.maxPort);
+    endpoint = protocol + '://127.0.0.1:' + port;
+  } else {
+    endpoint = addArgs['server.endpoint'];
+    port = endpoint.split(':').pop();
+  }
+
+  let instanceInfo = {
+  role, port, endpoint, rootDir};
+
+  args['server.endpoint'] = endpoint;
+  args['database.directory'] = dataDir;
+  args['log.file'] = fs.join(rootDir, 'log');
+
+  if (options.verbose) {
+    args['log.level'] = 'info';
+  } else {
+    args['log.level'] = 'error';
+  }
+
+  // flush log messages directly and not asynchronously
+  // (helps debugging)  
+  args['log.force-direct'] = 'true';
+
+  if (protocol === 'ssl') {
+    args['ssl.keyfile'] = fs.join('UnitTests', 'server.pem');
+  }
+
+  args = Object.assign(args, options.extraArgs);
+
+  if (addArgs !== undefined) {
+    args = Object.assign(args, addArgs);
+  }
+
+  instanceInfo.url = endpointToURL(instanceInfo.endpoint);
+  instanceInfo.pid = executeArangod(ARANGOD_BIN, toArgv(args), options).pid;
+  instanceInfo.role = role;
+
+  if (platform.substr(0, 3) === 'win') {
+    const procdumpArgs = [
+      '-accepteula',
+      '-e',
+      '-ma',
+      instanceInfo.pid,
+      fs.join(rootDir, 'core.dmp')
+    ];
+
+    try {
+      instanceInfo.monitor = executeExternal('procdump', procdumpArgs);
+    } catch (x) {
+      print('failed to start procdump - is it installed?');
+      throw x;
+    }
+  }
+  return instanceInfo;
 }
 
 function startInstanceAgency (instanceInfo, protocol, options,
@@ -3208,19 +3382,12 @@ testFuncs.resilience = function (options) {
 
 testFuncs.client_resilience = function (options) {
   findTests();
-  
-  let instanceManager = {
-    start: function() {
-    },
-    check: function() {
-    },
-    cleanup: function() {
-    },
-    getEndpoint: function() {
-      return 'tcp://127.0.0.1:8529';
-    }
+  options.cluster = true;
+  if (options.coordinators < 2) {
+    options.coordinators = 2;
   }
-  return performTests(options, testsCases.client_resilience, 'client_resilience', createArangoshRunner(), instanceManager);
+
+  return performTests(options, testsCases.client_resilience, 'client_resilience', createArangoshRunner());
 };
 
 // //////////////////////////////////////////////////////////////////////////////

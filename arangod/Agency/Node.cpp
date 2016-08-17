@@ -730,14 +730,6 @@ uint64_t Node::getUInt() const {
   
 }
 
-bool Node::getBool() const {
-  if (type() == NODE) {
-    throw StoreException("Must not convert NODE type to bool");
-  }
-  return slice().getBool();
-  
-}
-
 double Node::getDouble() const {
 
   if (type() == NODE) {
