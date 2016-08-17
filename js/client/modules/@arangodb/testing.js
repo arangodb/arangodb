@@ -717,11 +717,9 @@ function performTests(options, testList, testname, runFn, instanceManager) {
     } while (options.loopEternal);
   }
 
-  if (instanceManager) {
-    print('Shutting down...');
-    instanceManager.cleanup();
-    print('done.');
-  }
+  print('Shutting down...');
+  instanceManager.cleanup();
+  print('done.');
 
   return results;
 }
@@ -3214,8 +3212,19 @@ testFuncs.resilience = function (options) {
 
 testFuncs.client_resilience = function (options) {
   findTests();
-
-  return performTests(options, testsCases.client_resilience, 'client_resilience', createArangoshRunner());
+  
+  let instanceManager = {
+    start: function() {
+    },
+    check: function() {
+    },
+    cleanup: function() {
+    },
+    getEndpoint: function() {
+      return 'tcp://127.0.0.1:8529';
+    }
+  }
+  return performTests(options, testsCases.client_resilience, 'client_resilience', createArangoshRunner(), instanceManager);
 };
 
 // //////////////////////////////////////////////////////////////////////////////

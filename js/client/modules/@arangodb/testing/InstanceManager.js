@@ -8,6 +8,7 @@ const makeArgsArangod = require('@arangodb/testing/utils.js').makeArgsArangod;
 const executeArangod = require('@arangodb/testing/utils.js').executeArangod;
 const makeAuthorizationHeaders = require('@arangodb/testing/utils.js').makeAuthorizationHeaders;
 const ARANGOD_BIN = require('@arangodb/testing/utils.js').ARANGOD_BIN;
+const endpointToURL = require('@arangodb/common.js').endpointToURL;
 
 const killExternal = require('internal').killExternal;
 const statusExternal = require('internal').statusExternal;
@@ -191,7 +192,9 @@ class InstanceManager {
   }
 
   getEndpoint() {
-    return this.coordinators()[0].endpoint;
+    return this.coordinators().filter(coordinator => {
+      return coordinator.exitStatus && coordinator.exitStatus.status == 'RUNNING';
+    })[0].endpoint;
   }
 
   check() {
@@ -209,7 +212,8 @@ class InstanceManager {
     console.warn('Shutting down cluster');
     const requestOptions = makeAuthorizationHeaders({});
     requestOptions.method = 'DELETE';
-    download(this.coordinators()[0].url + '/_admin/shutdown?shutdown_cluster=1', '', requestOptions);
+
+    download(endpointToURL(this.getEndpoint()) + '/_admin/shutdown?shutdown_cluster=1', '', requestOptions);
     let timeout = 60;
     let waitTime = 0.5;
     let start = Date.now();
@@ -230,7 +234,7 @@ class InstanceManager {
         if (totalTime / 1000 > timeout) {
           kap0tt = true;
           toShutdown.forEach(instance => {
-            //killExternal(instance.pid);
+            this.kill(instance);
           });
           break;
         }
@@ -267,7 +271,7 @@ class InstanceManager {
     }
 
     killExternal(instance.pid);
-    instance.status = 'KILLED';
+    instance.exitStatus = {'status': 'KILLED'};
   }
 
   restart(instance) {

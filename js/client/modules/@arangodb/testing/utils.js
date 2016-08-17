@@ -102,6 +102,7 @@ function startArango (protocol, options, addArgs, rootDir, role) {
   instanceInfo.options = options;
   instanceInfo.pid = executeArangod(ARANGOD_BIN, instanceInfo.args, options).pid;
   instanceInfo.role = role;
+  instanceInfo.exitStatus = {'status': 'RUNNING'}
 
   if (platform.substr(0, 3) === 'win') {
     const procdumpArgs = [
@@ -135,7 +136,6 @@ function findTopDir () {
 
 function startInstanceAgency(instanceInfo, protocol, options,
   addArgs, rootDir) {
-  console.error("HASS", instanceInfo);
   const dataDir = fs.join(rootDir, 'data');
 
   const N = options.agencySize;
