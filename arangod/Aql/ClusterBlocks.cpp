@@ -25,7 +25,6 @@
 #include "Aql/ExecutionEngine.h"
 #include "Aql/AqlValue.h"
 #include "Basics/Exceptions.h"
-#include "Basics/json-utilities.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/StringBuffer.h"
@@ -39,14 +38,13 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
+#include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;
 
-using Json = arangodb::basics::Json;
-using JsonHelper = arangodb::basics::JsonHelper;
 using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
 using StringBuffer = arangodb::basics::StringBuffer;
 
@@ -1039,9 +1037,6 @@ size_t DistributeBlock::sendToClient(AqlItemBlock* cur) {
     }
   }
 
-  // std::cout << "JSON: " << arangodb::basics::JsonHelper::toString(json) <<
-  // "\n";
-
   std::string shardId;
   bool usesDefaultShardingAttributes;
   auto clusterInfo = arangodb::ClusterInfo::instance();
@@ -1087,10 +1082,10 @@ static bool throwExceptionAfterBadSyncRequest(ClusterCommResult* res,
 
     // extract error number and message from response
     int errorNum = TRI_ERROR_NO_ERROR;
-    TRI_json_t* json =
-        TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, responseBodyBuf.c_str());
+    std::shared_ptr<VPackBuilder> builder = VPackParser::fromJson(responseBodyBuf.c_str(), responseBodyBuf.length());
+    VPackSlice slice = builder->slice();
 
-    if (JsonHelper::getBooleanValue(json, "error", true)) {
+    if (!slice.hasKey("error") || slice.get("error").getBoolean()) {
       errorNum = TRI_ERROR_INTERNAL;
       errorMessage = std::string("Error message received from shard '") +
                      std::string(res->shardID) +
@@ -1098,30 +1093,25 @@ static bool throwExceptionAfterBadSyncRequest(ClusterCommResult* res,
                      std::string(res->serverID) + std::string("': ");
     }
 
-    if (TRI_IsObjectJson(json)) {
-      TRI_json_t const* v = TRI_LookupObjectJson(json, "errorNum");
-
-      if (TRI_IsNumberJson(v)) {
-        if (static_cast<int>(v->_value._number) != TRI_ERROR_NO_ERROR) {
+    if (slice.isObject()) {
+      VPackSlice v = slice.get("errorNum");
+      
+      if (v.isNumber()) {
+        if (v.getNumericValue<int>() != TRI_ERROR_NO_ERROR) {
           /* if we've got an error num, error has to be true. */
           TRI_ASSERT(errorNum == TRI_ERROR_INTERNAL);
-          errorNum = static_cast<int>(v->_value._number);
+          errorNum = v.getNumericValue<int>();
         }
       }
 
-      v = TRI_LookupObjectJson(json, "errorMessage");
-      if (TRI_IsStringJson(v)) {
-        errorMessage +=
-            std::string(v->_value._string.data, v->_value._string.length - 1);
+      v = slice.get("errorMessage");
+      if (v.isString()) {
+        errorMessage += v.copyString();
       } else {
         errorMessage += std::string("(no valid error in response)");
       }
     } else {
       errorMessage += std::string("(no valid response)");
-    }
-
-    if (json != nullptr) {
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     }
 
     if (isShutdown && errorNum == TRI_ERROR_QUERY_NOT_FOUND) {
@@ -1218,12 +1208,14 @@ int RemoteBlock::initialize() {
   // If we get here, then res->result is the response which will be
   // a serialized AqlItemBlock:
   StringBuffer const& responseBodyBuf(res->result->getBody());
-  Json responseBodyJson(
-      TRI_UNKNOWN_MEM_ZONE,
-      TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, responseBodyBuf.begin()));
+    
+  std::shared_ptr<VPackBuilder> builder = VPackParser::fromJson(responseBodyBuf.c_str(), responseBodyBuf.length());
+  VPackSlice slice = builder->slice();
 
-  return JsonHelper::getNumericValue<int>(responseBodyJson.json(), "code",
-                                          TRI_ERROR_INTERNAL);
+  if (slice.hasKey("code")) {
+    return slice.get("code").getNumericValue<int>();
+  }
+  return TRI_ERROR_INTERNAL;
   LEAVE_BLOCK
 }
 
@@ -1266,11 +1258,16 @@ int RemoteBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
   // If we get here, then res->result is the response which will be
   // a serialized AqlItemBlock:
   StringBuffer const& responseBodyBuf(res->result->getBody());
-  Json responseBodyJson(
-      TRI_UNKNOWN_MEM_ZONE,
-      TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, responseBodyBuf.begin()));
-  return JsonHelper::getNumericValue<int>(responseBodyJson.json(), "code",
-                                          TRI_ERROR_INTERNAL);
+  {
+    std::shared_ptr<VPackBuilder> builder = VPackParser::fromJson(responseBodyBuf.c_str(), responseBodyBuf.length());
+    
+    VPackSlice slice = builder->slice();
+
+    if (slice.hasKey("code")) {
+      return slice.get("code").getNumericValue<int>();
+    }
+    return TRI_ERROR_INTERNAL;
+  }
   LEAVE_BLOCK
 }
 
@@ -1294,32 +1291,30 @@ int RemoteBlock::shutdown(int errorCode) {
   }
 
   StringBuffer const& responseBodyBuf(res->result->getBody());
-  Json responseBodyJson(
-      TRI_UNKNOWN_MEM_ZONE,
-      TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, responseBodyBuf.begin()));
+  std::shared_ptr<VPackBuilder> builder = VPackParser::fromJson(responseBodyBuf.c_str(), responseBodyBuf.length());
+  VPackSlice slice = builder->slice();
 
-  // read "warnings" attribute if present and add it our query
-  if (responseBodyJson.isObject()) {
-    auto warnings = responseBodyJson.get("warnings");
+  // read "warnings" attribute if present and add it to our query
+  if (slice.isObject()) {
+    VPackSlice warnings = slice.get("warnings");
     if (warnings.isArray()) {
       auto query = _engine->getQuery();
-      for (size_t i = 0; i < warnings.size(); ++i) {
-        auto warning = warnings.at(i);
-        if (warning.isObject()) {
-          auto code = warning.get("code");
-          auto message = warning.get("message");
+      for (auto const& it : VPackArrayIterator(warnings)) {
+        if (it.isObject()) {
+          VPackSlice code = it.get("code");
+          VPackSlice message = it.get("message");
           if (code.isNumber() && message.isString()) {
-            query->registerWarning(
-                static_cast<int>(code.json()->_value._number),
-                message.json()->_value._string.data);
+            query->registerWarning(code.getNumericValue<int>(), message.copyString().c_str());
           }
         }
       }
     }
   }
-
-  return JsonHelper::getNumericValue<int>(responseBodyJson.json(), "code",
-                                          TRI_ERROR_INTERNAL);
+  
+  if (slice.hasKey("code")) {
+    return slice.get("code").getNumericValue<int>();
+  }
+  return TRI_ERROR_INTERNAL;
   LEAVE_BLOCK
 }
 
@@ -1328,10 +1323,13 @@ AqlItemBlock* RemoteBlock::getSome(size_t atLeast, size_t atMost) {
   ENTER_BLOCK
   // For every call we simply forward via HTTP
 
-  Json body(Json::Object, 2);
-  body("atLeast", Json(static_cast<double>(atLeast)))(
-      "atMost", Json(static_cast<double>(atMost)));
-  std::string bodyString(body.toString());
+  VPackBuilder builder;
+  builder.openObject();
+  builder.add("atLeast", VPackValue(atLeast));
+  builder.add("atMost", VPackValue(atMost));
+  builder.close();
+
+  std::string bodyString(builder.slice().toJson());
 
   std::unique_ptr<ClusterCommResult> res = sendRequest(
       GeneralRequest::RequestType::PUT, "/_api/aql/getSome/", bodyString);
@@ -1360,10 +1358,13 @@ size_t RemoteBlock::skipSome(size_t atLeast, size_t atMost) {
   ENTER_BLOCK
   // For every call we simply forward via HTTP
 
-  Json body(Json::Object, 2);
-  body("atLeast", Json(static_cast<double>(atLeast)))(
-      "atMost", Json(static_cast<double>(atMost)));
-  std::string bodyString(body.toString());
+  VPackBuilder builder;
+  builder.openObject();
+  builder.add("atLeast", VPackValue(atLeast));
+  builder.add("atMost", VPackValue(atMost));
+  builder.close();
+
+  std::string bodyString(builder.slice().toJson());
 
   std::unique_ptr<ClusterCommResult> res = sendRequest(
       GeneralRequest::RequestType::PUT, "/_api/aql/skipSome/", bodyString);
@@ -1372,15 +1373,19 @@ size_t RemoteBlock::skipSome(size_t atLeast, size_t atMost) {
   // If we get here, then res->result is the response which will be
   // a serialized AqlItemBlock:
   StringBuffer const& responseBodyBuf(res->result->getBody());
-  Json responseBodyJson(
-      TRI_UNKNOWN_MEM_ZONE,
-      TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, responseBodyBuf.begin()));
-  if (JsonHelper::getBooleanValue(responseBodyJson.json(), "error", true)) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_AQL_COMMUNICATION);
+  {
+    std::shared_ptr<VPackBuilder> builder = VPackParser::fromJson(responseBodyBuf.c_str(), responseBodyBuf.length());
+    VPackSlice slice = builder->slice();
+
+    if (!slice.hasKey("error") || slice.get("error").getBoolean()) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_AQL_COMMUNICATION);
+    }
+    size_t skipped = 0;
+    if (slice.hasKey("skipped")) {
+      skipped = slice.get("skipped").getNumericValue<size_t>();
+    }
+    return skipped;
   }
-  size_t skipped = JsonHelper::getNumericValue<size_t>(responseBodyJson.json(),
-                                                       "skipped", 0);
-  return skipped;
   LEAVE_BLOCK
 }
 
@@ -1395,13 +1400,17 @@ bool RemoteBlock::hasMore() {
   // If we get here, then res->result is the response which will be
   // a serialized AqlItemBlock:
   StringBuffer const& responseBodyBuf(res->result->getBody());
-  Json responseBodyJson(
-      TRI_UNKNOWN_MEM_ZONE,
-      TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, responseBodyBuf.begin()));
-  if (JsonHelper::getBooleanValue(responseBodyJson.json(), "error", true)) {
+  std::shared_ptr<VPackBuilder> builder = VPackParser::fromJson(responseBodyBuf.c_str(), responseBodyBuf.length());
+  VPackSlice slice = builder->slice();
+  
+  if (!slice.hasKey("error") || slice.get("error").getBoolean()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_AQL_COMMUNICATION);
   }
-  return JsonHelper::getBooleanValue(responseBodyJson.json(), "hasMore", true);
+  bool hasMore = true;
+  if (slice.hasKey("hasMore")) {
+    hasMore = slice.get("hasMore").getBoolean();
+  }
+  return hasMore;
   LEAVE_BLOCK
 }
 
@@ -1416,14 +1425,18 @@ int64_t RemoteBlock::count() const {
   // If we get here, then res->result is the response which will be
   // a serialized AqlItemBlock:
   StringBuffer const& responseBodyBuf(res->result->getBody());
-  Json responseBodyJson(
-      TRI_UNKNOWN_MEM_ZONE,
-      TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, responseBodyBuf.begin()));
-  if (JsonHelper::getBooleanValue(responseBodyJson.json(), "error", true)) {
+  std::shared_ptr<VPackBuilder> builder = VPackParser::fromJson(responseBodyBuf.c_str(), responseBodyBuf.length());
+  VPackSlice slice = builder->slice();
+  
+  if (!slice.hasKey("error") || slice.get("error").getBoolean()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_AQL_COMMUNICATION);
   }
-  return JsonHelper::getNumericValue<int64_t>(responseBodyJson.json(), "count",
-                                              0);
+  
+  int64_t count = 0;
+  if (slice.hasKey("count")) {
+    count = slice.get("count").getNumericValue<int64_t>();
+  }
+  return count;
   LEAVE_BLOCK
 }
 
@@ -1439,13 +1452,17 @@ int64_t RemoteBlock::remaining() {
   // If we get here, then res->result is the response which will be
   // a serialized AqlItemBlock:
   StringBuffer const& responseBodyBuf(res->result->getBody());
-  Json responseBodyJson(
-      TRI_UNKNOWN_MEM_ZONE,
-      TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, responseBodyBuf.begin()));
-  if (JsonHelper::getBooleanValue(responseBodyJson.json(), "error", true)) {
+  std::shared_ptr<VPackBuilder> builder = VPackParser::fromJson(responseBodyBuf.c_str(), responseBodyBuf.length());
+  VPackSlice slice = builder->slice();
+  
+  if (!slice.hasKey("error") || slice.get("error").getBoolean()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_AQL_COMMUNICATION);
   }
-  return JsonHelper::getNumericValue<int64_t>(responseBodyJson.json(),
-                                              "remaining", 0);
+  
+  int64_t remaining = 0;
+  if (slice.hasKey("remaining")) {
+    remaining = slice.get("remaining").getNumericValue<int64_t>();
+  }
+  return remaining;
   LEAVE_BLOCK
 }

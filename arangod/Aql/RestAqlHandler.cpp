@@ -44,9 +44,7 @@ using namespace arangodb;
 using namespace arangodb::rest;
 using namespace arangodb::aql;
 
-using Json = arangodb::basics::Json;
 using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
-using JsonHelper = arangodb::basics::JsonHelper;
 
 RestAqlHandler::RestAqlHandler(GeneralRequest* request,
                                GeneralResponse* response,

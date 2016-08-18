@@ -29,7 +29,6 @@
 #include "Aql/Expression.h"
 #include "Aql/Variable.h"
 #include "Aql/WalkerWorker.h"
-#include "Basics/JsonHelper.h"
 #include "Basics/json-utilities.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"

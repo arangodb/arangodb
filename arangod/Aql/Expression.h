@@ -29,7 +29,6 @@
 #include "Aql/Range.h"
 #include "Aql/Variable.h"
 #include "Aql/types.h"
-#include "Basics/JsonHelper.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
