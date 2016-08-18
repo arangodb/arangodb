@@ -188,7 +188,7 @@ bool Agent::waitFor(index_t index, double timeout) {
 //  AgentCallback reports id of follower and its highest processed index
 void Agent::reportIn(arangodb::consensus::id_t id, index_t index) {
 
-  //MUTEX_LOCKER(mutexLocker, _ioLock);
+  MUTEX_LOCKER(mutexLocker, _ioLock);
 
   if (index > _confirmed[id]) {  // progress this follower?
     _confirmed[id] = index;

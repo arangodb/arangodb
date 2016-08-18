@@ -258,7 +258,7 @@ size_t Constituent::size() const {
 
 
 /// Get endpoint to an id
-std::string const& Constituent::endpoint(arangodb::consensus::id_t id) const {
+std::string Constituent::endpoint(arangodb::consensus::id_t id) const {
   return _agent->config().poolAt(id);
 }
 

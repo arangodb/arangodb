@@ -102,7 +102,7 @@ class Constituent : public arangodb::Thread {
   std::vector<std::string> const& endpoints() const;
 
   /// @brief Endpoint of agent with id
-  std::string const& endpoint(arangodb::consensus::id_t) const;
+  std::string endpoint(arangodb::consensus::id_t) const;
 
   /// @brief Run for leadership
   void candidate();
