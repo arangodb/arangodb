@@ -216,7 +216,6 @@ while [ $# -gt 0 ];  do
              PAR=""
              PARALLEL_BUILDS=""
              GENERATOR="Visual Studio 14 Win64"
-             CPACK="ZIP NSIS"
              MAKE='cmake --build . --config RelWithDebInfo'
              PACKAGE_MAKE='cmake --build . --config RelWithDebInfo --target'
              CONFIGURE_OPTIONS="${CONFIGURE_OPTIONS} -DV8_TARGET_ARCHS=Release"
@@ -402,27 +401,6 @@ ${MAKE_CMD_PREFIX} ${MAKE} ${MAKE_PARAMS}
 if [ -n "$CPACK"  -a -n "${TARGET_DIR}" ];  then
     ${PACKAGE_MAKE} packages
 fi
-#if [ -n "$CPACK"  -a -n "${TARGET_DIR}" ];  then
-#    for PACK in ${CPACK}; do 
-##        if [ "$PACK" == "DEB" ]; then
-##            make prepare_debian
-##        fi
-#        
-#        cpack -G "$PACK"
-#
-#        EXT=`echo $PACK|tr '[:upper:]' '[:lower:]'`
-#        if [ "$PACK" == "Bundle" ]; then
-#            EXT = 'dmg'
-#        fi
-#        if [ "$PACK" == "NSIS" ]; then
-#            true
-#        else
-#            cp *.${EXT} ${TARGET_DIR}
-#        fi
-#    done
-#fi
-
-
 # and install
 
 if test -n "${TARGET_DIR}";  then
