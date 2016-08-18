@@ -267,51 +267,6 @@ ExecutionPlan* ExecutionPlan::clone(Query const& query) {
   return otherPlan.release();
 }
 
-/// @brief export to JSON, returns an AUTOFREE Json object
-/// DEPRECATED
-arangodb::basics::Json ExecutionPlan::toJson(Ast* ast, TRI_memory_zone_t* zone,
-                                             bool verbose) const {
-  // TODO
-  VPackBuilder b;
-  _root->toVelocyPack(b, verbose);
-  TRI_json_t* tmp = arangodb::basics::VelocyPackHelper::velocyPackToJson(b.slice());
-  arangodb::basics::Json result(zone, tmp);
-
-  // set up rules
-  auto appliedRules(Optimizer::translateRules(_appliedRules));
-  arangodb::basics::Json rules(arangodb::basics::Json::Array,
-                               appliedRules.size());
-
-  for (auto const& r : appliedRules) {
-    rules.add(arangodb::basics::Json(r));
-  }
-  result.set("rules", rules);
-
-  auto usedCollections = *ast->query()->collections()->collections();
-  arangodb::basics::Json jsonCollectionList(arangodb::basics::Json::Array,
-                                            usedCollections.size());
-
-  for (auto const& c : usedCollections) {
-    arangodb::basics::Json json(arangodb::basics::Json::Object);
-
-    jsonCollectionList(json("name", arangodb::basics::Json(c.first))(
-        "type", arangodb::basics::Json(
-                    TRI_TransactionTypeGetStr(c.second->accessType))));
-  }
-
-  result.set("collections", jsonCollectionList);
-
-  VPackBuilder tmpTwo;
-  ast->variables()->toVelocyPack(tmpTwo);
-  result.set("variables", arangodb::basics::VelocyPackHelper::velocyPackToJson(tmpTwo.slice()));
-  size_t nrItems = 0;
-  result.set("estimatedCost", arangodb::basics::Json(_root->getCost(nrItems)));
-  result.set("estimatedNrItems",
-             arangodb::basics::Json(static_cast<double>(nrItems)));
-
-  return result;
-}
-
 /// @brief export to VelocyPack
 std::shared_ptr<VPackBuilder> ExecutionPlan::toVelocyPack(Ast* ast, bool verbose) const {
   auto builder = std::make_shared<VPackBuilder>();

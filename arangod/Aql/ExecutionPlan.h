@@ -68,11 +68,7 @@ class ExecutionPlan {
   /// @brief create an execution plan identical to this one
   ///   keep the memory of the plan on the query object specified.
   ExecutionPlan* clone(Query const&);
-
-  /// @brief export to JSON, returns an AUTOFREE Json object
-  arangodb::basics::Json toJson(Ast* ast, TRI_memory_zone_t* zone,
-                                bool verbose) const;
-
+  
   /// @brief export to VelocyPack
   std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack(Ast*, bool) const;
   
