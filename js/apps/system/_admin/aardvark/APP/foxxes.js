@@ -64,7 +64,7 @@ router.use(foxxRouter)
 
 const installer = createRouter();
 foxxRouter.use(installer)
-.queryParam('legacy', joi.boolean().default(true), dd`
+.queryParam('legacy', joi.boolean().default(false), dd`
   Flag to install the service in legacy mode.
 `)
 .queryParam('upgrade', joi.boolean().default(false), dd`
