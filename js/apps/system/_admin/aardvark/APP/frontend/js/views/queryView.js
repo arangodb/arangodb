@@ -549,6 +549,7 @@
         // get cached query if available
         var queryObject = this.getCachedQuery();
         var self = this;
+        console.log(queryObject);
 
         if (queryObject !== null && queryObject !== undefined && queryObject !== '') {
           this.aqlEditor.setValue(queryObject.query, 1);
@@ -638,6 +639,8 @@
     },
 
     render: function () {
+      this.refreshAQL();
+      this.renderComplete = false;
       this.$el.html(this.template.render({}));
 
       this.afterRender();

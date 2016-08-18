@@ -1,0 +1,152 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+  <head>
+    <title>make_unique</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+  </head>
+  <body text="#000000" bgcolor="#ffffff" link="#0000ff" vlink="#0000ff">
+    <h1><img height="86" alt="boost.png (6897 bytes)" src="../../boost.png" 
+      width="277" align="middle" border="0">make_unique</h1>
+    <p><a href="#introduction">Introduction</a><br>
+      <a href="#synopsis">Synopsis</a><br>
+      <a href="#common">Common Requirements</a><br>
+      <a href="#functions">Free Functions</a><br>
+      <a href="#history">History</a></p>
+    <h2><a name="introduction">Introduction</a></h2>
+    <p>The header file &lt;boost/make_unique.hpp&gt; provides overloaded 
+      function template <code>make_unique</code> for convenient creation of 
+      <code>unique_ptr</code> objects.</p>
+    <h2><a name="synopsis">Synopsis</a></h2>
+    <pre>namespace boost {
+    template&lt;class U&gt; // U is not array
+    unique_ptr&lt;U&gt; <a href="#functions">make_unique</a>();
+
+#if !defined(BOOST_NO_CXX11_VARIADIC_TEMPLATES)
+    template&lt;class U, class... Args&gt; // U is not array
+    unique_ptr&lt;U&gt; <a href="#functions">make_unique</a>(Args&amp;&amp;... args);
+#endif
+
+    template&lt;class U&gt; // U is not array
+    unique_ptr&lt;U&gt; <a href="#functions">make_unique</a>(U&amp;&amp; value);
+
+    template&lt;class U&gt; // U is T[]
+    unique_ptr&lt;U&gt; <a href="#functions">make_unique</a>(size_t size);
+
+    template&lt;class U&gt; // U is not array
+    unique_ptr&lt;U&gt; <a href="#functions">make_unique_noinit</a>();
+
+    template&lt;class U&gt; // U is T[]
+    unique_ptr&lt;U&gt; <a href="#functions">make_unique_noinit</a>(size_t size);
+}</pre>
+    <h2><a name="common">Common Requirements</a></h2>
+    <pre>template&lt;class U&gt;
+    unique_ptr&lt;U&gt; make_unique(<em>args</em>);
+template&lt;class U&gt;
+    unique_ptr&lt;U&gt; make_unique_noinit(<em>args</em>);</pre> 
+    <blockquote>
+      <p><b>Effects:</b> Allocates memory for an object of type <code>U</code> 
+        (or <code>T[size]</code> when <code>U</code> is <code>T[]</code>, 
+        where <code>size</code> is determined from <code>args</code> as 
+        specified by the concrete overload). The object is initialized from 
+        <code>args</code> as specified by the concrete overload. If an 
+        exception is thrown, the functions have no effect.</p>
+      <p><b>Returns:</b> A <code>unique_ptr</code> instance that stores and 
+        owns the address of the newly constructed object.</p>
+      <p><b>Postconditions:</b> <code>r.get() != 0</code>, where 
+        <code>r</code> is the return value.</p>
+      <p><b>Throws:</b> <code>bad_alloc</code>, or an exception thrown from 
+        the initialization of the object.</p>
+      <p><b>Remarks:</b></p>
+      <blockquote>
+        <p>When an object of a non-array type <code>T</code> is specified to 
+          be initialized to a value <code>value</code>, or to 
+          <code>T(list...)</code>, where <code>list...</code> is a list of 
+          constructor arguments, <code>make_unique</code> shall perform this 
+          initialization via the expression <code>new T(value)</code> or 
+          <code>new T(list...)</code> respectively.</p>
+        <p>When an object of type <code>T</code> is specified to be 
+          value-initialized, <code>make_unique</code> shall perform this 
+          initialization via the expression <code>new T()</code>.</p>
+        <p>When an object of type <code>T</code> is specified to be 
+          default-initialized, <code>make_unique_noinit</code> shall perform 
+          this initialization via the expression <code>new T</code>.</p>
+      </blockquote>
+    </blockquote>
+    <h2><a name="functions">Free Functions</a></h2>
+    <pre>template&lt;class U, class... Args&gt;
+unique_ptr&lt;U&gt; make_unique(Args&amp;&amp;... args);</pre> 
+    <blockquote>
+      <p><b>Returns:</b> A unique_ptr to an object of type <code>U</code>, 
+        initialized to <code>U(forward&lt;Args&gt;(args)...)</code>.</p>
+      <p><b>Remarks:</b> This overload shall only participate in overload 
+        resolution when <code>U</code> is not an array type.</p>
+      <p><b>Examples:</b></p>
+      <blockquote>
+        <pre>unique_ptr&lt;float&gt; p1 = boost::make_unique&lt;float&gt;();
+unique_ptr&lt;point&gt; p2 = boost::make_unique&lt;point&gt;(x, y);</pre>
+      </blockquote>
+    </blockquote>
+    <pre>template&lt;class U&gt;
+unique_ptr&lt;U&gt; make_unique(U&amp;&amp; value);</pre> 
+    <blockquote>
+      <p><b>Returns:</b> A unique_ptr to an object of type <code>U</code>, 
+        initialized to <code>move(value)</code>.</p>
+      <p><b>Remarks:</b> This overload shall only participate in overload 
+        resolution when <code>U</code> is not an array type.</p>
+      <p><b>Examples:</b></p>
+      <blockquote>
+        <pre>unique_ptr&lt;string&gt; p1 = boost::make_unique&lt;string&gt;({'a', 'b'});
+unique_ptr&lt;point&gt; p2 = boost::make_unique&lt;point&gt;({-10, 25});</pre>
+      </blockquote>
+    </blockquote>
+    <pre>template&lt;class U&gt;
+unique_ptr&lt;U&gt; make_unique(size_t size);</pre> 
+    <blockquote>
+      <p><b>Returns:</b> A unique_ptr to a value-initialized object of type 
+        <code>T[size]</code>.</p>
+      <p><b>Remarks:</b> This overload shall only participate in overload 
+        resolution when <code>U</code> is of the form <code>T[]</code>.</p>
+      <p><b>Examples:</b></p>
+      <blockquote>
+        <pre>unique_ptr&lt;double[]&gt; p1 = boost::make_unique&lt;double[]&gt;(4);
+unique_ptr&lt;int[][2]&gt; p2 = boost::make_unique&lt;int[][2]&gt;(2);</pre>
+      </blockquote>
+    </blockquote>
+    <pre>template&lt;class U&gt;
+unique_ptr&lt;U&gt; make_unique_noinit();</pre> 
+    <blockquote>
+      <p><b>Returns:</b> A unique_ptr to a default-initialized object of 
+        type <code>U</code>.</p>
+      <p><b>Remarks:</b> This overload shall only participate in overload 
+        resolution when <code>U</code> is not an array type.</p>
+      <p><b>Examples:</b></p>
+      <blockquote>
+        <pre>unique_ptr&lt;float&gt; p1 = boost::make_unique_noinit&lt;float&gt;();
+unique_ptr&lt;point&gt; p2 = boost::make_unique_noinit&lt;point&gt;();</pre>
+      </blockquote>
+    </blockquote>
+    <pre>template&lt;class U&gt;
+unique_ptr&lt;U&gt; make_unique_noinit(size_t size);</pre> 
+    <blockquote>
+      <p><b>Returns:</b> A unique_ptr to a default-initialized object of 
+        type <code>T[size]</code>.</p>
+      <p><b>Remarks:</b> This overload shall only participate in overload 
+        resolution when <code>U</code> is of the form <code>T[]</code>.</p>
+      <p><b>Examples:</b></p>
+      <blockquote>
+        <pre>unique_ptr&lt;double[]&gt; p1 = boost::make_unique_noinit&lt;double[]&gt;(4);
+unique_ptr&lt;int[][2]&gt; p2 = boost::make_unique_noinit&lt;int[][2]&gt;(2);</pre>
+      </blockquote>
+    </blockquote>
+    <h2><a name="history">History</a></h2>
+    <p>January 2014. Glen Fernandes contributed implementations of 
+      make_unique for objects and arrays.</p>
+    <hr>
+    <p>$Date$</p>
+    <p><small>Copyright 2012-2014 Glen Fernandes. Distributed under the 
+      Boost Software License, Version 1.0. See accompanying file 
+      <a href="../../LICENSE_1_0.txt">LICENSE_1_0.txt</a> or copy at 
+      <a href="http://www.boost.org/LICENSE_1_0.txt">
+      http://www.boost.org/LICENSE_1_0.txt</a>.</small></p>
+  </body>
+</html>

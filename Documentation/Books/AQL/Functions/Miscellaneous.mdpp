@@ -6,11 +6,12 @@
 
 `NOT_NULL(alternative, ...) → value`
 
-Return the first alternative that is not *null*, and *null* if all alternatives
-are *null* themselves.
+Return the first element that is not *null*, and *null* if all alternatives
+are *null* themselves. It is also known as `COALESCE()` in SQL.
 
 - **alternative** (any, *repeatable*): input of arbitrary type
-- returns **value** (any):
+- returns **value** (any): first non-null parameter, or *null* if all arguments
+  are *null*
 
 !SUBSECTION FIRST_LIST()
 

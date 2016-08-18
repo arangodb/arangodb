@@ -1,0 +1,5 @@
+[article Include invalid path fail
+[quickbook 1.7]
+]
+
+[include .\\\\empty-inc.quickbook]

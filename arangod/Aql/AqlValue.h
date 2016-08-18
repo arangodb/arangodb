@@ -38,6 +38,39 @@
 
 #include <v8.h>
 
+// some functionality borrowed from 3rdParty/velocypack/include/velocypack
+// this is a copy of that functionality, because the functions in velocypack
+// are not accessible from here
+namespace {
+  static inline uint64_t toUInt64(int64_t v) noexcept {
+    // If v is negative, we need to add 2^63 to make it positive,
+    // before we can cast it to an uint64_t:
+    uint64_t shift2 = 1ULL << 63;
+    int64_t shift = static_cast<int64_t>(shift2 - 1);
+    return v >= 0 ? static_cast<uint64_t>(v)
+                  : static_cast<uint64_t>((v + shift) + 1) + shift2;
+    // Note that g++ and clang++ with -O3 compile this away to
+    // nothing. Further note that a plain cast from int64_t to
+    // uint64_t is not guaranteed to work for negative values!
+  }
+
+  // returns number of bytes required to store the value in 2s-complement
+  static inline uint8_t intLength(int64_t value) {
+    if (value >= -0x80 && value <= 0x7f) {
+      // shortcut for the common case
+      return 1;
+    }
+    uint64_t x = value >= 0 ? static_cast<uint64_t>(value)
+                            : static_cast<uint64_t>(-(value + 1));
+    uint8_t xSize = 0;
+    do {
+      xSize++;
+      x >>= 8;
+    } while (x >= 0x80);
+    return xSize + 1;
+  }
+}
+
 struct TRI_doc_mptr_t;
 
 namespace arangodb {
@@ -130,6 +163,75 @@ struct AqlValue final {
   explicit AqlValue(bool value) {
     VPackSlice slice(value ? arangodb::basics::VelocyPackHelper::TrueValue() : arangodb::basics::VelocyPackHelper::FalseValue());
     memcpy(_data.internal, slice.begin(), static_cast<size_t>(slice.byteSize()));
+    setType(AqlValueType::VPACK_INLINE);
+  }
+
+  // construct from a double value
+  explicit AqlValue(double value) {
+    if (std::isnan(value) || !std::isfinite(value) || value == HUGE_VAL || value == -HUGE_VAL) {
+      // null
+      _data.internal[0] = 0x18;
+    } else {
+      // a "real" double
+      _data.internal[0] = 0x1b;
+      uint64_t dv;
+      memcpy(&dv, &value, sizeof(double));
+      VPackValueLength vSize = sizeof(double);
+      int i = 1;
+      for (uint64_t x = dv; vSize > 0; vSize--) {
+        _data.internal[i] = x & 0xff;
+        x >>= 8;
+        ++i;
+      }
+    }
+    setType(AqlValueType::VPACK_INLINE);
+  }
+  
+  // construct from an int64 value
+  explicit AqlValue(int64_t value) {
+    if (value >= 0 && value <= 9) {
+      // a smallint
+      _data.internal[0] = static_cast<uint8_t>(0x30U + value);
+    } else if (value < 0 && value >= -6) {
+      // a negative smallint
+      _data.internal[0] = static_cast<uint8_t>(0x40U + value);
+    } else {
+      uint8_t vSize = intLength(value);
+      uint64_t x;
+      if (vSize == 8) {
+        x = toUInt64(value);
+      } else {
+        int64_t shift = 1LL << (vSize * 8 - 1);  // will never overflow!
+        x = value >= 0 ? static_cast<uint64_t>(value)
+                       : static_cast<uint64_t>(value + shift) + shift;
+      }
+      _data.internal[0] = 0x1fU + vSize;
+      int i = 1;
+      while (vSize-- > 0) {
+        _data.internal[i] = x & 0xffU;
+        ++i;
+        x >>= 8;
+      }
+    }
+    setType(AqlValueType::VPACK_INLINE);
+  }
+  
+  // construct from a uint64 value
+  explicit AqlValue(uint64_t value) {
+    if (value <= 9) {
+      // a smallint
+      _data.internal[0] = static_cast<uint8_t>(0x30U + value);
+    } else {
+      int i = 1;
+      uint8_t vSize = 0;
+      do {
+        vSize++;
+        _data.internal[i] = static_cast<uint8_t>(value & 0xffU);
+        ++i;
+        value >>= 8;
+      } while (value != 0);
+      _data.internal[0] = 0x27U + vSize;
+    }
     setType(AqlValueType::VPACK_INLINE);
   }
   

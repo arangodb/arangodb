@@ -1015,6 +1015,9 @@ function _buildServiceInPath (serviceInfo, path, options) {
       installServiceFromRemote(info.url, path);
       patchManifestFile(path, info.manifest);
     }
+    if (options.legacy) {
+      patchManifestFile(path, {engines: {arangodb: '^2.8.0'}});
+    }
   } catch (e) {
     try {
       fs.removeDirectoryRecursive(path, true);
@@ -1251,11 +1254,10 @@ function uninstall (mount, options) {
     [ mount ]);
   utils.validateMount(mount);
   options = options || {};
-  var service = _uninstall(mount, options);
   if (ArangoServerState.isCoordinator() && !options.__clusterDistribution) {
     let coordinators = ArangoClusterInfo.getCoordinators();
     /* jshint -W075:true */
-    let req = {mount, options};
+    let req = {mount, options: JSON.parse(JSON.stringify(options))};
     /* jshint -W075:false */
     let httpOptions = {};
     let coordOptions = {
@@ -1271,7 +1273,9 @@ function uninstall (mount, options) {
       }
     }
     cluster.wait(coordOptions, coordinators.length - 1);
+    require('internal').wait(1.0);
   }
+  var service = _uninstall(mount, options);
   reloadRouting();
   return service.simpleJSON();
 }

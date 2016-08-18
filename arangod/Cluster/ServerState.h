@@ -232,6 +232,10 @@ class ServerState {
 
   void setFoxxmaster(std::string const&);
 
+  void setFoxxmasterQueueupdate(bool);
+  
+  bool getFoxxmasterQueueupdate();
+
  private:
   /// @brief atomically fetches the server role
   RoleEnum loadRole() {
@@ -330,6 +334,8 @@ class ServerState {
   bool _clusterEnabled;
 
   std::string _foxxmaster;
+  
+  bool _foxxmasterQueueupdate;
 };
 }
 

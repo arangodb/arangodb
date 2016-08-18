@@ -1,0 +1,16 @@
+{
+    "key": "endian",
+    "name": "Endian",
+    "authors": [
+        "Beman Dawes"
+    ],
+    "maintainers": [
+        "Beman Dawes <bdawes -at- acm.org>"
+    ],
+    "description": "Types and conversion functions for correct byte ordering and more regardless of processor endianness.",
+    "category": [
+        "IO",
+        "Math",
+        "Miscellaneous"
+    ]
+}

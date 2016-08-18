@@ -1,0 +1,22 @@
+#
+#          Copyright Andrey Semashev 2007 - 2015.
+# Distributed under the Boost Software License, Version 1.0.
+#    (See accompanying file LICENSE_1_0.txt or copy at
+#          http://www.boost.org/LICENSE_1_0.txt)
+#
+
+import project ;
+
+project /boost/log/visibility
+    : source-location .
+    : requirements
+        <pch>off
+    ;
+
+obj visibility : visibility.cpp
+    :
+        <cxxflags>"-fvisibility=hidden"
+        # Some compilers may not support visibility but just ignore the option with a warning
+        <warnings>all
+        <warnings-as-errors>on
+    ;

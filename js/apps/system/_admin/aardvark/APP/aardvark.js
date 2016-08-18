@@ -374,10 +374,20 @@ authRouter.get('/graph/:name', function (req, res) {
     if (config.query) {
       aqlQuery = config.query;
     } else {
+      var limit = 0;
+      if (config.limit !== undefined) {
+        if (config.limit.length > 0 && config.limit !== '0') {
+          limit = config.limit;
+        }
+      }
+
       aqlQuery =
-       'FOR v, e, p IN 1..' + (config.depth || '2') + ' ANY "' + startVertex._id + '" GRAPH "' + name + '"' +
-       'RETURN p'
-      ;
+        'FOR v, e, p IN 1..' + (config.depth || '2') + ' ANY "' + startVertex._id + '" GRAPH "' + name + '"';
+
+      if (limit !== 0) {
+        aqlQuery += ' LIMIT ' + limit;
+      }
+      aqlQuery += ' RETURN p';
     }
 
     var getAttributeByKey = function (o, s) {
@@ -522,7 +532,7 @@ authRouter.get('/graph/:name', function (req, res) {
           nodeObj = {
             id: node._id,
             label: nodeLabel,
-            size: nodeSize || 10,
+            size: nodeSize || 3,
             color: config.nodeColor || '#2ecc71',
             x: Math.random(),
             y: Math.random()

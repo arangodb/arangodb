@@ -1,0 +1,33 @@
+
+#          Copyright Oliver Kowalke 2014.
+# Distributed under the Boost Software License, Version 1.0.
+#    (See accompanying file LICENSE_1_0.txt or copy at
+#          http://www.boost.org/LICENSE_1_0.txt)
+
+import feature ;
+import modules ;
+import toolset ;
+
+project boost/coroutine2
+    : requirements
+      <library>/boost/context//boost_context
+      <toolset>gcc,<segmented-stacks>on:<cxxflags>-fsplit-stack
+      <toolset>gcc,<segmented-stacks>on:<cxxflags>-DBOOST_USE_SEGMENTED_STACKS
+      <toolset>clang,<segmented-stacks>on:<cxxflags>-fsplit-stack
+      <toolset>clang,<segmented-stacks>on:<cxxflags>-DBOOST_USE_SEGMENTED_STACKS
+      <link>shared:<define>BOOST_COROUTINES2_DYN_LINK=1
+      <define>BOOST_COROUTINES2_SOURCE
+      <threading>multi
+    : usage-requirements
+      <link>shared:<define>BOOST_COROUTINES2_DYN_LINK=1
+      <optimization>speed:<define>BOOST_DISABLE_ASSERTS
+      <variant>release:<define>BOOST_DISABLE_ASSERTS
+    : source-location ../src
+    ;
+
+lib boost_coroutine2
+    : 
+    : <link>shared:<library>../../context/build//boost_context
+    ;
+
+boost-install boost_coroutine2 ;

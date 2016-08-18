@@ -1,0 +1,3 @@
+build-project ../test ;
+build-project ../example ;
+

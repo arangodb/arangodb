@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE article PUBLIC "-//Boost//DTD BoostBook XML V1.0//EN" "http://www.boost.org/tools/boostbook/dtd/boostbook.dtd">
+<article id="glob_test" last-revision="DEBUG MODE Date: 2000/12/20 12:00:00 $" xmlns:xi="http://www.w3.org/2001/XInclude">
+  <title>Glob Test</title>
+  <section id="glob_test.t1_0">
+    <title><link linkend="glob_test.t1_0">Test 1.0</link></title>
+  </section>
+  <section id="glob_test.t1_1">
+    <title><link linkend="glob_test.t1_1">Test 1.1</link></title>
+    <para>
+      A
+    </para>
+  </section>
+  <section id="glob_test.t1_2">
+    <title><link linkend="glob_test.t1_2">Test 1.2</link></title>
+    <para>
+      B
+    </para>
+  </section>
+  <section id="glob_test.t1_3">
+    <title><link linkend="glob_test.t1_3">Test 1.3</link></title>
+    <para>
+      B
+    </para>
+  </section>
+  <section id="glob_test.t2_1">
+    <title><link linkend="glob_test.t2_1">Test 2.1</link></title>
+    <para>
+      A
+    </para>
+    <para>
+      B
+    </para>
+  </section>
+  <section id="glob_test.t2_2">
+    <title><link linkend="glob_test.t2_2">Test 2.2</link></title>
+    <para>
+      B
+    </para>
+  </section>
+</article>

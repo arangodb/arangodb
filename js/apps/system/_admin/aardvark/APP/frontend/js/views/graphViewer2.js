@@ -168,7 +168,7 @@
                 edges[edge._id] = {
                   id: edge._id,
                   source: edge._from,
-                  label: edge._key,
+                  // label: edge._key,
                   color: '#cccccc',
                   target: edge._to
                 };
@@ -179,7 +179,7 @@
               vertices[node._id] = {
                 id: node._id,
                 label: node._key,
-                size: 0.3,
+                // size: 0.3,
                 color: '#2ecc71',
                 x: Math.random(),
                 y: Math.random()
@@ -203,7 +203,7 @@
           returnObj.edges.push({
             id: edge._id,
             source: edge._from,
-            label: edge._key,
+            // label: edge._key,
             color: '#cccccc',
             target: edge._to
           });
@@ -324,10 +324,10 @@
           var settings = {
             defaultEdgeLabelColor: '#000',
             defaultEdgeLabelActiveColor: '#000',
-            defaultEdgeLabelSize: 10,
+            defaultEdgeLabelSize: 12,
             edgeLabelSize: 'fixed',
-            edgeLabelSizePowRatio: 1,
-            edgeLabelThreshold: 1
+            edgeLabelThreshold: 1,
+            edgeLabelSizePowRatio: 1
           };
 
           // Export the previously designed settings:
@@ -776,7 +776,7 @@
       });
     },
 
-    // right click background context menu
+    // right click nodes context menu
     createNodesContextMenu: function (e) {
       var self = this;
 
@@ -855,9 +855,9 @@
         wheel.slicePathFunction = slicePath().DonutSlice;
         wheel.createWheel([icon.plus, icon.arrowleft2]);
 
+        // add menu events
         wheel.navItems[0].selected = false;
         wheel.navItems[0].hovered = false;
-        // add menu events
 
         // function 0: add node
         wheel.navItems[0].navigateFunction = function (e) {
@@ -907,9 +907,9 @@
         wheel.slicePathFunction = slicePath().DonutSlice;
         wheel.createWheel([icon.edit, icon.trash]);
 
+        // add menu events
         wheel.navItems[0].selected = false;
         wheel.navItems[0].hovered = false;
-        // add menu events
 
         // function 0: edit
         wheel.navItems[0].navigateFunction = function (e) {
@@ -939,8 +939,9 @@
     // right click node context menu
     createNodeContextMenu: function (nodeId, e) {
       var self = this;
-      var x; var y;
+      var x; var y; var size;
 
+      // case canvas
       _.each(e.data.node, function (val, key) {
         if (key.substr(0, 8) === 'renderer' && key.charAt(key.length - 1) === 'x') {
           x = val;
@@ -948,10 +949,30 @@
         if (key.substr(0, 8) === 'renderer' && key.charAt(key.length - 1) === 'y') {
           y = val;
         }
+        if (key.substr(0, 8) === 'renderer' && key.charAt(key.length - 1) === 'e') {
+          size = val;
+        }
       });
 
-      this.clearOldContextMenu();
+      if (x === undefined && y === undefined) {
+        // case webgl
+        _.each(e.data.node, function (val, key) {
+          if (key.substr(0, 8) === 'read_cam' && key.charAt(key.length - 1) === 'x') {
+            x = val + $('#graph-container').width() / 2;
+          }
+          if (key.substr(0, 8) === 'read_cam' && key.charAt(key.length - 1) === 'y') {
+            y = val + $('#graph-container').height() / 2;
+          }
+        });
+      }
 
+      var radius = size * 2.5;
+
+      if (radius < 75) {
+        radius = 75;
+      }
+
+      this.clearOldContextMenu();
       var generateMenu = function (e, nodeId) {
         var hotaru = ['#364C4A', '#497C7F', '#92C5C0', '#858168', '#CCBCA5'];
 
@@ -959,64 +980,80 @@
 
         var wheel = new Wheelnav('nodeContextMenu');
         wheel.maxPercent = 1.0;
-        wheel.wheelRadius = 50;
+        wheel.wheelRadius = radius;
         wheel.clockwise = false;
         wheel.colors = hotaru;
-        wheel.multiSelect = true;
+        wheel.multiSelect = false;
         wheel.clickModeRotate = false;
+        wheel.sliceHoverAttr = {stroke: '#fff', 'stroke-width': 2};
         wheel.slicePathFunction = slicePath().DonutSlice;
         wheel.createWheel([icon.edit, icon.trash, icon.flag, icon.connect, icon.expand]);
 
-        wheel.navItems[0].selected = false;
-        wheel.navItems[0].hovered = false;
-        // add menu events
+        window.setTimeout(function () {
+          // add menu events
 
-        // function 0: edit
-        wheel.navItems[0].navigateFunction = function (e) {
-          self.clearOldContextMenu();
-          self.editNode(nodeId);
-        };
+          // function 0: edit
+          wheel.navItems[0].navigateFunction = function (e) {
+            self.clearOldContextMenu();
+            self.editNode(nodeId);
+          };
 
-        // function 1: delete
-        wheel.navItems[1].navigateFunction = function (e) {
-          self.clearOldContextMenu();
-          self.deleteNodeModal(nodeId);
-        };
+          // function 1: delete
+          wheel.navItems[1].navigateFunction = function (e) {
+            self.clearOldContextMenu();
+            self.deleteNodeModal(nodeId);
+          };
 
-        // function 2: mark as start node
-        wheel.navItems[2].navigateFunction = function (e) {
-          self.clearOldContextMenu();
-          self.setStartNode(nodeId);
-        };
+          // function 2: mark as start node
+          wheel.navItems[2].navigateFunction = function (e) {
+            self.clearOldContextMenu();
+            self.setStartNode(nodeId);
+          };
 
-        // function 3: create edge
-        wheel.navItems[3].navigateFunction = function (e) {
-          self.contextState.createEdge = true;
-          self.contextState._from = nodeId;
-          self.contextState.fromX = x;
-          self.contextState.fromY = y;
+          // function 3: create edge
+          wheel.navItems[3].navigateFunction = function (e) {
+            self.contextState.createEdge = true;
+            self.contextState._from = nodeId;
+            self.contextState.fromX = x;
+            self.contextState.fromY = y;
 
-          var c = document.getElementsByClassName('sigma-mouse')[0];
-          c.addEventListener('mousemove', self.drawLine.bind(this), false);
+            var c = document.getElementsByClassName('sigma-mouse')[0];
+            c.addEventListener('mousemove', self.drawLine.bind(this), false);
 
-          self.clearOldContextMenu();
-        };
+            self.clearOldContextMenu();
+          };
 
-        // function 4: mark as start node
-        wheel.navItems[4].navigateFunction = function (e) {
-          self.clearOldContextMenu();
-          self.expandNode(nodeId);
-        };
+          // function 4: mark as start node
+          wheel.navItems[4].navigateFunction = function (e) {
+            self.clearOldContextMenu();
+            self.expandNode(nodeId);
+          };
 
-        // deselect active default entry
-        wheel.navItems[0].selected = false;
-        wheel.navItems[0].hovered = false;
+          // on hover
+          /* TODO
+          wheel.navItems[0].navSlice.mouseover(function (a) {
+            $(a.target).css('opacity', '1');
+          });
+          wheel.navItems[0].navSlice.mouseout(function (a) {
+            $(a.target).css('opacity', '0.8');
+          });
+          */
+
+          // deselect active default entry
+          wheel.navItems[0].selected = false;
+          wheel.navItems[0].hovered = false;
+        }, 300);
       };
 
-      $('#nodeContextMenu').css('left', x + 115);
-      $('#nodeContextMenu').css('top', y + 71);
-      $('#nodeContextMenu').width(100);
-      $('#nodeContextMenu').height(100);
+      var offset = $('#graph-container').offset();
+      $('#nodeContextMenu').width(radius * 2);
+      $('#nodeContextMenu').height(radius * 2);
+      // $('#nodeContextMenu').css('left', e.data.captor.clientX - radius);
+      // $('#nodeContextMenu').css('top', e.data.captor.clientY - radius);
+      // $('#nodeContextMenu').css('left', x + 150 + 15 - radius);
+      // $('#nodeContextMenu').css('top', y + 60 + 42 + 15 - radius);
+      $('#nodeContextMenu').css('left', x + offset.left - radius);
+      $('#nodeContextMenu').css('top', y + offset.top - radius);
 
       generateMenu(e, nodeId);
     },
@@ -1063,6 +1100,9 @@
       var existingNodes = this.currentGraph.graph.nodes();
 
       var found;
+      var newNodeCounter = 0;
+      var newEdgeCounter = 0;
+
       _.each(newNodes, function (newNode) {
         found = false;
         _.each(existingNodes, function (existingNode) {
@@ -1081,21 +1121,57 @@
         if (found === false) {
           newNode.originalColor = newNode.color;
           self.currentGraph.graph.addNode(newNode);
+          newNodeCounter++;
 
           _.each(newEdges, function (edge) {
             if (edge.source === newNode.id || edge.target === newNode.id) {
               edge.originalColor = edge.color;
               self.currentGraph.graph.addEdge(edge);
+              newEdgeCounter++;
             }
           });
-
-          self.startLayout(true);
         }
-
-        // rerender graph
-        self.currentGraph.refresh();
       });
+
+      $('#nodesCount').text(parseInt($('#nodesCount').text()) + newNodeCounter);
+      $('#edgesCount').text(parseInt($('#edgesCount').text()) + newEdgeCounter);
+
+      // rerender graph
+      if (newNodeCounter > 0 || newEdgeCounter > 0) {
+        if (self.algorithm === 'force') {
+          self.startLayout(true, origin);
+        } else if (self.algorithm === 'fruchtermann') {
+          sigma.layouts.fruchtermanReingold.start(self.currentGraph);
+          self.currentGraph.refresh();
+          // self.cameraToNode(origin);
+        } else if (self.algorithm === 'noverlap') {
+          self.startLayout(true, origin); // tmp bugfix, rerender with noverlap currently not possible
+          // self.currentGraph.startNoverlap();
+        }
+      }
     },
+
+    /*
+    cameraToNode: function (node) {
+      var self = this;
+      console.log(node);
+
+      self.currentGraph.cameras[0].goTo({
+        x: node['read_cam0:x'],
+        y: node['read_cam0:y']
+      });
+      /*
+      sigma.misc.animation.camera(
+        self.currentGraph.camera,
+        {
+          x: node[self.currentGraph.camera.readPrefix + 'x'],
+          y: node[self.currentGraph.camera.readPrefix + 'y'],
+          ratio: 1
+        },
+        {duration: self.currentGraph.settings('animationsTime') || 300}
+      );
+    },
+    */
 
     drawLine: function (e) {
       var context = window.App.graphViewer2.contextState;
@@ -1240,8 +1316,8 @@
 
           $(this.el).append(
             '<div style="' + style + '">' +
-              '<span style="margin-right: 10px" class="arangoState">' + graph.nodes.length + ' nodes</span>' +
-                '<span class="arangoState">' + graph.edges.length + ' edges</span>' +
+              '<span style="margin-right: 10px" class="arangoState"><span id="nodesCount">' + graph.nodes.length + '</span> nodes</span>' +
+                '<span class="arangoState"><span id="edgesCount">' + graph.edges.length + '</span> edges</span>' +
                   '</div>'
           );
         }
@@ -1268,21 +1344,24 @@
 
       // sigmajs graph settings
       var settings = {
+        scalingMode: 'inside',
         borderSize: 3,
         defaultNodeBorderColor: '#8c8c8c',
         doubleClickEnabled: false,
         minNodeSize: 5,
-        maxNodeSize: 50,
+        labelThreshold: 15,
+        maxNodeSize: 15,
         batchEdgesDrawing: true,
-        minEdgeSize: 1,
-        maxEdgeSize: 4,
+        minEdgeSize: 10,
+        maxEdgeSize: 20,
         enableEdgeHovering: true,
         edgeHoverColor: '#8c8c8c',
         defaultEdgeHoverColor: '#8c8c8c',
         defaultEdgeType: 'arrow',
         edgeHoverSizeRatio: 2,
         edgeHoverExtremities: true,
-        nodesPowRatio: 1,
+        nodesPowRatio: 0.5,
+        // edgesPowRatio: 1.5,
         // lasso settings
         autoRescale: true,
         mouseEnabled: true,
@@ -1309,8 +1388,6 @@
       // adjust display settings for big graphs
       if (graph.nodes) {
         if (graph.nodes.length > 250) {
-          // show node label if size is 15
-          settings.labelThreshold = 15;
           settings.hideEdgesOnMove = true;
         }
       }
@@ -1323,14 +1400,21 @@
             settings.minArrowSize = 7;
           }
         }
+      }
 
-        if (this.graphConfig.nodeLabelThreshold) {
-          settings.labelThreshold = this.graphConfig.nodeLabelThreshold;
+      if (aqlMode) {
+        // aql editor settings
+        renderer = 'webgl';
+
+        if (graph.nodes.length < 500) {
+          algorithm = 'fruchtermann';
+        } else {
+          settings.scalingMode = 'outside';
         }
 
-        if (this.graphConfig.edgeLabelThreshold) {
-          settings.edgeLabelThreshold = this.graphConfig.edgeLabelThreshold;
-        }
+        settings.drawEdgeLabels = false;
+        settings.minNodeSize = 2;
+        settings.maxNodeSize = 8;
       }
 
       // adjust display settings for webgl renderer
@@ -1370,7 +1454,7 @@
           scaleNodes: 1.05,
           gridSize: 75,
           easing: 'quadraticInOut', // animation transition function
-          duration: 10000 // animation duration. Long here for the purposes of this example only
+          duration: 1500 // animation duration
         });
 
         noverlapListener.bind('start stop interpolate', function (e) {
@@ -1381,32 +1465,16 @@
         });
       } else if (algorithm === 'fruchtermann') {
         var frListener = sigma.layouts.fruchtermanReingold.configure(s, {
-          iterations: 500,
+          iterations: 100,
           easing: 'quadraticInOut',
-          duration: 800
+          duration: 1500
         });
 
         frListener.bind('start stop interpolate', function (e) {});
       }
 
       // for canvas renderer allow graph editing
-      if (renderer === 'canvas') {
-        // render parallel edges
-        if (this.graphConfig) {
-          if (this.graphConfig.edgeType === 'curve') {
-            sigma.canvas.edges.autoCurve(s);
-          }
-        }
-
-        if (!self.aqlMode) {
-          s.bind('rightClickStage', function (e) {
-            self.addNodeX = e.data.captor.x;
-            self.addNodeY = e.data.captor.y;
-            self.createContextMenu(e);
-            self.clearMouseCanvas();
-          });
-        }
-
+      if (!self.aqlMode) {
         var showAttributes = function (e, node) {
           $('.nodeInfoDiv').remove();
 
@@ -1439,33 +1507,17 @@
           }
         };
 
-        s.bind('overNode', function (e) {
-          if (self.contextState.createEdge === true) {
-            self.newEdgeColor = '#ff0000';
-          } else {
-            self.newEdgeColor = '#000000';
-          }
+        s.bind('rightClickStage', function (e) {
+          self.addNodeX = e.data.captor.x;
+          self.addNodeY = e.data.captor.y;
+          self.createContextMenu(e);
+          self.clearMouseCanvas();
         });
 
-        s.bind('clickEdge', function (e) {
-          showAttributes(e, false);
+        s.bind('rightClickNode', function (e) {
+          var nodeId = e.data.node.id;
+          self.createNodeContextMenu(nodeId, e);
         });
-
-        /*
-        s.bind('outNode', function (e) {
-          if (self.contextState.createEdge === false) {
-            $('.nodeInfoDiv').remove();
-          }
-        });
-        */
-
-        /*
-        s.bind('outEdge', function (e) {
-          if (self.contextState.createEdge === false) {
-            $('.nodeInfoDiv').remove();
-          }
-        });
-       */
 
         s.bind('clickNode', function (e) {
           if (self.contextState.createEdge === true) {
@@ -1480,42 +1532,69 @@
           } else {
             if (!self.dragging) {
               // halo on active nodes:
-              self.currentGraph.renderers[0].halo({
-                nodes: self.currentGraph.graph.nodes(),
-                nodeHaloColor: '#DF0101',
-                nodeHaloSize: 100
-              });
+              if (renderer === 'canvas') {
+                self.currentGraph.renderers[0].halo({
+                  nodes: self.currentGraph.graph.nodes(),
+                  nodeHaloColor: '#DF0101',
+                  nodeHaloSize: 100
+                });
+              }
 
               showAttributes(e, true);
               self.activeNodes = [e.data.node];
-              s.renderers[0].halo({
-                nodes: [e.data.node]
-              });
+
+              if (renderer === 'canvas') {
+                s.renderers[0].halo({
+                  nodes: [e.data.node]
+                });
+              }
             }
           }
         });
 
-        s.renderers[0].bind('render', function (e) {
+        s.bind('clickStage', function () {
+          self.clearOldContextMenu(true);
+          self.clearMouseCanvas();
           s.renderers[0].halo({
             nodes: self.activeNodes
           });
         });
+      }
 
-        if (!this.aqlMode) {
-          s.bind('rightClickNode', function (e) {
-            var nodeId = e.data.node.id;
-            self.createNodeContextMenu(nodeId, e);
-          });
-        }
+      s.bind('doubleClickStage', function () {
+        self.activeNodes = [];
 
+        s.graph.nodes().forEach(function (n) {
+          n.color = n.originalColor;
+        });
+
+        s.graph.edges().forEach(function (e) {
+          e.color = e.originalColor;
+        });
+
+        $('.nodeInfoDiv').remove();
+        s.refresh();
+      });
+
+      if (renderer === 'canvas') {
+        // render parallel edges
         if (this.graphConfig) {
-          if (this.graphConfig.edgeEditable) {
-            s.bind('rightClickEdge', function (e) {
-              var edgeId = e.data.edge.id;
-              self.createEdgeContextMenu(edgeId, e);
-            });
+          if (this.graphConfig.edgeType === 'curve') {
+            sigma.canvas.edges.autoCurve(s);
           }
         }
+
+        s.bind('overNode', function (e) {
+          if (self.contextState.createEdge === true) {
+            self.newEdgeColor = '#ff0000';
+          } else {
+            self.newEdgeColor = '#000000';
+          }
+        });
+
+        s.bind('clickEdge', function (e) {
+          showAttributes(e, false);
+        });
 
         s.bind('doubleClickNode', function (e) {
           var nodeId = e.data.node.id;
@@ -1540,30 +1619,31 @@
 
           s.refresh();
         });
-
-        s.bind('doubleClickStage', function () {
-          self.activeNodes = [];
-
-          s.graph.nodes().forEach(function (n) {
-            n.color = n.originalColor;
-          });
-
-          s.graph.edges().forEach(function (e) {
-            e.color = e.originalColor;
-          });
-
-          $('.nodeInfoDiv').remove();
-          s.refresh();
-        });
-
-        s.bind('clickStage', function () {
-          self.clearOldContextMenu(true);
-          self.clearMouseCanvas();
+        s.renderers[0].bind('render', function (e) {
           s.renderers[0].halo({
             nodes: self.activeNodes
           });
         });
+
+        if (!this.aqlMode) {
+          s.bind('rightClickNode', function (e) {
+            var nodeId = e.data.node.id;
+            self.createNodeContextMenu(nodeId, e);
+          });
+        }
+
+        if (this.graphConfig) {
+          if (this.graphConfig.edgeEditable) {
+            s.bind('rightClickEdge', function (e) {
+              var edgeId = e.data.edge.id;
+              self.createEdgeContextMenu(edgeId, e);
+            });
+          }
+        }
       }
+
+      // store in view
+      self.algorithm = algorithm;
 
       // Initialize the dragNodes plugin:
       if (algorithm === 'noverlap') {
@@ -1587,8 +1667,14 @@
         // suggestion rendering time
         var duration = graph.nodes.length;
 
-        if (duration < 250) {
-          duration = 250;
+        if (aqlMode) {
+          if (duration < 250) {
+            duration = 250;
+          }
+        } else {
+          if (duration <= 250) {
+            duration = 500;
+          }
         }
 
         window.setTimeout(function () {
@@ -1648,27 +1734,22 @@
         window.App.listenerFunctions['graphViewer'] = this.keyUpFunction.bind(this);
       }
       // clear up info div
-      $('#calculatingGraph').remove();
+      $('#calculatingGraph').fadeOut('slow');
 
       if (!aqlMode) {
         if (self.graphConfig) {
           if (self.graphConfig.nodeSizeByEdges === 'false') {
             // make nodes a bit bigger
-            var maxNodeSize = s.settings('maxNodeSize');
-            console.log(maxNodeSize);
-            var factor = 1;
-            var length = s.graph.nodes().length;
+            // var maxNodeSize = s.settings('maxNodeSize');
+            // var factor = 1;
+            // var length = s.graph.nodes().length;
 
-            if (length < 100) {
-              factor = 2.5;
-            } else if (length < 1000) {
-              factor = 0.7;
-            }
+            /*
+            factor = 0.35;
             maxNodeSize = maxNodeSize * factor;
             s.settings('maxNodeSize', maxNodeSize);
-
-            s.refresh({
-            });
+            s.refresh({});
+           */
           }
         }
       }
@@ -1722,7 +1803,7 @@
       }
     },
 
-    startLayout: function (kill) {
+    startLayout: function (kill, origin) {
       var self = this;
       this.currentGraph.settings('drawLabels', false);
       this.currentGraph.settings('drawEdgeLabels', false);
@@ -1732,26 +1813,38 @@
 
         window.setTimeout(function () {
           self.stopLayout();
-        }, 400);
+
+          if (origin) {
+            self.currentGraph.refresh();
+            // self.cameraToNode(origin);
+          }
+        }, 500);
       }
 
       $('#toggleForce .fa').removeClass('fa-play').addClass('fa-pause');
-      $('#toggleForce span').html('Start layout');
+      $('#toggleForce span').html('Stop layout');
       this.layouting = true;
-      this.currentGraph.startForceAtlas2({
-        worker: true
-      });
-      sigma.plugins.dragNodes(this.currentGraph, this.currentGraph.renderers[0]);
+      if (this.aqlMode) {
+        this.currentGraph.startForceAtlas2({
+          worker: true,
+          edgeWeightInfluence: 2
+        });
+      } else {
+        this.currentGraph.startForceAtlas2({
+          worker: true
+        });
+      }
+      // sigma.plugins.dragNodes(this.currentGraph, this.currentGraph.renderers[0]);
     },
 
     stopLayout: function () {
       $('#toggleForce .fa').removeClass('fa-pause').addClass('fa-play');
-      $('#toggleForce span').html('Stop layout');
+      $('#toggleForce span').html('Start layout');
       this.layouting = false;
       this.currentGraph.stopForceAtlas2();
       sigma.plugins.dragNodes(this.currentGraph, this.currentGraph.renderers[0]);
-      this.currentGraph.settings('drawLabels', false);
-      this.currentGraph.settings('drawEdgeLabels', false);
+      this.currentGraph.settings('drawLabels', true);
+      this.currentGraph.settings('drawEdgeLabels', true);
       this.currentGraph.refresh({ skipIndexation: true });
     }
 

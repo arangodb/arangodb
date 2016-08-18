@@ -22,6 +22,7 @@
 // / @author Alan Plum
 // //////////////////////////////////////////////////////////////////////////////
 
+const isCluster = require("@arangodb/cluster").isCluster();
 var tasks = require('@arangodb/tasks');
 var db = require('@arangodb').db;
 var qb = require('aqb');
@@ -105,6 +106,14 @@ exports.manage = function () {
   if (!global.ArangoServerState.isFoxxmaster()) {
     return;
   }
+
+  if (isCluster && global.ArangoServerState.getFoxxmasterQueueupdate()) {
+    var foxxQueues = require('@arangodb/foxx/queues');
+    foxxQueues._updateQueueDelay();
+    global.ArangoAgency.set('Current/FoxxmasterQueueupdate', false);
+    //global.ArangoServerState.setFoxxmasterQueueupdate(false);
+  }
+
   var initialDatabase = db._name();
   var now = Date.now();
 

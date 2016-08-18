@@ -1,0 +1,102 @@
+# Copyright 2012-2013 Karsten Ahnert
+# Copyright 2012-2013 Mario Mulansky
+# Copyright 2013 Pascal Germroth
+# Distributed under the Boost Software License, Version 1.0.
+# (See accompanying file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+
+# bring in rules for testing
+
+import testing ;
+
+# make sure you are using a new version of boost.build, otherwise the local
+# odeint will not be included properly
+# you can fix older boost.build versions by applying the patch provided in
+# odeint's root, e.g.:
+# cd ~/odeint-v2
+# sudo patch /usr/share/boost-build/build/toolset.jam toolset.jam.patch
+
+use-project boost : $(BOOST_ROOT) ;
+
+project
+    : requirements
+      <define>BOOST_ALL_NO_LIB=1
+      # use test library
+      <library>/boost//unit_test_framework
+      <link>static
+      <toolset>clang:<cxxflags>-Wno-unused-variable
+      # <cxxflags>-D_SCL_SECURE_NO_WARNINGS
+    ;
+
+test-suite "odeint"
+    :
+    [ run euler_stepper.cpp ]
+    [ run runge_kutta_concepts.cpp ]
+    [ run runge_kutta_error_concepts.cpp ]
+    [ run runge_kutta_controlled_concepts.cpp ]
+    [ run resizing.cpp ]
+    [ run default_operations.cpp ]
+    [ run range_algebra.cpp ]
+    [ run implicit_euler.cpp ]
+# disable in clang
+    [ run fusion_algebra.cpp : : : <toolset>clang:<build>no ]
+    [ run stepper_with_units.cpp : : : <toolset>clang:<build>no ]
+    [ run stepper_copying.cpp ]
+    [ run stepper_with_ranges.cpp ]
+    [ run rosenbrock4.cpp ]
+    [ run rosenbrock4_mp.cpp ]
+    [ run is_pair.cpp ]
+    [ run adams_bashforth.cpp ]
+    [ run adams_moulton.cpp ]
+    [ run adams_bashforth_moulton.cpp ]
+    [ run generic_stepper.cpp ]
+    [ run generic_error_stepper.cpp ]
+    [ run bulirsch_stoer.cpp ]
+    [ run integrate_times.cpp ]
+    [ run integrate_times.cpp : : : <define>ODEINT_INTEGRATE_ITERATOR : integrate_times_iterator ]
+    [ run integrate.cpp ]
+    [ run integrate.cpp : : : <define>ODEINT_INTEGRATE_ITERATOR : integrate_iterator ]
+    [ run integrate_implicit.cpp ]
+    [ run integrate_implicit.cpp : : : <define>ODEINT_INTEGRATE_ITERATOR : integrate_implicit_iterator ]
+    [ run generation.cpp ]
+    [ run trivial_state.cpp ]
+    [ run is_resizeable.cpp ]
+    [ run resize.cpp ]
+    [ run same_size.cpp ]
+    [ run split.cpp ]
+    [ run symplectic_steppers.cpp ]
+    [ run integrators_symplectic.cpp ]
+    [ run integrators_symplectic.cpp : : : <define>ODEINT_INTEGRATE_ITERATOR : integrators_symplectic_iterator ]
+    [ run velocity_verlet.cpp ]
+    [ run multi_array.cpp ]
+    [ compile algebra_dispatcher.cpp ]
+    [ run integrate_stepper_refs.cpp ]
+    [ run const_step_iterator.cpp ]
+    [ run const_step_time_iterator.cpp ]
+    [ run adaptive_iterator.cpp ]
+    [ run adaptive_time_iterator.cpp ]
+    [ run n_step_iterator.cpp ]
+    [ run n_step_time_iterator.cpp ]
+    [ run times_iterator.cpp ]
+    [ run times_time_iterator.cpp ]
+    [ run step_size_limitation.cpp ]
+    [ run integrate_overflow.cpp ]
+    [ compile unwrap_boost_reference.cpp ]
+    [ compile unwrap_reference.cpp : <cxxflags>-std=c++0x : unwrap_reference_C++11 ]
+    [ compile-fail unwrap_reference.cpp : <cxxflags>-std=c++98 : unwrap_reference_C++98 ]
+    [ compile std_array.cpp : <cxxflags>-std=c++0x ]
+    : 
+        <testing.launcher>valgrind
+    ;
+    
+# also run numeric tests
+build-project numeric ;
+
+build-project regression ;
+
+# test-suite "odeint-iterator_integrate"
+#    :
+#    [ run integrate.cpp : : : : integrate_iterator ]
+#    : <testing.launcher>valgrind
+#      <define>ODEINT_ITERATOR_INTEGRATE
+#    ;
+
