@@ -64,6 +64,9 @@ router.use(foxxRouter)
 
 const installer = createRouter();
 foxxRouter.use(installer)
+.queryParam('legacy', joi.boolean().default(false), dd`
+  Flag to install the service in legacy mode.
+`)
 .queryParam('upgrade', joi.boolean().default(false), dd`
   Flag to upgrade the service installed at the mountpoint.
   Triggers setup.
@@ -85,8 +88,9 @@ installer.use(function (req, res, next) {
     options = req.body;
   } else {
     appInfo = req.body;
-    options = undefined;
+    options = {};
   }
+  options.legacy = req.queryParams.legacy;
   let service;
   try {
     if (upgrade) {

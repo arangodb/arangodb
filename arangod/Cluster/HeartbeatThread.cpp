@@ -48,6 +48,7 @@
 #include "VocBase/vocbase.h"
 
 using namespace arangodb;
+using namespace arangodb::application_features;
 
 std::atomic<bool> HeartbeatThread::HasRunOnce(false);
 
@@ -189,24 +190,31 @@ void HeartbeatThread::runDBServer() {
       // send an initial GET request to Sync/Commands/my-id
       LOG_TOPIC(TRACE, Logger::HEARTBEAT)
           << "Looking at Sync/Commands/" + _myId;
+    
+      AgencyReadTransaction trx(std::vector<std::string>(
+        {_agency.prefixPath() + "Shutdown",
+         _agency.prefixPath() + "Current/Version",
+         _agency.prefixPath() + "Sync/Commands/" + _myId
+         }));
 
-      AgencyCommResult result = _agency.getValues("Sync/Commands/" + _myId);
-
-      if (result.successful()) {
-        handleStateChange(result);
-      }
-
-      if (isStopping()) {
-        break;
-      }
-
-      LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "Refetching Current/Version...";
-      AgencyCommResult res = _agency.getValues("Current/Version");
-      if (!res.successful()) {
-        LOG_TOPIC(ERR, Logger::HEARTBEAT)
-            << "Could not read Current/Version from agency.";
+      AgencyCommResult result = _agency.sendTransactionWithFailover(trx);
+      if (!result.successful()) {
+        LOG_TOPIC(WARN, Logger::HEARTBEAT)
+            << "Heartbeat: Could not read from agency!";
       } else {
-        VPackSlice s = res.slice()[0].get(
+        VPackSlice shutdownSlice = result.slice()[0].get(
+            std::vector<std::string>({_agency.prefix(), "Shutdown"})
+        );
+
+        if (shutdownSlice.isBool() && shutdownSlice.getBool()) {
+          ApplicationServer::server->beginShutdown();
+          break;
+        }
+        LOG_TOPIC(TRACE, Logger::HEARTBEAT)
+            << "Looking at Sync/Commands/" + _myId;
+        handleStateChange(result);
+        
+        VPackSlice s = result.slice()[0].get(
             std::vector<std::string>({_agency.prefix(), std::string("Current"),
                                       std::string("Version")}));
         if (!s.isInteger()) {
@@ -322,7 +330,8 @@ void HeartbeatThread::runCoordinator() {
     }
 
     AgencyReadTransaction trx(std::vector<std::string>(
-        {_agency.prefixPath() + "Plan/Version",
+        {_agency.prefixPath() + "Shutdown",
+         _agency.prefixPath() + "Plan/Version",
          _agency.prefixPath() + "Current/Version",
          _agency.prefixPath() + "Current/Foxxmaster",
          _agency.prefixPath() + "Current/FoxxmasterQueueupdate",
@@ -334,6 +343,15 @@ void HeartbeatThread::runCoordinator() {
       LOG_TOPIC(WARN, Logger::HEARTBEAT)
           << "Heartbeat: Could not read from agency!";
     } else {
+      VPackSlice shutdownSlice = result.slice()[0].get(
+          std::vector<std::string>({_agency.prefix(), "Shutdown"})
+      );
+
+      if (shutdownSlice.isBool() && shutdownSlice.getBool()) {
+        ApplicationServer::server->beginShutdown();
+        break;
+      }
+
       LOG_TOPIC(TRACE, Logger::HEARTBEAT)
           << "Looking at Sync/Commands/" + _myId;
 
