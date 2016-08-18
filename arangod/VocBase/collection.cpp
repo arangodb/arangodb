@@ -1277,7 +1277,6 @@ bool TRI_collection_t::closeDataFiles(std::vector<TRI_datafile_t*> const& files)
   return result;
 }
 
-
 VocbaseCollectionInfo::VocbaseCollectionInfo(CollectionInfo const& other)
     : _type(other.type()),
       _revision(0),      // not known in the cluster case on the coordinator

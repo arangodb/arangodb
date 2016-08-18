@@ -739,7 +739,10 @@ void MMFilesEngine::dropCollection(TRI_vocbase_t* vocbase, TRI_vocbase_col_t* co
       }
     }
 
-    if (!invalid) {
+    if (invalid) {
+      LOG(ERR) << "cannot rename dropped collection '" << name
+               << "': unknown path '" << collection->path() << "'";
+    } else {
       // prefix the collection name with "deleted-"
 
       std::string const newFilename = 
@@ -772,9 +775,6 @@ void MMFilesEngine::dropCollection(TRI_vocbase_t* vocbase, TRI_vocbase_col_t* co
                    << "' from disk: " << TRI_errno_string(res);
         }
       }
-    } else {
-      LOG(ERR) << "cannot rename dropped collection '" << name
-               << "': unknown path '" << collection->path() << "'";
     }
   }
 }

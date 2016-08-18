@@ -111,7 +111,9 @@ class DatabaseFeature final : public application_features::ApplicationFeature {
   void disableReplicationApplier() { _replicationApplier = false; }
   void enableCheckVersion() { _checkVersion = true; }
   void enableUpgrade() { _upgrade = true; }
- 
+  bool throwCollectionNotLoadedError() const { return _throwCollectionNotLoadedError.load(std::memory_order_relaxed); }
+  void throwCollectionNotLoadedError(bool value) { _throwCollectionNotLoadedError.store(value); }
+
  private:
   void closeDatabases();
   void updateContexts();
@@ -147,7 +149,7 @@ class DatabaseFeature final : public application_features::ApplicationFeature {
   bool _defaultWaitForSync;
   bool _forceSyncProperties;
   bool _ignoreDatafileErrors;
-  bool _throwCollectionNotLoadedError;
+  std::atomic<bool> _throwCollectionNotLoadedError;
 
   TRI_vocbase_t* _vocbase;
   std::unique_ptr<DatabaseManagerThread> _databaseManager;

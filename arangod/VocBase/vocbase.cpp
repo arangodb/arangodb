@@ -62,8 +62,6 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 
-static std::atomic<bool> ThrowCollectionNotLoaded(false);
-
 /// @brief collection constructor
 TRI_vocbase_col_t::TRI_vocbase_col_t(TRI_vocbase_t* vocbase, TRI_col_type_e type,
                                      TRI_voc_cid_t cid, std::string const& name,
@@ -570,7 +568,8 @@ int TRI_vocbase_t::loadCollection(TRI_vocbase_col_t* collection,
       }
 
       // only throw this particular error if the server is configured to do so
-      if (ThrowCollectionNotLoaded.load(std::memory_order_relaxed)) {
+      auto databaseFeature = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
+      if (databaseFeature->throwCollectionNotLoadedError()) {
         return TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED;
       }
 
@@ -1300,16 +1299,6 @@ TRI_vocbase_col_t* TRI_vocbase_t::useCollection(std::string const& name,
 /// @brief releases a collection from usage
 void TRI_vocbase_t::releaseCollection(TRI_vocbase_col_t* collection) {
   collection->_lock.unlock();
-}
-
-/// @brief gets the "throw collection not loaded error"
-bool TRI_GetThrowCollectionNotLoadedVocBase() {
-  return ThrowCollectionNotLoaded.load(std::memory_order_seq_cst);
-}
-
-/// @brief sets the "throw collection not loaded error"
-void TRI_SetThrowCollectionNotLoadedVocBase(bool value) {
-  ThrowCollectionNotLoaded.store(value, std::memory_order_seq_cst);
 }
 
 /// @brief create a vocbase object
