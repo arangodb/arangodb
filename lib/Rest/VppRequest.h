@@ -66,7 +66,7 @@ class VppRequest : public GeneralRequest {
   ~VppRequest() {}
 
  public:
-  virtual uint64_t messageId() { return _messageId; }
+  virtual uint64_t messageId() override { return _messageId; }
   VPackSlice payload(arangodb::velocypack::Options const*) override;
 
   int64_t contentLength() const override {
