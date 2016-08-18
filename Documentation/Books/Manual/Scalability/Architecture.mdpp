@@ -92,6 +92,9 @@ it will automatically figure out where the data is stored (read) or to
 be stored (write). The information about the shards is shared across the
 coordinators using the Agency.
 
+Also see [Sharding](../Administration/Sharding/README.md) in the
+Administration chapter.
+
 !SUBSECTION Many sensible configurations
 
 This architecture is very flexible and thus allows many configurations,
