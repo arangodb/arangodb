@@ -55,18 +55,19 @@ std::size_t findAndValidateVPacks(char const* vpHeaderStart,
   validator.validate(vpHeaderStart, std::distance(vpHeaderStart, chunkEnd),
                      /*isSubPart =*/true);
 
-  // check if there is payload and locate the start
+  std::size_t numPayloads = 0;
   VPackSlice vpHeader(vpHeaderStart);
-  auto vpHeaderLen = vpHeader.byteSize();
-  auto vpPayloadStart = vpHeaderStart + vpHeaderLen;
-  if (vpPayloadStart == chunkEnd) {
-    return 0;  // no payload available
-  }
+  auto vpPayloadStart = vpHeaderStart + vpHeader.byteSize();
 
-  // validate Payload VelocyPack
-  validator.validate(vpPayloadStart, std::distance(vpPayloadStart, chunkEnd),
-                     /*isSubPart =*/false);
-  return std::distance(vpHeaderStart, vpPayloadStart);
+  while (vpPayloadStart != chunkEnd) {
+    // validate
+    validator.validate(vpPayloadStart, std::distance(vpPayloadStart, chunkEnd),
+                       true);
+    // get offset to next
+    VPackSlice tmp(vpPayloadStart);
+    vpPayloadStart += tmp.byteSize();
+  }
+  return numPayloads;
 }
 
 std::unique_ptr<basics::StringBuffer> createChunkForNetworkDetail(
@@ -281,19 +282,19 @@ bool VppCommTask::processRead() {
   auto vpackBegin = chunkBegin + chunkHeader._headerLength;
   bool doExecute = false;
   bool read_maybe_only_part_of_buffer = false;
-  VPackMessage message;  // filled in CASE 1 or CASE 2b
+  VppInputMessage message;  // filled in CASE 1 or CASE 2b
 
   // CASE 1: message is in one chunk
   if (chunkHeader._isFirst && chunkHeader._chunk == 1) {
-    std::size_t payloadOffset = findAndValidateVPacks(vpackBegin, chunkEnd);
-    message._id = chunkHeader._messageID;
-    message._buffer.append(vpackBegin, std::distance(vpackBegin, chunkEnd));
-    message._header = VPackSlice(message._buffer.data());
-    if (payloadOffset) {
-      message._payload = VPackSlice(message._buffer.data() + payloadOffset);
-    }
-    VPackValidator val;
-    val.validate(message._header.begin(), message._header.byteSize());
+    std::size_t payloads = findAndValidateVPacks(vpackBegin, chunkEnd);
+    VPackBuffer<uint8_t> buffer;
+    buffer.append(vpackBegin, std::distance(vpackBegin, chunkEnd));
+    message.set(chunkHeader._messageID, std::move(buffer), payloads);  // fixme
+
+    // message._header = VPackSlice(message._buffer.data());
+    // if (payloadOffset) {
+    //  message._payload = VPackSlice(message._buffer.data() + payloadOffset);
+    // }
 
     doExecute = true;
     LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "CASE 1";
@@ -335,16 +336,12 @@ bool VppCommTask::processRead() {
 
     // MESSAGE COMPLETE
     if (im._currentChunk == im._numberOfChunks - 1 /* zero based counting */) {
-      std::size_t payloadOffset = findAndValidateVPacks(
+      std::size_t payloads = findAndValidateVPacks(
           reinterpret_cast<char const*>(im._buffer.data()),
           reinterpret_cast<char const*>(im._buffer.data() +
                                         im._buffer.byteSize()));
-      message._id = chunkHeader._messageID;
-      message._buffer = std::move(im._buffer);
-      message._header = VPackSlice(message._buffer.data());
-      if (payloadOffset) {
-        message._payload = VPackSlice(message._buffer.data() + payloadOffset);
-      }
+
+      message.set(chunkHeader._messageID, std::move(im._buffer), payloads);
       _incompleteMessages.erase(incompleteMessageItr);
       // check length
 
@@ -368,10 +365,11 @@ bool VppCommTask::processRead() {
   }
 
   if (doExecute) {
+    VPackSlice header = message.header();
     LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
-        << "got request:" << message._header.toJson();
+        << "got request:" << header.toJson();
 
-    auto type = message._header.get("type").getInt();
+    auto type = header.get("type").getInt();
     if (type == 1000) {
       // do auth
     } else {

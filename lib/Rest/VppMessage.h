@@ -29,33 +29,80 @@
 #include <velocypack/Buffer.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
+#include <iterator>
 
 namespace arangodb {
 namespace rest {
 
-struct VPackMessage {
-  VPackMessage()
-      : _buffer(), _header(), _payload(), _id(), _generateBody(true) {}
-  VPackMessage(VPackBuffer<uint8_t>&& buff, VPackSlice head, VPackSlice pay,
-               uint64_t id, bool generateBody = true)
-      : _buffer(std::move(buff)),
-        _header(head),
-        _payload(pay),
-        _id(id),
-        _generateBody(generateBody) {}
-  VPackMessage(VPackMessage&& other) = default;
+struct VppInputMessage {
+  VppInputMessage() : _buffer(), _id(0), _payloadAmount(0), _payload() {}
 
+  VppInputMessage(uint64_t id, VPackBuffer<uint8_t>&& buff,
+                  std::size_t amount = 1)
+      : _buffer(std::move(buff)), _id(id), _payloadAmount(amount) {
+    init();
+  }
+
+  // no copy
+  VppInputMessage(VppInputMessage const& other) = delete;
+  // just move
+  VppInputMessage(VppInputMessage&& other) {
+    if (this == &other) {
+      return;
+    }
+    _buffer = std::move(other._buffer);
+    _id = other._id;
+    _payloadAmount = other._payloadAmount;
+    init();
+  }
+
+  void set(uint64_t id, VPackBuffer<uint8_t>&& buff, std::size_t amount = 1) {
+    _id = id;
+    _buffer = buff;
+    _payloadAmount = amount;
+    init();
+  }
+
+  VPackSlice header() const { return _header; };
+  VPackSlice payload() const {
+    if (!_payload.empty()) {
+      return _payload.front();
+    }
+    return VPackSlice{};
+  }
+
+  std::vector<VPackSlice> const& payloads() const {
+    if (!_payload.empty()) {
+      return _payload;
+    }
+  }
+
+ private:
   VPackBuffer<uint8_t> _buffer;
+  uint64_t _id;  // id zero signals invalid state
+  std::size_t _payloadAmount;
+  VPackSlice _header;
+  std::vector<VPackSlice> _payload;
+
+  void init() {
+    _header = VPackSlice(_buffer.data());
+    std::size_t offset = _header.byteSize();
+
+    for (std::size_t sliceNum = 0; sliceNum < _payloadAmount + 1; ++sliceNum) {
+      _payload.emplace_back(_buffer.data() + offset);
+      offset += _payload.back().byteSize();
+    }
+  }
+};
+
+struct VPackMessageNoOwnBuffer {
+  VPackMessageNoOwnBuffer(VPackSlice head, VPackSlice pay, uint64_t id,
+                          bool generateBody = true)
+      : _header(head), _payload(pay), _id(id), _generateBody(generateBody) {}
   VPackSlice _header;
   VPackSlice _payload;
   uint64_t _id;
   bool _generateBody;
-};
-
-struct VPackMessageNoOwnBuffer : VPackMessage {
-  VPackMessageNoOwnBuffer(VPackSlice head, VPackSlice pay, uint64_t id,
-                          bool generateBody = true)
-      : VPackMessage(VPackBuffer<uint8_t>(), head, pay, id, generateBody) {}
 };
 }
 }

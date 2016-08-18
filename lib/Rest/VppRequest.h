@@ -50,7 +50,7 @@ class Builder;
 struct Options;
 }
 
-using rest::VPackMessage;
+using rest::VppInputMessage;
 
 class VppRequest : public GeneralRequest {
   friend class rest::VppCommTask;
@@ -59,7 +59,7 @@ class VppRequest : public GeneralRequest {
   friend class RestBatchHandler;  // TODO must be removed
 
  private:
-  VppRequest(ConnectionInfo const& connectionInfo, VPackMessage&& message,
+  VppRequest(ConnectionInfo const& connectionInfo, VppInputMessage&& message,
              uint64_t messageId);
 
  public:
@@ -70,7 +70,7 @@ class VppRequest : public GeneralRequest {
   VPackSlice payload(arangodb::velocypack::Options const*) override;
 
   int64_t contentLength() const override {
-    return _message._payload.byteSize();
+    return _message.payload().byteSize();  // Fixme for MultiPayload message
   }
 
   virtual arangodb::Endpoint::TransportType transportType() override {
@@ -94,7 +94,7 @@ class VppRequest : public GeneralRequest {
   std::string const& value(std::string const& key, bool& found) const override;
 
  private:
-  VPackMessage _message;
+  VppInputMessage _message;
   mutable std::unique_ptr<std::unordered_map<std::string, std::string>>
       _headers;
   // values are query parameters
