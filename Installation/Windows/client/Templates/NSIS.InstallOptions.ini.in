@@ -1,5 +1,5 @@
 [Settings]
-NumFields=9
+NumFields=4
 
 [Field 1]
 Type=label
@@ -9,7 +9,16 @@ Right=-1
 Top=0
 Bottom=20
 
-[Field 4]
+[Field 2]
+Type=radiobutton
+Text=for all users
+Left=5
+Right=-1
+Top=40
+Bottom=50
+State=0
+
+[Field 3]
 Type=radiobutton
 Text=for the current user
 Left=5
@@ -18,7 +27,7 @@ Top=50
 Bottom=60
 State=0
 
-[Field 5]
+[Field 4]
 Type=CheckBox
 Text=Create @CPACK_PACKAGE_NAME@ Desktop Icon
 Left=160
@@ -27,7 +36,7 @@ Top=120
 Bottom=130
 State=1
 
-[Field 8]
+[Field 4]
 Type=label
 Text=Install @CPACK_PACKAGE_NAME@
 Left=0
