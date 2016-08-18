@@ -36,11 +36,6 @@ using namespace arangodb::rest;
 /// @brief slot for a "collection"
 static int const SLOT_COLLECTION = 2;
 
-/// @brief releases a collection
-void ReleaseCollection(arangodb::LogicalCollection const* collection) {
-  collection->vocbase()->releaseCollection(const_cast<arangodb::LogicalCollection*>(collection));
-}
-
 /// @brief check if a name belongs to a collection
 bool EqualCollection(CollectionNameResolver const* resolver,
                      std::string const& collectionName,

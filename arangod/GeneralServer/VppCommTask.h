@@ -54,9 +54,22 @@ class VppCommTask : public GeneralCommTask {
     addResponse(vppResponse, isError);
   };
 
+  arangodb::Endpoint::TransportType transportType() override {
+    return arangodb::Endpoint::TransportType::VPP;
+  };
+
  protected:
   void completedWriteBuffer() override final;
   virtual void handleChunk(char const*, size_t) override {}
+
+  void handleSimpleError(GeneralResponse::ResponseCode code,
+                         uint64_t id) override {
+    VppResponse response(code, id);
+    addResponse(&response, true);
+  }
+  void handleSimpleError(GeneralResponse::ResponseCode, int code,
+                         std::string const& errorMessage,
+                         uint64_t messageId) override;
 
  private:
   // resets the internal state this method can be called to clean up when the
@@ -65,7 +78,6 @@ class VppCommTask : public GeneralCommTask {
   void replyToIncompleteMessages() {}
 
   void addResponse(VppResponse*, bool isError);
-  VppRequest* requestAsVpp();
 
  private:
   using MessageID = uint64_t;
@@ -84,11 +96,12 @@ class VppCommTask : public GeneralCommTask {
   std::unordered_map<MessageID, IncompleteVPackMessage> _incompleteMessages;
 
   static size_t const _bufferLength = 4096UL;
+  static size_t const _chunkMaxBytes = 1000UL;
   struct ProcessReadVariables {
     ProcessReadVariables()
         : _currentChunkLength(0),
           _readBufferCursor(nullptr),
-          _cleanupLength(_bufferLength / 2) {}
+          _cleanupLength(_bufferLength - _chunkMaxBytes - 1) {}
     uint32_t
         _currentChunkLength;     // size of chunk processed or 0 when expecting
                                  // new chunk

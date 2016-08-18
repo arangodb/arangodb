@@ -31,6 +31,7 @@
 #include <velocypack/Builder.h>
 
 namespace arangodb {
+class CleanupThread;
 class CompactorThread;
 
 /// @brief collection file structure
@@ -152,8 +153,10 @@ class MMFilesEngine final : public StorageEngine {
   // the actual deletion.
   // the WAL entry for collection deletion will be written *after* the call
   // to "dropCollection" returns
-  void dropCollection(TRI_voc_tick_t databaseId, TRI_voc_cid_t id, 
-                      std::function<bool()> const& canRemovePhysically) override;
+  void prepareDropCollection(TRI_vocbase_t* vocbase, arangodb::LogicalCollection* collection) override;
+  
+  // perform a physical deletion of the collection
+  void dropCollection(TRI_vocbase_t* vocbase, arangodb::LogicalCollection* collection) override;
   
   // asks the storage engine to rename the collection as specified in the VPack
   // Slice object and persist the renaming info. It is guaranteed by the server 
@@ -185,7 +188,7 @@ class MMFilesEngine final : public StorageEngine {
   // creation requests will not fail.
   // the WAL entry for the index creation will be written *after* the call
   // to "createIndex" returns
-  void createIndex(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId,
+  void createIndex(TRI_vocbase_t* vocbase, TRI_voc_cid_t collectionId,
                    TRI_idx_iid_t id, arangodb::velocypack::Slice const& data) override;
 
   // asks the storage engine to drop the specified index and persist the deletion 
@@ -197,6 +200,10 @@ class MMFilesEngine final : public StorageEngine {
   // to "dropIndex" returns
   void dropIndex(TRI_vocbase_t* vocbase, TRI_voc_cid_t collectionId,
                  TRI_idx_iid_t id) override;
+  
+  void unloadCollection(TRI_vocbase_t* vocbase, TRI_voc_cid_t collectionId) override;
+  
+  void signalCleanup(TRI_vocbase_t* vocbase) override;
 
   // document operations
   // -------------------
@@ -301,13 +308,18 @@ class MMFilesEngine final : public StorageEngine {
                           bool forceSync) const;
   VocbaseCollectionInfo loadCollectionInfo(TRI_vocbase_t* vocbase,
     std::string const& collectionName, std::string const& path, bool versionWarning);
+  
+  // start the cleanup thread for the database 
+  int startCleanup(TRI_vocbase_t* vocbase);
+  // stop and delete the cleanup thread for the database 
+  int stopCleanup(TRI_vocbase_t* vocbase);
  
   // start the compactor thread for the database 
   int startCompactor(TRI_vocbase_t* vocbase);
-  // stop the compactor thread for the database
-  int stopCompactor(TRI_vocbase_t* vocbase);
+  // signal the compactor thread to stop
+  int beginShutdownCompactor(TRI_vocbase_t* vocbase);
   // stop and delete the compactor thread for the database
-  int deleteCompactor(TRI_vocbase_t* vocbase);
+  int stopCompactor(TRI_vocbase_t* vocbase);
 
  public:
   static std::string const EngineName;
@@ -339,6 +351,8 @@ class MMFilesEngine final : public StorageEngine {
   arangodb::Mutex _threadsLock;
   // per-database compactor threads, protected by _threadsLock
   std::unordered_map<TRI_vocbase_t*, CompactorThread*> _compactorThreads;
+  // per-database cleanup threads, protected by _threadsLock
+  std::unordered_map<TRI_vocbase_t*, CleanupThread*> _cleanupThreads;
 };
 
 }

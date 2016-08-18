@@ -507,10 +507,6 @@ function analyzeServerCrash (arangod, options, checkStr) {
 // / @brief periodic checks whether spawned arangod processes are still alive
 // //////////////////////////////////////////////////////////////////////////////
 function checkArangoAlive (arangod, options) {
-  if (arangod.hasOwnProperty('exitStatus')) {
-    return false;
-  }
-
   const res = statusExternal(arangod.pid, false);
   const ret = res.status === 'RUNNING';
 

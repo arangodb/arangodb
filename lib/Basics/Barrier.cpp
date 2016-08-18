@@ -52,9 +52,8 @@ void Barrier::join() {
     CONDITION_LOCKER(guard, _condition);
     TRI_ASSERT(_missing > 0);
     --_missing;
+    _condition.signal();
   }
-
-  _condition.signal();
 }
 
 ////////////////////////////////////////////////////////////////////////////////

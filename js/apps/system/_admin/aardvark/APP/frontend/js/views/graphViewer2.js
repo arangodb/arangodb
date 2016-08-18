@@ -1100,6 +1100,9 @@
       var existingNodes = this.currentGraph.graph.nodes();
 
       var found;
+      var newNodeCounter = 0;
+      var newEdgeCounter = 0;
+
       _.each(newNodes, function (newNode) {
         found = false;
         _.each(existingNodes, function (existingNode) {
@@ -1118,21 +1121,57 @@
         if (found === false) {
           newNode.originalColor = newNode.color;
           self.currentGraph.graph.addNode(newNode);
+          newNodeCounter++;
 
           _.each(newEdges, function (edge) {
             if (edge.source === newNode.id || edge.target === newNode.id) {
               edge.originalColor = edge.color;
               self.currentGraph.graph.addEdge(edge);
+              newEdgeCounter++;
             }
           });
-
-          self.startLayout(true);
         }
-
-        // rerender graph
-        self.currentGraph.refresh();
       });
+
+      $('#nodesCount').text(parseInt($('#nodesCount').text()) + newNodeCounter);
+      $('#edgesCount').text(parseInt($('#edgesCount').text()) + newEdgeCounter);
+
+      // rerender graph
+      if (newNodeCounter > 0 || newEdgeCounter > 0) {
+        if (self.algorithm === 'force') {
+          self.startLayout(true, origin);
+        } else if (self.algorithm === 'fruchtermann') {
+          sigma.layouts.fruchtermanReingold.start(self.currentGraph);
+          self.currentGraph.refresh();
+          // self.cameraToNode(origin);
+        } else if (self.algorithm === 'noverlap') {
+          self.startLayout(true, origin); // tmp bugfix, rerender with noverlap currently not possible
+          // self.currentGraph.startNoverlap();
+        }
+      }
     },
+
+    /*
+    cameraToNode: function (node) {
+      var self = this;
+      console.log(node);
+
+      self.currentGraph.cameras[0].goTo({
+        x: node['read_cam0:x'],
+        y: node['read_cam0:y']
+      });
+      /*
+      sigma.misc.animation.camera(
+        self.currentGraph.camera,
+        {
+          x: node[self.currentGraph.camera.readPrefix + 'x'],
+          y: node[self.currentGraph.camera.readPrefix + 'y'],
+          ratio: 1
+        },
+        {duration: self.currentGraph.settings('animationsTime') || 300}
+      );
+    },
+    */
 
     drawLine: function (e) {
       var context = window.App.graphViewer2.contextState;
@@ -1277,8 +1316,8 @@
 
           $(this.el).append(
             '<div style="' + style + '">' +
-              '<span style="margin-right: 10px" class="arangoState">' + graph.nodes.length + ' nodes</span>' +
-                '<span class="arangoState">' + graph.edges.length + ' edges</span>' +
+              '<span style="margin-right: 10px" class="arangoState"><span id="nodesCount">' + graph.nodes.length + '</span> nodes</span>' +
+                '<span class="arangoState"><span id="edgesCount">' + graph.edges.length + '</span> edges</span>' +
                   '</div>'
           );
         }
@@ -1310,7 +1349,8 @@
         defaultNodeBorderColor: '#8c8c8c',
         doubleClickEnabled: false,
         minNodeSize: 5,
-        maxNodeSize: 50,
+        labelThreshold: 15,
+        maxNodeSize: 15,
         batchEdgesDrawing: true,
         minEdgeSize: 10,
         maxEdgeSize: 20,
@@ -1374,7 +1414,7 @@
 
         settings.drawEdgeLabels = false;
         settings.minNodeSize = 2;
-        settings.maxNodeSize = 5;
+        settings.maxNodeSize = 8;
       }
 
       // adjust display settings for webgl renderer
@@ -1602,6 +1642,9 @@
         }
       }
 
+      // store in view
+      self.algorithm = algorithm;
+
       // Initialize the dragNodes plugin:
       if (algorithm === 'noverlap') {
         s.startNoverlap();
@@ -1691,20 +1734,22 @@
         window.App.listenerFunctions['graphViewer'] = this.keyUpFunction.bind(this);
       }
       // clear up info div
-      $('#calculatingGraph').remove();
+      $('#calculatingGraph').fadeOut('slow');
 
       if (!aqlMode) {
         if (self.graphConfig) {
           if (self.graphConfig.nodeSizeByEdges === 'false') {
             // make nodes a bit bigger
-            var maxNodeSize = s.settings('maxNodeSize');
-            var factor = 1;
+            // var maxNodeSize = s.settings('maxNodeSize');
+            // var factor = 1;
             // var length = s.graph.nodes().length;
 
+            /*
             factor = 0.35;
             maxNodeSize = maxNodeSize * factor;
             s.settings('maxNodeSize', maxNodeSize);
             s.refresh({});
+           */
           }
         }
       }
@@ -1758,7 +1803,7 @@
       }
     },
 
-    startLayout: function (kill) {
+    startLayout: function (kill, origin) {
       var self = this;
       this.currentGraph.settings('drawLabels', false);
       this.currentGraph.settings('drawEdgeLabels', false);
@@ -1768,7 +1813,12 @@
 
         window.setTimeout(function () {
           self.stopLayout();
-        }, 400);
+
+          if (origin) {
+            self.currentGraph.refresh();
+            // self.cameraToNode(origin);
+          }
+        }, 500);
       }
 
       $('#toggleForce .fa').removeClass('fa-play').addClass('fa-pause');

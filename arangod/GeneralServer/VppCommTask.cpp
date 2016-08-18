@@ -194,7 +194,7 @@ void VppCommTask::addResponse(VppResponse* response, bool isError) {
     try {
       LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << slice.toJson();
     } catch (arangodb::velocypack::Exception const& e) {
-      std::cout << "obi exception" << e.what();
+      std::cout << e.what() << std::endl;
     }
   }
 
@@ -364,23 +364,26 @@ bool VppCommTask::processRead() {
   }
 
   if (doExecute) {
-    //    return false;  // we have no complete request, so we return early
-    // for now we can handle only one request at a time
-    // lock _request???? REVIEW (fc)
     LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
         << "got request:" << message._header.toJson();
-    _request = new VppRequest(_connectionInfo, std::move(message));
-    GeneralServerFeature::HANDLER_FACTORY->setRequestContext(_request);
-    if (_request->requestContext() == nullptr) {
+
+    // the handler will take ownersip of this pointer
+    VppRequest* request = new VppRequest(_connectionInfo, std::move(message),
+                                         chunkHeader._messageID);
+    GeneralServerFeature::HANDLER_FACTORY->setRequestContext(request);
+
+    // make sure we have a dabase
+    if (request->requestContext() == nullptr) {
       handleSimpleError(GeneralResponse::ResponseCode::NOT_FOUND,
                         TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
-                        TRI_errno_string(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND));
+                        TRI_errno_string(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND),
+                        chunkHeader._messageID);
     } else {
-      _request->setClientTaskId(_taskId);
-      _protocolVersion = _request->protocolVersion();
+      request->setClientTaskId(_taskId);
+      _protocolVersion = request->protocolVersion();
       executeRequest(
-          _request, new VppResponse(GeneralResponse::ResponseCode::SERVER_ERROR,
-                                    chunkHeader._messageID));
+          request, new VppResponse(GeneralResponse::ResponseCode::SERVER_ERROR,
+                                   chunkHeader._messageID));
     }
   }
 
@@ -425,11 +428,24 @@ void VppCommTask::resetState(bool close) {
 //   return context->authenticate();
 // }
 
-// convert internal GeneralRequest to VppRequest
-VppRequest* VppCommTask::requestAsVpp() {
-  VppRequest* request = dynamic_cast<VppRequest*>(_request);
-  if (request == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+void VppCommTask::handleSimpleError(GeneralResponse::ResponseCode responseCode,
+                                    int errorNum,
+                                    std::string const& errorMessage,
+                                    uint64_t messageId) {
+  VppResponse response(responseCode, messageId);
+
+  VPackBuilder builder;
+  builder.openObject();
+  builder.add(StaticStrings::Error, VPackValue(true));
+  builder.add(StaticStrings::ErrorNum, VPackValue(errorNum));
+  builder.add(StaticStrings::ErrorMessage, VPackValue(errorMessage));
+  builder.add(StaticStrings::Code, VPackValue((int)responseCode));
+  builder.close();
+
+  try {
+    response.setPayload(builder.slice(), true, VPackOptions::Defaults);
+    processResponse(&response);
+  } catch (...) {
+    addResponse(&response, true);
   }
-  return request;
-};
+}

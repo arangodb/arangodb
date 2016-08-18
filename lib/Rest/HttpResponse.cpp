@@ -299,12 +299,11 @@ void HttpResponse::writeHeader(StringBuffer* output) {
   // end of header, body to follow
 }
 
-void HttpResponse::setPayload(ContentType contentType,
-                              arangodb::velocypack::Slice const& slice,
+void HttpResponse::setPayload(arangodb::velocypack::Slice const& slice,
                               bool generateBody, VPackOptions const& options) {
   if (_contentType != GeneralResponse::ContentType::CUSTOM) {
     // do not overwrite the content type set by the user!!!
-    _contentType = contentType;
+    //_contentType = contentType; //FIXME
     //    _contentType =
     //    meta::enumToEnum<GeneralResponse::ContentType>(request->contentTypeResponse());
   }

@@ -26,7 +26,7 @@
 
 #include "Basics/Common.h"
 #include "Utils/CollectionNameResolver.h"
-#include "v8-vocbase.h"
+#include "V8Server/v8-vocbase.h"
 
 namespace arangodb {
 class LogicalCollection;

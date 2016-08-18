@@ -21,6 +21,8 @@ and the different data models ArangoDB offers.
 In its purpose, AQL is similar to the Structured Query Language (SQL). AQL supports 
 reading and modifying collection data, but it doesn't support data-definition
 operations such as creating and dropping databases, collections and indexes.
+It is a pure data manipulation language (DML), not a data definition language
+(DDL) or a data control language (DCL).
 
 The syntax of AQL queries is different to SQL, even if some keywords overlap.
 Nevertheless, AQL should be easy to understand for anyone with an SQL background.

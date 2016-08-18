@@ -31,16 +31,18 @@
 #include "Random/RandomGenerator.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
+#include "StorageEngine/CleanupThread.h"
 #include "StorageEngine/CompactorThread.h"
 #include "StorageEngine/EngineSelectorFeature.h"
-#include "VocBase/CleanupThread.h"
 #include "VocBase/collection.h"
 #include "VocBase/datafile.h"
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 #include "Wal/LogfileManager.h"
 
 #ifdef ARANGODB_ENABLE_ROCKSDB
+#include "Indexes/RocksDBFeature.h"
 #include "Indexes/RocksDBIndex.h"
 #endif
 
@@ -539,7 +541,7 @@ TRI_vocbase_t* MMFilesEngine::createDatabase(TRI_voc_tick_t id, arangodb::velocy
 // to "prepareDropDatabase" returns
 int MMFilesEngine::prepareDropDatabase(TRI_vocbase_t* vocbase) {
   // signal the compactor thread to finish
-  stopCompactor(vocbase);
+  beginShutdownCompactor(vocbase);
 
   return saveDatabaseParameters(vocbase->id(), vocbase->name(), true);
 }
@@ -685,15 +687,97 @@ std::string MMFilesEngine::createCollection(TRI_vocbase_t* vocbase, TRI_voc_cid_
  
 // asks the storage engine to drop the specified collection and persist the 
 // deletion info. Note that physical deletion of the collection data must not 
-// be carried out by this call, as there may
-// still be readers of the collection's data. It is recommended that this operation
+// be carried out by this call, as there may still be readers of the collection's 
+// data. It is recommended that this operation
 // only sets a deletion flag for the collection but let's an async task perform
 // the actual deletion.
 // the WAL entry for collection deletion will be written *after* the call
 // to "dropCollection" returns
-void MMFilesEngine::dropCollection(TRI_voc_tick_t databaseId, TRI_voc_cid_t id, 
-                                   std::function<bool()> const& canRemovePhysically) {
-//  unregisterCollectionPath(databaseId, id);
+void MMFilesEngine::prepareDropCollection(TRI_vocbase_t*, arangodb::LogicalCollection*) {
+  // nothing to do here
+}
+
+// perform a physical deletion of the collection
+void MMFilesEngine::dropCollection(TRI_vocbase_t* vocbase, arangodb::LogicalCollection* collection) {
+  std::string const name(collection->name());
+  unregisterCollectionPath(vocbase->id(), collection->cid());
+  
+  // delete persistent indexes    
+#ifdef ARANGODB_ENABLE_ROCKSDB
+  RocksDBFeature::dropCollection(vocbase->id(), collection->cid());
+#endif
+
+  // rename collection directory
+  if (!collection->path().empty()) {
+    std::string const collectionPath = collection->path();
+
+#ifdef _WIN32
+    size_t pos = collectionPath.find_last_of('\\');
+#else
+    size_t pos = collectionPath.find_last_of('/');
+#endif
+
+    bool invalid = false;
+
+    if (pos == std::string::npos || pos + 1 >= collectionPath.size()) {
+      invalid = true;
+    }
+
+    std::string path;
+    std::string relName;
+    if (!invalid) {
+      // extract path part
+      if (pos > 0) {
+        path = collectionPath.substr(0, pos); 
+      }
+
+      // extract relative filename
+      relName = collectionPath.substr(pos + 1);
+
+      if (!StringUtils::isPrefix(relName, "collection-") || 
+          StringUtils::isSuffix(relName, ".tmp")) {
+        invalid = true;
+      }
+    }
+
+    if (invalid) {
+      LOG(ERR) << "cannot rename dropped collection '" << name
+               << "': unknown path '" << collection->path() << "'";
+    } else {
+      // prefix the collection name with "deleted-"
+
+      std::string const newFilename = 
+        FileUtils::buildFilename(path, "deleted-" + relName.substr(std::string("collection-").size()));
+
+      // check if target directory already exists
+      if (TRI_IsDirectory(newFilename.c_str())) {
+        // remove existing target directory
+        TRI_RemoveDirectory(newFilename.c_str());
+      }
+
+      // perform the rename
+      int res = TRI_RenameFile(collection->path().c_str(), newFilename.c_str());
+
+      LOG(TRACE) << "renaming collection directory from '"
+                 << collection->path() << "' to '" << newFilename << "'";
+
+      if (res != TRI_ERROR_NO_ERROR) {
+        LOG(ERR) << "cannot rename dropped collection '" << name
+                 << "' from '" << collection->path() << "' to '"
+                 << newFilename << "': " << TRI_errno_string(res);
+      } else {
+        LOG(DEBUG) << "wiping dropped collection '" << name
+                   << "' from disk";
+
+        res = TRI_RemoveDirectory(newFilename.c_str());
+
+        if (res != TRI_ERROR_NO_ERROR) {
+          LOG(ERR) << "cannot wipe dropped collection '" << name
+                   << "' from disk: " << TRI_errno_string(res);
+        }
+      }
+    }
+  }
 }
 
 // asks the storage engine to rename the collection as specified in the VPack
@@ -736,8 +820,19 @@ void MMFilesEngine::changeCollection(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
 // creation requests will not fail.
 // the WAL entry for the index creation will be written *after* the call
 // to "createIndex" returns
-void MMFilesEngine::createIndex(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId,
+void MMFilesEngine::createIndex(TRI_vocbase_t* vocbase, TRI_voc_cid_t collectionId,
                                 TRI_idx_iid_t id, arangodb::velocypack::Slice const& data) {
+  // construct filename
+  std::string const filename = indexFilename(vocbase->id(), collectionId, id);
+
+  // and save
+  bool const doSync = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database")->forceSyncProperties();
+  bool ok = arangodb::basics::VelocyPackHelper::velocyPackToFile(filename, data, doSync);
+
+  if (!ok) {
+    LOG(ERR) << "cannot save index definition: " << TRI_last_error();
+    THROW_ARANGO_EXCEPTION(TRI_errno());
+  }
 }
 
 // asks the storage engine to drop the specified index and persist the deletion 
@@ -757,6 +852,22 @@ void MMFilesEngine::dropIndex(TRI_vocbase_t* vocbase, TRI_voc_cid_t collectionId
   if (res != TRI_ERROR_NO_ERROR) {
     LOG(ERR) << "cannot remove index definition: " << TRI_errno_string(res);
   }
+}
+  
+void MMFilesEngine::unloadCollection(TRI_vocbase_t* vocbase, TRI_voc_cid_t collectionId) {
+  signalCleanup(vocbase);
+}
+
+void MMFilesEngine::signalCleanup(TRI_vocbase_t* vocbase) {
+  MUTEX_LOCKER(locker, _threadsLock);
+
+  auto it = _cleanupThreads.find(vocbase);
+  
+  if (it == _cleanupThreads.end()) {
+    return;
+  }
+
+  (*it).second->signal();
 }
 
 // iterate all documents of the underlying collection
@@ -1154,13 +1265,7 @@ TRI_vocbase_t* MMFilesEngine::openExistingDatabase(TRI_voc_tick_t id, std::strin
   }
 
   // start cleanup thread
-  TRI_ASSERT(vocbase->_cleanupThread == nullptr);
-  vocbase->_cleanupThread.reset(new CleanupThread(vocbase.get()));
-
-  if (!vocbase->_cleanupThread->start()) {
-    LOG(ERR) << "could not start cleanup thread";
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
+  startCleanup(vocbase.get());
     
   return vocbase.release();
 }
@@ -1490,12 +1595,67 @@ bool MMFilesEngine::tryPreventCompaction(TRI_vocbase_t* vocbase,
 
 int MMFilesEngine::shutdownDatabase(TRI_vocbase_t* vocbase) {
   try {
-    return deleteCompactor(vocbase);
+    stopCompactor(vocbase);
+    return stopCleanup(vocbase);
   } catch (basics::Exception const& ex) {
     return ex.code();
   } catch (...) {
     return TRI_ERROR_INTERNAL;
   }
+}
+
+// start the cleanup thread for the database 
+int MMFilesEngine::startCleanup(TRI_vocbase_t* vocbase) {
+  std::unique_ptr<CleanupThread> thread;
+
+  {
+    MUTEX_LOCKER(locker, _threadsLock);
+
+    thread.reset(new CleanupThread(vocbase));
+    _cleanupThreads.emplace(vocbase, thread.get());
+  }
+  
+  TRI_ASSERT(thread != nullptr);
+
+  if (!thread->start()) {
+    LOG(ERR) << "could not start cleanup thread";
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+  
+  thread.release();
+  return TRI_ERROR_NO_ERROR;
+}
+
+// stop and delete the cleanup thread for the database
+int MMFilesEngine::stopCleanup(TRI_vocbase_t* vocbase) {
+  CleanupThread* thread = nullptr;
+  
+  {
+    MUTEX_LOCKER(locker, _threadsLock);
+
+    auto it = _cleanupThreads.find(vocbase);
+    
+    if (it == _cleanupThreads.end()) {
+      // already stopped
+      return TRI_ERROR_NO_ERROR;
+    }
+
+    thread = (*it).second;
+    _cleanupThreads.erase(it);
+  }
+
+  TRI_ASSERT(thread != nullptr);
+
+  thread->beginShutdown();
+  thread->signal();
+
+  while (thread->isRunning()) {
+    usleep(5000);
+  }
+
+  delete thread;
+
+  return TRI_ERROR_NO_ERROR;
 }
 
 // start the compactor thread for the database 
@@ -1525,8 +1685,8 @@ int MMFilesEngine::startCompactor(TRI_vocbase_t* vocbase) {
   return TRI_ERROR_NO_ERROR;
 }
 
-// stop the compactor thread for the database
-int MMFilesEngine::stopCompactor(TRI_vocbase_t* vocbase) {
+// signal the compactor thread to stop
+int MMFilesEngine::beginShutdownCompactor(TRI_vocbase_t* vocbase) {
   CompactorThread* thread = nullptr;
   
   {
@@ -1551,7 +1711,7 @@ int MMFilesEngine::stopCompactor(TRI_vocbase_t* vocbase) {
 }
 
 // stop and delete the compactor thread for the database
-int MMFilesEngine::deleteCompactor(TRI_vocbase_t* vocbase) {
+int MMFilesEngine::stopCompactor(TRI_vocbase_t* vocbase) {
   CompactorThread* thread = nullptr;
   
   {

@@ -26,9 +26,26 @@ class HttpCommTask : public GeneralCommTask {
     }
   };
 
+  arangodb::Endpoint::TransportType transportType() override {
+    return arangodb::Endpoint::TransportType::HTTP;
+  };
+
  protected:
+  ~HttpCommTask() { clearRequest(); }
+
   void handleChunk(char const*, size_t) override final;
   void completedWriteBuffer() override final;
+
+  // clears the request object, REVIEW/TODO(fc)
+  void clearRequest();
+  void httpClearRequest() override { clearRequest(); }
+  void httpNullRequest() override { _request = nullptr; }
+
+  void handleSimpleError(GeneralResponse::ResponseCode code,
+                         uint64_t id = 1) override final;
+  void handleSimpleError(GeneralResponse::ResponseCode, int code,
+                         std::string const& errorMessage,
+                         uint64_t messageId = 1) override final;
 
  private:
   void processRequest();
@@ -49,6 +66,10 @@ class HttpCommTask : public GeneralCommTask {
   void sendChunk(basics::StringBuffer*);  // sends more chunked data
 
  private:
+  // the request with possible incomplete body
+  // REVIEW(fc)
+  GeneralRequest* _request = nullptr;
+
   size_t _readPosition;       // current read position
   size_t _startPosition;      // start position of current request
   size_t _bodyPosition;       // start of the body position
@@ -76,7 +97,7 @@ class HttpCommTask : public GeneralCommTask {
   // true if request is complete but not handled
   bool _requestPending = false;
 };
-}  // rest
-}  // arangodb
+}
+}
 
 #endif

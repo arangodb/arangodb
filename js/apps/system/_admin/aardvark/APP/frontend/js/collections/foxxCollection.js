@@ -30,8 +30,11 @@
 
     // Install Foxx from github repo
     // info is expected to contain: "url" and "version"
-    installFromGithub: function (info, mount, callback, flag) {
+    installFromGithub: function (info, mount, callback, isLegacy, flag) {
       var url = arangoHelper.databaseUrl('/_admin/aardvark/foxxes/git?mount=' + encodeURIComponent(mount));
+      if (isLegacy) {
+        url += '&legacy=true';
+      }
       if (flag !== undefined) {
         if (flag) {
           url += '&replace=true';
@@ -82,8 +85,11 @@
       });
     },
 
-    installFromZip: function (fileName, mount, callback, flag) {
+    installFromZip: function (fileName, mount, callback, isLegacy, flag) {
       var url = arangoHelper.databaseUrl('/_admin/aardvark/foxxes/zip?mount=' + encodeURIComponent(mount));
+      if (isLegacy) {
+        url += '&legacy=true';
+      }
       if (flag !== undefined) {
         if (flag) {
           url += '&replace=true';

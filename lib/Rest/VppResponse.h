@@ -49,9 +49,9 @@ class VppResponse : public GeneralResponse {
   static bool HIDE_PRODUCT_HEADER;
 
   // required by base
+  virtual uint64_t messageId() override { return _messageId; }
   void reset(ResponseCode code) final;
-  void setPayload(ContentType contentType, arangodb::velocypack::Slice const&,
-                  bool generateBody,
+  void setPayload(arangodb::velocypack::Slice const&, bool generateBody,
                   arangodb::velocypack::Options const&) final;
   virtual arangodb::Endpoint::TransportType transportType() override {
     return arangodb::Endpoint::TransportType::VPP;
@@ -65,7 +65,7 @@ class VppResponse : public GeneralResponse {
   std::shared_ptr<VPackBuffer<uint8_t>>
       _header;  // generated form _headers when prepared for network
   VPackBuffer<uint8_t> _payload;
-  uint64_t _messageID;
+  uint64_t _messageId;
   bool _generateBody;  // this must be true if payload should be send
 };
 }

@@ -728,8 +728,8 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
           }
         }
 
-        response->setPayload(GeneralResponse::ContentType::VPACK,
-                             builder.slice(), true);
+        response->setContentType(GeneralResponse::ContentType::VPACK);
+        response->setPayload(builder.slice(), true);
       } break;
 
       default: { throw std::logic_error("unknown transport type"); }
@@ -766,9 +766,8 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
         VPackBuilder builder;
 
         // create vpack form file
-
-        response->setPayload(GeneralResponse::ContentType::VPACK,
-                             builder.slice(), true);
+        response->setContentType(GeneralResponse::ContentType::VPACK);
+        response->setPayload(builder.slice(), true);
       } break;
 
       default:

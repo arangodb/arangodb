@@ -272,7 +272,7 @@ void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addHiddenOption(
       "--database.throw-collection-not-loaded-error",
       "throw an error when accessing a collection that is still loading",
-      new BooleanParameter(&_throwCollectionNotLoadedError));
+      new AtomicBooleanParameter(&_throwCollectionNotLoadedError));
 
   options->addHiddenOption(
       "--database.replication-applier",
@@ -302,9 +302,6 @@ void DatabaseFeature::prepare() {
 void DatabaseFeature::start() {
   // set singleton
   DATABASE = this;
-
-  // set throw collection not loaded behavior
-  TRI_SetThrowCollectionNotLoadedVocBase(_throwCollectionNotLoadedError);
 
   // init key generator
   KeyGenerator::Initialize();

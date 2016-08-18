@@ -296,6 +296,7 @@ struct TRI_collection_t {
   /// @brief sync the active journal - will do nothing if there is no journal
   /// or if the journal is volatile
   int syncActiveJournal();
+
   int reserveJournalSpace(TRI_voc_tick_t tick, TRI_voc_size_t size,
                           char*& resultPosition, TRI_datafile_t*& resultDatafile);
 
@@ -454,6 +455,7 @@ struct TRI_collection_t {
                              bool);
   /// @brief seal a datafile
   int sealDatafile(TRI_datafile_t* datafile, bool isCompactor);
+
   /// @brief creates a datafile
   TRI_datafile_t* createDatafile(TRI_voc_fid_t fid,
                                  TRI_voc_size_t journalSize, 

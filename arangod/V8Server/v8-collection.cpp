@@ -226,40 +226,6 @@ static int V8ToVPackNoKeyRevId (v8::Isolate* isolate,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief loads a collection for usage
-////////////////////////////////////////////////////////////////////////////////
-
-static arangodb::LogicalCollection const* UseCollection(
-    v8::Handle<v8::Object> collection,
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
-  v8::Isolate* isolate = args.GetIsolate();
-  int res = TRI_ERROR_INTERNAL;
-  arangodb::LogicalCollection* col =
-      TRI_UnwrapClass<arangodb::LogicalCollection>(collection, WRP_VOCBASE_COL_TYPE);
-
-  if (col != nullptr) {
-    if (!col->isLocal()) {
-      TRI_CreateErrorObject(isolate, TRI_ERROR_NOT_IMPLEMENTED);
-      TRI_set_errno(TRI_ERROR_NOT_IMPLEMENTED);
-      return nullptr;
-    }
-
-    TRI_vocbase_col_status_e status;
-    res = col->vocbase()->useCollection(col, status);
-
-    if (res == TRI_ERROR_NO_ERROR && col->_collection != nullptr) {
-      // no error
-      return col;
-    }
-  }
-
-  // some error occurred
-  TRI_CreateErrorObject(isolate, res, "cannot use/load collection", true);
-  TRI_set_errno(res);
-  return nullptr;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief get all cluster collections
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1120,20 +1086,15 @@ static void JS_LoadVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
+  arangodb::LogicalCollection const* collection =
+      TRI_UnwrapClass<arangodb::LogicalCollection>(args.Holder(),
+                                                   WRP_VOCBASE_COL_TYPE);
 
-  if (vocbase == nullptr) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+  if (collection == nullptr) {
+    TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
   if (ServerState::instance()->isCoordinator()) {
-      arangodb::LogicalCollection const* collection =
-        TRI_UnwrapClass<arangodb::LogicalCollection>(args.Holder(), WRP_VOCBASE_COL_TYPE);
-
-    if (collection == nullptr) {
-      TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
-    }
-
     std::string const databaseName(collection->dbName());
     std::string const cid = collection->cid_as_string();
 
@@ -1147,13 +1108,22 @@ static void JS_LoadVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_RETURN_UNDEFINED();
   }
 
-  arangodb::LogicalCollection const* collection = UseCollection(args.Holder(), args);
+  SingleCollectionTransaction trx(
+      V8TransactionContext::Create(collection->vocbase(), true),
+      collection->cid(), TRI_TRANSACTION_READ);
 
-  if (collection == nullptr) {
-    return;
+  int res = trx.begin();
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_THROW_EXCEPTION(res);
   }
 
-  ReleaseCollection(collection);
+  res = trx.finish(res);
+  
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_THROW_EXCEPTION(res);
+  }
+
   TRI_V8_RETURN_UNDEFINED();
   TRI_V8_TRY_CATCH_END
 }
@@ -1342,18 +1312,24 @@ static void JS_PropertiesVocbaseCol(
 
     TRI_V8_RETURN(result);
   }
+  
+  bool const isModification = (args.Length() != 0);
+  SingleCollectionTransaction trx(
+      V8TransactionContext::Create(collection->vocbase(), true),
+      collection->cid(),
+      isModification ? TRI_TRANSACTION_WRITE : TRI_TRANSACTION_READ);
 
-  collection = UseCollection(args.Holder(), args);
-
-  if (collection == nullptr) {
-    return;
+  int res = trx.begin();
+  
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_THROW_EXCEPTION(res);
   }
-
+        
   TRI_collection_t* document = collection->_collection;
   TRI_ASSERT(document != nullptr);
 
   // check if we want to change some parameters
-  if (0 < args.Length()) {
+  if (isModification) {
     v8::Handle<v8::Value> par = args[0];
 
     if (par->IsObject()) {
@@ -1373,7 +1349,6 @@ static void JS_PropertiesVocbaseCol(
         if (document->_info.isVolatile() &&
             arangodb::basics::VelocyPackHelper::getBooleanValue(
                 slice, "waitForSync", document->_info.waitForSync())) {
-          ReleaseCollection(collection);
           // the combination of waitForSync and isVolatile makes no sense
           TRI_V8_THROW_EXCEPTION_PARAMETER(
               "volatile collections do not support the waitForSync option");
@@ -1391,7 +1366,6 @@ static void JS_PropertiesVocbaseCol(
                 slice, "indexBuckets",
                 2 /*Just for validation, this default Value passes*/);
         if (tmp == 0 || tmp > 1024) {
-          ReleaseCollection(collection);
           TRI_V8_THROW_EXCEPTION_PARAMETER(
               "indexBuckets must be a two-power between 1 and 1024");
         }
@@ -1403,7 +1377,6 @@ static void JS_PropertiesVocbaseCol(
       res = document->updateCollectionInfo(document->_vocbase, slice, doSync);
 
       if (res != TRI_ERROR_NO_ERROR) {
-        ReleaseCollection(collection);
         TRI_V8_THROW_EXCEPTION(res);
       }
 
@@ -1469,7 +1442,8 @@ static void JS_PropertiesVocbaseCol(
   result->Set(WaitForSyncKey,
               v8::Boolean::New(isolate, document->_info.waitForSync()));
 
-  ReleaseCollection(collection);
+  trx.finish(res);
+
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
 }
@@ -2062,19 +2036,28 @@ static void JS_RotateVocbaseCol(
 
   PREVENT_EMBEDDED_TRANSACTION();
 
-  arangodb::LogicalCollection const* collection = UseCollection(args.Holder(), args);
+  arangodb::LogicalCollection* collection =
+      TRI_UnwrapClass<arangodb::LogicalCollection>(args.Holder(), WRP_VOCBASE_COL_TYPE);
 
   if (collection == nullptr) {
-    return;
+    TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
-
+  
   TRI_THROW_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(collection);
 
-  TRI_collection_t* document = collection->_collection;
+  SingleCollectionTransaction trx(
+      V8TransactionContext::Create(collection->vocbase(), true),
+      collection->cid(), TRI_TRANSACTION_READ);
 
-  int res = document->rotateActiveJournal();
+  int res = trx.begin();
+  
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_THROW_EXCEPTION(res);
+  }
 
-  ReleaseCollection(collection);
+  res = collection->_collection->rotateActiveJournal();
+
+  trx.finish(res);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(res, "could not rotate journal");

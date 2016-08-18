@@ -1661,10 +1661,12 @@ static void JS_ThrowCollectionNotLoaded(
   v8::HandleScope scope(isolate);
 
   if (args.Length() == 0) {
-    bool value = TRI_GetThrowCollectionNotLoadedVocBase();
+    auto databaseFeature = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
+    bool const value = databaseFeature->throwCollectionNotLoadedError();
     TRI_V8_RETURN(v8::Boolean::New(isolate, value));
   } else if (args.Length() == 1) {
-    TRI_SetThrowCollectionNotLoadedVocBase(TRI_ObjectToBoolean(args[0]));
+    auto databaseFeature = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
+    databaseFeature->throwCollectionNotLoadedError(TRI_ObjectToBoolean(args[0]));
   } else {
     TRI_V8_THROW_EXCEPTION_USAGE("THROW_COLLECTION_NOT_LOADED(<value>)");
   }
