@@ -837,9 +837,9 @@ std::vector<std::string> TRI_vocbase_t::collectionNames() {
   std::vector<std::string> result;
 
   READ_LOCKER(readLocker, _collectionsLock);
-
-  for (auto const& it : _collectionsById) {
-    result.emplace_back(it.second->name());
+  result.reserve(_collectionsByName.size());
+  for (auto const& it : _collectionsByName) {
+    result.emplace_back(it.first);
   }
 
   return result;
@@ -1421,7 +1421,10 @@ std::vector<TRI_vocbase_col_t*> TRI_vocbase_t::collections() {
 
   {
     READ_LOCKER(readLocker, _collectionsLock);
-    collections = _collections;
+    collections.reserve(_collectionsById.size());
+    for (auto const& it : _collectionsById) {
+      collections.emplace_back(it.second);
+    }
   }
   return collections;
 }
