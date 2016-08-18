@@ -26,6 +26,7 @@
 #include "Basics/StringBuffer.h"
 #include "Basics/HybridLogicalClock.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Meta/conversion.h"
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "GeneralServer/RestHandler.h"
@@ -315,6 +316,7 @@ bool VppCommTask::processRead() {
         std::make_pair(chunkHeader._messageID, std::move(message)));
     if (!insertPair.second) {
       throw std::logic_error("insert failed");
+      resetState(true);
     }
 
     LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "CASE 2a";
@@ -323,6 +325,7 @@ bool VppCommTask::processRead() {
   } else {  // followup chunk of some mesage
     if (incompleteMessageItr == _incompleteMessages.end()) {
       throw std::logic_error("found message without previous part");
+      resetState(true);
     }
     auto& im = incompleteMessageItr->second;  // incomplete Message
     im._currentChunk++;
@@ -351,12 +354,13 @@ bool VppCommTask::processRead() {
     LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "CASE 2b - still incomplete";
   }
 
-  // clean buffer up to length of chunk
   read_maybe_only_part_of_buffer = true;
-  prv._currentChunkLength = 0;
+  prv._currentChunkLength =
+      0;  // if we end up here we have read a complete chunk
   prv._readBufferCursor = chunkEnd;
   std::size_t processedDataLen =
       std::distance(_readBuffer->begin(), prv._readBufferCursor);
+  // clean buffer up to length of chunk
   if (processedDataLen > prv._cleanupLength) {
     _readBuffer->move_front(processedDataLen);
     prv._readBufferCursor = nullptr;  // the positon will be set at the
@@ -367,23 +371,29 @@ bool VppCommTask::processRead() {
     LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
         << "got request:" << message._header.toJson();
 
-    // the handler will take ownersip of this pointer
-    VppRequest* request = new VppRequest(_connectionInfo, std::move(message),
-                                         chunkHeader._messageID);
-    GeneralServerFeature::HANDLER_FACTORY->setRequestContext(request);
-
-    // make sure we have a dabase
-    if (request->requestContext() == nullptr) {
-      handleSimpleError(GeneralResponse::ResponseCode::NOT_FOUND,
-                        TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
-                        TRI_errno_string(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND),
-                        chunkHeader._messageID);
+    auto type = message._header.get("type").getInt();
+    if (type == 1000) {
+      // do auth
     } else {
-      request->setClientTaskId(_taskId);
-      _protocolVersion = request->protocolVersion();
-      executeRequest(
-          request, new VppResponse(GeneralResponse::ResponseCode::SERVER_ERROR,
-                                   chunkHeader._messageID));
+      // check auth
+      // the handler will take ownersip of this pointer
+      VppRequest* request = new VppRequest(_connectionInfo, std::move(message),
+                                           chunkHeader._messageID);
+      GeneralServerFeature::HANDLER_FACTORY->setRequestContext(request);
+
+      // make sure we have a dabase
+      if (request->requestContext() == nullptr) {
+        handleSimpleError(GeneralResponse::ResponseCode::NOT_FOUND,
+                          TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
+                          TRI_errno_string(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND),
+                          chunkHeader._messageID);
+      } else {
+        request->setClientTaskId(_taskId);
+        _protocolVersion = request->protocolVersion();
+        executeRequest(request, new VppResponse(
+                                    GeneralResponse::ResponseCode::SERVER_ERROR,
+                                    chunkHeader._messageID));
+      }
     }
   }
 
@@ -400,10 +410,18 @@ void VppCommTask::completedWriteBuffer() {
   // REVIEW (fc)
 }
 
-void VppCommTask::resetState(bool close) {
+void VppCommTask::resetState(bool close, GeneralResponse::ResponseCode code) {
   // REVIEW (fc)
+  _processReadVariables._readBufferCursor = nullptr;
+  _processReadVariables._currentChunkLength = 0;
+  _readBuffer->clear();  // check is this changes the reserved size
+
   // is there a case where we do not want to close the connection
-  replyToIncompleteMessages();
+  for (auto const& message : _incompleteMessages) {
+    handleSimpleError(code, message.first);
+  }
+  _incompleteMessages.clear();
+  _closeRequested = close;
 }
 
 // GeneralResponse::ResponseCode VppCommTask::authenticateRequest() {

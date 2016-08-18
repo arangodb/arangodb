@@ -74,8 +74,8 @@ class VppCommTask : public GeneralCommTask {
  private:
   // resets the internal state this method can be called to clean up when the
   // request handling aborts prematurely
-  void resetState(bool close);
-  void replyToIncompleteMessages() {}
+  void resetState(bool close, GeneralResponse::ResponseCode code =
+                                  GeneralResponse::ResponseCode::SERVER_ERROR);
 
   void addResponse(VppResponse*, bool isError);
 
@@ -121,6 +121,7 @@ class VppCommTask : public GeneralCommTask {
   };
   bool isChunkComplete(char*);    // sub-function of processRead
   ChunkHeader readChunkHeader();  // sub-function of processRead
+  void replyToIncompleteMessages();
 
   // user
   // authenticated or not
