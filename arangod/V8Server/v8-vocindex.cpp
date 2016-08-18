@@ -1087,7 +1087,10 @@ static void CreateCollectionCoordinator(
   ci->loadPlan();
 
   std::shared_ptr<LogicalCollection> c = ci->getCollection(databaseName, cid);
-  TRI_V8_RETURN(WrapCollection(isolate, c.get()));
+  // If we get a nullptr here the create collection should have failed before.
+  TRI_ASSERT(c != nullptr);
+  auto newCol = std::make_unique<LogicalCollection>(c);
+  TRI_V8_RETURN(WrapCollection(isolate, newCol.release()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -52,6 +52,8 @@ class LogicalCollection {
 
   LogicalCollection(TRI_vocbase_t*, arangodb::velocypack::Slice);
 
+  LogicalCollection(std::shared_ptr<LogicalCollection> const);
+
   ~LogicalCollection();
 
   LogicalCollection(LogicalCollection const&) = delete;
@@ -68,8 +70,8 @@ class LogicalCollection {
 
   TRI_col_type_e type() const;
 
-  std::string const& name() const;
-  std::string const& dbName() const;
+  std::string name() const;
+  std::string dbName() const;
   std::string const& path() const;
 
   TRI_vocbase_col_status_e status();

@@ -70,7 +70,7 @@ static std::shared_ptr<arangodb::velocypack::Buffer<uint8_t> const> CopySliceVal
     return nullptr;
   }
   info = info.get(name);
-  if (!info.isObject()) {
+  if (info.isNone()) {
     return nullptr;
   }
   return VPackBuilder::clone(info).steal();
@@ -118,6 +118,37 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
       _physical(nullptr),
       _collection(nullptr),
       _lock() {}
+
+/// @brief This the "copy" constructor used in the cluster
+///        it is required to create objects that survive plan
+///        modifications and can be freed
+///        Can only be given to V8, cannot be used for functionality.
+LogicalCollection::LogicalCollection(
+    std::shared_ptr<LogicalCollection> const other) 
+: _internalVersion(0),
+  _cid(other->_cid),
+  _planId(other->_planId),
+  _type(other->_type),
+  _name(other->_name),
+  _status(other->_status),
+  _isLocal(false),
+  _isDeleted(other->_isDeleted),
+  _doCompact(other->_doCompact),
+  _isSystem(other->_isSystem),
+  _isVolatile(other->_isVolatile),
+  _waitForSync(other->_waitForSync),
+  _keyOptions(nullptr), // Not needed
+  _indexBuckets(other->_indexBuckets),
+  _indexes(nullptr), // Not needed
+  _replicationFactor(other->_replicationFactor),
+  _numberOfShards(other->_numberOfShards),
+  _allowUserKeys(other->_allowUserKeys),
+  _shardIds(new ShardMap()), // Not needed
+  _vocbase(other->_vocbase),
+  _physical(nullptr),
+  _collection(nullptr),
+  _lock() {
+}
 
 // @brief Constructor used in coordinator case.
 // The Slice contains the part of the plan that
@@ -206,13 +237,13 @@ TRI_col_type_e LogicalCollection::type() const {
   return _type;
 }
 
-std::string const& LogicalCollection::name() const {
+std::string LogicalCollection::name() const {
   // TODO Activate this lock. Right now we have some locks outside.
   // READ_LOCKER(readLocker, _lock);
   return _name;
 }
 
-std::string const& LogicalCollection::dbName() const {
+std::string LogicalCollection::dbName() const {
   TRI_ASSERT(_vocbase != nullptr);
   return _vocbase->name();
 }

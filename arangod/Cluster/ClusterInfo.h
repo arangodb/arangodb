@@ -305,7 +305,8 @@ class ClusterInfo {
   /// @brief ask about all collections
   //////////////////////////////////////////////////////////////////////////////
 
-  std::vector<LogicalCollection*> const getCollections(DatabaseID const&);
+  std::vector<std::shared_ptr<LogicalCollection>> const getCollections(
+      DatabaseID const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief (re-)load the information about current collections from the agency

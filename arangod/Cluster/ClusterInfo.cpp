@@ -659,9 +659,9 @@ std::shared_ptr<LogicalCollection> ClusterInfo::getCollection(
 /// @brief ask about all collections
 ////////////////////////////////////////////////////////////////////////////////
 
-std::vector<LogicalCollection*> const ClusterInfo::getCollections(
+std::vector<std::shared_ptr<LogicalCollection>> const ClusterInfo::getCollections(
     DatabaseID const& databaseID) {
-  std::vector<LogicalCollection*> result;
+  std::vector<std::shared_ptr<LogicalCollection>> result;
 
   // always reload
   loadPlan();
@@ -681,7 +681,7 @@ std::vector<LogicalCollection*> const ClusterInfo::getCollections(
 
     if (c < '0' || c > '9') {
       // skip collections indexed by id
-      result.push_back((*it2).second.get());
+      result.push_back((*it2).second);
     }
 
     ++it2;

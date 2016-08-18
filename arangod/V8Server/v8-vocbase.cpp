@@ -1887,8 +1887,11 @@ static void MapGetVocBase(v8::Local<v8::String> const name,
         ClusterInfo::instance()->getCollection(vocbase->name(),
                                                std::string(key));
 
-    // TODO do we leak?
-    collection = ci.get();
+    if (ci == nullptr) {
+      TRI_V8_RETURN(v8::Handle<v8::Value>());
+    }
+
+    collection = new LogicalCollection(ci);
   } else {
     collection = vocbase->lookupCollection(std::string(key));
   }

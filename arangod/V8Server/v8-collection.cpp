@@ -175,7 +175,11 @@ static int ParseDocumentOrDocumentHandle(v8::Isolate* isolate,
       ClusterInfo* ci = ClusterInfo::instance();
       std::shared_ptr<LogicalCollection> col =
           ci->getCollection(vocbase->name(), collectionName);
-      collection = col.get();
+      if (col == nullptr) { 
+        // collection not found
+        return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+      }
+      collection = new LogicalCollection(col);
     } else {
       collection = resolver->getCollectionStruct(collectionName);
     }
@@ -184,7 +188,6 @@ static int ParseDocumentOrDocumentHandle(v8::Isolate* isolate,
       return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
     }
   }
-
   TRI_ASSERT(collection != nullptr);
 
   return TRI_ERROR_NO_ERROR;
@@ -257,6 +260,26 @@ static arangodb::LogicalCollection const* UseCollection(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief get all cluster collections
+////////////////////////////////////////////////////////////////////////////////
+
+static std::vector<LogicalCollection*> GetCollectionsCluster(
+    TRI_vocbase_t* vocbase) {
+  std::vector<LogicalCollection*> result;
+
+  std::vector<std::shared_ptr<LogicalCollection>> const collections =
+      ClusterInfo::instance()->getCollections(vocbase->name());
+
+  for (auto& collection : collections) {
+    auto c = std::make_unique<LogicalCollection>(collection);
+    result.emplace_back(c.get());
+    c.release();
+  }
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief get all cluster collection names
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -264,7 +287,7 @@ static std::vector<std::string> GetCollectionNamesCluster(
     TRI_vocbase_t* vocbase) {
   std::vector<std::string> result;
 
-  std::vector<LogicalCollection*> const collections =
+  std::vector<std::shared_ptr<LogicalCollection>> const collections =
       ClusterInfo::instance()->getCollections(vocbase->name());
 
   for (auto& collection : collections) {
@@ -2679,8 +2702,7 @@ static void JS_CollectionVocbase(
       TRI_V8_RETURN_NULL();
     }
 
-    // TODO collection has to be ci.
-    // collection = CoordinatorCollection(vocbase, *ci);
+    collection = new LogicalCollection(ci);
   } else {
     collection = GetCollectionFromArgument(vocbase, val);
   }
@@ -2719,7 +2741,7 @@ static void JS_CollectionsVocbase(
   // if we are a coordinator, we need to fetch the collection info from the
   // agency
   if (ServerState::instance()->isCoordinator()) {
-    colls = ClusterInfo::instance()->getCollections(vocbase->name());
+    colls = GetCollectionsCluster(vocbase);
   } else {
     colls = vocbase->collections();
   }
