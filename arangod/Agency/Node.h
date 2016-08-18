@@ -256,6 +256,8 @@ public:
   /// @brief Get insigned value (throws if type NODE or if conversion fails)
   uint64_t getUInt() const;
 
+  /// @brief Get bool value (throws if type NODE or if conversion fails)
+  bool getBool() const;
   
   /// @brief Get double value (throws if type NODE or if conversion fails)
   double getDouble() const;

@@ -24,6 +24,7 @@
 #include "RestShutdownHandler.h"
 
 #include "Rest/HttpRequest.h"
+#include "Cluster/AgencyComm.h"
 #include "Cluster/ClusterFeature.h"
 
 #include <velocypack/Builder.h>
@@ -47,10 +48,25 @@ RestHandler::status RestShutdownHandler::execute() {
     generateError(GeneralResponse::ResponseCode::METHOD_NOT_ALLOWED, 405);
     return status::DONE;
   }
+  bool removeFromCluster;
+  std::string const& remove = _request->value("remove_from_cluster", removeFromCluster);
+  removeFromCluster = removeFromCluster && remove == "1";
 
-  bool found;
-  std::string const& remove = _request->value("remove_from_cluster", found);
-  if (found && remove == "1") {
+  bool shutdownClusterFound;
+  std::string const& shutdownCluster = _request->value("shutdown_cluster", shutdownClusterFound);
+  if (shutdownClusterFound && shutdownCluster == "1") {
+    AgencyComm agency;
+
+    VPackBuilder builder;
+    builder.add(VPackValue(true));
+    AgencyCommResult result = agency.setValue("Shutdown", builder.slice(), 0.0);
+    if (!result.successful()) {
+      generateError(GeneralResponse::ResponseCode::SERVER_ERROR, 500);
+      return status::DONE;
+    }
+    removeFromCluster = true;
+  }
+  if (removeFromCluster) {
     ClusterFeature* clusterFeature = ApplicationServer::getFeature<ClusterFeature>("Cluster");
     clusterFeature->setUnregisterOnShutdown(true);
   }
