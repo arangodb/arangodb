@@ -40,6 +40,8 @@ devel
 
 * web interface now allows installing GitHub and zip services in legacy mode
 
+* added module.context.createDocumentationRouter to replace module.context.apiDocumentation
+
 
 v3.0.5 (XXXX-XX-XX)
 -------------------
