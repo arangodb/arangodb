@@ -1223,7 +1223,7 @@ static void JS_PropertiesVocbaseCol(
     std::string const databaseName(collection->dbName());
     std::shared_ptr<LogicalCollection> info =
         ClusterInfo::instance()->getCollection(
-            databaseName, StringUtils::itoa(collection->cid()));
+            databaseName, collection->cid_as_string());
 
     if (0 < args.Length()) {
       v8::Handle<v8::Value> par = args[0];

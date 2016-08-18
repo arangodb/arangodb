@@ -1838,16 +1838,6 @@ static void MapGetVocBase(v8::Local<v8::String> const name,
 
     // check if the collection is from the same database
     if (collection != nullptr && collection->vocbase() == vocbase) {
-      bool lock = true;
-      auto ctx = static_cast<arangodb::V8TransactionContext*>(
-          v8g->_transactionContext);
-      if (ctx != nullptr && ctx->getParentTransaction() != nullptr) {
-        TRI_transaction_t* trx = ctx->getParentTransaction();
-        if (TRI_IsContainedCollectionTransaction(trx, collection->cid())) {
-          lock = false;
-        }
-      }
-
       TRI_vocbase_col_status_e status = collection->getStatusLocked();
       TRI_voc_cid_t cid = collection->cid();
       uint32_t internalVersion = collection->version();
@@ -1885,7 +1875,7 @@ static void MapGetVocBase(v8::Local<v8::String> const name,
   }
 
   if (ServerState::instance()->isCoordinator()) {
-    std::shared_ptr<LogicalCollection> const ci =
+    std::shared_ptr<LogicalCollection> ci =
         ClusterInfo::instance()->getCollection(vocbase->name(),
                                                std::string(key));
 

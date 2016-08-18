@@ -219,12 +219,12 @@ std::string CollectionNameResolver::getCollectionNameCluster(
   while (tries++ < 2) {
     auto ci = ClusterInfo::instance()->getCollection(
         _vocbase->name(), arangodb::basics::StringUtils::itoa(cid));
-    name = ci->name();
 
-    if (name.empty()) {
+    if (ci == nullptr) {
       ClusterInfo::instance()->flush();
       continue;
     }
+    name = ci->name();
     _resolvedIds.emplace(cid, name);
     return name;
   }
@@ -266,7 +266,11 @@ std::string CollectionNameResolver::localNameLookup(TRI_voc_cid_t cid) const {
         name = arangodb::basics::StringUtils::itoa((*it).second->planId());
         auto ci = ClusterInfo::instance()->getCollection(
             (*it).second->dbName(), name);
-        name = ci->name();  // can be empty, if collection unknown
+        if (ci == nullptr) {
+          name = ""; // collection unknown
+        } else {
+          name = ci->name();  // can be empty, if collection unknown
+        }
       }
     }
   } else {
@@ -279,5 +283,3 @@ std::string CollectionNameResolver::localNameLookup(TRI_voc_cid_t cid) const {
   }
   return name;
 }
-
-

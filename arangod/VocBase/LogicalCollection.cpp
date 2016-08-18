@@ -55,6 +55,25 @@ static bool ReadBooleanValue(VPackSlice info, std::string const& name,
   return Helper::getBooleanValue(info, name.c_str(), def);
 }
 
+static TRI_voc_cid_t ReadCid(VPackSlice info) {
+  if (!info.isObject()) {
+    // ERROR CASE
+    return 0;
+  }
+  info = info.get("id");
+
+  if (info.isNumber()) {
+    return info.getNumericValue<TRI_voc_cid_t>();
+  }
+
+  if (info.isString()) {
+    return basics::StringUtils::uint64(info.copyString());
+  }
+
+  // ERROR CASE
+  return 0;
+}
+
 static std::string const ReadStringValue(VPackSlice info,
                                          std::string const& name,
                                          std::string const& def) {
@@ -155,7 +174,7 @@ LogicalCollection::LogicalCollection(
 // is relevant for this collection.
 LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase, VPackSlice info)
     : _internalVersion(0),
-      _cid(basics::StringUtils::uint64(ReadStringValue(info, "id", "0"))),
+      _cid(ReadCid(info)),
       _planId(_cid),
       _type(
           ReadNumericValue<TRI_col_type_e>(info, "type", TRI_COL_TYPE_UNKNOWN)),
