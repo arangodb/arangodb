@@ -127,7 +127,6 @@ configure_file(
 ################################################################################
 ## Find the git revision
 find_program (GIT_EXE git)
-message("${CMAKE_SOURCE_DIR}/.git")
 if (DEFINED GIT_EXE AND IS_DIRECTORY "${CMAKE_SOURCE_DIR}/.git")
   execute_process(
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
