@@ -33,7 +33,8 @@ class Agent;
 
 class GossipCallback : public arangodb::ClusterCommCallback {
 public:
-  GossipCallback(Agent*);
+
+  explicit GossipCallback(Agent*);
   
   virtual bool operator()(arangodb::ClusterCommResult*) override final;
   

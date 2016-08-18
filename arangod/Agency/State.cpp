@@ -685,14 +685,14 @@ bool State::compactPersisted(arangodb::consensus::index_t cind) {
 
 /// Remove outdate compactions
 bool State::removeObsolete(arangodb::consensus::index_t cind) {
-  if (cind > 3 * _agent->config().compactionStepSize) {
+  if (cind > 3 * _agent->config().compactionStepSize()) {
     auto bindVars = std::make_shared<VPackBuilder>();
     bindVars->openObject();
     bindVars->close();
 
     std::stringstream i_str;
     i_str << std::setw(20) << std::setfill('0')
-          << -3 * _agent->config().compactionStepSize + cind;
+          << -3 * _agent->config().compactionStepSize() + cind;
 
     std::string const aql(std::string("FOR c IN compact FILTER c._key < \"") +
                           i_str.str() + "\" REMOVE c IN compact");
@@ -766,9 +766,6 @@ bool State::persistActiveAgents(
   }
   aql << "\"" << ids.back() << "\"]}} IN configuration";
   std::string aqlStr = aql.str();
-
-  LOG(WARN) << aql.str().c_str() << aql.str().size();
-  LOG(WARN) << aqlStr.size();
 
   arangodb::aql::Query query(
     false, _vocbase, aqlStr.c_str(), aqlStr.size(), bindVars, nullptr,

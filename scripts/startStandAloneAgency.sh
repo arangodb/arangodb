@@ -53,7 +53,7 @@ if [ $NRAGENTS -gt 1 ]; then
             --javascript.v8-contexts 1 \
             --log.file agency/$port.log \
             --server.authentication false \
-            --server.endpoint tcp://127.0.0.1:$port \
+            --server.endpoint tcp://0.0.0.0:$port \
             --server.statistics false \
             --agency.compaction-step-size $COMP \
             --log.level agency=debug \
@@ -81,7 +81,7 @@ build/bin/arangod \
     --javascript.v8-contexts 1 \
     --log.file agency/$(( $BASE + $aid )).log \
     --server.authentication false \
-    --server.endpoint tcp://127.0.0.1:$(( $BASE + $aid )) \
+    --server.endpoint tcp://0.0.0.0:$(( $BASE + $aid )) \
     --server.statistics false \
     --agency.compaction-step-size $COMP \
     --log.level agency=debug \

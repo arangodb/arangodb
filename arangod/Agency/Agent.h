@@ -31,6 +31,7 @@
 #include "Agency/Supervision.h"
 #include "Agency/State.h"
 #include "Agency/Store.h"
+#include "Agency/Inception.h"
 
 struct TRI_server_t;
 struct TRI_vocbase_t;
@@ -62,7 +63,7 @@ class Agent : public arangodb::Thread {
   bool start();
 
   /// @brief My endpoint
-  std::string const& endpoint() const;
+  std::string endpoint() const;
 
   /// @brief Verbose print of myself
   void print(arangodb::LoggerStream&) const;
@@ -107,9 +108,6 @@ class Agent : public arangodb::Thread {
 
   /// @brief Are we still booting?
   bool booting();
-
-  /// @brief Gossip out
-  void gossip();
 
   /// @brief Gossip in
   query_t gossip(query_t const&, bool callback = false);
@@ -227,6 +225,9 @@ class Agent : public arangodb::Thread {
   arangodb::consensus::index_t _nextCompationAfter;
 
   std::map<std::string, bool> _gossipTmp;
+
+  std::unique_ptr<Inception> _inception;
+
 
 };
 

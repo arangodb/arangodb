@@ -79,13 +79,14 @@ add_executable(${BIN_ARANGOD}
   Agency/AgencyFeature.cpp
   Agency/Agent.cpp
   Agency/AgentCallback.cpp
+  Agency/AgentConfiguration.cpp
   Agency/Constituent.cpp
   Agency/CleanOutServer.cpp
   Agency/FailedLeader.cpp
   Agency/FailedServer.cpp
   Agency/GossipCallback.cpp
+  Agency/Inception.cpp
   Agency/MoveShard.cpp
-  Agency/NotifierThread.cpp
   Agency/NotifyCallback.cpp
   Agency/Node.cpp
   Agency/Supervision.cpp

@@ -204,7 +204,7 @@ void AgencyFeature::start() {
         _size, _poolSize, _minElectionTimeout, _maxElectionTimeout, endpoint,
         _agencyEndpoints, _supervision, _waitForSync, _supervisionFrequency,
         _compactionStepSize)));
-  std::cout << __FILE__ << __LINE__ << std::endl;
+
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "Starting agency personality";  
   _agent->start();
 
