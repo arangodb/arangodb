@@ -1,10 +1,12 @@
 ################################################################################
 ## INSTALL
 ################################################################################
-set(CMAKE_INSTALL_SYSCONFDIR_ARANGO "${CMAKE_INSTALL_SYSCONFDIR}/arangodb3" CACHE PATH "read-only single-machine data (etc)")
-set(CMAKE_INSTALL_FULL_SYSCONFDIR_ARANGO "${CMAKE_INSTALL_FULL_SYSCONFDIR}/arangodb3" CACHE PATH "read-only single-machine data (etc)")
-set(CMAKE_INSTALL_FULL_DATAROOTDIR_ARANGO "${CMAKE_INSTALL_DATAROOTDIR}/arangodb3" CACHE PATH "read-only data (share)")
-set(CMAKE_INSTALL_DATAROOTDIR_ARANGO "${CMAKE_INSTALL_FULL_DATAROOTDIR}/arangodb3" CACHE PATH "read-only data (share)")
+if (NOT CMAKE_INSTALL_SYSCONFDIR_ARANGO
+    OR NOT CMAKE_INSTALL_FULL_SYSCONFDIR_ARANGO
+    OR NOT CMAKE_INSTALL_DATAROOTDIR_ARANGO
+    OR NOT CMAKE_INSTALL_FULL_DATAROOTDIR_ARANGO)
+  message(FATAL_ERROR, "CMAKE_INSTALL_DATAROOTDIR or CMAKE_INSTALL_SYSCONFDIR not set!")
+endif()
 
 # Global macros ----------------------------------------------------------------
 macro (generate_root_config name)
@@ -89,24 +91,48 @@ macro (install_readme input output)
 endmacro ()
 
 # installs a link to an executable ---------------------------------------------
-macro (install_command_alias name where alias)
-  if (MSVC)
-    add_custom_command(
-      TARGET ${name}
-      POST_BUILD
-      COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:${name}>
-	      ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/$<CONFIGURATION>/${alias}.exe)
-    install(
-      PROGRAMS ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/$<CONFIGURATION>/${alias}.exe
-      DESTINATION ${where})
-  else ()
-    add_custom_command(
-      TARGET ${name}
-      POST_BUILD
-      COMMAND ${CMAKE_COMMAND} -E create_symlink ${name}
+if (INSTALL_MACROS_NO_TARGET_INSTALL)
+  macro (install_command_alias name where alias)
+    if (MSVC)
+      add_custom_command(
+        OUTPUT ${name}
+        POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:${name}>
+	${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/$<CONFIGURATION>/${alias}${CMAKE_EXECUTABLE_SUFFIX})
+      install(
+        PROGRAMS ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/$<CONFIGURATION>/${alias}${CMAKE_EXECUTABLE_SUFFIX}
+        DESTINATION ${where})
+    else ()
+      add_custom_command(
+        OUTPUT ${name}
+        POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E create_symlink ${name}
         ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${alias}) 
-    install(
-      PROGRAMS ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${alias}
-      DESTINATION ${where})
-  endif ()
-endmacro ()
+      install(
+        PROGRAMS ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${alias}
+        DESTINATION ${where})
+    endif ()
+  endmacro ()
+else ()
+  macro (install_command_alias name where alias)
+    if (MSVC)
+      add_custom_command(
+        TARGET ${name}
+        POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:${name}>
+	${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/$<CONFIGURATION>/${alias}${CMAKE_EXECUTABLE_SUFFIX})
+      install(
+        PROGRAMS ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/$<CONFIGURATION>/${alias}${CMAKE_EXECUTABLE_SUFFIX}
+        DESTINATION ${where})
+    else ()
+      add_custom_command(
+        TARGET ${name}
+        POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E create_symlink ${name}
+        ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${alias}) 
+      install(
+        PROGRAMS ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${alias}
+        DESTINATION ${where})
+    endif ()
+  endmacro ()
+endif()

@@ -348,7 +348,7 @@ target_link_libraries(${BIN_ARANGOD}
 
 install(
   TARGETS ${BIN_ARANGOD}
-  RUNTIME DESTINATION ${CMAKE_INSTALL_FULL_SBINDIR})
+  RUNTIME DESTINATION ${CMAKE_INSTALL_SBINDIR})
 
 install_config(arangod)
 
@@ -363,7 +363,7 @@ endif ()
 ################################################################################
 
 install_command_alias(${BIN_ARANGOD}
-  ${CMAKE_INSTALL_FULL_SBINDIR}
+  ${CMAKE_INSTALL_SBINDIR}
   arango-dfdb)
 
 install_config(arango-dfdb)
@@ -373,7 +373,7 @@ install_config(arango-dfdb)
 ################################################################################
 
 install_command_alias(${BIN_ARANGOD}
-  ${CMAKE_INSTALL_FULL_SBINDIR}
+  ${CMAKE_INSTALL_SBINDIR}
   arango-secure-installation)
 
 install_config(arango-secure-installation)
@@ -383,7 +383,7 @@ install_config(arango-secure-installation)
 ################################################################################
 
 install_command_alias(${BIN_ARANGOD}
-  ${CMAKE_INSTALL_FULL_SBINDIR}
+  ${CMAKE_INSTALL_SBINDIR}
   arango-init-database)
 
 install_config(arango-init-database)

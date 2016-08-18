@@ -319,7 +319,7 @@ void TRI_FixIcuDataEnv() {
   std::string p = TRI_LocateInstallDirectory();
 
   if (!p.empty()) {
-    std::string e = "ICU_DATA=" + p + "share\\arangodb\\";
+    std::string e = "ICU_DATA=" + p + "share\\arangodb3\\";
     e = StringUtils::replace(e, "\\", "\\\\");
     putenv(e.c_str());
   } else {

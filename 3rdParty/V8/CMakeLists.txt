@@ -103,7 +103,86 @@ set(V8_INCLUDE_DIR
 )
 
 
-if (${CMAKE_GENERATOR} MATCHES "Ninja")
+
+################################################################################
+## WINDOWS & NINJA
+################################################################################
+if (WIN32 AND ${CMAKE_GENERATOR} MATCHES "Ninja")
+  message(STATUS "using generator NINJA on Windows! Still WIP be patient!")
+  set(GYP_MAIN ${V8_DIR}/build/gyp_v8)
+
+  # try to find 2013 in 'Visual Studio 12 2013 Win64'
+  #if (${CMAKE_GENERATOR} MATCHES "2013") 
+  #  list(APPEND V8_GYP_ARGS "-G msvs_version=2013")
+  #endif()
+
+  # try to find 2015 in 'Visual Studio 14 2015 Win64'
+  #if (${CMAKE_GENERATOR} MATCHES "2015") 
+    #    list(APPEND V8_GYP_ARGS "-G msvs_version=2015")
+  list(APPEND V8_GYP_ARGS --format ninja)
+  #endif()
+
+  if ("${BITS}" STREQUAL "64")
+    set(MS_TARGET_PLATFORM x64)
+  else ()
+    set(MS_TARGET_PLATFORM Win32)
+  endif ()
+
+  list(APPEND V8_GYP_ARGS -Dtarget_arch=${V8_PROC_ARCH} -Dhost_arch=${V8_PROC_ARCH})
+  list(APPEND V8_GYP_ARGS ${V8_DIR}/build/all.gyp)
+
+  if ("${V8_TARGET_ARCHS}" STREQUAL "")
+    set(V8_TARGET_ARCHS "Debug;Release" CACHE string "V8 targets to build")
+  endif()
+  list(APPEND V8_GYP_ARGS
+    -Dcomponent=static_library
+    -Dlibrary=static_library
+    #--depth=2
+    #-Dv8_use_external_startup_data=1
+    #-Dicu_gyp_path=../third_party/icu/icu.gyp
+    #-Dv8_optimized_debug=0
+    #-Dos_posix=0
+    #-Dclang=0
+    #-Dwant_separate_host_toolset=0
+  )
+
+  add_custom_target(v8_build_ninja)
+
+  set(NINJA_BUILD_DIR "${V8_TARGET_DIR}/${NINJA_TARGET}")
+
+  ExternalProject_Add(v8_build_ninja
+    SOURCE_DIR
+      "${V8_DIR}"
+    CONFIGURE_COMMAND
+      ${PYTHON_EXECUTABLE} ${GYP_MAIN} ${V8_GYP_ARGS}
+    BINARY_DIR
+      ${NINJA_BUILD_DIR}
+    BUILD_COMMAND
+      ${CMAKE_BUILD_TOOL} v8
+    STEP_TARGETS
+      v8_base v8_libbase v8_libplatform v8_nosnapshot icui18n icuuc icudata
+    INSTALL_COMMAND
+      "")
+
+  list(APPEND LINK_DIRECTORIES "${NINJA_BUILD_DIR}/obj/tools/gyp")
+
+  set(V8_LIBS
+    "v8_base;v8_libbase;v8_libplatform;v8_nosnapshot"
+    CACHE INTERNAL
+    "${PROJECT_NAME}: Libraries"
+  )
+
+  list(APPEND LINK_DIRECTORIES "${NINJA_BUILD_DIR}/obj/third_party/icu")
+
+  set(ICU_LIBS
+    "icui18n;icuuc;icudata"
+    CACHE INTERNAL
+    "ICU: Libraries"
+  )
+
+  set(LINK_DIRECTORIES "${LINK_DIRECTORIES}" PARENT_SCOPE)
+
+elseif (${CMAKE_GENERATOR} MATCHES "Ninja")
   message(STATUS "using generator NINJA!")
 
   option(USE_DEBUG_V8 "compile V8 in DEBUG mode" OFF)
@@ -186,10 +265,11 @@ if (${CMAKE_GENERATOR} MATCHES "Ninja")
   set(LINK_DIRECTORIES "${LINK_DIRECTORIES}" PARENT_SCOPE)
 
 ################################################################################
-## WINDOWS
+## WINDOWS with msbuild
 ################################################################################
 
 elseif (WIN32)
+  MESSAGE("Building V8 for Windows with MSBUILD")
   set(GYP_MAIN ${V8_DIR}/build/gyp_v8)
 
   # try to find 2013 in 'Visual Studio 12 2013 Win64'
@@ -478,8 +558,8 @@ else ()
 endif()
 
 if (WIN32)
-  set(ICU_DT "${ICU_BASEDIR}/data/in/icudtl.dat")
-  set(ICU_DT_DEST "icudt${ICU_COMPACT_VERSION}l.dat")
+  set(ICU_DT "${ICU_BASEDIR}/data/in/icudtl.dat" PARENT_SCOPE)
+  set(ICU_DT_DEST "icudt${ICU_COMPACT_VERSION}l.dat" PARENT_SCOPE)
   # other platforms link the file into the binary
   install(FILES ${ICU_DT}
     DESTINATION "share/arangodb/"

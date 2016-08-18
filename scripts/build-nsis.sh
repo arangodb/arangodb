@@ -8,10 +8,9 @@ cd ${DIR}/..
 
 ./Installation/Jenkins/build.sh \
     standard \
-    --rpath \
-    --package RPM \
-    --buildDir build-rpm \
-    --targetDir /var/tmp/ \
-    --jemalloc \
+    --msvc \
+    --buildDir /cygdrive/c/b/y/ \
+    --package NSIS \
+    --targetDir /var/tmp/ 
 
 cd ${DIR}/..
