@@ -64,7 +64,10 @@ void Inception::run() {
   while (!this->isStopping()) {
     
     config_t config = _agent->config(); // get a copy of conf
-    
+    if (config.poolComplete()) {
+      _agent->startConstituent();
+    }
+
     query_t out = std::make_shared<Builder>();
     out->openObject();
     out->add("endpoint", VPackValue(config.endpoint()));
@@ -85,7 +88,7 @@ void Inception::run() {
         auto hf =
           std::make_unique<std::unordered_map<std::string, std::string>>();
         arangodb::ClusterComm::instance()->asyncRequest(
-          clientid, 1, p, GeneralRequest::RequestType::POST, path,
+          "1", 1, p, GeneralRequest::RequestType::POST, path,
           std::make_shared<std::string>(out->toJson()), hf,
           std::make_shared<GossipCallback>(_agent), 1.0, true);
       }
@@ -107,13 +110,19 @@ void Inception::run() {
     std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
     if ((std::chrono::system_clock::now()-s) > timeout) {
-      LOG_TOPIC(ERR, Logger::AGENCY) <<
-        "Failed to find complete pool of agents. Giving up!";
+      if (config.poolComplete()) {
+        LOG_TOPIC(DEBUG, Logger::AGENCY) << "Stopping active gossipping!";
+      } else {
+        LOG_TOPIC(ERR, Logger::AGENCY) <<
+          "Failed to find complete pool of agents. Giving up!";
+      }
       this->shutdown();
     }
 
   }
 
+  this->shutdown();
+      
 }
 
 

@@ -34,8 +34,6 @@
 #include <velocypack/velocypack-aliases.h>
 
 #include <chrono>
-#warning iostream
-#include <iostream>
 
 using namespace arangodb::application_features;
 using namespace arangodb::velocypack;
@@ -147,6 +145,17 @@ arangodb::consensus::id_t Agent::leaderID() const {
 /// Are we leading?
 bool Agent::leading() const {
   return _constituent.leading();
+}
+
+
+void Agent::startConstituent() {
+  activateAgency();
+  if (!_constituent.isRunning()) {
+    auto database = ApplicationServer::getFeature<DatabaseFeature>("Database");
+    auto vocbase = database->vocbase();
+    auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY;
+    _constituent.start(vocbase, queryRegistry);
+  }
 }
 
 
@@ -377,9 +386,7 @@ bool Agent::activateAgency() {
 /// Load persistent state
 bool Agent::load() {
   
-  DatabaseFeature* database =
-      ApplicationServer::getFeature<DatabaseFeature>("Database");
-
+  auto database = ApplicationServer::getFeature<DatabaseFeature>("Database");
   auto vocbase = database->vocbase();
   auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY;
 
@@ -398,33 +405,27 @@ bool Agent::load() {
     _inception->start();
   }
 
-  activateAgency();
-
-  LOG(WARN) << __LINE__;
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "Reassembling spearhead and read stores.";
   _spearhead.apply(_state.slices(_lastCommitIndex + 1));
 
-  LOG(WARN) << __LINE__;
   {
     CONDITION_LOCKER(guard, _appendCV);
     guard.broadcast();
   }
 
-  LOG(WARN) << _config.toBuilder()->toJson();
-  LOG(WARN) << __LINE__;
   reportIn(id(), _state.lastLog().index);
 
-  LOG(WARN) << __LINE__;
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "Starting spearhead worker.";
   _spearhead.start();
   _readDB.start();
 
-  LOG(WARN) << __LINE__;
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "Starting constituent personality.";
   TRI_ASSERT(queryRegistry != nullptr);
-  _constituent.start(vocbase, queryRegistry);
+  if (size() == 1) {
+    activateAgency();
+    _constituent.start(vocbase, queryRegistry);
+  }
 
-  LOG(WARN) << __LINE__;
   if (_config.supervision()) {
     LOG_TOPIC(DEBUG, Logger::AGENCY) << "Starting cluster sanity facilities";
     _supervision.start(this);
@@ -620,7 +621,7 @@ Agent& Agent::operator=(VPackSlice const& compaction) {
 
 /// Are we still starting up?
 bool Agent::booting() {
-  return (_config.poolComplete());
+  return (!_config.poolComplete());
 }
 
 
@@ -632,7 +633,6 @@ bool Agent::booting() {
 /// If I know more immediately contact peer with my list.
 query_t Agent::gossip(query_t const& in, bool isCallback) {
 
-  std::cout << __LINE__ << std::endl;
   VPackSlice slice = in->slice();
   if (!slice.isObject()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -640,34 +640,29 @@ query_t Agent::gossip(query_t const& in, bool isCallback) {
       + slice.typeName());
   }
 
-  std::cout << __LINE__ << std::endl;
   if (!slice.hasKey("id") || !slice.get("id").isString()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
       20002, "Gossip message must contain string parameter 'id'");
   }
   std::string id = slice.get("id").copyString();
   
-  std::cout << __LINE__ << std::endl;
   if (!slice.hasKey("endpoint") || !slice.get("endpoint").isString()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
       20003, "Gossip message must contain string parameter 'endpoint'");
   }
   std::string endpoint = slice.get("endpoint").copyString();
     
-  std::cout << __LINE__ << std::endl;
   LOG_TOPIC(DEBUG, Logger::AGENCY)
     << "Gossip " << ((isCallback) ? "callback" : "call") << " from " << endpoint;
   
-  std::cout << __LINE__ << std::endl;
   if (!slice.hasKey("pool") || !slice.get("pool").isObject()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
       20003, "Gossip message must contain object parameter 'pool'");
   }
   VPackSlice pslice = slice.get("pool");
 
-  std::cout << "RECEIVED " << slice.toJson();
+  LOG_TOPIC(DEBUG, Logger::AGENCY) <<"Received gossip " << slice.toJson();
 
-  std::cout << __LINE__ << std::endl;
   std::map<std::string,std::string> incoming;
   for (auto const& pair : VPackObjectIterator(pslice)) {
     if (!pair.value.isString()) {
@@ -677,268 +672,53 @@ query_t Agent::gossip(query_t const& in, bool isCallback) {
     incoming[pair.key.copyString()] = pair.value.copyString();
   }
   
-  std::cout << __LINE__ << std::endl;
-  std::vector<std::string> gossipPeers = _config.gossipPeers();
-  for (auto const& i : gossipPeers) {
-    std::cout << i << std::endl;
-  }
-  if (!gossipPeers.empty()) {
-    try {
-      std::cout << __LINE__ << std::endl;
-      _config.eraseFromGossipPeers(endpoint);
-      std::cout << __LINE__ << std::endl;
-    } catch (std::exception const& e) {
-      std::cout << e.what();
-    }
-  }
+  query_t out = std::make_shared<Builder>();
+  out->openObject();
+  if (!isCallback) {
 
-  std::cout << __LINE__ << std::endl;
-  {
+    std::vector<std::string> gossipPeers = _config.gossipPeers();
+    if (!gossipPeers.empty()) {
+      try {
+        _config.eraseFromGossipPeers(endpoint);
+      } catch (std::exception const& e) {
+        LOG_TOPIC(ERR, Logger::AGENCY)
+          << __FILE__ << ":" << __LINE__ << " " << e.what();
+      }
+    }
+    
     size_t counter = 0;
-    //MUTEX_LOCKER(mutexLocker, _cfgLock);
     for (auto const& i : incoming) {
       if (++counter > _config.poolSize()) { /// more data than pool size: fatal!
         LOG_TOPIC(FATAL, Logger::AGENCY) <<
           "Too many peers for poolsize: " << counter << ">" << _config.poolSize();
         FATAL_ERROR_EXIT();
       }
+      
       if (!_config.addToPool(i)) {
         LOG_TOPIC(FATAL, Logger::AGENCY) << "Discrepancy in agent pool!";
         FATAL_ERROR_EXIT();
       }
     }
-  }
-
-  std::cout << __LINE__ << std::endl;
-  //bool send = false;
-  std::map<std::string,std::string> pool = _config.pool();
-  
-  std::cout << __LINE__ << std::endl;
-  query_t out = std::make_shared<Builder>();
-  out->openObject();
-  {
-    MUTEX_LOCKER(mutexLocker, _cfgLock);
+    
+    
+    //bool send = false;
+    std::map<std::string,std::string> pool = _config.pool();
+    
     out->add("endpoint", VPackValue(_config.endpoint()));
     out->add("id", VPackValue(_config.id()));
-  }
-  out->add("pool", VPackValue(VPackValueType::Object));
-  for (auto const& i : pool) {
-    out->add(i.first,VPackValue(i.second));
+    out->add("pool", VPackValue(VPackValueType::Object));
+    for (auto const& i : pool) {
+      out->add(i.first,VPackValue(i.second));
+    }
+    out->close();
   }
   out->close();
-  out->close();
-  
-  std::cout << __LINE__ << std::endl;
-  /*
-  if (send) {
-    
-    std::cout << "SENDING " << out->slice().toJson();
-    
-    auto headerFields =
-      std::make_unique<std::unordered_map<std::string, std::string>>();
-    std::string path = "/_api/agency_priv/gossip";
-    
-    arangodb::ClusterComm::instance()->asyncRequest(
-      "4", 1, endpoint, GeneralRequest::RequestType::POST, path,
-      std::make_shared<std::string>(out->toJson()), headerFields,
-      std::make_shared<GossipCallback>(this), 1.0, true, 0.5);
-    
-  }
 
-  std::cout << __LINE__ << std::endl;
-*/
+  LOG_TOPIC(DEBUG, Logger::AGENCY)
+    << "Answering with gossip " << out->slice().toJson();
   return out;
   
 }
 
-
-/// Check for persisted agency
-/// - yes: Ask leader for agents
-///   - if my id among those: RAFT
-///   - else: relax
-/// - no: 
-bool Agent::activeAgency() {
-
-  return false;
-  
-  std::map<std::string, std::string> pool;
-  std::vector<std::string> active;
-  { 
-//    MUTEX_LOCKER(mutexLocker, _cfgLock);
-    pool = _config.pool();
-    active = _config.active();
-  }
-
-  if (_config.size() == active.size()) {
-    
-  }
-
-  return false;
-
-}
-
-inline static query_t getResponse(
-  std::string const& endpoint, std::string const& path, double timeout = 1.0) {
-
-  query_t ret = nullptr;
-  std::unordered_map<std::string, std::string> headerFields;
-  auto res = arangodb::ClusterComm::instance()->syncRequest(
-    "5", 1, endpoint, GeneralRequest::RequestType::GET, path, std::string(),
-    headerFields, 1.0);
-
-  if (res->status == CL_COMM_RECEIVED) {
-    ret = res->result->getBodyVelocyPack();
-  }
-
-  return ret;
-
-}
-
-
-bool Agent::persistedAgents() {
-
-  return false;
-  
-  std::vector<std::string> active = _config.active();
-  std::map<std::string,std::string> pool = _config.pool();
-  query_t activeBuilder = _config.activeToBuilder();
-
-  if (active.empty()) {
-    return false;
-  }
-
-  // 1 min timeout
-  std::chrono::seconds timeout(60);
-  
-  auto const& it = find(active.begin(), active.end(), _config.id());
-  auto start = std::chrono::system_clock::now();
-  std::string const path = "/_api/agency/activeAgents";
-
-  if (it != active.end()) {  // We used to be active agent
-    
-    {
-//      MUTEX_LOCKER(mutexLocker, _cfgLock);
-      _serveActiveAgent = true; // Serve /_api/agency/activeAgents
-    }
-
-    std::map<std::string,bool> consens;
-    
-    while (true) {
-      
-      // contact others and count how many succeeded
-      /*for (auto const& agent : active) {
-        std::unique_ptr<ClusterCommResult> res =
-          ClusterComm::instance()->syncRequest(
-            "1", 1, pool.at(agent), GeneralRequest::RequestType::POST, path,
-            std::make_shared<std::string>(word->toString()), headerFields,
-            std::make_shared<GossipCallback>(), 1.0, true, 0.5);
-        if (res->status == CL_COMM_SENT) { 
-          if (res->result->getHttpReturnCode() == 200) {
-            consens[agent] = true;
-          } else if (res->result->getHttpReturnCode() == 428) {
-            LOG_TOPIC(DEBUG, Logger::AGENCY) <<
-              "Local information on agency is rejected by " << agent;
-          } else if (res->result->getHttpReturnCode() == 409) {
-            LOG_TOPIC(DEBUG, Logger::AGENCY) <<
-              "I am no longer active agent according to " << agent;
-          }
-          }
-      0;
-      }*/
-
-      // Collect what we know. Act accordingly.
-      
-      // timeout: clear list of active and give up
-      if (std::chrono::system_clock::now() - start > timeout) { 
-        {
-//          MUTEX_LOCKER(mutexLocker, _cfgLock);
-          //_config.active.clear();
-        }
-
-      }
-      
-    }
-    
-    {
-//      MUTEX_LOCKER(mutexLocker, _cfgLock);
-      _serveActiveAgent = false;  // Unserve /_api/agency/activeAgents
-    }
-    
-  } else {
-
-    std::string path = "/_api/agency/config";
-
-    while (true) { // try to connect an agent until attempts futile for too long
-
-      /*for (auto const& ep : active) {
-
-        auto res = getResponse(ep, path);
-
-        if (res != nullptr) { // Got in touch with an active agent
-          auto slice = res->slice();
-          LOG_TOPIC(DEBUG, Logger::AGENCY)
-            << "Got response from a persisted agent with configuration "
-            << slice.toJson();
-//          MUTEX_LOCKER(mutexLocker, _cfgLock);
-          _config.override(slice);
-          
-        }
-        
-        }*/
-
-      if (std::chrono::system_clock::now() - start > timeout) { 
-        {
-          //        MUTEX_LOCKER(mutexLocker, _cfgLock);
-          //_config.active.clear();
-        }
-        return false;
-      } 
-
-    }
-  }
-  
-  return false;
-  
-}
-
-
-/// Do we serve agentStartupSequence
-bool Agent::serveActiveAgent() {
-  return _serveActiveAgent;
-}
-
-
-/// Initial inception of the agency world
-void Agent::inception() {
-
-  
-
-/*  auto start = std::chrono::system_clock::now(); //
-  std::chrono::seconds timeout(30);
-  
-  if (persistedAgents()) {
-    return;
-  }
-
-
-  while (!this->isStopping() && booting()) {
-
-    if (activeAgency()) {
-      return;
-    }
-
-    gossip();
-    
-    _configCV.wait(100000);
-    
-    if (std::chrono::system_clock::now() - start > timeout) {
-      LOG_TOPIC(ERR, Logger::AGENCY) <<
-        "Failed to find complete pool of agents.";
-      FATAL_ERROR_EXIT();
-    }
-    
-    }*/
-  
-}
 
 }} // namespace

@@ -119,7 +119,7 @@ class Agent : public arangodb::Thread {
   bool activeAgency();
   
   /// @brief Startup process of detection of agent pool, active agency, gossip etc
-  void inception();
+//  void inception();
 
   /// @brief Start orderly shutdown of threads
   void beginShutdown() override final;
@@ -148,8 +148,11 @@ class Agent : public arangodb::Thread {
   /// @brief Get spearhead store
   Store const& spearhead() const;
 
+  /// @brief Serve active agent interface
   bool serveActiveAgent();
 
+  void startConstituent();
+  
   /// State reads persisted state and prepares the agent
   friend class State;
 
@@ -216,7 +219,6 @@ class Agent : public arangodb::Thread {
 
   std::map<std::string, TimePoint> _lastSent;
   arangodb::Mutex _ioLock; /**< @brief Read/Write lock */
-  mutable arangodb::Mutex _cfgLock; /**< @brief configuration gossip lock */
 
   /// @brief Server active agents rest handler
   bool _serveActiveAgent;
