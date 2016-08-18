@@ -122,7 +122,8 @@ MAKE=make
 PACKAGE_MAKE=make
 MAKE_PARAMS=""
 MAKE_CMD_PREFIX=""
-CONFIGURE_OPTIONS="-DCMAKE_INSTALL_PREFIX=/ -DCMAKE_INSTALL_LOCALSTATEDIR=/var$CMAKE_OPENSSL"
+CONFIGURE_OPTIONS="-DCMAKE_INSTALL_PREFIX=/ $CMAKE_OPENSSL"
+# -DCMAKE_INSTALL_LOCALSTATEDIR=/var"
 MAINTAINER_MODE="-DUSE_MAINTAINER_MODE=off"
 
 TARGET_DIR=""
@@ -207,7 +208,7 @@ while [ $# -gt 0 ];  do
             shift
             ;;
         
-         --msvc)
+        --msvc)
              shift
              MSVC=1
              CC=""
@@ -236,7 +237,7 @@ while [ $# -gt 0 ];  do
             shift
             ;;
         
-        --builddir)
+        --buildDir)
             shift
             BUILD_DIR=$1
             shift
@@ -274,6 +275,12 @@ while [ $# -gt 0 ];  do
             V8_CFLAGS="${V8_CFLAGS} -static-libgcc"
             V8_CXXFLAGS="${V8_CXXFLAGS} -static-libgcc -static-libstdc++"
             V8_LDFLAGS="${V8_LDFLAGS} -static-libgcc -static-libstdc++"
+            shift
+            ;;
+
+        --parallel)
+            shift
+            PARALLEL_BUILDS=$1
             shift
             ;;
         
@@ -352,7 +359,7 @@ if [ "${VERBOSE}" == 1 ];  then
     MAKE_PARAMS="${MAKE_PARAMS} V=1 Verbose=1 VERBOSE=1"
 fi
 
-if [ -n "${PAR}"]; then 
+if [ -n "${PAR}" ]; then 
      MAKE_PARAMS="${MAKE_PARAMS} ${PAR} ${PARALLEL_BUILDS}"
 fi
 
@@ -390,7 +397,7 @@ if [ ! -f Makefile -o ! -f CMakeCache.txt ];  then
 fi
 
 ${MAKE_CMD_PREFIX} ${MAKE} ${MAKE_PARAMS}
-git rev-parse HEAD > ${SOURCE_DIR}/last_compiled_version.sha
+(cd ${SOURCE_DIR}; git rev-parse HEAD > last_compiled_version.sha)
 
 if [ -n "$CPACK"  -a -n "${TARGET_DIR}" ];  then
     ${PACKAGE_MAKE} packages
