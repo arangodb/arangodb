@@ -52,6 +52,15 @@ v3.0.5 (XXXX-XX-XX)
 
 * fix SSL agency endpoint
 
+* Minimum RAFT timeout was one order of magnitude to short.
+
+* Optimized RAFT RPCs from leader to followers for efficiency.
+
+* Optimized RAFT RPC handling on followers with respect to compaction.
+
+* Fixed bug in handling of duplicates and overlapping logs
+
+* Fixed bug in supervision take over after leadership change.
 
 v3.0.4 (2016-08-01)
 -------------------

@@ -30,7 +30,6 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Dispatcher/DispatcherThread.h"
-//#include "Rest/FakeRequest.h"
 #include "SimpleHttpClient/ConnectionManager.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "Utils/Transaction.h"
@@ -1344,8 +1343,17 @@ size_t ClusterComm::performSingleRequest(
                               req.requestType, req.path, *(req.body),
                               *(req.headerFields), timeout);
   }
+  
+  std::unordered_map<std::string, std::string> headers;
+  // mop: helpless attempt to fix segfaulting due to body buffer empty
+  if (req.result.status == CL_COMM_BACKEND_UNAVAILABLE) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE);
+  }
+  
+  // Add correct recognition of content type later.
   req.result.status = CL_COMM_RECEIVED;  // a fake, but a good one
   req.done = true;
+  headers = req.result.result->getHeaderFields();
   nrDone = 1;
   // This was it, except for a small problem: syncRequest reports back in
   // req.result.result of type httpclient::SimpleHttpResult rather than
@@ -1353,9 +1361,8 @@ size_t ClusterComm::performSingleRequest(
   // Additionally, GeneralRequest is a virtual base class, so we actually
   // have to create an HttpRequest instance:
   GeneralRequest::ContentType type = GeneralRequest::ContentType::JSON;
-  // Add correct recognition of content type later.
+  
   basics::StringBuffer& buffer = req.result.result->getBody();
-
   // auto answer = new FakeRequest(type, buffer.c_str(),
   //                              static_cast<int64_t>(buffer.length()));
   // answer->setHeaders(req.result.result->getHeaderFields());
@@ -1363,7 +1370,7 @@ size_t ClusterComm::performSingleRequest(
   auto answer = HttpRequest::createFakeRequest(
       type, buffer.c_str(), static_cast<int64_t>(buffer.length()),
       req.result.result->getHeaderFields());
-
+  
   req.result.answer.reset(static_cast<GeneralRequest*>(answer));
   req.result.answer_code = static_cast<GeneralResponse::ResponseCode>(
       req.result.result->getHttpReturnCode());

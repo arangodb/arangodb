@@ -375,6 +375,7 @@ void Supervision::handleShutdown() {
     }
     LOG_TOPIC(DEBUG, Logger::AGENCY)
       << "Waiting for " << server.first << " to shutdown";
+    serversCleared = false;
   }
 
   if (serversCleared) {
