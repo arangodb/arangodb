@@ -81,7 +81,8 @@ std::unordered_map<std::string, std::string> const& VppRequest::headers()
     _headers = make_unique<unordered_map<string, string>>();
     VPackSlice meta = _message.header().get("meta");
     for (auto const& it : VPackObjectIterator(meta)) {
-      _headers->emplace(it.key.copyString(), it.value.copyString());
+      // must lower-case the header key
+      _headers->emplace(StringUtils::tolower(it.key.copyString()), it.value.copyString());
     }
   }
   return *_headers;
