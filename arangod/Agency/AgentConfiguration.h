@@ -139,6 +139,7 @@ struct config_t {
 
   /// @brief of active agents
   query_t const activeToBuilder () const;
+  query_t const poolToBuilder () const;
 
   
   /// @brief override this configuration with prevailing opinion (startup)

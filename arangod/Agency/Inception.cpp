@@ -83,7 +83,6 @@ void Inception::run() {
     
     for (auto const& p : config.gossipPeers()) { // gossip peers
       if (p != config.endpoint()) {
-        LOG(WARN) << "from gossip peers: " << p;
         std::string clientid = config.id() + std::to_string(i++);
         auto hf =
           std::make_unique<std::unordered_map<std::string, std::string>>();
@@ -96,7 +95,6 @@ void Inception::run() {
     
     for (auto const& pair : config.pool()) { // pool entries
       if (pair.second != config.endpoint()) {
-        LOG(WARN) << " from pool: " << pair.second;
         std::string clientid = config.id() + std::to_string(i++);
         auto hf =
           std::make_unique<std::unordered_map<std::string, std::string>>();
@@ -107,7 +105,7 @@ void Inception::run() {
       }
     }
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(250));
 
     if ((std::chrono::system_clock::now()-s) > timeout) {
       if (config.poolComplete()) {
@@ -117,6 +115,10 @@ void Inception::run() {
           "Failed to find complete pool of agents. Giving up!";
       }
       this->shutdown();
+    }
+
+    if (config.poolComplete()) {
+      break;
     }
 
   }

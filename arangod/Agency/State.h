@@ -104,9 +104,7 @@ class State {
 
   size_t removeConflicts(query_t const&);
 
-  bool persistActiveAgents (arangodb::consensus::id_t  const&);
-  bool persistActiveAgents (std::vector<arangodb::consensus::id_t > const&);
-
+  bool persistActiveAgents (query_t const& active, query_t const&  pool);
 
 
  private:

@@ -746,31 +746,26 @@ bool State::persistReadDB(arangodb::consensus::index_t cind) {
   return false;
 }
 
-bool State::persistActiveAgents(arangodb::consensus::id_t const& id) {
-  return persistActiveAgents(std::vector<arangodb::consensus::id_t>(1, id));
-}
-  
-bool State::persistActiveAgents(
-  std::vector<arangodb::consensus::id_t> const& ids) {
 
-  TRI_ASSERT (!ids.empty());
-  
+
+bool State::persistActiveAgents(query_t const& active, query_t const& pool) {
+
   auto bindVars = std::make_shared<VPackBuilder>();
   bindVars->openObject();
   bindVars->close();
-  
-  std::stringstream aql;
-  aql << "FOR c IN configuration UPDATE {_key:c._key} WITH {cfg:{active:[";
-  for (size_t i = 0; i < ids.size()-1; ++i) {
-    aql << "\"" << ids.at(i) << "\",";
-  }
-  aql << "\"" << ids.back() << "\"]}} IN configuration";
-  std::string aqlStr = aql.str();
 
+  std::stringstream aql;
+  aql << "FOR c IN configuration UPDATE {_key:c._key} WITH {cfg:{active:";
+  aql << active->slice().toJson();
+  aql << ", pool:";
+  aql << pool->slice().toJson();
+  aql << "}} IN configuration";
+  std::string aqlStr = aql.str();
+  
   arangodb::aql::Query query(
     false, _vocbase, aqlStr.c_str(), aqlStr.size(), bindVars, nullptr,
     arangodb::aql::PART_MAIN);
-
+  
   auto queryResult = query.execute(QueryRegistryFeature::QUERY_REGISTRY);
   if (queryResult.code != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
