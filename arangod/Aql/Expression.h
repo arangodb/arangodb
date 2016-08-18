@@ -38,7 +38,6 @@ namespace arangodb {
 class AqlTransaction;
 
 namespace basics {
-class Json;
 class StringBuffer;
 }
 
@@ -63,8 +62,8 @@ class Expression {
   /// @brief constructor, using an AST start node
   Expression(Ast*, AstNode*);
 
-  /// @brief constructor, using JSON
-  Expression(Ast*, arangodb::basics::Json const&);
+  /// @brief constructor, using VPack
+  Expression(Ast*, arangodb::velocypack::Slice const&);
 
   ~Expression();
  
@@ -112,11 +111,6 @@ class Expression {
 
   /// @brief return all variables used in the expression
   void variables(std::unordered_set<Variable const*>&) const;
-
-  /// @brief return a Json representation of the expression
-  arangodb::basics::Json toJson(TRI_memory_zone_t* zone, bool verbose) const {
-    return arangodb::basics::Json(zone, _node->toJson(zone, verbose));
-  }
 
   /// @brief return a VelocyPack representation of the expression
   void toVelocyPack(arangodb::velocypack::Builder& builder, bool verbose) const {

@@ -36,6 +36,9 @@
 #include "Aql/ShortestPathNode.h"
 #include "Aql/WalkerWorker.h"
 
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
+
 using namespace arangodb::basics;
 using namespace arangodb::aql;
 
@@ -94,141 +97,119 @@ void ExecutionNode::validateType(int type) {
 
 void ExecutionNode::getSortElements(SortElementVector& elements,
                                     ExecutionPlan* plan,
-                                    arangodb::basics::Json const& oneNode,
+                                    arangodb::velocypack::Slice const& slice,
                                     char const* which) {
-  arangodb::basics::Json jsonElements = oneNode.get("elements");
+  VPackSlice elementsSlice = slice.get("elements");
 
-  if (!jsonElements.isArray()) {
+  if (!elementsSlice.isArray()) {
     std::string error = std::string("unexpected value for ") +
                         std::string(which) + std::string(" elements");
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, error);
   }
 
-  size_t len = jsonElements.size();
-  elements.reserve(len);
+  elements.reserve(elementsSlice.length());
 
-  for (size_t i = 0; i < len; i++) {
-    arangodb::basics::Json oneJsonElement =
-        jsonElements.at(static_cast<int>(i));
-    bool ascending =
-        JsonHelper::checkAndGetBooleanValue(oneJsonElement.json(), "ascending");
-    Variable* v = varFromJson(plan->getAst(), oneJsonElement, "inVariable");
+  for (auto const& it : VPackArrayIterator(elementsSlice)) {
+    bool ascending = it.get("ascending").getBoolean();
+    Variable* v = varFromVPack(plan->getAst(), it, "inVariable");
     elements.emplace_back(v, ascending);
   }
 }
 
-ExecutionNode* ExecutionNode::fromJsonFactory(
-    ExecutionPlan* plan, arangodb::basics::Json const& oneNode) {
-  auto JsonString = oneNode.toString();
-
-  int nodeTypeID =
-      JsonHelper::checkAndGetNumericValue<int>(oneNode.json(), "typeID");
+ExecutionNode* ExecutionNode::fromVPackFactory(
+    ExecutionPlan* plan, VPackSlice const& slice) {
+  int nodeTypeID = slice.get("typeID").getNumericValue<int>();
   validateType(nodeTypeID);
 
-  NodeType nodeType = (NodeType)nodeTypeID;
+  NodeType nodeType = static_cast<NodeType>(nodeTypeID);
 
   switch (nodeType) {
     case SINGLETON:
-      return new SingletonNode(plan, oneNode);
+      return new SingletonNode(plan, slice);
     case ENUMERATE_COLLECTION:
-      return new EnumerateCollectionNode(plan, oneNode);
+      return new EnumerateCollectionNode(plan, slice);
     case ENUMERATE_LIST:
-      return new EnumerateListNode(plan, oneNode);
+      return new EnumerateListNode(plan, slice);
     case FILTER:
-      return new FilterNode(plan, oneNode);
+      return new FilterNode(plan, slice);
     case LIMIT:
-      return new LimitNode(plan, oneNode);
+      return new LimitNode(plan, slice);
     case CALCULATION:
-      return new CalculationNode(plan, oneNode);
+      return new CalculationNode(plan, slice);
     case SUBQUERY:
-      return new SubqueryNode(plan, oneNode);
+      return new SubqueryNode(plan, slice);
     case SORT: {
       SortElementVector elements;
-      bool stable =
-          JsonHelper::checkAndGetBooleanValue(oneNode.json(), "stable");
-      getSortElements(elements, plan, oneNode, "SortNode");
-      return new SortNode(plan, oneNode, elements, stable);
+      getSortElements(elements, plan, slice, "SortNode");
+      return new SortNode(plan, slice, elements, slice.get("stable").getBoolean());
     }
     case COLLECT: {
       Variable* expressionVariable =
-          varFromJson(plan->getAst(), oneNode, "expressionVariable", Optional);
+          varFromVPack(plan->getAst(), slice, "expressionVariable", Optional);
       Variable* outVariable =
-          varFromJson(plan->getAst(), oneNode, "outVariable", Optional);
+          varFromVPack(plan->getAst(), slice, "outVariable", Optional);
 
-      arangodb::basics::Json jsonGroups = oneNode.get("groups");
-      if (!jsonGroups.isArray()) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
-                                       "invalid groups definition");
-      }
-
-      arangodb::basics::Json jsonAggregates = oneNode.get("aggregates");
-      if (!jsonAggregates.isArray()) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
-                                       "invalid aggregates definition");
-      }
-
+      // keepVariables
       std::vector<Variable const*> keepVariables;
-      arangodb::basics::Json jsonKeepVariables = oneNode.get("keepVariables");
-      if (jsonKeepVariables.isArray()) {
-        size_t const n = jsonKeepVariables.size();
-        for (size_t i = 0; i < n; i++) {
-          arangodb::basics::Json keepVariable =
-              jsonKeepVariables.at(static_cast<int>(i));
+      VPackSlice keepVariablesSlice = slice.get("keepVariables");
+      if (keepVariablesSlice.isArray()) {
+        for (auto const& it : VPackArrayIterator(keepVariablesSlice)) {
           Variable const* variable =
-              varFromJson(plan->getAst(), keepVariable, "variable");
+              varFromVPack(plan->getAst(), it, "variable");
           keepVariables.emplace_back(variable);
         }
       }
 
+      // groups
+      VPackSlice groupsSlice = slice.get("groups");
+      if (!groupsSlice.isArray()) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
+                                       "invalid \"groups\" definition");
+      }
+
       std::vector<std::pair<Variable const*, Variable const*>> groupVariables;
       {
-        size_t const len = jsonGroups.size();
-        groupVariables.reserve(len);
-        for (size_t i = 0; i < len; i++) {
-          arangodb::basics::Json oneJsonGroup =
-              jsonGroups.at(static_cast<int>(i));
-          Variable* outVar =
-              varFromJson(plan->getAst(), oneJsonGroup, "outVariable");
-          Variable* inVar =
-              varFromJson(plan->getAst(), oneJsonGroup, "inVariable");
+        groupVariables.reserve(groupsSlice.length());
+        for (auto const& it : VPackArrayIterator(groupsSlice)) {
+          Variable* outVar = varFromVPack(plan->getAst(), it, "outVariable");
+          Variable* inVar = varFromVPack(plan->getAst(), it, "inVariable");
 
           groupVariables.emplace_back(std::make_pair(outVar, inVar));
         }
+      }
+
+      // aggregates
+      VPackSlice aggregatesSlice = slice.get("aggregates");
+      if (!aggregatesSlice.isArray()) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
+                                       "invalid \"aggregates\" definition");
       }
 
       std::vector<
           std::pair<Variable const*, std::pair<Variable const*, std::string>>>
           aggregateVariables;
       {
-        size_t const len = jsonAggregates.size();
-        aggregateVariables.reserve(len);
-        for (size_t i = 0; i < len; i++) {
-          arangodb::basics::Json oneJsonAggregate =
-              jsonAggregates.at(static_cast<int>(i));
-          Variable* outVar =
-              varFromJson(plan->getAst(), oneJsonAggregate, "outVariable");
-          Variable* inVar =
-              varFromJson(plan->getAst(), oneJsonAggregate, "inVariable");
+        aggregateVariables.reserve(aggregatesSlice.length());
+        for (auto const& it : VPackArrayIterator(aggregatesSlice)) {
+          Variable* outVar = varFromVPack(plan->getAst(), it, "outVariable");
+          Variable* inVar = varFromVPack(plan->getAst(), it, "inVariable");
 
-          std::string const type = JsonHelper::checkAndGetStringValue(
-              oneJsonAggregate.json(), "type");
+          std::string const type = it.get("type").copyString();
           aggregateVariables.emplace_back(
               std::make_pair(outVar, std::make_pair(inVar, type)));
         }
       }
 
-      bool count = JsonHelper::checkAndGetBooleanValue(oneNode.json(), "count");
-      bool isDistinctCommand = JsonHelper::checkAndGetBooleanValue(
-          oneNode.json(), "isDistinctCommand");
+      bool count = slice.get("count").getBoolean();
+      bool isDistinctCommand = slice.get("isDistinctCommand").getBoolean();
 
       auto node = new CollectNode(
-          plan, oneNode, expressionVariable, outVariable, keepVariables,
+          plan, slice, expressionVariable, outVariable, keepVariables,
           plan->getAst()->variables()->variables(false), groupVariables,
           aggregateVariables, count, isDistinctCommand);
 
       // specialize the node if required
-      bool specialized =
-          JsonHelper::checkAndGetBooleanValue(oneNode.json(), "specialized");
+      bool specialized = slice.get("specialized").getBoolean();
       if (specialized) {
         node->specialized();
       }
@@ -236,36 +217,36 @@ ExecutionNode* ExecutionNode::fromJsonFactory(
       return node;
     }
     case INSERT:
-      return new InsertNode(plan, oneNode);
+      return new InsertNode(plan, slice);
     case REMOVE:
-      return new RemoveNode(plan, oneNode);
+      return new RemoveNode(plan, slice);
     case UPDATE:
-      return new UpdateNode(plan, oneNode);
+      return new UpdateNode(plan, slice);
     case REPLACE:
-      return new ReplaceNode(plan, oneNode);
+      return new ReplaceNode(plan, slice);
     case UPSERT:
-      return new UpsertNode(plan, oneNode);
+      return new UpsertNode(plan, slice);
     case RETURN:
-      return new ReturnNode(plan, oneNode);
+      return new ReturnNode(plan, slice);
     case NORESULTS:
-      return new NoResultsNode(plan, oneNode);
+      return new NoResultsNode(plan, slice);
     case INDEX:
-      return new IndexNode(plan, oneNode);
+      return new IndexNode(plan, slice);
     case REMOTE:
-      return new RemoteNode(plan, oneNode);
+      return new RemoteNode(plan, slice);
     case GATHER: {
       SortElementVector elements;
-      getSortElements(elements, plan, oneNode, "GatherNode");
-      return new GatherNode(plan, oneNode, elements);
+      getSortElements(elements, plan, slice, "GatherNode");
+      return new GatherNode(plan, slice, elements);
     }
     case SCATTER:
-      return new ScatterNode(plan, oneNode);
+      return new ScatterNode(plan, slice);
     case DISTRIBUTE:
-      return new DistributeNode(plan, oneNode);
+      return new DistributeNode(plan, slice);
     case TRAVERSAL:
-      return new TraversalNode(plan, oneNode);
+      return new TraversalNode(plan, slice);
     case SHORTEST_PATH:
-      return new ShortestPathNode(plan, oneNode);
+      return new ShortestPathNode(plan, slice);
     case ILLEGAL: {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid node type");
     }
@@ -273,105 +254,86 @@ ExecutionNode* ExecutionNode::fromJsonFactory(
   return nullptr;
 }
 
-/// @brief create an ExecutionNode from JSON
+/// @brief create an ExecutionNode from VPackSlice
 ExecutionNode::ExecutionNode(ExecutionPlan* plan,
-                             arangodb::basics::Json const& json)
-    : _id(JsonHelper::checkAndGetNumericValue<size_t>(json.json(), "id")),
+                             VPackSlice const& slice)
+    : _id(slice.get("id").getNumericValue<size_t>()),
       _estimatedCost(0.0),
       _estimatedCostSet(false),
-      _depth(JsonHelper::checkAndGetNumericValue<int>(json.json(), "depth")),
+      _depth(slice.get("depth").getNumericValue<int>()),
       _varUsageValid(true),
       _plan(plan) {
   TRI_ASSERT(_registerPlan.get() == nullptr);
   _registerPlan.reset(new RegisterPlan());
   _registerPlan->clear();
   _registerPlan->depth = _depth;
-  _registerPlan->totalNrRegs =
-      JsonHelper::checkAndGetNumericValue<unsigned int>(json.json(),
-                                                        "totalNrRegs");
+  _registerPlan->totalNrRegs = slice.get("totalNrRegs").getNumericValue<unsigned int>();
 
-  auto jsonVarInfoList = json.get("varInfoList");
-  if (!jsonVarInfoList.isArray()) {
+  VPackSlice varInfoList = slice.get("varInfoList");
+  if (!varInfoList.isArray()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                   "varInfoList needs to be a json array");
+                                   "\"varInfoList\" attribute needs to be an array");
   }
 
-  size_t len = jsonVarInfoList.size();
-  _registerPlan->varInfo.reserve(len);
+  _registerPlan->varInfo.reserve(varInfoList.length());
 
-  for (size_t i = 0; i < len; i++) {
-    auto jsonVarInfo = jsonVarInfoList.at(i);
-    if (!jsonVarInfo.isObject()) {
+  for (auto const& it : VPackArrayIterator(varInfoList)) {
+    if (!it.isObject()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_NOT_IMPLEMENTED,
-          "one varInfoList item needs to be a json object");
+          "\"varInfoList\" item needs to be an object");
     }
-    VariableId variableId = JsonHelper::checkAndGetNumericValue<VariableId>(
-        jsonVarInfo.json(), "VariableId");
-    RegisterId registerId = JsonHelper::checkAndGetNumericValue<RegisterId>(
-        jsonVarInfo.json(), "RegisterId");
-    unsigned int depth = JsonHelper::checkAndGetNumericValue<unsigned int>(
-        jsonVarInfo.json(), "depth");
+    VariableId variableId = it.get("VariableId").getNumericValue<VariableId>();
+    RegisterId registerId = it.get("RegisterId").getNumericValue<RegisterId>();
+    unsigned int depth = it.get("depth").getNumericValue<unsigned int>();
 
     _registerPlan->varInfo.emplace(variableId, VarInfo(depth, registerId));
   }
 
-  auto jsonNrRegsList = json.get("nrRegs");
-  if (!jsonNrRegsList.isArray()) {
+  VPackSlice nrRegsList = slice.get("nrRegs");
+  if (!nrRegsList.isArray()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                   "nrRegs needs to be a json array");
+                                   "\"nrRegs\" attribute needs to be an array");
   }
 
-  len = jsonNrRegsList.size();
-  _registerPlan->nrRegs.reserve(len);
-  for (size_t i = 0; i < len; i++) {
-    RegisterId oneReg =
-        JsonHelper::getNumericValue<RegisterId>(jsonNrRegsList.at(i).json(), 0);
-    _registerPlan->nrRegs.emplace_back(oneReg);
+  _registerPlan->nrRegs.reserve(nrRegsList.length());
+  for (auto const& it : VPackArrayIterator(nrRegsList)) {
+    _registerPlan->nrRegs.emplace_back(it.getNumericValue<RegisterId>());
   }
 
-  auto jsonNrRegsHereList = json.get("nrRegsHere");
-  if (!jsonNrRegsHereList.isArray()) {
+  VPackSlice nrRegsHereList = slice.get("nrRegsHere");
+  if (!nrRegsHereList.isArray()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
-                                   "nrRegsHere needs to be a json array");
+                                   "\"nrRegsHere\" needs to be an array");
   }
 
-  len = jsonNrRegsHereList.size();
-  _registerPlan->nrRegsHere.reserve(len);
-  for (size_t i = 0; i < len; i++) {
-    RegisterId oneReg = JsonHelper::getNumericValue<RegisterId>(
-        jsonNrRegsHereList.at(i).json(), 0);
-    _registerPlan->nrRegsHere.emplace_back(oneReg);
+  _registerPlan->nrRegsHere.reserve(nrRegsHereList.length());
+  for (auto const& it : VPackArrayIterator(nrRegsHereList)) {
+    _registerPlan->nrRegsHere.emplace_back(it.getNumericValue<RegisterId>());
   }
 
-  auto jsonRegsToClearList = json.get("regsToClear");
-  if (!jsonRegsToClearList.isArray()) {
+  VPackSlice regsToClearList = slice.get("regsToClear");
+  if (!regsToClearList.isArray()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
-                                   "regsToClear needs to be a json array");
+                                   "\"regsToClear\" needs to be an array");
   }
 
-  len = jsonRegsToClearList.size();
-  _regsToClear.reserve(len);
-  for (size_t i = 0; i < len; i++) {
-    RegisterId oneRegToClear = JsonHelper::getNumericValue<RegisterId>(
-        jsonRegsToClearList.at(i).json(), 0);
-    _regsToClear.emplace(oneRegToClear);
+  _regsToClear.reserve(regsToClearList.length());
+  for (auto const& it : VPackArrayIterator(regsToClearList)) {
+    _regsToClear.emplace(it.getNumericValue<RegisterId>());
   }
 
   auto allVars = plan->getAst()->variables();
 
-  auto jsonvarsUsedLater = json.get("varsUsedLater");
-  if (!jsonvarsUsedLater.isArray()) {
+  VPackSlice varsUsedLater = slice.get("varsUsedLater");
+  if (!varsUsedLater.isArray()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
-                                   "varsUsedLater needs to be a json array");
+                                   "\"varsUsedLater\" needs to be an array");
   }
 
-  len = jsonvarsUsedLater.size();
-  _varsUsedLater.reserve(len);
-  for (size_t i = 0; i < len; i++) {
-    // TODO: still Json Version. Ignore return val
-    auto builder = JsonHelper::toVelocyPack(jsonvarsUsedLater.at(i).json());
-    auto oneVarUsedLater = std::make_unique<Variable>(builder->slice());
+  _varsUsedLater.reserve(varsUsedLater.length());
+  for (auto const& it : VPackArrayIterator(varsUsedLater)) {
+    auto oneVarUsedLater = std::make_unique<Variable>(it);
     Variable* oneVariable = allVars->getVariable(oneVarUsedLater->id);
 
     if (oneVariable == nullptr) {
@@ -382,19 +344,16 @@ ExecutionNode::ExecutionNode(ExecutionPlan* plan,
     _varsUsedLater.emplace(oneVariable);
   }
 
-  auto jsonvarsValidList = json.get("varsValid");
+  VPackSlice varsValidList = slice.get("varsValid");
 
-  if (!jsonvarsValidList.isArray()) {
+  if (!varsValidList.isArray()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
-                                   "varsValid needs to be a json array");
+                                   "\"varsValid\" needs to be an array");
   }
 
-  len = jsonvarsValidList.size();
-  _varsValid.reserve(len);
-  for (size_t i = 0; i < len; i++) {
-    // TODO: deprecated
-    auto builder = JsonHelper::toVelocyPack(jsonvarsValidList.at(i).json());
-    auto oneVarValid = std::make_unique<Variable>(builder->slice());
+  _varsValid.reserve(varsValidList.length());
+  for (auto const& it : VPackArrayIterator(varsValidList)) {
+    auto oneVarValid = std::make_unique<Variable>(it);
     Variable* oneVariable = allVars->getVariable(oneVarValid->id);
 
     if (oneVariable == nullptr) {
@@ -589,25 +548,23 @@ ExecutionNode const* ExecutionNode::getLoop() const {
   return nullptr;
 }
 
-/// @brief factory for (optional) variables from json
-Variable* ExecutionNode::varFromJson(Ast* ast,
-                                     arangodb::basics::Json const& base,
-                                     char const* variableName, bool optional) {
-  arangodb::basics::Json variableJson = base.get(variableName);
+/// @brief factory for (optional) variables from VPack
+Variable* ExecutionNode::varFromVPack(Ast* ast,
+                                      arangodb::velocypack::Slice const& base,
+                                      char const* variableName, bool optional) {
+  VPackSlice variable = base.get(variableName);
 
-  if (variableJson.isEmpty()) {
+  if (variable.isNone()) {
     if (optional) {
       return nullptr;
     }
 
     std::string msg;
     msg +=
-        "Mandatory variable \"" + std::string(variableName) + "\" not found.";
+        "mandatory variable \"" + std::string(variableName) + "\" not found.";
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg.c_str());
   }
-  // TODO: deprecated
-  auto builder = JsonHelper::toVelocyPack(variableJson.json());
-  return ast->variables()->createVariable(builder->slice());
+  return ast->variables()->createVariable(variable);
 }
 
 /// @brief toVelocyPackHelper, for a generic node
@@ -1173,11 +1130,6 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
   }
 }
 
-/// @brief toJson, for SingletonNode
-SingletonNode::SingletonNode(ExecutionPlan* plan,
-                             arangodb::basics::Json const& base)
-    : ExecutionNode(plan, base) {}
-
 /// @brief toVelocyPack, for SingletonNode
 void SingletonNode::toVelocyPackHelper(VPackBuilder& nodes,
                                        bool verbose) const {
@@ -1194,13 +1146,13 @@ double SingletonNode::estimateCost(size_t& nrItems) const {
 }
 
 EnumerateCollectionNode::EnumerateCollectionNode(
-    ExecutionPlan* plan, arangodb::basics::Json const& base)
+    ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base),
       _vocbase(plan->getAst()->query()->vocbase()),
       _collection(plan->getAst()->query()->collections()->get(
-          JsonHelper::checkAndGetStringValue(base.json(), "collection"))),
-      _outVariable(varFromJson(plan->getAst(), base, "outVariable")),
-      _random(JsonHelper::checkAndGetBooleanValue(base.json(), "random")) {}
+          base.get("collection").copyString())),
+      _outVariable(varFromVPack(plan->getAst(), base, "outVariable")),
+      _random(base.get("random").getBoolean()) {}
 
 /// @brief toVelocyPack, for EnumerateCollectionNode
 void EnumerateCollectionNode::toVelocyPackHelper(VPackBuilder& nodes,
@@ -1250,10 +1202,10 @@ double EnumerateCollectionNode::estimateCost(size_t& nrItems) const {
 }
 
 EnumerateListNode::EnumerateListNode(ExecutionPlan* plan,
-                                     arangodb::basics::Json const& base)
+                                     arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base),
-      _inVariable(varFromJson(plan->getAst(), base, "inVariable")),
-      _outVariable(varFromJson(plan->getAst(), base, "outVariable")) {}
+      _inVariable(varFromVPack(plan->getAst(), base, "inVariable")),
+      _outVariable(varFromVPack(plan->getAst(), base, "outVariable")) {}
 
 /// @brief toVelocyPack, for EnumerateListNode
 void EnumerateListNode::toVelocyPackHelper(VPackBuilder& nodes,
@@ -1341,14 +1293,11 @@ double EnumerateListNode::estimateCost(size_t& nrItems) const {
   return depCost + static_cast<double>(length) * incoming;
 }
 
-LimitNode::LimitNode(ExecutionPlan* plan, arangodb::basics::Json const& base)
+LimitNode::LimitNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base),
-      _offset(JsonHelper::checkAndGetNumericValue<decltype(_offset)>(
-          base.json(), "offset")),
-      _limit(JsonHelper::checkAndGetNumericValue<decltype(_limit)>(base.json(),
-                                                                   "limit")),
-      _fullCount(
-          JsonHelper::checkAndGetBooleanValue(base.json(), "fullCount")) {}
+      _offset(base.get("offset").getNumericValue<decltype(_offset)>()),
+      _limit(base.get("limit").getNumericValue<decltype(_limit)>()),
+      _fullCount(base.get("fullCount").getBoolean()) {}
 
 // @brief toVelocyPack, for LimitNode
 void LimitNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
@@ -1372,11 +1321,10 @@ double LimitNode::estimateCost(size_t& nrItems) const {
 }
 
 CalculationNode::CalculationNode(ExecutionPlan* plan,
-                                 arangodb::basics::Json const& base)
+                                 arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base),
-      _conditionVariable(
-          varFromJson(plan->getAst(), base, "conditionVariable", true)),
-      _outVariable(varFromJson(plan->getAst(), base, "outVariable")),
+      _conditionVariable(varFromVPack(plan->getAst(), base, "conditionVariable", true)),
+      _outVariable(varFromVPack(plan->getAst(), base, "outVariable")),
       _expression(new Expression(plan->getAst(), base)),
       _canRemoveIfThrows(false) {}
 
@@ -1435,10 +1383,10 @@ double CalculationNode::estimateCost(size_t& nrItems) const {
 }
 
 SubqueryNode::SubqueryNode(ExecutionPlan* plan,
-                           arangodb::basics::Json const& base)
+                           arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base),
       _subquery(nullptr),
-      _outVariable(varFromJson(plan->getAst(), base, "outVariable")) {}
+      _outVariable(varFromVPack(plan->getAst(), base, "outVariable")) {}
 
 /// @brief toVelocyPack, for SubqueryNode
 void SubqueryNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
@@ -1655,9 +1603,9 @@ bool SubqueryNode::isDeterministic() {
   return finder._isDeterministic;
 }
 
-FilterNode::FilterNode(ExecutionPlan* plan, arangodb::basics::Json const& base)
+FilterNode::FilterNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base),
-      _inVariable(varFromJson(plan->getAst(), base, "inVariable")) {}
+      _inVariable(varFromVPack(plan->getAst(), base, "inVariable")) {}
 
 /// @brief toVelocyPack, for FilterNode
 void FilterNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
@@ -1700,9 +1648,9 @@ double FilterNode::estimateCost(size_t& nrItems) const {
   return depCost + nrItems;
 }
 
-ReturnNode::ReturnNode(ExecutionPlan* plan, arangodb::basics::Json const& base)
+ReturnNode::ReturnNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base),
-      _inVariable(varFromJson(plan->getAst(), base, "inVariable")) {}
+      _inVariable(varFromVPack(plan->getAst(), base, "inVariable")) {}
 
 /// @brief toVelocyPack, for ReturnNode
 void ReturnNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {

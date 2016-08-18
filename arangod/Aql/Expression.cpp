@@ -44,8 +44,9 @@
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb::aql;
-using Json = arangodb::basics::Json;
 using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
+
+namespace {
 
 /// @brief register warning
 static void RegisterWarning(arangodb::aql::Ast const* ast,
@@ -62,6 +63,8 @@ static void RegisterWarning(arangodb::aql::Ast const* ast,
   }
 
   ast->query()->registerWarning(code, msg.c_str());
+}
+
 }
 
 /// @brief create the expression
@@ -81,9 +84,9 @@ Expression::Expression(Ast* ast, AstNode* node)
   TRI_ASSERT(_node != nullptr);
 }
 
-/// @brief create an expression from JSON
-Expression::Expression(Ast* ast, arangodb::basics::Json const& json)
-    : Expression(ast, new AstNode(ast, json.get("expression"))) {}
+/// @brief create an expression from VPack
+Expression::Expression(Ast* ast, arangodb::velocypack::Slice const& slice)
+    : Expression(ast, new AstNode(ast, slice.get("expression"))) {}
 
 /// @brief destroy the expression
 Expression::~Expression() {

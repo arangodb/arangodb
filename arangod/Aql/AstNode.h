@@ -37,6 +37,7 @@
 namespace arangodb {
 namespace velocypack {
 class Builder;
+class Slice;
 }
 namespace basics {
 class StringBuffer;
@@ -218,8 +219,11 @@ struct AstNode {
   /// @brief create a string node, with defining a value type
   AstNode(char const*, size_t, AstNodeValueType);
 
-  /// @brief create the node from JSON
+  /// @brief create the node from JSON (DEPRECATED)
   AstNode(Ast*, arangodb::basics::Json const& json);
+  
+  /// @brief create the node from VPack
+  AstNode(Ast*, arangodb::velocypack::Slice const& slice);
 
   /// @brief create the node from JSON
   AstNode(std::function<void(AstNode*)> registerNode,
@@ -270,8 +274,11 @@ struct AstNode {
   /// throws exception if not
   static void validateValueType(int type);
 
-  /// @brief fetch a node's type from json
+  /// @brief fetch a node's type from json (DEPRECATED)
   static AstNodeType getNodeTypeFromJson(arangodb::basics::Json const& json);
+  
+  /// @brief fetch a node's type from VPack
+  static AstNodeType getNodeTypeFromVPack(arangodb::velocypack::Slice const& slice);
 
   /// @brief return a JSON representation of the node value
   /// the caller is responsible for freeing the JSON later

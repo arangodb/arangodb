@@ -30,9 +30,10 @@
 #include "Aql/ExecutionNode.h"
 #include "Aql/types.h"
 #include "Aql/Variable.h"
-#include "Basics/JsonHelper.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
+
+#include <velocypack/Slice.h>
 
 namespace arangodb {
 namespace aql {
@@ -76,7 +77,7 @@ class CollectNode : public ExecutionNode {
   }
 
   CollectNode(
-      ExecutionPlan*, arangodb::basics::Json const& base,
+      ExecutionPlan*, arangodb::velocypack::Slice const& base,
       Variable const* expressionVariable, Variable const* outVariable,
       std::vector<Variable const*> const& keepVariables,
       std::unordered_map<VariableId, std::string const> const& variableMap,

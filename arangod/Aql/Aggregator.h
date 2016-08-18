@@ -49,8 +49,8 @@ struct Aggregator {
 
   static Aggregator* fromTypeString(arangodb::AqlTransaction*,
                                     std::string const&);
-  static Aggregator* fromJson(arangodb::AqlTransaction*,
-                              arangodb::basics::Json const&, char const*);
+  static Aggregator* fromVPack(arangodb::AqlTransaction*,
+                               arangodb::velocypack::Slice const&, char const*);
 
   static bool isSupported(std::string const&);
   static bool requiresInput(std::string const&);

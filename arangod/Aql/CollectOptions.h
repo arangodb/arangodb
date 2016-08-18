@@ -25,7 +25,9 @@
 #define ARANGOD_AQL_COLLECT_OPTIONS_H 1
 
 #include "Basics/Common.h"
-#include "Basics/JsonHelper.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
 
 namespace arangodb {
 namespace aql {
@@ -42,18 +44,14 @@ struct CollectOptions {
   /// @brief constructor, using default values
   CollectOptions() : method(COLLECT_METHOD_UNDEFINED) {}
 
-  /// @brief constructor, using JSON
-  CollectOptions(arangodb::basics::Json const&);
+  /// @brief constructor
+  explicit CollectOptions(arangodb::velocypack::Slice const&);
 
   /// @brief whether or not the hash method can be used
   bool canUseHashMethod() const;
 
-  /// @brief convert the options to JSON
-  void toJson(arangodb::basics::Json&, TRI_memory_zone_t*) const;
-
   /// @brief convert the options to VelocyPack
   void toVelocyPack(arangodb::velocypack::Builder&) const;
-
 
   /// @brief get the aggregation method from a string
   static CollectMethod methodFromString(std::string const&);

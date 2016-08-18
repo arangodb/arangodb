@@ -41,7 +41,6 @@
 #include "Aql/Variable.h"
 #include "Aql/WalkerWorker.h"
 #include "Basics/Exceptions.h"
-#include "Basics/JsonHelper.h"
 #include "Basics/SmallVector.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/tri-strings.h"
@@ -54,8 +53,6 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::basics;
-
-using JsonHelper = arangodb::basics::JsonHelper;
 
 static TraversalOptions CreateTraversalOptions(AstNode const* node) {
   TraversalOptions options;
@@ -201,11 +198,7 @@ ExecutionPlan* ExecutionPlan::instantiateFromVelocyPack(
   TRI_ASSERT(ast != nullptr);
 
   auto plan = std::make_unique<ExecutionPlan>(ast);
-
-  // TODO: in place slice => Json
-  Json json(TRI_UNKNOWN_MEM_ZONE,
-            arangodb::basics::VelocyPackHelper::velocyPackToJson(slice));
-  plan->_root = plan->fromJson(json);
+  plan->_root = plan->fromSlice(slice);
   plan->_varUsageComputed = true;
 
   return plan.release();
@@ -1833,37 +1826,38 @@ void ExecutionPlan::insertDependency(ExecutionNode* oldNode,
   _varUsageComputed = false;
 }
 
-/// @brief create a plan from the JSON provided
-ExecutionNode* ExecutionPlan::fromJson(arangodb::basics::Json const& json) {
+/// @brief create a plan from VPack
+ExecutionNode* ExecutionPlan::fromSlice(VPackSlice const& slice) {
   ExecutionNode* ret = nullptr;
-  arangodb::basics::Json nodes = json.get("nodes");
 
-  if (!nodes.isArray()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "nodes is not an array");
+  if (!slice.isObject()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "plan slice is not an object");
   }
 
-  // first, re-create all nodes from the JSON, using the node ids
+  VPackSlice nodes = slice.get("nodes");
+
+  if (!nodes.isArray()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "plan \"nodes\" attribute is not an array");
+  }
+
+  // first, re-create all nodes from the Slice, using the node ids
   // no dependency links will be set up in this step
-  auto const size = nodes.size();
-
-  for (size_t i = 0; i < size; i++) {
-    arangodb::basics::Json oneJsonNode = nodes.at(static_cast<int>(i));
-
-    if (!oneJsonNode.isObject()) {
+  for (auto const& it : VPackArrayIterator(nodes)) {
+    if (!it.isObject()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "json node is not an object");
+                                     "node entry in plan is not an object");
     }
 
-    ret = ExecutionNode::fromJsonFactory(this, oneJsonNode);
+    ret = ExecutionNode::fromVPackFactory(this, it);
     registerNode(ret);
 
     TRI_ASSERT(ret != nullptr);
 
     if (ret->getType() == arangodb::aql::ExecutionNode::SUBQUERY) {
       // found a subquery node. now do magick here
-      arangodb::basics::Json subquery = oneJsonNode.get("subquery");
+      VPackSlice subquery = it.get("subquery");
       // create the subquery nodes from the "subquery" sub-node
-      auto subqueryNode = fromJson(subquery);
+      auto subqueryNode = fromSlice(subquery);
 
       // register the just created subquery
       static_cast<SubqueryNode*>(ret)->setSubquery(subqueryNode, false);
@@ -1871,30 +1865,17 @@ ExecutionNode* ExecutionPlan::fromJson(arangodb::basics::Json const& json) {
   }
 
   // all nodes have been created. now add the dependencies
-
-  for (size_t i = 0; i < size; i++) {
-    arangodb::basics::Json oneJsonNode = nodes.at(static_cast<int>(i));
-
-    if (!oneJsonNode.isObject()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "json node is not an object");
-    }
-
+  for (auto const& it : VPackArrayIterator(nodes)) {
     // read the node's own id
-    auto thisId = arangodb::basics::JsonHelper::checkAndGetNumericValue<size_t>(
-        oneJsonNode.json(), "id");
+    auto thisId = it.get("id").getNumericValue<size_t>();
     auto thisNode = getNodeById(thisId);
 
     // now re-link the dependencies
-    arangodb::basics::Json dependencies = oneJsonNode.get("dependencies");
-    if (arangodb::basics::JsonHelper::isArray(dependencies.json())) {
-      size_t const nDependencies = dependencies.size();
-
-      for (size_t j = 0; j < nDependencies; j++) {
-        if (arangodb::basics::JsonHelper::isNumber(
-                dependencies.at(static_cast<int>(j)).json())) {
-          auto depId = arangodb::basics::JsonHelper::getNumericValue<size_t>(
-              dependencies.at(static_cast<int>(j)).json(), 0);
+    VPackSlice dependencies = it.get("dependencies");
+    if (dependencies.isArray()) {
+      for (auto const& it2 : VPackArrayIterator(dependencies)) {
+        if (it2.isNumber()) {
+          auto depId = it2.getNumericValue<size_t>();
           thisNode->addDependency(getNodeById(depId));
         }
       }

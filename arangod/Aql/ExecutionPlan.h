@@ -30,7 +30,6 @@
 #include "Aql/ModificationOptions.h"
 #include "Aql/Query.h"
 #include "Aql/types.h"
-#include "Basics/json.h"
 #include "Basics/SmallVector.h"
 
 namespace arangodb {
@@ -278,8 +277,8 @@ class ExecutionPlan {
   /// @brief create an execution plan from an abstract syntax tree node
   ExecutionNode* fromNode(AstNode const*);
 
-  /// @brief create an execution plan from JSON
-  ExecutionNode* fromJson(arangodb::basics::Json const& Json);
+  /// @brief create an execution plan from VPack
+  ExecutionNode* fromSlice(VPackSlice const& slice);
 
   /// @brief create an vertex element for graph nodes
   AstNode const* parseTraversalVertexNode(ExecutionNode*, AstNode const*);
