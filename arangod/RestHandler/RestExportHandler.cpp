@@ -265,7 +265,7 @@ void RestExportHandler::createCursor() {
       setResponseCode(GeneralResponse::ResponseCode::CREATED);
 
       // TODO needs to generalized
-      auto* response = dynamic_cast<HttpResponse*>(_response);
+      auto* response = dynamic_cast<HttpResponse*>(_response.get());
 
       if (response == nullptr) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
@@ -340,7 +340,7 @@ void RestExportHandler::modifyCursor() {
     setResponseCode(GeneralResponse::ResponseCode::OK);
 
     // TODO this needs to be generalized
-    auto* response = dynamic_cast<HttpResponse*>(_response);
+    auto* response = dynamic_cast<HttpResponse*>(_response.get());
 
     if (response == nullptr) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);

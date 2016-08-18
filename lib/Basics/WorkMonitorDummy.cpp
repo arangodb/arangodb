@@ -26,6 +26,8 @@
 using namespace arangodb;
 using namespace arangodb::velocypack;
 
+void WorkMonitor::run() { TRI_ASSERT(false); }
+
 bool WorkMonitor::cancelAql(WorkDescription* desc) {
   TRI_ASSERT(false);
   return true;
@@ -38,6 +40,7 @@ void WorkMonitor::vpackHandler(arangodb::velocypack::Builder*,
   TRI_ASSERT(false);
 }
 
-void WorkMonitor::sendWorkOverview(uint64_t, std::shared_ptr<Buffer<uint8_t>>) {
+void WorkMonitor::sendWorkOverview(rest::RestHandler*,
+                                   std::shared_ptr<Buffer<uint8_t>>) {
   TRI_ASSERT(false);
 }

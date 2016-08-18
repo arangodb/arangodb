@@ -28,8 +28,8 @@
 
 #include "GeneralServer/GeneralCommTask.h"
 #include "lib/Rest/VppMessage.h"
-#include "lib/Rest/VppResponse.h"
 #include "lib/Rest/VppRequest.h"
+#include "lib/Rest/VppResponse.h"
 
 #include <stdexcept>
 
@@ -40,18 +40,14 @@ class VppCommTask : public GeneralCommTask {
  public:
   VppCommTask(GeneralServer*, TRI_socket_t, ConnectionInfo&&, double timeout);
 
-  // read data check if chunk and message are complete
-  // if message is complete execute a request
-  bool processRead() override;
-
   // convert from GeneralResponse to vppResponse ad dispatch request to class
   // internal addResponse
-  void addResponse(GeneralResponse* response, bool isError) override {
+  void addResponse(GeneralResponse* response) override {
     VppResponse* vppResponse = dynamic_cast<VppResponse*>(response);
     if (vppResponse == nullptr) {
       throw std::logic_error("invalid response or response Type");
     }
-    addResponse(vppResponse, isError);
+    addResponse(vppResponse);
   };
 
   arangodb::Endpoint::TransportType transportType() override {
@@ -59,13 +55,19 @@ class VppCommTask : public GeneralCommTask {
   };
 
  protected:
-  void completedWriteBuffer() override final;
-  virtual void handleChunk(char const*, size_t) {}
+  // read data check if chunk and message are complete
+  // if message is complete execute a request
+  bool processRead() override;
+
+  void handleChunk(char const*, size_t) override final {}
+
+  std::unique_ptr<GeneralResponse> createResponse(
+      GeneralResponse::ResponseCode, uint64_t messageId) override final;
 
   void handleSimpleError(GeneralResponse::ResponseCode code,
                          uint64_t id) override {
     VppResponse response(code, id);
-    addResponse(&response, true);
+    addResponse(&response);
   }
   void handleSimpleError(GeneralResponse::ResponseCode, int code,
                          std::string const& errorMessage,
@@ -77,7 +79,7 @@ class VppCommTask : public GeneralCommTask {
   void resetState(bool close);
   void replyToIncompleteMessages() {}
 
-  void addResponse(VppResponse*, bool isError);
+  void addResponse(VppResponse*);
 
  private:
   using MessageID = uint64_t;

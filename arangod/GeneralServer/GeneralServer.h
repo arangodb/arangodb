@@ -71,21 +71,19 @@ class GeneralServer : protected TaskManager {
 
   // creates a job for asynchronous execution
   bool handleRequestAsync(GeneralCommTask*,
-                          arangodb::WorkItem::uptr<RestHandler>&,
-                          uint64_t* jobId);
+                          arangodb::WorkItem::uptr<RestHandler>,
+                          uint64_t* jobId = nullptr);
 
   // executes the handler directly or add it to the queue
-  bool handleRequest(GeneralCommTask*, arangodb::WorkItem::uptr<RestHandler>&);
+  bool handleRequest(GeneralCommTask*, arangodb::WorkItem::uptr<RestHandler>);
 
  protected:
   // opens a listen port
   bool openEndpoint(Endpoint* endpoint);
 
   // handles request directly
-  void handleRequestDirectly(RestHandler* handler, GeneralCommTask* task);
-
-  // registers a task
-  void registerHandler(RestHandler* handler, GeneralCommTask* task);
+  void handleRequestDirectly(GeneralCommTask*,
+                             arangodb::WorkItem::uptr<RestHandler>);
 
  protected:
   // active listen tasks

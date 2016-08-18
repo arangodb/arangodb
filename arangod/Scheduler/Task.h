@@ -32,10 +32,6 @@
 #include "Statistics/StatisticsAgent.h"
 
 namespace arangodb {
-namespace velocypack {
-class Builder;
-}
-
 namespace rest {
 class Scheduler;
 
@@ -43,7 +39,6 @@ class TaskData : public RequestStatisticsAgent {
  public:
   static uint64_t const TASK_DATA_RESPONSE = 1000;
   static uint64_t const TASK_DATA_CHUNK    = 1001;
-  static uint64_t const TASK_DATA_BUFFER   = 1002;
 
  public:
   uint64_t _taskId;
@@ -51,7 +46,6 @@ class TaskData : public RequestStatisticsAgent {
   uint64_t _type;
   std::string _data;
   std::unique_ptr<GeneralResponse> _response;
-  std::shared_ptr<velocypack::Buffer<uint8_t>> _buffer;
 };
 
 ////////////////////////////////////////////////////////////////////////////////

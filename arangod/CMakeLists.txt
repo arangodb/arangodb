@@ -257,6 +257,7 @@ add_executable(${BIN_ARANGOD}
   RestServer/UnitTestsFeature.cpp
   RestServer/UpgradeFeature.cpp
   RestServer/VocbaseContext.cpp
+  RestServer/WorkMonitorFeature.cpp
   RestServer/arangod.cpp
   Scheduler/ListenTask.cpp
   Scheduler/PeriodicTask.cpp

@@ -24,44 +24,31 @@
 
 #include "SocketTask.h"
 
+#include <errno.h>
+
 #include "Basics/StringBuffer.h"
 #include "Basics/socket-utils.h"
 #include "Logger/Logger.h"
 #include "Scheduler/Scheduler.h"
 
-#include <errno.h>
-
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs a new task with a given socket
-////////////////////////////////////////////////////////////////////////////////
-
-SocketTask::SocketTask(TRI_socket_t socket, double keepAliveTimeout)
+SocketTask::SocketTask(TRI_socket_t socket, ConnectionInfo&& info,
+                       double keepAliveTimeout)
     : Task("SocketTask"),
-      _keepAliveWatcher(nullptr),
-      _readWatcher(nullptr),
-      _writeWatcher(nullptr),
-      _commSocket(socket),
       _keepAliveTimeout(keepAliveTimeout),
-      _writeBuffer(nullptr),
-      _writeBufferStatistics(nullptr),
-      _writeLength(0),
-      _readBuffer(nullptr),
-      _clientClosed(false),
-      _tid(0) {
+      _commSocket(socket),
+      _connectionInfo(std::move(info)) {
+  LOG(TRACE) << "connection established, client "
+             << TRI_get_fd_or_handle_of_socket(socket) << ", server ip "
+             << _connectionInfo.serverAddress << ", server port "
+             << _connectionInfo.serverPort << ", client ip "
+             << _connectionInfo.clientAddress << ", client port "
+             << _connectionInfo.clientPort;
+
   _readBuffer = new StringBuffer(TRI_UNKNOWN_MEM_ZONE, false);
-
-  ConnectionStatisticsAgent::acquire();
-  connectionStatisticsAgentSetStart();
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief deletes a socket task
-///
-/// This method will close the underlying socket.
-////////////////////////////////////////////////////////////////////////////////
 
 SocketTask::~SocketTask() {
   if (TRI_isvalidsocket(_commSocket)) {
@@ -75,26 +62,62 @@ SocketTask::~SocketTask() {
     TRI_ReleaseRequestStatistics(_writeBufferStatistics);
   }
 
+  for (auto& i : _writeBuffers) {
+    delete i;
+  }
+
+  for (auto& i : _writeBuffersStats) {
+    TRI_ReleaseRequestStatistics(i);
+  }
+
   delete _readBuffer;
 
-  connectionStatisticsAgentSetEnd();
-  ConnectionStatisticsAgent::release();
+  LOG(TRACE) << "connection closed, client "
+             << TRI_get_fd_or_handle_of_socket(_commSocket);
 }
 
-void SocketTask::setKeepAliveTimeout(double timeout) {
-  if (_keepAliveWatcher != nullptr && timeout > 0.0) {
-    _scheduler->rearmTimer(_keepAliveWatcher, timeout);
+void SocketTask::armKeepAliveTimeout() {
+  if (_keepAliveWatcher != nullptr && _keepAliveTimeout > 0.0) {
+    _scheduler->rearmTimer(_keepAliveWatcher, _keepAliveTimeout);
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief fills the read buffer
-////////////////////////////////////////////////////////////////////////////////
+bool SocketTask::handleRead() {
+  bool res = true;
+
+  if (_closed) {
+    return false;
+  }
+
+  if (!_closeRequested) {
+    res = fillReadBuffer();
+
+    // process as much data as we got; there might be more than one
+    // request in the buffer
+    while (processRead()) {
+      if (_closeRequested) {
+        break;
+      }
+    }
+  } else {
+    // if we don't close here, the scheduler thread may fall into a
+    // busy wait state, consuming 100% CPU!
+    _clientClosed = true;
+  }
+
+  if (_clientClosed) {
+    res = false;
+  } else if (!res) {
+    _clientClosed = true;
+  }
+
+  return res;
+}
 
 bool SocketTask::fillReadBuffer() {
-
   // reserve some memory for reading
   if (_readBuffer->reserve(READ_BLOCK_SIZE + 1) == TRI_ERROR_OUT_OF_MEMORY) {
+    _clientClosed = true;
     LOG(TRACE) << "out of memory";
     return false;
   }
@@ -110,7 +133,6 @@ bool SocketTask::fillReadBuffer() {
   if (nr == 0) {
     LOG(TRACE) << "read returned 0";
     _clientClosed = true;
-
     return false;
   }
 
@@ -129,7 +151,7 @@ bool SocketTask::fillReadBuffer() {
   if (myerrno != EWOULDBLOCK && (EWOULDBLOCK == EAGAIN || myerrno != EAGAIN)) {
     LOG(DEBUG) << "read from socket failed with " << myerrno << ": "
                << strerror(myerrno);
-
+    _clientClosed = true;
     return false;
   }
 
@@ -148,10 +170,6 @@ bool SocketTask::fillReadBuffer() {
 
   return true;
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief handles a write
-////////////////////////////////////////////////////////////////////////////////
 
 bool SocketTask::handleWrite() {
   size_t len = 0;
@@ -194,13 +212,10 @@ bool SocketTask::handleWrite() {
   }
 
   if (len == 0) {
-    delete _writeBuffer;
-    _writeBuffer = nullptr;
-
     completedWriteBuffer();
 
     // rearm timer for keep-alive timeout
-    setKeepAliveTimeout(_keepAliveTimeout);
+    armKeepAliveTimeout();
   } else {
     _writeLength += nr;
   }
@@ -219,52 +234,66 @@ bool SocketTask::handleWrite() {
   return true;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sets an active write buffer
-////////////////////////////////////////////////////////////////////////////////
+void SocketTask::addWriteBuffer(std::unique_ptr<basics::StringBuffer> buffer,
+                                RequestStatisticsAgent* statistics) {
+  TRI_request_statistics_t* stat =
+      statistics == nullptr ? nullptr : statistics->steal();
 
-void SocketTask::setWriteBuffer(StringBuffer* buffer,
-                                TRI_request_statistics_t* statistics) {
-  TRI_ASSERT(buffer != nullptr);
+  addWriteBuffer(buffer.release(), stat);
+}
 
-  _writeBufferStatistics = statistics;
-
-  if (_writeBufferStatistics != nullptr) {
-    _writeBufferStatistics->_writeStart = TRI_StatisticsTime();
-    _writeBufferStatistics->_sentBytes += buffer->length();
-  }
-
-  _writeLength = 0;
-
-  if (buffer->empty()) {
+void SocketTask::addWriteBuffer(basics::StringBuffer* buffer,
+                                TRI_request_statistics_t* stat) {
+  if (_closed) {
     delete buffer;
 
-    completedWriteBuffer();
-  } else {
-    delete _writeBuffer;
+    if (stat) {
+      TRI_ReleaseRequestStatistics(stat);
+    }
 
-    _writeBuffer = buffer;
-  }
-
-  if (_clientClosed) {
     return;
   }
 
-  // we might have a new write buffer or none at all
-  TRI_ASSERT(_tid == Thread::currentThreadId());
-
-  if (_writeBuffer == nullptr) {
-    _scheduler->stopSocketEvents(_writeWatcher);
-  } else {
-    _scheduler->startSocketEvents(_writeWatcher);
+  if (_writeBuffer != nullptr) {
+    _writeBuffers.push_back(buffer);
+    _writeBuffersStats.push_back(stat);
+    return;
   }
+
+  _writeBuffer = buffer;
+  _writeBufferStatistics = stat;
+
+  _scheduler->startSocketEvents(_writeWatcher);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks for presence of an active write buffer
-////////////////////////////////////////////////////////////////////////////////
+void SocketTask::completedWriteBuffer() {
+  delete _writeBuffer;
 
-bool SocketTask::hasWriteBuffer() const { return _writeBuffer != nullptr; }
+  _writeBuffer = nullptr;
+  _writeLength = 0;
+
+  if (_writeBufferStatistics != nullptr) {
+    _writeBufferStatistics->_writeEnd = TRI_StatisticsTime();
+    TRI_ReleaseRequestStatistics(_writeBufferStatistics);
+    _writeBufferStatistics = nullptr;
+  }
+
+  if (_writeBuffers.empty()) {
+    if (_closeRequested) {
+      _clientClosed = true;
+    }
+
+    return;
+  }
+
+  StringBuffer* buffer = _writeBuffers.front();
+  _writeBuffers.pop_front();
+
+  TRI_request_statistics_t* statistics = _writeBuffersStats.front();
+  _writeBuffersStats.pop_front();
+
+  addWriteBuffer(buffer, statistics);
+}
 
 bool SocketTask::setup(Scheduler* scheduler, EventLoop loop) {
 #ifdef _WIN32
@@ -327,10 +356,6 @@ bool SocketTask::setup(Scheduler* scheduler, EventLoop loop) {
   return true;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief cleans up the task by unregistering all watchers
-////////////////////////////////////////////////////////////////////////////////
-
 void SocketTask::cleanup() {
   if (_scheduler != nullptr) {
     if (_keepAliveWatcher != nullptr) {
@@ -349,6 +374,10 @@ void SocketTask::cleanup() {
   _keepAliveWatcher = nullptr;
   _readWatcher = nullptr;
   _writeWatcher = nullptr;
+
+  _closed = true;
+  _clientClosed = false;
+  _closeRequested = false;
 }
 
 bool SocketTask::handleEvent(EventToken token, EventType revents) {
@@ -359,9 +388,9 @@ bool SocketTask::handleEvent(EventToken token, EventType revents) {
     LOG(TRACE) << "got keep-alive timeout signal, closing connection";
 
     _scheduler->clearTimer(token);
-
-    // this will close the connection and destroy the task
     handleTimeout();
+    _scheduler->destroyTask(this);
+
     return false;
   }
 
@@ -386,6 +415,10 @@ bool SocketTask::handleEvent(EventToken token, EventType revents) {
     } else {
       _scheduler->startSocketEvents(_writeWatcher);
     }
+  }
+
+  if (_clientClosed) {
+    _scheduler->destroyTask(this);
   }
 
   return result;

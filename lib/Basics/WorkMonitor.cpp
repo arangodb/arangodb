@@ -28,71 +28,29 @@
 #include <velocypack/velocypack-aliases.h>
 
 #include "Logger/Logger.h"
-#include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/tri-strings.h"
-
-#include <boost/lockfree/queue.hpp>
 
 using namespace arangodb;
 using namespace arangodb::basics;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief list of free descriptions
-////////////////////////////////////////////////////////////////////////////////
+std::atomic<bool> WorkMonitor::stopped(true);
 
-static boost::lockfree::queue<WorkDescription*> EMPTY_WORK_DESCRIPTION(128);
+boost::lockfree::queue<WorkDescription*> WorkMonitor::emptyWorkDescription(128);
+boost::lockfree::queue<WorkDescription*> WorkMonitor::freeableWorkDescription(128);
+boost::lockfree::queue<rest::RestHandler*> WorkMonitor::workOverview(128);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief list of freeable descriptions
-////////////////////////////////////////////////////////////////////////////////
+Mutex WorkMonitor::cancelLock;
+std::set<uint64_t> WorkMonitor::cancelIds;
 
-static boost::lockfree::queue<WorkDescription*> FREEABLE_WORK_DESCRIPTION(128);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tasks that want an overview
-////////////////////////////////////////////////////////////////////////////////
-
-static boost::lockfree::queue<uint64_t> WORK_OVERVIEW(128);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief stopped flag
-////////////////////////////////////////////////////////////////////////////////
-
-static std::atomic<bool> WORK_MONITOR_STOPPED(true);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief guard for THREADS
-///
-/// The order in this file must be: WORK_DESCRIPTION, THREADS_LOCK, THREADS,
-/// WORK_MONITOR.
-////////////////////////////////////////////////////////////////////////////////
-
-static Mutex THREADS_LOCK;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief all known threads
-////////////////////////////////////////////////////////////////////////////////
-
-static std::set<Thread*> THREADS;
+Mutex WorkMonitor::threadsLock;
+std::set<Thread*> WorkMonitor::threads;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief singleton
 ////////////////////////////////////////////////////////////////////////////////
 
 static WorkMonitor WORK_MONITOR;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief lock for canceled ids
-////////////////////////////////////////////////////////////////////////////////
-
-static Mutex CANCEL_LOCK;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief list of canceled ids
-////////////////////////////////////////////////////////////////////////////////
-
-static std::set<uint64_t> CANCEL_IDS;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief current work description as thread local variable
@@ -118,10 +76,10 @@ WorkMonitor::WorkMonitor() : Thread("WorkMonitor") {}
 ////////////////////////////////////////////////////////////////////////////////
 
 void WorkMonitor::freeWorkDescription(WorkDescription* desc) {
-  if (WORK_MONITOR_STOPPED.load()) {
+  if (stopped.load()) {
     deleteWorkDescription(desc, true);
   } else {
-    FREEABLE_WORK_DESCRIPTION.push(desc);
+    freeableWorkDescription.push(desc);
   }
 }
 
@@ -130,7 +88,7 @@ void WorkMonitor::freeWorkDescription(WorkDescription* desc) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool WorkMonitor::pushThread(Thread* thread) {
-  if (WORK_MONITOR_STOPPED.load()) {
+  if (stopped.load()) {
     return false;
   }
 
@@ -145,8 +103,8 @@ bool WorkMonitor::pushThread(Thread* thread) {
     activateWorkDescription(desc);
 
     {
-      MUTEX_LOCKER(guard, THREADS_LOCK);
-      THREADS.insert(thread);
+      MUTEX_LOCKER(guard, threadsLock);
+      threads.insert(thread);
     }
   } catch (...) {
     throw;
@@ -160,7 +118,7 @@ bool WorkMonitor::pushThread(Thread* thread) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void WorkMonitor::popThread(Thread* thread) {
-  if (WORK_MONITOR_STOPPED.load()) {
+  if (stopped.load()) {
     return;
   }
 
@@ -174,18 +132,14 @@ void WorkMonitor::popThread(Thread* thread) {
     freeWorkDescription(desc);
 
     {
-      MUTEX_LOCKER(guard, THREADS_LOCK);
-      THREADS.erase(thread);
+      MUTEX_LOCKER(guard, threadsLock);
+      threads.erase(thread);
     }
   } catch (...) {
     // just to prevent throwing exceptions from here, as this method
     // will be called in destructors...
   }
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief pushes a custom task
-////////////////////////////////////////////////////////////////////////////////
 
 void WorkMonitor::pushAql(TRI_vocbase_t* vocbase, uint64_t queryId,
                           char const* text, size_t length) {
@@ -207,10 +161,6 @@ void WorkMonitor::pushAql(TRI_vocbase_t* vocbase, uint64_t queryId,
   activateWorkDescription(desc);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief pushes a custom task
-////////////////////////////////////////////////////////////////////////////////
-
 void WorkMonitor::pushAql(TRI_vocbase_t* vocbase, uint64_t queryId) {
   TRI_ASSERT(vocbase != nullptr);
 
@@ -222,10 +172,6 @@ void WorkMonitor::pushAql(TRI_vocbase_t* vocbase, uint64_t queryId) {
 
   activateWorkDescription(desc);
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief pops a custom task
-////////////////////////////////////////////////////////////////////////////////
 
 void WorkMonitor::popAql() {
   WorkDescription* desc = deactivateWorkDescription();
@@ -241,10 +187,6 @@ void WorkMonitor::popAql() {
     // will be called in destructors...
   }
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief pushes a custom task
-////////////////////////////////////////////////////////////////////////////////
 
 void WorkMonitor::pushCustom(char const* type, char const* text,
                              size_t length) {
@@ -266,10 +208,6 @@ void WorkMonitor::pushCustom(char const* type, char const* text,
   activateWorkDescription(desc);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief pushes a custom task
-////////////////////////////////////////////////////////////////////////////////
-
 void WorkMonitor::pushCustom(char const* type, uint64_t id) {
   TRI_ASSERT(type != nullptr);
 
@@ -285,10 +223,6 @@ void WorkMonitor::pushCustom(char const* type, uint64_t id) {
   activateWorkDescription(desc);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief pops a custom task
-////////////////////////////////////////////////////////////////////////////////
-
 void WorkMonitor::popCustom() {
   WorkDescription* desc = deactivateWorkDescription();
 
@@ -303,117 +237,13 @@ void WorkMonitor::popCustom() {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief requests a work overview
-////////////////////////////////////////////////////////////////////////////////
-
-void WorkMonitor::requestWorkOverview(uint64_t taskId) {
-  WORK_OVERVIEW.push(taskId);
+void WorkMonitor::requestWorkOverview(rest::RestHandler* handler) {
+  workOverview.push(handler);
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief requests cancel of work
-////////////////////////////////////////////////////////////////////////////////
 
 void WorkMonitor::cancelWork(uint64_t id) {
-  MUTEX_LOCKER(guard, CANCEL_LOCK);
-  CANCEL_IDS.insert(id);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the main event loop, wait for requests and delete old descriptions
-////////////////////////////////////////////////////////////////////////////////
-
-void WorkMonitor::run() {
-  uint32_t const maxSleep = 100 * 1000;
-  uint32_t const minSleep = 100;
-  uint32_t s = minSleep;
-
-  // clean old entries and create summary if requested
-  while (!isStopping()) {
-    try {
-      bool found = false;
-      WorkDescription* desc;
-
-      while (FREEABLE_WORK_DESCRIPTION.pop(desc)) {
-        found = true;
-        if (desc != nullptr) {
-          deleteWorkDescription(desc, false);
-        }
-      }
-
-      if (found) {
-        s = minSleep;
-      } else if (s < maxSleep) {
-        s *= 2;
-      }
-
-      uint64_t taskId;
-
-      {
-        MUTEX_LOCKER(guard, CANCEL_LOCK);
-
-        if (!CANCEL_IDS.empty()) {
-          for (auto thread : THREADS) {
-            cancelWorkDescriptions(thread);
-          }
-
-          CANCEL_IDS.clear();
-        }
-      }
-
-      while (WORK_OVERVIEW.pop(taskId)) {
-        VPackBuilder builder;
-
-        builder.add(VPackValue(VPackValueType::Object));
-
-        builder.add("time", VPackValue(TRI_microtime()));
-        builder.add("work", VPackValue(VPackValueType::Array));
-
-        {
-          MUTEX_LOCKER(guard, THREADS_LOCK);
-
-          for (auto& thread : THREADS) {
-            WorkDescription* desc = thread->workDescription();
-
-            if (desc != nullptr) {
-              builder.add(VPackValue(VPackValueType::Object));
-              vpackWorkDescription(&builder, desc);
-              builder.close();
-            }
-          }
-        }
-
-        builder.close();
-        builder.close();
-
-        sendWorkOverview(taskId, builder.steal());
-      }
-    } catch (...) {
-      // must prevent propagation of exceptions from here
-    }
-
-    usleep(s);
-  }
-
-  // indicate that we stopped the work monitor, freeWorkDescription
-  // should directly delete old entries
-  WORK_MONITOR_STOPPED.store(true);
-
-  // cleanup old entries
-  WorkDescription* desc;
-
-  while (FREEABLE_WORK_DESCRIPTION.pop(desc)) {
-    if (desc != nullptr) {
-      deleteWorkDescription(desc, false);
-    }
-  }
-
-  while (EMPTY_WORK_DESCRIPTION.pop(desc)) {
-    if (desc != nullptr) {
-      delete desc;
-    }
-  }
+  MUTEX_LOCKER(guard, cancelLock);
+  cancelIds.insert(id);
 }
 
 WorkDescription* WorkMonitor::createWorkDescription(WorkType type) {
@@ -422,7 +252,7 @@ WorkDescription* WorkMonitor::createWorkDescription(WorkType type) {
                               ? CURRENT_WORK_DESCRIPTION
                               : Thread::CURRENT_THREAD->workDescription();
 
-  if (EMPTY_WORK_DESCRIPTION.pop(desc) && desc != nullptr) {
+  if (emptyWorkDescription.pop(desc) && desc != nullptr) {
     desc->_type = type;
     desc->_prev.store(prev);
     desc->_destroy = true;
@@ -461,7 +291,7 @@ void WorkMonitor::deleteWorkDescription(WorkDescription* desc, bool stopped) {
 
   // while the work monitor thread is still active, push the item on the
   // work monitor's cleanup list for destruction
-  EMPTY_WORK_DESCRIPTION.push(desc);
+  emptyWorkDescription.push(desc);
 }
 
 void WorkMonitor::activateWorkDescription(WorkDescription* desc) {
@@ -536,7 +366,7 @@ void WorkMonitor::cancelWorkDescriptions(Thread* thread) {
 
     uint64_t id = desc->_id;
 
-    if (CANCEL_IDS.find(id) != CANCEL_IDS.end()) {
+    if (cancelIds.find(id) != cancelIds.end()) {
       for (auto it = path.rbegin(); it < path.rend(); ++it) {
         bool descent = true;
         WorkDescription* d = *it;
@@ -566,6 +396,16 @@ void WorkMonitor::cancelWorkDescriptions(Thread* thread) {
   }
 }
 
+void WorkMonitor::initialize() {
+  stopped.store(false);
+  WORK_MONITOR.start();
+}
+
+void WorkMonitor::shutdown() {
+  stopped.store(true);
+  WORK_MONITOR.beginShutdown();
+}
+
 AqlWorkStack::AqlWorkStack(TRI_vocbase_t* vocbase, uint64_t queryId,
                            char const* text, size_t length) {
   WorkMonitor::pushAql(vocbase, queryId, text, length);
@@ -587,21 +427,3 @@ CustomWorkStack::CustomWorkStack(char const* type, uint64_t id) {
 }
 
 CustomWorkStack::~CustomWorkStack() { WorkMonitor::popCustom(); }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief starts the work monitor
-////////////////////////////////////////////////////////////////////////////////
-
-void arangodb::InitializeWorkMonitor() {
-  WORK_MONITOR_STOPPED.store(false);
-  WORK_MONITOR.start();
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief stops the work monitor
-////////////////////////////////////////////////////////////////////////////////
-
-void arangodb::ShutdownWorkMonitor() {
-  WORK_MONITOR_STOPPED.store(true);
-  WORK_MONITOR.beginShutdown();
-}

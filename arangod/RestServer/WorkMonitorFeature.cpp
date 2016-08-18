@@ -33,6 +33,6 @@ WorkMonitorFeature::WorkMonitorFeature(
   requiresElevatedPrivileges(false);
 }
 
-void WorkMonitorFeature::start() { InitializeWorkMonitor(); }
+void WorkMonitorFeature::start() { WorkMonitor::initialize(); }
 
-void WorkMonitorFeature::unprepare() { ShutdownWorkMonitor(); }
+void WorkMonitorFeature::unprepare() { WorkMonitor::shutdown(); }

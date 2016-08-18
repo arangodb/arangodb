@@ -23,16 +23,16 @@
 
 #include "VppCommTask.h"
 
-#include "Basics/StringBuffer.h"
 #include "Basics/HybridLogicalClock.h"
+#include "Basics/StringBuffer.h"
 #include "Basics/VelocyPackHelper.h"
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "GeneralServer/RestHandler.h"
 #include "GeneralServer/RestHandlerFactory.h"
+#include "Logger/LoggerFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
-#include "Logger/LoggerFeature.h"
 #include "VocBase/ticks.h"
 
 #include <velocypack/Validator.h>
@@ -165,13 +165,7 @@ VppCommTask::VppCommTask(GeneralServer* server, TRI_socket_t sock,
                        // connectionStatisticsAgentSetVpp();
 }
 
-void VppCommTask::addResponse(VppResponse* response, bool isError) {
-  if (isError) {
-    // FIXME (obi)
-    // what do we need to do?
-    // clean read buffer? reset process read cursor
-  }
-
+void VppCommTask::addResponse(VppResponse* response) {
   VPackMessageNoOwnBuffer response_message = response->prepareForNetwork();
   uint64_t& id = response_message._id;
 
@@ -201,11 +195,8 @@ void VppCommTask::addResponse(VppResponse* response, bool isError) {
   // adds chunk header infromation and creates SingBuffer* that can be
   // used with _writeBuffers
   auto buffer = createChunkForNetworkSingle(slices, id);
-  _writeBuffers.push_back(buffer.get());
-  buffer.release();
 
-  fillWriteBuffer();  // move data from _writebuffers to _writebuffer
-                      // implemented in base
+  addWriteBuffer(std::move(buffer));
 }
 
 VppCommTask::ChunkHeader VppCommTask::readChunkHeader() {
@@ -364,13 +355,13 @@ bool VppCommTask::processRead() {
   }
 
   if (doExecute) {
-    LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
-        << "got request:" << message._header.toJson();
+    LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "got request:"
+                                            << message._header.toJson();
 
     // the handler will take ownersip of this pointer
-    VppRequest* request = new VppRequest(_connectionInfo, std::move(message),
-                                         chunkHeader._messageID);
-    GeneralServerFeature::HANDLER_FACTORY->setRequestContext(request);
+    std::unique_ptr<VppRequest> request(new VppRequest(
+        _connectionInfo, std::move(message), chunkHeader._messageID));
+    GeneralServerFeature::HANDLER_FACTORY->setRequestContext(request.get());
 
     // make sure we have a dabase
     if (request->requestContext() == nullptr) {
@@ -381,9 +372,10 @@ bool VppCommTask::processRead() {
     } else {
       request->setClientTaskId(_taskId);
       _protocolVersion = request->protocolVersion();
-      executeRequest(
-          request, new VppResponse(GeneralResponse::ResponseCode::SERVER_ERROR,
-                                   chunkHeader._messageID));
+
+      std::unique_ptr<VppResponse> response(new VppResponse(
+          GeneralResponse::ResponseCode::SERVER_ERROR, chunkHeader._messageID));
+      executeRequest(std::move(request), std::move(response));
     }
   }
 
@@ -394,10 +386,6 @@ bool VppCommTask::processRead() {
     return true;
   }
   return doExecute;
-}
-
-void VppCommTask::completedWriteBuffer() {
-  // REVIEW (fc)
 }
 
 void VppCommTask::resetState(bool close) {
@@ -428,6 +416,12 @@ void VppCommTask::resetState(bool close) {
 //   return context->authenticate();
 // }
 
+std::unique_ptr<GeneralResponse> VppCommTask::createResponse(
+    GeneralResponse::ResponseCode responseCode, uint64_t messageId) {
+  return std::unique_ptr<GeneralResponse>(
+      new VppResponse(responseCode, messageId));
+}
+
 void VppCommTask::handleSimpleError(GeneralResponse::ResponseCode responseCode,
                                     int errorNum,
                                     std::string const& errorMessage,
@@ -446,6 +440,6 @@ void VppCommTask::handleSimpleError(GeneralResponse::ResponseCode responseCode,
     response.setPayload(builder.slice(), true, VPackOptions::Defaults);
     processResponse(&response);
   } catch (...) {
-    addResponse(&response, true);
+    _clientClosed = true;
   }
 }

@@ -89,7 +89,7 @@ void HttpServerJob::work() {
       data->_taskId = _handler->taskId();
       data->_loop = _handler->eventLoop();
       data->_type = TaskData::TASK_DATA_RESPONSE;
-      data->_response.reset(_handler->stealResponse());
+      data->_response = _handler->stealResponse();
 
       _handler->RequestStatisticsAgent::transferTo(data.get());
 

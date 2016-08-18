@@ -428,8 +428,8 @@ class ClusterComm {
   /// @brief process an answer coming in on the HTTP socket
   //////////////////////////////////////////////////////////////////////////////
 
-  std::string processAnswer(std::string& coordinatorHeader,
-                            GeneralRequest* answer);
+  std::string processAnswer(std::string const& coordinatorHeader,
+                            std::unique_ptr<GeneralRequest>&& answer);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief send an answer HTTP request to a coordinator
