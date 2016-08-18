@@ -1344,7 +1344,6 @@ size_t ClusterComm::performSingleRequest(
                               *(req.headerFields), timeout);
   }
   
-  std::unordered_map<std::string, std::string> headers;
   // mop: helpless attempt to fix segfaulting due to body buffer empty
   if (req.result.status == CL_COMM_BACKEND_UNAVAILABLE) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE);
@@ -1353,7 +1352,6 @@ size_t ClusterComm::performSingleRequest(
   // Add correct recognition of content type later.
   req.result.status = CL_COMM_RECEIVED;  // a fake, but a good one
   req.done = true;
-  headers = req.result.result->getHeaderFields();
   nrDone = 1;
   // This was it, except for a small problem: syncRequest reports back in
   // req.result.result of type httpclient::SimpleHttpResult rather than

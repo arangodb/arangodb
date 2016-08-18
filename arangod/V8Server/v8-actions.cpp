@@ -660,7 +660,6 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
         v8::Handle<v8::Value> v8Body = res->Get(BodyKey);
         // LOG(ERR) << v8Body->IsString();
         std::string out;
-        bool done = false;
 
         // decode and set out
         if (transformArray->IsArray()) {
@@ -685,15 +684,13 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
         }
 
         // out is not set
-        if (out.empty() && !done) {
+        if (out.empty()) {
           if (jsonContent && !V8Buffer::hasInstance(isolate, v8Body)) {
             if (v8Body->IsString()) {
               out = TRI_ObjectToString(res->Get(BodyKey));  // should get moved
             } else {
               TRI_V8ToVPack(isolate, builder, v8Body, false);
-              done = true;
             }
-            // done
           } else if (V8Buffer::hasInstance(
                          isolate,
                          v8Body)) {  // body form buffer - could
@@ -730,9 +727,12 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
 
         response->setPayload(GeneralResponse::ContentType::VPACK,
                              builder.slice(), true);
-      } break;
+      } 
+      break;
 
-      default: { throw std::logic_error("unknown transport type"); }
+      default: { 
+        throw std::logic_error("unknown transport type"); 
+      }
     }
     bodySet = true;
   }
@@ -774,8 +774,6 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
       default:
         throw std::logic_error("unknown transport type");
     }
-
-    bodySet = true;
   }
 
   // .........................................................................
