@@ -38,6 +38,8 @@ devel
 
 * added iconv-lite and timezone modules
 
+* web interface now allows installing GitHub and zip services in legacy mode
+
 
 v3.0.5 (XXXX-XX-XX)
 -------------------

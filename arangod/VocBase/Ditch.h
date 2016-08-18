@@ -29,6 +29,7 @@
 
 struct TRI_collection_t;
 struct TRI_datafile_t;
+struct TRI_vocbase_col_t;
 
 namespace arangodb {
 
@@ -256,8 +257,8 @@ class UnloadCollectionDitch : public Ditch {
 class DropCollectionDitch : public Ditch {
  public:
   DropCollectionDitch(
-      arangodb::Ditches* ditches, struct TRI_collection_t* collection,
-      void* data, std::function<bool(struct TRI_collection_t*, void*)> callback,
+      arangodb::Ditches* ditches, TRI_vocbase_col_t* collection,
+      std::function<bool(TRI_vocbase_col_t*)> callback,
       char const* filename, int line);
 
   ~DropCollectionDitch();
@@ -266,12 +267,11 @@ class DropCollectionDitch : public Ditch {
 
   char const* typeName() const override final { return "collection-drop"; }
 
-  bool executeCallback() { return _callback(_collection, _data); }
+  bool executeCallback() { return _callback(_collection); }
 
  private:
-  struct TRI_collection_t* _collection;
-  void* _data;
-  std::function<bool(struct TRI_collection_t*, void*)> _callback;
+  TRI_vocbase_col_t* _collection;
+  std::function<bool(TRI_vocbase_col_t*)> _callback;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -398,8 +398,8 @@ class Ditches {
   //////////////////////////////////////////////////////////////////////////////
 
   DropCollectionDitch* createDropCollectionDitch(
-      struct TRI_collection_t* collection, void* data,
-      std::function<bool(struct TRI_collection_t*, void*)> callback,
+      TRI_vocbase_col_t* collection, 
+      std::function<bool(TRI_vocbase_col_t*)> callback,
       char const* filename, int line);
 
  private:

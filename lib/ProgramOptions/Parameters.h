@@ -29,6 +29,7 @@
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include <atomic>
 #include <limits>
 #include <numeric>
 #include <type_traits>
@@ -152,6 +153,43 @@ struct BooleanParameter : public Parameter {
 
   void toVPack(VPackBuilder& builder) const override {
     builder.add(VPackValue(*ptr));
+  }
+
+  ValueType* ptr;
+  bool required;
+};
+
+// specialized type for atomic boolean values
+struct AtomicBooleanParameter : public Parameter {
+  typedef std::atomic<bool> ValueType;
+
+  explicit AtomicBooleanParameter(ValueType* ptr, bool required = false)
+      : ptr(ptr), required(required) {}
+
+  bool requiresValue() const override { return required; }
+  std::string name() const override { return "boolean"; }
+  std::string valueString() const override { return stringifyValue(ptr->load()); }
+
+  std::string set(std::string const& value) override {
+    if (!required && value.empty()) {
+      // the empty value "" is considered "true", e.g. "--force" will mean "--force true" 
+      *ptr = true;
+      return "";
+    }
+    if (value == "true" || value == "false" || value == "on" ||
+        value == "off" || value == "1" || value == "0") {
+      ptr->store(value == "true" || value == "on" || value == "1");
+      return "";
+    }
+    return "invalid value. expecting 'true' or 'false'";
+  }
+
+  std::string typeDescription() const override {
+    return Parameter::typeDescription();
+  }
+
+  void toVPack(VPackBuilder& builder) const override {
+    builder.add(VPackValue(ptr->load()));
   }
 
   ValueType* ptr;

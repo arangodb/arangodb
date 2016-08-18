@@ -1277,7 +1277,6 @@ bool TRI_collection_t::closeDataFiles(std::vector<TRI_datafile_t*> const& files)
   return result;
 }
 
-
 VocbaseCollectionInfo::VocbaseCollectionInfo(CollectionInfo const& other)
     : _type(other.type()),
       _revision(0),      // not known in the cluster case on the coordinator
@@ -3279,34 +3278,20 @@ int TRI_collection_t::fillIndex(arangodb::Transaction* trx,
 
 /// @brief saves an index
 int TRI_collection_t::saveIndex(arangodb::Index* idx, bool writeMarker) {
-  // convert into JSON
   std::shared_ptr<VPackBuilder> builder;
   try {
     builder = idx->toVelocyPack(false);
   } catch (...) {
     LOG(ERR) << "cannot save index definition.";
-    return TRI_set_errno(TRI_ERROR_INTERNAL);
+    return TRI_ERROR_INTERNAL;
   }
   if (builder == nullptr) {
     LOG(ERR) << "cannot save index definition.";
-    return TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+    return TRI_ERROR_OUT_OF_MEMORY;
   }
-
-  // construct filename
-  std::string name("index-" + std::to_string(idx->id()) + ".json");
-  std::string filename = arangodb::basics::FileUtils::buildFilename(path(), name);
-
-  VPackSlice const idxSlice = builder->slice();
-  // and save
-  bool doSync = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database")->forceSyncProperties();
-  bool ok = arangodb::basics::VelocyPackHelper::velocyPackToFile(
-      filename.c_str(), idxSlice, doSync);
-
-  if (!ok) {
-    LOG(ERR) << "cannot save index definition: " << TRI_last_error();
-
-    return TRI_errno();
-  }
+  
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  engine->createIndex(_vocbase, _info.id(), idx->id(), builder->slice());
 
   if (!writeMarker) {
     return TRI_ERROR_NO_ERROR;
@@ -3315,7 +3300,7 @@ int TRI_collection_t::saveIndex(arangodb::Index* idx, bool writeMarker) {
   int res = TRI_ERROR_NO_ERROR;
 
   try {
-    arangodb::wal::CollectionMarker marker(TRI_DF_MARKER_VPACK_CREATE_INDEX, _vocbase->id(), _info.id(), idxSlice);
+    arangodb::wal::CollectionMarker marker(TRI_DF_MARKER_VPACK_CREATE_INDEX, _vocbase->id(), _info.id(), builder->slice());
 
     arangodb::wal::SlotInfoCopy slotInfo =
         arangodb::wal::LogfileManager::instance()->allocateAndWrite(marker, false);

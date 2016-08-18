@@ -1015,6 +1015,9 @@ function _buildServiceInPath (serviceInfo, path, options) {
       installServiceFromRemote(info.url, path);
       patchManifestFile(path, info.manifest);
     }
+    if (options.legacy) {
+      patchManifestFile(path, {engines: {arangodb: '^2.8.0'}});
+    }
   } catch (e) {
     try {
       fs.removeDirectoryRecursive(path, true);

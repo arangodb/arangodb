@@ -33,11 +33,6 @@ using namespace arangodb::rest;
 /// @brief slot for a "collection"
 static int const SLOT_COLLECTION = 2;
 
-/// @brief releases a collection
-void ReleaseCollection(TRI_vocbase_col_t const* collection) {
-  collection->_vocbase->releaseCollection(const_cast<TRI_vocbase_col_t*>(collection));
-}
-
 /// @brief convert a collection info into a TRI_vocbase_col_t
 TRI_vocbase_col_t* CoordinatorCollection(TRI_vocbase_t* vocbase,
                                          CollectionInfo const& ci) {

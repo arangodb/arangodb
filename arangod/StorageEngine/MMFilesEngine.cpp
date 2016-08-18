@@ -41,6 +41,7 @@
 #include "Wal/LogfileManager.h"
 
 #ifdef ARANGODB_ENABLE_ROCKSDB
+#include "Indexes/RocksDBFeature.h"
 #include "Indexes/RocksDBIndex.h"
 #endif
 
@@ -685,15 +686,97 @@ std::string MMFilesEngine::createCollection(TRI_vocbase_t* vocbase, TRI_voc_cid_
  
 // asks the storage engine to drop the specified collection and persist the 
 // deletion info. Note that physical deletion of the collection data must not 
-// be carried out by this call, as there may
-// still be readers of the collection's data. It is recommended that this operation
+// be carried out by this call, as there may still be readers of the collection's 
+// data. It is recommended that this operation
 // only sets a deletion flag for the collection but let's an async task perform
 // the actual deletion.
 // the WAL entry for collection deletion will be written *after* the call
 // to "dropCollection" returns
-void MMFilesEngine::dropCollection(TRI_voc_tick_t databaseId, TRI_voc_cid_t id, 
-                                   std::function<bool()> const& canRemovePhysically) {
-//  unregisterCollectionPath(databaseId, id);
+void MMFilesEngine::prepareDropCollection(TRI_vocbase_t*, TRI_vocbase_col_t*) {
+  // nothing to do here
+}
+
+// perform a physical deletion of the collection
+void MMFilesEngine::dropCollection(TRI_vocbase_t* vocbase, TRI_vocbase_col_t* collection) {
+  std::string const name(collection->name());
+  unregisterCollectionPath(vocbase->id(), collection->cid());
+  
+  // delete persistent indexes    
+#ifdef ARANGODB_ENABLE_ROCKSDB
+  RocksDBFeature::dropCollection(vocbase->id(), collection->cid());
+#endif
+
+  // rename collection directory
+  if (!collection->path().empty()) {
+    std::string const collectionPath = collection->path();
+
+#ifdef _WIN32
+    size_t pos = collectionPath.find_last_of('\\');
+#else
+    size_t pos = collectionPath.find_last_of('/');
+#endif
+
+    bool invalid = false;
+
+    if (pos == std::string::npos || pos + 1 >= collectionPath.size()) {
+      invalid = true;
+    }
+
+    std::string path;
+    std::string relName;
+    if (!invalid) {
+      // extract path part
+      if (pos > 0) {
+        path = collectionPath.substr(0, pos); 
+      }
+
+      // extract relative filename
+      relName = collectionPath.substr(pos + 1);
+
+      if (!StringUtils::isPrefix(relName, "collection-") || 
+          StringUtils::isSuffix(relName, ".tmp")) {
+        invalid = true;
+      }
+    }
+
+    if (invalid) {
+      LOG(ERR) << "cannot rename dropped collection '" << name
+               << "': unknown path '" << collection->path() << "'";
+    } else {
+      // prefix the collection name with "deleted-"
+
+      std::string const newFilename = 
+        FileUtils::buildFilename(path, "deleted-" + relName.substr(std::string("collection-").size()));
+
+      // check if target directory already exists
+      if (TRI_IsDirectory(newFilename.c_str())) {
+        // remove existing target directory
+        TRI_RemoveDirectory(newFilename.c_str());
+      }
+
+      // perform the rename
+      int res = TRI_RenameFile(collection->path().c_str(), newFilename.c_str());
+
+      LOG(TRACE) << "renaming collection directory from '"
+                 << collection->path() << "' to '" << newFilename << "'";
+
+      if (res != TRI_ERROR_NO_ERROR) {
+        LOG(ERR) << "cannot rename dropped collection '" << name
+                 << "' from '" << collection->path() << "' to '"
+                 << newFilename << "': " << TRI_errno_string(res);
+      } else {
+        LOG(DEBUG) << "wiping dropped collection '" << name
+                   << "' from disk";
+
+        res = TRI_RemoveDirectory(newFilename.c_str());
+
+        if (res != TRI_ERROR_NO_ERROR) {
+          LOG(ERR) << "cannot wipe dropped collection '" << name
+                   << "' from disk: " << TRI_errno_string(res);
+        }
+      }
+    }
+  }
 }
 
 // asks the storage engine to rename the collection as specified in the VPack
@@ -736,8 +819,19 @@ void MMFilesEngine::changeCollection(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
 // creation requests will not fail.
 // the WAL entry for the index creation will be written *after* the call
 // to "createIndex" returns
-void MMFilesEngine::createIndex(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId,
+void MMFilesEngine::createIndex(TRI_vocbase_t* vocbase, TRI_voc_cid_t collectionId,
                                 TRI_idx_iid_t id, arangodb::velocypack::Slice const& data) {
+  // construct filename
+  std::string const filename = indexFilename(vocbase->id(), collectionId, id);
+
+  // and save
+  bool const doSync = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database")->forceSyncProperties();
+  bool ok = arangodb::basics::VelocyPackHelper::velocyPackToFile(filename, data, doSync);
+
+  if (!ok) {
+    LOG(ERR) << "cannot save index definition: " << TRI_last_error();
+    THROW_ARANGO_EXCEPTION(TRI_errno());
+  }
 }
 
 // asks the storage engine to drop the specified index and persist the deletion 

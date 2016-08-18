@@ -316,7 +316,7 @@ struct TRI_vocbase_t {
   int dropCollection(TRI_vocbase_col_t* collection, bool writeMarker);
 
   /// @brief callback for collection dropping
-  static bool DropCollectionCallback(TRI_collection_t* col, void* data);
+  static bool DropCollectionCallback(TRI_vocbase_col_t* collection);
 
   /// @brief unloads a collection
   int unloadCollection(TRI_vocbase_col_t* collection, bool force);
@@ -482,35 +482,14 @@ class TRI_vocbase_col_t {
   bool _canRename;  // true if the collection can be renamed
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief gets the "throw collection not loaded error"
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_GetThrowCollectionNotLoadedVocBase();
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sets the "throw collection not loaded error"
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_SetThrowCollectionNotLoadedVocBase(bool);
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief extract the _rev attribute from a slice
-////////////////////////////////////////////////////////////////////////////////
-
 TRI_voc_rid_t TRI_ExtractRevisionId(VPackSlice const slice);
   
-////////////////////////////////////////////////////////////////////////////////
 /// @brief extract the _rev attribute from a slice as a slice
-////////////////////////////////////////////////////////////////////////////////
-
 VPackSlice TRI_ExtractRevisionIdAsSlice(VPackSlice const slice);
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief sanitize an object, given as slice, builder must contain an
 /// open object which will remain open
-////////////////////////////////////////////////////////////////////////////////
-
 void TRI_SanitizeObject(VPackSlice const slice, VPackBuilder& builder);
 void TRI_SanitizeObjectWithEdges(VPackSlice const slice, VPackBuilder& builder);
   

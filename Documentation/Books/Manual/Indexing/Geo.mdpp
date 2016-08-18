@@ -110,3 +110,12 @@ the index attributes or have non-numeric values in the index attributes
 will not be indexed. *ensureGeoConstraint* is deprecated and *ensureGeoIndex*
 should be used instead.
 
+The index does not provide a `unique` option because of its limited usability.
+It would prevent identical coordinates from being inserted only, but even a
+slightly different location (like 1 inch or 1 cm off) would be unique again and
+not considered a duplicate, although it probably should. The desired threshold
+for detecting duplicates may vary for every project (including how to calculate
+the distance even) and needs to be implemented on the application layer as needed.
+You can write a [Foxx service](../Foxx/index.html) for this purpose and make use
+of the AQL [geo functions](../../AQL/Functions/Geo.html) to find nearby
+coordinates supported by a geo index.

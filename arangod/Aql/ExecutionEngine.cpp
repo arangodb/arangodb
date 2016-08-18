@@ -50,8 +50,6 @@
 
 using namespace arangodb::aql;
 
-using Json = arangodb::basics::Json;
-
 /// @brief helper function to create a block
 static ExecutionBlock* CreateBlock(
     ExecutionEngine* engine, ExecutionNode const* en,
@@ -461,44 +459,50 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
   void distributePlanToShard(arangodb::CoordTransactionID& coordTransactionID,
                              EngineInfo const& info, Collection* collection,
                              QueryId& connectedId, std::string const& shardId,
-                             TRI_json_t* jsonPlan) {
-    // create a JSON representation of the plan
-    Json result(Json::Object);
-
+                             VPackSlice const& planSlice) {
     // inject the current shard id into the collection
     collection->setCurrentShard(shardId);
 
-    Json jsonNodesList(TRI_UNKNOWN_MEM_ZONE, jsonPlan, Json::NOFREE);
+    // create a JSON representation of the plan
+    VPackBuilder result;
+    result.openObject();
 
-    // add the collection
-    Json jsonCollectionsList(Json::Array);
-    Json json(Json::Object);
-    jsonCollectionsList(json("name", Json(collection->getName()))(
-        "type", Json(TRI_TransactionTypeGetStr(collection->accessType))));
-
-    jsonNodesList.set("collections", jsonCollectionsList);
-
+    result.add("plan", VPackValue(VPackValueType::Object));
+    
     VPackBuilder tmp;
     query->ast()->variables()->toVelocyPack(tmp);
-    jsonNodesList.set("variables", arangodb::basics::VelocyPackHelper::velocyPackToJson(tmp.slice()));
+    result.add("variables", tmp.slice());
 
-    result.set("plan", jsonNodesList);
+    result.add("collections", VPackValue(VPackValueType::Array));
+    // add the collection
+    result.openObject();
+    result.add("name", VPackValue(collection->getName()));
+    result.add("type", VPackValue(TRI_TransactionTypeGetStr(collection->accessType)));
+    result.close();
+    result.close(); // collections
+    
+    result.add(VPackObjectIterator(planSlice));
+    result.close(); // plan
+
     if (info.part == arangodb::aql::PART_MAIN) {
-      result.set("part", Json("main"));
+      result.add("part", VPackValue("main"));
     } else {
-      result.set("part", Json("dependent"));
+      result.add("part", VPackValue("dependent"));
     }
 
-    Json optimizerOptionsRules(Json::Array);
-    Json optimizerOptions(Json::Object);
+    result.add("options", VPackValue(VPackValueType::Object));
+    result.add("optimizer", VPackValue(VPackValueType::Object));
+    result.add("rules", VPackValue(VPackValueType::Array));
+    result.add(VPackValue("-all"));
+    result.close(); // options.optimizer.rules
+    result.close(); // options.optimizer
+    result.close(); // options
 
-    Json options(Json::Object);
-    optimizerOptionsRules.add(Json("-all"));
-    optimizerOptions.set("rules", optimizerOptionsRules);
-    options.set("optimizer", optimizerOptions);
-    result.set("options", options);
-    auto body = std::make_shared<std::string const>(
-        arangodb::basics::JsonHelper::toString(result.json()));
+    result.close();
+
+    TRI_ASSERT(result.isClosed());
+
+    auto body = std::make_shared<std::string const>(result.slice().toJson());
 
     // std::cout << "GENERATED A PLAN FOR THE REMOTE SERVERS: " << *(body.get())
     // << "\n";
@@ -595,10 +599,8 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
       VPackBuilder b;
       generatePlanForOneShard(b, nr++, info, connectedId, shardId, true);
 
-      std::unique_ptr<TRI_json_t> tmp(arangodb::basics::VelocyPackHelper::velocyPackToJson(b.slice()));
-
       distributePlanToShard(coordTransactionID, info, collection, connectedId,
-                            shardId, tmp.release());
+                            shardId, b.slice());
     }
 
     // fix collection
