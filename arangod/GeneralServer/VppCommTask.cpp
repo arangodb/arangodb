@@ -92,7 +92,8 @@ std::unique_ptr<basics::StringBuffer> createChunkForNetworkDetail(
   // get the lenght of VPack data
   uint32_t dataLength = 0;
   for (auto& slice : slices) {
-    dataLength += slice.byteSize();
+	// TODO: is a 32bit value sufficient for all Slices here?
+    dataLength += static_cast<uint32_t>(slice.byteSize());
   }
 
   // calculate length of current chunk
@@ -320,7 +321,8 @@ bool VppCommTask::processRead() {
           "messages");
     }
 
-    IncompleteVPackMessage message(chunkHeader._messageLength,
+	// TODO: is a 32bit value sufficient for the messageLength here?
+    IncompleteVPackMessage message(static_cast<uint32_t>(chunkHeader._messageLength),
                                    chunkHeader._chunk /*number of chunks*/);
     message._buffer.append(vpackBegin, std::distance(vpackBegin, chunkEnd));
     auto insertPair = _incompleteMessages.emplace(
@@ -406,7 +408,7 @@ bool VppCommTask::processRead() {
       std::unique_ptr<VppRequest> request(new VppRequest(
           _connectionInfo, std::move(message), chunkHeader._messageID));
       GeneralServerFeature::HANDLER_FACTORY->setRequestContext(request.get());
-      // make sure we have a dabase
+      // make sure we have a database
       if (request->requestContext() == nullptr) {
         handleSimpleError(GeneralResponse::ResponseCode::NOT_FOUND,
                           TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
