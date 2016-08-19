@@ -24,68 +24,174 @@
 #ifndef ARANGOD_CONSENSUS_AGENT_CONFIGURATION_H
 #define ARANGOD_CONSENSUS_AGENT_CONFIGURATION_H 1
 
+#include "Agency/AgencyCommon.h"
+#include "Basics/ReadWriteLock.h"
+
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
+
+#include <map>
+#include <string>
+
 namespace arangodb {
 namespace consensus {
 
+  static const std::string idStr = "id";
+  static const std::string agencySizeStr = "agency size";
+  static const std::string poolSizeStr = "pool size";
+  static const std::string minPingStr = "min ping";
+  static const std::string maxPingStr = "max ping";
+  static const std::string endpointStr = "endpoint";
+  static const std::string uuidStr = "uuid";
+  static const std::string poolStr = "pool";
+  static const std::string gossipPeersStr = "gissipPeers";
+  static const std::string activeStr = "active";
+  static const std::string supervisionStr = "supervision";
+  static const std::string waitForSyncStr = "wait for sync";
+  static const std::string supervisionFrequencyStr = "supervision frequency";
+  static const std::string compactionStepSizeStr = "compaction step size";
+  static const std::string defaultEndpointStr = "tcp://localhost:8529";
+
 struct config_t {
-  arangodb::consensus::id_t id;
-  double minPing;
-  double maxPing;
-  std::string endpoint;
-  std::vector<std::string> endpoints;
-  bool notify;
-  bool supervision;
-  bool waitForSync;
-  double supervisionFrequency;
-  uint64_t compactionStepSize;
-  config_t()
-      : id(0),
-        minPing(0.3f),
-        maxPing(1.0f),
-        endpoint("tcp://localhost:8529"),
-        notify(false),
-        supervision(false),
-        waitForSync(true),
-        supervisionFrequency(5.0),
-        compactionStepSize(1000) {}
 
-  config_t(uint32_t i, double minp, double maxp, std::string const& ep,
-           std::vector<std::string> const& eps, bool n, bool s, bool w,
-           double f, uint64_t c)
-      : id(i),
-        minPing(minp),
-        maxPing(maxp),
-        endpoint(ep),
-        endpoints(eps),
-        notify(n),
-        supervision(s),
-        waitForSync(w),
-        supervisionFrequency(f),
-        compactionStepSize(c) {}
+  std::string _id;
+  size_t _agencySize;
+  size_t _poolSize;
+  double _minPing;
+  double _maxPing;
+  std::string _endpoint;
+  std::map<std::string, std::string> _pool;
+  std::vector<std::string> _gossipPeers;
+  std::vector<std::string> _active;
+  bool _supervision;
+  bool _waitForSync;
+  double _supervisionFrequency;
+  uint64_t _compactionStepSize;
 
-  inline size_t size() const { return endpoints.size(); }
+  mutable arangodb::basics::ReadWriteLock _lock;
 
-  query_t const toBuilder() const {
-    query_t ret = std::make_shared<arangodb::velocypack::Builder>();
-    ret->openObject();
-    ret->add("endpoints", VPackValue(VPackValueType::Array));
-    for (auto const& i : endpoints) {
-      ret->add(VPackValue(i));
-    }
-    ret->close();
-    ret->add("endpoint", VPackValue(endpoint));
-    ret->add("id", VPackValue(id));
-    ret->add("minPing", VPackValue(minPing));
-    ret->add("maxPing", VPackValue(maxPing));
-    ret->add("notify peers", VPackValue(notify));
-    ret->add("supervision", VPackValue(supervision));
-    ret->add("supervision frequency", VPackValue(supervisionFrequency));
-    ret->add("compaction step size", VPackValue(compactionStepSize));
-    ret->close();
-    return ret;
-  }
+
+  /// @brief default ctor
+  config_t();
+
+
+  /// @brief ctor
+  config_t(size_t as, size_t ps, double minp, double maxp, std::string const& e,
+           std::vector<std::string> const& g, bool s, bool w, double f,
+           uint64_t c);
+
+
+  /// @brief copy constructor
+  config_t(config_t const&);
+
+  
+  /// @brief move constructor
+  config_t(config_t&&);
+
+  
+  /// @brief assignement operator 
+  config_t& operator= (config_t const&);
+  
+
+  /// @brief move assignment operator 
+  config_t& operator= (config_t&&);
+  
+
+  /// @brief agent id
+  std::string id() const;
+  
+
+  /// @brief pool size
+  bool poolComplete() const;
+
+
+  /// @brief pool size
+  bool supervision() const;
+
+
+  /// @brief pool size
+  double supervisionFrequency() const;
+
+
+  /// @brief wait for sync requested
+  bool waitForSync() const;
+
+    
+  /// @brief add pool member
+  bool addToPool(std::pair<std::string,std::string> const& i);
+
+
+  /// @brief active agency size
+  size_t size() const;
+  
+
+  /// @brief active empty?
+  bool activeEmpty() const;
+
+
+  /// @brief pool size
+  size_t poolSize() const;
+
+
+  /// @brief pool size
+  size_t compactionStepSize() const;
+
+
+  /// @brief of active agents
+  query_t const activeToBuilder () const;
+  query_t const poolToBuilder () const;
+
+  
+  /// @brief override this configuration with prevailing opinion (startup)
+  void override(VPackSlice const& conf);
+
+  
+  /// @brief vpack representation
+  query_t const toBuilder() const;
+
+
+  /// @brief set id
+  bool setId(std::string const& i);
+
+
+  /// @brief merge from persisted configuration
+  bool merge(VPackSlice const& conf);
+
+
+  /// @brief gossip peers
+  std::vector<std::string> gossipPeers() const;
+
+
+  /// @brief remove endpoint from gossip peers
+  void eraseFromGossipPeers(std::string const& endpoint);
+
+
+  /// @brief add active agents
+  bool activePushBack(std::string const& id);
+
+  
+  /// @brief my endpoint
+  std::string endpoint() const;
+
+
+  /// @brief copy of pool
+  std::map<std::string,std::string> pool() const;
+
+
+  /// @brief get one pair out of pool
+  std::string poolAt(std::string const& id) const;
+
+
+  /// @brief get active agents
+  std::vector<std::string> active() const;
+
+
+  double minPing() const;
+  double maxPing() const;
+  
+  
 };
-}
-}
+
+}}
 
 #endif

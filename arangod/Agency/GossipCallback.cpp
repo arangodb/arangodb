@@ -21,33 +21,17 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CONSENSUS_AGENT_CALLBACK_H
-#define ARANGOD_CONSENSUS_AGENT_CALLBACK_H 1
+#include "GossipCallback.h"
+#include "Agent.h"
 
-#include "Agency/AgencyCommon.h"
-#include "Cluster/ClusterComm.h"
+using namespace arangodb::consensus;
+using namespace arangodb::velocypack;
 
-namespace arangodb {
-namespace consensus {
+GossipCallback::GossipCallback(Agent*) {}
 
-class Agent;
-
-class AgentCallback : public arangodb::ClusterCommCallback {
-public:
-  AgentCallback();
-
-  AgentCallback(Agent*, arangodb::consensus::id_t, index_t);
-
-  virtual bool operator()(arangodb::ClusterCommResult*) override final;
-
-  void shutdown();
-
-private:
-  Agent* _agent;
-  index_t _last;
-  arangodb::consensus::id_t _slaveID;
-};
+bool GossipCallback::operator()(arangodb::ClusterCommResult* res) {
+  if (res->status == CL_COMM_SENT && res->result->getHttpReturnCode() == 200) {
+    _agent->gossip(res->result->getBodyVelocyPack(), true);
+  }
+  return true;
 }
-}  // namespace
-
-#endif

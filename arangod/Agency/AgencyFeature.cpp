@@ -37,8 +37,8 @@ using namespace arangodb::rest;
 
 AgencyFeature::AgencyFeature(application_features::ApplicationServer* server)
     : ApplicationFeature(server, "Agency"),
+      _activated(false),
       _size(1),
-      _agentId(0),
       _minElectionTimeout(0.5),
       _maxElectionTimeout(2.5),
       _notify(false),
@@ -63,11 +63,14 @@ AgencyFeature::~AgencyFeature() {}
 void AgencyFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection("agency", "Configure the agency");
 
+  options->addOption("--agency.activate", "Activate agency",
+                     new BooleanParameter(&_activated));
+
   options->addOption("--agency.size", "number of agents",
                      new UInt64Parameter(&_size));
 
-  options->addOption("--agency.id", "this agent's id",
-                     new UInt32Parameter(&_agentId));
+  options->addOption("--agency.pool-size", "number of agent pool",
+                     new UInt64Parameter(&_poolSize));
 
   options->addOption(
       "--agency.election-timeout-min",
@@ -81,9 +84,6 @@ void AgencyFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options->addOption("--agency.endpoint", "agency endpoints",
                      new VectorParameter<StringParameter>(&_agencyEndpoints));
-
-  options->addOption("--agency.notify", "notify others",
-                     new BooleanParameter(&_notify));
 
   options->addOption("--agency.supervision",
                      "perform arangodb cluster supervision",
@@ -104,31 +104,42 @@ void AgencyFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 }
 
 void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
+
   ProgramOptions::ProcessingResult const& result = options->processingResult();
-  if (!result.touched("agency.id")) {
+
+  if (!result.touched("agency.activate") || !_activated) {
     disable();
     return;
   }
+
   ServerState::instance()->setRole(ServerState::ROLE_AGENT);
 
   // Agency size
-  if (_size < 1) {
-    LOG_TOPIC(FATAL, Logger::AGENCY)
-        << "AGENCY: agency must have size greater 0";
-    FATAL_ERROR_EXIT();
+  if (result.touched("agency.size")) {
+    if (_size < 1) {
+      LOG_TOPIC(FATAL, Logger::AGENCY)
+        << "agency must have size greater 0";
+      FATAL_ERROR_EXIT();
+    }
+  } else {
+    _size = 1;
+  }
+
+  // Agency pool size
+  if (result.touched("agency.pool-size")) {
+    if (_poolSize < _size) {
+      LOG_TOPIC(FATAL, Logger::AGENCY)
+        << "agency pool size must be larger than agency size.";
+      FATAL_ERROR_EXIT();
+    }
+  } else {
+    _poolSize = 1;
   }
 
   // Size needs to be odd
   if (_size % 2 == 0) {
     LOG_TOPIC(FATAL, Logger::AGENCY)
         << "AGENCY: agency must have odd number of members";
-    FATAL_ERROR_EXIT();
-  }
-
-  // Id out of range
-  if (_agentId >= _size) {
-    LOG_TOPIC(FATAL, Logger::AGENCY) << "agency.id must not be larger than or "
-                                     << "equal to agency.size";
     FATAL_ERROR_EXIT();
   }
 
@@ -154,10 +165,11 @@ void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
       << "agency.election-timeout-max should probably be chosen longer!"
       << " " << __FILE__ << __LINE__;
   }
+
 }
 
 void AgencyFeature::prepare() {
-  _agencyEndpoints.resize(static_cast<size_t>(_size));
+  //_agencyEndpoints.resize(static_cast<size_t>(_size));
 }
 
 void AgencyFeature::start() {
@@ -184,13 +196,19 @@ void AgencyFeature::start() {
   }
   
   endpoint = std::string("tcp://localhost:" + port);
+  LOG_TOPIC(DEBUG, Logger::AGENCY) << "Agency endpoint " << endpoint;
 
-  _agent.reset(new consensus::Agent(consensus::config_t(
-      _agentId, _minElectionTimeout, _maxElectionTimeout, endpoint,
-      _agencyEndpoints, _notify, _supervision, _waitForSync,
-      _supervisionFrequency, _compactionStepSize)));
+  _agent.reset(
+    new consensus::Agent(
+      consensus::config_t(
+        _size, _poolSize, _minElectionTimeout, _maxElectionTimeout, endpoint,
+        _agencyEndpoints, _supervision, _waitForSync, _supervisionFrequency,
+        _compactionStepSize)));
 
+  LOG_TOPIC(DEBUG, Logger::AGENCY) << "Starting agency personality";  
   _agent->start();
+
+  LOG_TOPIC(DEBUG, Logger::AGENCY) << "Loading agency";  
   _agent->load();
 }
 
