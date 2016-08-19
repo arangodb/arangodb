@@ -279,9 +279,13 @@ var startInAllCollections = function(collections) {
   return `UNION(${collections.map(c => `(FOR x IN ${c} RETURN x)`).join(", ")})`;
 };
 
-var buildEdgeCollectionRestriction = function(collections) {
-  if (!Array.isArray(collections)) {
-    collections = [ collections ];
+var buildEdgeCollectionRestriction = function (collections, bindVars, graph) {
+  if (typeof collections === "string") {
+    collections = [collections];
+  }
+  if (!Array.isArray(collections) || collections.length === 0) {
+    bindVars.graphName = graph.__name;
+    return "GRAPH @graphName";
   }
   return collections.map(collection => "`" + collection + "`").join(",");
 };
@@ -1199,20 +1203,12 @@ Graph.prototype._OUTEDGES = function(vertexId) {
 Graph.prototype._edges = function(vertexExample, options) {
   var bindVars = {};
   options = options || {};
-  if (options.edgeCollectionRestriction) {
-    if (!Array.isArray(options.edgeCollectionRestriction)) {
-      options.edgeCollectionRestriction = [ options.edgeCollectionRestriction ];
-    }
-  }
   var query = `
     ${transformExampleToAQL(vertexExample, Object.keys(this.__vertexCollections), bindVars, "start")}
     FOR v, e IN ${options.minDepth || 1}..${options.maxDepth || 1} ${options.direction || "ANY"} start 
-    ${Array.isArray(options.edgeCollectionRestriction) && options.edgeCollectionRestriction.length > 0 ? buildEdgeCollectionRestriction(options.edgeCollectionRestriction) : "GRAPH @graphName"} 
+    ${buildEdgeCollectionRestriction(options.edgeCollectionRestriction, bindVars, this)}
     ${buildFilter(options.edgeExamples, bindVars, "e")} 
     RETURN DISTINCT ${options.includeData === true ? "e" : "e._id"}`;
-  if(!Array.isArray(options.edgeCollectionRestriction) || options.edgeCollectionRestriction.length === 0) {
-    bindVars.graphName = this.__name;
-  }
   return db._query(query, bindVars).toArray();
 };
 
@@ -1316,23 +1312,16 @@ Graph.prototype._neighbors = function(vertexExample, options) {
       options.vertexCollectionRestriction = [ options.vertexCollectionRestriction ];
     }
   }
-  if (options.edgeCollectionRestriction) {
-    if (!Array.isArray(options.edgeCollectionRestriction)) {
-      options.edgeCollectionRestriction = [ options.edgeCollectionRestriction ];
-    }
-  }
-  
   var bindVars = {};
   var query = `
     ${transformExampleToAQL(vertexExample, Object.keys(this.__vertexCollections), bindVars, "start")}
-    FOR v, e IN ${options.minDepth || 1}..${options.maxDepth || 1} ${options.direction || "ANY"} start ${Array.isArray(options.edgeCollectionRestriction) && options.edgeCollectionRestriction.length > 0 ? buildEdgeCollectionRestriction(options.edgeCollectionRestriction) : "GRAPH @graphName"} OPTIONS {bfs: true}
+    FOR v, e IN ${options.minDepth || 1}..${options.maxDepth || 1} ${options.direction || "ANY"} start
+    ${buildEdgeCollectionRestriction(options.edgeCollectionRestriction, bindVars, this)}
+    OPTIONS {bfs: true}
     ${buildFilter(options.neighborExamples, bindVars, "v")}
     ${buildFilter(options.edgeExamples, bindVars, "e")}
     ${Array.isArray(options.vertexCollectionRestriction) && options.vertexCollectionRestriction.length > 0 ? buildVertexCollectionRestriction(options.vertexCollectionRestriction,"v") : ""}
     RETURN DISTINCT ${options.includeData === true ? "v" : "v._id"}`;
-  if(!Array.isArray(options.edgeCollectionRestriction) || options.edgeCollectionRestriction.length === 0) {
-    bindVars.graphName = this.__name;
-  }
   return db._query(query, bindVars).toArray();
 };
 
@@ -1358,13 +1347,15 @@ Graph.prototype._commonNeighbors = function(vertex1Example, vertex2Example, opti
   var query = `
     ${transformExampleToAQL(vertex1Example, Object.keys(this.__vertexCollections), bindVars, "left")}
       LET leftNeighbors = (FOR v IN ${optionsVertex1.minDepth || 1}..${optionsVertex1.maxDepth || 1} ${optionsVertex1.direction || "ANY"} left
-        GRAPH @graphName OPTIONS {bfs: true, uniqueVertices: "global"} 
+        ${buildEdgeCollectionRestriction(optionsVertex1.edgeCollectionRestriction, bindVars, this)}
+        OPTIONS {bfs: true, uniqueVertices: "global"} 
         ${Array.isArray(optionsVertex1.vertexCollectionRestriction) && optionsVertex1.vertexCollectionRestriction.length > 0 ? buildVertexCollectionRestriction(optionsVertex1.vertexCollectionRestriction,"v") : ""} 
         RETURN v)
       ${transformExampleToAQL(vertex2Example, Object.keys(this.__vertexCollections), bindVars, "right")}
         FILTER right != left
         LET rightNeighbors = (FOR v IN ${optionsVertex2.minDepth || 1}..${optionsVertex2.maxDepth || 1} ${optionsVertex2.direction || "ANY"} right
-        GRAPH @graphName OPTIONS {bfs: true, uniqueVertices: "global"} 
+        ${buildEdgeCollectionRestriction(optionsVertex2.edgeCollectionRestriction, bindVars, this)}
+        OPTIONS {bfs: true, uniqueVertices: "global"} 
         ${Array.isArray(optionsVertex2.vertexCollectionRestriction) && optionsVertex2.vertexCollectionRestriction.length > 0 ? buildVertexCollectionRestriction(optionsVertex2.vertexCollectionRestriction,"v") : ""} 
         RETURN v)
         LET neighbors = INTERSECTION(leftNeighbors, rightNeighbors)
@@ -1374,7 +1365,6 @@ Graph.prototype._commonNeighbors = function(vertex1Example, vertex2Example, opti
   } else {
     query += `RETURN {left : left._id, right: right._id, neighbors: neighbors[*]._id}`;
   }
-  bindVars.graphName = this.__name;
   return db._query(query, bindVars).toArray();
 };
 
