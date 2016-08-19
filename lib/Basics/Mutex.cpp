@@ -73,7 +73,7 @@ void Mutex::lock() {
       LOG(ERR) << "mutex deadlock detected";
     }
 
-    LOG(FATAL) << "could not lock the mutex: " << strerror(rc); 
+    LOG(FATAL) << "could not lock the mutex: " << strerror(rc);
     FATAL_ERROR_EXIT();
   }
 }
@@ -96,7 +96,8 @@ void Mutex::unlock() {
   int rc = pthread_mutex_unlock(&_mutex);
 
   if (rc != 0) {
-    LOG(FATAL) << "could not release the mutex: " << strerror(rc); FATAL_ERROR_EXIT();
+    LOG(FATAL) << "could not release the mutex: " << strerror(rc);
+    FATAL_ERROR_EXIT();
   }
 }
 

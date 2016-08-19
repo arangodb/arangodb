@@ -32,6 +32,7 @@
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include "Basics/ConditionVariable.h"
 #include "Basics/Mutex.h"
 #include "Basics/WorkDescription.h"
 #include "Basics/WorkItem.h"
@@ -44,10 +45,18 @@ class Builder;
 class WorkMonitor : public Thread {
  public:
   WorkMonitor();
-  ~WorkMonitor() { shutdown(); }
+  ~WorkMonitor() {
+    if (hasStarted()) {
+      shutdown();
+    }
+  }
 
  public:
-  bool isSilent() override { return true; }
+  bool isSilent() override final { return true; }
+  void beginShutdown() override final {
+    Thread::beginShutdown();
+    _waiter.broadcast();
+  }
 
  public:
   static void freeWorkDescription(WorkDescription* desc);
@@ -98,6 +107,9 @@ class WorkMonitor : public Thread {
 
   static Mutex threadsLock;
   static std::set<Thread*> threads;
+
+ private:
+  basics::ConditionVariable _waiter;
 };
 
 class HandlerWorkStack {

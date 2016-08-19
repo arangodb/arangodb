@@ -28,6 +28,7 @@
 #include <velocypack/velocypack-aliases.h>
 
 #include "Aql/QueryList.h"
+#include "Basics/ConditionLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
 #include "GeneralServer/RestHandler.h"
@@ -41,6 +42,8 @@ using namespace arangodb;
 using namespace arangodb::rest;
 
 void WorkMonitor::run() {
+  CONDITION_LOCKER(guard, _waiter);
+
   uint32_t const maxSleep = 100 * 1000;
   uint32_t const minSleep = 100;
   uint32_t s = minSleep;
@@ -109,7 +112,7 @@ void WorkMonitor::run() {
       // must prevent propagation of exceptions from here
     }
 
-    usleep(s);
+    guard.wait(s);
   }
 
   // indicate that we stopped the work monitor, freeWorkDescription
