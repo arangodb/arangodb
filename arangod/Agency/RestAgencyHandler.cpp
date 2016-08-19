@@ -71,7 +71,7 @@ inline RestHandler::status RestAgencyHandler::reportUnknownMethod() {
   return status::DONE;
 }
 
-void RestAgencyHandler::redirectRequest(arangodb::consensus::id_t leaderId) {
+void RestAgencyHandler::redirectRequest(std::string const& leaderId) {
   try {
     std::string url =
       Endpoint::uriForm(_agent->config().poolAt(leaderId)) +
@@ -244,7 +244,7 @@ RestHandler::status RestAgencyHandler::handleConfig() {
   body.add(VPackValue(VPackValueType::Object));
   body.add("term", Value(_agent->term()));
   body.add("leaderId", Value(_agent->leaderID()));
-  body.add("lastCommited", Value(_agent->lastCommitted()));
+  body.add("lastCommitted", Value(_agent->lastCommitted()));
   body.add("configuration", _agent->config().toBuilder()->slice());
   body.close();
   generateResult(GeneralResponse::ResponseCode::OK, body.slice());

@@ -52,7 +52,7 @@ class RestAgencyHandler : public RestBaseHandler {
   status reportMethodNotAllowed();
   status handleState();
 
-  void redirectRequest(arangodb::consensus::id_t leaderId);
+  void redirectRequest(std::string const& leaderId);
   consensus::Agent* _agent;
 };
 }

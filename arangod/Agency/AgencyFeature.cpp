@@ -39,9 +39,9 @@ AgencyFeature::AgencyFeature(application_features::ApplicationServer* server)
     : ApplicationFeature(server, "Agency"),
       _activated(false),
       _size(1),
+      _poolSize(1),
       _minElectionTimeout(0.5),
       _maxElectionTimeout(2.5),
-      _notify(false),
       _supervision(false),
       _waitForSync(true),
       _supervisionFrequency(5.0),
@@ -133,7 +133,7 @@ void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
       FATAL_ERROR_EXIT();
     }
   } else {
-    _poolSize = 1;
+    _poolSize = _size;
   }
 
   // Size needs to be odd
