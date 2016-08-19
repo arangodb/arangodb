@@ -653,7 +653,7 @@ query_t Agent::gossip(query_t const& in, bool isCallback) {
   }
   std::string endpoint = slice.get("endpoint").copyString();
     
-  LOG_TOPIC(DEBUG, Logger::AGENCY)
+  LOG_TOPIC(TRACE, Logger::AGENCY)
     << "Gossip " << ((isCallback) ? "callback" : "call") << " from " << endpoint;
   
   if (!slice.hasKey("pool") || !slice.get("pool").isObject()) {
@@ -662,7 +662,7 @@ query_t Agent::gossip(query_t const& in, bool isCallback) {
   }
   VPackSlice pslice = slice.get("pool");
 
-  LOG_TOPIC(DEBUG, Logger::AGENCY) <<"Received gossip " << slice.toJson();
+  LOG_TOPIC(TRACE, Logger::AGENCY) <<"Received gossip " << slice.toJson();
 
   std::map<std::string,std::string> incoming;
   for (auto const& pair : VPackObjectIterator(pslice)) {
@@ -715,7 +715,7 @@ query_t Agent::gossip(query_t const& in, bool isCallback) {
   }
   out->close();
 
-  LOG_TOPIC(DEBUG, Logger::AGENCY)
+  LOG_TOPIC(TRACE, Logger::AGENCY)
     << "Answering with gossip " << out->slice().toJson();
   return out;
   
