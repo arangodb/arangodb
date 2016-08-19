@@ -14,7 +14,7 @@ for f in /usr/bin/md5sum /sbin/md5; do
         break
     fi
 done
-if test -n "${f}"; then
+if test -z "${f}"; then
     echo "didn't find a valid MD5SUM binary!"
     exit 1
 fi
