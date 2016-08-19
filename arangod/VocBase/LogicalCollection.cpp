@@ -125,6 +125,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
       _isSystem(TRI_collection_t::IsSystemName(name)),
       _isVolatile(false),
       _waitForSync(false),
+      _journalSize(0),
       _keyOptions(nullptr),
       _indexBuckets(1),
       _replicationFactor(0),
@@ -156,6 +157,7 @@ LogicalCollection::LogicalCollection(
   _isSystem(other->_isSystem),
   _isVolatile(other->_isVolatile),
   _waitForSync(other->_waitForSync),
+  _journalSize(other->_journalSize),
   _keyOptions(nullptr), // Not needed
   _indexBuckets(other->_indexBuckets),
   _indexes(nullptr), // Not needed
@@ -187,6 +189,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase, VPackSlice info)
       _isSystem(ReadBooleanValue(info, "isSystem", false)),
       _isVolatile(ReadBooleanValue(info, "isVolatile", false)),
       _waitForSync(ReadBooleanValue(info, "waitForSync", false)),
+      _journalSize(ReadNumericValue<TRI_voc_size_t>(info, "journalSize", 0)),
       _keyOptions(CopySliceValue(info, "keyOptions")),
       _indexBuckets(ReadNumericValue<uint32_t>(info, "indexBuckets", 1)),
       _indexes(CopySliceValue(info, "indexes")),
@@ -230,8 +233,7 @@ LogicalCollection::~LogicalCollection() {
 }
 
 size_t LogicalCollection::journalSize() const {
-  // TODO FIXME should be part of physical collection
-  return 0;
+  return _journalSize;
 }
 
 // SECTION: Meta Information

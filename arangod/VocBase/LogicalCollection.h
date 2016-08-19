@@ -171,6 +171,7 @@ class LogicalCollection {
   bool const _isSystem;
   bool const _isVolatile;
   bool const _waitForSync;
+  TRI_voc_size_t const _journalSize;
 
   // SECTION: Key Options
   // TODO Really VPack?
