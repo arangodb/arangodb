@@ -58,9 +58,9 @@ void Inception::run() {
   TRI_ASSERT(_agent != nullptr);
 
   auto s = std::chrono::system_clock::now();
-  std::chrono::seconds timeout(30);
+  std::chrono::seconds timeout(10);
   size_t i = 0;
-  
+  bool cs = false;
   while (!this->isStopping()) {
     
     config_t config = _agent->config(); // get a copy of conf
@@ -111,18 +111,19 @@ void Inception::run() {
         LOG_TOPIC(ERR, Logger::AGENCY) <<
           "Failed to find complete pool of agents. Giving up!";
       }
-//      this->shutdown();
+      break;
     }
 
     if (config.poolComplete()) {
-      _agent->startConstituent();
-      break;
+      if (!cs) {
+        _agent->startConstituent();
+        cs = true;
+      }
+      
     }
 
   }
 
-  //this->shutdown();
-      
 }
 
 

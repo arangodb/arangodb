@@ -421,7 +421,8 @@ bool Constituent::start(TRI_vocbase_t* vocbase,
 void Constituent::run() {
 
   LOG(WARN) << "Starting constituent";
-  
+  _id = _agent->config().id();
+
   TRI_ASSERT(_vocbase != nullptr);
   auto bindVars = std::make_shared<VPackBuilder>();
   bindVars->openObject();
