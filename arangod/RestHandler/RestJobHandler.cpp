@@ -101,13 +101,8 @@ void RestJobHandler::putJob() {
   TRI_ASSERT(status == AsyncJobResult::JOB_DONE);
   TRI_ASSERT(response != nullptr);
 
-  // delete our own response
-  if (_response != nullptr) {
-    delete _response;
-  }
-
   // return the original response
-  _response = response;
+  _response.reset(response);
 
   // plus a new header
   static std::string const xArango = "x-arango-async-id";

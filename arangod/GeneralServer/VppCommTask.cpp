@@ -23,17 +23,17 @@
 
 #include "VppCommTask.h"
 
-#include "Basics/StringBuffer.h"
 #include "Basics/HybridLogicalClock.h"
+#include "Basics/StringBuffer.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Meta/conversion.h"
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "GeneralServer/RestHandler.h"
 #include "GeneralServer/RestHandlerFactory.h"
+#include "Logger/LoggerFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
-#include "Logger/LoggerFeature.h"
 #include "VocBase/ticks.h"
 
 #include <velocypack/Validator.h>
@@ -167,13 +167,7 @@ VppCommTask::VppCommTask(GeneralServer* server, TRI_socket_t sock,
                        // connectionStatisticsAgentSetVpp();
 }
 
-void VppCommTask::addResponse(VppResponse* response, bool isError) {
-  if (isError) {
-    // FIXME (obi)
-    // what do we need to do?
-    // clean read buffer? reset process read cursor
-  }
-
+void VppCommTask::addResponse(VppResponse* response) {
   VPackMessageNoOwnBuffer response_message = response->prepareForNetwork();
   uint64_t& id = response_message._id;
 
@@ -203,11 +197,8 @@ void VppCommTask::addResponse(VppResponse* response, bool isError) {
   // adds chunk header infromation and creates SingBuffer* that can be
   // used with _writeBuffers
   auto buffer = createChunkForNetworkSingle(slices, id);
-  _writeBuffers.push_back(buffer.get());
-  buffer.release();
 
-  fillWriteBuffer();  // move data from _writebuffers to _writebuffer
-                      // implemented in base
+  addWriteBuffer(std::move(buffer));
 }
 
 VppCommTask::ChunkHeader VppCommTask::readChunkHeader() {
@@ -375,10 +366,9 @@ bool VppCommTask::processRead() {
     } else {
       // check auth
       // the handler will take ownersip of this pointer
-      VppRequest* request = new VppRequest(_connectionInfo, std::move(message),
-                                           chunkHeader._messageID);
-      GeneralServerFeature::HANDLER_FACTORY->setRequestContext(request);
-
+    std::unique_ptr<VppRequest> request(new VppRequest(
+        _connectionInfo, std::move(message), chunkHeader._messageID));
+    GeneralServerFeature::HANDLER_FACTORY->setRequestContext(request.get());
       // make sure we have a dabase
       if (request->requestContext() == nullptr) {
         handleSimpleError(GeneralResponse::ResponseCode::NOT_FOUND,
@@ -386,11 +376,12 @@ bool VppCommTask::processRead() {
                           TRI_errno_string(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND),
                           chunkHeader._messageID);
       } else {
-        request->setClientTaskId(_taskId);
-        _protocolVersion = request->protocolVersion();
-        executeRequest(request, new VppResponse(
-                                    GeneralResponse::ResponseCode::SERVER_ERROR,
-                                    chunkHeader._messageID));
+      request->setClientTaskId(_taskId);
+      _protocolVersion = request->protocolVersion();
+
+      std::unique_ptr<VppResponse> response(new VppResponse(
+          GeneralResponse::ResponseCode::SERVER_ERROR, chunkHeader._messageID));
+      executeRequest(std::move(request), std::move(response));
       }
     }
   }
@@ -402,10 +393,6 @@ bool VppCommTask::processRead() {
     return true;
   }
   return doExecute;
-}
-
-void VppCommTask::completedWriteBuffer() {
-  // REVIEW (fc)
 }
 
 void VppCommTask::resetState(bool close, GeneralResponse::ResponseCode code) {
@@ -422,27 +409,33 @@ void VppCommTask::resetState(bool close, GeneralResponse::ResponseCode code) {
   _closeRequested = close;
 }
 
-// GeneralResponse::ResponseCode VppCommTask::authenticateRequest() {
-//   auto context = (_request == nullptr) ? nullptr :
-//   _request->requestContext();
-//
-//   if (context == nullptr && _request != nullptr) {
-//     bool res =
-//         GeneralServerFeature::HANDLER_FACTORY->setRequestContext(_request);
-//
-//     if (!res) {
-//       return GeneralResponse::ResponseCode::NOT_FOUND;
-//     }
-//
-//     context = _request->requestContext();
-//   }
-//
-//   if (context == nullptr) {
-//     return GeneralResponse::ResponseCode::SERVER_ERROR;
-//   }
-//
-//   return context->authenticate();
-// }
+GeneralResponse::ResponseCode VppCommTask::authenticateRequest(GeneralRequest* request) {
+  auto context = (request == nullptr) ? nullptr :
+  request->requestContext();
+
+  if (context == nullptr && request != nullptr) {
+    bool res =
+        GeneralServerFeature::HANDLER_FACTORY->setRequestContext(request);
+
+    if (!res) {
+      return GeneralResponse::ResponseCode::NOT_FOUND;
+    }
+
+    context = request->requestContext();
+  }
+
+  if (context == nullptr) {
+    return GeneralResponse::ResponseCode::SERVER_ERROR;
+  }
+
+  return context->authenticate();
+}
+
+std::unique_ptr<GeneralResponse> VppCommTask::createResponse(
+    GeneralResponse::ResponseCode responseCode, uint64_t messageId) {
+  return std::unique_ptr<GeneralResponse>(
+      new VppResponse(responseCode, messageId));
+}
 
 void VppCommTask::handleSimpleError(GeneralResponse::ResponseCode responseCode,
                                     int errorNum,
@@ -462,6 +455,6 @@ void VppCommTask::handleSimpleError(GeneralResponse::ResponseCode responseCode,
     response.setPayload(builder.slice(), true, VPackOptions::Defaults);
     processResponse(&response);
   } catch (...) {
-    addResponse(&response, true);
+    _clientClosed = true;
   }
 }

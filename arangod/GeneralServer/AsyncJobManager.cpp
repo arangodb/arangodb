@@ -97,7 +97,7 @@ AsyncJobResult::AsyncJobResult(IdType jobId, GeneralResponse* response,
 AsyncJobResult::~AsyncJobResult() {}
 
 AsyncJobManager::AsyncJobManager(callback_fptr callback)
-    : _lock(), _jobs(), callback(callback) {}
+    : _lock(), _jobs(), _callback(callback) {}
 
 AsyncJobManager::~AsyncJobManager() {
   // remove all results that haven't been fetched
@@ -280,9 +280,8 @@ void AsyncJobManager::initAsyncJob(HttpServerJob* job, char const* hdr) {
 /// @brief finishes the execution of an async job
 ////////////////////////////////////////////////////////////////////////////////
 
-void AsyncJobManager::finishAsyncJob(AsyncJobResult::IdType jobId,
-                                     GeneralResponse* response) {
-  double const now = TRI_microtime();
+void AsyncJobManager::finishAsyncJob(
+    AsyncJobResult::IdType jobId, std::unique_ptr<GeneralResponse> response) {
   AsyncCallbackContext* ctx = nullptr;
 
   {
@@ -290,33 +289,25 @@ void AsyncJobManager::finishAsyncJob(AsyncJobResult::IdType jobId,
     auto it = _jobs.find(jobId);
 
     if (it == _jobs.end()) {
-      delete response;
       return;
+    }
+
+    ctx = (*it).second._ctx;
+
+    if (nullptr != ctx) {
+      _jobs.erase(it);
     } else {
-      (*it).second._response = response;
+      (*it).second._response = response.release();
       (*it).second._status = AsyncJobResult::JOB_DONE;
-      (*it).second._stamp = now;
-
-      ctx = (*it).second._ctx;
-
-      if (ctx != nullptr) {
-        // we have found a context object, so we can immediately remove the job
-        // from the list of "done" jobs
-        _jobs.erase(it);
-      }
+      (*it).second._stamp = TRI_microtime();
     }
   }
 
-  // If there is a callback context, the job is no longer in the
-  // list of "done" jobs, so we have to free the response and the
-  // callback context:
-
-  if (nullptr != ctx && nullptr != callback) {
-    callback(ctx->getCoordinatorHeader(), response);
-    delete ctx;
-
-    if (response != nullptr) {
-      delete response;
+  if (nullptr != ctx) {
+    if (nullptr != _callback) {
+      _callback(ctx->getCoordinatorHeader(), response.get());
     }
+
+    delete ctx;
   }
 }

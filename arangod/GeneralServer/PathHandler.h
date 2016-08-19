@@ -55,9 +55,7 @@ class PathHandler : public RestHandler {
  public:
   static RestHandler* create(GeneralRequest* request, GeneralResponse* response,
                              void* data) {
-    Options* options = static_cast<Options*>(data);
-
-    return new PathHandler(request, response, options);
+    return new PathHandler(request, response, static_cast<Options*>(data));
   }
 
  public:

@@ -26,10 +26,13 @@
 
 #include "Basics/Thread.h"
 
-#include <velocypack/Builder.h>
+#include <boost/lockfree/queue.hpp>
+
 #include <velocypack/Buffer.h>
+#include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include "Basics/Mutex.h"
 #include "Basics/WorkDescription.h"
 #include "Basics/WorkItem.h"
 
@@ -59,14 +62,18 @@ class WorkMonitor : public Thread {
   static void popCustom();
   static void pushHandler(rest::RestHandler*);
   static WorkDescription* popHandler(rest::RestHandler*, bool free);
-  static void requestWorkOverview(uint64_t taskId);
+  static void requestWorkOverview(rest::RestHandler* handler);
   static void cancelWork(uint64_t id);
+
+ public:
+  static void initialize();
+  static void shutdown();
 
  protected:
   void run() override;
 
  private:
-  static void sendWorkOverview(uint64_t,
+  static void sendWorkOverview(rest::RestHandler*,
                                std::shared_ptr<velocypack::Buffer<uint8_t>>);
   static bool cancelAql(WorkDescription*);
   static void deleteHandler(WorkDescription* desc);
@@ -78,41 +85,38 @@ class WorkMonitor : public Thread {
   static WorkDescription* deactivateWorkDescription();
   static void vpackWorkDescription(VPackBuilder*, WorkDescription*);
   static void cancelWorkDescriptions(Thread* thread);
-};
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief auto push and pop for RestHandler
-////////////////////////////////////////////////////////////////////////////////
+ private:
+  static std::atomic<bool> stopped;
+
+  static boost::lockfree::queue<WorkDescription*> emptyWorkDescription;
+  static boost::lockfree::queue<WorkDescription*> freeableWorkDescription;
+  static boost::lockfree::queue<rest::RestHandler*> workOverview;
+
+  static Mutex cancelLock;
+  static std::set<uint64_t> cancelIds;
+
+  static Mutex threadsLock;
+  static std::set<Thread*> threads;
+};
 
 class HandlerWorkStack {
   HandlerWorkStack(const HandlerWorkStack&) = delete;
   HandlerWorkStack& operator=(const HandlerWorkStack&) = delete;
 
  public:
+  // TODO(fc) remove the pointer version
   explicit HandlerWorkStack(rest::RestHandler*);
-
-  explicit HandlerWorkStack(WorkItem::uptr<rest::RestHandler>&);
+  explicit HandlerWorkStack(WorkItem::uptr<rest::RestHandler>);
 
   ~HandlerWorkStack();
 
  public:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief returns the handler
-  //////////////////////////////////////////////////////////////////////////////
-
   rest::RestHandler* handler() const { return _handler; }
 
  private:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief handler
-  //////////////////////////////////////////////////////////////////////////////
-
   rest::RestHandler* _handler;
 };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief auto push and pop for Aql
-////////////////////////////////////////////////////////////////////////////////
 
 class AqlWorkStack {
   AqlWorkStack(const AqlWorkStack&) = delete;
@@ -126,10 +130,6 @@ class AqlWorkStack {
   ~AqlWorkStack();
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief auto push and pop for Custom
-////////////////////////////////////////////////////////////////////////////////
-
 class CustomWorkStack {
   CustomWorkStack(const CustomWorkStack&) = delete;
   CustomWorkStack& operator=(const CustomWorkStack&) = delete;
@@ -141,18 +141,5 @@ class CustomWorkStack {
 
   ~CustomWorkStack();
 };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief starts the work monitor
-////////////////////////////////////////////////////////////////////////////////
-
-void InitializeWorkMonitor();
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief stops the work monitor
-////////////////////////////////////////////////////////////////////////////////
-
-void ShutdownWorkMonitor();
 }
-
 #endif

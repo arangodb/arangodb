@@ -31,8 +31,9 @@ namespace meta {
 namespace details {
 
 template <typename E>
-using enable_enum_t = typename std::enable_if<
-    std::is_enum<E>::value, typename std::underlying_type<E>::type>::type;
+using enable_enum_t =
+    typename std::enable_if<std::is_enum<E>::value,
+                            typename std::underlying_type<E>::type>::type;
 }
 
 template <typename E>

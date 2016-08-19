@@ -15,15 +15,14 @@ class HttpCommTask : public GeneralCommTask {
  public:
   HttpCommTask(GeneralServer*, TRI_socket_t, ConnectionInfo&&, double timeout);
 
-  bool processRead() override;
-
   // convert from GeneralResponse to httpResponse ad dispatch request to class
   // internal addResponse
-  void addResponse(GeneralResponse* response, bool isError) override {
+  void addResponse(GeneralResponse* response) override {
     HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(response);
-    if (httpResponse != nullptr) {
-      addResponse(httpResponse, isError);
+    if (httpResponse == nullptr) {
+      throw std::logic_error("invalid response or response Type");
     }
+    addResponse(httpResponse);
   };
 
   arangodb::Endpoint::TransportType transportType() override {
@@ -31,45 +30,35 @@ class HttpCommTask : public GeneralCommTask {
   };
 
  protected:
-  ~HttpCommTask() { clearRequest(); }
+  bool processRead() override;
 
   void handleChunk(char const*, size_t) override final;
-  void completedWriteBuffer() override final;
 
-  // clears the request object, REVIEW/TODO(fc)
-  void clearRequest();
-  void httpClearRequest() override { clearRequest(); }
-  void httpNullRequest() override { _request = nullptr; }
+  std::unique_ptr<GeneralResponse> createResponse(
+      GeneralResponse::ResponseCode, uint64_t messageId) override final;
 
   void handleSimpleError(GeneralResponse::ResponseCode code,
-                         uint64_t id = 1) override final;
+                         uint64_t messageId = 1) override final;
+
   void handleSimpleError(GeneralResponse::ResponseCode, int code,
                          std::string const& errorMessage,
                          uint64_t messageId = 1) override final;
 
  private:
-  void processRequest();
-  // resets the internal state this method can be called to clean up when the
-  // request handling aborts prematurely
-  void resetState(bool close);
+  void processRequest(std::unique_ptr<HttpRequest>);
+  void processCorsOptions(std::unique_ptr<HttpRequest>);
 
-  void addResponse(HttpResponse*, bool isError);
+  void resetState();
 
-  HttpRequest* requestAsHttp();
+  void addResponse(HttpResponse*);
+
   void finishedChunked();
   // check the content-length header of a request and fail it is broken
-  bool checkContentLength(bool expectContentLength);
-  void processCorsOptions();                // handles CORS options
+  bool checkContentLength(HttpRequest*, bool expectContentLength);
   std::string authenticationRealm() const;  // returns the authentication realm
-  GeneralResponse::ResponseCode
-  authenticateRequest();                  // checks the authentication
-  void sendChunk(basics::StringBuffer*);  // sends more chunked data
+  GeneralResponse::ResponseCode authenticateRequest(HttpRequest*);
 
  private:
-  // the request with possible incomplete body
-  // REVIEW(fc)
-  GeneralRequest* _request = nullptr;
-
   size_t _readPosition;       // current read position
   size_t _startPosition;      // start position of current request
   size_t _bodyPosition;       // start of the body position
@@ -80,6 +69,7 @@ class HttpCommTask : public GeneralCommTask {
                           // CORS)
   bool _acceptDeflate;    // whether the client accepts deflate algorithm
   bool _newRequest;       // new request started
+  // TODO(fc) remove
   GeneralRequest::RequestType _requestType;  // type of request (GET, POST, ...)
   std::string _fullUrl;                      // value of requested URL
   std::string _origin;  // value of the HTTP origin header the client sent (if
@@ -96,6 +86,8 @@ class HttpCommTask : public GeneralCommTask {
 
   // true if request is complete but not handled
   bool _requestPending = false;
+
+  std::unique_ptr<HttpRequest> _incompleteRequest;
 };
 }
 }

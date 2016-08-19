@@ -309,10 +309,12 @@ bool RestImportHandler::createFromJson(std::string const &type) {
     // auto detect import type by peeking at first non-whitespace character
 
     // http required here
-    HttpRequest *req = dynamic_cast<HttpRequest *>(_request);
+    HttpRequest *req = dynamic_cast<HttpRequest *>(_request.get());
+
     if (req == nullptr) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
     }
+
     std::string const &body = req->body();
 
     char const *ptr = body.c_str();
@@ -367,7 +369,8 @@ bool RestImportHandler::createFromJson(std::string const &type) {
 
   if (linewise) {
     // http required here
-    HttpRequest *req = dynamic_cast<HttpRequest *>(_request);
+    HttpRequest *req = dynamic_cast<HttpRequest *>(_request.get());
+
     if (req == nullptr) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
     }
@@ -453,10 +456,12 @@ bool RestImportHandler::createFromJson(std::string const &type) {
   else {
     // the entire request body is one JSON document
     std::shared_ptr<VPackBuilder> parsedDocuments;
-    HttpRequest *req = dynamic_cast<HttpRequest *>(_request);
+    HttpRequest *req = dynamic_cast<HttpRequest *>(_request.get());
+
     if (req == nullptr) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
     }
+
     try {
       parsedDocuments = VPackParser::fromJson(req->body());
     } catch (VPackException const &) {
@@ -558,10 +563,12 @@ bool RestImportHandler::createFromKeyValueList() {
     lineNumber = StringUtils::int64(lineNumValue);
   }
 
-  HttpRequest* httpRequest = dynamic_cast<HttpRequest*>(_request);
+  HttpRequest* httpRequest = dynamic_cast<HttpRequest*>(_request.get());
+
   if(httpRequest == nullptr){
      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   }
+
   std::string const &bodyStr = httpRequest->body();
   char const *current = bodyStr.c_str();
   char const *bodyEnd = current + bodyStr.size();

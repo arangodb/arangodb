@@ -43,7 +43,8 @@ RestUploadHandler::~RestUploadHandler() {}
 
 RestHandler::status RestUploadHandler::execute() {
   // cast is ok because http requst is required
-  HttpRequest* request = dynamic_cast<HttpRequest*>(_request);
+  HttpRequest* request = dynamic_cast<HttpRequest*>(_request.get());
+  
   if (request == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   }
@@ -135,7 +136,8 @@ RestHandler::status RestUploadHandler::execute() {
 
 bool RestUploadHandler::parseMultiPart(char const*& body, size_t& length) {
   // cast is ok because http requst is required
-  HttpRequest* request = dynamic_cast<HttpRequest*>(_request);
+  HttpRequest* request = dynamic_cast<HttpRequest*>(_request.get());
+
   if (request == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   }

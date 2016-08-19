@@ -283,7 +283,7 @@ void RestSimpleHandler::removeByKeys(VPackSlice const& slice) {
 
 void RestSimpleHandler::lookupByKeys(VPackSlice const& slice) {
   // TODO needs to generalized
-  auto response = dynamic_cast<HttpResponse*>(_response);
+  auto response = dynamic_cast<HttpResponse*>(_response.get());
 
   if (response == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);

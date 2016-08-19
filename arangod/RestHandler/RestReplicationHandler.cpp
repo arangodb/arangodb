@@ -439,7 +439,8 @@ void RestReplicationHandler::handleCommandLoggerState() {
     // "server" part
     builder.add("server", VPackValue(VPackValueType::Object));
     builder.add("version", VPackValue(ARANGODB_VERSION));
-    builder.add("serverId", VPackValue(std::to_string(ServerIdFeature::getId())));
+    builder.add("serverId",
+                VPackValue(std::to_string(ServerIdFeature::getId())));
     builder.close();
 
     // "clients" part
@@ -788,9 +789,10 @@ void RestReplicationHandler::handleTrampolineCoordinator() {
   std::string const& dbname = _request->databaseName();
 
   auto headers = std::make_shared<std::unordered_map<std::string, std::string>>(
-      arangodb::getForwardableRequestHeaders(_request));
+      arangodb::getForwardableRequestHeaders(_request.get()));
   std::unordered_map<std::string, std::string> values = _request->values();
   std::string params;
+
   for (auto const& i : values) {
     if (i.first != "DBserver") {
       if (params.empty()) {
@@ -807,7 +809,8 @@ void RestReplicationHandler::handleTrampolineCoordinator() {
   // Set a few variables needed for our work:
   ClusterComm* cc = ClusterComm::instance();
 
-  HttpRequest* httpRequest = dynamic_cast<HttpRequest*>(_request);
+  HttpRequest* httpRequest = dynamic_cast<HttpRequest*>(_request.get());
+
   if (httpRequest == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   }
@@ -844,7 +847,8 @@ void RestReplicationHandler::handleTrampolineCoordinator() {
   setResponseCode(static_cast<GeneralResponse::ResponseCode>(
       res->result->getHttpReturnCode()));
 
-  HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(_response);
+  HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(_response.get());
+
   if (_response == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   }
@@ -997,7 +1001,8 @@ void RestReplicationHandler::handleCommandLoggerFollow() {
         setResponseCode(GeneralResponse::ResponseCode::OK);
       }
 
-      HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(_response);
+      HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(_response.get());
+
       if (httpResponse == nullptr) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
       }
@@ -1098,7 +1103,7 @@ void RestReplicationHandler::handleCommandDetermineOpenTransactions() {
         setResponseCode(GeneralResponse::ResponseCode::OK);
       }
 
-      HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(_response);
+      HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(_response.get());
       if (_response == nullptr) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
       }
@@ -1149,9 +1154,9 @@ void RestReplicationHandler::handleCommandInventory() {
   // collections and indexes
   std::shared_ptr<VPackBuilder> collectionsBuilder;
   try {
-    collectionsBuilder = _vocbase->inventory(
-        tick, &filterCollection, (void*)&includeSystem, true,
-        RestReplicationHandler::sortCollections);
+    collectionsBuilder =
+        _vocbase->inventory(tick, &filterCollection, (void*)&includeSystem,
+                            true, RestReplicationHandler::sortCollections);
     VPackSlice const collections = collectionsBuilder->slice();
 
     TRI_ASSERT(collections.isArray());
@@ -1318,9 +1323,13 @@ int RestReplicationHandler::createCollection(VPackSlice const& slice,
   TRI_ASSERT(params.doCompact() ==
              arangodb::basics::VelocyPackHelper::getBooleanValue(
                  slice, "doCompact", true));
-  TRI_ASSERT(params.waitForSync() ==
-             arangodb::basics::VelocyPackHelper::getBooleanValue(
-                 slice, "waitForSync", application_features::ApplicationServer::getFeature<DatabaseFeature>("Database")->waitForSync()));
+  TRI_ASSERT(
+      params.waitForSync() ==
+      arangodb::basics::VelocyPackHelper::getBooleanValue(
+          slice, "waitForSync",
+          application_features::ApplicationServer::getFeature<DatabaseFeature>(
+              "Database")
+              ->waitForSync()));
   TRI_ASSERT(params.isVolatile() ==
              arangodb::basics::VelocyPackHelper::getBooleanValue(
                  slice, "isVolatile", false));
@@ -2175,7 +2184,7 @@ int RestReplicationHandler::processRestoreDataBatch(
 
   VPackBuilder builder;
 
-  HttpRequest* httpRequest = dynamic_cast<HttpRequest*>(_request);
+  HttpRequest* httpRequest = dynamic_cast<HttpRequest*>(_request.get());
   if (httpRequest == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   }
@@ -2519,7 +2528,7 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator() {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   }
 
-  HttpRequest* httpRequest = dynamic_cast<HttpRequest*>(_request);
+  HttpRequest* httpRequest = dynamic_cast<HttpRequest*>(_request.get());
   if (httpRequest == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   }
@@ -3204,7 +3213,7 @@ void RestReplicationHandler::handleCommandDump() {
     }
 
     // TODO needs to generalized
-    auto response = dynamic_cast<HttpResponse*>(_response);
+    auto response = dynamic_cast<HttpResponse*>(_response.get());
 
     if (response == nullptr) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
@@ -3394,7 +3403,8 @@ void RestReplicationHandler::handleCommandMakeSlave() {
     return;
   }
 
-  res = TRI_ConfigureReplicationApplier(_vocbase->replicationApplier(), &config);
+  res =
+      TRI_ConfigureReplicationApplier(_vocbase->replicationApplier(), &config);
 
   if (res != TRI_ERROR_NO_ERROR) {
     generateError(GeneralResponse::responseCode(res), res);

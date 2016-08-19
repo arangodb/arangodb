@@ -24,10 +24,10 @@
 #include "PathHandler.h"
 
 #include "Basics/FileUtils.h"
-#include "Logger/Logger.h"
-#include "Basics/mimetypes.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
+#include "Basics/mimetypes.h"
+#include "Logger/Logger.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
 
@@ -66,8 +66,8 @@ PathHandler::PathHandler(GeneralRequest* request, GeneralResponse* response,
 // -----------------------------------------------------------------------------
 
 RestHandler::status PathHandler::execute() {
-  // TODO needs to generalized
-  auto response = dynamic_cast<HttpResponse*>(_response);
+  // TODO needs to handle VPP
+  auto response = dynamic_cast<HttpResponse*>(_response.get());
 
   if (response == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);

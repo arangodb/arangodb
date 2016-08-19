@@ -36,6 +36,7 @@
 
 namespace arangodb {
 class GeneralRequest;
+class WorkMonitor;
 
 namespace rest {
 class RestHandlerFactory;
@@ -48,7 +49,7 @@ class RestHandler : public RequestStatisticsAgent, public arangodb::WorkItem {
   RestHandler(GeneralRequest*, GeneralResponse*);
 
  protected:
-  ~RestHandler();
+  ~RestHandler() = default;
 
  public:
   enum class status { DONE, FAILED, ASYNC };
@@ -95,16 +96,18 @@ class RestHandler : public RequestStatisticsAgent, public arangodb::WorkItem {
   status executeFull();
 
   // return a pointer to the request
-  GeneralRequest const* request() const { return _request; }
+  GeneralRequest const* request() const { return _request.get(); }
 
   // steal the pointer to the request
-  GeneralRequest* stealRequest();
+  std::unique_ptr<GeneralRequest> stealRequest() { return std::move(_request); }
 
   // returns the response
-  GeneralResponse* response() const { return _response; }
+  GeneralResponse* response() const { return _response.get(); }
 
   // steal the response
-  GeneralResponse* stealResponse();
+  std::unique_ptr<GeneralResponse> stealResponse() {
+    return std::move(_response);
+  }
 
  protected:
   // sets response Code
@@ -120,12 +123,8 @@ class RestHandler : public RequestStatisticsAgent, public arangodb::WorkItem {
   // event loop
   EventLoop _loop;
 
-  // the request
-  GeneralRequest* _request;
-
-  // OBI-TODO make private
-  // the response
-  GeneralResponse* _response;
+  std::unique_ptr<GeneralRequest> _request;
+  std::unique_ptr<GeneralResponse> _response;
 
  private:
   bool _needsOwnThread = false;

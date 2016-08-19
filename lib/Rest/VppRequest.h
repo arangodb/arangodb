@@ -25,14 +25,14 @@
 #ifndef ARANGODB_REST_VPP_REQUEST_H
 #define ARANGODB_REST_VPP_REQUEST_H 1
 
+#include "Endpoint/ConnectionInfo.h"
 #include "Rest/GeneralRequest.h"
 #include "Rest/VppMessage.h"
-#include "Endpoint/ConnectionInfo.h"
 
+#include <velocypack/Buffer.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Dumper.h>
 #include <velocypack/Options.h>
-#include <velocypack/Buffer.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -66,7 +66,7 @@ class VppRequest : public GeneralRequest {
   ~VppRequest() {}
 
  public:
-  virtual uint64_t messageId() { return _messageId; }
+  uint64_t messageId() override { return _messageId; }
   VPackSlice payload(arangodb::velocypack::Options const*) override;
 
   int64_t contentLength() const override {
