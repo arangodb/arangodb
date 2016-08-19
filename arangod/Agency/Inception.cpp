@@ -43,8 +43,6 @@ Inception::~Inception() { shutdown(); }
 
 void Inception::beginShutdown() {
   Thread::beginShutdown();
-  CONDITION_LOCKER(locker, _cv);
-  _cv.signal();
 }
 
 bool Inception::start() { return Thread::start(); }
@@ -123,6 +121,9 @@ void Inception::run() {
     }
 
   }
+
+      shutdown();
+
 
 }
 

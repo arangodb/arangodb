@@ -56,7 +56,6 @@ private:
 
   bool _done;
   Agent* _agent;
-  arangodb::basics::ConditionVariable _cv;
   
 };
 

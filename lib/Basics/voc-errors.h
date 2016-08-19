@@ -492,15 +492,14 @@
 ///   Will be raised when a user name is updated that does not exist.
 /// - 1704: @LIT{user must change his password}
 ///   Will be raised when the user must change his password.
-/// - 1750: @LIT{invalid application name}
-///   Will be raised when an invalid application name is specified.
+/// - 1750: @LIT{invalid service name}
+///   Will be raised when an invalid service name is specified.
 /// - 1751: @LIT{invalid mount}
 ///   Will be raised when an invalid mount is specified.
-/// - 1752: @LIT{application download failed}
-///   Will be raised when an application download from the central repository
-///   failed.
-/// - 1753: @LIT{application upload failed}
-///   Will be raised when an application upload from the client to the ArangoDB
+/// - 1752: @LIT{service download failed}
+///   Will be raised when a service download from the central repository failed.
+/// - 1753: @LIT{service upload failed}
+///   Will be raised when a service upload from the client to the ArangoDB
 ///   server failed.
 /// - 1800: @LIT{invalid key declaration}
 ///   Will be raised when an invalid key specification is passed to the server
@@ -603,7 +602,7 @@
 /// - 3000: @LIT{malformed manifest file}
 ///   The manifest file is malformed. It is not in a valid JSON format.
 /// - 3001: @LIT{manifest file is invalid}
-///   The manifest file of this application is invalid.
+///   The manifest file of this service is invalid.
 /// - 3004: @LIT{invalid foxx options}
 ///   The options used to configure the foxx are invalid.
 /// - 3007: @LIT{mountpoint is invalid}
@@ -2674,12 +2673,12 @@ void TRI_InitializeErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1750: ERROR_SERVICE_INVALID_NAME
 ///
-/// invalid application name
+/// invalid service name
 ///
-/// Will be raised when an invalid application name is specified.
+/// Will be raised when an invalid service name is specified.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_SERVICE_INVALID_NAME                                (1750)
+#define TRI_ERROR_SERVICE_INVALID_NAME                                    (1750)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1751: ERROR_SERVICE_INVALID_MOUNT
@@ -2689,29 +2688,28 @@ void TRI_InitializeErrorMessages ();
 /// Will be raised when an invalid mount is specified.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_SERVICE_INVALID_MOUNT                               (1751)
+#define TRI_ERROR_SERVICE_INVALID_MOUNT                                   (1751)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1752: ERROR_SERVICE_DOWNLOAD_FAILED
 ///
-/// application download failed
+/// service download failed
 ///
-/// Will be raised when an application download from the central repository
-/// failed.
+/// Will be raised when a service download from the central repository failed.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_SERVICE_DOWNLOAD_FAILED                             (1752)
+#define TRI_ERROR_SERVICE_DOWNLOAD_FAILED                                 (1752)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1753: ERROR_SERVICE_UPLOAD_FAILED
 ///
-/// application upload failed
+/// service upload failed
 ///
-/// Will be raised when an application upload from the client to the ArangoDB
-/// server failed.
+/// Will be raised when a service upload from the client to the ArangoDB server
+/// failed.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_SERVICE_UPLOAD_FAILED                               (1753)
+#define TRI_ERROR_SERVICE_UPLOAD_FAILED                                   (1753)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1800: ERROR_KEYVALUE_INVALID_KEY
@@ -3200,10 +3198,10 @@ void TRI_InitializeErrorMessages ();
 ///
 /// manifest file is invalid
 ///
-/// The manifest file of this application is invalid.
+/// The manifest file of this service is invalid.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_INVALID_SERVICE_MANIFEST                            (3001)
+#define TRI_ERROR_INVALID_SERVICE_MANIFEST                                (3001)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 3004: ERROR_INVALID_FOXX_OPTIONS
@@ -3233,7 +3231,7 @@ void TRI_InitializeErrorMessages ();
 /// No service found at this mountpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_SERVICE_NOT_FOUND                                           (3009)
+#define TRI_ERROR_SERVICE_NOT_FOUND                                       (3009)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 3010: ERROR_SERVICE_NEEDS_CONFIGURATION
@@ -3243,7 +3241,7 @@ void TRI_InitializeErrorMessages ();
 /// The service has to be configured before it can be used
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_SERVICE_NEEDS_CONFIGURATION                                 (3010)
+#define TRI_ERROR_SERVICE_NEEDS_CONFIGURATION                             (3010)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 3011: ERROR_SERVICE_MOUNTPOINT_CONFLICT
@@ -3253,7 +3251,7 @@ void TRI_InitializeErrorMessages ();
 /// A service has already been installed at this mountpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_SERVICE_MOUNTPOINT_CONFLICT                                 (3011)
+#define TRI_ERROR_SERVICE_MOUNTPOINT_CONFLICT                             (3011)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 3100: ERROR_MODULE_NOT_FOUND

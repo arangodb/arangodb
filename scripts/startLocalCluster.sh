@@ -48,6 +48,7 @@ SECONDARIES="$5"
 
 MINP=1.0
 MAXP=2.0
+SFRE=5.0
 COMP=1000
 BASE=4001
 NATH=$(( $NRDBSERVERS + $NRCOORDINATORS + $NRAGENTS ))
@@ -62,23 +63,24 @@ for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
         --agency.activate true \
         --agency.endpoint tcp://localhost:$BASE \
         --agency.size $NRAGENTS \
+        --agency.pool-size $NRAGENTS \
         --agency.supervision true \
         --agency.supervision-frequency $SFRE \
         --agency.wait-for-sync true \
         --agency.election-timeout-min $MINP \
         --agency.election-timeout-max $MAXP \
-        --database.directory agency/data$port \
+        --database.directory cluster/data$port \
         --javascript.app-path ./js/apps \
         --javascript.startup-directory ./js \
         --javascript.v8-contexts 1 \
-        --log.file agency/$port.log \
+        --log.file cluster/$port.log \
         --server.authentication false \
         --server.endpoint tcp://0.0.0.0:$port \
         --server.statistics false \
+        --server.threads 16 \
         --agency.compaction-step-size $COMP \
-        --log.level agency=debug \
         --log.force-direct true \
-        > agency/$port.stdout 2>&1 &
+        > cluster/$port.stdout 2>&1 &
 done
 
 start() {
