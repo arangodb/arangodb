@@ -452,6 +452,12 @@ void Constituent::run() {
     }
   }
 
+  std::vector<std::string> act = _agent->config().active();
+  while(!this->isStopping() &&
+        ((find(act.begin(), act.end(), _id) - act.begin()) >= size())) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+  }
+
   if (size() == 1) {
     _leaderID = _agent->config().id();
   } else {

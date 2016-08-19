@@ -58,7 +58,7 @@ void Inception::run() {
   auto s = std::chrono::system_clock::now();
   std::chrono::seconds timeout(5);
   size_t i = 0;
-  bool cs = false;
+  //bool cs = false;
   while (!this->isStopping()) {
     
     config_t config = _agent->config(); // get a copy of conf
@@ -113,10 +113,11 @@ void Inception::run() {
     }
 
     if (config.poolComplete()) {
-      if(!cs) {
+      //if(!cs) {
         _agent->startConstituent();
-        cs = true;
-      }
+        break;
+        //cs = true;
+        //}
     }
 
   }

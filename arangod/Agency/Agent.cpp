@@ -149,8 +149,9 @@ bool Agent::leading() const {
 
 
 void Agent::startConstituent() {
+
   activateAgency();
-  
+
   auto database = ApplicationServer::getFeature<DatabaseFeature>("Database");
   auto vocbase = database->vocbase();
   auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY;

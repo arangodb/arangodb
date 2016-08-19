@@ -409,7 +409,7 @@ bool State::loadCollections(TRI_vocbase_t* vocbase, QueryRegistry* queryRegistry
   
   TRI_ASSERT(_vocbase != nullptr);
   
-  _options.waitForSync = false;
+  _options.waitForSync = waitForSync;
   _options.silent = true;
   
   if (loadPersisted()) {
