@@ -5,7 +5,20 @@ if python -c "import sys ; sys.exit(sys.platform != 'cygwin')"; then
     echo "can't work with cygwin python - move it away!"
     exit 1
 fi
-                                                                     
+
+
+#          debian          mac   
+for f in /usr/bin/md5sum /sbin/md5; do 
+    if test -e ${f}; then
+        MD5=${f}
+        break
+    fi
+done
+if test -z "${f}"; then
+    echo "didn't find a valid MD5SUM binary!"
+    exit 1
+fi
+    
 if test -f /scripts/prepare_buildenv.sh; then
     echo "Sourcing docker container environment settings"
     . /scripts/prepare_buildenv.sh
@@ -123,7 +136,6 @@ PACKAGE_MAKE=make
 MAKE_PARAMS=""
 MAKE_CMD_PREFIX=""
 CONFIGURE_OPTIONS="-DCMAKE_INSTALL_PREFIX=/ $CMAKE_OPENSSL"
-# -DCMAKE_INSTALL_LOCALSTATEDIR=/var"
 MAINTAINER_MODE="-DUSE_MAINTAINER_MODE=off"
 
 TARGET_DIR=""
@@ -451,5 +463,5 @@ if test -n "${TARGET_DIR}";  then
     fi
 
     gzip < ${TARFILE_TMP} > ${dir}/${TARFILE}
-    md5sum < ${dir}/${TARFILE} > ${dir}/${TARFILE}.md5
+    ${MD5} < ${dir}/${TARFILE} > ${dir}/${TARFILE}.md5
 fi
