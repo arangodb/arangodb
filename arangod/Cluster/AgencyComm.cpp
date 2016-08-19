@@ -32,7 +32,6 @@
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
-#include "Basics/json.h"
 #include "Cluster/ServerState.h"
 #include "Endpoint/Endpoint.h"
 #include "GeneralServer/GeneralServerFeature.h"

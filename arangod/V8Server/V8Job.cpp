@@ -26,7 +26,6 @@
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include "Basics/json.h"
 #include "Dispatcher/DispatcherQueue.h"
 #include "Logger/Logger.h"
 #include "V8/v8-utils.h"

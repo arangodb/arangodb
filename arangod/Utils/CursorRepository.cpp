@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "CursorRepository.h"
-#include "Basics/json.h"
 #include "Basics/MutexLocker.h"
 #include "Logger/Logger.h"
 #include "Utils/CollectionExport.h"
