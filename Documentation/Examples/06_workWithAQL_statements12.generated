@@ -7,15 +7,15 @@ arangosh&gt; c.getExtra();
     <span class="hljs-string">"scannedFull"</span> : <span class="hljs-number">0</span>, 
     <span class="hljs-string">"scannedIndex"</span> : <span class="hljs-number">0</span>, 
     <span class="hljs-string">"filtered"</span> : <span class="hljs-number">0</span>, 
-    <span class="hljs-string">"executionTime"</span> : <span class="hljs-number">0.0001068115234375</span> 
+    <span class="hljs-string">"executionTime"</span> : <span class="hljs-number">0.0001251697540283203</span> 
   }, 
   <span class="hljs-string">"profile"</span> : { 
     <span class="hljs-string">"initializing"</span> : <span class="hljs-number">0.0000030994415283203125</span>, 
-    <span class="hljs-string">"parsing"</span> : <span class="hljs-number">0.000027894973754882812</span>, 
-    <span class="hljs-string">"optimizing ast"</span> : <span class="hljs-number">0.0000040531158447265625</span>, 
-    <span class="hljs-string">"instantiating plan"</span> : <span class="hljs-number">0.00001811981201171875</span>, 
-    <span class="hljs-string">"optimizing plan"</span> : <span class="hljs-number">0.00002384185791015625</span>, 
-    <span class="hljs-string">"executing"</span> : <span class="hljs-number">0.00003719329833984375</span> 
+    <span class="hljs-string">"parsing"</span> : <span class="hljs-number">0.000030994415283203125</span>, 
+    <span class="hljs-string">"optimizing ast"</span> : <span class="hljs-number">0.0000050067901611328125</span>, 
+    <span class="hljs-string">"instantiating plan"</span> : <span class="hljs-number">0.000017881393432617188</span>, 
+    <span class="hljs-string">"optimizing plan"</span> : <span class="hljs-number">0.00003314018249511719</span>, 
+    <span class="hljs-string">"executing"</span> : <span class="hljs-number">0.00004601478576660156</span> 
   }, 
   <span class="hljs-string">"warnings"</span> : [ ] 
 }
