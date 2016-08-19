@@ -145,7 +145,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
 ///        modifications and can be freed
 ///        Can only be given to V8, cannot be used for functionality.
 LogicalCollection::LogicalCollection(
-    std::shared_ptr<LogicalCollection> const other) 
+    std::shared_ptr<LogicalCollection> const& other) 
 : _internalVersion(0),
   _cid(other->_cid),
   _planId(other->_planId),

@@ -52,7 +52,7 @@ class LogicalCollection {
 
   LogicalCollection(TRI_vocbase_t*, arangodb::velocypack::Slice);
 
-  LogicalCollection(std::shared_ptr<LogicalCollection> const);
+  explicit LogicalCollection(std::shared_ptr<LogicalCollection> const&);
 
   ~LogicalCollection();
 
