@@ -294,12 +294,6 @@ int TRI_CopyToJson(TRI_memory_zone_t*, TRI_json_t* dst, TRI_json_t const* src);
 TRI_json_t* TRI_CopyJson(TRI_memory_zone_t*, TRI_json_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief parses a json string
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_json_t* TRI_JsonString(TRI_memory_zone_t*, char const* text);
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief default deleter for TRI_json_t
 /// this can be used to put a TRI_json_t with TRI_UNKNOWN_MEM_ZONE into an
 /// std::unique_ptr
