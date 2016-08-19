@@ -31,6 +31,7 @@
 #include "Logger/Logger.h"
 #include "Scheduler/Scheduler.h"
 
+using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
