@@ -56,7 +56,7 @@ void Inception::run() {
   TRI_ASSERT(_agent != nullptr);
 
   auto s = std::chrono::system_clock::now();
-  std::chrono::seconds timeout(5);
+  std::chrono::seconds timeout(120);
   size_t i = 0;
   //bool cs = false;
   while (!this->isStopping()) {
