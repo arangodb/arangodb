@@ -74,10 +74,10 @@ class VppCommTask : public GeneralCommTask {
                          uint64_t messageId) override;
 
  private:
-  // resets the internal state this method can be called to clean up when the
+  // reets the internal state this method can be called to clean up when the
   // request handling aborts prematurely
-  void resetState(bool close, GeneralResponse::ResponseCode code =
-                                  GeneralResponse::ResponseCode::SERVER_ERROR);
+  void closeTask(GeneralResponse::ResponseCode code =
+                     GeneralResponse::ResponseCode::SERVER_ERROR);
 
   void addResponse(VppResponse*);
   GeneralResponse::ResponseCode authenticateRequest(GeneralRequest* request);

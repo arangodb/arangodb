@@ -48,20 +48,20 @@ using namespace arangodb::rest;
 
 namespace {
 std::size_t findAndValidateVPacks(char const* vpHeaderStart,
-                                  char const* chunkEnd) {
+                                  char const* vpEnd) {
   VPackValidator validator;
   // check for slice start to the end of Chunk
   // isSubPart allows the slice to be shorter than the checked buffer.
-  validator.validate(vpHeaderStart, std::distance(vpHeaderStart, chunkEnd),
+  validator.validate(vpHeaderStart, std::distance(vpHeaderStart, vpEnd),
                      /*isSubPart =*/true);
 
   VPackSlice vpHeader(vpHeaderStart);
   auto vpPayloadStart = vpHeaderStart + vpHeader.byteSize();
 
   std::size_t numPayloads = 0;
-  while (vpPayloadStart != chunkEnd) {
+  while (vpPayloadStart != vpEnd) {
     // validate
-    validator.validate(vpPayloadStart, std::distance(vpPayloadStart, chunkEnd),
+    validator.validate(vpPayloadStart, std::distance(vpPayloadStart, vpEnd),
                        true);
     // get offset to next
     VPackSlice tmp(vpPayloadStart);
@@ -278,14 +278,25 @@ bool VppCommTask::processRead() {
 
   // CASE 1: message is in one chunk
   if (chunkHeader._isFirst && chunkHeader._chunk == 1) {
-    size_t payloads = 0;
+    std::size_t payloads = 0;
+
     try {
       payloads = findAndValidateVPacks(vpackBegin, chunkEnd);
-    } catch (...) {
+    } catch (std::exception const& e) {
+      handleSimpleError(GeneralResponse::ResponseCode::BAD,
+                        TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, e.what(),
+                        chunkHeader._messageID);
       LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "VPack Validation failed!";
-      _clientClosed = true;
+      closeTask(GeneralResponse::ResponseCode::BAD);
+      return false;
+    } catch (...) {
+      handleSimpleError(GeneralResponse::ResponseCode::BAD,
+                        chunkHeader._messageID);
+      LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "VPack Validation failed!";
+      closeTask(GeneralResponse::ResponseCode::BAD);
       return false;
     }
+
     VPackBuffer<uint8_t> buffer;
     buffer.append(vpackBegin, std::distance(vpackBegin, chunkEnd));
     message.set(chunkHeader._messageID, std::move(buffer), payloads);  // fixme
@@ -316,7 +327,7 @@ bool VppCommTask::processRead() {
         std::make_pair(chunkHeader._messageID, std::move(message)));
     if (!insertPair.second) {
       throw std::logic_error("insert failed");
-      resetState(true);
+      closeTask();
     }
 
     LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "CASE 2a";
@@ -325,7 +336,7 @@ bool VppCommTask::processRead() {
   } else {  // followup chunk of some mesage
     if (incompleteMessageItr == _incompleteMessages.end()) {
       throw std::logic_error("found message without previous part");
-      resetState(true);
+      closeTask();
     }
     auto& im = incompleteMessageItr->second;  // incomplete Message
     im._currentChunk++;
@@ -335,18 +346,29 @@ bool VppCommTask::processRead() {
 
     // MESSAGE COMPLETE
     if (im._currentChunk == im._numberOfChunks - 1 /* zero based counting */) {
-      size_t payloads = 0;
+      std::size_t payloads = 0;
+
       try {
         payloads = findAndValidateVPacks(
             reinterpret_cast<char const*>(im._buffer.data()),
             reinterpret_cast<char const*>(im._buffer.data() +
                                           im._buffer.byteSize()));
 
-      } catch (...) {
+      } catch (std::exception const& e) {
+        handleSimpleError(GeneralResponse::ResponseCode::BAD,
+                          TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, e.what(),
+                          chunkHeader._messageID);
         LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "VPack Validation failed!";
-        _clientClosed = true;
+        closeTask(GeneralResponse::ResponseCode::BAD);
+        return false;
+      } catch (...) {
+        handleSimpleError(GeneralResponse::ResponseCode::BAD,
+                          chunkHeader._messageID);
+        LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "VPack Validation failed!";
+        closeTask(GeneralResponse::ResponseCode::BAD);
         return false;
       }
+
       message.set(chunkHeader._messageID, std::move(im._buffer), payloads);
       _incompleteMessages.erase(incompleteMessageItr);
       // check length
@@ -411,8 +433,7 @@ bool VppCommTask::processRead() {
   return doExecute;
 }
 
-void VppCommTask::resetState(bool close, GeneralResponse::ResponseCode code) {
-  // REVIEW (fc)
+void VppCommTask::closeTask(GeneralResponse::ResponseCode code) {
   _processReadVariables._readBufferCursor = nullptr;
   _processReadVariables._currentChunkLength = 0;
   _readBuffer->clear();  // check is this changes the reserved size
@@ -422,7 +443,7 @@ void VppCommTask::resetState(bool close, GeneralResponse::ResponseCode code) {
     handleSimpleError(code, message.first);
   }
   _incompleteMessages.clear();
-  _closeRequested = close;
+  _clientClosed = true;
 }
 
 GeneralResponse::ResponseCode VppCommTask::authenticateRequest(
