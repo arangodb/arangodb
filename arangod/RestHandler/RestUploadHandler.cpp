@@ -44,7 +44,7 @@ RestUploadHandler::~RestUploadHandler() {}
 RestHandler::status RestUploadHandler::execute() {
   // cast is ok because http requst is required
   HttpRequest* request = dynamic_cast<HttpRequest*>(_request.get());
-  
+
   if (request == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   }

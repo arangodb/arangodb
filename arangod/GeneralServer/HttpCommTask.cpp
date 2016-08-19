@@ -162,8 +162,7 @@ void HttpCommTask::addResponse(HttpResponse* response) {
     LOG_TOPIC(TRACE, Logger::REQUESTS)
         << "\"http-request-response\",\"" << (void*)this << "\",\""
         << StringUtils::escapeUnicode(
-               std::string(buffer->c_str(), buffer->length()))
-        << "\"";
+               std::string(buffer->c_str(), buffer->length())) << "\"";
   }
 
   double const totalTime = RequestStatisticsAgent::elapsedSinceReadStart();

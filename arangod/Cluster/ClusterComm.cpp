@@ -1437,18 +1437,17 @@ void ClusterCommThread::run() {
           }
         } else {
           if (nullptr != op->body.get()) {
-            LOG(DEBUG)
-                << "sending "
-                << arangodb::HttpRequest::translateMethod(op->reqtype).c_str()
-                << " request to DB server '" << op->result.serverID
-                << "' at endpoint '" << op->result.endpoint
-                << "': " << op->body->c_str();
+            LOG(DEBUG) << "sending "
+                       << arangodb::HttpRequest::translateMethod(op->reqtype)
+                              .c_str() << " request to DB server '"
+                       << op->result.serverID << "' at endpoint '"
+                       << op->result.endpoint << "': " << op->body->c_str();
           } else {
-            LOG(DEBUG)
-                << "sending "
-                << arangodb::HttpRequest::translateMethod(op->reqtype).c_str()
-                << " request to DB server '" << op->result.serverID
-                << "' at endpoint '" << op->result.endpoint << "'";
+            LOG(DEBUG) << "sending "
+                       << arangodb::HttpRequest::translateMethod(op->reqtype)
+                              .c_str() << " request to DB server '"
+                       << op->result.serverID << "' at endpoint '"
+                       << op->result.endpoint << "'";
           }
 
           auto client =

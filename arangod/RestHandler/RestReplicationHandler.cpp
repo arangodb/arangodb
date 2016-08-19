@@ -1328,8 +1328,7 @@ int RestReplicationHandler::createCollection(VPackSlice const& slice,
       arangodb::basics::VelocyPackHelper::getBooleanValue(
           slice, "waitForSync",
           application_features::ApplicationServer::getFeature<DatabaseFeature>(
-              "Database")
-              ->waitForSync()));
+              "Database")->waitForSync()));
   TRI_ASSERT(params.isVolatile() ==
              arangodb::basics::VelocyPackHelper::getBooleanValue(
                  slice, "isVolatile", false));

@@ -100,14 +100,10 @@ static int runServer(int argc, char** argv) {
   application_features::ApplicationServer server(options);
 
   std::vector<std::string> nonServerFeatures = {
-      "Action",        "Affinity",
-      "Agency",        "Cluster",
-      "Daemon",        "Dispatcher",
-      "Endpoint",      "FoxxQueues",
-      "GeneralServer", "LoggerBufferFeature",
-      "Server",        "Scheduler",
-      "SslServer",     "Statistics",
-      "Supervisor"};
+      "Action",        "Affinity",            "Agency",    "Cluster",
+      "Daemon",        "Dispatcher",          "Endpoint",  "FoxxQueues",
+      "GeneralServer", "LoggerBufferFeature", "Server",    "Scheduler",
+      "SslServer",     "Statistics",          "Supervisor"};
 
   int ret = EXIT_FAILURE;
 
@@ -177,7 +173,8 @@ static int runServer(int argc, char** argv) {
 
   // storage engines
   server.addFeature(new MMFilesEngine(&server));
-  server.addFeature(new OtherEngine(&server)); // TODO: just for testing - remove this!
+  server.addFeature(
+      new OtherEngine(&server));  // TODO: just for testing - remove this!
 
   try {
     server.run(argc, argv);

@@ -38,7 +38,7 @@ class Scheduler;
 class TaskData : public RequestStatisticsAgent {
  public:
   static uint64_t const TASK_DATA_RESPONSE = 1000;
-  static uint64_t const TASK_DATA_CHUNK    = 1001;
+  static uint64_t const TASK_DATA_CHUNK = 1001;
 
  public:
   uint64_t _taskId;

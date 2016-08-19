@@ -366,9 +366,9 @@ bool VppCommTask::processRead() {
     } else {
       // check auth
       // the handler will take ownersip of this pointer
-    std::unique_ptr<VppRequest> request(new VppRequest(
-        _connectionInfo, std::move(message), chunkHeader._messageID));
-    GeneralServerFeature::HANDLER_FACTORY->setRequestContext(request.get());
+      std::unique_ptr<VppRequest> request(new VppRequest(
+          _connectionInfo, std::move(message), chunkHeader._messageID));
+      GeneralServerFeature::HANDLER_FACTORY->setRequestContext(request.get());
       // make sure we have a dabase
       if (request->requestContext() == nullptr) {
         handleSimpleError(GeneralResponse::ResponseCode::NOT_FOUND,
@@ -376,12 +376,13 @@ bool VppCommTask::processRead() {
                           TRI_errno_string(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND),
                           chunkHeader._messageID);
       } else {
-      request->setClientTaskId(_taskId);
-      _protocolVersion = request->protocolVersion();
+        request->setClientTaskId(_taskId);
+        _protocolVersion = request->protocolVersion();
 
-      std::unique_ptr<VppResponse> response(new VppResponse(
-          GeneralResponse::ResponseCode::SERVER_ERROR, chunkHeader._messageID));
-      executeRequest(std::move(request), std::move(response));
+        std::unique_ptr<VppResponse> response(
+            new VppResponse(GeneralResponse::ResponseCode::SERVER_ERROR,
+                            chunkHeader._messageID));
+        executeRequest(std::move(request), std::move(response));
       }
     }
   }
@@ -409,9 +410,9 @@ void VppCommTask::resetState(bool close, GeneralResponse::ResponseCode code) {
   _closeRequested = close;
 }
 
-GeneralResponse::ResponseCode VppCommTask::authenticateRequest(GeneralRequest* request) {
-  auto context = (request == nullptr) ? nullptr :
-  request->requestContext();
+GeneralResponse::ResponseCode VppCommTask::authenticateRequest(
+    GeneralRequest* request) {
+  auto context = (request == nullptr) ? nullptr : request->requestContext();
 
   if (context == nullptr && request != nullptr) {
     bool res =

@@ -443,7 +443,7 @@ void RestSimpleHandler::lookupByKeys(VPackSlice const& slice) {
     }
 
     auto customTypeHandler = queryResult.context->orderCustomTypeHandler();
-    VPackOptions options = VPackOptions::Defaults; // copy defaults
+    VPackOptions options = VPackOptions::Defaults;  // copy defaults
     options.customTypeHandler = customTypeHandler.get();
 
     arangodb::basics::VPackStringBufferAdapter buffer(

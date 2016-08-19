@@ -37,7 +37,8 @@ using namespace arangodb::basics;
 std::atomic<bool> WorkMonitor::stopped(true);
 
 boost::lockfree::queue<WorkDescription*> WorkMonitor::emptyWorkDescription(128);
-boost::lockfree::queue<WorkDescription*> WorkMonitor::freeableWorkDescription(128);
+boost::lockfree::queue<WorkDescription*> WorkMonitor::freeableWorkDescription(
+    128);
 boost::lockfree::queue<rest::RestHandler*> WorkMonitor::workOverview(128);
 
 Mutex WorkMonitor::cancelLock;
@@ -384,7 +385,7 @@ void WorkMonitor::cancelWorkDescriptions(Thread* thread) {
             break;
         }
 
-        if (! descent) {
+        if (!descent) {
           break;
         }
       }

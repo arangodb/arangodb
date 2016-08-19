@@ -398,7 +398,9 @@ void RestExportHandler::deleteCursor() {
   result.openObject();
   result.add("id", VPackValue(id));
   result.add("error", VPackValue(false));
-  result.add("code", VPackValue(static_cast<int>(GeneralResponse::ResponseCode::ACCEPTED)));
+  result.add(
+      "code",
+      VPackValue(static_cast<int>(GeneralResponse::ResponseCode::ACCEPTED)));
   result.close();
 
   generateResult(GeneralResponse::ResponseCode::ACCEPTED, result.slice());

@@ -72,7 +72,8 @@ class RestHandlerFactory {
   void addHandler(std::string const& path, create_fptr, void* data = nullptr);
 
   // adds a prefix path and constructor to the factory
-  void addPrefixHandler(std::string const& path, create_fptr, void* data = nullptr);
+  void addPrefixHandler(std::string const& path, create_fptr,
+                        void* data = nullptr);
 
   // adds a path and constructor to the factory
   void addNotFoundHandler(create_fptr);

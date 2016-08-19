@@ -209,7 +209,8 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
       }
 
       arangodb::basics::VelocyPackDumper dumper(
-          &(httpResponse->body()), queryResult.context->getVPackOptionsForDump());
+          &(httpResponse->body()),
+          queryResult.context->getVPackOptionsForDump());
       dumper.dumpValue(result.slice());
       return;
     }

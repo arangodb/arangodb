@@ -75,10 +75,10 @@ enum ClusterCommOpStatus {
   CL_COMM_DROPPED = 7,    // operation was dropped, not known
                           // this is only used to report an error
                           // in the wait or enquire methods
-  CL_COMM_BACKEND_UNAVAILABLE = 8 // communication problem with the backend
-                                  // note that in this case result and answer
-                                  // are not set and one can assume that
-                                  // already the connection could not be opened
+  CL_COMM_BACKEND_UNAVAILABLE = 8  // communication problem with the backend
+                                   // note that in this case result and answer
+                                   // are not set and one can assume that
+                                   // already the connection could not be opened
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -212,7 +212,7 @@ struct ClusterCommResult {
   //////////////////////////////////////////////////////////////////////////////
 
   void setDestination(std::string const& dest, bool logConnectionErrors);
-  
+
   /// @brief stringify the internal error state
   std::string stringifyErrorMessage() const;
 
@@ -282,26 +282,27 @@ void ClusterCommRestCallback(std::string& coordinator,
 ////////////////////////////////////////////////////////////////////////////////
 
 struct ClusterCommRequest {
-  std::string                                         destination;
-  GeneralRequest::RequestType                         requestType;
-  std::string                                         path;
-  std::shared_ptr<std::string const>                  body;
+  std::string destination;
+  GeneralRequest::RequestType requestType;
+  std::string path;
+  std::shared_ptr<std::string const> body;
   std::unique_ptr<std::unordered_map<std::string, std::string>> headerFields;
-  ClusterCommResult                                   result;
-  bool                                                done;
+  ClusterCommResult result;
+  bool done;
 
-  ClusterCommRequest() : done(false) {
-  }
+  ClusterCommRequest() : done(false) {}
 
-  ClusterCommRequest(std::string const& dest,
-                     GeneralRequest::RequestType type,
+  ClusterCommRequest(std::string const& dest, GeneralRequest::RequestType type,
                      std::string const& path,
                      std::shared_ptr<std::string const> body)
-    : destination(dest), requestType(type), path(path), body(body), done(false)
-  {
-  }
+      : destination(dest),
+        requestType(type),
+        path(path),
+        body(body),
+        done(false) {}
 
-  void setHeaders(std::unique_ptr<std::unordered_map<std::string, std::string>>& headers) {
+  void setHeaders(
+      std::unique_ptr<std::unordered_map<std::string, std::string>>& headers) {
     headerFields = std::move(headers);
   }
 };
@@ -380,10 +381,10 @@ class ClusterComm {
   OperationID asyncRequest(
       ClientTransactionID const clientTransactionID,
       CoordTransactionID const coordTransactionID,
-      std::string const& destination,
-      GeneralRequest::RequestType reqtype, std::string const& path,
-      std::shared_ptr<std::string const> body,
-      std::unique_ptr<std::unordered_map<std::string, std::string>>& headerFields,
+      std::string const& destination, GeneralRequest::RequestType reqtype,
+      std::string const& path, std::shared_ptr<std::string const> body,
+      std::unique_ptr<std::unordered_map<std::string, std::string>>&
+          headerFields,
       std::shared_ptr<ClusterCommCallback> callback, ClusterCommTimeout timeout,
       bool singleRequest = false, ClusterCommTimeout initTimeout = -1.0);
 
@@ -394,9 +395,8 @@ class ClusterComm {
   std::unique_ptr<ClusterCommResult> syncRequest(
       ClientTransactionID const& clientTransactionID,
       CoordTransactionID const coordTransactionID,
-      std::string const& destination,
-      GeneralRequest::RequestType reqtype, std::string const& path,
-      std::string const& body,
+      std::string const& destination, GeneralRequest::RequestType reqtype,
+      std::string const& path, std::string const& body,
       std::unordered_map<std::string, std::string> const& headerFields,
       ClusterCommTimeout timeout);
 
@@ -454,8 +454,7 @@ class ClusterComm {
   //////////////////////////////////////////////////////////////////////////////
 
   size_t performRequests(std::vector<ClusterCommRequest>& requests,
-                         ClusterCommTimeout timeout,
-                         size_t& nrDone,
+                         ClusterCommTimeout timeout, size_t& nrDone,
                          arangodb::LogTopic const& logTopic);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -468,9 +467,8 @@ class ClusterComm {
 
  private:
   size_t performSingleRequest(std::vector<ClusterCommRequest>& requests,
-                         ClusterCommTimeout timeout,
-                         size_t& nrDone,
-                         arangodb::LogTopic const& logTopic);
+                              ClusterCommTimeout timeout, size_t& nrDone,
+                              arangodb::LogTopic const& logTopic);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the pointer to the singleton instance

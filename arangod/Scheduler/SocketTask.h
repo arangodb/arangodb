@@ -58,8 +58,8 @@ class SocketTask : virtual public Task, public ConnectionStatisticsAgent {
  protected:
   virtual bool fillReadBuffer();
 
-  virtual bool handleRead();      // called by handleEvent
-  virtual bool handleWrite();     // called by handleEvent
+  virtual bool handleRead();   // called by handleEvent
+  virtual bool handleWrite();  // called by handleEvent
 
   virtual void handleTimeout() = 0;
 
