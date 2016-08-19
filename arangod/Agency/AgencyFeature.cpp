@@ -133,7 +133,7 @@ void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
       FATAL_ERROR_EXIT();
     }
   } else {
-    _poolSize = 1;
+    _poolSize = _size;
   }
 
   // Size needs to be odd
