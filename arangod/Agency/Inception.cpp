@@ -64,9 +64,6 @@ void Inception::run() {
   while (!this->isStopping()) {
     
     config_t config = _agent->config(); // get a copy of conf
-    if (config.poolComplete()) {
-      _agent->startConstituent();
-    }
 
     query_t out = std::make_shared<Builder>();
     out->openObject();
@@ -114,16 +111,17 @@ void Inception::run() {
         LOG_TOPIC(ERR, Logger::AGENCY) <<
           "Failed to find complete pool of agents. Giving up!";
       }
-      this->shutdown();
+//      this->shutdown();
     }
 
     if (config.poolComplete()) {
+      _agent->startConstituent();
       break;
     }
 
   }
 
-  this->shutdown();
+  //this->shutdown();
       
 }
 

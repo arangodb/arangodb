@@ -71,14 +71,14 @@ class Constituent : public arangodb::Thread {
   bool running() const;
 
   /// @brief Called by REST handler
-  bool vote(term_t, arangodb::consensus::id_t, index_t, term_t,
+  bool vote(term_t, std::string, index_t, term_t,
             bool appendEntries = false);
 
   /// @brief My daily business
   void run() override final;
 
   /// @brief Who is leading
-  arangodb::consensus::id_t leaderID() const;
+  std::string leaderID() const;
 
   /// @brief Configuration
   config_t const& config() const;
@@ -102,14 +102,14 @@ class Constituent : public arangodb::Thread {
   std::vector<std::string> const& endpoints() const;
 
   /// @brief Endpoint of agent with id
-  std::string endpoint(arangodb::consensus::id_t) const;
+  std::string endpoint(std::string) const;
 
   /// @brief Run for leadership
   void candidate();
 
   /// @brief Become leader
-  void lead(std::map<arangodb::consensus::id_t,bool> const& =
-            std::map<arangodb::consensus::id_t,bool>());
+  void lead(std::map<std::string,bool> const& =
+            std::map<std::string,bool>());
 
   /// @brief Call for vote (by leader or candidates after timeout)
   void callElection();
@@ -129,12 +129,12 @@ class Constituent : public arangodb::Thread {
   term_t _term;                /**< @brief term number */
   std::atomic<bool> _cast;     /**< @brief cast a vote this term */
 
-  arangodb::consensus::id_t _leaderID; /**< @brief Current leader */
-  arangodb::consensus::id_t _id;       /**< @brief My own id */
+  std::string _leaderID; /**< @brief Current leader */
+  std::string _id;       /**< @brief My own id */
 
   role_t _role;                        /**< @brief My role */
   Agent* _agent;                       /**< @brief My boss */
-  arangodb::consensus::id_t _votedFor;
+  std::string _votedFor;
 
   arangodb::basics::ConditionVariable _cv;  // agency callbacks
   mutable arangodb::Mutex _castLock;

@@ -49,8 +49,8 @@ using namespace arangodb::rest;
 using namespace arangodb::velocypack;
 using namespace arangodb;
 
-static const arangodb::consensus::id_t NO_LEADER = "";
-//  (std::numeric_limits<arangodb::consensus::id_t>::max)();
+static const std::string NO_LEADER = "";
+//  (std::numeric_limits<std::string>::max)();
 
 /// Raft role names for display purposes 
 const std::vector<std::string> roleStr ({"Follower", "Candidate", "Leader"});
@@ -97,7 +97,8 @@ bool Constituent::waitForSync() const {
 
 /// Random sleep times in election process
 duration_t Constituent::sleepFor(double min_t, double max_t) {
-  int32_t left = static_cast<int32_t>(1000.0 * min_t), right = static_cast<int32_t>(1000.0 * max_t);
+  int32_t left = static_cast<int32_t>(1000.0 * min_t),
+    right = static_cast<int32_t>(1000.0 * max_t);
   return duration_t(
     static_cast<long>(RandomGenerator::interval(left, right)));
 }
@@ -182,7 +183,7 @@ void Constituent::follow(term_t t) {
 
 
 /// Become leader
-void Constituent::lead(std::map<arangodb::consensus::id_t, bool> const& votes) {
+void Constituent::lead(std::map<std::string, bool> const& votes) {
 
   {
     MUTEX_LOCKER(guard, _castLock);
@@ -246,7 +247,7 @@ bool Constituent::running() const {
 
 
 /// Get current leader's id
-arangodb::consensus::id_t Constituent::leaderID() const {
+std::string Constituent::leaderID() const {
   return _leaderID;
 }
 
@@ -258,18 +259,18 @@ size_t Constituent::size() const {
 
 
 /// Get endpoint to an id
-std::string Constituent::endpoint(arangodb::consensus::id_t id) const {
+std::string Constituent::endpoint(std::string id) const {
   return _agent->config().poolAt(id);
 }
 
 
 /// @brief Vote
-bool Constituent::vote(term_t term, arangodb::consensus::id_t id,
+bool Constituent::vote(term_t term, std::string id,
                        index_t prevLogIndex, term_t prevLogTerm,
                        bool appendEntries) {
 
   term_t t = 0;
-  arangodb::consensus::id_t lid = 0;
+  std::string lid;
 
   {
     MUTEX_LOCKER(guard, _castLock);
@@ -306,7 +307,7 @@ bool Constituent::vote(term_t term, arangodb::consensus::id_t id,
 
 /// @brief Call to election
 void Constituent::callElection() {
-  std::map<arangodb::consensus::id_t,bool> votes;
+  std::map<std::string,bool> votes;
   std::vector<std::string> active = _agent->config().active(); // Get copy of active
 
   votes[_id] = true;  // vote for myself
@@ -316,7 +317,7 @@ void Constituent::callElection() {
   this->term(_term + 1);  // raise my term
 
   std::string body;
-  std::map<arangodb::consensus::id_t,OperationID> operationIDs;
+  std::map<std::string,OperationID> operationIDs;
   std::stringstream path;
 
   path << "/_api/agency_priv/requestVote?term=" << _term
@@ -379,7 +380,7 @@ void Constituent::callElection() {
   size_t yea = 0;
   for (auto const& i : votes) {
     if (i.second) {
-      yea++;
+      ++yea;
     }
   }
 
@@ -418,6 +419,8 @@ bool Constituent::start(TRI_vocbase_t* vocbase,
 
 /// Get persisted information and run election process
 void Constituent::run() {
+
+  LOG(WARN) << "Starting constituent";
   
   TRI_ASSERT(_vocbase != nullptr);
   auto bindVars = std::make_shared<VPackBuilder>();
