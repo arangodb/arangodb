@@ -209,7 +209,7 @@ inline HttpHandler::status_t RestAgencyHandler::handleRead() {
     try {
       query = _request->toVelocyPack(&options);
     } catch (std::exception const& e) {
-      LOG_TOPIC(WARN, Logger::AGENCY) << e.what() << " " << __FILE__ << __LINE__;
+      LOG_TOPIC(DEBUG, Logger::AGENCY) << e.what() << " " << __FILE__ << __LINE__;
       generateError(GeneralResponse::ResponseCode::BAD, 400);
       return HttpHandler::status_t(HANDLER_DONE);
     }
@@ -242,7 +242,7 @@ HttpHandler::status_t RestAgencyHandler::handleConfig() {
   Builder body;
   body.add(VPackValue(VPackValueType::Object));
   body.add("configuration", _agent->config().toBuilder()->slice());
-  body.add("lastCommited", Value(_agent->lastCommitted()));
+  body.add("lastCommitted", Value(_agent->lastCommitted()));
   body.add("leaderId", Value(_agent->leaderID()));
   body.add("term", Value(_agent->term()));
   body.close();
