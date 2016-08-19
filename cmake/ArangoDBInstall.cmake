@@ -35,11 +35,6 @@ include(InstallMacros)
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/Documentation/man/
   DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/man)
 
-get_cmake_property(_variableNames VARIABLES)
-foreach (_variableName ${_variableNames})
-    message(STATUS "${_variableName}=${${_variableName}}")
-endforeach()
-
 install_readme(README README.txt)
 install_readme(README.md README.md)
 install_readme(LICENSE LICENSE.txt)
