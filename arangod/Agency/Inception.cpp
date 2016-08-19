@@ -56,7 +56,7 @@ void Inception::run() {
   TRI_ASSERT(_agent != nullptr);
 
   auto s = std::chrono::system_clock::now();
-  std::chrono::seconds timeout(10);
+  std::chrono::seconds timeout(5);
   size_t i = 0;
   bool cs = false;
   while (!this->isStopping()) {
@@ -113,17 +113,11 @@ void Inception::run() {
     }
 
     if (config.poolComplete()) {
-      if (!cs) {
-        _agent->startConstituent();
-        cs = true;
-      }
-      
+      _agent->startConstituent();
+      cs = true;
     }
 
   }
-
-      shutdown();
-
 
 }
 
