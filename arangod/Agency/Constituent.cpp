@@ -454,7 +454,7 @@ void Constituent::run() {
 
   std::vector<std::string> act = _agent->config().active();
   while(!this->isStopping() &&
-        ((find(act.begin(), act.end(), _id) - act.begin()) >= size())) {
+        ((size_t)(find(act.begin(), act.end(), _id) - act.begin()) >= size())) {
     std::this_thread::sleep_for(std::chrono::milliseconds(1000));
   }
 
