@@ -41,6 +41,13 @@ module.exports =
       return createSwaggerRouteHandler(this.mount, opts);
     }
 
+    createDocumentationRouter (opts) {
+      const createRouter = require('@arangodb/foxx/router');
+      const router = createRouter();
+      router.get('/*', createSwaggerRouteHandler(this.mount, opts));
+      return router;
+    }
+
     use (path, router, name) {
       return this.service.router.use(path, router, name);
     }
