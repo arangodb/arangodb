@@ -136,7 +136,7 @@ class LogicalCollection {
 
   // Update this collection.
   void increaseVersion();
-  int update(arangodb::velocypack::Slice const&, bool, TRI_vocbase_t const*);
+  int update(arangodb::velocypack::Slice const&, bool);
   int update(VocbaseCollectionInfo const&);
 
   PhysicalCollection* getPhysical() const;
@@ -170,8 +170,8 @@ class LogicalCollection {
   bool _doCompact;
   bool const _isSystem;
   bool const _isVolatile;
-  bool const _waitForSync;
-  TRI_voc_size_t const _journalSize;
+  bool _waitForSync;
+  TRI_voc_size_t _journalSize;
 
   // SECTION: Key Options
   // TODO Really VPack?
@@ -179,7 +179,7 @@ class LogicalCollection {
       _keyOptions;  // options for key creation
 
   // SECTION: Indexes
-  uint32_t const _indexBuckets;
+  uint32_t _indexBuckets;
 
   // TODO Really VPack?
   std::shared_ptr<arangodb::velocypack::Buffer<uint8_t> const>

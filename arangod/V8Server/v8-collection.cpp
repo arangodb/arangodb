@@ -1266,7 +1266,7 @@ static void JS_PropertiesVocbaseCol(
           TRI_V8_THROW_EXCEPTION_PARAMETER(
               "indexBuckets must be a two-power between 1 and 1024");
         }
-        int res = info->update(slice, false, collection->vocbase());
+        int res = info->update(slice, false);
 
         if (res != TRI_ERROR_NO_ERROR) {
           TRI_V8_THROW_EXCEPTION(res);

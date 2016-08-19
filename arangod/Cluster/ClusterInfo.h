@@ -365,7 +365,7 @@ class ClusterInfo {
 
   int setCollectionPropertiesCoordinator(std::string const& databaseName,
                                          std::string const& collectionID,
-                                         VocbaseCollectionInfo const*);
+                                         LogicalCollection const*);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief set collection status in coordinator

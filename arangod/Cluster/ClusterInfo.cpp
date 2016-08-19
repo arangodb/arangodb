@@ -1180,7 +1180,7 @@ int ClusterInfo::dropCollectionCoordinator(std::string const& databaseName,
 
 int ClusterInfo::setCollectionPropertiesCoordinator(
     std::string const& databaseName, std::string const& collectionID,
-    VocbaseCollectionInfo const* info) {
+    LogicalCollection const* info) {
 
   AgencyComm ac;
   AgencyCommResult res;
@@ -1218,7 +1218,7 @@ int ClusterInfo::setCollectionPropertiesCoordinator(
       }
     }
     copy.add("doCompact", VPackValue(info->doCompact()));
-    copy.add("journalSize", VPackValue(info->maximalSize()));
+    copy.add("journalSize", VPackValue(info->journalSize()));
     copy.add("waitForSync", VPackValue(info->waitForSync()));
     copy.add("indexBuckets", VPackValue(info->indexBuckets()));
   } catch (...) {

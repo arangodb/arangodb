@@ -29,6 +29,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Cluster/ServerState.h"
+#include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "VocBase/collection.h"
@@ -509,11 +510,47 @@ void LogicalCollection::increaseVersion() {
   ++_internalVersion;
 }
 
-int LogicalCollection::update(VPackSlice const&, bool, TRI_vocbase_t const*) {
-  return TRI_ERROR_NOT_IMPLEMENTED;
-  /*
-  return ClusterInfo::instance()->setCollectionPropertiesCoordinator(
-                databaseName, StringUtils::itoa(collection->_cid), this);
-                */
+int LogicalCollection::update(VPackSlice const& slice, bool preferDefaults) {
+  // the following collection properties are intentionally not updated as
+  // updating
+  // them would be very complicated:
+  // - _cid
+  // - _name
+  // - _type
+  // - _isSystem
+  // - _isVolatile
+  // ... probably a few others missing here ...
 
+  if (preferDefaults) {
+    _doCompact = Helper::getBooleanValue(slice, "doCompact", true);
+    _waitForSync = Helper::getBooleanValue(slice, "waitForSync", false);
+    if (slice.hasKey("journalSize")) {
+      _journalSize = Helper::getNumericValue<TRI_voc_size_t>(
+          slice, "journalSize", TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE);
+    } else {
+      _journalSize = Helper::getNumericValue<TRI_voc_size_t>(
+          slice, "maximalSize", TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE);
+    }
+    _indexBuckets = Helper::getNumericValue<uint32_t>(
+        slice, "indexBuckets", DatabaseFeature::DefaultIndexBuckets);
+  } else {
+    _doCompact = Helper::getBooleanValue(slice, "doCompact", _doCompact);
+    _waitForSync = Helper::getBooleanValue(slice, "waitForSync", _waitForSync);
+    if (slice.hasKey("journalSize")) {
+      _journalSize = Helper::getNumericValue<TRI_voc_size_t>(
+          slice, "journalSize", _journalSize);
+    } else {
+      _journalSize = Helper::getNumericValue<TRI_voc_size_t>(
+          slice, "maximalSize", _journalSize);
+    }
+    _indexBuckets =
+        Helper::getNumericValue<uint32_t>(slice, "indexBuckets", _indexBuckets);
+  }
+  if (!_isLocal) {
+    // We need to inform the cluster as well
+    return ClusterInfo::instance()->setCollectionPropertiesCoordinator(
+        _vocbase->name(), cid_as_string(), this);
+  }
+
+  return TRI_ERROR_NO_ERROR;
 }
