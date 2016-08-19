@@ -32,7 +32,7 @@ class LogicalCollection;
 
 class MMFilesCollection : public PhysicalCollection {
  public:
-  MMFilesCollection(LogicalCollection*);
+  explicit MMFilesCollection(LogicalCollection*);
   ~MMFilesCollection();
 
   TRI_voc_rid_t revision() const override;
