@@ -28,7 +28,7 @@
 using namespace arangodb::consensus;
 using namespace arangodb::velocypack;
 
-AgentCallback::AgentCallback() : _agent(0), _last(0), _slaveID(0) {}
+AgentCallback::AgentCallback() : _agent(0), _last(0) {}
 
 AgentCallback::AgentCallback(
   Agent* agent, std::string const& slaveID, index_t last)

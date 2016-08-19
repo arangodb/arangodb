@@ -39,6 +39,7 @@ AgencyFeature::AgencyFeature(application_features::ApplicationServer* server)
     : ApplicationFeature(server, "Agency"),
       _activated(false),
       _size(1),
+      _poolSize(1),
       _minElectionTimeout(0.5),
       _maxElectionTimeout(2.5),
       _supervision(false),
