@@ -1630,7 +1630,7 @@ function ahuacatlFunctionsTestSuite () {
         { value: "foobaz", lookup: { foobar: "bar", foobaz: null }, expected: null, def: "foobaz" },
         { value: "foobaz", lookup: { foobar: "bar", foobaz: [ 1, 2, 3 ] }, expected: [ 1, 2, 3 ], def: null },
         { value: "foobaz", lookup: { foobar: "bar" }, expected: null, def: null },
-        { value: "foobaz", lookup: { }, expected: "FOXX", def: "FOXX" },
+        { value: "foobaz", lookup: { }, expected: "Foxx", def: "Foxx" },
         { value: "foobaz", lookup: { foobar: "bar", foobaz: { thefoxx: "is great" } }, expected: { thefoxx: "is great" }, def: null },
         { value: "one", lookup: { one: "two", two: "three", three: "four" }, expected: "two", def: "foo" },
         { value: null, lookup: { "foo": "one", " ": "bar", "empty": 3 }, expected: "bla", def: "bla" },
