@@ -40,6 +40,8 @@
 using namespace arangodb;
 using Helper = arangodb::basics::VelocyPackHelper;
 
+namespace {
+
 template <typename T>
 static T ReadNumericValue(VPackSlice info, std::string const& name, T def) {
   if (!info.isObject()) {
@@ -105,6 +107,8 @@ static int GetObjectLength(VPackSlice info, std::string const& name, int def) {
     return def;
   }
   return static_cast<int>(info.length());
+}
+
 }
 
 // @brief Constructor used in DBServer/SingleServer case.
