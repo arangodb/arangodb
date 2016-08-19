@@ -62,7 +62,6 @@ for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
         --agency.activate true \
         --agency.endpoint tcp://localhost:$BASE \
         --agency.size $NRAGENTS \
-        --agency.pool-size $POOLSZ \
         --agency.supervision true \
         --agency.supervision-frequency $SFRE \
         --agency.wait-for-sync true \

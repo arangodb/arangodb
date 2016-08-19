@@ -1428,6 +1428,7 @@ function startInstanceAgency (instanceInfo, protocol, options,
     let instanceArgs = _.clone(addArgs);
     instanceArgs['agency.activate'] = 'true';
     instanceArgs['agency.size'] = String(N);
+    instanceArgs['agency.pool-size'] = String(N);
     instanceArgs['agency.wait-for-sync'] = String(wfs);
     instanceArgs['agency.supervision'] = 'true';
     instanceArgs['database.directory'] = dataDir + String(i);
@@ -1449,6 +1450,7 @@ function startInstanceAgency (instanceInfo, protocol, options,
     fs.makeDirectoryRecursive(dir);
 
     instanceInfo.arangods.push(startArango(protocol, options, instanceArgs, rootDir, 'agent'));
+    print(instanceInfo);
   }
 
   instanceInfo.endpoint = instanceInfo.arangods[instanceInfo.arangods.length - 1].endpoint;
