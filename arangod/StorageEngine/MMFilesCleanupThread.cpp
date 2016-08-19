@@ -21,7 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "CleanupThread.h"
+#include "MMFilesCleanupThread.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
@@ -39,18 +39,18 @@
 
 using namespace arangodb;
   
-CleanupThread::CleanupThread(TRI_vocbase_t* vocbase) 
-    : Thread("Cleanup"), _vocbase(vocbase) {}
+MMFilesCleanupThread::MMFilesCleanupThread(TRI_vocbase_t* vocbase) 
+    : Thread("MMFilesCleanup"), _vocbase(vocbase) {}
 
-CleanupThread::~CleanupThread() { shutdown(); }
+MMFilesCleanupThread::~MMFilesCleanupThread() { shutdown(); }
 
-void CleanupThread::signal() {
+void MMFilesCleanupThread::signal() {
   CONDITION_LOCKER(locker, _condition);
   locker.signal();
 }
 
 /// @brief cleanup event loop
-void CleanupThread::run() {
+void MMFilesCleanupThread::run() {
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   uint64_t iterations = 0;
 
@@ -136,7 +136,7 @@ void CleanupThread::run() {
 }
 
 /// @brief clean up cursors
-void CleanupThread::cleanupCursors(bool force) {
+void MMFilesCleanupThread::cleanupCursors(bool force) {
   // clean unused cursors
   auto cursors = _vocbase->cursorRepository();
   TRI_ASSERT(cursors != nullptr);
@@ -149,8 +149,8 @@ void CleanupThread::cleanupCursors(bool force) {
 }
 
 /// @brief checks all datafiles of a collection
-void CleanupThread::cleanupCollection(arangodb::LogicalCollection* collection,
-                                      TRI_collection_t* document) {
+void MMFilesCleanupThread::cleanupCollection(arangodb::LogicalCollection* collection,
+                                             TRI_collection_t* document) {
   // unload operations can normally only be executed when a collection is fully
   // garbage collected
   bool unloadChecked = false;

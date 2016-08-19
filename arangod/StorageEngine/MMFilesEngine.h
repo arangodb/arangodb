@@ -31,8 +31,8 @@
 #include <velocypack/Builder.h>
 
 namespace arangodb {
-class CleanupThread;
-class CompactorThread;
+class MMFilesCleanupThread;
+class MMFilesCompactorThread;
 
 /// @brief collection file structure
 struct MMFilesEngineCollectionFiles {
@@ -69,6 +69,9 @@ class MMFilesEngine final : public StorageEngine {
 
   // called when recovery is finished
   void recoveryDone(TRI_vocbase_t* vocbase) override;
+
+  // create storage-engine specific collection
+  PhysicalCollection* createPhysicalCollection(LogicalCollection*) override;
 
   // inventory functionality
   // -----------------------
@@ -350,9 +353,9 @@ class MMFilesEngine final : public StorageEngine {
   // lock for threads
   arangodb::Mutex _threadsLock;
   // per-database compactor threads, protected by _threadsLock
-  std::unordered_map<TRI_vocbase_t*, CompactorThread*> _compactorThreads;
+  std::unordered_map<TRI_vocbase_t*, MMFilesCompactorThread*> _compactorThreads;
   // per-database cleanup threads, protected by _threadsLock
-  std::unordered_map<TRI_vocbase_t*, CleanupThread*> _cleanupThreads;
+  std::unordered_map<TRI_vocbase_t*, MMFilesCleanupThread*> _cleanupThreads;
 };
 
 }

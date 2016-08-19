@@ -33,6 +33,8 @@
 #include <velocypack/Slice.h>
 
 namespace arangodb {
+class LogicalCollection;
+class PhysicalCollection;
 class VocbaseCollectionInfo;
 
 class StorageEngine : public application_features::ApplicationFeature {
@@ -57,13 +59,18 @@ class StorageEngine : public application_features::ApplicationFeature {
   virtual void start() {}
   virtual void stop() {}
   virtual void recoveryDone(TRI_vocbase_t* vocbase) {} 
+  
+  
+  // create storage-engine specific collection
+  virtual PhysicalCollection* createPhysicalCollection(LogicalCollection*) = 0;
+  
 
   // status functionality
   // --------------------
 
   // return the name of the storage engine
   char const* typeName() const { return _typeName.c_str(); }
-  
+
   // inventory functionality
   // -----------------------
 

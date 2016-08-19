@@ -18,31 +18,25 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
+/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_VOCBASE_PHYSICAL_COLLECTION_H
-#define ARANGOD_VOCBASE_PHYSICAL_COLLECTION_H 1
+#include "MMFilesCollection.h"
 
-#include "Basics/Common.h"
-#include "VocBase/voc-types.h"
+using namespace arangodb;
 
-namespace arangodb {
-class PhysicalCollection {
- protected:
-  PhysicalCollection() {}
+MMFilesCollection::MMFilesCollection(LogicalCollection* collection) 
+    : PhysicalCollection() {}
 
- public:
-  virtual ~PhysicalCollection() = default;
-
-  virtual TRI_voc_rid_t revision() const = 0;
+MMFilesCollection::~MMFilesCollection() {}
   
-  // Used for Transaction rollback
-  virtual void setRevision(TRI_voc_rid_t revision, bool force) = 0;
-  
-  virtual int64_t initialCount() const = 0;
-};
+TRI_voc_rid_t MMFilesCollection::revision() const { 
+  return 0; 
+}
 
-} // namespace arangodb
+void MMFilesCollection::setRevision(TRI_voc_rid_t revision, bool force) {
+}
 
-#endif
+int64_t MMFilesCollection::initialCount() const { 
+  return 0; 
+}

@@ -32,6 +32,7 @@
 #include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
+#include "VocBase/PhysicalCollection.h"
 #include "VocBase/collection.h"
 
 #include <velocypack/Iterator.h>
@@ -138,11 +139,12 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
       _allowUserKeys(true),
       _shardIds(new ShardMap()),
       _vocbase(vocbase),
-      // END OF ARBITRARY
       _path(path),
       _physical(nullptr),
       _collection(nullptr),
-      _lock() {}
+      _lock() {
+  createPhysical();
+}
 
 /// @brief This the "copy" constructor used in the cluster
 ///        it is required to create objects that survive plan
@@ -151,29 +153,30 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
 LogicalCollection::LogicalCollection(
     std::shared_ptr<LogicalCollection> const& other) 
 : _internalVersion(0),
-  _cid(other->_cid),
-  _planId(other->_planId),
-  _type(other->_type),
-  _name(other->_name),
-  _status(other->_status),
+  _cid(other->cid()),
+  _planId(other->planId()),
+  _type(other->type()),
+  _name(other->name()),
+  _status(other->status()),
   _isLocal(false),
   _isDeleted(other->_isDeleted),
-  _doCompact(other->_doCompact),
-  _isSystem(other->_isSystem),
-  _isVolatile(other->_isVolatile),
-  _waitForSync(other->_waitForSync),
-  _journalSize(other->_journalSize),
+  _doCompact(other->doCompact()),
+  _isSystem(other->isSystem()),
+  _isVolatile(other->isVolatile()),
+  _waitForSync(other->waitForSync()),
+  _journalSize(other->journalSize()),
   _keyOptions(nullptr), // Not needed
-  _indexBuckets(other->_indexBuckets),
+  _indexBuckets(other->indexBuckets()),
   _indexes(nullptr), // Not needed
-  _replicationFactor(other->_replicationFactor),
-  _numberOfShards(other->_numberOfShards),
-  _allowUserKeys(other->_allowUserKeys),
+  _replicationFactor(other->replicationFactor()),
+  _numberOfShards(other->numberOfShards()),
+  _allowUserKeys(other->allowUserKeys()),
   _shardIds(new ShardMap()), // Not needed
-  _vocbase(other->_vocbase),
+  _vocbase(other->vocbase()),
   _physical(nullptr),
   _collection(nullptr),
   _lock() {
+  createPhysical();
 }
 
 // @brief Constructor used in coordinator case.
@@ -231,10 +234,12 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase, VPackSlice info)
       }
     }
   }
+  
+  createPhysical();
 }
 
 LogicalCollection::~LogicalCollection() {
-  // TODO Do we have to free _physical
+  delete _physical;
 }
 
 size_t LogicalCollection::journalSize() const {
@@ -298,7 +303,7 @@ TRI_vocbase_col_status_e LogicalCollection::tryFetchStatus(bool& didFetch) {
 }
 
 /// @brief returns a translation of a collection status
-std::string const LogicalCollection::statusString() {
+std::string LogicalCollection::statusString() {
   READ_LOCKER(readLocker, _lock);
   switch (_status) {
     case TRI_VOC_COL_STATUS_UNLOADED:
@@ -362,7 +367,6 @@ VPackSlice LogicalCollection::getIndexes() const {
 }
 
 // SECTION: Replication
-
 int LogicalCollection::replicationFactor() const {
   return _replicationFactor;
 }
@@ -558,3 +562,13 @@ int LogicalCollection::update(VPackSlice const& slice, bool preferDefaults) {
 
   return TRI_ERROR_NO_ERROR;
 }
+
+PhysicalCollection* LogicalCollection::createPhysical() {
+  TRI_ASSERT(_physical == nullptr);
+  
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  _physical = engine->createPhysicalCollection(this);
+
+  return _physical;
+}
+

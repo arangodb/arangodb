@@ -81,7 +81,7 @@ class LogicalCollection {
   /// the boolean value will be set to true if the lock could be acquired
   /// if the boolean is false, the return value is always TRI_VOC_COL_STATUS_CORRUPTED 
   TRI_vocbase_col_status_e tryFetchStatus(bool&);
-  std::string const statusString();
+  std::string statusString();
 
   // TODO this should be part of physical collection!
   size_t journalSize() const;
@@ -139,7 +139,13 @@ class LogicalCollection {
   int update(arangodb::velocypack::Slice const&, bool);
   int update(VocbaseCollectionInfo const&);
 
-  PhysicalCollection* getPhysical() const;
+  PhysicalCollection* getPhysical() const {
+    TRI_ASSERT(_physical != nullptr);
+    return _physical;
+  }
+
+ private:
+  PhysicalCollection* createPhysical();
 
  private:
   // SECTION: Private variables

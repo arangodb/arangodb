@@ -50,6 +50,9 @@ class OtherEngine final : public StorageEngine {
   // the storage engine must not start any threads here or write any files
   void prepare() override;
   
+  // create storage-engine specific collection
+  PhysicalCollection* createPhysicalCollection(LogicalCollection*) override;
+  
   // inventory functionality
   // -----------------------
 

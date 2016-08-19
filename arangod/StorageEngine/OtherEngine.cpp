@@ -50,6 +50,11 @@ void OtherEngine::prepare() {
   TRI_ASSERT(EngineSelectorFeature::ENGINE = this);
 }
   
+// create storage-engine specific collection
+PhysicalCollection* OtherEngine::createPhysicalCollection(LogicalCollection*) {
+  return nullptr;
+}
+  
 // fill the Builder object with an array of databases that were detected
 // by the storage engine. this method must sort out databases that were not
 // fully created (see "createDatabase" below). called at server start only
