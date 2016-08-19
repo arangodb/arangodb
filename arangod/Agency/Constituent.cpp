@@ -394,6 +394,13 @@ void Constituent::callElection() {
 }
 
 
+void Constituent::update(std::string const& leaderID, term_t t) {
+  MUTEX_LOCKER(guard, _castLock);
+  _leaderID = leaderID;
+  _term = t;
+}
+
+
 /// Start clean shutdown
 void Constituent::beginShutdown() {
 
@@ -420,7 +427,8 @@ bool Constituent::start(TRI_vocbase_t* vocbase,
 /// Get persisted information and run election process
 void Constituent::run() {
 
-  LOG(WARN) << "Starting constituent";
+  LOG_TOPIC(DEBUG, Logger::AGENCY)
+    << "Pool complete. Starting constituent personality";
   _id = _agent->config().id();
 
   TRI_ASSERT(_vocbase != nullptr);
@@ -455,7 +463,7 @@ void Constituent::run() {
   std::vector<std::string> act = _agent->config().active();
   while(!this->isStopping() &&
         ((size_t)(find(act.begin(), act.end(), _id) - act.begin()) >= size())) {
-    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(5000));
   }
 
   if (size() == 1) {

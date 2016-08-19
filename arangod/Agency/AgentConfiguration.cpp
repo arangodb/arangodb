@@ -230,7 +230,7 @@ bool config_t::poolComplete() const {
 }
 
 
-query_t const config_t::activeToBuilder () const {
+query_t config_t::activeToBuilder () const {
   query_t ret = std::make_shared<arangodb::velocypack::Builder>();
   ret->openArray();
   {
@@ -243,7 +243,7 @@ query_t const config_t::activeToBuilder () const {
   return ret;
 }
 
-query_t const config_t::poolToBuilder () const {
+query_t config_t::poolToBuilder () const {
   query_t ret = std::make_shared<arangodb::velocypack::Builder>();
   ret->openObject();
   {
@@ -254,6 +254,26 @@ query_t const config_t::poolToBuilder () const {
   }
   ret->close();
   return ret;
+}
+
+
+void config_t::update(query_t const& message) {
+  VPackSlice slice = message->slice();
+  std::map<std::string,std::string> pool;
+  for (auto const& p : VPackObjectIterator(message->slice().get("pool"))) {
+    pool[p.key.copyString()] = p.value.copyString();
+  }
+  std::vector<std::string> active;
+  for (auto const& a : VPackArrayIterator(message->slice().get("active"))) {
+    active.push_back(a.copyString());
+  }
+  WRITE_LOCKER(writeLocker, _lock);
+  if (pool != _pool) {
+    _pool = pool;
+  }
+  if (active != _active) {
+    _active = active;
+  }
 }
 
 
@@ -347,7 +367,7 @@ void config_t::override(VPackSlice const& conf) {
 
   
 /// @brief vpack representation
-query_t const config_t::toBuilder() const {
+query_t config_t::toBuilder() const {
   query_t ret = std::make_shared<arangodb::velocypack::Builder>();
   ret->openObject();
   {
@@ -519,7 +539,7 @@ bool config_t::merge(VPackSlice const& conf) {
       _compactionStepSize = conf.get(compactionStepSizeStr).getUInt();
       ss << _compactionStepSize << " (persisted)";
     } else {
-      _compactionStepSize = 2.5;
+      _compactionStepSize = 1000;
       ss << _compactionStepSize << " (default)";
     }
   } else {
