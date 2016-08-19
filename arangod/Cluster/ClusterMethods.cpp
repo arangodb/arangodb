@@ -31,6 +31,7 @@
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterInfo.h"
 #include "Indexes/Index.h"
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/Traverser.h"
 #include "VocBase/ticks.h"
 
@@ -223,7 +224,7 @@ static void extractErrorCodes(ClusterCommResult const& res,
 static int distributeBabyOnShards(
     std::unordered_map<ShardID, std::vector<VPackValueLength>>& shardMap,
     ClusterInfo* ci, std::string const& collid,
-    std::shared_ptr<CollectionInfo> collinfo,
+    std::shared_ptr<LogicalCollection> collinfo,
     std::vector<std::pair<ShardID, VPackValueLength>>& reverseMapping,
     VPackSlice const node, VPackValueLength const index) {
   // Now find the responsible shard:
@@ -264,7 +265,7 @@ static int distributeBabyOnShards(
                        std::vector<std::pair<VPackValueLength, std::string>>>&
         shardMap,
     ClusterInfo* ci, std::string const& collid,
-    std::shared_ptr<CollectionInfo> collinfo,
+    std::shared_ptr<LogicalCollection> collinfo,
     std::vector<std::pair<ShardID, VPackValueLength>>& reverseMapping,
     VPackSlice const node, VPackValueLength const index) {
   ShardID shardID;
@@ -424,7 +425,13 @@ bool shardKeysChanged(std::string const& dbname, std::string const& collname,
   }
 
   ClusterInfo* ci = ClusterInfo::instance();
-  std::shared_ptr<CollectionInfo> c = ci->getCollection(dbname, collname);
+  std::shared_ptr<LogicalCollection> c = ci->getCollection(dbname, collname);
+
+  TRI_ASSERT(c != nullptr);
+  if (c == nullptr) {
+    // Default behaviour if shardKeys is empty
+    return false;
+  }
   std::vector<std::string> const& shardKeys = c->shardKeys();
 
   for (size_t i = 0; i < shardKeys.size(); ++i) {
@@ -475,10 +482,10 @@ int revisionOnCoordinator(std::string const& dbname,
   ClusterComm* cc = ClusterComm::instance();
 
   // First determine the collection ID from the name:
-  std::shared_ptr<CollectionInfo> collinfo =
+  std::shared_ptr<LogicalCollection> collinfo =
       ci->getCollection(dbname, collname);
 
-  if (collinfo->empty()) {
+  if (collinfo == nullptr) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
 
@@ -546,10 +553,10 @@ int figuresOnCoordinator(std::string const& dbname, std::string const& collname,
   ClusterComm* cc = ClusterComm::instance();
 
   // First determine the collection ID from the name:
-  std::shared_ptr<CollectionInfo> collinfo =
+  std::shared_ptr<LogicalCollection> collinfo =
       ci->getCollection(dbname, collname);
 
-  if (collinfo->empty()) {
+  if (collinfo == nullptr) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
 
@@ -654,10 +661,10 @@ int countOnCoordinator(std::string const& dbname, std::string const& collname,
   result = 0;
 
   // First determine the collection ID from the name:
-  std::shared_ptr<CollectionInfo> collinfo =
+  std::shared_ptr<LogicalCollection> collinfo =
       ci->getCollection(dbname, collname);
 
-  if (collinfo->empty()) {
+  if (collinfo == nullptr) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
 
@@ -722,14 +729,14 @@ int createDocumentOnCoordinator(
   ClusterComm* cc = ClusterComm::instance();
 
   // First determine the collection ID from the name:
-  std::shared_ptr<CollectionInfo> collinfo =
+  std::shared_ptr<LogicalCollection> collinfo =
       ci->getCollection(dbname, collname);
 
-  if (collinfo->empty()) {
+  if (collinfo == nullptr) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
 
-  std::string const collid = StringUtils::itoa(collinfo->id());
+  std::string const collid = collinfo->cid_as_string();
   std::unordered_map<
       ShardID, std::vector<std::pair<VPackValueLength, std::string>>> shardMap;
   std::vector<std::pair<ShardID, VPackValueLength>> reverseMapping;
@@ -854,13 +861,13 @@ int deleteDocumentOnCoordinator(
   ClusterComm* cc = ClusterComm::instance();
 
   // First determine the collection ID from the name:
-  std::shared_ptr<CollectionInfo> collinfo =
+  std::shared_ptr<LogicalCollection> collinfo =
       ci->getCollection(dbname, collname);
-  if (collinfo->empty()) {
+  if (collinfo == nullptr) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
   bool useDefaultSharding = collinfo->usesDefaultShardKeys();
-  std::string collid = StringUtils::itoa(collinfo->id());
+  std::string collid = collinfo->cid_as_string();
   bool useMultiple = slice.isArray();
 
   std::string const baseUrl =
@@ -1080,10 +1087,10 @@ int truncateCollectionOnCoordinator(std::string const& dbname,
   ClusterComm* cc = ClusterComm::instance();
 
   // First determine the collection ID from the name:
-  std::shared_ptr<CollectionInfo> collinfo =
+  std::shared_ptr<LogicalCollection> collinfo =
       ci->getCollection(dbname, collname);
 
-  if (collinfo->empty()) {
+  if (collinfo == nullptr) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
 
@@ -1135,12 +1142,12 @@ int getDocumentOnCoordinator(
   ClusterComm* cc = ClusterComm::instance();
 
   // First determine the collection ID from the name:
-  std::shared_ptr<CollectionInfo> collinfo =
+  std::shared_ptr<LogicalCollection> collinfo =
       ci->getCollection(dbname, collname);
-  if (collinfo->empty()) {
+  if (collinfo == nullptr) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
-  std::string collid = StringUtils::itoa(collinfo->id());
+  std::string collid = collinfo->cid_as_string();
 
   // If _key is the one and only sharding attribute, we can do this quickly,
   // because we can easily determine which shard is responsible for the
@@ -1386,13 +1393,13 @@ static void insertIntoShardMap(
   TRI_ASSERT(splitId.size() == 2);
 
   // First determine the collection ID from the name:
-  std::shared_ptr<CollectionInfo> collinfo =
+  std::shared_ptr<LogicalCollection> collinfo =
       ci->getCollection(dbname, splitId[0]);
-  if (collinfo->empty()) {
+  if (collinfo == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
                                    "Collection not found: " + splitId[0]);
   }
-  std::string collid = StringUtils::itoa(collinfo->id());
+  std::string collid = collinfo->cid_as_string();
   if (collinfo->usesDefaultShardKeys()) {
     // We only need add one resp. shard
     VPackBuilder partial;
@@ -1552,9 +1559,9 @@ int getFilteredEdgesOnCoordinator(
   ClusterComm* cc = ClusterComm::instance();
 
   // First determine the collection ID from the name:
-  std::shared_ptr<CollectionInfo> collinfo =
+  std::shared_ptr<LogicalCollection> collinfo =
       ci->getCollection(dbname, collname);
-  if (collinfo->empty()) {
+  if (collinfo == nullptr) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
 
@@ -1672,12 +1679,12 @@ int modifyDocumentOnCoordinator(
   ClusterComm* cc = ClusterComm::instance();
 
   // First determine the collection ID from the name:
-  std::shared_ptr<CollectionInfo> collinfo =
+  std::shared_ptr<LogicalCollection> collinfo =
       ci->getCollection(dbname, collname);
-  if (collinfo->empty()) {
+  if (collinfo == nullptr) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
-  std::string collid = StringUtils::itoa(collinfo->id());
+  std::string collid = collinfo->cid_as_string();
 
   // We have a fast path and a slow path. The fast path only asks one shard
   // to do the job and the slow path asks them all and expects to get

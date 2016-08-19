@@ -63,11 +63,11 @@ So this question boils down to 'Can I afford the additional effort or do I need 
 
 If you want to only traverse edges of a specific type, there are two ways to achieve this. The first would be
 an attribute in the edge document - i.e. `type`, where you specify a differentiator for the edge -
-i.e. `"friends"`, `"family"`, `"maried"` or `"workmates"`, so you can later `FILTER e.type = "friends"`
+i.e. `"friends"`, `"family"`, `"married"` or `"workmates"`, so you can later `FILTER e.type = "friends"`
 if you only want to follow the friend edges.
 
 Another way, which may be more efficient in some cases, is to use different edge collections for different
-types of edges, so you have `friend_eges`, `family_edges`, `maried_edges` and `workmate_edges` as collection names.
+types of edges, so you have `friend_eges`, `family_edges`, `married_edges` and `workmate_edges` as collection names.
 You can then configure several named graphs including a subset of the available edge and vertex collections -
 or you use anonymous graph queries, where you specify a list of edge collections to take into account in that query.
 To only follow friend edges, you would specify `friend_edges` as sole edge collection.
@@ -99,6 +99,8 @@ and [Arangorestore](../Administration/Arangorestore.md) to restore a backup into
 ArangoDB comes with a set of easily graspable graphs that are used to demonstrate the APIs.
 You can use the `add samples` tab in the `create graph` window in the webinterface, or load the module `@arangodb/graph-examples/example-graph` in arangosh and use it to create instances of these graphs in your ArangoDB.
 Once you've created them, you can [inspect them in the webinterface](../Administration/WebInterface/Graphs.md) - which was used to create the pictures below.
+
+You [can easily look into the innards of this script](https://github.com/arangodb/arangodb/blob/devel/js/common/modules/%40arangodb/graph-examples/example-graph.js) for reference about howto manage graphs programatically.
 
 !SUBSUBSECTION The Knows\_Graph
 

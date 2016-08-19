@@ -32,6 +32,7 @@
 #include "Utils/Cursor.h"
 #include "Utils/CursorRepository.h"
 #include "Utils/CollectionNameResolver.h"
+#include "VocBase/LogicalCollection.h"
 
 using namespace arangodb;
 using namespace arangodb::rest;

@@ -507,10 +507,6 @@ function analyzeServerCrash (arangod, options, checkStr) {
 // / @brief periodic checks whether spawned arangod processes are still alive
 // //////////////////////////////////////////////////////////////////////////////
 function checkArangoAlive (arangod, options) {
-  if (arangod.hasOwnProperty('exitStatus')) {
-    return false;
-  }
-
   const res = statusExternal(arangod.pid, false);
   const ret = res.status === 'RUNNING';
 
@@ -1430,8 +1426,9 @@ function startInstanceAgency (instanceInfo, protocol, options,
 
   for (let i = 0; i < N; i++) {
     let instanceArgs = _.clone(addArgs);
-    instanceArgs['agency.id'] = String(i);
+    instanceArgs['agency.activate'] = 'true';
     instanceArgs['agency.size'] = String(N);
+    instanceArgs['agency.pool-size'] = String(N);
     instanceArgs['agency.wait-for-sync'] = String(wfs);
     instanceArgs['agency.supervision'] = 'true';
     instanceArgs['database.directory'] = dataDir + String(i);
@@ -1446,8 +1443,6 @@ function startInstanceAgency (instanceInfo, protocol, options,
       });
       l.push('--agency.endpoint');
       l.push('tcp://127.0.0.1:' + port);
-      l.push('--agency.notify');
-      l.push('true');
 
       instanceArgs['flatCommands'] = l;
     }
@@ -1455,6 +1450,7 @@ function startInstanceAgency (instanceInfo, protocol, options,
     fs.makeDirectoryRecursive(dir);
 
     instanceInfo.arangods.push(startArango(protocol, options, instanceArgs, rootDir, 'agent'));
+
   }
 
   instanceInfo.endpoint = instanceInfo.arangods[instanceInfo.arangods.length - 1].endpoint;

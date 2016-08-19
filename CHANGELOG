@@ -38,6 +38,10 @@ devel
 
 * added iconv-lite and timezone modules
 
+* web interface now allows installing GitHub and zip services in legacy mode
+
+* added module.context.createDocumentationRouter to replace module.context.apiDocumentation
+
 
 v3.0.5 (XXXX-XX-XX)
 -------------------
@@ -50,6 +54,15 @@ v3.0.5 (XXXX-XX-XX)
 
 * fix SSL agency endpoint
 
+* Minimum RAFT timeout was one order of magnitude to short.
+
+* Optimized RAFT RPCs from leader to followers for efficiency.
+
+* Optimized RAFT RPC handling on followers with respect to compaction.
+
+* Fixed bug in handling of duplicates and overlapping logs
+
+* Fixed bug in supervision take over after leadership change.
 
 v3.0.4 (2016-08-01)
 -------------------

@@ -12,21 +12,6 @@ include_directories(.)
 if (USE_MAINTAINER_MODE AND NOT MSVC)
   add_custom_command(
     OUTPUT
-      ${CMAKE_SOURCE_DIR}/lib/JsonParser/json-parser.cpp
-    WORKING_DIRECTORY
-      ${CMAKE_SOURCE_DIR}
-    COMMAND
-      ${CMAKE_SOURCE_DIR}/utils/flex-c++.sh
-      ${FLEX_EXECUTABLE}
-      lib/JsonParser/json-parser.cpp
-      lib/JsonParser/json-parser.ll
-    MAIN_DEPENDENCY
-      ${CMAKE_SOURCE_DIR}/lib/JsonParser/json-parser.ll
-    VERBATIM
-  )
-  
-  add_custom_command(
-    OUTPUT
       ${CMAKE_SOURCE_DIR}/lib/V8/v8-json.cpp
     WORKING_DIRECTORY
       ${CMAKE_SOURCE_DIR}
@@ -142,7 +127,6 @@ add_library(${LIB_ARANGO} STATIC
   Basics/Exceptions.cpp
   Basics/FileUtils.cpp
   Basics/HybridLogicalClock.cpp
-  Basics/JsonHelper.cpp
   Basics/Mutex.cpp
   Basics/MutexLocker.cpp
   Basics/Nonce.cpp
@@ -190,7 +174,6 @@ add_library(${LIB_ARANGO} STATIC
   Endpoint/EndpointIpV4.cpp
   Endpoint/EndpointIpV6.cpp
   Endpoint/EndpointList.cpp
-  JsonParser/json-parser.cpp
   Logger/LogAppender.cpp
   Logger/LogAppenderFile.cpp
   Logger/LogAppenderSyslog.cpp

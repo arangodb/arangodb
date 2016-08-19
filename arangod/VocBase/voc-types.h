@@ -59,9 +59,6 @@ typedef TRI_voc_tick_t TRI_idx_iid_t;
 /// @brief crc type
 typedef uint32_t TRI_voc_crc_t;
 
-/// @brief collection storage type
-typedef uint32_t TRI_col_type_t;
-
 /// @brief server id type
 typedef uint64_t TRI_server_id_t;
 

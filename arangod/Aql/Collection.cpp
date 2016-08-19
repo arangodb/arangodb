@@ -29,6 +29,7 @@
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
 #include "VocBase/collection.h"
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/transaction.h"
 #include "VocBase/vocbase.h"
 
@@ -53,6 +54,13 @@ Collection::Collection(std::string const& name, TRI_vocbase_t* vocbase,
 
 /// @brief destroy a collection wrapper
 Collection::~Collection() {}
+
+
+/// @brief get the collection id
+TRI_voc_cid_t Collection::cid() const {
+  TRI_ASSERT(collection != nullptr);
+  return collection->cid();
+}
   
 /// @brief get the pointer to the document collection
 TRI_collection_t* Collection::documentCollection() const {
@@ -97,7 +105,7 @@ TRI_voc_cid_t Collection::getPlanId() const {
                                   vocbase->name().c_str(), name.c_str());
   }
 
-  return collectionInfo.get()->id();
+  return collectionInfo.get()->cid();
 }
 
 /// @brief returns the shard ids of a collection

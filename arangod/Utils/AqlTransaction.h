@@ -112,11 +112,7 @@ class AqlTransaction : public Transaction {
   /// @brief documentCollection
   //////////////////////////////////////////////////////////////////////////////
 
-  TRI_collection_t* documentCollection(TRI_voc_cid_t cid) {
-    TRI_transaction_collection_t* trxColl = this->trxCollection(cid);
-    TRI_ASSERT(trxColl != nullptr);
-    return trxColl->_collection->_collection;
-  }
+  TRI_collection_t* documentCollection(TRI_voc_cid_t cid);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief clone, used to make daughter transactions for parts of a

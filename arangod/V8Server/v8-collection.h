@@ -26,20 +26,17 @@
 
 #include "Basics/Common.h"
 #include "Utils/CollectionNameResolver.h"
-#include "v8-vocbase.h"
+#include "V8Server/v8-vocbase.h"
+
+namespace arangodb {
+class LogicalCollection;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief releases a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-void ReleaseCollection(TRI_vocbase_col_t const* collection);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief convert a collection info into a TRI_vocbase_col_t
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_vocbase_col_t* CoordinatorCollection(TRI_vocbase_t* vocbase,
-                                         arangodb::CollectionInfo const& ci);
+void ReleaseCollection(arangodb::LogicalCollection const* collection);
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief check if a name belongs to a collection
@@ -47,14 +44,12 @@ TRI_vocbase_col_t* CoordinatorCollection(TRI_vocbase_t* vocbase,
 
 bool EqualCollection(arangodb::CollectionNameResolver const* resolver,
                      std::string const& collectionName,
-                     TRI_vocbase_col_t const* collection);
+                     arangodb::LogicalCollection const* collection);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief wraps a TRI_vocbase_col_t
-////////////////////////////////////////////////////////////////////////////////
+/// @brief wraps a LogicalCollection
 
-v8::Handle<v8::Object> WrapCollection(v8::Isolate* isolate,
-                                      TRI_vocbase_col_t const* collection);
+v8::Handle<v8::Object> WrapCollection(
+    v8::Isolate* isolate, arangodb::LogicalCollection const* collection);
 
 void TRI_InitV8Collection(v8::Handle<v8::Context> context,
                           TRI_vocbase_t* vocbase, size_t const threadNumber,

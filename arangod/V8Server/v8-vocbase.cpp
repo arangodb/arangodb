@@ -74,6 +74,7 @@
 #include "V8Server/v8-statistics.h"
 #include "V8Server/v8-voccursor.h"
 #include "V8Server/v8-vocindex.h"
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/modes.h"
 #include "Wal/LogfileManager.h"
@@ -93,7 +94,7 @@ using namespace arangodb::rest;
 int32_t const WRP_VOCBASE_TYPE = 1;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief wrapped class for TRI_vocbase_col_t
+/// @brief wrapped class for LogicalCollection
 ///
 /// Layout:
 /// - SLOT_CLASS_TYPE
@@ -562,7 +563,7 @@ static void JS_WaitCollectorWal(
 
   std::string const name = TRI_ObjectToString(args[0]);
 
-  TRI_vocbase_col_t* col = vocbase->lookupCollection(name);
+  arangodb::LogicalCollection* col = vocbase->lookupCollection(name);
 
   if (col == nullptr) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
@@ -574,7 +575,7 @@ static void JS_WaitCollectorWal(
   }
 
   int res = arangodb::wal::LogfileManager::instance()->waitForCollectorQueue(
-      col->_cid, timeout);
+      col->cid(), timeout);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION(res);
@@ -1660,10 +1661,12 @@ static void JS_ThrowCollectionNotLoaded(
   v8::HandleScope scope(isolate);
 
   if (args.Length() == 0) {
-    bool value = TRI_GetThrowCollectionNotLoadedVocBase();
+    auto databaseFeature = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
+    bool const value = databaseFeature->throwCollectionNotLoadedError();
     TRI_V8_RETURN(v8::Boolean::New(isolate, value));
   } else if (args.Length() == 1) {
-    TRI_SetThrowCollectionNotLoadedVocBase(TRI_ObjectToBoolean(args[0]));
+    auto databaseFeature = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
+    databaseFeature->throwCollectionNotLoadedError(TRI_ObjectToBoolean(args[0]));
   } else {
     TRI_V8_THROW_EXCEPTION_USAGE("THROW_COLLECTION_NOT_LOADED(<value>)");
   }
@@ -1787,7 +1790,7 @@ static void MapGetVocBase(v8::Local<v8::String> const name,
     TRI_V8_RETURN(v8::Handle<v8::Value>());
   }
 
-  TRI_vocbase_col_t* collection = nullptr;
+  arangodb::LogicalCollection* collection = nullptr;
 
   // generate a name under which the cached property is stored
   std::string cacheKey(key, keyLength);
@@ -1831,30 +1834,13 @@ static void MapGetVocBase(v8::Local<v8::String> const name,
         cacheObject->GetRealNamedProperty(cacheName)->ToObject();
 
     collection =
-        TRI_UnwrapClass<TRI_vocbase_col_t>(value, WRP_VOCBASE_COL_TYPE);
+        TRI_UnwrapClass<arangodb::LogicalCollection>(value, WRP_VOCBASE_COL_TYPE);
 
     // check if the collection is from the same database
-    if (collection != nullptr && collection->_vocbase == vocbase) {
-      bool lock = true;
-      auto ctx = static_cast<arangodb::V8TransactionContext*>(
-          v8g->_transactionContext);
-      if (ctx != nullptr && ctx->getParentTransaction() != nullptr) {
-        TRI_transaction_t* trx = ctx->getParentTransaction();
-        if (TRI_IsContainedCollectionTransaction(trx, collection->_cid)) {
-          lock = false;
-        }
-      }
-
-      TRI_vocbase_col_status_e status;
-      TRI_voc_cid_t cid;
-      uint32_t internalVersion;
-
-      {
-        CONDITIONAL_READ_LOCKER(readLocker, collection->_lock, lock);
-        status = collection->status();
-        cid = collection->_cid;
-        internalVersion = collection->internalVersion();
-      }
+    if (collection != nullptr && collection->vocbase() == vocbase) {
+      TRI_vocbase_col_status_e status = collection->getStatusLocked();
+      TRI_voc_cid_t cid = collection->cid();
+      uint32_t internalVersion = collection->version();
 
       // check if the collection is still alive
       if (status != TRI_VOC_COL_STATUS_DELETED && cid > 0 &&
@@ -1889,21 +1875,15 @@ static void MapGetVocBase(v8::Local<v8::String> const name,
   }
 
   if (ServerState::instance()->isCoordinator()) {
-    std::shared_ptr<CollectionInfo> const ci =
+    std::shared_ptr<LogicalCollection> ci =
         ClusterInfo::instance()->getCollection(vocbase->name(),
                                                std::string(key));
 
-    if ((*ci).empty()) {
-      collection = nullptr;
-    } else {
-      collection = CoordinatorCollection(vocbase, *ci);
-
-      if (collection != nullptr && collection->_cid == 0) {
-        delete collection;
-        collection = nullptr;
-        TRI_V8_RETURN(v8::Handle<v8::Value>());
-      }
+    if (ci == nullptr) {
+      TRI_V8_RETURN(v8::Handle<v8::Value>());
     }
+
+    collection = new LogicalCollection(ci);
   } else {
     collection = vocbase->lookupCollection(std::string(key));
   }
@@ -1920,6 +1900,7 @@ static void MapGetVocBase(v8::Local<v8::String> const name,
 
   if (result.IsEmpty()) {
     if (ServerState::instance()->isCoordinator()) {
+      // TODO Do we need this?
       delete collection;
     }
     TRI_V8_RETURN_UNDEFINED();

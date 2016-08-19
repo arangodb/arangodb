@@ -31,6 +31,7 @@
 #include "Wal/DocumentOperation.h"
 #include "Wal/LogfileManager.h"
 #include "Utils/Transaction.h"
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/modes.h"
 
 #ifdef ARANGODB_ENABLE_ROCKSDB
@@ -352,6 +353,7 @@ static int LockCollection(TRI_transaction_collection_t* trxCollection,
   TRI_ASSERT(!IsLocked(trxCollection));
 
   TRI_collection_t* document = trxCollection->_collection->_collection;
+  TRI_ASSERT(document != nullptr);
   uint64_t timeout = trx->_timeout;
   if (HasHint(trxCollection->_transaction, TRI_TRANSACTION_HINT_TRY_LOCK)) {
     // give up if we cannot acquire the lock instantly
@@ -405,8 +407,6 @@ static int UnlockCollection(TRI_transaction_collection_t* trxCollection,
   TRI_ASSERT(trxCollection->_collection->_collection != nullptr);
   TRI_ASSERT(IsLocked(trxCollection));
 
-  TRI_collection_t* document = trxCollection->_collection->_collection;
-
   if (trxCollection->_nestingLevel < nestingLevel) {
     // only process our own collections
     return TRI_ERROR_NO_ERROR;
@@ -425,6 +425,8 @@ static int UnlockCollection(TRI_transaction_collection_t* trxCollection,
     return TRI_ERROR_INTERNAL;
   }
 
+  TRI_collection_t* document = trxCollection->_collection->_collection;
+  TRI_ASSERT(document != nullptr);
   if (trxCollection->_lockType == TRI_TRANSACTION_READ) {
     LOG_TRX(trxCollection->_transaction, nestingLevel) << "read-unlocking collection " << trxCollection->_cid;
     document->endRead();

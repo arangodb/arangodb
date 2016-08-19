@@ -272,7 +272,7 @@ void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addHiddenOption(
       "--database.throw-collection-not-loaded-error",
       "throw an error when accessing a collection that is still loading",
-      new BooleanParameter(&_throwCollectionNotLoadedError));
+      new AtomicBooleanParameter(&_throwCollectionNotLoadedError));
 
   options->addHiddenOption(
       "--database.replication-applier",
@@ -302,9 +302,6 @@ void DatabaseFeature::prepare() {
 void DatabaseFeature::start() {
   // set singleton
   DATABASE = this;
-
-  // set throw collection not loaded behavior
-  TRI_SetThrowCollectionNotLoadedVocBase(_throwCollectionNotLoadedError);
 
   // init key generator
   KeyGenerator::Initialize();
@@ -471,7 +468,6 @@ int DatabaseFeature::createDatabaseCoordinator(TRI_voc_tick_t id, std::string co
 
   result = vocbase.get();
   vocbase.release();
-
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -886,6 +882,24 @@ TRI_vocbase_t* DatabaseFeature::useDatabase(TRI_voc_tick_t id) {
 
   return nullptr;
 }
+
+/// @brief lookup a database by its name, not increasing its reference count
+TRI_vocbase_t* DatabaseFeature::lookupDatabaseCoordinator(
+    std::string const& name) {
+  auto unuser(_databasesProtector.use());
+  auto theLists = _databasesLists.load();
+
+  auto it = theLists->_coordinatorDatabases.find(name);
+
+  if (it != theLists->_coordinatorDatabases.end()) {
+    TRI_vocbase_t* vocbase = it->second;
+    return vocbase;
+  }
+  
+  return nullptr;
+}
+
+
 
 /// @brief lookup a database by its name, not increasing its reference count
 TRI_vocbase_t* DatabaseFeature::lookupDatabase(std::string const& name) {

@@ -64,6 +64,9 @@ router.use(foxxRouter)
 
 const installer = createRouter();
 foxxRouter.use(installer)
+.queryParam('legacy', joi.boolean().default(false), dd`
+  Flag to install the service in legacy mode.
+`)
 .queryParam('upgrade', joi.boolean().default(false), dd`
   Flag to upgrade the service installed at the mountpoint.
   Triggers setup.
@@ -85,8 +88,9 @@ installer.use(function (req, res, next) {
     options = req.body;
   } else {
     appInfo = req.body;
-    options = undefined;
+    options = {};
   }
+  options.legacy = req.queryParams.legacy;
   let service;
   try {
     if (upgrade) {
@@ -350,27 +354,21 @@ anonymousRouter.get('/download/zip', function (req, res) {
   Download a foxx service packed in a zip archive.
 `);
 
-
-anonymousRouter.get('/docs/standalone/*', module.context.apiDocumentation(
-  (req, res) => {
-    if (req.suffix === 'swagger.json' && !req.arangoUser && internal.authenticationEnabled()) {
-      res.throw('unauthorized');
-    }
-    return {
-      mount: decodeURIComponent(req.queryParams.mount)
-    };
+anonymousRouter.use('/docs/standalone', module.context.createDocumentationRouter((req, res) => {
+  if (req.suffix === 'swagger.json' && !req.arangoUser && internal.authenticationEnabled()) {
+    res.throw('unauthorized');
   }
-));
+  return {
+    mount: decodeURIComponent(req.queryParams.mount)
+  };
+}));
 
-
-anonymousRouter.get('/docs/*', module.context.apiDocumentation(
-  (req, res) => {
-    if (req.suffix === 'swagger.json' && !req.arangoUser && internal.authenticationEnabled()) {
-      res.throw('unauthorized');
-    }
-    return {
-      mount: decodeURIComponent(req.queryParams.mount),
-      indexFile: 'index-alt.html'
-    };
+anonymousRouter.use('/docs', module.context.createDocumentationRouter((req, res) => {
+  if (req.suffix === 'swagger.json' && !req.arangoUser && internal.authenticationEnabled()) {
+    res.throw('unauthorized');
   }
-));
+  return {
+    mount: decodeURIComponent(req.queryParams.mount),
+    indexFile: 'index-alt.html'
+  };
+}));

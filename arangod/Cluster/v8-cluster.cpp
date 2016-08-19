@@ -31,6 +31,7 @@
 #include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 
 #include <velocypack/Iterator.h>
@@ -673,18 +674,21 @@ static void JS_GetCollectionInfoClusterInfo(
         "getCollectionInfo(<database-id>, <collection-id>)");
   }
 
-  std::shared_ptr<CollectionInfo> ci = ClusterInfo::instance()->getCollection(
+  std::shared_ptr<LogicalCollection> ci = ClusterInfo::instance()->getCollection(
       TRI_ObjectToString(args[0]), TRI_ObjectToString(args[1]));
+  if (ci == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+  }
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
-  std::string const cid = arangodb::basics::StringUtils::itoa(ci->id());
+  std::string const cid = ci->cid_as_string();
   std::string const& name = ci->name();
   result->Set(TRI_V8_ASCII_STRING("id"), TRI_V8_STD_STRING(cid));
   result->Set(TRI_V8_ASCII_STRING("name"), TRI_V8_STD_STRING(name));
   result->Set(TRI_V8_ASCII_STRING("type"),
               v8::Number::New(isolate, (int)ci->type()));
   result->Set(TRI_V8_ASCII_STRING("status"),
-              v8::Number::New(isolate, (int)ci->status()));
+              v8::Number::New(isolate, (int)ci->getStatusLocked()));
 
   std::string const statusString = ci->statusString();
   result->Set(TRI_V8_ASCII_STRING("statusString"),
@@ -748,12 +752,13 @@ static void JS_GetCollectionInfoCurrentClusterInfo(
 
   ShardID shardID = TRI_ObjectToString(args[2]);
 
-  std::shared_ptr<CollectionInfo> ci = ClusterInfo::instance()->getCollection(
+  std::shared_ptr<LogicalCollection> ci = ClusterInfo::instance()->getCollection(
       TRI_ObjectToString(args[0]), TRI_ObjectToString(args[1]));
+  TRI_ASSERT(ci != nullptr);
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
   // First some stuff from Plan for which Current does not make sense:
-  std::string const cid = arangodb::basics::StringUtils::itoa(ci->id());
+  std::string const cid = ci->cid_as_string();
   std::string const& name = ci->name();
   result->Set(TRI_V8_ASCII_STRING("id"), TRI_V8_STD_STRING(cid));
   result->Set(TRI_V8_ASCII_STRING("name"), TRI_V8_STD_STRING(name));

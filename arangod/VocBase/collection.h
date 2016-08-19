@@ -53,7 +53,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 namespace arangodb {
-class CollectionInfo;
 class EdgeIndex;
 class Index;
 class KeyGenerator;
@@ -73,9 +72,6 @@ struct DocumentOperation;
 
 /// @brief predefined collection name for users
 #define TRI_COL_NAME_USERS "_users"
-
-/// @brief predefined collection name for statistics
-#define TRI_COL_NAME_STATISTICS "_statistics"
 
 /// @brief collection info
 struct TRI_doc_collection_info_t {
@@ -131,8 +127,6 @@ class VocbaseCollectionInfo {
  public:
   VocbaseCollectionInfo() = default;
   ~VocbaseCollectionInfo() = default;
-
-  explicit VocbaseCollectionInfo(CollectionInfo const&);
 
   VocbaseCollectionInfo(TRI_vocbase_t*, std::string const&, TRI_col_type_e,
                         TRI_voc_size_t, arangodb::velocypack::Slice const&);
@@ -202,15 +196,14 @@ class VocbaseCollectionInfo {
   // Use with caution!
   void rename(std::string const&);
 
-  void setIsSystem(bool value) { _isSystem = value; }
-
   void setRevision(TRI_voc_rid_t, bool);
 
   void setCollectionId(TRI_voc_cid_t);
 
+  void setPlanId(TRI_voc_cid_t);
+
   void updateCount(size_t);
 
-  void setPlanId(TRI_voc_cid_t);
 
   void setDeleted(bool);
 
@@ -254,7 +247,7 @@ struct TRI_collection_t {
   static TRI_collection_t* create(TRI_vocbase_t*, arangodb::VocbaseCollectionInfo&, TRI_voc_cid_t);
 
   /// @brief opens an existing collection
-  static TRI_collection_t* open(TRI_vocbase_t*, TRI_vocbase_col_t*, bool);
+  static TRI_collection_t* open(TRI_vocbase_t*, arangodb::LogicalCollection*, bool);
 
   /// @brief determine whether a collection name is a system collection name
   static inline bool IsSystemName(std::string const& name) {
@@ -281,7 +274,6 @@ struct TRI_collection_t {
   std::vector<arangodb::Index*> const& allIndexes() const;
   arangodb::Index* lookupIndex(TRI_idx_iid_t) const;
   arangodb::PrimaryIndex* primaryIndex();
-  arangodb::EdgeIndex* edgeIndex();
  
   TRI_doc_collection_info_t* figures();
 
@@ -304,6 +296,7 @@ struct TRI_collection_t {
   /// @brief sync the active journal - will do nothing if there is no journal
   /// or if the journal is volatile
   int syncActiveJournal();
+
   int reserveJournalSpace(TRI_voc_tick_t tick, TRI_voc_size_t size,
                           char*& resultPosition, TRI_datafile_t*& resultDatafile);
 
@@ -370,7 +363,7 @@ struct TRI_collection_t {
 
   /// @brief fill the additional (non-primary) indexes
   int fillIndexes(arangodb::Transaction* trx,
-                  TRI_vocbase_col_t* collection);
+                  arangodb::LogicalCollection* collection);
 
   /// @brief initializes an index with all existing documents
   int fillIndex(arangodb::Transaction* trx,
@@ -462,6 +455,7 @@ struct TRI_collection_t {
                              bool);
   /// @brief seal a datafile
   int sealDatafile(TRI_datafile_t* datafile, bool isCompactor);
+
   /// @brief creates a datafile
   TRI_datafile_t* createDatafile(TRI_voc_fid_t fid,
                                  TRI_voc_size_t journalSize, 

@@ -36,12 +36,12 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/hashes.h"
-#include "Basics/json-utilities.h"
-#include "Basics/json.h"
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "Rest/HttpResponse.h"
+#include "RestServer/DatabaseFeature.h"
 #include "VocBase/collection.h"
+#include "VocBase/LogicalCollection.h"
 
 #ifdef _WIN32
 // turn off warnings about too long type name for debug symbols blabla in MSVC
@@ -94,46 +94,6 @@ static std::string extractErrorMessage(std::string const& shardId,
   }
 
   return msg;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates an empty  collection info object
-////////////////////////////////////////////////////////////////////////////////
-CollectionInfo::CollectionInfo() 
- : _vpack(std::make_shared<VPackBuilder>()) {
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a collection info object from json
-////////////////////////////////////////////////////////////////////////////////
-
-CollectionInfo::CollectionInfo(std::shared_ptr<VPackBuilder> vpack, VPackSlice slice)
-  : _vpack(vpack), _slice(slice) {}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a collection info object from another
-////////////////////////////////////////////////////////////////////////////////
-
-CollectionInfo::CollectionInfo(CollectionInfo const& other)
-    : _vpack(other._vpack), _slice(other._slice) {
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief copy assigns a collection info object from another one
-////////////////////////////////////////////////////////////////////////////////
-
-CollectionInfo& CollectionInfo::operator=(CollectionInfo const& other) {
-  _vpack = other._vpack;
-  _slice = other._slice;
-
-  return *this;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroys a collection info object
-////////////////////////////////////////////////////////////////////////////////
-
-CollectionInfo::~CollectionInfo() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -417,6 +377,9 @@ std::vector<DatabaseID> ClusterInfo::databases(bool reload) {
 static std::string const prefixPlan = "Plan";
 
 void ClusterInfo::loadPlan() {
+  DatabaseFeature* databaseFeature =
+      application_features::ApplicationServer::getFeature<DatabaseFeature>(
+          "Database");
   uint64_t storedVersion = _planProt.version;
   MUTEX_LOCKER(mutexLocker, _planProt.mutex);
   if (_planProt.version > storedVersion) {
@@ -465,6 +428,18 @@ void ClusterInfo::loadPlan() {
           }
           DatabaseCollections databaseCollections;
           std::string const databaseName = databasePairSlice.key.copyString();
+          TRI_vocbase_t* vocbase = nullptr;
+          if (ServerState::instance()->isCoordinator()) {
+            vocbase = databaseFeature->lookupDatabaseCoordinator(databaseName);
+          } else {
+            vocbase = databaseFeature->lookupDatabase(databaseName);
+          }
+          TRI_ASSERT(vocbase != nullptr);
+          if (vocbase == nullptr) {
+            // No database with this name found.
+            // We have an invalid state here.
+            continue;
+          }
 
           for (auto const& collectionPairSlice: VPackObjectIterator(collectionsSlice)) {
             VPackSlice const& collectionSlice = collectionPairSlice.value;
@@ -473,7 +448,7 @@ void ClusterInfo::loadPlan() {
             }
             
             std::string const collectionId = collectionPairSlice.key.copyString();
-            auto newCollection = std::make_shared<CollectionInfo>(planBuilder, collectionSlice);
+            auto newCollection = std::make_shared<LogicalCollection>(vocbase, collectionSlice);
             std::string const collectionName = newCollection->name();
             
             // mop: register with name as well as with id
@@ -498,6 +473,7 @@ void ClusterInfo::loadPlan() {
                 });
             newShards.emplace(std::make_pair(collectionId, shards));
           }
+
           newCollections.emplace(std::make_pair(databaseName, databaseCollections));
           swapCollections = true;
         }
@@ -646,9 +622,8 @@ void ClusterInfo::loadCurrent() {
 
 /// @brief ask about a collection
 /// If it is not found in the cache, the cache is reloaded once
-////////////////////////////////////////////////////////////////////////////////
 
-std::shared_ptr<CollectionInfo> ClusterInfo::getCollection(
+std::shared_ptr<LogicalCollection> ClusterInfo::getCollection(
     DatabaseID const& databaseID, CollectionID const& collectionID) {
   int tries = 0;
 
@@ -680,37 +655,16 @@ std::shared_ptr<CollectionInfo> ClusterInfo::getCollection(
     // must load collections outside the lock
     loadPlan();
   }
-
-  return std::make_shared<CollectionInfo>();
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get properties of a collection
-////////////////////////////////////////////////////////////////////////////////
-
-arangodb::VocbaseCollectionInfo ClusterInfo::getCollectionProperties(
-    CollectionInfo const& collection) {
-  arangodb::VocbaseCollectionInfo info(collection);
-  return info;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get properties of a collection
-////////////////////////////////////////////////////////////////////////////////
-
-VocbaseCollectionInfo ClusterInfo::getCollectionProperties(
-    DatabaseID const& databaseID, CollectionID const& collectionID) {
-  auto ci = getCollection(databaseID, collectionID);
-  return getCollectionProperties(*ci);
+  return nullptr;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ask about all collections
 ////////////////////////////////////////////////////////////////////////////////
 
-std::vector<std::shared_ptr<CollectionInfo>> const ClusterInfo::getCollections(
+std::vector<std::shared_ptr<LogicalCollection>> const ClusterInfo::getCollections(
     DatabaseID const& databaseID) {
-  std::vector<std::shared_ptr<CollectionInfo>> result;
+  std::vector<std::shared_ptr<LogicalCollection>> result;
 
   // always reload
   loadPlan();
@@ -1224,7 +1178,7 @@ int ClusterInfo::dropCollectionCoordinator(std::string const& databaseName,
 
 int ClusterInfo::setCollectionPropertiesCoordinator(
     std::string const& databaseName, std::string const& collectionID,
-    VocbaseCollectionInfo const* info) {
+    LogicalCollection const* info) {
 
   AgencyComm ac;
   AgencyCommResult res;
@@ -1262,7 +1216,7 @@ int ClusterInfo::setCollectionPropertiesCoordinator(
       }
     }
     copy.add("doCompact", VPackValue(info->doCompact()));
-    copy.add("journalSize", VPackValue(info->maximalSize()));
+    copy.add("journalSize", VPackValue(info->journalSize()));
     copy.add("waitForSync", VPackValue(info->waitForSync()));
     copy.add("indexBuckets", VPackValue(info->indexBuckets()));
   } catch (...) {
@@ -1518,7 +1472,7 @@ int ClusterInfo::ensureIndexCoordinator(
 
   auto collectionBuilder = std::make_shared<VPackBuilder>();
   {
-    std::shared_ptr<CollectionInfo> c =
+    std::shared_ptr<LogicalCollection> c =
       getCollection(databaseName, collectionID);
     
     // Note that nobody is removing this collection in the plan, since
@@ -1528,7 +1482,7 @@ int ClusterInfo::ensureIndexCoordinator(
     //
     READ_LOCKER(readLocker, _planProt.lock);
     
-    if (c->empty()) {
+    if (c == nullptr) {
       return setErrormsg(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, errorMsg);
     }
     
@@ -1579,7 +1533,7 @@ int ClusterInfo::ensureIndexCoordinator(
     }
     
     // now create a new index
-    collectionBuilder->add(c->getSlice());
+    c->toVelocyPack(*collectionBuilder);
   }
   VPackSlice const collectionSlice = collectionBuilder->slice();
   
@@ -1770,12 +1724,12 @@ int ClusterInfo::dropIndexCoordinator(std::string const& databaseName,
   
   VPackSlice indexes;
   {
-    std::shared_ptr<CollectionInfo> c =
+    std::shared_ptr<LogicalCollection> c =
       getCollection(databaseName, collectionID);
     
     READ_LOCKER(readLocker, _planProt.lock);
     
-    if (c->empty()) {
+    if (c == nullptr) {
       return setErrormsg(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, errorMsg);
     }
     indexes = c->getIndexes();

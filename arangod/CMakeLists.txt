@@ -79,12 +79,14 @@ add_executable(${BIN_ARANGOD}
   Agency/AgencyFeature.cpp
   Agency/Agent.cpp
   Agency/AgentCallback.cpp
+  Agency/AgentConfiguration.cpp
   Agency/Constituent.cpp
   Agency/CleanOutServer.cpp
   Agency/FailedLeader.cpp
   Agency/FailedServer.cpp
+  Agency/GossipCallback.cpp
+  Agency/Inception.cpp
   Agency/MoveShard.cpp
-  Agency/NotifierThread.cpp
   Agency/NotifyCallback.cpp
   Agency/Node.cpp
   Agency/Supervision.cpp
@@ -281,6 +283,7 @@ add_executable(${BIN_ARANGOD}
   Utils/CollectionExport.cpp
   Utils/CollectionKeys.cpp
   Utils/CollectionKeysRepository.cpp
+  Utils/CollectionNameResolver.cpp
   Utils/Cursor.cpp
   Utils/CursorRepository.cpp
   Utils/OperationCursor.cpp
@@ -317,6 +320,7 @@ add_executable(${BIN_ARANGOD}
   VocBase/Graphs.cpp
   VocBase/IndexPoolFeature.cpp
   VocBase/KeyGenerator.cpp
+  VocBase/LogicalCollection.cpp
   VocBase/MasterPointers.cpp
   VocBase/PathEnumerator.cpp
   VocBase/SingleServerTraverser.cpp
@@ -356,7 +360,7 @@ target_link_libraries(${BIN_ARANGOD}
 
 install(
   TARGETS ${BIN_ARANGOD}
-  RUNTIME DESTINATION ${CMAKE_INSTALL_FULL_SBINDIR})
+  RUNTIME DESTINATION ${CMAKE_INSTALL_SBINDIR})
 
 install_config(arangod)
 
@@ -371,7 +375,7 @@ endif ()
 ################################################################################
 
 install_command_alias(${BIN_ARANGOD}
-  ${CMAKE_INSTALL_FULL_SBINDIR}
+  ${CMAKE_INSTALL_SBINDIR}
   arango-dfdb)
 
 install_config(arango-dfdb)
@@ -381,7 +385,7 @@ install_config(arango-dfdb)
 ################################################################################
 
 install_command_alias(${BIN_ARANGOD}
-  ${CMAKE_INSTALL_FULL_SBINDIR}
+  ${CMAKE_INSTALL_SBINDIR}
   arango-secure-installation)
 
 install_config(arango-secure-installation)
@@ -391,7 +395,7 @@ install_config(arango-secure-installation)
 ################################################################################
 
 install_command_alias(${BIN_ARANGOD}
-  ${CMAKE_INSTALL_FULL_SBINDIR}
+  ${CMAKE_INSTALL_SBINDIR}
   arango-init-database)
 
 install_config(arango-init-database)

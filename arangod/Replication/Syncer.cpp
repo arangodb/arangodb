@@ -34,6 +34,7 @@
 #include "Utils/OperationResult.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/collection.h"
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/transaction.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
@@ -336,9 +337,9 @@ std::string Syncer::getCName(VPackSlice const& slice) const {
 /// @brief extract the collection by either id or name, may return nullptr!
 ////////////////////////////////////////////////////////////////////////////////
   
-TRI_vocbase_col_t* Syncer::getCollectionByIdOrName(TRI_voc_cid_t cid, std::string const& name) { 
-  TRI_vocbase_col_t* idCol = nullptr;
-  TRI_vocbase_col_t* nameCol = nullptr;
+arangodb::LogicalCollection* Syncer::getCollectionByIdOrName(TRI_voc_cid_t cid, std::string const& name) { 
+  arangodb::LogicalCollection* idCol = nullptr;
+  arangodb::LogicalCollection* nameCol = nullptr;
 
   if (_useCollectionId) {
     idCol = _vocbase->lookupCollection(cid);
@@ -457,7 +458,7 @@ int Syncer::applyCollectionDumpMarker(
 /// @brief creates a collection, based on the VelocyPack provided
 ////////////////////////////////////////////////////////////////////////////////
 
-int Syncer::createCollection(VPackSlice const& slice, TRI_vocbase_col_t** dst) {
+int Syncer::createCollection(VPackSlice const& slice, arangodb::LogicalCollection** dst) {
   if (dst != nullptr) {
     *dst = nullptr;
   }
@@ -478,12 +479,12 @@ int Syncer::createCollection(VPackSlice const& slice, TRI_vocbase_col_t** dst) {
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
 
-  TRI_col_type_e const type = static_cast<TRI_col_type_e>(VelocyPackHelper::getNumericValue<int>(
-      slice, "type", static_cast<int>(TRI_COL_TYPE_DOCUMENT)));
+  TRI_col_type_e const type = VelocyPackHelper::getNumericValue<TRI_col_type_e>(
+      slice, "type", TRI_COL_TYPE_DOCUMENT);
 
-  TRI_vocbase_col_t* col = getCollectionByIdOrName(cid, name);
+  arangodb::LogicalCollection* col = getCollectionByIdOrName(cid, name);
 
-  if (col != nullptr && static_cast<TRI_col_type_t>(col->type()) == static_cast<TRI_col_type_t>(type)) {
+  if (col != nullptr && col->type() == type) {
     // collection already exists. TODO: compare attributes
     return TRI_ERROR_NO_ERROR;
   }
@@ -516,7 +517,7 @@ int Syncer::createCollection(VPackSlice const& slice, TRI_vocbase_col_t** dst) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int Syncer::dropCollection(VPackSlice const& slice, bool reportError) {
-  TRI_vocbase_col_t* col = getCollectionByIdOrName(getCid(slice), getCName(slice));
+  arangodb::LogicalCollection* col = getCollectionByIdOrName(getCid(slice), getCName(slice));
 
   if (col == nullptr) {
     if (reportError) {
@@ -559,7 +560,7 @@ int Syncer::createIndex(VPackSlice const& slice) {
 
     TRI_collection_t* document = guard.collection()->_collection;
 
-    SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), guard.collection()->_cid, TRI_TRANSACTION_WRITE);
+    SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), guard.collection()->cid(), TRI_TRANSACTION_WRITE);
 
     int res = trx.begin();
 

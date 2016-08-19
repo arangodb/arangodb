@@ -30,7 +30,6 @@
 #include "Cluster/ServerState.h"
 #include "Dispatcher/DispatcherThread.h"
 #include "Logger/Logger.h"
-//#include "Rest/FakeRequest.h"
 #include "SimpleHttpClient/ConnectionManager.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "Utils/Transaction.h"
@@ -1344,6 +1343,13 @@ size_t ClusterComm::performSingleRequest(
                               req.requestType, req.path, *(req.body),
                               *(req.headerFields), timeout);
   }
+
+  // mop: helpless attempt to fix segfaulting due to body buffer empty
+  if (req.result.status == CL_COMM_BACKEND_UNAVAILABLE) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE);
+  }
+
+  // Add correct recognition of content type later.
   req.result.status = CL_COMM_RECEIVED;  // a fake, but a good one
   req.done = true;
   nrDone = 1;
@@ -1353,9 +1359,8 @@ size_t ClusterComm::performSingleRequest(
   // Additionally, GeneralRequest is a virtual base class, so we actually
   // have to create an HttpRequest instance:
   GeneralRequest::ContentType type = GeneralRequest::ContentType::JSON;
-  // Add correct recognition of content type later.
-  basics::StringBuffer& buffer = req.result.result->getBody();
 
+  basics::StringBuffer& buffer = req.result.result->getBody();
   // auto answer = new FakeRequest(type, buffer.c_str(),
   //                              static_cast<int64_t>(buffer.length()));
   // answer->setHeaders(req.result.result->getHeaderFields());

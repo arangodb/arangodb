@@ -58,6 +58,7 @@
 #include "VocBase/DatafileHelper.h"
 #include "VocBase/IndexPoolFeature.h"
 #include "VocBase/KeyGenerator.h"
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 #include "Wal/DocumentOperation.h"
@@ -657,17 +658,6 @@ arangodb::PrimaryIndex* TRI_collection_t::primaryIndex() {
   TRI_ASSERT(!_indexes.empty());
   // the primary index must be the index at position #0
   return static_cast<arangodb::PrimaryIndex*>(_indexes[0]);
-}
-
-/// @brief return the collection's edge index, if it exists
-arangodb::EdgeIndex* TRI_collection_t::edgeIndex() {
-  if (_indexes.size() >= 2 &&
-      _indexes[1]->type() == arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX) {
-    // edge index must be the index at position #1
-    return static_cast<arangodb::EdgeIndex*>(_indexes[1]);
-  }
-
-  return nullptr;
 }
 
 /// @brief get an index by id
@@ -1277,36 +1267,6 @@ bool TRI_collection_t::closeDataFiles(std::vector<TRI_datafile_t*> const& files)
   return result;
 }
 
-
-VocbaseCollectionInfo::VocbaseCollectionInfo(CollectionInfo const& other)
-    : _type(other.type()),
-      _revision(0),      // not known in the cluster case on the coordinator
-      _cid(other.id()),  // this is on the coordinator and describes a
-                         // cluster-wide collection, for safety reasons,
-                         // we also set _cid
-      _planId(other.id()),
-      _maximalSize(other.journalSize()),
-      _initialCount(-1),
-      _indexBuckets(other.indexBuckets()),
-      _keyOptions(nullptr),
-      _isSystem(other.isSystem()),
-      _deleted(other.deleted()),
-      _doCompact(other.doCompact()),
-      _isVolatile(other.isVolatile()),
-      _waitForSync(other.waitForSync()) {
-  std::string const name = other.name();
-  memset(_name, 0, sizeof(_name));
-  memcpy(_name, name.c_str(), name.size());
-
-  VPackSlice keyOptionsSlice(other.keyOptions());
-
-  if (!keyOptionsSlice.isNone()) {
-    VPackBuilder builder;
-    builder.add(keyOptionsSlice);
-    _keyOptions = builder.steal();
-  }
-}
-
 VocbaseCollectionInfo::VocbaseCollectionInfo(TRI_vocbase_t* vocbase,
                                              std::string const& name,
                                              TRI_col_type_e type,
@@ -1821,7 +1781,7 @@ int TRI_collection_t::cleanupIndexes() {
 
 /// @brief fill the additional (non-primary) indexes
 int TRI_collection_t::fillIndexes(arangodb::Transaction* trx,
-                                  TRI_vocbase_col_t* collection) {
+                                  arangodb::LogicalCollection* collection) {
   // distribute the work to index threads plus this thread
   auto const& indexes = allIndexes();
   size_t const n = indexes.size();
@@ -3279,34 +3239,20 @@ int TRI_collection_t::fillIndex(arangodb::Transaction* trx,
 
 /// @brief saves an index
 int TRI_collection_t::saveIndex(arangodb::Index* idx, bool writeMarker) {
-  // convert into JSON
   std::shared_ptr<VPackBuilder> builder;
   try {
     builder = idx->toVelocyPack(false);
   } catch (...) {
     LOG(ERR) << "cannot save index definition.";
-    return TRI_set_errno(TRI_ERROR_INTERNAL);
+    return TRI_ERROR_INTERNAL;
   }
   if (builder == nullptr) {
     LOG(ERR) << "cannot save index definition.";
-    return TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+    return TRI_ERROR_OUT_OF_MEMORY;
   }
-
-  // construct filename
-  std::string name("index-" + std::to_string(idx->id()) + ".json");
-  std::string filename = arangodb::basics::FileUtils::buildFilename(path(), name);
-
-  VPackSlice const idxSlice = builder->slice();
-  // and save
-  bool doSync = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database")->forceSyncProperties();
-  bool ok = arangodb::basics::VelocyPackHelper::velocyPackToFile(
-      filename.c_str(), idxSlice, doSync);
-
-  if (!ok) {
-    LOG(ERR) << "cannot save index definition: " << TRI_last_error();
-
-    return TRI_errno();
-  }
+  
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  engine->createIndex(_vocbase, _info.id(), idx->id(), builder->slice());
 
   if (!writeMarker) {
     return TRI_ERROR_NO_ERROR;
@@ -3315,7 +3261,7 @@ int TRI_collection_t::saveIndex(arangodb::Index* idx, bool writeMarker) {
   int res = TRI_ERROR_NO_ERROR;
 
   try {
-    arangodb::wal::CollectionMarker marker(TRI_DF_MARKER_VPACK_CREATE_INDEX, _vocbase->id(), _info.id(), idxSlice);
+    arangodb::wal::CollectionMarker marker(TRI_DF_MARKER_VPACK_CREATE_INDEX, _vocbase->id(), _info.id(), builder->slice());
 
     arangodb::wal::SlotInfoCopy slotInfo =
         arangodb::wal::LogfileManager::instance()->allocateAndWrite(marker, false);
@@ -4901,7 +4847,7 @@ TRI_collection_t* TRI_collection_t::create(
 
 /// @brief opens an existing collection
 TRI_collection_t* TRI_collection_t::open(TRI_vocbase_t* vocbase,
-                                         TRI_vocbase_col_t* col,
+                                         arangodb::LogicalCollection* col,
                                          bool ignoreErrors) {
   VPackBuilder builder;
   StorageEngine* engine = EngineSelectorFeature::ENGINE;

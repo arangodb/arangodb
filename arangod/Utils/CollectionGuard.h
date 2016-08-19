@@ -101,7 +101,7 @@ class CollectionGuard {
 
  public:
   /// @brief return the collection pointer
-  inline TRI_vocbase_col_t* collection() const { return _collection; }
+  inline arangodb::LogicalCollection* collection() const { return _collection; }
 
   /// @brief return the status of the collection at the time of using the guard
   inline TRI_vocbase_col_status_e originalStatus() const {
@@ -113,7 +113,7 @@ class CollectionGuard {
   TRI_vocbase_t* _vocbase;
 
   /// @brief pointer to collection
-  TRI_vocbase_col_t* _collection;
+  arangodb::LogicalCollection* _collection;
 
   /// @brief status of collection when invoking the guard
   TRI_vocbase_col_status_e _originalStatus;

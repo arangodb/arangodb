@@ -44,18 +44,18 @@ The primary index of a collection cannot be dropped or changed, and there is no
 mechanism to create user-defined primary indexes.
 
 
-!SUBSECTION Edges Index
+!SUBSECTION Edge Index
 
 Every [edge collection](../Appendix/Glossary.md#edge-collection) also has an 
-automatically created *edges index*. The edges index provides quick access to
+automatically created *edge index*. The edge index provides quick access to
 documents by either their `_from` or `_to` attributes. It can therefore be
 used to quickly find connections between vertex documents and is invoked when 
-the connecting edges of a vertex are queried. 
+the connecting edges of a vertex are queried.
 
-Edges indexes are used from within AQL when performing equality lookups on `_from`
+Edge indexes are used from within AQL when performing equality lookups on `_from`
 or `_to` values in an edge collections. There are also dedicated functions to 
 find edges given their `_from` or `_to` values that will always make use of the 
-edges index:
+edge index:
 
 ```js
 db.collection.edges("<from-value>");
@@ -66,13 +66,14 @@ db.collection.inEdges("<from-value>");
 db.collection.inEdges("<to-value>");
 ```
 
-Internally, the edges index is implemented as a hash index. It can be used for equality 
-lookups, but not for range queries or for sorting. As edges indexes are automatically 
-created for edge collections, it is not possible to create user-defined edges indexes.
+Internally, the edge index is implemented as a hash index, which stores the union
+of all `_from` and `_to` attributes. It can be used for equality 
+lookups, but not for range queries or for sorting. Edge indexes are automatically 
+created for edge collections. It is not possible to create user-defined edge indexes.
 However, it is possible to freely use the `_from` and `_to` attributes in user-defined
 indexes.
 
-An edges index cannot be dropped or changed.
+An edge index cannot be dropped or changed.
 
 
 !SUBSECTION Hash Index
@@ -354,7 +355,7 @@ FOR doc IN posts
   RETURN doc
 ```
 
-The following FILTER conditions will not use the array index:
+The following FILTER conditions will **not use** the array index:
 
 ```js
 FILTER doc.tags ANY == 'foobar'
@@ -365,7 +366,7 @@ FILTER 'foobar' == doc.tags
 ```
 
 It is also possible to create an index on subattributes of array values. This makes sense
-when the index attribute is an array of objects, e.g.
+if the index attribute is an array of objects, e.g.
 
 ```js
 db.posts.ensureIndex({ type: "hash", fields: [ "tags[*].name" ] });

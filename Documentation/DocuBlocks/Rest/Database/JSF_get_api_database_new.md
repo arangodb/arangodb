@@ -26,7 +26,7 @@ A flag indicating whether the user account should be activated or not.
 The default value is *true*. If set to *false*, the user won't be able to
 log into the database.
 
-@RESTBODYPARAM{extra,JSF_get_api_database_new_USERS,object,optional,}
+@RESTSTRUCT{extra,JSF_get_api_database_new_USERS,object,optional,}
 A JSON object with extra user information. The data contained in *extra*
 will be stored for the user but not be interpreted further by ArangoDB.
 

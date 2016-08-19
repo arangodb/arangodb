@@ -48,6 +48,7 @@
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/StandaloneTransactionContext.h"
 #include "Utils/TransactionContext.h"
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/replication-applier.h"
 #include "VocBase/replication-dump.h"
 #include "VocBase/ticks.h"
@@ -325,8 +326,8 @@ BAD_CALL:
 /// @brief comparator to sort collections
 /// sort order is by collection type first (vertices before edges, this is
 /// because edges depend on vertices being there), then name
-bool RestReplicationHandler::sortCollections(TRI_vocbase_col_t const* l,
-                                             TRI_vocbase_col_t const* r) {
+bool RestReplicationHandler::sortCollections(arangodb::LogicalCollection const* l,
+                                             arangodb::LogicalCollection const* r) {
   if (l->type() != r->type()) {
     return l->type() < r->type();
   }
@@ -337,7 +338,7 @@ bool RestReplicationHandler::sortCollections(TRI_vocbase_col_t const* l,
 }
 
 /// @brief filter a collection based on collection attributes
-bool RestReplicationHandler::filterCollection(TRI_vocbase_col_t* collection,
+bool RestReplicationHandler::filterCollection(arangodb::LogicalCollection* collection,
                                               void* data) {
   bool includeSystem = *((bool*)data);
 
@@ -956,7 +957,7 @@ void RestReplicationHandler::handleCommandLoggerFollow() {
   std::string const& value6 = _request->value("collection", found);
 
   if (found) {
-    TRI_vocbase_col_t* c = _vocbase->lookupCollection(value6);
+    arangodb::LogicalCollection* c = _vocbase->lookupCollection(value6);
 
     if (c == nullptr) {
       generateError(GeneralResponse::ResponseCode::NOT_FOUND,
@@ -964,7 +965,7 @@ void RestReplicationHandler::handleCommandLoggerFollow() {
       return;
     }
 
-    cid = c->_cid;
+    cid = c->cid();
   }
 
   if (barrierId > 0) {
@@ -1276,7 +1277,7 @@ TRI_voc_cid_t RestReplicationHandler::getCid(VPackSlice const& slice) const {
 ////////////////////////////////////////////////////////////////////////////////
 
 int RestReplicationHandler::createCollection(VPackSlice const& slice,
-                                             TRI_vocbase_col_t** dst,
+                                             arangodb::LogicalCollection** dst,
                                              bool reuseId) {
   if (dst != nullptr) {
     *dst = nullptr;
@@ -1307,13 +1308,13 @@ int RestReplicationHandler::createCollection(VPackSlice const& slice,
       arangodb::basics::VelocyPackHelper::getNumericValue<int>(
           slice, "type", (int)TRI_COL_TYPE_DOCUMENT));
 
-  TRI_vocbase_col_t* col = nullptr;
+  arangodb::LogicalCollection* col = nullptr;
 
   if (cid > 0) {
     col = _vocbase->lookupCollection(cid);
   }
 
-  if (col != nullptr && (TRI_col_type_t)col->type() == (TRI_col_type_t)type) {
+  if (col != nullptr && col->type() == type) {
     // collection already exists. TODO: compare attributes
     return TRI_ERROR_NO_ERROR;
   }
@@ -1544,7 +1545,7 @@ int RestReplicationHandler::processRestoreCollection(
     return TRI_ERROR_NO_ERROR;
   }
 
-  TRI_vocbase_col_t* col = nullptr;
+  arangodb::LogicalCollection* col = nullptr;
 
   if (reuseId) {
     VPackSlice const idString = parameters.get("cid");
@@ -1578,7 +1579,7 @@ int RestReplicationHandler::processRestoreCollection(
 
         // instead, truncate them
         SingleCollectionTransaction trx(
-            StandaloneTransactionContext::Create(_vocbase), col->_cid,
+            StandaloneTransactionContext::Create(_vocbase), col->cid(),
             TRI_TRANSACTION_WRITE);
         trx.addHint(TRI_TRANSACTION_HINT_RECOVERY,
                     false);  // to turn off waitForSync!
@@ -1666,12 +1667,12 @@ int RestReplicationHandler::processRestoreCollectionCoordinator(
 
   // in a cluster, we only look up by name:
   ClusterInfo* ci = ClusterInfo::instance();
-  std::shared_ptr<CollectionInfo> col = ci->getCollection(dbName, name);
+  std::shared_ptr<LogicalCollection> col = ci->getCollection(dbName, name);
 
   // drop an existing collection if it exists
-  if (!col->empty()) {
+  if (col != nullptr) {
     if (dropExisting) {
-      int res = ci->dropCollectionCoordinator(dbName, col->id_as_string(),
+      int res = ci->dropCollectionCoordinator(dbName, col->cid_as_string(),
                                               errorMsg, 0.0);
       if (res == TRI_ERROR_FORBIDDEN) {
         // some collections must not be dropped
@@ -1986,9 +1987,9 @@ int RestReplicationHandler::processRestoreIndexesCoordinator(
 
   // in a cluster, we only look up by name:
   ClusterInfo* ci = ClusterInfo::instance();
-  std::shared_ptr<CollectionInfo> col = ci->getCollection(dbName, name);
+  std::shared_ptr<LogicalCollection> col = ci->getCollection(dbName, name);
 
-  if (col->empty()) {
+  if (col == nullptr) {
     errorMsg = "could not find collection '" + name + "'";
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
@@ -2003,7 +2004,7 @@ int RestReplicationHandler::processRestoreIndexesCoordinator(
     }
 
     VPackBuilder tmp;
-    res = ci->ensureIndexCoordinator(dbName, col->id_as_string(), idxDef, true,
+    res = ci->ensureIndexCoordinator(dbName, col->cid_as_string(), idxDef, true,
                                      arangodb::Index::Compare, tmp, errorMsg,
                                      3600.0);
     if (res != TRI_ERROR_NO_ERROR) {
@@ -2495,9 +2496,9 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator() {
 
   // in a cluster, we only look up by name:
   ClusterInfo* ci = ClusterInfo::instance();
-  std::shared_ptr<CollectionInfo> col = ci->getCollection(dbName, name);
+  std::shared_ptr<LogicalCollection> col = ci->getCollection(dbName, name);
 
-  if (col->empty()) {
+  if (col == nullptr) {
     generateError(GeneralResponse::ResponseCode::BAD,
                   TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
     return;
@@ -2563,7 +2564,7 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator() {
       if (!doc.isNone() && type != REPLICATION_MARKER_REMOVE) {
         ShardID responsibleShard;
         bool usesDefaultSharding;
-        res = ci->getResponsibleShard(col->id_as_string(), doc, true,
+        res = ci->getResponsibleShard(col->cid_as_string(), doc, true,
                                       responsibleShard, usesDefaultSharding);
         if (res != TRI_ERROR_NO_ERROR) {
           errorMsg = "error during determining responsible shard";
@@ -2767,7 +2768,7 @@ void RestReplicationHandler::handleCommandCreateKeys() {
     tickEnd = static_cast<TRI_voc_tick_t>(StringUtils::uint64(value));
   }
 
-  TRI_vocbase_col_t* c = _vocbase->lookupCollection(collection);
+  arangodb::LogicalCollection* c = _vocbase->lookupCollection(collection);
 
   if (c == nullptr) {
     generateError(GeneralResponse::ResponseCode::NOT_FOUND,
@@ -2778,9 +2779,9 @@ void RestReplicationHandler::handleCommandCreateKeys() {
   int res = TRI_ERROR_NO_ERROR;
 
   try {
-    arangodb::CollectionGuard guard(_vocbase, c->_cid, false);
+    arangodb::CollectionGuard guard(_vocbase, c->cid(), false);
 
-    TRI_vocbase_col_t* col = guard.collection();
+    arangodb::LogicalCollection* col = guard.collection();
     TRI_ASSERT(col != nullptr);
 
     // turn off the compaction for the collection
@@ -3154,7 +3155,7 @@ void RestReplicationHandler::handleCommandDump() {
     compat28 = StringUtils::boolean(value8);
   }
 
-  TRI_vocbase_col_t* c = _vocbase->lookupCollection(collection);
+  arangodb::LogicalCollection* c = _vocbase->lookupCollection(collection);
 
   if (c == nullptr) {
     generateError(GeneralResponse::ResponseCode::NOT_FOUND,
@@ -3174,13 +3175,13 @@ void RestReplicationHandler::handleCommandDump() {
       // additionally wait for the collector
       if (flushWait > 0) {
         arangodb::wal::LogfileManager::instance()->waitForCollectorQueue(
-            c->_cid, static_cast<double>(flushWait));
+            c->cid(), static_cast<double>(flushWait));
       }
     }
 
-    arangodb::CollectionGuard guard(_vocbase, c->_cid, false);
+    arangodb::CollectionGuard guard(_vocbase, c->cid(), false);
 
-    TRI_vocbase_col_t* col = guard.collection();
+    arangodb::LogicalCollection* col = guard.collection();
     TRI_ASSERT(col != nullptr);
 
     auto transactionContext =
@@ -4000,7 +4001,7 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
   }
 
   auto trxContext = StandaloneTransactionContext::Create(_vocbase);
-  SingleCollectionTransaction trx(trxContext, col->_cid, TRI_TRANSACTION_READ);
+  SingleCollectionTransaction trx(trxContext, col->cid(), TRI_TRANSACTION_READ);
   trx.addHint(TRI_TRANSACTION_HINT_LOCK_ENTIRELY, false);
   int res = trx.begin();
   if (res != TRI_ERROR_NO_ERROR) {

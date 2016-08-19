@@ -37,6 +37,7 @@
 #include "Utils/StandaloneTransactionContext.h"
 #include "VocBase/DatafileHelper.h"
 #include "VocBase/collection.h"
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 
@@ -816,7 +817,7 @@ void CompactorThread::signal() {
 
 void CompactorThread::run() {
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  std::vector<TRI_vocbase_col_t*> collections;
+  std::vector<arangodb::LogicalCollection*> collections;
   int numCompacted = 0;
 
   while (true) {
@@ -837,6 +838,7 @@ void CompactorThread::run() {
       bool worked;
 
       for (auto& collection : collections) {
+      // Muss werden eine Lambda Function. () -> bool true wenn getan, False wenn nicht gelocked
         {
           TRY_READ_LOCKER(readLocker, collection->_lock);
 

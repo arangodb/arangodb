@@ -24,7 +24,6 @@
 #include "ContinuousSyncer.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
-#include "Basics/json.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
@@ -37,6 +36,7 @@
 #include "Utils/CollectionGuard.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/collection.h"
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/transaction.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
@@ -490,12 +490,12 @@ int ContinuousSyncer::processDocument(TRI_replication_operation_e type,
     std::string const cnameString = cname.copyString();
     isSystem = (!cnameString.empty() && cnameString[0] == '_');
 
-    TRI_vocbase_col_t* col = getCollectionByIdOrName(cid, cnameString);
+    arangodb::LogicalCollection* col = getCollectionByIdOrName(cid, cnameString);
 
-    if (col != nullptr && col->_cid != cid) {
+    if (col != nullptr && col->cid() != cid) {
       // cid change? this may happen for system collections or if we restored
       // from a dump
-      cid = col->_cid;
+      cid = col->cid();
     }
   }
 
@@ -749,7 +749,7 @@ int ContinuousSyncer::renameCollection(VPackSlice const& slice) {
   }
 
   TRI_voc_cid_t const cid = getCid(slice);
-  TRI_vocbase_col_t* col = getCollectionByIdOrName(cid, cname);
+  arangodb::LogicalCollection* col = getCollectionByIdOrName(cid, cname);
 
   if (col == nullptr) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
@@ -770,7 +770,7 @@ int ContinuousSyncer::changeCollection(VPackSlice const& slice) {
 
   TRI_voc_cid_t cid = getCid(slice);
   std::string const cname = getCName(slice);
-  TRI_vocbase_col_t* col = getCollectionByIdOrName(cid, cname);
+  arangodb::LogicalCollection* col = getCollectionByIdOrName(cid, cname);
   
   if (col == nullptr) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;

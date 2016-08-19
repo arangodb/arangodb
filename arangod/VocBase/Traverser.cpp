@@ -167,11 +167,6 @@ TraverserExpression::TraverserExpression(VPackSlice const& slice) {
                         // grows/shrinks
   };
 
-  arangodb::basics::Json varNode(
-      TRI_UNKNOWN_MEM_ZONE,
-      basics::VelocyPackHelper::velocyPackToJson(slice.get("varAccess")),
-      arangodb::basics::Json::AUTOFREE);
-
   VPackSlice compareToSlice = slice.get("compareTo");
   VPackBuilder* builder = new VPackBuilder;
   try {
@@ -182,7 +177,7 @@ TraverserExpression::TraverserExpression(VPackSlice const& slice) {
   }
   compareTo.reset(builder);
   // If this fails everything before does not leak
-  varAccess = new aql::AstNode(registerNode, registerString, varNode);
+  varAccess = new aql::AstNode(registerNode, registerString, slice.get("varAccess"));
 }
 
 ////////////////////////////////////////////////////////////////////////////////

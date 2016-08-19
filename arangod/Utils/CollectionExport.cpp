@@ -31,6 +31,7 @@
 #include "Utils/StandaloneTransactionContext.h"
 #include "VocBase/Ditch.h"
 #include "VocBase/collection.h"
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb;
