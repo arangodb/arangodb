@@ -9,12 +9,12 @@ fi
 
 #          debian          mac   
 for f in /usr/bin/md5sum /sbin/md5; do 
-    if test -f $f; then
+    if test -e ${f}; then
         MD5=${f}
         break
     fi
 done
-if test -z "${f}"; then
+if test -n "${f}"; then
     echo "didn't find a valid MD5SUM binary!"
     exit 1
 fi
