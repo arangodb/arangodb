@@ -1450,7 +1450,7 @@ function startInstanceAgency (instanceInfo, protocol, options,
     fs.makeDirectoryRecursive(dir);
 
     instanceInfo.arangods.push(startArango(protocol, options, instanceArgs, rootDir, 'agent'));
-    print(instanceInfo);
+
   }
 
   instanceInfo.endpoint = instanceInfo.arangods[instanceInfo.arangods.length - 1].endpoint;

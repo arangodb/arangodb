@@ -113,8 +113,10 @@ void Inception::run() {
     }
 
     if (config.poolComplete()) {
-      _agent->startConstituent();
-      cs = true;
+      if(!cs) {
+        _agent->startConstituent();
+        cs = true;
+      }
     }
 
   }
