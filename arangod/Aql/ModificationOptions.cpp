@@ -21,40 +21,25 @@
 /// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Aql/ModificationOptions.h"
+#include "ModificationOptions.h"
+#include "Basics/VelocyPackHelper.h"
 
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb::aql;
-using Json = arangodb::basics::Json;
-using JsonHelper = arangodb::basics::JsonHelper;
 
-ModificationOptions::ModificationOptions(Json const& json) {
-  Json obj = json.get("modificationFlags");
+ModificationOptions::ModificationOptions(VPackSlice const& slice) {
+  VPackSlice obj = slice.get("modificationFlags");
 
-  ignoreErrors = JsonHelper::getBooleanValue(obj.json(), "ignoreErrors", false);
-  waitForSync = JsonHelper::getBooleanValue(obj.json(), "waitForSync", false);
+  ignoreErrors = basics::VelocyPackHelper::getBooleanValue(obj, "ignoreErrors", false);
+  waitForSync = basics::VelocyPackHelper::getBooleanValue(obj, "waitForSync", false);
   nullMeansRemove =
-      JsonHelper::getBooleanValue(obj.json(), "nullMeansRemove", false);
-  mergeObjects = JsonHelper::getBooleanValue(obj.json(), "mergeObjects", true);
+      basics::VelocyPackHelper::getBooleanValue(obj, "nullMeansRemove", false);
+  mergeObjects = basics::VelocyPackHelper::getBooleanValue(obj, "mergeObjects", true);
   ignoreDocumentNotFound =
-      JsonHelper::getBooleanValue(obj.json(), "ignoreDocumentNotFound", false);
+      basics::VelocyPackHelper::getBooleanValue(obj, "ignoreDocumentNotFound", false);
   readCompleteInput =
-      JsonHelper::getBooleanValue(obj.json(), "readCompleteInput", true);
-}
-
-void ModificationOptions::toJson(arangodb::basics::Json& json,
-                                 TRI_memory_zone_t* zone) const {
-  Json flags;
-
-  flags = Json(Json::Object, 6)("ignoreErrors", Json(ignoreErrors))(
-      "waitForSync", Json(waitForSync))("nullMeansRemove",
-                                        Json(nullMeansRemove))(
-      "mergeObjects", Json(mergeObjects))("ignoreDocumentNotFound",
-                                          Json(ignoreDocumentNotFound))(
-      "readCompleteInput", Json(readCompleteInput));
-
-  json("modificationFlags", flags);
+      basics::VelocyPackHelper::getBooleanValue(obj, "readCompleteInput", true);
 }
 
 void ModificationOptions::toVelocyPack(VPackBuilder& builder) const {

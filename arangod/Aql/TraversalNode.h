@@ -49,11 +49,8 @@ class SimpleTraverserExpression
         compareToNode(compareToNode),
         expression(nullptr) {}
 
-  SimpleTraverserExpression(arangodb::aql::Ast* ast, arangodb::basics::Json const& j);
-
+  SimpleTraverserExpression(arangodb::aql::Ast* ast, arangodb::velocypack::Slice const&);
   ~SimpleTraverserExpression();
-
-  void toJson(arangodb::basics::Json& json, TRI_memory_zone_t* zone) const;
 
   void toVelocyPack(arangodb::velocypack::Builder&) const;
 };
@@ -70,7 +67,7 @@ class TraversalNode : public ExecutionNode {
                 AstNode const* direction, AstNode const* start,
                 AstNode const* graph, TraversalOptions const& options);
 
-  TraversalNode(ExecutionPlan* plan, arangodb::basics::Json const& base);
+  TraversalNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base);
 
   ~TraversalNode() {
     delete _condition;
@@ -255,8 +252,8 @@ class TraversalNode : public ExecutionNode {
   /// @brief input vertexId only used if _inVariable is unused
   std::string _vertexId;
 
-  /// @brief input graphJson only used for serialization & info
-  arangodb::basics::Json _graphJson;
+  /// @brief input graphInfo only used for serialization & info
+  arangodb::velocypack::Builder _graphInfo;
 
   /// @brief The minimal depth included in the result
   uint64_t _minDepth;

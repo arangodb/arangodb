@@ -28,8 +28,6 @@
 
 using namespace arangodb::aql;
 
-using Json = arangodb::basics::Json;
-
 EnumerateListBlock::EnumerateListBlock(ExecutionEngine* engine,
                                        EnumerateListNode const* en)
     : ExecutionBlock(engine, en),

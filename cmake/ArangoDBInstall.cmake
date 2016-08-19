@@ -1,15 +1,20 @@
 include(GNUInstallDirs)
 
 set(ARANGODB_SOURCE_DIR ${CMAKE_SOURCE_DIR})
-  
+set(CMAKE_INSTALL_SYSCONFDIR_ARANGO "${CMAKE_INSTALL_SYSCONFDIR}/arangodb3")
+set(CMAKE_INSTALL_FULL_SYSCONFDIR_ARANGO "${CMAKE_INSTALL_FULL_SYSCONFDIR}/arangodb3")
+
+set(CMAKE_INSTALL_DATAROOTDIR_ARANGO "${CMAKE_INSTALL_DATAROOTDIR}/arangodb3")
+set(CMAKE_INSTALL_FULL_DATAROOTDIR_ARANGO "${CMAKE_INSTALL_FULL_DATAROOTDIR}/arangodb3")
+
 if (MSVC OR DARWIN)
   set(ENABLE_UID_CFG false)
 else ()
   set(ENABLE_UID_CFG true)
 endif ()
 
-set(CMAKE_INSTALL_SYSCONFDIR_ARANGO "${CMAKE_INSTALL_SYSCONFDIR}/arangodb3" CACHE PATH "read-only single-machine data (etc)")
-set(CMAKE_INSTALL_FULL_SYSCONFDIR_ARANGO "${CMAKE_INSTALL_FULL_SYSCONFDIR}/arangodb3" CACHE PATH "read-only single-machine data (etc)")
+set(CMAKE_INSTALL_SYSCONFDIR_ARANGO "${CMAKE_INSTALL_SYSCONFDIR}/arangodb3")
+set(CMAKE_INSTALL_FULL_SYSCONFDIR_ARANGO "${CMAKE_INSTALL_FULL_SYSCONFDIR}/arangodb3")
 
 file(TO_NATIVE_PATH "${CMAKE_INSTALL_FULL_SYSCONFDIR_ARANGO}" ETCDIR_NATIVE)
 STRING(REGEX REPLACE "\\\\" "\\\\\\\\" ETCDIR_ESCAPED "${ETCDIR_NATIVE}")
@@ -49,7 +54,7 @@ include(InstallArangoDBJSClient)
 ################################################################################
 
 install(
-  DIRECTORY ${PROJECT_SOURCE_DIR}/js/actions ${PROJECT_SOURCE_DIR}/js/apps ${PROJECT_SOURCE_DIR}/js/contrib ${PROJECT_SOURCE_DIR}/js/node ${PROJECT_SOURCE_DIR}/js/server
+  DIRECTORY ${PROJECT_SOURCE_DIR}/js/actions ${PROJECT_SOURCE_DIR}/js/apps ${PROJECT_SOURCE_DIR}/js/contrib ${PROJECT_SOURCE_DIR}/js/server
   DESTINATION ${CMAKE_INSTALL_DATAROOTDIR_ARANGO}/js
   REGEX "^.*/server/tests$" EXCLUDE
   REGEX "^.*/aardvark/APP/node_modules$" EXCLUDE
@@ -61,7 +66,7 @@ install(
 
 install(
   DIRECTORY ${PROJECT_BINARY_DIR}/var/log/arangodb3
-  DESTINATION ${CMAKE_INSTALL_FULL_LOCALSTATEDIR}/log)
+  DESTINATION ${CMAKE_INSTALL_LOCALSTATEDIR}/log)
 
 ################################################################################
 ### @brief install database directory
@@ -69,7 +74,7 @@ install(
 
 install(
   DIRECTORY ${PROJECT_BINARY_DIR}/var/lib/arangodb3
-  DESTINATION ${CMAKE_INSTALL_FULL_LOCALSTATEDIR}/lib)
+  DESTINATION ${CMAKE_INSTALL_LOCALSTATEDIR}/lib)
 
 ################################################################################
 ### @brief install apps directory
@@ -77,7 +82,7 @@ install(
 
 install(
   DIRECTORY ${PROJECT_BINARY_DIR}/var/lib/arangodb3-apps
-  DESTINATION ${CMAKE_INSTALL_FULL_LOCALSTATEDIR}/lib)
+  DESTINATION ${CMAKE_INSTALL_LOCALSTATEDIR}/lib)
 
 
 # sub directories --------------------------------------------------------------

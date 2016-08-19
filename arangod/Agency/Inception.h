@@ -18,11 +18,11 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andreas Streichardt
+/// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CONSENSUS_NOTIFIER_COMMON_H
-#define ARANGOD_CONSENSUS_NOTIFIER_COMMON_H 1
+#ifndef ARANGOD_CONSENSUS_INCEPTION_H
+#define ARANGOD_CONSENSUS_INCEPTION_H 1
 
 #include <memory>
 
@@ -36,35 +36,29 @@
 namespace arangodb {
 namespace consensus {
 
-struct NotificationResult {
-  bool success;
-  std::string endpoint;
-};
+class Agent;
 
-class NotifierThread : public Thread {
- public:
-  NotifierThread(const std::string& path, std::shared_ptr<VPackBuilder> body,
-                 const std::vector<std::string>& endpoints);
-  virtual ~NotifierThread();
+class Inception : public Thread {
 
+public:
+  
+  Inception();
+  explicit Inception(Agent*);
+  virtual ~Inception();
+  
   void run() override;
   bool start();
-
+  
   /// @brief Orderly shutdown of thread
   void beginShutdown() override;
+  
+private:
 
- private:
-  void scheduleNotification(const std::string&);
-
-  arangodb::basics::ConditionVariable _cv;
-
-  std::string _path;
-  std::shared_ptr<VPackBuilder> _body;
-  std::vector<std::string> _endpoints;
-
-  std::vector<NotificationResult> _openResults;
+  bool _done;
+  Agent* _agent;
+  
 };
-}
-}
 
-#endif  // ARANGODB_CONSENSUS_NOTIFIER_COMMON_H
+}}
+
+#endif

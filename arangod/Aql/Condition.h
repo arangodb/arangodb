@@ -29,6 +29,8 @@
 #include "Basics/AttributeNameParser.h"
 #include "Utils/Transaction.h"
 
+#include <velocypack/Slice.h>
+
 namespace arangodb {
 namespace aql {
 
@@ -192,20 +194,11 @@ class Condition {
   /// relevant if the condition consists of multiple ORs)
   inline bool isSorted() const { return _isSorted; }
 
-  /// @brief return the condition as a Json object
-  arangodb::basics::Json toJson(TRI_memory_zone_t* zone, bool verbose) const {
-    if (_root == nullptr) {
-      return arangodb::basics::Json(arangodb::basics::Json::Object);
-    }
-
-    return arangodb::basics::Json(zone, _root->toJson(zone, verbose));
-  }
-
   /// @brief export the condition as VelocyPack
   void toVelocyPack(arangodb::velocypack::Builder&, bool) const;
 
-  /// @brief create a condition from JSON
-  static Condition* fromJson(ExecutionPlan*, arangodb::basics::Json const&);
+  /// @brief create a condition from VPack
+  static Condition* fromVPack(ExecutionPlan*, arangodb::velocypack::Slice const&);
 
   /// @brief clone the condition
   Condition* clone() const;

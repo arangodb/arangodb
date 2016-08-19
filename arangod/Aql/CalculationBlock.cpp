@@ -32,8 +32,6 @@
 
 using namespace arangodb::aql;
 
-using Json = arangodb::basics::Json;
-
 CalculationBlock::CalculationBlock(ExecutionEngine* engine,
                                    CalculationNode const* en)
     : ExecutionBlock(engine, en),

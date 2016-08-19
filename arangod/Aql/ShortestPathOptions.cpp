@@ -25,22 +25,25 @@
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb::aql;
-using Json = arangodb::basics::Json;
-using JsonHelper = arangodb::basics::JsonHelper;
 
-ShortestPathOptions::ShortestPathOptions(Json const& json) {
-  Json obj = json.get("shortestpathFlags");
-  weightAttribute = JsonHelper::getStringValue(obj.json(), "weightAttribute", "");
-  defaultWeight = JsonHelper::getNumericValue<double>(obj.json(), "defaultWeight", 1);
-}
-
-void ShortestPathOptions::toJson(arangodb::basics::Json& json,
-                              TRI_memory_zone_t* zone) const {
-  Json flags;
-  flags = Json(Json::Object, 2);
-  flags("weightAttribute", Json(weightAttribute));
-  flags("defaultWeight", Json(defaultWeight));
-  json("shortestPathFlags", flags);
+ShortestPathOptions::ShortestPathOptions(VPackSlice const& slice) {
+  VPackSlice obj = slice.get("shortestpathFlags");
+  
+  weightAttribute = "";
+  if (obj.hasKey("weightAttribute")) {
+    VPackSlice v = obj.get("weightAttribute");
+    if (v.isString()) {
+      weightAttribute = v.copyString();
+    }
+  }
+  
+  defaultWeight = 1;
+  if (obj.hasKey("defaultWeight")) {
+    VPackSlice v = obj.get("defaultWeight");
+    if (v.isNumber()) {
+      defaultWeight = v.getNumericValue<double>();
+    }
+  }
 }
 
 void ShortestPathOptions::toVelocyPack(VPackBuilder& builder) const {

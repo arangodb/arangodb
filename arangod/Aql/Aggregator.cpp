@@ -66,15 +66,13 @@ Aggregator* Aggregator::fromTypeString(arangodb::AqlTransaction* trx,
   return nullptr;
 }
 
-Aggregator* Aggregator::fromJson(arangodb::AqlTransaction* trx,
-                                 arangodb::basics::Json const& json,
-                                 char const* variableName) {
-  arangodb::basics::Json variableJson = json.get(variableName);
+Aggregator* Aggregator::fromVPack(arangodb::AqlTransaction* trx,
+                                  arangodb::velocypack::Slice const& slice,
+                                  char const* variableName) {
+  VPackSlice variable = slice.get(variableName);
 
-  if (variableJson.isString()) {
-    std::string const type(variableJson.json()->_value._string.data,
-                           variableJson.json()->_value._string.length - 1);
-    return fromTypeString(trx, type);
+  if (variable.isString()) {
+    return fromTypeString(trx, variable.copyString());
   }
 
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,

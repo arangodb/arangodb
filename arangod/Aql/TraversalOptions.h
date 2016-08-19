@@ -26,22 +26,22 @@
 #include "Basics/Common.h"
 #include "VocBase/Traverser.h"
 
+#include <velocypack/Slice.h>
+
 namespace arangodb {
 namespace aql {
 
 /// @brief TraversalOptions
 struct TraversalOptions {
 
-  /// @brief constructor, using JSON
-  TraversalOptions(arangodb::basics::Json const&);
+  /// @brief constructor
+  explicit TraversalOptions(arangodb::velocypack::Slice const&);
 
   /// @brief constructor, using default values
   TraversalOptions()
       : useBreadthFirst(false),
         uniqueVertices(traverser::TraverserOptions::UniquenessLevel::NONE),
         uniqueEdges(traverser::TraverserOptions::UniquenessLevel::PATH) {}
-
-  void toJson(arangodb::basics::Json&, TRI_memory_zone_t*) const;
 
   void toVelocyPack(arangodb::velocypack::Builder&) const;
 

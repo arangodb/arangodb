@@ -27,7 +27,6 @@
 
 using namespace arangodb::aql;
 
-using Json = arangodb::basics::Json;
 using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
 
 /// @brief create the block

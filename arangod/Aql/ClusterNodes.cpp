@@ -29,17 +29,16 @@
 using namespace arangodb::basics;
 using namespace arangodb::aql;
 
-/// @brief constructor for RemoteNode from Json
-RemoteNode::RemoteNode(ExecutionPlan* plan, arangodb::basics::Json const& base)
+/// @brief constructor for RemoteNode 
+RemoteNode::RemoteNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base),
       _vocbase(plan->getAst()->query()->vocbase()),
       _collection(plan->getAst()->query()->collections()->get(
-          JsonHelper::checkAndGetStringValue(base.json(), "collection"))),
-      _server(JsonHelper::checkAndGetStringValue(base.json(), "server")),
-      _ownName(JsonHelper::checkAndGetStringValue(base.json(), "ownName")),
-      _queryId(JsonHelper::checkAndGetStringValue(base.json(), "queryId")),
-      _isResponsibleForInitializeCursor(JsonHelper::checkAndGetBooleanValue(
-          base.json(), "isResponsibleForInitializeCursor")) {}
+          base.get("collection").copyString())),
+      _server(base.get("server").copyString()),
+      _ownName(base.get("ownName").copyString()),
+      _queryId(base.get("queryId").copyString()),
+      _isResponsibleForInitializeCursor(base.get("isResponsibleForInitializeCursor").getBoolean()) {}
 
 /// @brief toVelocyPack, for RemoteNode
 void RemoteNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
@@ -73,13 +72,13 @@ double RemoteNode::estimateCost(size_t& nrItems) const {
   return 1.0;
 }
 
-/// @brief construct a scatter node from JSON
+/// @brief construct a scatter node
 ScatterNode::ScatterNode(ExecutionPlan* plan,
-                         arangodb::basics::Json const& base)
+                         arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base),
       _vocbase(plan->getAst()->query()->vocbase()),
       _collection(plan->getAst()->query()->collections()->get(
-          JsonHelper::checkAndGetStringValue(base.json(), "collection"))) {}
+          base.get("collection").copyString())) {}
 
 /// @brief toVelocyPack, for ScatterNode
 void ScatterNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
@@ -100,21 +99,17 @@ double ScatterNode::estimateCost(size_t& nrItems) const {
   return depCost + nrItems * nrShards;
 }
 
-/// @brief construct a distribute node from JSON
+/// @brief construct a distribute node
 DistributeNode::DistributeNode(ExecutionPlan* plan,
-                               arangodb::basics::Json const& base)
+                               arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base),
       _vocbase(plan->getAst()->query()->vocbase()),
       _collection(plan->getAst()->query()->collections()->get(
-          JsonHelper::checkAndGetStringValue(base.json(), "collection"))),
-      _varId(JsonHelper::checkAndGetNumericValue<VariableId>(base.json(),
-                                                             "varId")),
-      _alternativeVarId(JsonHelper::checkAndGetNumericValue<VariableId>(
-          base.json(), "alternativeVarId")),
-      _createKeys(
-          JsonHelper::checkAndGetBooleanValue(base.json(), "createKeys")),
-      _allowKeyConversionToObject(JsonHelper::checkAndGetBooleanValue(
-          base.json(), "allowKeyConversionToObject")) {}
+          base.get("collection").copyString())),
+      _varId(base.get("varId").getNumericValue<VariableId>()),
+      _alternativeVarId(base.get("alternativeVarId").getNumericValue<VariableId>()),
+      _createKeys(base.get("createKeys").getBoolean()),
+      _allowKeyConversionToObject(base.get("allowKeyConversionToObject").getBoolean()) {}
 
 /// @brief toVelocyPack, for DistributedNode
 void DistributeNode::toVelocyPackHelper(VPackBuilder& nodes,
@@ -141,14 +136,14 @@ double DistributeNode::estimateCost(size_t& nrItems) const {
   return depCost + nrItems;
 }
 
-/// @brief construct a gather node from JSON
-GatherNode::GatherNode(ExecutionPlan* plan, arangodb::basics::Json const& base,
+/// @brief construct a gather node
+GatherNode::GatherNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base,
                        SortElementVector const& elements)
     : ExecutionNode(plan, base),
       _elements(elements),
       _vocbase(plan->getAst()->query()->vocbase()),
       _collection(plan->getAst()->query()->collections()->get(
-          JsonHelper::checkAndGetStringValue(base.json(), "collection"))) {}
+          base.get("collection").copyString())) {}
 
 /// @brief toVelocyPack, for GatherNode
 void GatherNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {

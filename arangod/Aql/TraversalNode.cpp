@@ -48,42 +48,16 @@ static uint64_t checkTraversalDepthValue(AstNode const* node) {
 }
 
 SimpleTraverserExpression::SimpleTraverserExpression(arangodb::aql::Ast* ast,
-                                                     arangodb::basics::Json const& j)
+                                                     arangodb::velocypack::Slice const& slice) 
     : TraverserExpression(), expression(nullptr) {
-  isEdgeAccess =
-      basics::JsonHelper::checkAndGetBooleanValue(j.json(), "isEdgeAccess");
-
-  comparisonType = static_cast<aql::AstNodeType>(
-      basics::JsonHelper::checkAndGetNumericValue<uint32_t>(j.json(),
-                                                            "comparisonType"));
-
-  varAccess = new AstNode(ast, j.get("varAccess"));
-  compareToNode = new AstNode(ast, j.get("compareTo"));
+  isEdgeAccess = slice.get("isEdgeAccess").getBoolean();
+  comparisonType = static_cast<aql::AstNodeType>(slice.get("comparisonType").getNumericValue<uint32_t>());
+  varAccess = new AstNode(ast, slice.get("varAccess"));
+  compareToNode = new AstNode(ast, slice.get("compareTo"));
 }
 
 SimpleTraverserExpression::~SimpleTraverserExpression() {
-  if (expression != nullptr) {
-    delete expression;
-  }
-}
-
-void SimpleTraverserExpression::toJson(arangodb::basics::Json& json,
-                                       TRI_memory_zone_t* zone) const {
-  auto op = arangodb::aql::AstNode::Operators.find(comparisonType);
-
-  if (op == arangodb::aql::AstNode::Operators.end()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_QUERY_PARSE,
-        "invalid operator for simpleTraverserExpression");
-  }
-  std::string const operatorStr = op->second;
-
-  json("isEdgeAccess", arangodb::basics::Json(isEdgeAccess))(
-      "comparisonTypeStr", arangodb::basics::Json(operatorStr))(
-      "comparisonType",
-      arangodb::basics::Json(static_cast<int32_t>(comparisonType)))(
-      "varAccess", varAccess->toJson(zone, true))(
-      "compareTo", compareToNode->toJson(zone, true));
+  delete expression;
 }
 
 void SimpleTraverserExpression::toVelocyPack(VPackBuilder& builder) const {
@@ -175,8 +149,8 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id,
 
   if (graph->type == NODE_TYPE_COLLECTION_LIST) {
     size_t edgeCollectionCount = graph->numMembers();
-    _graphJson = arangodb::basics::Json(arangodb::basics::Json::Array,
-                                        edgeCollectionCount);
+
+    _graphInfo.openArray();
     _edgeColls.reserve(edgeCollectionCount);
     _directions.reserve(edgeCollectionCount);
     // List of edge collection names
@@ -218,14 +192,15 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id,
       }
       
       _directions.emplace_back(dir);
-      _graphJson.add(arangodb::basics::Json(eColName));
+      _graphInfo.add(VPackValue(eColName));
       _edgeColls.emplace_back(eColName);
     }
+    _graphInfo.close();
   } else {
     if (_edgeColls.empty()) {
       if (graph->isStringValue()) {
         std::string graphName = graph->getString();
-        _graphJson = arangodb::basics::Json(graphName);
+        _graphInfo.add(VPackValue(graphName));
         _graphObj = plan->getAst()->query()->lookupGraphByName(graphName);
 
         if (_graphObj == nullptr) {
@@ -292,16 +267,18 @@ TraversalNode::TraversalNode(
       _condition(nullptr),
       _options(options),
       _specializedNeighborsSearch(false) {
-  _graphJson = arangodb::basics::Json(arangodb::basics::Json::Array, edgeColls.size());
+  _graphInfo.openArray();
 
   for (auto& it : edgeColls) {
     _edgeColls.emplace_back(it);
-    _graphJson.add(arangodb::basics::Json(it));
+    _graphInfo.add(VPackValue(it));
   }
+
+  _graphInfo.close();
 }
 
 TraversalNode::TraversalNode(ExecutionPlan* plan,
-                             arangodb::basics::Json const& base)
+                             arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base),
       _vocbase(plan->getAst()->query()->vocbase()),
       _vertexOutVariable(nullptr),
@@ -311,15 +288,11 @@ TraversalNode::TraversalNode(ExecutionPlan* plan,
       _graphObj(nullptr),
       _condition(nullptr),
       _specializedNeighborsSearch(false) {
-  _minDepth =
-      arangodb::basics::JsonHelper::stringUInt64(base.json(), "minDepth");
-  _maxDepth =
-      arangodb::basics::JsonHelper::stringUInt64(base.json(), "maxDepth");
-  auto dirList = base.get("directions");
-  TRI_ASSERT(dirList.json() != nullptr);
-  for (size_t i = 0; i < dirList.size(); ++i) {
-    auto dirJson = dirList.at(i);
-    uint64_t dir = arangodb::basics::JsonHelper::stringUInt64(dirJson.json());
+  _minDepth = arangodb::basics::VelocyPackHelper::stringUInt64(base.get("minDepth"));
+  _maxDepth = arangodb::basics::VelocyPackHelper::stringUInt64(base.get("maxDepth"));
+  VPackSlice dirList = base.get("directions");
+  for (auto const& it : VPackArrayIterator(dirList)) {
+    uint64_t dir = arangodb::basics::VelocyPackHelper::stringUInt64(it);
     TRI_edge_direction_e d;
     switch (dir) {
       case 0:
@@ -340,32 +313,34 @@ TraversalNode::TraversalNode(ExecutionPlan* plan,
   }
 
   // In Vertex
-  if (base.has("inVariable")) {
-    _inVariable = varFromJson(plan->getAst(), base, "inVariable");
+  if (base.hasKey("inVariable")) {
+    _inVariable = varFromVPack(plan->getAst(), base, "inVariable");
   } else {
-    _vertexId = arangodb::basics::JsonHelper::getStringValue(base.json(),
-                                                             "vertexId", "");
+    VPackSlice v = base.get("vertexId");
+    if (!v.isString()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_BAD_JSON_PLAN,
+                                     "start vertex must be a string");
+    }
+    _vertexId = v.copyString();
     if (_vertexId.empty()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_BAD_JSON_PLAN,
-                                     "start vertex mustn't be empty.");
+                                     "start vertex mustn't be empty");
     }
   }
 
-  if (base.has("condition")) {
-    TRI_json_t const* condition =
-        JsonHelper::checkAndGetObjectValue(base.json(), "condition");
-
-    if (condition != nullptr) {
-      arangodb::basics::Json conditionJson(TRI_UNKNOWN_MEM_ZONE, condition,
-                                           arangodb::basics::Json::NOFREE);
-      _condition = Condition::fromJson(plan, conditionJson);
+  if (base.hasKey("condition")) {
+    VPackSlice condition = base.get("condition");
+    if (!condition.isObject()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_BAD_JSON_PLAN,
+                                     "condition must be an object");
     }
+    _condition = Condition::fromVPack(plan, condition);
   }
 
   std::string graphName;
-  if (base.has("graph") && (base.get("graph").isString())) {
-    graphName = JsonHelper::checkAndGetStringValue(base.json(), "graph");
-    if (base.has("graphDefinition")) {
+  if (base.hasKey("graph") && (base.get("graph").isString())) {
+    graphName = base.get("graph").copyString();
+    if (base.hasKey("graphDefinition")) {
       _graphObj = plan->getAst()->query()->lookupGraphByName(graphName);
 
       if (_graphObj == nullptr) {
@@ -381,20 +356,18 @@ TraversalNode::TraversalNode(ExecutionPlan* plan,
                                      "missing graphDefinition.");
     }
   } else {
-    _graphJson = base.get("graph").copy();
-    if (!_graphJson.isArray()) {
+    _graphInfo.add(base.get("graph"));
+    if (!_graphInfo.slice().isArray()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_BAD_JSON_PLAN,
                                      "graph has to be an array.");
     }
-    size_t edgeCollectionCount = _graphJson.size();
+    for (auto const& it : VPackArrayIterator(_graphInfo.slice())) {
     // List of edge collection names
-    for (size_t i = 0; i < edgeCollectionCount; ++i) {
-      auto at = _graphJson.at(i);
-      if (!at.isString()) {
+      if (!it.isString()) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_BAD_JSON_PLAN,
                                        "graph has to be an array of strings.");
       }
-      _edgeColls.push_back(at.json()->_value._string.data);
+      _edgeColls.emplace_back(it.copyString());
     }
     if (_edgeColls.empty()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -403,56 +376,31 @@ TraversalNode::TraversalNode(ExecutionPlan* plan,
     }
   }
 
-  if (base.has("simpleExpressions")) {
-    auto simpleExpSet = base.get("simpleExpressions");
+  if (base.hasKey("simpleExpressions")) {
+    VPackSlice simpleExpSet = base.get("simpleExpressions");
 
     if (!simpleExpSet.isObject()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_BAD_JSON_PLAN,
                                      "simpleExpressions has to be an array.");
     }
-    size_t nExpressionSets = simpleExpSet.members();
     // List of edge collection names
-    for (size_t i = 0; i < nExpressionSets; i += 2) {
-      auto key = static_cast<TRI_json_t const*>(
-          TRI_AddressVector(&simpleExpSet.json()->_value._objects, i));
-
-      if (!TRI_IsStringJson(key)) {
-        // no string, should not happen
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_BAD_JSON_PLAN,
-                                       "simpleExpressions object: key wrong.");
-      }
-
-      std::string const k(key->_value._string.data,
-                          key->_value._string.length - 1);
-
-      auto value = static_cast<TRI_json_t const*>(
-          TRI_AtVector(&simpleExpSet.json()->_value._objects, i + 1));
-
-      if (value == nullptr) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(
-            TRI_ERROR_QUERY_BAD_JSON_PLAN,
-            "simpleExpressions object: value wrong.");
-      }
-
-      Json oneExpressionSetJson(TRI_UNKNOWN_MEM_ZONE, value);
-      size_t oneSetLength = oneExpressionSetJson.size();
-      if (oneSetLength == 0) {
+    for (auto const& it : VPackObjectIterator(simpleExpSet)) {
+      if (it.value.length() == 0) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
             TRI_ERROR_QUERY_BAD_JSON_PLAN,
             "simpleExpressions one expression set has to be an array.");
       }
 
       std::vector<arangodb::traverser::TraverserExpression*> oneExpressionSet;
-      oneExpressionSet.reserve(oneSetLength);
-      size_t n = static_cast<size_t>(std::stoull(k));
+      oneExpressionSet.reserve(it.value.length());
+      size_t n = static_cast<size_t>(std::stoull(it.key.copyString()));
       _expressions.emplace(n, oneExpressionSet);
-      auto it = _expressions.find(n);
+      auto it2 = _expressions.find(n);
 
-      for (size_t j = 0; j < oneSetLength; j++) {
-        auto sx = oneExpressionSetJson.at(j);
+      for (auto const& it3 : VPackArrayIterator(it.value)) {
         std::unique_ptr<SimpleTraverserExpression> oneX(
-            new SimpleTraverserExpression(plan->getAst(), sx));
-        it->second.emplace_back(oneX.get());
+            new SimpleTraverserExpression(plan->getAst(), it3));
+        it2->second.emplace_back(oneX.get());
         oneX.release();
       }
     }
@@ -463,22 +411,25 @@ TraversalNode::TraversalNode(ExecutionPlan* plan,
   }
 
   // Out variables
-  if (base.has("vertexOutVariable")) {
-    _vertexOutVariable = varFromJson(plan->getAst(), base, "vertexOutVariable");
+  if (base.hasKey("vertexOutVariable")) {
+    _vertexOutVariable = varFromVPack(plan->getAst(), base, "vertexOutVariable");
   }
-  if (base.has("edgeOutVariable")) {
-    _edgeOutVariable = varFromJson(plan->getAst(), base, "edgeOutVariable");
+  if (base.hasKey("edgeOutVariable")) {
+    _edgeOutVariable = varFromVPack(plan->getAst(), base, "edgeOutVariable");
   }
-  if (base.has("pathOutVariable")) {
-    _pathOutVariable = varFromJson(plan->getAst(), base, "pathOutVariable");
+  if (base.hasKey("pathOutVariable")) {
+    _pathOutVariable = varFromVPack(plan->getAst(), base, "pathOutVariable");
   }
 
   // Flags
-  if (base.has("traversalFlags")) {
+  if (base.hasKey("traversalFlags")) {
     _options = TraversalOptions(base);
   }
 
-  _specializedNeighborsSearch = arangodb::basics::JsonHelper::getBooleanValue(base.json(), "specializedNeighborsSearch", false);
+  _specializedNeighborsSearch = false;
+  if (base.hasKey("specializedNeighborsSearch")) {
+    _specializedNeighborsSearch = base.get("specializedNeighborsSearch").getBoolean();
+  }
 }
 
 int TraversalNode::checkIsOutVariable(size_t variableId) const {
@@ -527,12 +478,7 @@ void TraversalNode::toVelocyPackHelper(arangodb::velocypack::Builder& nodes,
   nodes.add("database", VPackValue(_vocbase->name()));
   nodes.add("minDepth", VPackValue(_minDepth));
   nodes.add("maxDepth", VPackValue(_maxDepth));
-
-  {
-    // TODO Remove _graphJson
-    auto tmp = arangodb::basics::JsonHelper::toVelocyPack(_graphJson.json());
-    nodes.add("graph", tmp->slice());
-  }
+  nodes.add("graph", _graphInfo.slice());
   nodes.add(VPackValue("directions"));
   {
     VPackArrayBuilder guard(&nodes);

@@ -31,6 +31,7 @@
 #include "Agency/Supervision.h"
 #include "Agency/State.h"
 #include "Agency/Store.h"
+#include "Agency/Inception.h"
 
 struct TRI_vocbase_t;
 
@@ -55,13 +56,13 @@ class Agent : public arangodb::Thread {
                              index_t, query_t const&);
 
   /// @brief Provide configuration
-  config_t const& config() const;
+  config_t const config() const;
 
   /// @brief Start thread
   bool start();
 
   /// @brief My endpoint
-  std::string const& endpoint() const;
+  std::string endpoint() const;
 
   /// @brief Verbose print of myself
   void print(arangodb::LoggerStream&) const;
@@ -104,6 +105,21 @@ class Agent : public arangodb::Thread {
   ///        2. Report success of write processes.
   void run() override final;
 
+  /// @brief Are we still booting?
+  bool booting();
+
+  /// @brief Gossip in
+  query_t gossip(query_t const&, bool callback = false);
+
+  /// @brief Persisted agents
+  bool persistedAgents();
+  
+  /// @brief Gossip in
+  bool activeAgency();
+  
+  /// @brief Startup process of detection of agent pool, active agency, gossip etc
+//  void inception();
+
   /// @brief Start orderly shutdown of threads
   void beginShutdown() override final;
 
@@ -131,10 +147,27 @@ class Agent : public arangodb::Thread {
   /// @brief Get spearhead store
   Store const& spearhead() const;
 
+  /// @brief Serve active agent interface
+  bool serveActiveAgent();
+
+  void startConstituent();
+  
+  /// State reads persisted state and prepares the agent
   friend class State;
 
  private:
+
+  /// @brief Activate this agent in single agent mode.
+  bool activateAgency();
+
+  /// @brief Assignment of persisted state
   Agent& operator=(VPackSlice const&);
+
+  /// @brief Get current term
+  bool id(arangodb::consensus::id_t const&);
+
+  /// @brief Get current term
+  bool mergeConfiguration(VPackSlice const&);
 
   /// @brief Leader ID
   void lastCommitted(arangodb::consensus::index_t);
@@ -172,14 +205,28 @@ class Agent : public arangodb::Thread {
   /// @brief Condition variable for waitFor
   arangodb::basics::ConditionVariable _waitForCV;
 
+  /// @brief Condition variable for waitFor
+  arangodb::basics::ConditionVariable _configCV;
+
   /// @brief Confirmed indices of all members of agency
-  std::vector<index_t> _confirmed;
-  std::vector<index_t> _lastHighest;
-  std::vector<TimePoint> _lastSent;
+  //std::vector<index_t> _confirmed;
+  std::map<std::string, index_t> _confirmed;
+  std::map<std::string, index_t> _lastHighest;
+
+  std::map<std::string, TimePoint> _lastSent;
   arangodb::Mutex _ioLock; /**< @brief Read/Write lock */
+
+  /// @brief Server active agents rest handler
+  bool _serveActiveAgent;
 
   /// @brief Next compaction after
   arangodb::consensus::index_t _nextCompationAfter;
+
+  std::map<std::string, bool> _gossipTmp;
+
+  std::unique_ptr<Inception> _inception;
+
+
 };
 
 }
