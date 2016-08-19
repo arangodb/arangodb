@@ -55,10 +55,10 @@ std::size_t findAndValidateVPacks(char const* vpHeaderStart,
   validator.validate(vpHeaderStart, std::distance(vpHeaderStart, chunkEnd),
                      /*isSubPart =*/true);
 
-  std::size_t numPayloads = 0;
   VPackSlice vpHeader(vpHeaderStart);
   auto vpPayloadStart = vpHeaderStart + vpHeader.byteSize();
 
+  std::size_t numPayloads = 0;
   while (vpPayloadStart != chunkEnd) {
     // validate
     validator.validate(vpPayloadStart, std::distance(vpPayloadStart, chunkEnd),
@@ -66,6 +66,7 @@ std::size_t findAndValidateVPacks(char const* vpHeaderStart,
     // get offset to next
     VPackSlice tmp(vpPayloadStart);
     vpPayloadStart += tmp.byteSize();
+    numPayloads++;
   }
   return numPayloads;
 }
@@ -277,7 +278,14 @@ bool VppCommTask::processRead() {
 
   // CASE 1: message is in one chunk
   if (chunkHeader._isFirst && chunkHeader._chunk == 1) {
-    std::size_t payloads = findAndValidateVPacks(vpackBegin, chunkEnd);
+    size_t payloads = 0;
+    try {
+      payloads = findAndValidateVPacks(vpackBegin, chunkEnd);
+    } catch (...) {
+      LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "VPack Validation failed!";
+      _clientClosed = true;
+      return false;
+    }
     VPackBuffer<uint8_t> buffer;
     buffer.append(vpackBegin, std::distance(vpackBegin, chunkEnd));
     message.set(chunkHeader._messageID, std::move(buffer), payloads);  // fixme
@@ -327,11 +335,18 @@ bool VppCommTask::processRead() {
 
     // MESSAGE COMPLETE
     if (im._currentChunk == im._numberOfChunks - 1 /* zero based counting */) {
-      std::size_t payloads = findAndValidateVPacks(
-          reinterpret_cast<char const*>(im._buffer.data()),
-          reinterpret_cast<char const*>(im._buffer.data() +
-                                        im._buffer.byteSize()));
+      size_t payloads = 0;
+      try {
+        payloads = findAndValidateVPacks(
+            reinterpret_cast<char const*>(im._buffer.data()),
+            reinterpret_cast<char const*>(im._buffer.data() +
+                                          im._buffer.byteSize()));
 
+      } catch (...) {
+        LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "VPack Validation failed!";
+        _clientClosed = true;
+        return false;
+      }
       message.set(chunkHeader._messageID, std::move(im._buffer), payloads);
       _incompleteMessages.erase(incompleteMessageItr);
       // check length
