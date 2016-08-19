@@ -80,7 +80,10 @@ TRI_voc_cid_t CollectionNameResolver::getCollectionIdCluster(
   // We have to look up the collection info:
   ClusterInfo* ci = ClusterInfo::instance();
   auto cinfo = ci->getCollection(_vocbase->name(), name);
-  return cinfo->cid();
+  if (cinfo != nullptr) {
+    return cinfo->cid();
+  }
+  return 0;
 }
 
 //////////////////////////////////////////////////////////////////////////////
