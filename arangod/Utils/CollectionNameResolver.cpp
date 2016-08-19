@@ -165,7 +165,10 @@ TRI_col_type_e CollectionNameResolver::getCollectionTypeCluster(
   // We have to look up the collection info:
   ClusterInfo* ci = ClusterInfo::instance();
   auto cinfo = ci->getCollection(_vocbase->name(), name);
-  return cinfo->type();
+  if (cinfo != nullptr) {
+    return cinfo->type();
+  }
+  return TRI_COL_TYPE_UNKNOWN;
 }
 
 //////////////////////////////////////////////////////////////////////////////
