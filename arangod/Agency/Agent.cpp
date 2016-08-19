@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Agent.h"
+#include "GossipCallback.h"
 
 #include "Basics/ConditionLocker.h"
 #include "RestServer/DatabaseFeature.h"
@@ -47,18 +48,37 @@ Agent::Agent(config_t const& config)
       _lastCommitIndex(0),
       _spearhead(this),
       _readDB(this),
-      _nextCompationAfter(_config.compactionStepSize) {
+      _serveActiveAgent(false),
+      _nextCompationAfter(_config.compactionStepSize()),
+      _inception(std::make_unique<Inception>(this)) {
   _state.configure(this);
   _constituent.configure(this);
-  _confirmed.resize(size(), 0);  // agency's size and reset to 0
-  _lastHighest.resize(size(), 0);
-  _lastSent.resize(size());
 }
 
 
 /// This agent's id
-arangodb::consensus::id_t Agent::id() const {
-  return _config.id;
+std::string Agent::id() const {
+  return config().id();
+}
+
+
+/// Agent's id is set once from state machine
+bool Agent::id(arangodb::consensus::id_t const& id) {
+  bool success;
+  if ((success = _config.setId(id))) {
+    LOG_TOPIC(DEBUG, Logger::AGENCY) << "My id is " << id;
+  } else {
+    LOG_TOPIC(ERR, Logger::AGENCY)
+      << "Cannot reassign id once set: My id is " << _config.id()
+      << " reassignment to " << id;
+  }
+  return success;
+}
+
+
+/// Merge command line and persisted comfigurations
+bool Agent::mergeConfiguration(VPackSlice const& persisted) {
+  return _config.merge(persisted);
 }
 
 
@@ -95,8 +115,8 @@ size_t Agent::size() const {
 
 
 /// My endpoint
-std::string const& Agent::endpoint() const {
-  return _config.endpoint;
+std::string Agent::endpoint() const {
+  return _config.endpoint();
 }
 
 
@@ -104,27 +124,13 @@ std::string const& Agent::endpoint() const {
 priv_rpc_ret_t Agent::requestVote(
   term_t t, arangodb::consensus::id_t id, index_t lastLogIndex,
   index_t lastLogTerm, query_t const& query) {
-  
-  /// Are we receiving new endpoints
-  if (query != nullptr) {  // record new endpoints
-    if (query->slice().hasKey("endpoints") &&
-        query->slice().get("endpoints").isArray()) {
-      size_t j = 0;
-      for (auto const& i : VPackArrayIterator(query->slice().get("endpoints"))) {
-        _config.endpoints[j++] = i.copyString();
-      }
-    }
-  }
-
-  /// Constituent handles this
-  return priv_rpc_ret_t(_constituent.vote(t, id, lastLogIndex, lastLogTerm),
-                        this->term());
-  
+  return priv_rpc_ret_t(
+    _constituent.vote(t, id, lastLogIndex, lastLogTerm), this->term());
 }
 
 
-/// Get configuration
-config_t const& Agent::config() const {
+/// Get copy of momentary configuration
+config_t const Agent::config() const {
   return _config;
 }
 
@@ -138,6 +144,17 @@ arangodb::consensus::id_t Agent::leaderID() const {
 /// Are we leading?
 bool Agent::leading() const {
   return _constituent.leading();
+}
+
+
+void Agent::startConstituent() {
+  activateAgency();
+  
+  auto database = ApplicationServer::getFeature<DatabaseFeature>("Database");
+  auto vocbase = database->systemDatabase();
+  auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY;
+  _constituent.start(vocbase, queryRegistry);
+  
 }
 
 
@@ -181,8 +198,6 @@ void Agent::reportIn(arangodb::consensus::id_t id, index_t index) {
 
   MUTEX_LOCKER(mutexLocker, _ioLock);
 
-  TRI_ASSERT(id<_confirmed.size());
-
   if (index > _confirmed[id]) {  // progress this follower?
     _confirmed[id] = index;
   }
@@ -191,7 +206,7 @@ void Agent::reportIn(arangodb::consensus::id_t id, index_t index) {
 
     size_t n = 0;
 
-    for (size_t i = 0; i < size(); ++i) {
+    for (auto const& i : _config.active()) {
       n += (_confirmed[i] >= index);
     }
 
@@ -207,7 +222,7 @@ void Agent::reportIn(arangodb::consensus::id_t id, index_t index) {
       
       if (_lastCommitIndex >= _nextCompationAfter) {
         _state.compact(_lastCommitIndex);
-        _nextCompationAfter += _config.compactionStepSize;
+        _nextCompationAfter += _config.compactionStepSize();
       }
       
     }
@@ -271,7 +286,7 @@ bool Agent::recvAppendEntriesRPC(term_t term,
   
   if (_lastCommitIndex >= _nextCompationAfter) {
     _state.compact(_lastCommitIndex);
-    _nextCompationAfter += _config.compactionStepSize;
+    _nextCompationAfter += _config.compactionStepSize();
   }
   
   return true;
@@ -293,8 +308,8 @@ priv_rpc_ret_t Agent::sendAppendEntriesRPC(
   std::vector<log_t> unconfirmed = _state.get(last_confirmed);
   index_t highest = unconfirmed.back().index;
 
-  if (highest == _lastHighest.at(follower_id) && (long)(500.0e6*_config.minPing) >
-      (std::chrono::system_clock::now() - _lastSent.at(follower_id)).count()) {
+  if (highest == _lastHighest[follower_id] && (long)(500.0e6*_config.minPing()) >
+      (std::chrono::system_clock::now() - _lastSent[follower_id]).count()) {
     return priv_rpc_ret_t(true, t);
   }
   
@@ -304,10 +319,6 @@ priv_rpc_ret_t Agent::sendAppendEntriesRPC(
        << "&prevLogIndex=" << unconfirmed.front().index
        << "&prevLogTerm=" << unconfirmed.front().term
        << "&leaderCommit=" << _lastCommitIndex;
-
-  // Headers
-  auto headerFields =
-      std::make_unique<std::unordered_map<std::string, std::string>>();
 
   // Body
   Builder builder;
@@ -331,24 +342,49 @@ priv_rpc_ret_t Agent::sendAppendEntriesRPC(
   }
 
   // Send request
+  auto headerFields =
+    std::make_unique<std::unordered_map<std::string, std::string>>();
   arangodb::ClusterComm::instance()->asyncRequest(
-      "1", 1, _config.endpoints[follower_id],
-      arangodb::GeneralRequest::RequestType::POST, path.str(),
-      std::make_shared<std::string>(builder.toJson()), headerFields,
-      std::make_shared<AgentCallback>(this, follower_id, highest),
-      0.5*_config.minPing, true, 0.75*_config.minPing);
+    "1", 1, _config.poolAt(follower_id),
+    arangodb::GeneralRequest::RequestType::POST, path.str(),
+    std::make_shared<std::string>(builder.toJson()), headerFields,
+    std::make_shared<AgentCallback>(this, follower_id, highest),
+    0.5*_config.minPing(), true, 0.75*_config.minPing());
 
-  _lastSent.at(follower_id) = std::chrono::system_clock::now();
-  _lastHighest.at(follower_id) = highest;
-
+  _lastSent[follower_id] = std::chrono::system_clock::now();
+  _lastHighest[follower_id] = highest;
+  
   return priv_rpc_ret_t(true, t);
   
 }
 
 
+/// @brief 
+bool Agent::activateAgency() {
+  if (_config.activeEmpty()) {
+    size_t count = 0;
+    for (auto const& pair : _config.pool()) {
+      _config.activePushBack(pair.first);
+      if(++count==size()) {
+        break;
+      }
+    }
+    bool persisted = false;
+    try {
+      persisted = _state.persistActiveAgents(
+        _config.activeToBuilder(), _config.poolToBuilder());
+    } catch (std::exception const& e) {
+      LOG_TOPIC(FATAL, Logger::AGENCY) <<
+        "Failed to persist active agency: " << e.what();      
+    }
+    return persisted;
+  }
+  return true;
+}
+
+
 /// Load persistent state
 bool Agent::load() {
-  
   DatabaseFeature* database =
       ApplicationServer::getFeature<DatabaseFeature>("Database");
 
@@ -361,9 +397,13 @@ bool Agent::load() {
   }
 
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "Loading persistent state.";
-  if (!_state.loadCollections(vocbase, queryRegistry, _config.waitForSync)) {
+  if (!_state.loadCollections(vocbase, queryRegistry, _config.waitForSync())) {
     LOG_TOPIC(DEBUG, Logger::AGENCY)
         << "Failed to load persistent state on startup.";
+  }
+
+  if (size() > 1) {
+    _inception->start();
   }
 
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "Reassembling spearhead and read stores.";
@@ -373,7 +413,7 @@ bool Agent::load() {
     CONDITION_LOCKER(guard, _appendCV);
     guard.broadcast();
   }
-  
+
   reportIn(id(), _state.lastLog().index);
 
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "Starting spearhead worker.";
@@ -382,9 +422,12 @@ bool Agent::load() {
 
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "Starting constituent personality.";
   TRI_ASSERT(queryRegistry != nullptr);
-  _constituent.start(vocbase, queryRegistry);
+  if (size() == 1) {
+    activateAgency();
+    _constituent.start(vocbase, queryRegistry);
+  }
 
-  if (_config.supervision) {
+  if (_config.supervision()) {
     LOG_TOPIC(DEBUG, Logger::AGENCY) << "Starting cluster sanity facilities";
     _supervision.start(this);
   }
@@ -434,7 +477,7 @@ read_ret_t Agent::read(query_t const& query) {
   }
 
   // Retrieve data from readDB
-  query_t result = std::make_shared<arangodb::velocypack::Builder>();
+  auto result = std::make_shared<arangodb::velocypack::Builder>();
   std::vector<bool> success = _readDB.read(query, result);
   
   return read_ret_t(true, _constituent.leaderID(), success, result);
@@ -457,7 +500,7 @@ void Agent::run() {
     }
 
     // Append entries to followers
-    for (arangodb::consensus::id_t i = 0; i < size(); ++i) {
+    for (auto const& i : _config.active()) {
       if (i != id()) {
         sendAppendEntriesRPC(i);
       }
@@ -474,7 +517,7 @@ void Agent::beginShutdown() {
   Thread::beginShutdown();
 
   // Stop supervision
-  if (_config.supervision) {
+  if (_config.supervision()) {
     _supervision.beginShutdown();
   }
 
@@ -570,9 +613,111 @@ Agent& Agent::operator=(VPackSlice const& compaction) {
   }
 
   // Schedule next compaction
-  _nextCompationAfter = _lastCommitIndex + _config.compactionStepSize;
+  _nextCompationAfter = _lastCommitIndex + _config.compactionStepSize();
 
   return *this;
+  
+}
+
+
+/// Are we still starting up?
+bool Agent::booting() {
+  return (!_config.poolComplete());
+}
+
+
+/// We expect an object as follows {id:<id>,endpoint:<endpoint>,pool:{...}}
+/// key: uuid value: endpoint
+/// Lock configuration and compare
+/// Add whatever is missing in our list.
+/// Compare whatever is in our list already. (ASSERT identity)
+/// If I know more immediately contact peer with my list.
+query_t Agent::gossip(query_t const& in, bool isCallback) {
+
+  VPackSlice slice = in->slice();
+  if (!slice.isObject()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+      20001, std::string("Gossip message must be an object. Incoming type is ")
+      + slice.typeName());
+  }
+
+  if (!slice.hasKey("id") || !slice.get("id").isString()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+      20002, "Gossip message must contain string parameter 'id'");
+  }
+  std::string id = slice.get("id").copyString();
+  
+  if (!slice.hasKey("endpoint") || !slice.get("endpoint").isString()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+      20003, "Gossip message must contain string parameter 'endpoint'");
+  }
+  std::string endpoint = slice.get("endpoint").copyString();
+    
+  LOG_TOPIC(DEBUG, Logger::AGENCY)
+    << "Gossip " << ((isCallback) ? "callback" : "call") << " from " << endpoint;
+  
+  if (!slice.hasKey("pool") || !slice.get("pool").isObject()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+      20003, "Gossip message must contain object parameter 'pool'");
+  }
+  VPackSlice pslice = slice.get("pool");
+
+  LOG_TOPIC(DEBUG, Logger::AGENCY) <<"Received gossip " << slice.toJson();
+
+  std::map<std::string,std::string> incoming;
+  for (auto const& pair : VPackObjectIterator(pslice)) {
+    if (!pair.value.isString()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+        20004, "Gossip message pool must contain string parameters");
+    }
+    incoming[pair.key.copyString()] = pair.value.copyString();
+  }
+  
+  query_t out = std::make_shared<Builder>();
+  out->openObject();
+  if (!isCallback) {
+
+    std::vector<std::string> gossipPeers = _config.gossipPeers();
+    if (!gossipPeers.empty()) {
+      try {
+        _config.eraseFromGossipPeers(endpoint);
+      } catch (std::exception const& e) {
+        LOG_TOPIC(ERR, Logger::AGENCY)
+          << __FILE__ << ":" << __LINE__ << " " << e.what();
+      }
+    }
+    
+    size_t counter = 0;
+    for (auto const& i : incoming) {
+      if (++counter > _config.poolSize()) { /// more data than pool size: fatal!
+        LOG_TOPIC(FATAL, Logger::AGENCY) <<
+          "Too many peers for poolsize: " << counter << ">" << _config.poolSize();
+        FATAL_ERROR_EXIT();
+      }
+      
+      if (!_config.addToPool(i)) {
+        LOG_TOPIC(FATAL, Logger::AGENCY) << "Discrepancy in agent pool!";
+        FATAL_ERROR_EXIT();
+      }
+    }
+    
+    
+    //bool send = false;
+    std::map<std::string,std::string> pool = _config.pool();
+    
+    out->add("endpoint", VPackValue(_config.endpoint()));
+    out->add("id", VPackValue(_config.id()));
+    out->add("pool", VPackValue(VPackValueType::Object));
+    for (auto const& i : pool) {
+      out->add(i.first,VPackValue(i.second));
+    }
+    out->close();
+  }
+  out->close();
+
+  LOG_TOPIC(DEBUG, Logger::AGENCY)
+    << "Answering with gossip " << out->slice().toJson();
+  return out;
   
 }
 

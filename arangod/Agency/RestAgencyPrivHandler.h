@@ -66,11 +66,28 @@ class RestAgencyPrivHandler : public arangodb::RestBaseHandler {
 
   status reportErrorEmptyRequest();
   status reportTooManySuffices();
-  status reportBadQuery();
+  status reportBadQuery(std::string const& message = "bad parameter");
   status reportMethodNotAllowed();
+  status reportGone();
 
   consensus::Agent* _agent;
 };
+
+template <> inline bool RestAgencyPrivHandler::readValue(
+  char const* name, std::string& val) const {
+
+  bool found = true;
+  val = _request->value(name, found);
+  if (!found) {
+    LOG_TOPIC(WARN, Logger::AGENCY)
+      << "Mandatory query string " << name << " missing.";
+    return false;
+  }
+  return true;
+
+}
+
+
 }
 
 #endif

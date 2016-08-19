@@ -123,11 +123,22 @@ configure_file(
   NEWLINE_STYLE UNIX
 )
 
+
+################################################################################
+## Find the git revision
 find_program (GIT_EXE git)
-set (EXECUTE_COMMAND ${GIT_EXE} describe --all --tags --long --dirty=-dirty)
-execute_process(COMMAND ${EXECUTE_COMMAND} WORKING_DIRECTORY ${CMAKE_SOURCE_DIR} OUTPUT_VARIABLE GIT_OUTPUT)
-string(STRIP ${GIT_OUTPUT} REPOSITORY_VERSION)
-set(ARANGODB_BUILD_REPOSITORY ${REPOSITORY_VERSION})
+if (DEFINED GIT_EXE AND IS_DIRECTORY "${CMAKE_SOURCE_DIR}/.git")
+  execute_process(
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    COMMAND ${GIT_EXE} describe --all --tags --long --dirty=-dirty
+    OUTPUT_VARIABLE GIT_OUTPUT)
+  string(STRIP ${GIT_OUTPUT} REPOSITORY_VERSION)
+  set(ARANGODB_BUILD_REPOSITORY ${REPOSITORY_VERSION})
+  set(HAVE_ARANGODB_BUILD_REPOSITORY "1")
+else ()
+  set(ARANGODB_BUILD_REPOSITORY "")
+  set(HAVE_ARANGODB_BUILD_REPOSITORY "0")
+endif()
 
 configure_file (
   "${CMAKE_CURRENT_SOURCE_DIR}/lib/Basics/build-repository.h.in"

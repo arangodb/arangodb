@@ -1,12 +1,18 @@
 #!/bin/bash
 
 if [ $# -eq 0 ]
-  then
-      echo Number of agents not specified starting with 3.
-      NRAGENTS=3
+then
+    echo Number of agents not specified starting with 3.
+    NRAGENTS=3
 else
     NRAGENTS=$1
     echo Number of Agents: $NRAGENTS
+fi
+
+
+POOLSZ=$2
+if [ "$POOLSZ" == "" ] ; then
+    POOLSZ=$NRAGENTS
 fi
 
 if [ ! -d arangod ] || [ ! -d arangosh ] || [ ! -d UnitTests ] ; then
@@ -28,58 +34,32 @@ BASE=5001
 rm -rf agency
 mkdir -p agency
 echo -n "Starting agency ... "
-if [ $NRAGENTS -gt 1 ]; then
-   for aid in `seq 0 $(( $NRAGENTS - 2 ))`; do
-       port=$(( $BASE + $aid ))
-       build/bin/arangod \
-           -c none \
-           --agency.id $aid \
-           --agency.size $NRAGENTS \
-           --agency.supervision true \
-           --agency.supervision-frequency $SFRE \
-           --agency.wait-for-sync true \
-           --agency.election-timeout-min $MINP \
-           --agency.election-timeout-max $MAXP \
-           --database.directory agency/data$port \
-           --javascript.app-path ./js/apps \
-           --javascript.startup-directory ./js \
-           --javascript.v8-contexts 1 \
-           --log.file agency/$port.log \
-           --server.authentication false \
-           --server.endpoint tcp://127.0.0.1:$port \
-           --server.statistics false \
-           --agency.compaction-step-size $COMP \
-           --log.level agency=debug \
-           --log.force-direct true \
-           > agency/$port.stdout 2>&1 &
-   done
-fi
 for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
-    endpoints="$endpoints --agency.endpoint tcp://localhost:$(( $BASE + $aid ))"          
+    port=$(( $BASE + $aid ))
+    build/bin/arangod \
+        -c none \
+        --agency.activate true \
+        --agency.endpoint tcp://localhost:$BASE \
+        --agency.size $NRAGENTS \
+        --agency.pool-size $POOLSZ \
+        --agency.supervision true \
+        --agency.supervision-frequency $SFRE \
+        --agency.wait-for-sync true \
+        --agency.election-timeout-min $MINP \
+        --agency.election-timeout-max $MAXP \
+        --database.directory agency/data$port \
+        --javascript.app-path ./js/apps \
+        --javascript.startup-directory ./js \
+        --javascript.v8-contexts 1 \
+        --log.file agency/$port.log \
+        --server.authentication false \
+        --server.endpoint tcp://0.0.0.0:$port \
+        --server.statistics false \
+        --agency.compaction-step-size $COMP \
+        --log.level agency=debug \
+        --log.force-direct true \
+        > agency/$port.stdout 2>&1 &
 done
-build/bin/arangod \
-    -c none \
-    $endpoints \
-    --agency.id $(( $NRAGENTS - 1 )) \
-    --agency.notify true \
-    --agency.size $NRAGENTS \
-    --agency.supervision true \
-    --agency.supervision-frequency $SFRE \
-    --agency.wait-for-sync true \
-    --agency.election-timeout-min $MINP \
-    --agency.election-timeout-max $MAXP \
-    --database.directory agency/data$(( $BASE + $aid )) \
-    --javascript.app-path ./js/apps \
-    --javascript.startup-directory ./js \
-    --javascript.v8-contexts 1 \
-    --log.file agency/$(( $BASE + $aid )).log \
-    --server.authentication false \
-    --server.endpoint tcp://127.0.0.1:$(( $BASE + $aid )) \
-    --server.statistics false \
-    --agency.compaction-step-size $COMP \
-    --log.level agency=debug \
-    --log.force-direct true \
-    > agency/$(( $BASE + $aid )).stdout 2>&1 &
 
 echo " done."
 echo "Your agents are ready at port $BASE onward"

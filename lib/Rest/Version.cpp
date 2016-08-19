@@ -96,7 +96,9 @@ void Version::initialize() {
   Values["asm-crc32"] = (ENABLE_ASM_CRC32) ? "true" : "false";
   Values["boost-version"] = getBoostVersion();
   Values["build-date"] = getBuildDate();
+#if HAVE_ARANGODB_BUILD_REPOSITORY
   Values["build-repository"] = getBuildRepository();
+#endif
   Values["compiler"] = getCompiler();
   Values["endianness"] = getEndianness();
   Values["fd-setsize"] = arangodb::basics::StringUtils::itoa(FD_SETSIZE);
@@ -338,7 +340,7 @@ std::string Version::getBuildDate() {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string Version::getBuildRepository() {
-#ifdef ARANGODB_BUILD_REPOSITORY
+#ifdef HAVE_ARANGODB_BUILD_REPOSITORY
   return std::string(ARANGODB_BUILD_REPOSITORY);
 #else
   return std::string("");

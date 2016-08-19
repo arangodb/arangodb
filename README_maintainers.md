@@ -318,6 +318,27 @@ arangod commandline arguments
 
 __________________________________________________________________________________________________________
 
+Linux Cordeumps
+===============
+So that the unit testing framework can autorun gdb it needs to reliably find the corefiles.
+In Linux this is configured via the `/proc` filesystem, you can make this reboot permanent by
+creating the file `/etc/sysctl.d/corepattern.conf` (or add the following lines to `/etc/sysctl.conf`)
+
+    # We want core files to be located in a central location
+    # and know the PID plus the process name for later use.
+    kernel.core_uses_pid = 1
+    kernel.core_pattern =  /var/tmp/core-%e-%p-%t
+
+Note that the `proc` paths translate sub-directories to dots. The non permanent way of doing this in a running system is:
+
+    echo 1 > /proc/sys/kernel/core_uses_pid
+    echo '/var/tmp/core-%e-%p-%t' > /proc/sys/kernel/core_pattern
+
+Solaris Coredumps
+=================
+Solaris configures the system corefile behaviour via the `coreadm` programm.
+see https://docs.oracle.com/cd/E19455-01/805-7229/6j6q8svhr/ for more details.
+
 Windows debugging
 =================
 For the average \*nix user windows debugging has some awkward methods.
