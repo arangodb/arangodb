@@ -42,7 +42,7 @@ typedef uint64_t term_t;
 
 
 /// @brief Id type
-typedef uint32_t id_t;
+typedef std::string id_t;
 
 
 /// @brief Agent roles

@@ -48,6 +48,7 @@ SECONDARIES="$5"
 
 MINP=1.0
 MAXP=2.0
+SFRE=5.0
 COMP=1000
 BASE=4001
 NATH=$(( $NRDBSERVERS + $NRCOORDINATORS + $NRAGENTS ))
@@ -55,58 +56,32 @@ NATH=$(( $NRDBSERVERS + $NRCOORDINATORS + $NRAGENTS ))
 rm -rf cluster
 mkdir -p cluster
 echo Starting agency ... 
-if [ $NRAGENTS -gt 1 ]; then
-   for aid in `seq 0 $(( $NRAGENTS - 2 ))`; do
-       port=$(( $BASE + $aid ))
-       build/bin/arangod \
-           -c none \
-           --agency.id $aid \
-           --agency.compaction-step-size $COMP \
-           --agency.election-timeout-min $MINP \
-           --agency.election-timeout-max $MAXP \
-           --agency.size $NRAGENTS \
-           --agency.supervision true \
-           --agency.wait-for-sync false \
-           --database.directory cluster/data$port \
-           --javascript.app-path ./js/apps \
-           --javascript.startup-directory ./js \
-           --javascript.v8-contexts 1 \
-           --log.file cluster/$port.log \
-           --server.authentication false \
-           --server.endpoint tcp://127.0.0.1:$port \
-           --server.statistics false \
-           --server.threads $NATH \
-           --log.force-direct true \
-           --log.level agency=debug \
-           > cluster/$port.stdout 2>&1 &
-   done
-fi
 for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
-    endpoints="$endpoints --agency.endpoint tcp://localhost:$(( $BASE + $aid ))"          
+    port=$(( $BASE + $aid ))
+    build/bin/arangod \
+        -c none \
+        --agency.activate true \
+        --agency.endpoint tcp://localhost:$BASE \
+        --agency.size $NRAGENTS \
+        --agency.pool-size $NRAGENTS \
+        --agency.supervision true \
+        --agency.supervision-frequency $SFRE \
+        --agency.wait-for-sync true \
+        --agency.election-timeout-min $MINP \
+        --agency.election-timeout-max $MAXP \
+        --database.directory cluster/data$port \
+        --javascript.app-path ./js/apps \
+        --javascript.startup-directory ./js \
+        --javascript.v8-contexts 1 \
+        --log.file cluster/$port.log \
+        --server.authentication false \
+        --server.endpoint tcp://0.0.0.0:$port \
+        --server.statistics false \
+        --server.threads 16 \
+        --agency.compaction-step-size $COMP \
+        --log.force-direct true \
+        > cluster/$port.stdout 2>&1 &
 done
-build/bin/arangod \
-    -c none \
-    $endpoints \
-    --agency.id $(( $NRAGENTS - 1 )) \
-    --agency.compaction-step-size $COMP \
-    --agency.election-timeout-min $MINP \
-    --agency.election-timeout-max $MAXP \
-    --agency.notify true \
-    --agency.size $NRAGENTS \
-    --agency.supervision true \
-    --agency.wait-for-sync false \
-    --database.directory cluster/data$(( $BASE + $aid )) \
-    --javascript.app-path ./js/apps \
-    --javascript.startup-directory ./js \
-    --javascript.v8-contexts 1 \
-    --log.file cluster/$(( $BASE + $aid )).log \
-    --server.authentication false \
-    --server.endpoint tcp://127.0.0.1:$(( $BASE + $aid )) \
-    --server.statistics false \
-    --server.threads $NATH \
-    --log.force-direct true \
-    --log.level agency=debug \
-    > cluster/$(( $BASE + $aid )).stdout 2>&1 &
 
 start() {
     if [ "$1" == "dbserver" ]; then

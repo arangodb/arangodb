@@ -74,7 +74,7 @@ inline RestHandler::status RestAgencyHandler::reportUnknownMethod() {
 void RestAgencyHandler::redirectRequest(arangodb::consensus::id_t leaderId) {
   try {
     std::string url =
-        Endpoint::uriForm(_agent->config().endpoints.at(leaderId)) +
+      Endpoint::uriForm(_agent->config().poolAt(leaderId)) +
         _request->requestPath();
     setResponseCode(GeneralResponse::ResponseCode::TEMPORARY_REDIRECT);
     _response->setHeaderNC(StaticStrings::Location, url);
@@ -140,7 +140,7 @@ RestHandler::status RestAgencyHandler::handleWrite() {
       return status::DONE;
     }
 
-    while(_agent->size() > 1 && _agent->leaderID() > 100) {
+    while(_agent->size() > 1 && _agent->leaderID() == "") {
       std::this_thread::sleep_for(duration_t(100));
     }
 
@@ -215,7 +215,7 @@ inline RestHandler::status RestAgencyHandler::handleRead() {
       return status::DONE;
     }
 
-    while(_agent->size() > 1 && _agent->leaderID() > 100) {
+    while(_agent->size() > 1 && _agent->leaderID() == "") {
       std::this_thread::sleep_for(duration_t(100));
     }
 
@@ -244,7 +244,7 @@ RestHandler::status RestAgencyHandler::handleConfig() {
   body.add(VPackValue(VPackValueType::Object));
   body.add("term", Value(_agent->term()));
   body.add("leaderId", Value(_agent->leaderID()));
-  body.add("lastCommited", Value(_agent->lastCommitted()));
+  body.add("lastCommitted", Value(_agent->lastCommitted()));
   body.add("configuration", _agent->config().toBuilder()->slice());
   body.close();
   generateResult(GeneralResponse::ResponseCode::OK, body.slice());

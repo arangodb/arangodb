@@ -556,7 +556,7 @@ bool Supervision::start() {
 // Start thread with agent
 bool Supervision::start(Agent* agent) {
   _agent = agent;
-  _frequency = static_cast<long>(_agent->config().supervisionFrequency);
+  _frequency = static_cast<long>(_agent->config().supervisionFrequency());
 
   return start();
 }
