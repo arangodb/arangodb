@@ -194,20 +194,17 @@ class GeneralResponse {
                           arangodb::velocypack::Options const& = arangodb::
                               velocypack::Options::Defaults) = 0;
 
-  // virtual void addPayload(VPackSlice const& slice) {
-  //   _vpackPayloads.emplace_back(slice.byteSize());
-  //   std::memcpy(&_vpackPayloads.back(), slice.start(), slice.byteSize());
-  // };
+  virtual void addPayload(VPackSlice const& slice) {
+    // this is slower as it has an extra copy!!
+    _vpackPayloads.emplace_back(slice.byteSize());
+    std::memcpy(&_vpackPayloads.back(), slice.start(), slice.byteSize());
+  };
 
-  // virtual void addPayload(VPackBuffer<uint8_t>&& buffer) {
-  //   _vpackPayloads.push_back(std::move(buffer));
-  // };
+  virtual void addPayload(VPackBuffer<uint8_t>&& buffer) {
+    _vpackPayloads.push_back(std::move(buffer));
+  };
 
-  // virtual void setPayload(ContentType contentType,
-  //                        VPackBuffer<uint8_t>&& sliceBuffer,
-  //                        bool generateBody = true,
-  //                        arangodb::velocypack::Options const& = arangodb::
-  //                            velocypack::Options::Defaults) = 0;
+  void setOptions(VPackOptions options) { _options = std::move(options); };
 
  protected:
   ResponseCode _responseCode;  // http response code
@@ -217,6 +214,7 @@ class GeneralResponse {
   std::vector<VPackBuffer<uint8_t>> _vpackPayloads;
   ContentType _contentType;
   ConnectionType _connectionType;
+  velocypack::Options _options;
 };
 }
 
