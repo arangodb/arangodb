@@ -1,4 +1,4 @@
-include(GNUInstallDirs)
+include(${CMAKE_SOURCE_DIR}/cmake/GNUInstallDirs.cmake)
 
 set(ARANGODB_SOURCE_DIR ${CMAKE_SOURCE_DIR})
 set(CMAKE_INSTALL_SYSCONFDIR_ARANGO "${CMAKE_INSTALL_SYSCONFDIR}/arangodb3")
@@ -34,6 +34,11 @@ include(InstallMacros)
 # install ----------------------------------------------------------------------
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/Documentation/man/
   DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/man)
+
+get_cmake_property(_variableNames VARIABLES)
+foreach (_variableName ${_variableNames})
+    message(STATUS "${_variableName}=${${_variableName}}")
+endforeach()
 
 install_readme(README README.txt)
 install_readme(README.md README.md)

@@ -73,7 +73,7 @@ set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-${AR
 ################################################################################
 # Install the external files into the package directory:
 ################################################################################
-include(GNUInstallDirs)
+include(${PROJECT_SOURCE_DIR}/cmake/GNUInstallDirs.cmake)
 
 set(CMAKE_INSTALL_SYSCONFDIR_ARANGO "${CMAKE_INSTALL_SYSCONFDIR}/arangodb3" CACHE PATH "read-only single-machine data (etc)")
 set(CMAKE_INSTALL_FULL_SYSCONFDIR_ARANGO "${CMAKE_INSTALL_FULL_SYSCONFDIR}/arangodb3" CACHE PATH "read-only single-machine data (etc)")
