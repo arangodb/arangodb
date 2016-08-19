@@ -50,10 +50,10 @@ class Agent : public arangodb::Thread {
   term_t term() const;
 
   /// @brief Get current term
-  arangodb::consensus::id_t id() const;
+  std::string id() const;
 
   /// @brief Vote request
-  priv_rpc_ret_t requestVote(term_t, arangodb::consensus::id_t, index_t,
+  priv_rpc_ret_t requestVote(term_t, std::string const&, index_t,
                              index_t, query_t const&);
 
   /// @brief Provide configuration
@@ -75,7 +75,7 @@ class Agent : public arangodb::Thread {
   arangodb::consensus::index_t lastCommitted() const;
 
   /// @brief Leader ID
-  arangodb::consensus::id_t leaderID() const;
+  std::string leaderID() const;
 
   /// @brief Are we leading?
   bool leading() const;
@@ -94,13 +94,13 @@ class Agent : public arangodb::Thread {
 
   /// @brief Received by followers to replicate log entries ($5.3);
   ///        also used as heartbeat ($5.2).
-  bool recvAppendEntriesRPC(term_t term, arangodb::consensus::id_t leaderId,
-                            index_t prevIndex, term_t prevTerm,
-                            index_t lastCommitIndex, query_t const& queries);
+  bool recvAppendEntriesRPC(
+    term_t term, std::string const& leaderId, index_t prevIndex,
+    term_t prevTerm, index_t lastCommitIndex, query_t const& queries);
 
   /// @brief Invoked by leader to replicate log entries ($5.3);
   ///        also used as heartbeat ($5.2).
-  priv_rpc_ret_t sendAppendEntriesRPC(arangodb::consensus::id_t slave_id);
+  priv_rpc_ret_t sendAppendEntriesRPC(std::string const& slave_id);
 
   /// @brief 1. Deal with appendEntries to slaves.
   ///        2. Report success of write processes.
@@ -125,7 +125,7 @@ class Agent : public arangodb::Thread {
   void beginShutdown() override final;
 
   /// @brief Report appended entries from AgentCallback
-  void reportIn(arangodb::consensus::id_t id, index_t idx);
+  void reportIn(std::string const& id, index_t idx);
 
   /// @brief Wait for slaves to confirm appended entries
   bool waitFor(index_t last_entry, double timeout = 2.0);
@@ -165,7 +165,7 @@ class Agent : public arangodb::Thread {
   Agent& operator=(VPackSlice const&);
 
   /// @brief Get current term
-  bool id(arangodb::consensus::id_t const&);
+  bool id(std::string const&);
 
   /// @brief Get current term
   bool mergeConfiguration(VPackSlice const&);

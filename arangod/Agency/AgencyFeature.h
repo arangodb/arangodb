@@ -53,6 +53,7 @@ class AgencyFeature : virtual public application_features::ApplicationFeature {
   bool _waitForSync;
   double _supervisionFrequency;
   uint64_t _compactionStepSize;
+  std::string _agencyMyAddress;
   std::vector<std::string> _agencyEndpoints;
 
  public:

@@ -71,7 +71,7 @@ inline RestHandler::status RestAgencyHandler::reportUnknownMethod() {
   return status::DONE;
 }
 
-void RestAgencyHandler::redirectRequest(arangodb::consensus::id_t leaderId) {
+void RestAgencyHandler::redirectRequest(std::string const& leaderId) {
   try {
     std::string url =
       Endpoint::uriForm(_agent->config().poolAt(leaderId)) +

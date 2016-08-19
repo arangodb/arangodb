@@ -54,7 +54,6 @@ public:
   
 private:
 
-  bool _done;
   Agent* _agent;
   
 };

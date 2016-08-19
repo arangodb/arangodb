@@ -64,7 +64,7 @@ std::string Agent::id() const {
 
 
 /// Agent's id is set once from state machine
-bool Agent::id(arangodb::consensus::id_t const& id) {
+bool Agent::id(std::string const& id) {
   bool success;
   if ((success = _config.setId(id))) {
     LOG_TOPIC(DEBUG, Logger::AGENCY) << "My id is " << id;
@@ -123,7 +123,7 @@ std::string Agent::endpoint() const {
 
 /// Handle voting
 priv_rpc_ret_t Agent::requestVote(
-  term_t t, arangodb::consensus::id_t id, index_t lastLogIndex,
+  term_t t, std::string const& id, index_t lastLogIndex,
   index_t lastLogTerm, query_t const& query) {
   return priv_rpc_ret_t(
     _constituent.vote(t, id, lastLogIndex, lastLogTerm), this->term());
@@ -137,7 +137,7 @@ config_t const Agent::config() const {
 
 
 /// Leader's id
-arangodb::consensus::id_t Agent::leaderID() const {
+std::string Agent::leaderID() const {
   return _constituent.leaderID();
 }
 
@@ -196,7 +196,7 @@ bool Agent::waitFor(index_t index, double timeout) {
 
 
 //  AgentCallback reports id of follower and its highest processed index
-void Agent::reportIn(arangodb::consensus::id_t id, index_t index) {
+void Agent::reportIn(std::string const& id, index_t index) {
 
   MUTEX_LOCKER(mutexLocker, _ioLock);
 
@@ -240,11 +240,9 @@ void Agent::reportIn(arangodb::consensus::id_t id, index_t index) {
 
 
 /// Followers' append entries
-bool Agent::recvAppendEntriesRPC(term_t term,
-                                 arangodb::consensus::id_t leaderId,
-                                 index_t prevIndex, term_t prevTerm,
-                                 index_t leaderCommitIndex,
-                                 query_t const& queries) {
+bool Agent::recvAppendEntriesRPC(
+  term_t term, std::string const& leaderId, index_t prevIndex, term_t prevTerm,
+  index_t leaderCommitIndex, query_t const& queries) {
 
   // Update commit index
   if (queries->slice().type() != VPackValueType::Array) {
@@ -297,8 +295,7 @@ bool Agent::recvAppendEntriesRPC(term_t term,
 
 
 /// Leader's append entries
-priv_rpc_ret_t Agent::sendAppendEntriesRPC(
-    arangodb::consensus::id_t follower_id) {
+priv_rpc_ret_t Agent::sendAppendEntriesRPC(std::string const& follower_id) {
   
   term_t t(0);
   {
@@ -646,7 +643,7 @@ query_t Agent::gossip(query_t const& in, bool isCallback) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
       20002, "Gossip message must contain string parameter 'id'");
   }
-  std::string id = slice.get("id").copyString();
+  //std::string id = slice.get("id").copyString();
   
   if (!slice.hasKey("endpoint") || !slice.get("endpoint").isString()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(

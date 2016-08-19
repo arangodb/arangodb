@@ -56,7 +56,7 @@ void Inception::run() {
   TRI_ASSERT(_agent != nullptr);
 
   auto s = std::chrono::system_clock::now();
-  std::chrono::seconds timeout(5);
+  std::chrono::seconds timeout(120);
   size_t i = 0;
   //bool cs = false;
   while (!this->isStopping()) {
@@ -82,7 +82,7 @@ void Inception::run() {
         auto hf =
           std::make_unique<std::unordered_map<std::string, std::string>>();
         arangodb::ClusterComm::instance()->asyncRequest(
-          "1", 1, p, GeneralRequest::RequestType::POST, path,
+          clientid, 1, p, GeneralRequest::RequestType::POST, path,
           std::make_shared<std::string>(out->toJson()), hf,
           std::make_shared<GossipCallback>(_agent), 1.0, true);
       }
