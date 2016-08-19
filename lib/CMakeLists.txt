@@ -143,7 +143,6 @@ add_library(${LIB_ARANGO} STATIC
   Basics/Exceptions.cpp
   Basics/FileUtils.cpp
   Basics/HybridLogicalClock.cpp
-  Basics/JsonHelper.cpp
   Basics/Mutex.cpp
   Basics/MutexLocker.cpp
   Basics/Nonce.cpp

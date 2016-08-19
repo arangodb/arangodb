@@ -25,6 +25,8 @@
 #include "Aql/AstNode.h"
 #include "Aql/QueryResult.h"
 
+#include <sstream>
+
 using namespace arangodb::aql;
 
 /// @brief create the parser

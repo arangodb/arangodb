@@ -30,10 +30,9 @@
 #include "Aql/Scopes.h"
 #include "Aql/types.h"
 #include "Basics/fasthash.h"
-#include "Basics/JsonHelper.h"
-#include "Basics/json-utilities.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/Utf8Helper.h"
+#include "Basics/VelocyPackHelper.h"
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 #include <iostream>
@@ -41,20 +40,19 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
+#include <velocypack/ValueType.h>
 #include <velocypack/velocypack-aliases.h>
 #include <array>
 
 using namespace arangodb::aql;
-using JsonHelper = arangodb::basics::JsonHelper;
-using Json = arangodb::basics::Json;
 
-/// @brief quick translation array from an AST node value type to a JSON type
-std::array<TRI_json_type_e, 5> const JsonTypes{{
-    TRI_JSON_NULL,     //    VALUE_TYPE_NULL   = 0,
-    TRI_JSON_BOOLEAN,  //    VALUE_TYPE_BOOL   = 1,
-    TRI_JSON_NUMBER,   //    VALUE_TYPE_INT    = 2,
-    TRI_JSON_NUMBER,   //    VALUE_TYPE_DOUBLE = 3,
-    TRI_JSON_STRING    //    VALUE_TYPE_STRING = 4
+/// @brief quick translation array from an AST node value type to a VPack type
+static std::array<VPackValueType, 5> const ValueTypes{{
+    VPackValueType::Null,     //    VALUE_TYPE_NULL   = 0,
+    VPackValueType::Bool,     //    VALUE_TYPE_BOOL   = 1,
+    VPackValueType::Int,      //    VALUE_TYPE_INT    = 2,
+    VPackValueType::Double,   //    VALUE_TYPE_DOUBLE = 3,
+    VPackValueType::String    //    VALUE_TYPE_STRING = 4
 }};
 
 static_assert(AstNodeValueType::VALUE_TYPE_NULL == 0,
@@ -185,6 +183,8 @@ std::unordered_map<int, std::string const> const AstNode::ValueTypeNames{
     {static_cast<int>(VALUE_TYPE_DOUBLE), "double"},
     {static_cast<int>(VALUE_TYPE_STRING), "string"}};
 
+namespace {
+
 /// @brief resolve an attribute access
 static AstNode const* ResolveAttribute(AstNode const* node) {
   TRI_ASSERT(node != nullptr);
@@ -241,24 +241,26 @@ static AstNode const* ResolveAttribute(AstNode const* node) {
 }
 
 /// @brief get the node type for inter-node comparisons
-static TRI_json_type_e GetNodeCompareType(AstNode const* node) {
+static VPackValueType GetNodeCompareType(AstNode const* node) {
   TRI_ASSERT(node != nullptr);
 
   if (node->type == NODE_TYPE_VALUE) {
-    return JsonTypes[node->value.type];
+    return ValueTypes[node->value.type];
   }
   if (node->type == NODE_TYPE_ARRAY) {
-    return TRI_JSON_ARRAY;
+    return VPackValueType::Array;
   }
   if (node->type == NODE_TYPE_OBJECT) {
-    return TRI_JSON_OBJECT;
+    return VPackValueType::Object;
   }
 
   // we should never get here
   TRI_ASSERT(false);
 
   // return null in case assertions are turned off
-  return TRI_JSON_NULL;
+  return VPackValueType::Null;
+}
+
 }
 
 /// @brief compare two nodes
@@ -295,11 +297,11 @@ int arangodb::aql::CompareAstNodes(AstNode const* lhs, AstNode const* rhs,
     return 0;
   }
 
-  if (lType == TRI_JSON_NULL) {
+  if (lType == VPackValueType::Null) {
     return 0;
   }
 
-  if (lType == TRI_JSON_BOOLEAN) {
+  if (lType == VPackValueType::Bool) {
     int diff = static_cast<int>(lhs->getIntValue() - rhs->getIntValue());
 
     if (diff != 0) {
@@ -311,7 +313,8 @@ int arangodb::aql::CompareAstNodes(AstNode const* lhs, AstNode const* rhs,
     return 0;
   }
 
-  if (lType == TRI_JSON_NUMBER) {
+  if (lType == VPackValueType::Int || lType == VPackValueType::Double) {
+    // TODO
     double d = lhs->getDoubleValue() - rhs->getDoubleValue();
     if (d < 0.0) {
       return -1;
@@ -321,7 +324,7 @@ int arangodb::aql::CompareAstNodes(AstNode const* lhs, AstNode const* rhs,
     return 0;
   }
 
-  if (lType == TRI_JSON_STRING) {
+  if (lType == VPackValueType::String) {
     if (compareUtf8) {
       return TRI_compare_utf8(lhs->getStringValue(), lhs->getStringLength(),
                               rhs->getStringValue(), rhs->getStringLength());
@@ -345,7 +348,7 @@ int arangodb::aql::CompareAstNodes(AstNode const* lhs, AstNode const* rhs,
     return 0;
   }
 
-  if (lType == TRI_JSON_ARRAY) {
+  if (lType == VPackValueType::Array) {
     size_t const numLhs = lhs->numMembers();
     size_t const numRhs = rhs->numMembers();
     size_t const n = ((numLhs > numRhs) ? numRhs : numLhs);
@@ -366,16 +369,15 @@ int arangodb::aql::CompareAstNodes(AstNode const* lhs, AstNode const* rhs,
     return 0;
   }
 
-  if (lType == TRI_JSON_OBJECT) {
+  if (lType == VPackValueType::Object) {
     // this is a rather exceptional case, so we can
-    // afford the inefficiency to convert the node to
-    // JSON for comparison
-    // (this saves us from writing our own compare function
+    // afford the inefficiency to convert the node to VPack
+    // for comparison (this saves us from writing our own compare function
     // for array AstNodes)
-    std::unique_ptr<TRI_json_t> lJson(lhs->toJsonValue(TRI_UNKNOWN_MEM_ZONE));
-    std::unique_ptr<TRI_json_t> rJson(rhs->toJsonValue(TRI_UNKNOWN_MEM_ZONE));
+    auto l = lhs->toVelocyPackValue();
+    auto r = rhs->toVelocyPackValue();
 
-    return TRI_CompareValuesJson(lJson.get(), rJson.get(), compareUtf8);
+    return basics::VelocyPackHelper::compare(l->slice(), r->slice(), compareUtf8);
   }
 
   // all things equal
@@ -433,191 +435,6 @@ AstNode::AstNode(char const* v, size_t length, AstNodeValueType valueType)
   setStringValue(v, length);
   TRI_ASSERT(flags == 0);
   TRI_ASSERT(computedValue == nullptr);
-}
-
-/// @brief create the node from JSON (DEPRECATED)
-AstNode::AstNode(Ast* ast, arangodb::basics::Json const& json)
-    : AstNode(getNodeTypeFromJson(json)) {
-  TRI_ASSERT(flags == 0);
-  TRI_ASSERT(computedValue == nullptr);
-
-  auto query = ast->query();
-
-  switch (type) {
-    case NODE_TYPE_COLLECTION:
-    case NODE_TYPE_PARAMETER:
-    case NODE_TYPE_ATTRIBUTE_ACCESS:
-    case NODE_TYPE_FCALL_USER: {
-      std::string const str(
-          JsonHelper::getStringValue(json.json(), "name", ""));
-      value.type = VALUE_TYPE_STRING;
-      setStringValue(query->registerString(str), str.size());
-      break;
-    }
-    case NODE_TYPE_VALUE: {
-      int vType =
-          JsonHelper::checkAndGetNumericValue<int>(json.json(), "vTypeID");
-      validateValueType(vType);
-      value.type = static_cast<AstNodeValueType>(vType);
-
-      switch (value.type) {
-        case VALUE_TYPE_NULL:
-          break;
-        case VALUE_TYPE_BOOL:
-          value.value._bool =
-              JsonHelper::checkAndGetBooleanValue(json.json(), "value");
-          break;
-        case VALUE_TYPE_INT:
-          setIntValue(JsonHelper::checkAndGetNumericValue<int64_t>(json.json(),
-                                                                   "value"));
-          break;
-        case VALUE_TYPE_DOUBLE:
-          setDoubleValue(JsonHelper::checkAndGetNumericValue<double>(
-              json.json(), "value"));
-          break;
-        case VALUE_TYPE_STRING: {
-          std::string const str(
-              JsonHelper::checkAndGetStringValue(json.json(), "value"));
-          setStringValue(query->registerString(str), str.size());
-          break;
-        }
-        default: {}
-      }
-      break;
-    }
-    case NODE_TYPE_VARIABLE: {
-      // TODO: fix this
-      auto builder = JsonHelper::toVelocyPack(json.json());
-      auto variable = ast->variables()->createVariable(builder->slice());
-      TRI_ASSERT(variable != nullptr);
-      setData(variable);
-      break;
-    }
-    case NODE_TYPE_REFERENCE: {
-      auto variableId =
-          JsonHelper::checkAndGetNumericValue<VariableId>(json.json(), "id");
-      auto variable = ast->variables()->getVariable(variableId);
-
-      TRI_ASSERT(variable != nullptr);
-      setData(variable);
-      break;
-    }
-    case NODE_TYPE_FCALL: {
-      setData(query->executor()->getFunctionByName(
-          JsonHelper::getStringValue(json.json(), "name", "")));
-      break;
-    }
-    case NODE_TYPE_OBJECT_ELEMENT: {
-      std::string const str(
-          JsonHelper::getStringValue(json.json(), "name", ""));
-      setStringValue(query->registerString(str), str.size());
-      break;
-    }
-    case NODE_TYPE_EXPANSION: {
-      setIntValue(
-          JsonHelper::checkAndGetNumericValue<int64_t>(json.json(), "levels"));
-      break;
-    }
-    case NODE_TYPE_OPERATOR_BINARY_IN:
-    case NODE_TYPE_OPERATOR_BINARY_NIN: 
-    case NODE_TYPE_OPERATOR_BINARY_ARRAY_IN: 
-    case NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN: {
-      setBoolValue(JsonHelper::getBooleanValue(json.json(), "sorted", false));
-      break;
-    }
-    case NODE_TYPE_ARRAY: {
-      bool sorted = JsonHelper::getBooleanValue(json.json(), "sorted", false);
-      if (sorted) {
-        setFlag(DETERMINED_SORTED, VALUE_SORTED);
-      }
-      break;
-    }
-    case NODE_TYPE_QUANTIFIER: {
-      std::string const quantifier(JsonHelper::getStringValue(json.json(), "quantifier", ""));
-      setIntValue(Quantifier::FromString(quantifier));
-      break;
-    }
-    case NODE_TYPE_OBJECT:
-    case NODE_TYPE_ROOT:
-    case NODE_TYPE_FOR:
-    case NODE_TYPE_LET:
-    case NODE_TYPE_FILTER:
-    case NODE_TYPE_RETURN:
-    case NODE_TYPE_REMOVE:
-    case NODE_TYPE_INSERT:
-    case NODE_TYPE_UPDATE:
-    case NODE_TYPE_REPLACE:
-    case NODE_TYPE_UPSERT:
-    case NODE_TYPE_COLLECT:
-    case NODE_TYPE_COLLECT_COUNT:
-    case NODE_TYPE_AGGREGATIONS:
-    case NODE_TYPE_SORT:
-    case NODE_TYPE_SORT_ELEMENT:
-    case NODE_TYPE_LIMIT:
-    case NODE_TYPE_ASSIGN:
-    case NODE_TYPE_OPERATOR_UNARY_PLUS:
-    case NODE_TYPE_OPERATOR_UNARY_MINUS:
-    case NODE_TYPE_OPERATOR_UNARY_NOT:
-    case NODE_TYPE_OPERATOR_BINARY_AND:
-    case NODE_TYPE_OPERATOR_BINARY_OR:
-    case NODE_TYPE_OPERATOR_BINARY_PLUS:
-    case NODE_TYPE_OPERATOR_BINARY_MINUS:
-    case NODE_TYPE_OPERATOR_BINARY_TIMES:
-    case NODE_TYPE_OPERATOR_BINARY_DIV:
-    case NODE_TYPE_OPERATOR_BINARY_MOD:
-    case NODE_TYPE_OPERATOR_BINARY_EQ:
-    case NODE_TYPE_OPERATOR_BINARY_NE:
-    case NODE_TYPE_OPERATOR_BINARY_LT:
-    case NODE_TYPE_OPERATOR_BINARY_LE:
-    case NODE_TYPE_OPERATOR_BINARY_GT:
-    case NODE_TYPE_OPERATOR_BINARY_GE:
-    case NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ:
-    case NODE_TYPE_OPERATOR_BINARY_ARRAY_NE:
-    case NODE_TYPE_OPERATOR_BINARY_ARRAY_LT:
-    case NODE_TYPE_OPERATOR_BINARY_ARRAY_LE:
-    case NODE_TYPE_OPERATOR_BINARY_ARRAY_GT:
-    case NODE_TYPE_OPERATOR_BINARY_ARRAY_GE: 
-    case NODE_TYPE_OPERATOR_TERNARY:
-    case NODE_TYPE_SUBQUERY:
-    case NODE_TYPE_BOUND_ATTRIBUTE_ACCESS:
-    case NODE_TYPE_INDEXED_ACCESS:
-    case NODE_TYPE_ITERATOR:
-    case NODE_TYPE_RANGE:
-    case NODE_TYPE_NOP:
-    case NODE_TYPE_CALCULATED_OBJECT_ELEMENT:
-    case NODE_TYPE_EXAMPLE:
-    case NODE_TYPE_PASSTHRU:
-    case NODE_TYPE_ARRAY_LIMIT:
-    case NODE_TYPE_DISTINCT:
-    case NODE_TYPE_TRAVERSAL:
-    case NODE_TYPE_SHORTEST_PATH:
-    case NODE_TYPE_DIRECTION:
-    case NODE_TYPE_COLLECTION_LIST:
-    case NODE_TYPE_OPERATOR_NARY_AND:
-    case NODE_TYPE_OPERATOR_NARY_OR:
-    case NODE_TYPE_WITH:
-      break;
-  }
-
-  Json subNodes = json.get("subNodes");
-
-  if (subNodes.isArray()) {
-    size_t const len = subNodes.size();
-
-    for (size_t i = 0; i < len; i++) {
-      Json subNode(subNodes.at(i));
-      int type =
-          JsonHelper::checkAndGetNumericValue<int>(subNode.json(), "typeID");
-      if (static_cast<AstNodeType>(type) == NODE_TYPE_NOP) {
-        // special handling for nop as it is a singleton
-        addMember(Ast::getNodeNop());
-      } else {
-        addMember(new AstNode(ast, subNode));
-      }
-    }
-  }
-
-  ast->query()->addNode(this);
 }
 
 /// @brief create the node from VPack
@@ -805,18 +622,17 @@ AstNode::AstNode(Ast* ast, arangodb::velocypack::Slice const& slice)
   ast->query()->addNode(this);
 }
 
-/// @brief create the node from JSON
+/// @brief create the node 
 AstNode::AstNode(std::function<void(AstNode*)> registerNode,
                  std::function<char const*(std::string const&)> registerString,
-                 arangodb::basics::Json const& json)
-    : AstNode(getNodeTypeFromJson(json)) {
+                 arangodb::velocypack::Slice const& slice) 
+    : AstNode(getNodeTypeFromVPack(slice)) {
   TRI_ASSERT(flags == 0);
   TRI_ASSERT(computedValue == nullptr);
 
   switch (type) {
     case NODE_TYPE_ATTRIBUTE_ACCESS: {
-      std::string const str(
-          JsonHelper::getStringValue(json.json(), "name", ""));
+      std::string const str(slice.get("name").copyString());
       value.type = VALUE_TYPE_STRING;
       auto p = registerString(str);
       TRI_ASSERT(p != nullptr);
@@ -824,8 +640,7 @@ AstNode::AstNode(std::function<void(AstNode*)> registerNode,
       break;
     }
     case NODE_TYPE_VALUE: {
-      int vType =
-          JsonHelper::checkAndGetNumericValue<int>(json.json(), "vTypeID");
+      int vType = slice.get("vTypeID").getNumericValue<int>();
       validateValueType(vType);
       value.type = static_cast<AstNodeValueType>(vType);
 
@@ -833,20 +648,16 @@ AstNode::AstNode(std::function<void(AstNode*)> registerNode,
         case VALUE_TYPE_NULL:
           break;
         case VALUE_TYPE_BOOL:
-          value.value._bool =
-              JsonHelper::checkAndGetBooleanValue(json.json(), "value");
+          value.value._bool = slice.get("value").getBoolean();
           break;
         case VALUE_TYPE_INT:
-          setIntValue(JsonHelper::checkAndGetNumericValue<int64_t>(json.json(),
-                                                                   "value"));
+          setIntValue(slice.get("value").getNumericValue<int64_t>());
           break;
         case VALUE_TYPE_DOUBLE:
-          setDoubleValue(JsonHelper::checkAndGetNumericValue<double>(
-              json.json(), "value"));
+          setDoubleValue(slice.get("value").getNumericValue<double>());
           break;
         case VALUE_TYPE_STRING: {
-          std::string const str(
-              JsonHelper::checkAndGetStringValue(json.json(), "value"));
+          std::string const str(slice.get("value").copyString());
           setStringValue(registerString(str), str.size());
           break;
         }
@@ -856,19 +667,10 @@ AstNode::AstNode(std::function<void(AstNode*)> registerNode,
     }
     case NODE_TYPE_REFERENCE: {
       // We use the edge here
-      /*
-      auto variableId =
-      JsonHelper::checkAndGetNumericValue<VariableId>(json.json(), "id");
-      auto variable = ast->variables()->getVariable(variableId);
-
-      TRI_ASSERT(variable != nullptr);
-      setData(variable);
-      */
       break;
     }
     case NODE_TYPE_EXPANSION: {
-      setIntValue(
-          JsonHelper::checkAndGetNumericValue<int64_t>(json.json(), "levels"));
+      setIntValue(slice.get("levels").getNumericValue<int64_t>());
       break;
     }
     case NODE_TYPE_FCALL_USER:
@@ -948,13 +750,11 @@ AstNode::AstNode(std::function<void(AstNode*)> registerNode,
       break;
   }
 
-  Json subNodes = json.get("subNodes");
+  VPackSlice subNodes = slice.get("subNodes");
 
   if (subNodes.isArray()) {
-    size_t const len = subNodes.size();
-    for (size_t i = 0; i < len; i++) {
-      Json subNode(subNodes.at(i));
-      addMember(new AstNode(registerNode, registerString, subNode));
+    for (auto const& it : VPackArrayIterator(subNodes)) {
+      addMember(new AstNode(registerNode, registerString, it));
     }
   }
 
@@ -1054,8 +854,7 @@ void AstNode::dump(int level) const {
   std::cout << "- " << getTypeString();
 
   if (type == NODE_TYPE_VALUE || type == NODE_TYPE_ARRAY) {
-    std::unique_ptr<TRI_json_t> json(toJsonValue(TRI_UNKNOWN_MEM_ZONE));
-    std::cout << ": " << json.get();
+    std::cout << ": " << toVelocyPackValue().get()->toJson();
   } else if (type == NODE_TYPE_ATTRIBUTE_ACCESS) {
     std::cout << ": " << getString();
   } else if (type == NODE_TYPE_REFERENCE) {
@@ -1129,9 +928,7 @@ std::string const& AstNode::getValueTypeString() const {
 
 /// @brief stringify the AstNode
 std::string AstNode::toString(AstNode const* node) {
-  std::unique_ptr<TRI_json_t> json(node->toJson(TRI_UNKNOWN_MEM_ZONE, false));
-
-  return arangodb::basics::JsonHelper::toString(json.get());
+  return node->toVelocyPack(false)->toJson();
 }
 
 /// @brief checks whether we know a type of this kind; throws exception if not.
@@ -1155,250 +952,11 @@ void AstNode::validateValueType(int type) {
   }
 }
 
-/// @brief fetch a node's type from json (DEPRECATED)
-AstNodeType AstNode::getNodeTypeFromJson(arangodb::basics::Json const& json) {
-  int type = JsonHelper::checkAndGetNumericValue<int>(json.json(), "typeID");
-  validateType(type);
-  return static_cast<AstNodeType>(type);
-}
-
 /// @brief fetch a node's type from VPack
 AstNodeType AstNode::getNodeTypeFromVPack(arangodb::velocypack::Slice const& slice) {
   int type = slice.get("typeID").getNumericValue<int>();
   validateType(type);
   return static_cast<AstNodeType>(type);
-}
-
-/// @brief return a JSON representation of the node value
-/// the caller is responsible for freeing the JSON later
-TRI_json_t* AstNode::toJsonValue(TRI_memory_zone_t* zone) const {
-  if (type == NODE_TYPE_VALUE) {
-    // dump value of "value" node
-    switch (value.type) {
-      case VALUE_TYPE_NULL:
-        return TRI_CreateNullJson(zone);
-      case VALUE_TYPE_BOOL:
-        return TRI_CreateBooleanJson(zone, value.value._bool);
-      case VALUE_TYPE_INT:
-        return TRI_CreateNumberJson(zone,
-                                    static_cast<double>(value.value._int));
-      case VALUE_TYPE_DOUBLE:
-        return TRI_CreateNumberJson(zone, value.value._double);
-      case VALUE_TYPE_STRING:
-        return TRI_CreateStringCopyJson(zone, value.value._string,
-                                        value.length);
-    }
-  }
-
-  if (type == NODE_TYPE_ARRAY) {
-    size_t const n = numMembers();
-    TRI_json_t* array = TRI_CreateArrayJson(zone, n);
-
-    if (array == nullptr) {
-      return nullptr;
-    }
-
-    for (size_t i = 0; i < n; ++i) {
-      auto member = getMemberUnchecked(i);
-
-      if (member != nullptr) {
-        TRI_json_t* j = member->toJsonValue(zone);
-
-        if (j != nullptr) {
-          TRI_PushBack3ArrayJson(zone, array, j);
-        }
-      }
-    }
-    return array;
-  }
-
-  if (type == NODE_TYPE_OBJECT) {
-    size_t const n = numMembers();
-    TRI_json_t* object = TRI_CreateObjectJson(zone, n);
-
-    for (size_t i = 0; i < n; ++i) {
-      auto member = getMemberUnchecked(i);
-
-      if (member != nullptr) {
-        TRI_json_t* j = member->getMember(0)->toJsonValue(zone);
-
-        if (j != nullptr) {
-          TRI_Insert3ObjectJson(zone, object, member->getStringValue(), j);
-        }
-      }
-    }
-
-    return object;
-  }
-
-  if (type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-    TRI_json_t* j = getMember(0)->toJsonValue(zone);
-
-    if (j != nullptr) {
-      if (TRI_IsObjectJson(j)) {
-        TRI_json_t const* v = TRI_LookupObjectJson(j, getStringValue());
-
-        if (v != nullptr) {
-          TRI_json_t* copy = TRI_CopyJson(zone, v);
-          TRI_FreeJson(zone, j);
-          return copy;
-        }
-      }
-
-      TRI_FreeJson(zone, j);
-
-      return TRI_CreateNullJson(zone);
-    }
-  }
-
-  return nullptr;
-}
-
-/// @brief return a JSON representation of the node
-/// the caller is responsible for freeing the JSON later
-TRI_json_t* AstNode::toJson(TRI_memory_zone_t* zone, bool verbose) const {
-  TRI_json_t* node = TRI_CreateObjectJson(zone);
-
-  if (node == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
-
-  // dump node type
-  std::string const& typeString(getTypeString());
-  TRI_json_t json;
-  if (TRI_InitStringCopyJson(zone, &json, typeString.c_str(),
-                             typeString.size()) != TRI_ERROR_NO_ERROR) {
-    TRI_FreeJson(zone, node);
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
-
-  TRI_Insert2ObjectJson(zone, node, "type", &json);
-
-  // add typeId
-  if (verbose) {
-    TRI_Insert3ObjectJson(zone, node, "typeID",
-                          TRI_CreateNumberJson(zone, static_cast<int>(type)));
-  }
-
-  if (type == NODE_TYPE_COLLECTION || type == NODE_TYPE_PARAMETER ||
-      type == NODE_TYPE_ATTRIBUTE_ACCESS || type == NODE_TYPE_OBJECT_ELEMENT ||
-      type == NODE_TYPE_FCALL_USER) {
-    // dump "name" of node
-    if (TRI_InitStringCopyJson(zone, &json, getStringValue(),
-                               getStringLength()) != TRI_ERROR_NO_ERROR) {
-      TRI_FreeJson(zone, node);
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-    }
-    TRI_Insert2ObjectJson(zone, node, "name", &json);
-  }
-
-  if (type == NODE_TYPE_FCALL) {
-    auto func = static_cast<Function*>(getData());
-    TRI_Insert3ObjectJson(
-        zone, node, "name",
-        TRI_CreateStringCopyJson(zone, func->externalName.c_str(),
-                                 func->externalName.size()));
-    // arguments are exported via node members
-  }
-
-  if (type == NODE_TYPE_ARRAY) {
-    if (hasFlag(DETERMINED_SORTED)) {
-      // transport information about a node's sortedness
-      TRI_Insert3ObjectJson(
-          zone, node, "sorted",
-          TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, hasFlag(VALUE_SORTED)));
-    }
-  }
-
-  if (type == NODE_TYPE_VALUE) {
-    // dump value of "value" node
-    auto v = toJsonValue(zone);
-
-    if (v == nullptr) {
-      TRI_FreeJson(zone, node);
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-    }
-
-    TRI_Insert3ObjectJson(zone, node, "value", v);
-
-    if (verbose) {
-      std::string const typeStr(getValueTypeString());
-      TRI_Insert3ObjectJson(
-          zone, node, "vType",
-          TRI_CreateStringCopyJson(zone, typeStr.c_str(), typeStr.size()));
-      TRI_Insert3ObjectJson(
-          zone, node, "vTypeID",
-          TRI_CreateNumberJson(zone, static_cast<int>(value.type)));
-    }
-  }
-
-  if (type == NODE_TYPE_OPERATOR_BINARY_IN ||
-      type == NODE_TYPE_OPERATOR_BINARY_NIN ||
-      type == NODE_TYPE_OPERATOR_BINARY_ARRAY_IN ||
-      type == NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN) {
-    TRI_Insert3ObjectJson(
-        zone, node, "sorted",
-        TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, getBoolValue()));
-  }
-
-  if (type == NODE_TYPE_QUANTIFIER) {
-    std::string const quantifier(Quantifier::Stringify(getIntValue(true)));
-    TRI_Insert3ObjectJson(
-        zone, node, "quantifier",
-        TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, quantifier.c_str(), quantifier.size()));
-  }
-
-  if (type == NODE_TYPE_VARIABLE || type == NODE_TYPE_REFERENCE) {
-    auto variable = static_cast<Variable*>(getData());
-
-    TRI_ASSERT(variable != nullptr);
-
-    TRI_Insert3ObjectJson(zone, node, "name",
-                          TRI_CreateStringCopyJson(zone, variable->name.c_str(),
-                                                   variable->name.size()));
-    TRI_Insert3ObjectJson(
-        zone, node, "id",
-        TRI_CreateNumberJson(zone, static_cast<double>(variable->id)));
-  }
-
-  if (type == NODE_TYPE_EXPANSION) {
-    TRI_Insert3ObjectJson(
-        zone, node, "levels",
-        TRI_CreateNumberJson(zone, static_cast<double>(getIntValue(true))));
-  }
-
-  // dump sub-nodes
-  size_t const n = members.size();
-
-  if (n > 0) {
-    TRI_json_t* subNodes = TRI_CreateArrayJson(zone, n);
-
-    if (subNodes == nullptr) {
-      TRI_FreeJson(zone, node);
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-    }
-
-    try {
-      for (size_t i = 0; i < n; ++i) {
-        AstNode* member = getMemberUnchecked(i);
-        if (member != nullptr) {
-          member->toJson(subNodes, zone, verbose);
-        }
-      }
-    } catch (basics::Exception const&) {
-      TRI_FreeJson(zone, subNodes);
-      TRI_FreeJson(zone, node);
-      throw;
-    } catch (...) {
-      TRI_FreeJson(zone, subNodes);
-      TRI_FreeJson(zone, node);
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-    }
-
-    TRI_Insert3ObjectJson(zone, node, "subNodes", subNodes);
-  }
-
-  return node;
 }
 
 /// @brief return a VelocyPack representation of the node value
@@ -1677,21 +1235,6 @@ AstNode* AstNode::castToNumber(Ast* ast) {
   }
 
   return ast->createNodeValueInt(0);
-}
-
-/// @brief adds a JSON representation of the node to the JSON list specified
-/// in the first argument
-void AstNode::toJson(TRI_json_t* json, TRI_memory_zone_t* zone,
-                     bool verbose) const {
-  TRI_ASSERT(TRI_IsArrayJson(json));
-
-  TRI_json_t* node = toJson(zone, verbose);
-
-  if (node == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
-
-  TRI_PushBack3ArrayJson(zone, json, node);
 }
 
 /// @brief get the integer value of a node, provided the node is a value node
