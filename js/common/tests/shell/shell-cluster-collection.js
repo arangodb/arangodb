@@ -297,21 +297,7 @@ function ClusterCollectionSuite () {
       }
 
       assertNull(db._collection("_foo"));
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test create system
-////////////////////////////////////////////////////////////////////////////////
-
-    testCreateSystem : function () {
-      var c = db._create("_foo", { isSystem : true });
-      assertEqual("_foo", c.name());
-      assertEqual(2, c.type());
-      assertEqual(3, c.status());
-      assertTrue(c.hasOwnProperty("_id"));
-
-      c.drop();
-    },
+    }
 
   };
 }
