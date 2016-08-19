@@ -27,8 +27,6 @@
 #include "Basics/Common.h"
 #include "Basics/AttributeNameParser.h"
 #include "Basics/Exceptions.h"
-#include "Basics/json.h"
-#include "Basics/JsonHelper.h"
 
 #include <velocypack/Slice.h>
 
@@ -37,6 +35,7 @@
 namespace arangodb {
 namespace velocypack {
 class Builder;
+class Slice;
 }
 namespace basics {
 class StringBuffer;
@@ -78,7 +77,7 @@ enum AstNodeFlagType : AstNodeFlagsType {
   FLAG_KEEP_VARIABLENAME = 16384,  // node is a reference to a variable name,
                                    // not the variable value (used in KEEP
                                    // nodes)
-  FLAG_BIND_PARAMETER = 32768  // node was created from a JSON bind parameter
+  FLAG_BIND_PARAMETER = 32768  // node was created from a bind parameter
 };
 
 /// @brief enumeration of AST node value types
@@ -218,13 +217,13 @@ struct AstNode {
   /// @brief create a string node, with defining a value type
   AstNode(char const*, size_t, AstNodeValueType);
 
-  /// @brief create the node from JSON
-  AstNode(Ast*, arangodb::basics::Json const& json);
+  /// @brief create the node from VPack
+  AstNode(Ast*, arangodb::velocypack::Slice const& slice);
 
-  /// @brief create the node from JSON
+  /// @brief create the node from VPack
   AstNode(std::function<void(AstNode*)> registerNode,
           std::function<char const*(std::string const&)> registerString,
-          arangodb::basics::Json const& json);
+          arangodb::velocypack::Slice const& slice);
 
   /// @brief destroy the node
   ~AstNode();
@@ -270,16 +269,8 @@ struct AstNode {
   /// throws exception if not
   static void validateValueType(int type);
 
-  /// @brief fetch a node's type from json
-  static AstNodeType getNodeTypeFromJson(arangodb::basics::Json const& json);
-
-  /// @brief return a JSON representation of the node value
-  /// the caller is responsible for freeing the JSON later
-  TRI_json_t* toJsonValue(TRI_memory_zone_t*) const;
-
-  /// @brief return a JSON representation of the node
-  /// the caller is responsible for freeing the JSON later
-  TRI_json_t* toJson(TRI_memory_zone_t*, bool) const;
+  /// @brief fetch a node's type from VPack
+  static AstNodeType getNodeTypeFromVPack(arangodb::velocypack::Slice const& slice);
 
   /// @brief return a VelocyPack representation of the node value
   std::shared_ptr<arangodb::velocypack::Builder> toVelocyPackValue() const;
@@ -293,10 +284,6 @@ struct AstNode {
 
   /// @brief Create a VelocyPack representation of the node
   void toVelocyPack(arangodb::velocypack::Builder&, bool) const;
-
-  /// @brief adds a JSON representation of the node to the JSON array specified
-  /// in the first argument
-  void toJson(TRI_json_t*, TRI_memory_zone_t*, bool) const;
 
   /// @brief convert the node's value to a boolean value
   /// this may create a new node or return the node itself if it is already a

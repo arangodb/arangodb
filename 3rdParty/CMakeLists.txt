@@ -74,6 +74,8 @@ if (USE_PRECOMPILED_V8)
   )
 else ()
   add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/V8)
+  set(ICU_DT "${ICU_DT}" PARENT_SCOPE)
+  set(ICU_DT_DEST "${ICU_DT_DEST}" PARENT_SCOPE)
 endif ()
 
 ################################################################################

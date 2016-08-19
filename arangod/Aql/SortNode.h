@@ -32,6 +32,8 @@
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
+#include <velocypack/Slice.h>
+
 namespace arangodb {
 namespace basics {
 class StringBuffer;
@@ -53,7 +55,7 @@ class SortNode : public ExecutionNode {
            bool stable)
       : ExecutionNode(plan, id), _elements(elements), _stable(stable) {}
 
-  SortNode(ExecutionPlan* plan, arangodb::basics::Json const& base,
+  SortNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base,
            SortElementVector const& elements, bool stable);
 
   /// @brief return the type of the node

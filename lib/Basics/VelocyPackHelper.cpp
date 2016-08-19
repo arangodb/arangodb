@@ -421,11 +421,6 @@ uint64_t VelocyPackHelper::stringUInt64(VPackSlice const& slice) {
   return 0;
 }
 
-TRI_json_t* VelocyPackHelper::velocyPackToJson(VPackSlice const& slice,
-                                               VPackOptions const* options) {
-  return JsonHelper::fromString(slice.toJson(options));
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parses a json file to VelocyPack
 ////////////////////////////////////////////////////////////////////////////////

@@ -29,7 +29,6 @@
 #include "Aql/ExecutionNode.h"
 #include "Aql/Query.h"
 #include "Aql/Variable.h"
-#include "Basics/JsonHelper.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
@@ -71,7 +70,7 @@ class RemoteNode : public ExecutionNode {
     return _isResponsibleForInitializeCursor;
   }
 
-  RemoteNode(ExecutionPlan*, arangodb::basics::Json const& base);
+  RemoteNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
 
   /// @brief return the type of the node
   NodeType getType() const override final { return REMOTE; }
@@ -156,7 +155,7 @@ class ScatterNode : public ExecutionNode {
               Collection const* collection)
       : ExecutionNode(plan, id), _vocbase(vocbase), _collection(collection) {}
 
-  ScatterNode(ExecutionPlan*, arangodb::basics::Json const& base);
+  ScatterNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
 
   /// @brief return the type of the node
   NodeType getType() const override final { return SCATTER; }
@@ -219,7 +218,7 @@ class DistributeNode : public ExecutionNode {
     // just delegates to the other constructor
   }
 
-  DistributeNode(ExecutionPlan*, arangodb::basics::Json const& base);
+  DistributeNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
 
   /// @brief return the type of the node
   NodeType getType() const override final { return DISTRIBUTE; }
@@ -281,7 +280,7 @@ class GatherNode : public ExecutionNode {
              Collection const* collection)
       : ExecutionNode(plan, id), _vocbase(vocbase), _collection(collection) {}
 
-  GatherNode(ExecutionPlan*, arangodb::basics::Json const& base,
+  GatherNode(ExecutionPlan*, arangodb::velocypack::Slice const& base,
              SortElementVector const& elements);
 
   /// @brief return the type of the node

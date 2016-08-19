@@ -29,7 +29,6 @@
 #include "Aql/Expression.h"
 #include "Aql/Variable.h"
 #include "Aql/WalkerWorker.h"
-#include "Basics/JsonHelper.h"
 #include "Basics/json-utilities.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
@@ -37,6 +36,7 @@
 namespace arangodb {
 namespace velocypack {
 class Builder;
+class Slice;
 }
 
 namespace aql {
@@ -101,16 +101,16 @@ class ExecutionNode {
         _varUsageValid(false),
         _plan(plan) {}
 
-  /// @brief constructor using a JSON struct
-  ExecutionNode(ExecutionPlan* plan, arangodb::basics::Json const& json);
+  /// @brief constructor using a VPackSlice
+  ExecutionNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& slice);
 
   /// @brief destructor, free dependencies;
   virtual ~ExecutionNode() {}
 
  public:
   /// @brief factory from json.
-  static ExecutionNode* fromJsonFactory(ExecutionPlan* plan,
-                                        arangodb::basics::Json const& json);
+  static ExecutionNode* fromVPackFactory(ExecutionPlan* plan,
+                                         arangodb::velocypack::Slice const& slice);
 
   /// @brief return the node's id
   inline size_t id() const { return _id; }
@@ -520,13 +520,12 @@ class ExecutionNode {
   ExecutionNode const* getLoop() const;
 
  protected:
-  /// @brief factory for (optional) variables from json.
-  static Variable* varFromJson(Ast* ast, arangodb::basics::Json const& base,
-                               char const* variableName, bool optional = false);
+  static Variable* varFromVPack(Ast* ast, arangodb::velocypack::Slice const& base,
+                                char const* variableName, bool optional = false);
 
-  /// @brief factory for sort Elements from json.
+  /// @brief factory for sort elements
   static void getSortElements(SortElementVector& elements, ExecutionPlan* plan,
-                              arangodb::basics::Json const& oneNode,
+                              arangodb::velocypack::Slice const& slice,
                               char const* which);
 
   /// @brief toVelocyPackHelper, for a generic node
@@ -602,7 +601,8 @@ class SingletonNode : public ExecutionNode {
  public:
   SingletonNode(ExecutionPlan* plan, size_t id) : ExecutionNode(plan, id) {}
 
-  SingletonNode(ExecutionPlan*, arangodb::basics::Json const& base);
+  SingletonNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
+      : ExecutionNode(plan, base) {}
 
   /// @brief return the type of the node
   NodeType getType() const override final { return SINGLETON; }
@@ -647,7 +647,7 @@ class EnumerateCollectionNode : public ExecutionNode {
   }
 
   EnumerateCollectionNode(ExecutionPlan* plan,
-                          arangodb::basics::Json const& base);
+                          arangodb::velocypack::Slice const& base);
 
   /// @brief return the type of the node
   NodeType getType() const override final { return ENUMERATE_COLLECTION; }
@@ -716,7 +716,7 @@ class EnumerateListNode : public ExecutionNode {
     TRI_ASSERT(_outVariable != nullptr);
   }
 
-  EnumerateListNode(ExecutionPlan*, arangodb::basics::Json const& base);
+  EnumerateListNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
 
   /// @brief return the type of the node
   NodeType getType() const override final { return ENUMERATE_LIST; }
@@ -778,7 +778,7 @@ class LimitNode : public ExecutionNode {
   LimitNode(ExecutionPlan* plan, size_t id, size_t limit)
       : ExecutionNode(plan, id), _offset(0), _limit(limit), _fullCount(false) {}
 
-  LimitNode(ExecutionPlan*, arangodb::basics::Json const& base);
+  LimitNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
 
   /// @brief return the type of the node
   NodeType getType() const override final { return LIMIT; }
@@ -848,7 +848,7 @@ class CalculationNode : public ExecutionNode {
                   Variable const* outVariable)
       : CalculationNode(plan, id, expr, nullptr, outVariable) {}
 
-  CalculationNode(ExecutionPlan*, arangodb::basics::Json const& base);
+  CalculationNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
 
   ~CalculationNode() { delete _expression; }
 
@@ -945,7 +945,7 @@ class SubqueryNode : public ExecutionNode {
   friend class SubqueryBlock;
 
  public:
-  SubqueryNode(ExecutionPlan*, arangodb::basics::Json const& base);
+  SubqueryNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
 
   SubqueryNode(ExecutionPlan* plan, size_t id, ExecutionNode* subquery,
                Variable const* outVariable)
@@ -1032,7 +1032,7 @@ class FilterNode : public ExecutionNode {
     TRI_ASSERT(_inVariable != nullptr);
   }
 
-  FilterNode(ExecutionPlan*, arangodb::basics::Json const& base);
+  FilterNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
 
   /// @brief return the type of the node
   NodeType getType() const override final { return FILTER; }
@@ -1131,7 +1131,7 @@ class ReturnNode : public ExecutionNode {
     TRI_ASSERT(_inVariable != nullptr);
   }
 
-  ReturnNode(ExecutionPlan*, arangodb::basics::Json const& base);
+  ReturnNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
 
   /// @brief return the type of the node
   NodeType getType() const override final { return RETURN; }
@@ -1173,8 +1173,8 @@ class NoResultsNode : public ExecutionNode {
   /// @brief constructor with an id
  public:
   NoResultsNode(ExecutionPlan* plan, size_t id) : ExecutionNode(plan, id) {}
-
-  NoResultsNode(ExecutionPlan* plan, arangodb::basics::Json const& base)
+  
+  NoResultsNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
       : ExecutionNode(plan, base) {}
 
   /// @brief return the type of the node

@@ -21,17 +21,16 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Aql/TraversalOptions.h"
+#include "Basics/VelocyPackHelper.h"
 
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb::aql;
-using Json = arangodb::basics::Json;
-using JsonHelper = arangodb::basics::JsonHelper;
 
-TraversalOptions::TraversalOptions(Json const& json) {
-  Json obj = json.get("traversalFlags");
-  useBreadthFirst = JsonHelper::getBooleanValue(obj.json(), "bfs", false);
-  std::string tmp = JsonHelper::getStringValue(obj.json(), "uniqueVertices", "");
+TraversalOptions::TraversalOptions(VPackSlice const& slice) {
+  VPackSlice obj = slice.get("traversalFlags");
+  useBreadthFirst = basics::VelocyPackHelper::getBooleanValue(obj, "bfs", false);
+  std::string tmp = basics::VelocyPackHelper::getStringValue(obj, "uniqueVertices", "");
   if (tmp == "path") {
     uniqueVertices =
         arangodb::traverser::TraverserOptions::UniquenessLevel::PATH;
@@ -43,7 +42,7 @@ TraversalOptions::TraversalOptions(Json const& json) {
         arangodb::traverser::TraverserOptions::UniquenessLevel::NONE;
   }
 
-  tmp = JsonHelper::getStringValue(obj.json(), "uniqueEdges", "");
+  tmp = basics::VelocyPackHelper::getStringValue(obj, "uniqueEdges", "");
   if (tmp == "none") {
     uniqueEdges =
         arangodb::traverser::TraverserOptions::UniquenessLevel::NONE;
@@ -54,40 +53,6 @@ TraversalOptions::TraversalOptions(Json const& json) {
     uniqueEdges =
         arangodb::traverser::TraverserOptions::UniquenessLevel::PATH;
   }
-}
-
-void TraversalOptions::toJson(arangodb::basics::Json& json,
-                              TRI_memory_zone_t* zone) const {
-  Json flags;
-
-  flags = Json(Json::Object, 3);
-  flags("bfs", Json(useBreadthFirst));
-
-  switch (uniqueVertices) {
-    case arangodb::traverser::TraverserOptions::UniquenessLevel::NONE:
-      flags("uniqueVertices", Json("none"));
-      break;
-    case arangodb::traverser::TraverserOptions::UniquenessLevel::PATH:
-      flags("uniqueVertices", Json("path"));
-      break;
-    case arangodb::traverser::TraverserOptions::UniquenessLevel::GLOBAL:
-      flags("uniqueVertices", Json("global"));
-      break;
-  }
-
-  switch (uniqueEdges) {
-    case arangodb::traverser::TraverserOptions::UniquenessLevel::NONE:
-      flags("uniqueEdges", Json("none"));
-      break;
-    case arangodb::traverser::TraverserOptions::UniquenessLevel::PATH:
-      flags("uniqueEdges", Json("path"));
-      break;
-    case arangodb::traverser::TraverserOptions::UniquenessLevel::GLOBAL:
-      flags("uniqueEdges", Json("global"));
-      break;
-  }
-
-  json("traversalFlags", flags);
 }
 
 void TraversalOptions::toVelocyPack(VPackBuilder& builder) const {

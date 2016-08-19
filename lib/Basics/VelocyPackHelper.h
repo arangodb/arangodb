@@ -25,10 +25,11 @@
 #define ARANGODB_BASICS_VELOCY_PACK_HELPER_H 1
 
 #include "Basics/Common.h"
-#include "Basics/JsonHelper.h"
+#include "Basics/Exceptions.h"
 #include "Logger/Logger.h"
 
 #include <velocypack/Builder.h>
+#include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
 #include <velocypack/Options.h>
 #include <velocypack/velocypack-aliases.h>
@@ -254,13 +255,6 @@ class VelocyPackHelper {
   //////////////////////////////////////////////////////////////////////////////
 
   static uint64_t stringUInt64(VPackSlice const&);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Build TRI_json_t from VelocyPack. Just a temporary solution
-  //////////////////////////////////////////////////////////////////////////////
-
-  static TRI_json_t* velocyPackToJson(
-      VPackSlice const&, VPackOptions const* = &VPackOptions::Defaults);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief parses a json file to VelocyPack

@@ -60,7 +60,7 @@ class ModificationNode : public ExecutionNode {
     TRI_ASSERT(_collection != nullptr);
   }
 
-  ModificationNode(ExecutionPlan*, arangodb::basics::Json const& json);
+  ModificationNode(ExecutionPlan*, arangodb::velocypack::Slice const& slice);
 
   /// @brief export to VelocyPack
   virtual void toVelocyPackHelper(arangodb::velocypack::Builder&,
@@ -149,7 +149,7 @@ class RemoveNode : public ModificationNode {
     TRI_ASSERT(_inVariable != nullptr);
   }
 
-  RemoveNode(ExecutionPlan*, arangodb::basics::Json const& base);
+  RemoveNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
 
   /// @brief return the type of the node
   NodeType getType() const override final { return REMOVE; }
@@ -197,7 +197,7 @@ class InsertNode : public ModificationNode {
     // _outVariable might be a nullptr
   }
 
-  InsertNode(ExecutionPlan*, arangodb::basics::Json const& base);
+  InsertNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
 
   /// @brief return the type of the node
   NodeType getType() const override final { return INSERT; }
@@ -248,7 +248,7 @@ class UpdateNode : public ModificationNode {
     // _inKeyVariable might be a nullptr
   }
 
-  UpdateNode(ExecutionPlan*, arangodb::basics::Json const& base);
+  UpdateNode(ExecutionPlan*, arangodb::velocypack::Slice const&);
 
   /// @brief return the type of the node
   NodeType getType() const override final { return UPDATE; }
@@ -313,7 +313,7 @@ class ReplaceNode : public ModificationNode {
     // _inKeyVariable might be a nullptr
   }
 
-  ReplaceNode(ExecutionPlan*, arangodb::basics::Json const& base);
+  ReplaceNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
 
   /// @brief return the type of the node
   NodeType getType() const override final { return REPLACE; }
@@ -384,7 +384,7 @@ class UpsertNode : public ModificationNode {
     TRI_ASSERT(_outVariableOld == nullptr);
   }
 
-  UpsertNode(ExecutionPlan*, arangodb::basics::Json const& base);
+  UpsertNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
 
   /// @brief return the type of the node
   NodeType getType() const override final { return UPSERT; }

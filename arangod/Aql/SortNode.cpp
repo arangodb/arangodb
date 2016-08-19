@@ -30,7 +30,7 @@
 using namespace arangodb::basics;
 using namespace arangodb::aql;
 
-SortNode::SortNode(ExecutionPlan* plan, arangodb::basics::Json const& base,
+SortNode::SortNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base,
                    SortElementVector const& elements, bool stable)
     : ExecutionNode(plan, base), _elements(elements), _stable(stable) {}
 

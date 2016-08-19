@@ -28,8 +28,6 @@
 
 using namespace arangodb::aql;
 
-using Json = arangodb::basics::Json;
-
 void SingletonBlock::buildWhitelist() {
   if (!_whitelistBuilt) {
     auto en = static_cast<SingletonNode const*>(getPlanNode());

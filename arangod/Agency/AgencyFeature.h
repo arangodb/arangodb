@@ -43,16 +43,18 @@ class AgencyFeature : virtual public application_features::ApplicationFeature {
   void unprepare() override final;
 
  private:
+  bool _activated;
   uint64_t _size;  // agency size (default: 5)
-  uint32_t _agentId;
+  uint64_t _poolSize;
+  std::string _agentId;
   double _minElectionTimeout;                 // min election timeout
   double _maxElectionTimeout;                 // max election timeout
-  std::vector<std::string> _agencyEndpoints;  // agency adresses
   bool _notify;  // interval between retry to slaves
   bool _supervision;
   bool _waitForSync;
   double _supervisionFrequency;
   uint64_t _compactionStepSize;
+  std::vector<std::string> _agencyEndpoints;
 
  public:
   consensus::Agent* agent() const { return _agent.get(); }

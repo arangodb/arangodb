@@ -41,6 +41,7 @@
 #include "Basics/AttributeNameParser.h"
 #include "Basics/SmallVector.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/StringBuffer.h"
 #include "Utils/Transaction.h"
 
 using namespace arangodb;

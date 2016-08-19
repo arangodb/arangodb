@@ -104,6 +104,8 @@ class State {
 
   size_t removeConflicts(query_t const&);
 
+  bool persistActiveAgents (query_t const& active, query_t const&  pool);
+
 
  private:
 
@@ -117,6 +119,7 @@ class State {
   bool loadPersisted();
   bool loadCompacted();
   bool loadRemaining();
+  bool loadOrPersistConfiguration();
 
   /// @brief Check collections
   bool checkCollections();
