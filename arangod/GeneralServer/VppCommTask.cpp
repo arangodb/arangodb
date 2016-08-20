@@ -47,8 +47,7 @@ using namespace arangodb::basics;
 using namespace arangodb::rest;
 
 namespace {
-std::size_t findAndValidateVPacks(char const* vpHeaderStart,
-                                  char const* vpEnd) {
+std::size_t validateAndCount(char const* vpHeaderStart, char const* vpEnd) {
   VPackValidator validator;
   // check for slice start to the end of Chunk
   // isSubPart allows the slice to be shorter than the checked buffer.
@@ -69,6 +68,16 @@ std::size_t findAndValidateVPacks(char const* vpHeaderStart,
     numPayloads++;
   }
   return numPayloads;
+}
+
+template <typename T>
+std::size_t appendToBuffer(StringBuffer* buffer, T& value) {
+  std::size_t len = sizeof(T);
+  char charArray[len];
+  char const* charPtr = charArray;
+  std::memcpy(&charArray, &value, len);
+  buffer->appendText(charPtr, len);
+  return len;
 }
 
 std::unique_ptr<basics::StringBuffer> createChunkForNetworkDetail(
@@ -105,27 +114,12 @@ std::unique_ptr<basics::StringBuffer> createChunkForNetworkDetail(
   auto buffer =
       std::make_unique<StringBuffer>(TRI_UNKNOWN_MEM_ZONE, chunkLength, false);
 
-  char cChunkLength[sizeof(chunkLength)];
-  char const* cChunkLengthPtr = cChunkLength;
-  std::memcpy(&cChunkLength, &chunkLength, sizeof(chunkLength));
-  buffer->appendText(cChunkLengthPtr, sizeof(chunkLength));
-
-  char cChunk[sizeof(chunk)];
-  char const* cChunkPtr = cChunk;
-  std::memcpy(&cChunk, &chunk, sizeof(chunk));
-  buffer->appendText(cChunkPtr, sizeof(chunk));
-
-  char cId[sizeof(id)];
-  char const* cIdPtr = cId;
-  std::memcpy(&cId, &id, sizeof(id));
-  buffer->appendText(cIdPtr, sizeof(id));
+  appendToBuffer(buffer.get(), chunkLength);
+  appendToBuffer(buffer.get(), chunk);
+  appendToBuffer(buffer.get(), id);
 
   if (firstOfMany) {
-    char cTotalMessageLength[sizeof(totalMessageLength)];
-    char const* cTotalMessageLengthPtr = cTotalMessageLength;
-    std::memcpy(&cTotalMessageLength, &totalMessageLength,
-                sizeof(totalMessageLength));
-    buffer->appendText(cTotalMessageLengthPtr, sizeof(totalMessageLength));
+    appendToBuffer(buffer.get(), totalMessageLength);
   }
 
   // append data in slices
@@ -281,7 +275,7 @@ bool VppCommTask::processRead() {
     std::size_t payloads = 0;
 
     try {
-      payloads = findAndValidateVPacks(vpackBegin, chunkEnd);
+      payloads = validateAndCount(vpackBegin, chunkEnd);
     } catch (std::exception const& e) {
       handleSimpleError(GeneralResponse::ResponseCode::BAD,
                         TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, e.what(),
@@ -349,10 +343,10 @@ bool VppCommTask::processRead() {
       std::size_t payloads = 0;
 
       try {
-        payloads = findAndValidateVPacks(
-            reinterpret_cast<char const*>(im._buffer.data()),
-            reinterpret_cast<char const*>(im._buffer.data() +
-                                          im._buffer.byteSize()));
+        payloads =
+            validateAndCount(reinterpret_cast<char const*>(im._buffer.data()),
+                             reinterpret_cast<char const*>(
+                                 im._buffer.data() + im._buffer.byteSize()));
 
       } catch (std::exception const& e) {
         handleSimpleError(GeneralResponse::ResponseCode::BAD,
