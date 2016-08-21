@@ -705,7 +705,7 @@ static void JS_GetCollectionInfoClusterInfo(
   result->Set(TRI_V8_ASCII_STRING("waitForSync"),
               v8::Boolean::New(isolate, ci->waitForSync()));
   result->Set(TRI_V8_ASCII_STRING("journalSize"),
-              v8::Number::New(isolate, ci->journalSize()));
+              v8::Number::New(isolate, static_cast<double>(ci->journalSize())));
   result->Set(TRI_V8_ASCII_STRING("replicationFactor"),
               v8::Number::New(isolate, ci->replicationFactor()));
 

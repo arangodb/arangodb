@@ -191,6 +191,8 @@ GeneralRequest::~GeneralRequest() {
 
 void GeneralRequest::setRequestContext(RequestContext* requestContext,
                                        bool isRequestContextOwner) {
+  TRI_ASSERT(requestContext != nullptr);
+
   if (_requestContext) {
     // if we have a shared context, we should not have got here
     TRI_ASSERT(isRequestContextOwner);

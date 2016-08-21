@@ -109,7 +109,7 @@ constexpr char TRI_INDEX_HANDLE_SEPARATOR_CHR = '/';
 constexpr auto TRI_INDEX_HANDLE_SEPARATOR_STR = "/";
 
 /// @brief collection enum
-enum TRI_col_type_e : uint32_t{
+enum TRI_col_type_e : uint32_t {
   TRI_COL_TYPE_UNKNOWN = 0, // only used to signal an invalid collection type
   TRI_COL_TYPE_DOCUMENT = 2,
   TRI_COL_TYPE_EDGE = 3
@@ -124,7 +124,7 @@ enum TRI_vocbase_type_e {
 /// @brief status of a collection
 /// note: the NEW_BORN status is not used in ArangoDB 1.3 anymore, but is left
 /// in this enum for compatibility with earlier versions
-enum TRI_vocbase_col_status_e {
+enum TRI_vocbase_col_status_e : int {
   TRI_VOC_COL_STATUS_CORRUPTED = 0,
   TRI_VOC_COL_STATUS_NEW_BORN = 1,  // DEPRECATED, and shouldn't be used anymore
   TRI_VOC_COL_STATUS_UNLOADED = 2,

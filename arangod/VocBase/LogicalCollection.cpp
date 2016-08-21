@@ -48,6 +48,15 @@ static T ReadNumericValue(VPackSlice info, std::string const& name, T def) {
   return Helper::getNumericValue<T>(info, name.c_str(), def);
 }
 
+template <typename T, typename BaseType>
+static T ReadNumericValue(VPackSlice info, std::string const& name, T def) {
+  if (!info.isObject()) {
+    return def;
+  }
+  // nice extra conversion required for Visual Studio pickyness
+  return static_cast<T>(Helper::getNumericValue<BaseType>(info, name.c_str(), static_cast<BaseType>(def)));
+}
+
 static bool ReadBooleanValue(VPackSlice info, std::string const& name,
                              bool def) {
   if (!info.isObject()) {
@@ -180,9 +189,9 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase, VPackSlice info)
       _cid(ReadCid(info)),
       _planId(_cid),
       _type(
-          ReadNumericValue<TRI_col_type_e>(info, "type", TRI_COL_TYPE_UNKNOWN)),
+          ReadNumericValue<TRI_col_type_e, int>(info, "type", TRI_COL_TYPE_UNKNOWN)),
       _name(ReadStringValue(info, "name", "")),
-      _status(ReadNumericValue<TRI_vocbase_col_status_e>(
+      _status(ReadNumericValue<TRI_vocbase_col_status_e, int>(
           info, "status", TRI_VOC_COL_STATUS_CORRUPTED)),
       _isLocal(false),
       _isDeleted(ReadBooleanValue(info, "deleted", false)),
