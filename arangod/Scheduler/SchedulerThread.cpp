@@ -203,6 +203,14 @@ void SchedulerThread::run() {
     // handle the events
     try {
       _scheduler->eventLoop(_loop);
+    } catch (std::exception const& e) {
+#ifdef TRI_HAVE_POSIX_THREADS
+      if (isStopping()) {
+        LOG(WARN) << "caught cancelation exception during work";
+        throw;
+      }
+#endif
+      LOG(WARN) << "caught exception from ev_loop: " << e.what();
     } catch (...) {
 #ifdef TRI_HAVE_POSIX_THREADS
       if (isStopping()) {
@@ -210,7 +218,6 @@ void SchedulerThread::run() {
         throw;
       }
 #endif
-
       LOG(WARN) << "caught exception from ev_loop";
     }
 
