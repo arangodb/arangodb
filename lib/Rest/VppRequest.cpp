@@ -39,6 +39,8 @@
 #include "Meta/conversion.h"
 #include "Logger/Logger.h"
 
+#include <stdexcept>
+
 using namespace arangodb;
 using namespace arangodb::basics;
 
@@ -82,7 +84,8 @@ std::unordered_map<std::string, std::string> const& VppRequest::headers()
     VPackSlice meta = _message.header().get("meta");
     for (auto const& it : VPackObjectIterator(meta)) {
       // must lower-case the header key
-      _headers->emplace(StringUtils::tolower(it.key.copyString()), it.value.copyString());
+      _headers->emplace(StringUtils::tolower(it.key.copyString()),
+                        it.value.copyString());
     }
   }
   return *_headers;
@@ -102,22 +105,26 @@ std::string const& VppRequest::header(std::string const& key) const {
 void VppRequest::parseHeaderInformation() {
   using namespace std;
   auto vHeader = _message.header();
+  try {
+    _databaseName = vHeader.get("database").copyString();
+    _requestPath = vHeader.get("request").copyString();
+    _type = meta::toEnum<RequestType>(vHeader.get("requestType").getInt());
 
-  _databaseName = vHeader.get("database").copyString();
-  _requestPath = vHeader.get("request").copyString();
-  _type = meta::toEnum<RequestType>(vHeader.get("requestType").getInt());
-
-  VPackSlice params = vHeader.get("parameter");
-  for (auto const& it : VPackObjectIterator(params)) {
-    if (it.value.isArray()) {
-      vector<string> tmp;
-      for (auto const& itInner : VPackArrayIterator(it.value)) {
-        tmp.emplace_back(itInner.copyString());
+    VPackSlice params = vHeader.get("parameter");
+    for (auto const& it : VPackObjectIterator(params)) {
+      if (it.value.isArray()) {
+        vector<string> tmp;
+        for (auto const& itInner : VPackArrayIterator(it.value)) {
+          tmp.emplace_back(itInner.copyString());
+        }
+        _arrayValues.emplace(it.key.copyString(), move(tmp));
+      } else {
+        _values.emplace(it.key.copyString(), it.value.copyString());
       }
-      _arrayValues.emplace(it.key.copyString(), move(tmp));
-    } else {
-      _values.emplace(it.key.copyString(), it.value.copyString());
     }
+  } catch (std::exception const& e) {
+    throw std::runtime_error(
+        std::string("Error during Parsing of VppHeader: ") + e.what());
   }
 }
 

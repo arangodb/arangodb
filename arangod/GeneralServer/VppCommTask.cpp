@@ -393,8 +393,13 @@ bool VppCommTask::processRead() {
     VPackSlice header = message.header();
     LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
         << "got request:" << header.toJson();
-
-    auto type = header.get("type").getInt();
+    int type = meta::underlyingValue(GeneralRequest::RequestType::ILLEGAL);
+    try {
+      type = header.get("type").getInt();
+    } catch (std::exception const& e) {
+      throw std::runtime_error(
+          std::string("Error during Parsing of VppHeader: ") + e.what());
+    }
     if (type == 1000) {
       // do auth
     } else {
