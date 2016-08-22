@@ -25,6 +25,7 @@
 #define ARANGODB_BASICS_STRING_BUFFER_H 1
 
 #include "Basics/Common.h"
+#include "Basics/Exceptions.h"
 #include "Logger/Logger.h"
 #include "Zip/zip.h"
 
@@ -397,6 +398,10 @@ class StringBuffer {
 
   explicit StringBuffer(TRI_memory_zone_t* zone, bool initializeMemory = true) {
     TRI_InitStringBuffer(&_buffer, zone, initializeMemory);
+
+    if (_buffer._buffer == nullptr) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+    }
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -405,6 +410,10 @@ class StringBuffer {
 
   StringBuffer(TRI_memory_zone_t* zone, size_t initialSize, bool initializeMemory = true) {
     TRI_InitSizedStringBuffer(&_buffer, zone, initialSize, initializeMemory);
+    
+    if (_buffer._buffer == nullptr) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+    }
   }
 
   //////////////////////////////////////////////////////////////////////////////
