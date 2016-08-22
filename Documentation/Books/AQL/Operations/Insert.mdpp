@@ -24,15 +24,15 @@ a *_key* attribute. If no *_key* attribute is provided, ArangoDB will auto-gener
 a value for *_key* value. Inserting a document will also auto-generate a document
 revision number for the document.
 
-```
+```js
 FOR i IN 1..100
   INSERT { value: i } IN numbers
 ```
 
-When inserting into an [edge collection](../../Manual/Appendix/Glossary.html#edge-collection), it is mandatory to specify the attributes
-*_from* and *_to* in document:
+When inserting into an [edge collection](../../Manual/Appendix/Glossary.html#edge-collection),
+it is mandatory to specify the attributes *_from* and *_to* in document:
 
-```
+```js
 FOR u IN users
   FOR p IN products
     FILTER u._key == p.recommendedBy
@@ -44,17 +44,25 @@ FOR u IN users
 *options* can be used to suppress query errors that may occur when violating unique
 key constraints:
 
-```
+```js
 FOR i IN 1..1000
-  INSERT { _key: CONCAT('test', i), name: "test" } WITH { foobar: true } IN users OPTIONS { ignoreErrors: true }
+  INSERT {
+    _key: CONCAT('test', i),
+    name: "test",
+    foobar: true
+  } INTO users OPTIONS { ignoreErrors: true }
 ```
 
 To make sure data are durable when an insert query returns, there is the *waitForSync* 
 query option:
 
-```
+```js
 FOR i IN 1..1000
-  INSERT { _key: CONCAT('test', i), name: "test" } WITH { foobar: true } IN users OPTIONS { waitForSync: true }
+  INSERT {
+    _key: CONCAT('test', i),
+    name: "test",
+    foobar: true
+  } INTO users OPTIONS { waitForSync: true }
 ```
 
 !SUBSECTION Returning the inserted documents
@@ -68,18 +76,16 @@ The documents contained in `NEW` will contain all attributes, even those auto-ge
 the database (e.g. `_id`, `_key`, `_rev`).
 
 
-```
+```js
 INSERT document IN collection options RETURN NEW
 ```
 
 Following is an example using a variable named `inserted` to return the inserted
 documents. For each inserted document, the document key is returned:
 
-```
+```js
 FOR i IN 1..100
   INSERT { value: i } 
   LET inserted = NEW 
   RETURN inserted._key
 ```
-
-
