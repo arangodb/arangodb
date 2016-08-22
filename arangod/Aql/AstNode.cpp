@@ -801,7 +801,7 @@ bool AstNode::isOnlyEqualityMatch() const {
   }
 
   for (size_t i = 0; i < numMembers(); ++i) {
-    auto op = getMember(i);
+    auto op = getMemberUnchecked(i);
     if (op->type != arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
       return false;
     }

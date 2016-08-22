@@ -1160,7 +1160,7 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
 
         if (it2 == varInfo.end()) {
           // report an error here to prevent crashing
-          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "missing variable #" + std::to_string(v->id) + " while planning registers"); 
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "missing variable #" + std::to_string(v->id) + " for node " + en->getTypeString() + " while planning registers"); 
         }
 
         // finally adjust the variable inside the IN calculation
