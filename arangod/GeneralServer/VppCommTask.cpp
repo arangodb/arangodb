@@ -72,7 +72,7 @@ std::size_t validateAndCount(char const* vpHeaderStart, char const* vpEnd) {
 
 template <typename T>
 std::size_t appendToBuffer(StringBuffer* buffer, T& value) {
-  std::size_t len = sizeof(T);
+  constexpr std::size_t len = sizeof(T);
   char charArray[len];
   char const* charPtr = charArray;
   std::memcpy(&charArray, &value, len);
@@ -101,7 +101,7 @@ std::unique_ptr<basics::StringBuffer> createChunkForNetworkDetail(
   // get the lenght of VPack data
   uint32_t dataLength = 0;
   for (auto& slice : slices) {
-	// TODO: is a 32bit value sufficient for all Slices here?
+    // TODO: is a 32bit value sufficient for all Slices here?
     dataLength += static_cast<uint32_t>(slice.byteSize());
   }
 
@@ -315,9 +315,10 @@ bool VppCommTask::processRead() {
           "messages");
     }
 
-	// TODO: is a 32bit value sufficient for the messageLength here?
-    IncompleteVPackMessage message(static_cast<uint32_t>(chunkHeader._messageLength),
-                                   chunkHeader._chunk /*number of chunks*/);
+    // TODO: is a 32bit value sufficient for the messageLength here?
+    IncompleteVPackMessage message(
+        static_cast<uint32_t>(chunkHeader._messageLength),
+        chunkHeader._chunk /*number of chunks*/);
     message._buffer.append(vpackBegin, std::distance(vpackBegin, chunkEnd));
     auto insertPair = _incompleteMessages.emplace(
         std::make_pair(chunkHeader._messageID, std::move(message)));
