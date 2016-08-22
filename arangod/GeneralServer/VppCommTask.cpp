@@ -48,26 +48,31 @@ using namespace arangodb::rest;
 
 namespace {
 std::size_t validateAndCount(char const* vpHeaderStart, char const* vpEnd) {
-  VPackValidator validator;
-  // check for slice start to the end of Chunk
-  // isSubPart allows the slice to be shorter than the checked buffer.
-  validator.validate(vpHeaderStart, std::distance(vpHeaderStart, vpEnd),
-                     /*isSubPart =*/true);
+  try {
+    VPackValidator validator;
+    // check for slice start to the end of Chunk
+    // isSubPart allows the slice to be shorter than the checked buffer.
+    validator.validate(vpHeaderStart, std::distance(vpHeaderStart, vpEnd),
+                       /*isSubPart =*/true);
 
-  VPackSlice vpHeader(vpHeaderStart);
-  auto vpPayloadStart = vpHeaderStart + vpHeader.byteSize();
+    VPackSlice vpHeader(vpHeaderStart);
+    auto vpPayloadStart = vpHeaderStart + vpHeader.byteSize();
 
-  std::size_t numPayloads = 0;
-  while (vpPayloadStart != vpEnd) {
-    // validate
-    validator.validate(vpPayloadStart, std::distance(vpPayloadStart, vpEnd),
-                       true);
-    // get offset to next
-    VPackSlice tmp(vpPayloadStart);
-    vpPayloadStart += tmp.byteSize();
-    numPayloads++;
+    std::size_t numPayloads = 0;
+    while (vpPayloadStart != vpEnd) {
+      // validate
+      validator.validate(vpPayloadStart, std::distance(vpPayloadStart, vpEnd),
+                         true);
+      // get offset to next
+      VPackSlice tmp(vpPayloadStart);
+      vpPayloadStart += tmp.byteSize();
+      numPayloads++;
+    }
+    return numPayloads;
+  } catch (std::exception const& e) {
+    throw std::runtime_error(
+        std::string("error during validation of incoming VPack") + e.what());
   }
-  return numPayloads;
 }
 
 template <typename T>
@@ -459,14 +464,12 @@ GeneralResponse::ResponseCode VppCommTask::authenticateRequest(
     if (!res) {
       return GeneralResponse::ResponseCode::NOT_FOUND;
     }
-
     context = request->requestContext();
   }
 
   if (context == nullptr) {
     return GeneralResponse::ResponseCode::SERVER_ERROR;
   }
-
   return context->authenticate();
 }
 
