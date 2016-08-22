@@ -1,3 +1,8 @@
+v3.0.6 (XXXX-XX-XX)
+-------------------
+
+* Properly return 503 in JS actions when backend is gone
+
 v3.0.5 (2016-08-18)
 -------------------
 
