@@ -408,7 +408,7 @@ void Constituent::beginShutdown() {
 /// Start operation
 bool Constituent::start(TRI_vocbase_t* vocbase,
                         aql::QueryRegistry* queryRegistry) {
-  
+  TRI_ASSERT(vocbase != nullptr);
   _vocbase = vocbase;
   _queryRegistry = queryRegistry;
   
@@ -420,7 +420,7 @@ bool Constituent::start(TRI_vocbase_t* vocbase,
 /// Get persisted information and run election process
 void Constituent::run() {
 
-  LOG(WARN) << "Starting constituent";
+  LOG_TOPIC(DEBUG, Logger::AGENCY) << "Starting Constituent";
   _id = _agent->config().id();
 
   TRI_ASSERT(_vocbase != nullptr);
