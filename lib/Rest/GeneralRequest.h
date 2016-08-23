@@ -36,6 +36,7 @@
 #include "CommonDefines.h"
 
 using arangodb::rest::RequestType;
+using arangodb::rest::ContentType;
 
 namespace arangodb {
 namespace velocypack {
@@ -55,17 +56,7 @@ class GeneralRequest {
 
  public:
   GeneralRequest(GeneralRequest&&) = default;
-
   enum class ProtocolVersion { HTTP_1_0, HTTP_1_1, VPP_1_0, UNKNOWN };
-  enum class ContentType {
-    CUSTOM,  // use Content-Type from _headers
-    JSON,    // application/json
-    VPACK,   // application/x-velocypack
-    TEXT,    // text/plain
-    HTML,    // text/html
-    DUMP,    // application/x-arango-dump
-    UNSET
-  };
 
  public:
   // translate the HTTP protocol version

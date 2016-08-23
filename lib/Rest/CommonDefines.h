@@ -49,16 +49,15 @@ enum class RequestType {
   ILLEGAL  // must be last
 };
 
-// enum class ContentType {
-//  CUSTOM,  // use Content-Type from _headers
-//  JSON,    // application/json
-//  VPACK,   // application/x-velocypack
-//  TEXT,    // text/plain
-//  HTML,    // text/html
-//  DUMP,    // application/x-arango-dump
-//  UNSET
-//};
-//
+enum class ContentType {
+  CUSTOM,  // use Content-Type from _headers
+  JSON,    // application/json
+  VPACK,   // application/x-velocypack
+  TEXT,    // text/plain
+  HTML,    // text/html
+  DUMP,    // application/x-arango-dump
+  UNSET
+};
 // enum class ProtocolVersion { HTTP_1_0, HTTP_1_1, VPP_1_0, UNKNOWN };
 //
 // enum ConnectionType {

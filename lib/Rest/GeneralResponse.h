@@ -30,8 +30,10 @@
 #include "Basics/StringUtils.h"
 #include "Basics/StringBuffer.h"
 #include "lib/Endpoint/Endpoint.h"
-
 #include "GeneralRequest.h"
+
+#include "CommonDefines.h"
+using arangodb::rest::ContentType;
 
 namespace arangodb {
 namespace velocypack {
@@ -99,16 +101,6 @@ class GeneralResponse {
     HTTP_VERSION_NOT_SUPPORTED = 505,
     BANDWIDTH_LIMIT_EXCEEDED = 509,
     NOT_EXTENDED = 510
-  };
-
-  enum class ContentType {
-    CUSTOM,  // use Content-Type from _headers
-    JSON,    // application/json
-    VPACK,   // application/x-velocypack
-    TEXT,    // text/plain
-    HTML,    // text/html
-    DUMP,    // application/x-arango-dump
-    UNSET
   };
 
   enum ConnectionType {
