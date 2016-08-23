@@ -44,7 +44,7 @@ RestHandler::status RestPleaseUpgradeHandler::execute() {
   }
 
   setResponseCode(GeneralResponse::ResponseCode::OK);
-  response->setContentType(GeneralResponse::ContentType::TEXT);
+  response->setContentType(rest::ContentType::TEXT);
 
   auto& buffer = response->body();
   buffer.appendText("Database: ");

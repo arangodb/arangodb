@@ -1358,7 +1358,7 @@ size_t ClusterComm::performSingleRequest(
   // req.result.answer of type GeneralRequest, so we have to translate.
   // Additionally, GeneralRequest is a virtual base class, so we actually
   // have to create an HttpRequest instance:
-  GeneralRequest::ContentType type = GeneralRequest::ContentType::JSON;
+  rest::ContentType type = rest::ContentType::JSON;
 
   basics::StringBuffer& buffer = req.result.result->getBody();
   // auto answer = new FakeRequest(type, buffer.c_str(),

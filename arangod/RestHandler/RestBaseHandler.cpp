@@ -142,7 +142,7 @@ void RestBaseHandler::writeResult(arangodb::velocypack::Slice const& slice,
   try {
     TRI_ASSERT(options.escapeUnicode);
     if (_request != nullptr) {
-      _response->setContentType(meta::enumToEnum<GeneralResponse::ContentType>(
+      _response->setContentType(meta::enumToEnum<rest::ContentType>(
           _request->contentTypeResponse()));
     }
     _response->setPayload(slice, true, options);

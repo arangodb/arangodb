@@ -146,7 +146,7 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
     }
 
     // TODO: generalize to calling handler setPayload
-    response->setContentType(GeneralResponse::ContentType::JSON);
+    response->setContentType(rest::ContentType::JSON);
 
     std::shared_ptr<VPackBuilder> extra = buildExtra(queryResult);
     VPackSlice opts = options->slice();
@@ -487,7 +487,7 @@ void RestCursorHandler::modifyCursor() {
     }
 
     // TODO: generalize to calling handler setPayload
-    response->setContentType(GeneralResponse::ContentType::JSON);
+    response->setContentType(rest::ContentType::JSON);
 
     response->body().appendChar('{');
     cursor->dump(response->body());

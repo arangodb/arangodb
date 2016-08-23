@@ -301,15 +301,15 @@ void HttpResponse::writeHeader(StringBuffer* output) {
 
 void HttpResponse::setPayload(arangodb::velocypack::Slice const& slice,
                               bool generateBody, VPackOptions const& options) {
-  if (_contentType != GeneralResponse::ContentType::CUSTOM) {
+  if (_contentType != rest::ContentType::CUSTOM) {
     // do not overwrite the content type set by the user!!!
     //_contentType = contentType; //FIXME
     //    _contentType =
-    //    meta::enumToEnum<GeneralResponse::ContentType>(request->contentTypeResponse());
+    //    meta::enumToEnum<rest::ContentType>(request->contentTypeResponse());
   }
 
   switch (_contentType) {
-    case GeneralResponse::ContentType::VPACK: {
+    case rest::ContentType::VPACK: {
       size_t length = static_cast<size_t>(slice.byteSize());
       if (generateBody) {
         _body.appendText(slice.startAs<const char>(), length);
@@ -319,7 +319,7 @@ void HttpResponse::setPayload(arangodb::velocypack::Slice const& slice,
       break;
     }
     default: {
-      setContentType(HttpResponse::ContentType::JSON);
+      setContentType(rest::ContentType::JSON);
 
       if (generateBody) {
         arangodb::basics::VelocyPackDumper dumper(&_body, &options);

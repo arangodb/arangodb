@@ -88,7 +88,7 @@ RestHandler::status PathHandler::execute() {
     setResponseCode(GeneralResponse::ResponseCode::MOVED_PERMANENTLY);
 
     response->setHeaderNC(StaticStrings::Location, url);
-    response->setContentType(HttpResponse::ContentType::HTML);
+    response->setContentType(rest::ContentType::HTML);
 
     response->body().appendText(
         "<html><head><title>Moved</title></head><body><h1>Moved</h1><p>This "

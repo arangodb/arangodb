@@ -404,7 +404,7 @@ static v8::Handle<v8::Object> RequestCppToV8(v8::Isolate* isolate,
   TRI_GET_GLOBAL_STRING(RequestBodyKey);
 
   auto set_request_body_json_or_vpack = [&]() {
-    if (GeneralRequest::ContentType::JSON == request->contentType()) {
+    if (rest::ContentType::JSON == request->contentType()) {
       auto httpreq = dynamic_cast<HttpRequest*>(request);
       if (httpreq == nullptr) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
@@ -412,7 +412,7 @@ static v8::Handle<v8::Object> RequestCppToV8(v8::Isolate* isolate,
       std::string const& body = httpreq->body();
       req->ForceSet(RequestBodyKey, TRI_V8_STD_STRING(body));
       headers["content-length"] = StringUtils::itoa(request->contentLength());
-    } else if (GeneralRequest::ContentType::VPACK == request->contentType()) {
+    } else if (rest::ContentType::VPACK == request->contentType()) {
       // the VPACK is passed as it is to to Javascript
       // should we convert and validate here in a central place?
       // should the work be done in javascript
@@ -725,7 +725,7 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
           }
         }
 
-        response->setContentType(GeneralResponse::ContentType::VPACK);
+        response->setContentType(rest::ContentType::VPACK);
         response->setPayload(builder.slice(), true);
         break;
       } 
@@ -766,7 +766,7 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
         VPackBuilder builder;
 
         // create vpack form file
-        response->setContentType(GeneralResponse::ContentType::VPACK);
+        response->setContentType(rest::ContentType::VPACK);
         response->setPayload(builder.slice(), true);
       } break;
 

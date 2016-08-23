@@ -1008,7 +1008,7 @@ void RestReplicationHandler::handleCommandLoggerFollow() {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
       }
 
-      httpResponse->setContentType(GeneralResponse::ContentType::DUMP);
+      httpResponse->setContentType(rest::ContentType::DUMP);
 
       // set headers
       httpResponse->setHeaderNC(TRI_REPLICATION_HEADER_CHECKMORE,
@@ -1109,7 +1109,7 @@ void RestReplicationHandler::handleCommandDetermineOpenTransactions() {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
       }
 
-      _response->setContentType(HttpResponse::ContentType::DUMP);
+      _response->setContentType(rest::ContentType::DUMP);
 
       _response->setHeaderNC(TRI_REPLICATION_HEADER_FROMPRESENT,
                              dump._fromTickIncluded ? "true" : "false");
@@ -3219,7 +3219,7 @@ void RestReplicationHandler::handleCommandDump() {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
     }
 
-    response->setContentType(GeneralResponse::ContentType::DUMP);
+    response->setContentType(rest::ContentType::DUMP);
 
     // set headers
     _response->setHeaderNC(

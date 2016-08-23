@@ -340,7 +340,7 @@ void RestVocbaseBaseHandler::generateDocument(VPackSlice const& input,
   }
 
   try {
-    _response->setContentType(meta::enumToEnum<GeneralResponse::ContentType>(
+    _response->setContentType(meta::enumToEnum<rest::ContentType>(
         _request->contentTypeResponse()));
     _response->setPayload(document, generateBody, *options);
   } catch (...) {

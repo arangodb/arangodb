@@ -272,7 +272,7 @@ void RestExportHandler::createCursor() {
       }
 
       // TODO: generalize to calling handler setPayload
-      response->setContentType(HttpResponse::ContentType::JSON);
+      response->setContentType(rest::ContentType::JSON);
 
       auto cursors = _vocbase->cursorRepository();
       TRI_ASSERT(cursors != nullptr);
@@ -346,7 +346,7 @@ void RestExportHandler::modifyCursor() {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
     }
 
-    response->setContentType(HttpResponse::ContentType::JSON);
+    response->setContentType(rest::ContentType::JSON);
 
     response->body().appendChar('{');
     cursor->dump(response->body());

@@ -361,7 +361,7 @@ void RestSimpleHandler::lookupByKeys(VPackSlice const& slice) {
       setResponseCode(GeneralResponse::ResponseCode::OK);
 
       // TODO this should be generalized
-      response->setContentType(HttpResponse::ContentType::JSON);
+      response->setContentType(rest::ContentType::JSON);
 
       if (qResult.isArray()) {
         // This is for internal use of AQL Traverser only.

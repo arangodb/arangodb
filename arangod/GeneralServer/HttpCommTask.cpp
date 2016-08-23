@@ -584,7 +584,7 @@ void HttpCommTask::processRequest(std::unique_ptr<HttpRequest> request) {
   // create a handler and execute
   std::unique_ptr<GeneralResponse> response(
       new HttpResponse(GeneralResponse::ResponseCode::SERVER_ERROR));
-  response->setContentType(meta::enumToEnum<GeneralResponse::ContentType>(
+  response->setContentType(meta::enumToEnum<rest::ContentType>(
       request->contentTypeResponse()));
 
   executeRequest(std::move(request), std::move(response));
