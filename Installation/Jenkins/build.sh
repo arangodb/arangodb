@@ -419,7 +419,7 @@ if test -n "${TARGET_DIR}";  then
     echo "building distribution tarball"
     mkdir -p "${TARGET_DIR}"
     dir="${TARGET_DIR}"
-    TARFILE=arangodb.tar.gz
+    TARFILE=arangodb-`uname -o`.tar.gz
     TARFILE_TMP=`pwd`/arangodb.tar.$$
 
     mkdir -p ${dir}
