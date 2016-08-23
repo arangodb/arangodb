@@ -91,7 +91,7 @@ int countOnCoordinator(std::string const& dbname, std::string const& collname,
 int createDocumentOnCoordinator(
     std::string const& dbname, std::string const& collname,
     OperationOptions const& options, arangodb::velocypack::Slice const& slice,
-    arangodb::GeneralResponse::ResponseCode& responseCode,
+    arangodb::rest::ResponseCode& responseCode,
     std::unordered_map<int, size_t>& errorCounters,
     std::shared_ptr<arangodb::velocypack::Builder>& resultBody);
 
@@ -102,7 +102,7 @@ int createDocumentOnCoordinator(
 int deleteDocumentOnCoordinator(
     std::string const& dbname, std::string const& collname,
     VPackSlice const slice, OperationOptions const& options,
-    arangodb::GeneralResponse::ResponseCode& responseCode,
+    arangodb::rest::ResponseCode& responseCode,
     std::unordered_map<int, size_t>& errorCounters,
     std::shared_ptr<arangodb::velocypack::Builder>& resultBody);
 
@@ -114,7 +114,7 @@ int getDocumentOnCoordinator(
     std::string const& dbname, std::string const& collname,
     VPackSlice const slice, OperationOptions const& options,
     std::unique_ptr<std::unordered_map<std::string, std::string>>& headers,
-    arangodb::GeneralResponse::ResponseCode& responseCode,
+    arangodb::rest::ResponseCode& responseCode,
     std::unordered_map<int, size_t>& errorCounter,
     std::shared_ptr<arangodb::velocypack::Builder>& resultBody);
 
@@ -142,7 +142,7 @@ int getFilteredEdgesOnCoordinator(
     std::string const& dbname, std::string const& collname,
     std::string const& vertex, TRI_edge_direction_e const& direction,
     std::vector<traverser::TraverserExpression*> const& expressions,
-    arangodb::GeneralResponse::ResponseCode& responseCode,
+    arangodb::rest::ResponseCode& responseCode,
     arangodb::velocypack::Builder& result);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -154,7 +154,7 @@ int modifyDocumentOnCoordinator(
     arangodb::velocypack::Slice const& slice, OperationOptions const& options,
     bool isPatch,
     std::unique_ptr<std::unordered_map<std::string, std::string>>& headers,
-    arangodb::GeneralResponse::ResponseCode& responseCode,
+    arangodb::rest::ResponseCode& responseCode,
     std::unordered_map<int, size_t>& errorCounter,
     std::shared_ptr<arangodb::velocypack::Builder>& resultBody);
 

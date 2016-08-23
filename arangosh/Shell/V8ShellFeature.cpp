@@ -208,7 +208,7 @@ bool V8ShellFeature::printHello(V8ClientConnection* v8connection) {
     if (v8connection != nullptr) {
       if (v8connection->isConnected() &&
           v8connection->lastHttpReturnCode() ==
-              (int)GeneralResponse::ResponseCode::OK) {
+              (int)rest::ResponseCode::OK) {
         std::ostringstream is;
 
         is << "Connected to ArangoDB '" << v8connection->endpointSpecification()

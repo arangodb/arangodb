@@ -88,7 +88,7 @@ void V8ClientConnection::init(
   } else {
     _lastHttpReturnCode = result->getHttpReturnCode();
 
-    if (result->getHttpReturnCode() == static_cast<int>(GeneralResponse::ResponseCode::OK)) {
+    if (result->getHttpReturnCode() == static_cast<int>(rest::ResponseCode::OK)) {
       try {
         std::shared_ptr<VPackBuilder> parsedBody = result->getBodyVelocyPack();
         VPackSlice const body = parsedBody->slice();
@@ -178,7 +178,7 @@ void V8ClientConnection::reconnect(ClientFeature* client) {
   }
 
   if (isConnected() &&
-      _lastHttpReturnCode == static_cast<int>(GeneralResponse::ResponseCode::OK)) {
+      _lastHttpReturnCode == static_cast<int>(rest::ResponseCode::OK)) {
     LOG(INFO) << "Connected to ArangoDB "
               << "'" << endpointSpecification() << "', "
               << "version " << _version << " [" << _mode << "], "
@@ -331,7 +331,7 @@ static void ClientConnection_ConstructorCallback(
 
   if (v8connection->isConnected() &&
       v8connection->lastHttpReturnCode() ==
-          (int)GeneralResponse::ResponseCode::OK) {
+          (int)rest::ResponseCode::OK) {
     LOG(INFO) << "Connected to ArangoDB "
               << "'" << v8connection->endpointSpecification() << "', "
               << "version " << v8connection->version() << " ["
@@ -1384,12 +1384,12 @@ v8::Handle<v8::Value> V8ClientConnection::requestDataRaw(
       _lastErrorMessage = "Unknown error";
     }
 
-    _lastHttpReturnCode = static_cast<int>(GeneralResponse::ResponseCode::SERVER_ERROR);
+    _lastHttpReturnCode = static_cast<int>(rest::ResponseCode::SERVER_ERROR);
 
     result->ForceSet(
         TRI_V8_ASCII_STRING("code"),
         v8::Integer::New(isolate,
-                         static_cast<int>(GeneralResponse::ResponseCode::SERVER_ERROR)));
+                         static_cast<int>(rest::ResponseCode::SERVER_ERROR)));
 
     int errorNumber = 0;
 
@@ -1479,7 +1479,7 @@ v8::Handle<v8::Value> V8ClientConnection::handleResult(v8::Isolate* isolate) {
       _lastErrorMessage = "Unknown error";
     }
 
-    _lastHttpReturnCode = static_cast<int>(GeneralResponse::ResponseCode::SERVER_ERROR);
+    _lastHttpReturnCode = static_cast<int>(rest::ResponseCode::SERVER_ERROR);
 
     v8::Local<v8::Object> result = v8::Object::New(isolate);
     result->ForceSet(TRI_V8_ASCII_STRING("error"),
@@ -1487,7 +1487,7 @@ v8::Handle<v8::Value> V8ClientConnection::handleResult(v8::Isolate* isolate) {
     result->ForceSet(
         TRI_V8_ASCII_STRING("code"),
         v8::Integer::New(isolate,
-                         static_cast<int>(GeneralResponse::ResponseCode::SERVER_ERROR)));
+                         static_cast<int>(rest::ResponseCode::SERVER_ERROR)));
 
     int errorNumber = 0;
 

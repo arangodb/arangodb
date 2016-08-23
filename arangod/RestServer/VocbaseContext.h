@@ -51,7 +51,7 @@ class VocbaseContext : public arangodb::RequestContext {
   TRI_vocbase_t* vocbase() const { return _vocbase; }
 
  public:
-  GeneralResponse::ResponseCode authenticate() override final;
+  rest::ResponseCode authenticate() override final;
 
  private:
   bool useClusterAuthentication() const;
@@ -61,20 +61,20 @@ class VocbaseContext : public arangodb::RequestContext {
   /// @brief checks the authentication (basic)
   //////////////////////////////////////////////////////////////////////////////
 
-  GeneralResponse::ResponseCode basicAuthentication(const char*);
+  rest::ResponseCode basicAuthentication(const char*);
   
   //////////////////////////////////////////////////////////////////////////////
   /// @brief checks the authentication (jwt)
   //////////////////////////////////////////////////////////////////////////////
 
-  GeneralResponse::ResponseCode jwtAuthentication(std::string const&);
+  rest::ResponseCode jwtAuthentication(std::string const&);
 
  private: 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief checks the authentication header and sets user if successful
   //////////////////////////////////////////////////////////////////////////////
 
-  GeneralResponse::ResponseCode authenticateRequest(bool* forceOpen);
+  rest::ResponseCode authenticateRequest(bool* forceOpen);
 
  private:
   TRI_vocbase_t* _vocbase;

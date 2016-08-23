@@ -345,9 +345,9 @@ static void collectResultsFromAllShards(
     std::vector<ClusterCommRequest>& requests,
     std::unordered_map<int, size_t>& errorCounter,
     std::unordered_map<ShardID, std::shared_ptr<VPackBuilder>>& resultMap,
-    GeneralResponse::ResponseCode& responseCode) {
+    rest::ResponseCode& responseCode) {
   // If none of the shards responds we return a SERVER_ERROR;
-  responseCode = GeneralResponse::ResponseCode::SERVER_ERROR;
+  responseCode = rest::ResponseCode::SERVER_ERROR;
   for (auto const& req : requests) {
     auto res = req.result;
 
@@ -513,7 +513,7 @@ int revisionOnCoordinator(std::string const& dbname,
   for (count = (int)shards->size(); count > 0; count--) {
     auto res = cc->wait("", coordTransactionID, 0, "", 0.0);
     if (res.status == CL_COMM_RECEIVED) {
-      if (res.answer_code == arangodb::GeneralResponse::ResponseCode::OK) {
+      if (res.answer_code == arangodb::rest::ResponseCode::OK) {
         std::shared_ptr<VPackBuilder> answerBuilder = ExtractAnswer(res);
         VPackSlice answer = answerBuilder->slice();
 
@@ -590,7 +590,7 @@ int figuresOnCoordinator(std::string const& dbname, std::string const& collname,
   for (count = (int)shards->size(); count > 0; count--) {
     auto res = cc->wait("", coordTransactionID, 0, "", 0.0);
     if (res.status == CL_COMM_RECEIVED) {
-      if (res.answer_code == arangodb::GeneralResponse::ResponseCode::OK) {
+      if (res.answer_code == arangodb::rest::ResponseCode::OK) {
         std::shared_ptr<VPackBuilder> answerBuilder = ExtractAnswer(res);
         VPackSlice answer = answerBuilder->slice();
 
@@ -683,7 +683,7 @@ int countOnCoordinator(std::string const& dbname, std::string const& collname,
   for (auto& req : requests) {
     auto& res = req.result;
     if (res.status == CL_COMM_RECEIVED) {
-      if (res.answer_code == arangodb::GeneralResponse::ResponseCode::OK) {
+      if (res.answer_code == arangodb::rest::ResponseCode::OK) {
         std::shared_ptr<VPackBuilder> answerBuilder = ExtractAnswer(res);
         VPackSlice answer = answerBuilder->slice();
 
@@ -721,7 +721,7 @@ int countOnCoordinator(std::string const& dbname, std::string const& collname,
 int createDocumentOnCoordinator(
     std::string const& dbname, std::string const& collname,
     arangodb::OperationOptions const& options, VPackSlice const& slice,
-    arangodb::GeneralResponse::ResponseCode& responseCode,
+    arangodb::rest::ResponseCode& responseCode,
     std::unordered_map<int, size_t>& errorCounter,
     std::shared_ptr<VPackBuilder>& resultBody) {
   // Set a few variables needed for our work:
@@ -837,8 +837,8 @@ int createDocumentOnCoordinator(
       shardMap, requests, errorCounter, resultMap, responseCode);
 
   responseCode =
-      (options.waitForSync ? GeneralResponse::ResponseCode::CREATED
-                           : GeneralResponse::ResponseCode::ACCEPTED);
+      (options.waitForSync ? rest::ResponseCode::CREATED
+                           : rest::ResponseCode::ACCEPTED);
   mergeResults(reverseMapping, resultMap, resultBody);
 
   // the cluster operation was OK, however,
@@ -853,7 +853,7 @@ int createDocumentOnCoordinator(
 int deleteDocumentOnCoordinator(
     std::string const& dbname, std::string const& collname,
     VPackSlice const slice, arangodb::OperationOptions const& options,
-    arangodb::GeneralResponse::ResponseCode& responseCode,
+    arangodb::rest::ResponseCode& responseCode,
     std::unordered_map<int, size_t>& errorCounter,
     std::shared_ptr<arangodb::velocypack::Builder>& resultBody) {
   // Set a few variables needed for our work:
@@ -1029,7 +1029,7 @@ int deleteDocumentOnCoordinator(
       auto res = req.result;
       if (res.status == CL_COMM_RECEIVED) {
         if (res.answer_code !=
-                arangodb::GeneralResponse::ResponseCode::NOT_FOUND ||
+                arangodb::rest::ResponseCode::NOT_FOUND ||
             (nrok == 0 && count == 1)) {
           nrok++;
 
@@ -1053,7 +1053,7 @@ int deleteDocumentOnCoordinator(
   std::vector<std::shared_ptr<VPackBuilder>> allResults;
   allResults.reserve(shardList->size());
   // If no server responds we return 500
-  responseCode = GeneralResponse::ResponseCode::SERVER_ERROR;
+  responseCode = rest::ResponseCode::SERVER_ERROR;
   for (auto const& req : requests) {
     auto res = req.result;
     int error = handleGeneralCommErrors(&res);
@@ -1061,8 +1061,8 @@ int deleteDocumentOnCoordinator(
       // Local data structures are automatically freed
       return error;
     }
-    if (res.answer_code == GeneralResponse::ResponseCode::OK ||
-        res.answer_code == GeneralResponse::ResponseCode::ACCEPTED) {
+    if (res.answer_code == rest::ResponseCode::OK ||
+        res.answer_code == rest::ResponseCode::ACCEPTED) {
       responseCode = res.answer_code;
     }
     TRI_ASSERT(res.answer != nullptr);
@@ -1113,7 +1113,7 @@ int truncateCollectionOnCoordinator(std::string const& dbname,
   for (count = (unsigned int)shards->size(); count > 0; count--) {
     auto res = cc->wait("", coordTransactionID, 0, "", 0.0);
     if (res.status == CL_COMM_RECEIVED) {
-      if (res.answer_code == arangodb::GeneralResponse::ResponseCode::OK) {
+      if (res.answer_code == arangodb::rest::ResponseCode::OK) {
         nrok++;
       }
     }
@@ -1134,7 +1134,7 @@ int getDocumentOnCoordinator(
     std::string const& dbname, std::string const& collname,
     VPackSlice const slice, OperationOptions const& options,
     std::unique_ptr<std::unordered_map<std::string, std::string>>& headers,
-    arangodb::GeneralResponse::ResponseCode& responseCode,
+    arangodb::rest::ResponseCode& responseCode,
     std::unordered_map<int, size_t>& errorCounter,
     std::shared_ptr<VPackBuilder>& resultBody) {
   // Set a few variables needed for our work:
@@ -1335,7 +1335,7 @@ int getDocumentOnCoordinator(
       auto res = req.result;
       if (res.status == CL_COMM_RECEIVED) {
         if (res.answer_code !=
-                arangodb::GeneralResponse::ResponseCode::NOT_FOUND ||
+                arangodb::rest::ResponseCode::NOT_FOUND ||
             (nrok == 0 && count == 1 && commError == TRI_ERROR_NO_ERROR)) {
           nrok++;
           responseCode = res.answer_code;
@@ -1362,7 +1362,7 @@ int getDocumentOnCoordinator(
   std::vector<std::shared_ptr<VPackBuilder>> allResults;
   allResults.reserve(shardList->size());
   // If no server responds we return 500
-  responseCode = GeneralResponse::ResponseCode::SERVER_ERROR;
+  responseCode = rest::ResponseCode::SERVER_ERROR;
   for (auto const& req : requests) {
     auto& res = req.result;
     int error = handleGeneralCommErrors(&res);
@@ -1370,8 +1370,8 @@ int getDocumentOnCoordinator(
       // Local data structores are automatically freed
       return error;
     }
-    if (res.answer_code == GeneralResponse::ResponseCode::OK ||
-        res.answer_code == GeneralResponse::ResponseCode::ACCEPTED) {
+    if (res.answer_code == rest::ResponseCode::OK ||
+        res.answer_code == rest::ResponseCode::ACCEPTED) {
       responseCode = res.answer_code;
     }
     TRI_ASSERT(res.answer != nullptr);
@@ -1550,7 +1550,7 @@ int getFilteredEdgesOnCoordinator(
     std::string const& dbname, std::string const& collname,
     std::string const& vertex, TRI_edge_direction_e const& direction,
     std::vector<traverser::TraverserExpression*> const& expressions,
-    arangodb::GeneralResponse::ResponseCode& responseCode,
+    arangodb::rest::ResponseCode& responseCode,
     VPackBuilder& result) {
   TRI_ASSERT(result.isOpenObject());
 
@@ -1599,7 +1599,7 @@ int getFilteredEdgesOnCoordinator(
 
   size_t filtered = 0;
   size_t scannedIndex = 0;
-  responseCode = arangodb::GeneralResponse::ResponseCode::OK;
+  responseCode = arangodb::rest::ResponseCode::OK;
 
   result.add("edges", VPackValue(VPackValueType::Array));
 
@@ -1671,7 +1671,7 @@ int modifyDocumentOnCoordinator(
     VPackSlice const& slice, arangodb::OperationOptions const& options,
     bool isPatch,
     std::unique_ptr<std::unordered_map<std::string, std::string>>& headers,
-    arangodb::GeneralResponse::ResponseCode& responseCode,
+    arangodb::rest::ResponseCode& responseCode,
     std::unordered_map<int, size_t>& errorCounter,
     std::shared_ptr<VPackBuilder>& resultBody) {
   // Set a few variables needed for our work:
@@ -1873,7 +1873,7 @@ int modifyDocumentOnCoordinator(
       auto res = req.result;
       if (res.status == CL_COMM_RECEIVED) {
         if (res.answer_code !=
-                arangodb::GeneralResponse::ResponseCode::NOT_FOUND ||
+                arangodb::rest::ResponseCode::NOT_FOUND ||
             (nrok == 0 && count == 1 && commError == TRI_ERROR_NO_ERROR)) {
           nrok++;
           responseCode = res.answer_code;
@@ -1896,7 +1896,7 @@ int modifyDocumentOnCoordinator(
                                 // the DBserver could have reported an error.
   }
 
-  responseCode = GeneralResponse::ResponseCode::SERVER_ERROR;
+  responseCode = rest::ResponseCode::SERVER_ERROR;
   // We select all results from all shards an merge them back again.
   std::vector<std::shared_ptr<VPackBuilder>> allResults;
   allResults.reserve(requests.size());
@@ -1908,8 +1908,8 @@ int modifyDocumentOnCoordinator(
       // Local data structores are automatically freed
       return error;
     }
-    if (res.answer_code == GeneralResponse::ResponseCode::OK ||
-        res.answer_code == GeneralResponse::ResponseCode::ACCEPTED) {
+    if (res.answer_code == rest::ResponseCode::OK ||
+        res.answer_code == rest::ResponseCode::ACCEPTED) {
       responseCode = res.answer_code;
     }
     TRI_ASSERT(res.answer != nullptr);
@@ -1951,7 +1951,7 @@ int flushWalOnAllDBServers(bool waitForSync, bool waitForCollector) {
   for (count = (int)DBservers.size(); count > 0; count--) {
     auto res = cc->wait("", coordTransactionID, 0, "", 0.0);
     if (res.status == CL_COMM_RECEIVED) {
-      if (res.answer_code == arangodb::GeneralResponse::ResponseCode::OK) {
+      if (res.answer_code == arangodb::rest::ResponseCode::OK) {
         nrok++;
       }
     }

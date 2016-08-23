@@ -135,7 +135,7 @@ class v8_action_t : public TRI_action_t {
                   << "'";
 
         result.isValid = true;
-        response->setResponseCode(GeneralResponse::ResponseCode::NOT_FOUND);
+        response->setResponseCode(rest::ResponseCode::NOT_FOUND);
 
         return result;
       }
@@ -550,7 +550,7 @@ static v8::Handle<v8::Object> RequestCppToV8(v8::Isolate* isolate,
 static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
                             v8::Handle<v8::Object> const res,
                             GeneralResponse* response) {
-  GeneralResponse::ResponseCode code = GeneralResponse::ResponseCode::OK;
+  rest::ResponseCode code = rest::ResponseCode::OK;
 
   using arangodb::Endpoint;
 
@@ -558,7 +558,7 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
   TRI_GET_GLOBAL_STRING(ResponseCodeKey);
   if (res->Has(ResponseCodeKey)) {
     // Windows has issues with converting from a double to an enumeration type
-    code = (GeneralResponse::ResponseCode)(
+    code = (rest::ResponseCode)(
         (int)(TRI_ObjectToDouble(res->Get(ResponseCodeKey))));
   }
   response->setResponseCode(code);
@@ -758,7 +758,7 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
 
           httpResponse->body().appendText(msg.c_str(), msg.size());
           response->setResponseCode(
-              GeneralResponse::ResponseCode::SERVER_ERROR);
+              rest::ResponseCode::SERVER_ERROR);
         }
       } break;
 
@@ -911,7 +911,7 @@ static TRI_action_result_t ExecuteActionVocbase(
     result.canceled = false;
 
     // TODO how to generalize this?
-    response->setResponseCode(GeneralResponse::ResponseCode::SERVER_ERROR);
+    response->setResponseCode(rest::ResponseCode::SERVER_ERROR);
 
     if (errorMessage.empty()) {
       errorMessage = TRI_errno_string(errorCode);
@@ -931,7 +931,7 @@ static TRI_action_result_t ExecuteActionVocbase(
 
   else if (tryCatch.HasCaught()) {
     if (tryCatch.CanContinue()) {
-      response->setResponseCode(GeneralResponse::ResponseCode::SERVER_ERROR);
+      response->setResponseCode(rest::ResponseCode::SERVER_ERROR);
 
       // TODO how to generalize this?
       if (response->transportType() ==

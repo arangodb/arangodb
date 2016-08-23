@@ -238,7 +238,7 @@ void WorkMonitor::sendWorkOverview(
   auto response = handler->response();
 
   velocypack::Slice slice(buffer->data());
-  response->setResponseCode(GeneralResponse::ResponseCode::OK);
+  response->setResponseCode(rest::ResponseCode::OK);
   response->setPayload(slice, true, VPackOptions::Defaults);
 
   auto data = std::make_unique<TaskData>();

@@ -60,7 +60,7 @@ RestHandler::status RestSimpleQueryHandler::execute() {
     }
   }
 
-  generateError(GeneralResponse::ResponseCode::METHOD_NOT_ALLOWED,
+  generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                 TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
   return status::DONE;
 }
@@ -83,7 +83,7 @@ void RestSimpleQueryHandler::allDocuments() {
     VPackSlice const value = body.get("collection");
 
     if (!value.isString()) {
-      generateError(GeneralResponse::ResponseCode::BAD, TRI_ERROR_TYPE_ERROR,
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_TYPE_ERROR,
                     "expecting string for <collection>");
       return;
     }
@@ -152,13 +152,13 @@ void RestSimpleQueryHandler::allDocuments() {
     generateError(GeneralResponse::responseCode(ex.code()), ex.code(),
                   ex.what());
   } catch (std::bad_alloc const&) {
-    generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
+    generateError(rest::ResponseCode::SERVER_ERROR,
                   TRI_ERROR_OUT_OF_MEMORY);
   } catch (std::exception const& ex) {
-    generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
+    generateError(rest::ResponseCode::SERVER_ERROR,
                   TRI_ERROR_INTERNAL, ex.what());
   } catch (...) {
-    generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
+    generateError(rest::ResponseCode::SERVER_ERROR,
                   TRI_ERROR_INTERNAL);
   }
 }
@@ -181,7 +181,7 @@ void RestSimpleQueryHandler::allDocumentKeys() {
     VPackSlice const value = body.get("collection");
 
     if (!value.isString()) {
-      generateError(GeneralResponse::ResponseCode::BAD, TRI_ERROR_TYPE_ERROR,
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_TYPE_ERROR,
                     "expecting string for <collection>");
       return;
     }
@@ -218,13 +218,13 @@ void RestSimpleQueryHandler::allDocumentKeys() {
     generateError(GeneralResponse::responseCode(ex.code()), ex.code(),
                   ex.what());
   } catch (std::bad_alloc const&) {
-    generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
+    generateError(rest::ResponseCode::SERVER_ERROR,
                   TRI_ERROR_OUT_OF_MEMORY);
   } catch (std::exception const& ex) {
-    generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
+    generateError(rest::ResponseCode::SERVER_ERROR,
                   TRI_ERROR_INTERNAL, ex.what());
   } catch (...) {
-    generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
+    generateError(rest::ResponseCode::SERVER_ERROR,
                   TRI_ERROR_INTERNAL);
   }
 }

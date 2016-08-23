@@ -45,7 +45,7 @@ bool RestShutdownHandler::isDirect() const { return true; }
 
 RestHandler::status RestShutdownHandler::execute() {
   if (_request->requestType() != rest::RequestType::DELETE_REQ) {
-    generateError(GeneralResponse::ResponseCode::METHOD_NOT_ALLOWED, 405);
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, 405);
     return status::DONE;
   }
   bool removeFromCluster;
@@ -61,7 +61,7 @@ RestHandler::status RestShutdownHandler::execute() {
     builder.add(VPackValue(true));
     AgencyCommResult result = agency.setValue("Shutdown", builder.slice(), 0.0);
     if (!result.successful()) {
-      generateError(GeneralResponse::ResponseCode::SERVER_ERROR, 500);
+      generateError(rest::ResponseCode::SERVER_ERROR, 500);
       return status::DONE;
     }
     removeFromCluster = true;
@@ -76,7 +76,7 @@ RestHandler::status RestShutdownHandler::execute() {
   try {
     VPackBuilder result;
     result.add(VPackValue("OK"));
-    generateResult(GeneralResponse::ResponseCode::OK, result.slice());
+    generateResult(rest::ResponseCode::OK, result.slice());
   } catch (...) {
     // Ignore the error
   }

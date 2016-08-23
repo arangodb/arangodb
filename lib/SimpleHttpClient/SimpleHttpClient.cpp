@@ -932,7 +932,7 @@ std::string SimpleHttpClient::getServerVersion(int* errorCode) {
     return "";
   }
 
-  if (response->getHttpReturnCode() == static_cast<int>(GeneralResponse::ResponseCode::OK)) {
+  if (response->getHttpReturnCode() == static_cast<int>(rest::ResponseCode::OK)) {
     // default value
     std::string version = "arango";
 

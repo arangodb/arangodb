@@ -639,11 +639,11 @@ bool ImportHelper::checkCreateCollection() {
     return false;
   }
 
-  auto code = static_cast<GeneralResponse::ResponseCode>(result->getHttpReturnCode());
-  if (code == GeneralResponse::ResponseCode::CONFLICT ||
-      code == GeneralResponse::ResponseCode::OK ||
-      code == GeneralResponse::ResponseCode::CREATED ||
-      code == GeneralResponse::ResponseCode::ACCEPTED) {
+  auto code = static_cast<rest::ResponseCode>(result->getHttpReturnCode());
+  if (code == rest::ResponseCode::CONFLICT ||
+      code == rest::ResponseCode::OK ||
+      code == rest::ResponseCode::CREATED ||
+      code == rest::ResponseCode::ACCEPTED) {
     // collection already exists or was created successfully
     return true;
   }

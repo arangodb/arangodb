@@ -198,13 +198,13 @@ int RestoreFeature::tryCreateDatabase(ClientFeature* client,
 
   auto returnCode = response->getHttpReturnCode();
 
-  if (returnCode == static_cast<int>(GeneralResponse::ResponseCode::OK) ||
-      returnCode == static_cast<int>(GeneralResponse::ResponseCode::CREATED)) {
+  if (returnCode == static_cast<int>(rest::ResponseCode::OK) ||
+      returnCode == static_cast<int>(rest::ResponseCode::CREATED)) {
     // all ok
     return TRI_ERROR_NO_ERROR;
   } 
-  if (returnCode == static_cast<int>(GeneralResponse::ResponseCode::UNAUTHORIZED) ||
-      returnCode == static_cast<int>(GeneralResponse::ResponseCode::FORBIDDEN)) {
+  if (returnCode == static_cast<int>(rest::ResponseCode::UNAUTHORIZED) ||
+      returnCode == static_cast<int>(rest::ResponseCode::FORBIDDEN)) {
     // invalid authorization
     _httpClient->setErrorMessage(getHttpErrorMessage(response.get(), nullptr),
                                  false);

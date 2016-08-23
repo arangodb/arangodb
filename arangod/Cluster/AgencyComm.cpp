@@ -1356,7 +1356,7 @@ bool AgencyComm::lock(std::string const& key, double ttl, double timeout,
 
     if (!result.successful() &&
         result.httpCode() ==
-            (int)arangodb::GeneralResponse::ResponseCode::PRECONDITION_FAILED) {
+            (int)arangodb::rest::ResponseCode::PRECONDITION_FAILED) {
       // key does not yet exist. create it now
       result = casValue(key + "/Lock", slice, false, ttl, timeout);
     }
@@ -1637,7 +1637,7 @@ AgencyCommResult AgencyComm::sendWithFailover(
     //    LOG(WARN) << result._statusCode;
 
     if (result._statusCode ==
-        (int)arangodb::GeneralResponse::ResponseCode::TEMPORARY_REDIRECT) {
+        (int)arangodb::rest::ResponseCode::TEMPORARY_REDIRECT) {
       // sometimes the agency will return a 307 (temporary redirect)
       // in this case we have to pick it up and use the new location returned
 
@@ -1780,7 +1780,7 @@ AgencyCommResult AgencyComm::send(
   result._connected = true;
 
   if (response->getHttpReturnCode() ==
-      (int)arangodb::GeneralResponse::ResponseCode::TEMPORARY_REDIRECT) {
+      (int)arangodb::rest::ResponseCode::TEMPORARY_REDIRECT) {
     // temporary redirect. now save location header
 
     bool found = false;

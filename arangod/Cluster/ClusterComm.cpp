@@ -1258,9 +1258,9 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
           requests[index].result = res;
           requests[index].done = true;
           nrDone++;
-          if (res.answer_code == GeneralResponse::ResponseCode::OK ||
-              res.answer_code == GeneralResponse::ResponseCode::CREATED ||
-              res.answer_code == GeneralResponse::ResponseCode::ACCEPTED) {
+          if (res.answer_code == rest::ResponseCode::OK ||
+              res.answer_code == rest::ResponseCode::CREATED ||
+              res.answer_code == rest::ResponseCode::ACCEPTED) {
             nrGood++;
           }
           LOG_TOPIC(TRACE, logTopic)
@@ -1370,11 +1370,11 @@ size_t ClusterComm::performSingleRequest(
       req.result.result->getHeaderFields());
 
   req.result.answer.reset(static_cast<GeneralRequest*>(answer));
-  req.result.answer_code = static_cast<GeneralResponse::ResponseCode>(
+  req.result.answer_code = static_cast<rest::ResponseCode>(
       req.result.result->getHttpReturnCode());
-  return (req.result.answer_code == GeneralResponse::ResponseCode::OK ||
-          req.result.answer_code == GeneralResponse::ResponseCode::CREATED ||
-          req.result.answer_code == GeneralResponse::ResponseCode::ACCEPTED)
+  return (req.result.answer_code == rest::ResponseCode::OK ||
+          req.result.answer_code == rest::ResponseCode::CREATED ||
+          req.result.answer_code == rest::ResponseCode::ACCEPTED)
              ? 1
              : 0;
 }

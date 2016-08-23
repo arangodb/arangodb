@@ -267,7 +267,7 @@ bool RestImportHandler::createFromJson(std::string const& type) {
   std::vector<std::string> const& suffix = _request->suffix();
 
   if (suffix.size() != 0) {
-    generateError(GeneralResponse::ResponseCode::BAD,
+    generateError(rest::ResponseCode::BAD,
                   TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
                   "superfluous suffix, expecting " + IMPORT_PATH +
                       "?collection=<identifier>");
@@ -284,7 +284,7 @@ bool RestImportHandler::createFromJson(std::string const& type) {
   std::string const& collectionName = _request->value("collection", found);
 
   if (!found || collectionName.empty()) {
-    generateError(GeneralResponse::ResponseCode::BAD,
+    generateError(rest::ResponseCode::BAD,
                   TRI_ERROR_ARANGO_COLLECTION_PARAMETER_MISSING,
                   "'collection' is missing, expecting " + IMPORT_PATH +
                       "?collection=<identifier>");
@@ -333,7 +333,7 @@ bool RestImportHandler::createFromJson(std::string const& type) {
       break;
     }
   } else {
-    generateError(GeneralResponse::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
                   "invalid value for 'type'");
     return false;
   }
@@ -465,7 +465,7 @@ bool RestImportHandler::createFromJson(std::string const& type) {
     try {
       parsedDocuments = VPackParser::fromJson(req->body());
     } catch (VPackException const&) {
-      generateError(GeneralResponse::ResponseCode::BAD,
+      generateError(rest::ResponseCode::BAD,
                     TRI_ERROR_HTTP_BAD_PARAMETER,
                     "expecting a JSON array in the request");
       return false;
@@ -474,7 +474,7 @@ bool RestImportHandler::createFromJson(std::string const& type) {
     VPackSlice const documents = parsedDocuments->slice();
 
     if (!documents.isArray()) {
-      generateError(GeneralResponse::ResponseCode::BAD,
+      generateError(rest::ResponseCode::BAD,
                     TRI_ERROR_HTTP_BAD_PARAMETER,
                     "expecting a JSON array in the request");
       return false;
@@ -531,7 +531,7 @@ bool RestImportHandler::createFromKeyValueList() {
   std::vector<std::string> const& suffix = _request->suffix();
 
   if (suffix.size() != 0) {
-    generateError(GeneralResponse::ResponseCode::BAD,
+    generateError(rest::ResponseCode::BAD,
                   TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
                   "superfluous suffix, expecting " + IMPORT_PATH +
                       "?collection=<identifier>");
@@ -548,7 +548,7 @@ bool RestImportHandler::createFromKeyValueList() {
   std::string const& collectionName = _request->value("collection", found);
 
   if (!found || collectionName.empty()) {
-    generateError(GeneralResponse::ResponseCode::BAD,
+    generateError(rest::ResponseCode::BAD,
                   TRI_ERROR_ARANGO_COLLECTION_PARAMETER_MISSING,
                   "'collection' is missing, expecting " + IMPORT_PATH +
                       "?collection=<identifier>");
@@ -578,7 +578,7 @@ bool RestImportHandler::createFromKeyValueList() {
       static_cast<char const*>(memchr(current, '\n', bodyEnd - current));
 
   if (next == nullptr) {
-    generateError(GeneralResponse::ResponseCode::BAD,
+    generateError(rest::ResponseCode::BAD,
                   TRI_ERROR_HTTP_BAD_PARAMETER,
                   "no JSON array found in second line");
     return false;
@@ -608,7 +608,7 @@ bool RestImportHandler::createFromKeyValueList() {
     parsedKeys = parseVelocyPackLine(lineStart, lineEnd, success);
   } catch (...) {
     // This throws if the body is not parseable
-    generateError(GeneralResponse::ResponseCode::BAD,
+    generateError(rest::ResponseCode::BAD,
                   TRI_ERROR_HTTP_BAD_PARAMETER,
                   "no JSON string array found in first line");
     return false;
@@ -616,7 +616,7 @@ bool RestImportHandler::createFromKeyValueList() {
   VPackSlice const keys = parsedKeys->slice();
 
   if (!success || !checkKeys(keys)) {
-    generateError(GeneralResponse::ResponseCode::BAD,
+    generateError(rest::ResponseCode::BAD,
                   TRI_ERROR_HTTP_BAD_PARAMETER,
                   "no JSON string array found in first line");
     return false;
@@ -866,7 +866,7 @@ int RestImportHandler::performImport(SingleCollectionTransaction& trx,
 
 void RestImportHandler::generateDocumentsCreated(
     RestImportResult const& result) {
-  setResponseCode(GeneralResponse::ResponseCode::CREATED);
+  setResponseCode(rest::ResponseCode::CREATED);
 
   try {
     VPackBuilder json;
@@ -894,7 +894,7 @@ void RestImportHandler::generateDocumentsCreated(
 
     json.close();
 
-    generateResult(GeneralResponse::ResponseCode::CREATED, json.slice());
+    generateResult(rest::ResponseCode::CREATED, json.slice());
   } catch (...) {
     // Ignore the error
   }

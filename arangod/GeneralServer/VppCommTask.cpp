@@ -283,17 +283,17 @@ bool VppCommTask::processRead() {
     try {
       payloads = validateAndCount(vpackBegin, chunkEnd);
     } catch (std::exception const& e) {
-      handleSimpleError(GeneralResponse::ResponseCode::BAD,
+      handleSimpleError(rest::ResponseCode::BAD,
                         TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, e.what(),
                         chunkHeader._messageID);
       LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "VPack Validation failed!";
-      closeTask(GeneralResponse::ResponseCode::BAD);
+      closeTask(rest::ResponseCode::BAD);
       return false;
     } catch (...) {
-      handleSimpleError(GeneralResponse::ResponseCode::BAD,
+      handleSimpleError(rest::ResponseCode::BAD,
                         chunkHeader._messageID);
       LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "VPack Validation failed!";
-      closeTask(GeneralResponse::ResponseCode::BAD);
+      closeTask(rest::ResponseCode::BAD);
       return false;
     }
 
@@ -357,17 +357,17 @@ bool VppCommTask::processRead() {
                                  im._buffer.data() + im._buffer.byteSize()));
 
       } catch (std::exception const& e) {
-        handleSimpleError(GeneralResponse::ResponseCode::BAD,
+        handleSimpleError(rest::ResponseCode::BAD,
                           TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, e.what(),
                           chunkHeader._messageID);
         LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "VPack Validation failed!";
-        closeTask(GeneralResponse::ResponseCode::BAD);
+        closeTask(rest::ResponseCode::BAD);
         return false;
       } catch (...) {
-        handleSimpleError(GeneralResponse::ResponseCode::BAD,
+        handleSimpleError(rest::ResponseCode::BAD,
                           chunkHeader._messageID);
         LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "VPack Validation failed!";
-        closeTask(GeneralResponse::ResponseCode::BAD);
+        closeTask(rest::ResponseCode::BAD);
         return false;
       }
 
@@ -415,7 +415,7 @@ bool VppCommTask::processRead() {
       GeneralServerFeature::HANDLER_FACTORY->setRequestContext(request.get());
       // make sure we have a database
       if (request->requestContext() == nullptr) {
-        handleSimpleError(GeneralResponse::ResponseCode::NOT_FOUND,
+        handleSimpleError(rest::ResponseCode::NOT_FOUND,
                           TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
                           TRI_errno_string(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND),
                           chunkHeader._messageID);
@@ -424,7 +424,7 @@ bool VppCommTask::processRead() {
         _protocolVersion = request->protocolVersion();
 
         std::unique_ptr<VppResponse> response(
-            new VppResponse(GeneralResponse::ResponseCode::SERVER_ERROR,
+            new VppResponse(rest::ResponseCode::SERVER_ERROR,
                             chunkHeader._messageID));
         executeRequest(std::move(request), std::move(response));
       }
@@ -440,7 +440,7 @@ bool VppCommTask::processRead() {
   return doExecute;
 }
 
-void VppCommTask::closeTask(GeneralResponse::ResponseCode code) {
+void VppCommTask::closeTask(rest::ResponseCode code) {
   _processReadVariables._readBufferCursor = nullptr;
   _processReadVariables._currentChunkLength = 0;
   _readBuffer->clear();  // check is this changes the reserved size
@@ -453,7 +453,7 @@ void VppCommTask::closeTask(GeneralResponse::ResponseCode code) {
   _clientClosed = true;
 }
 
-GeneralResponse::ResponseCode VppCommTask::authenticateRequest(
+rest::ResponseCode VppCommTask::authenticateRequest(
     GeneralRequest* request) {
   auto context = (request == nullptr) ? nullptr : request->requestContext();
 
@@ -462,24 +462,24 @@ GeneralResponse::ResponseCode VppCommTask::authenticateRequest(
         GeneralServerFeature::HANDLER_FACTORY->setRequestContext(request);
 
     if (!res) {
-      return GeneralResponse::ResponseCode::NOT_FOUND;
+      return rest::ResponseCode::NOT_FOUND;
     }
     context = request->requestContext();
   }
 
   if (context == nullptr) {
-    return GeneralResponse::ResponseCode::SERVER_ERROR;
+    return rest::ResponseCode::SERVER_ERROR;
   }
   return context->authenticate();
 }
 
 std::unique_ptr<GeneralResponse> VppCommTask::createResponse(
-    GeneralResponse::ResponseCode responseCode, uint64_t messageId) {
+    rest::ResponseCode responseCode, uint64_t messageId) {
   return std::unique_ptr<GeneralResponse>(
       new VppResponse(responseCode, messageId));
 }
 
-void VppCommTask::handleSimpleError(GeneralResponse::ResponseCode responseCode,
+void VppCommTask::handleSimpleError(rest::ResponseCode responseCode,
                                     int errorNum,
                                     std::string const& errorMessage,
                                     uint64_t messageId) {

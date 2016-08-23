@@ -63,13 +63,13 @@ HttpCommTask::HttpCommTask(GeneralServer* server, TRI_socket_t sock,
   connectionStatisticsAgentSetHttp();
 }
 
-void HttpCommTask::handleSimpleError(GeneralResponse::ResponseCode code,
+void HttpCommTask::handleSimpleError(rest::ResponseCode code,
                                      uint64_t /* messageId */) {
   std::unique_ptr<GeneralResponse> response(new HttpResponse(code));
   addResponse(response.get());
 }
 
-void HttpCommTask::handleSimpleError(GeneralResponse::ResponseCode code,
+void HttpCommTask::handleSimpleError(rest::ResponseCode code,
                                      int errorNum,
                                      std::string const& errorMessage,
                                      uint64_t /* messageId */) {
@@ -252,7 +252,7 @@ bool HttpCommTask::processRead() {
 
       // header is too large
       handleSimpleError(
-          GeneralResponse::ResponseCode::REQUEST_HEADER_FIELDS_TOO_LARGE,
+          rest::ResponseCode::REQUEST_HEADER_FIELDS_TOO_LARGE,
           1);  // ID does not matter for http (http default is 1)
 
       return false;
@@ -283,7 +283,7 @@ bool HttpCommTask::processRead() {
       if (_protocolVersion != rest::ProtocolVersion::HTTP_1_0 &&
           _protocolVersion != rest::ProtocolVersion::HTTP_1_1) {
         handleSimpleError(
-            GeneralResponse::ResponseCode::HTTP_VERSION_NOT_SUPPORTED,
+            rest::ResponseCode::HTTP_VERSION_NOT_SUPPORTED,
             1);  // FIXME
 
         return false;
@@ -293,7 +293,7 @@ bool HttpCommTask::processRead() {
       _fullUrl = _incompleteRequest->fullUrl();
 
       if (_fullUrl.size() > 16384) {
-        handleSimpleError(GeneralResponse::ResponseCode::REQUEST_URI_TOO_LONG,
+        handleSimpleError(rest::ResponseCode::REQUEST_URI_TOO_LONG,
                           1);  // FIXME
         return false;
       }
@@ -397,7 +397,7 @@ bool HttpCommTask::processRead() {
           TRI_invalidatesocket(&_commSocket);
 
           // bad request, method not allowed
-          handleSimpleError(GeneralResponse::ResponseCode::METHOD_NOT_ALLOWED,
+          handleSimpleError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                             1);
           return false;
         }
@@ -501,12 +501,12 @@ bool HttpCommTask::processRead() {
   // authenticate
   // .............................................................................
 
-  GeneralResponse::ResponseCode authResult =
+  rest::ResponseCode authResult =
       authenticateRequest(_incompleteRequest.get());
 
   // authenticated or an OPTIONS request. OPTIONS requests currently go
   // unauthenticated
-  if (authResult == GeneralResponse::ResponseCode::OK || isOptionsRequest) {
+  if (authResult == rest::ResponseCode::OK || isOptionsRequest) {
     // handle HTTP OPTIONS requests directly
     if (isOptionsRequest) {
       processCorsOptions(std::move(_incompleteRequest));
@@ -515,18 +515,18 @@ bool HttpCommTask::processRead() {
     }
   }
   // not found
-  else if (authResult == GeneralResponse::ResponseCode::NOT_FOUND) {
+  else if (authResult == rest::ResponseCode::NOT_FOUND) {
     handleSimpleError(authResult, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
                       TRI_errno_string(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND), 1);
   }
   // forbidden
-  else if (authResult == GeneralResponse::ResponseCode::FORBIDDEN) {
+  else if (authResult == rest::ResponseCode::FORBIDDEN) {
     handleSimpleError(authResult, TRI_ERROR_USER_CHANGE_PASSWORD,
                       "change password", 1);
   }
   // not authenticated
   else {
-    HttpResponse response(GeneralResponse::ResponseCode::UNAUTHORIZED);
+    HttpResponse response(rest::ResponseCode::UNAUTHORIZED);
     std::string realm = "Bearer token_type=\"JWT\", realm=\"ArangoDB\"";
 
     response.setHeaderNC(StaticStrings::WwwAuthenticate, std::move(realm));
@@ -583,7 +583,7 @@ void HttpCommTask::processRequest(std::unique_ptr<HttpRequest> request) {
 
   // create a handler and execute
   std::unique_ptr<GeneralResponse> response(
-      new HttpResponse(GeneralResponse::ResponseCode::SERVER_ERROR));
+      new HttpResponse(rest::ResponseCode::SERVER_ERROR));
   response->setContentType(meta::enumToEnum<rest::ContentType>(
       request->contentTypeResponse()));
 
@@ -611,7 +611,7 @@ bool HttpCommTask::checkContentLength(HttpRequest* request,
 
   if (bodyLength < 0) {
     // bad request, body length is < 0. this is a client error
-    handleSimpleError(GeneralResponse::ResponseCode::LENGTH_REQUIRED);
+    handleSimpleError(rest::ResponseCode::LENGTH_REQUIRED);
     return false;
   }
 
@@ -628,7 +628,7 @@ bool HttpCommTask::checkContentLength(HttpRequest* request,
               << ", request body size is " << bodyLength;
 
     // request entity too large
-    handleSimpleError(GeneralResponse::ResponseCode::REQUEST_ENTITY_TOO_LARGE,
+    handleSimpleError(rest::ResponseCode::REQUEST_ENTITY_TOO_LARGE,
                       0);  // FIXME
     return false;
   }
@@ -647,7 +647,7 @@ bool HttpCommTask::checkContentLength(HttpRequest* request,
 }
 
 void HttpCommTask::processCorsOptions(std::unique_ptr<HttpRequest> request) {
-  HttpResponse response(GeneralResponse::ResponseCode::OK);
+  HttpResponse response(rest::ResponseCode::OK);
 
   response.setHeaderNC(StaticStrings::Allow, StaticStrings::CorsMethods);
 
@@ -702,7 +702,7 @@ void HttpCommTask::handleChunk(char const* data, size_t len) {
 }
 
 std::unique_ptr<GeneralResponse> HttpCommTask::createResponse(
-    GeneralResponse::ResponseCode responseCode, uint64_t /* messageId */) {
+    rest::ResponseCode responseCode, uint64_t /* messageId */) {
   return std::unique_ptr<GeneralResponse>(new HttpResponse(responseCode));
 }
 
@@ -739,7 +739,7 @@ void HttpCommTask::resetState() {
   _readRequestBody = false;
 }
 
-GeneralResponse::ResponseCode HttpCommTask::authenticateRequest(
+rest::ResponseCode HttpCommTask::authenticateRequest(
     HttpRequest* request) {
   auto context = request->requestContext();
 
@@ -748,14 +748,14 @@ GeneralResponse::ResponseCode HttpCommTask::authenticateRequest(
         GeneralServerFeature::HANDLER_FACTORY->setRequestContext(request);
 
     if (!res) {
-      return GeneralResponse::ResponseCode::NOT_FOUND;
+      return rest::ResponseCode::NOT_FOUND;
     }
 
     context = request->requestContext();
   }
 
   if (context == nullptr) {
-    return GeneralResponse::ResponseCode::SERVER_ERROR;
+    return rest::ResponseCode::SERVER_ERROR;
   }
 
   return context->authenticate();

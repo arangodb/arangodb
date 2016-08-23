@@ -139,7 +139,7 @@ class GeneralCommTask : public SocketTask, public RequestStatisticsAgent {
   virtual void handleChunk(char const*, size_t) = 0;
 
   virtual std::unique_ptr<GeneralResponse> createResponse(
-      GeneralResponse::ResponseCode, uint64_t messageId) = 0;
+      rest::ResponseCode, uint64_t messageId) = 0;
 
  protected:
   void executeRequest(std::unique_ptr<GeneralRequest>&&,
@@ -147,9 +147,9 @@ class GeneralCommTask : public SocketTask, public RequestStatisticsAgent {
 
   void processResponse(GeneralResponse*);
 
-  virtual void handleSimpleError(GeneralResponse::ResponseCode,
+  virtual void handleSimpleError(rest::ResponseCode,
                                  uint64_t messagid) = 0;
-  virtual void handleSimpleError(GeneralResponse::ResponseCode, int code,
+  virtual void handleSimpleError(rest::ResponseCode, int code,
                                  std::string const& errorMessage,
                                  uint64_t messageId) = 0;
 

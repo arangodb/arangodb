@@ -825,7 +825,7 @@ int ClusterInfo::createDatabaseCoordinator(std::string const& name,
   
   if (!res.successful()) {
     if (res._statusCode ==
-        (int)arangodb::GeneralResponse::ResponseCode::PRECONDITION_FAILED) {
+        (int)arangodb::rest::ResponseCode::PRECONDITION_FAILED) {
       return setErrormsg(TRI_ERROR_ARANGO_DUPLICATE_NAME, errorMsg);
     }
     

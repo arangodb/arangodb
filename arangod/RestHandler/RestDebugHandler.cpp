@@ -75,7 +75,7 @@ RestHandler::status RestDebugHandler::execute() {
   try {
     VPackBuilder result;
     result.add(VPackValue(true));
-    generateResult(GeneralResponse::ResponseCode::OK, result.slice());
+    generateResult(rest::ResponseCode::OK, result.slice());
   } catch (...) {
     // Ignore this error
   }

@@ -60,14 +60,14 @@ RestHandler::status RestJobHandler::execute() {
     } else if (suffix.size() == 2) {
       putJobMethod();
     } else {
-      generateError(GeneralResponse::ResponseCode::BAD,
+      generateError(rest::ResponseCode::BAD,
                     TRI_ERROR_HTTP_BAD_PARAMETER);
     }
   } else if (type == rest::RequestType::DELETE_REQ) {
     deleteJob();
   } else {
-    generateError(GeneralResponse::ResponseCode::METHOD_NOT_ALLOWED,
-                  (int)GeneralResponse::ResponseCode::METHOD_NOT_ALLOWED);
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                  (int)rest::ResponseCode::METHOD_NOT_ALLOWED);
   }
 
   return status::DONE;
@@ -87,14 +87,14 @@ void RestJobHandler::putJob() {
 
   if (status == AsyncJobResult::JOB_UNDEFINED) {
     // unknown or already fetched job
-    generateError(GeneralResponse::ResponseCode::NOT_FOUND,
+    generateError(rest::ResponseCode::NOT_FOUND,
                   TRI_ERROR_HTTP_NOT_FOUND);
     return;
   }
 
   if (status == AsyncJobResult::JOB_PENDING) {
     // job is still pending
-    setResponseCode(GeneralResponse::ResponseCode::NO_CONTENT);
+    setResponseCode(rest::ResponseCode::NO_CONTENT);
     return;
   }
 
@@ -121,7 +121,7 @@ void RestJobHandler::putJobMethod() {
 
   if (method == "cancel") {
     if (DispatcherFeature::DISPATCHER == nullptr) {
-      generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
+      generateError(rest::ResponseCode::SERVER_ERROR,
                     TRI_ERROR_HTTP_NOT_FOUND);
     }
 
@@ -129,7 +129,7 @@ void RestJobHandler::putJobMethod() {
 
     // unknown or already fetched job
     if (!status) {
-      generateError(GeneralResponse::ResponseCode::NOT_FOUND,
+      generateError(rest::ResponseCode::NOT_FOUND,
                     TRI_ERROR_HTTP_NOT_FOUND);
     } else {
       try {
@@ -139,14 +139,14 @@ void RestJobHandler::putJobMethod() {
         json.close();
 
         VPackSlice slice(json.start());
-        generateResult(GeneralResponse::ResponseCode::OK, slice);
+        generateResult(rest::ResponseCode::OK, slice);
       } catch (...) {
         // Ignore the error
       }
     }
     return;
   } else {
-    generateError(GeneralResponse::ResponseCode::BAD,
+    generateError(rest::ResponseCode::BAD,
                   TRI_ERROR_HTTP_BAD_PARAMETER);
   }
 }
@@ -159,7 +159,7 @@ void RestJobHandler::getJob() {
   std::vector<std::string> const suffix = _request->suffix();
 
   if (suffix.size() != 1) {
-    generateError(GeneralResponse::ResponseCode::BAD,
+    generateError(rest::ResponseCode::BAD,
                   TRI_ERROR_HTTP_BAD_PARAMETER);
     return;
   }
@@ -187,18 +187,18 @@ void RestJobHandler::getJobById(std::string const& value) {
 
   if (status == AsyncJobResult::JOB_UNDEFINED) {
     // unknown or already fetched job
-    generateError(GeneralResponse::ResponseCode::NOT_FOUND,
+    generateError(rest::ResponseCode::NOT_FOUND,
                   TRI_ERROR_HTTP_NOT_FOUND);
     return;
   }
 
   if (status == AsyncJobResult::JOB_PENDING) {
     // job is still pending
-    setResponseCode(GeneralResponse::ResponseCode::NO_CONTENT);
+    setResponseCode(rest::ResponseCode::NO_CONTENT);
     return;
   }
 
-  setResponseCode(GeneralResponse::ResponseCode::OK);
+  setResponseCode(rest::ResponseCode::OK);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -223,12 +223,12 @@ void RestJobHandler::getJobByType(std::string const& type) {
     } else if (type == "pending") {
       ids = _jobManager->pending(count);
     } else {
-      generateError(GeneralResponse::ResponseCode::BAD,
+      generateError(rest::ResponseCode::BAD,
                     TRI_ERROR_HTTP_BAD_PARAMETER);
       return;
     }
   } catch (...) {
-    generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
+    generateError(rest::ResponseCode::SERVER_ERROR,
                   TRI_ERROR_HTTP_SERVER_ERROR);
     return;
   }
@@ -241,9 +241,9 @@ void RestJobHandler::getJobByType(std::string const& type) {
       result.add(VPackValue(std::to_string(ids[i])));
     }
     result.close();
-    generateResult(GeneralResponse::ResponseCode::OK, result.slice());
+    generateResult(rest::ResponseCode::OK, result.slice());
   } catch (...) {
-    generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
+    generateError(rest::ResponseCode::SERVER_ERROR,
                   TRI_ERROR_OUT_OF_MEMORY);
   }
 }
@@ -256,7 +256,7 @@ void RestJobHandler::deleteJob() {
   std::vector<std::string> const suffix = _request->suffix();
 
   if (suffix.size() != 1) {
-    generateError(GeneralResponse::ResponseCode::BAD,
+    generateError(rest::ResponseCode::BAD,
                   TRI_ERROR_HTTP_BAD_PARAMETER);
     return;
   }
@@ -270,7 +270,7 @@ void RestJobHandler::deleteJob() {
     std::string const& value = _request->value("stamp", found);
 
     if (!found) {
-      generateError(GeneralResponse::ResponseCode::BAD,
+      generateError(rest::ResponseCode::BAD,
                     TRI_ERROR_HTTP_BAD_PARAMETER);
       return;
     }
@@ -283,7 +283,7 @@ void RestJobHandler::deleteJob() {
     bool found = _jobManager->deleteJobResult(jobId);
 
     if (!found) {
-      generateError(GeneralResponse::ResponseCode::NOT_FOUND,
+      generateError(rest::ResponseCode::NOT_FOUND,
                     TRI_ERROR_HTTP_NOT_FOUND);
       return;
     }
@@ -295,9 +295,9 @@ void RestJobHandler::deleteJob() {
     json.add("result", VPackValue(true));
     json.close();
     VPackSlice slice(json.start());
-    generateResult(GeneralResponse::ResponseCode::OK, slice);
+    generateResult(rest::ResponseCode::OK, slice);
   } catch (...) {
-    generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
+    generateError(rest::ResponseCode::SERVER_ERROR,
                   TRI_ERROR_OUT_OF_MEMORY);
   }
 }
