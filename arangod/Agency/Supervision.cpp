@@ -372,7 +372,8 @@ bool Supervision::isShuttingDown() {
 
 bool Supervision::serverGood(const std::string& serverName) {
   try {
-    const std::string status = _snapshot(healthPrefix + "/" + serverName + "/Status").getString();
+    const std::string serverStatus(healthPrefix + serverName + "/Status");
+    const std::string status = _snapshot(serverStatus).getString();
     return status == Supervision::HEALTH_STATUS_GOOD;
   } catch (...) {
     return false;
