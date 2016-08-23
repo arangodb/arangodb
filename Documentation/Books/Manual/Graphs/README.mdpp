@@ -25,12 +25,12 @@ Named graphs are completely managed by arangodb, and thus also [visible in the w
 They use the full spectrum of ArangoDBs graph features. You may access them via several interfaces.
 
 - [AQL Graph Operations](../../AQL/Graphs/index.html) with several flavors:
-   - [AQL Traversals](../../AQL/Graphs/Traversals.html) on both named and anonymous graphs
-   - [AQL Shortest Path](../../AQL/Graphs/ShortestPath.html) on both named and anonymous graph
- - [The javascript General Graph implementation, as you may use it in Foxx Services](GeneralGraphs/README.md)
-   - [Graph Management](GeneralGraphs/Management.md); creating & manipualating graph definitions; inserting, updating and deleting vertices and edges into graphs
-   - [Graph Functions](GeneralGraphs/Functions.md) for working with edges and vertices, to analyze them and their relations
- - [the RESTful General Graph interface](../../HTTP/Gharial/index.html) used to implement graph management in client drivers
+  - [AQL Traversals](../../AQL/Graphs/Traversals.html) on both named and anonymous graphs
+  - [AQL Shortest Path](../../AQL/Graphs/ShortestPath.html) on both named and anonymous graph
+- [JavaScript General Graph implementation, as you may use it in Foxx Services](GeneralGraphs/README.md)
+  - [Graph Management](GeneralGraphs/Management.md); creating & manipualating graph definitions; inserting, updating and deleting vertices and edges into graphs
+  - [Graph Functions](GeneralGraphs/Functions.md) for working with edges and vertices, to analyze them and their relations
+- [RESTful General Graph interface](../../HTTP/Gharial/index.html) used to implement graph management in client drivers
 
 !SUBSUBSECTION Manipulating collections of named graphs with regular document functions
 
@@ -88,28 +88,48 @@ the `FILTER` approach is preferred. You can still use `FILTER` operations on edg
 of a `FILTER` on the `type` with the former approach, everything else can stay the same.
 
 !SUBSECTION Which part of my data is an Edge and which a Vertex?
-A Vertex documents would be the main objects in your data model. Edges connect and classify relations between these Objects.
+
+The main objects in your data model, such as users, groups or articles, are usually considered to be vertices.
+For each type of object, a document collection (also called vertex collection) should store the individual entities.
+Entities can be connected by edges to express and classify relations between vertices. It often makes sense to have
+an edge collection per relation type.
+
+ArangoDB does not require you to store your data in graph structures with edges and vertices, you can also decide
+to embed attributes such as which groups a user is part of, or `_id`s of documents in another document instead of
+connecting the documents with edges. It can be a meaningful performance optimization for *1:n* relationships, if
+your data is not very focused on relations and you don't need graph traversal with varying depth. It usually means
+to introduce some redundancy and possibly inconsistencies if you embed data, but it can be an acceptable tradeoff.
 
 !SUBSUBSECTION Vertices
-So lets say we have two vertex collections, `Users` and `Groups`. Documents in the `Groups` collection contain the attributes
+
+Let's say we have two vertex collections, `Users` and `Groups`. Documents in the `Groups` collection contain the attributes
 of the Group, i.e. when it was founded, its subject, an icon URL and so on. `Users` documents contain the data specific to a
 user - like all names, birthdays, Avatar URLs, hobbies...
 
 !SUBSUBSECTION Edges
-Now we use one edge collection to create relation between users and groups. Since multiple users may be in an arbitrary number of
-groups, this is an **M:N** relation (see above). So, we have an edge collection `UsersInGroups` with i.e. one edge
-with `_from` pointing to `Users/John` and `_to` pointing to `Groups/BowlingGroupHappyPin`. 
-This makes the user **John** a member of the group **Bowling Group Happy Pin**.
-Attributes of this relation may contain qualifiers to this relation, like the permissions of **John** in this group, the date when he joined the group etc.
 
-!SUBSUBSECTION Advantages of this aproach
-Graphs give you the advantage of not just being able to have a fixed number of **m:n** relations in a row, but an arbitrary number.
+We can use an edge collection to store relations between users and groups. Since multiple users may be in an arbitrary
+number of groups, this is an **m:n** relation. The edge collection can be called `UsersInGroups` with i.e. one edge
+with `_from` pointing to `Users/John` and `_to` pointing to `Groups/BowlingGroupHappyPin`. This makes the user **John**
+a member of the group **Bowling Group Happy Pin**. Attributes of this relation may contain qualifiers to this relation,
+like the permissions of **John** in this group, the date when he joined the group etc.
 
+![User in group example](graph_user_in_group.png)
+
+!SUBSUBSECTION Advantages of this approach
+
+Graphs give you the advantage of not just being able to have a fixed number of **m:n** relations in a row, but an
+arbitrary number. Edges can be traversed in both directions, so it's very easy to determine all groups a user is in,
+but also to find out which members a certain group has. Users could also be interconnected to create a social network.
+
+Using the graph data model, dealing with data that has lots of relations stays manageable and can be queried in very
+flexible ways, whereas it would cause headache to handle it in a relational database system.
 
 !SUBSECTION Backup and restore
 
 For sure you want to have backups of your graph data, you can use [Arangodump](../Administration/Arangodump.md) to create the backup,
 and [Arangorestore](../Administration/Arangorestore.md) to restore a backup into a new ArangoDB. You should however note that:
+
 - you need the system collection `_graphs` if you backup named graphs.
 - you need to backup the complete set of all edge and vertex collections your graph consists of. Partial dump/restore may not work.
 
