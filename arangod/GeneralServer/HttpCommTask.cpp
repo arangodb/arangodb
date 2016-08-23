@@ -55,8 +55,8 @@ HttpCommTask::HttpCommTask(GeneralServer* server, TRI_socket_t sock,
       _acceptDeflate(false),
       _newRequest(true),
       _requestType(rest::RequestType::ILLEGAL),  // TODO(fc) remove
-      _fullUrl(),                                          // TODO(fc) remove
-      _origin(),                                           // TODO(fc) remove
+      _fullUrl(),                                // TODO(fc) remove
+      _origin(),                                 // TODO(fc) remove
       _sinceCompactification(0),
       _originalBodyLength(0) {  // TODO(fc) remove
   _protocol = "http";
@@ -69,8 +69,7 @@ void HttpCommTask::handleSimpleError(rest::ResponseCode code,
   addResponse(response.get());
 }
 
-void HttpCommTask::handleSimpleError(rest::ResponseCode code,
-                                     int errorNum,
+void HttpCommTask::handleSimpleError(rest::ResponseCode code, int errorNum,
                                      std::string const& errorMessage,
                                      uint64_t /* messageId */) {
   std::unique_ptr<GeneralResponse> response(new HttpResponse(code));
@@ -120,9 +119,9 @@ void HttpCommTask::addResponse(HttpResponse* response) {
   }
 
   // set "connection" header, keep-alive is the default
-  response->setConnectionType(_closeRequested
-                                  ? rest::ConnectionType::CONNECTION_CLOSE
-                                  : rest::ConnectionType::CONNECTION_KEEP_ALIVE);
+  response->setConnectionType(
+      _closeRequested ? rest::ConnectionType::CONNECTION_CLOSE
+                      : rest::ConnectionType::CONNECTION_KEEP_ALIVE);
 
   size_t const responseBodyLength = response->bodySize();
 
@@ -251,9 +250,8 @@ bool HttpCommTask::processRead() {
                 << ", request header size is " << headerLength;
 
       // header is too large
-      handleSimpleError(
-          rest::ResponseCode::REQUEST_HEADER_FIELDS_TOO_LARGE,
-          1);  // ID does not matter for http (http default is 1)
+      handleSimpleError(rest::ResponseCode::REQUEST_HEADER_FIELDS_TOO_LARGE,
+                        1);  // ID does not matter for http (http default is 1)
 
       return false;
     }
@@ -282,9 +280,8 @@ bool HttpCommTask::processRead() {
 
       if (_protocolVersion != rest::ProtocolVersion::HTTP_1_0 &&
           _protocolVersion != rest::ProtocolVersion::HTTP_1_1) {
-        handleSimpleError(
-            rest::ResponseCode::HTTP_VERSION_NOT_SUPPORTED,
-            1);  // FIXME
+        handleSimpleError(rest::ResponseCode::HTTP_VERSION_NOT_SUPPORTED,
+                          1);  // FIXME
 
         return false;
       }
@@ -397,8 +394,7 @@ bool HttpCommTask::processRead() {
           TRI_invalidatesocket(&_commSocket);
 
           // bad request, method not allowed
-          handleSimpleError(rest::ResponseCode::METHOD_NOT_ALLOWED,
-                            1);
+          handleSimpleError(rest::ResponseCode::METHOD_NOT_ALLOWED, 1);
           return false;
         }
       }
@@ -466,8 +462,7 @@ bool HttpCommTask::processRead() {
   requestStatisticsAgentAddReceivedBytes(_bodyPosition - _startPosition +
                                          _bodyLength);
 
-  bool const isOptionsRequest =
-      (_requestType == rest::RequestType::OPTIONS);
+  bool const isOptionsRequest = (_requestType == rest::RequestType::OPTIONS);
   resetState();
 
   // .............................................................................
@@ -501,8 +496,7 @@ bool HttpCommTask::processRead() {
   // authenticate
   // .............................................................................
 
-  rest::ResponseCode authResult =
-      authenticateRequest(_incompleteRequest.get());
+  rest::ResponseCode authResult = authenticateRequest(_incompleteRequest.get());
 
   // authenticated or an OPTIONS request. OPTIONS requests currently go
   // unauthenticated
@@ -584,8 +578,7 @@ void HttpCommTask::processRequest(std::unique_ptr<HttpRequest> request) {
   // create a handler and execute
   std::unique_ptr<GeneralResponse> response(
       new HttpResponse(rest::ResponseCode::SERVER_ERROR));
-  response->setContentType(meta::enumToEnum<rest::ContentType>(
-      request->contentTypeResponse()));
+  response->setContentType(request->contentTypeResponse());
 
   executeRequest(std::move(request), std::move(response));
 }
@@ -739,8 +732,7 @@ void HttpCommTask::resetState() {
   _readRequestBody = false;
 }
 
-rest::ResponseCode HttpCommTask::authenticateRequest(
-    HttpRequest* request) {
+rest::ResponseCode HttpCommTask::authenticateRequest(HttpRequest* request) {
   auto context = request->requestContext();
 
   if (context == nullptr) {

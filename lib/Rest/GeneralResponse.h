@@ -33,15 +33,15 @@
 #include "GeneralRequest.h"
 
 #include "CommonDefines.h"
-using arangodb::rest::ContentType;
-using arangodb::rest::ConnectionType;
-using arangodb::rest::ResponseCode;
-
 namespace arangodb {
 namespace velocypack {
 struct Options;
 class Slice;
 }
+
+using rest::ContentType;
+using rest::ConnectionType;
+using rest::ResponseCode;
 
 class GeneralRequest;
 

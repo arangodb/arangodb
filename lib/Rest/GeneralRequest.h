@@ -35,10 +35,6 @@
 #include <limits>
 #include "CommonDefines.h"
 
-using arangodb::rest::RequestType;
-using arangodb::rest::ContentType;
-using arangodb::rest::ProtocolVersion;
-
 namespace arangodb {
 namespace velocypack {
 class Builder;
@@ -50,6 +46,10 @@ class StringBuffer;
 }
 
 class RequestContext;
+
+using rest::RequestType;
+using rest::ContentType;
+using rest::ProtocolVersion;
 
 class GeneralRequest {
   GeneralRequest(GeneralRequest const&) = delete;

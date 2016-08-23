@@ -238,8 +238,8 @@ void RestVocbaseBaseHandler::generate20x(
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestVocbaseBaseHandler::generateNotImplemented(std::string const& path) {
-  generateError(rest::ResponseCode::NOT_IMPLEMENTED,
-                TRI_ERROR_NOT_IMPLEMENTED, "'" + path + "' not implemented");
+  generateError(rest::ResponseCode::NOT_IMPLEMENTED, TRI_ERROR_NOT_IMPLEMENTED,
+                "'" + path + "' not implemented");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -268,9 +268,8 @@ void RestVocbaseBaseHandler::generatePreconditionFailed(
   {
     VPackObjectBuilder guard(&builder);
     builder.add("error", VPackValue(true));
-    builder.add("code",
-                VPackValue(static_cast<int32_t>(
-                    rest::ResponseCode::PRECONDITION_FAILED)));
+    builder.add("code", VPackValue(static_cast<int32_t>(
+                            rest::ResponseCode::PRECONDITION_FAILED)));
     builder.add("errorNum", VPackValue(TRI_ERROR_ARANGO_CONFLICT));
     builder.add("errorMessage", VPackValue("precondition failed"));
     if (slice.isObject()) {
@@ -340,12 +339,11 @@ void RestVocbaseBaseHandler::generateDocument(VPackSlice const& input,
   }
 
   try {
-    _response->setContentType(meta::enumToEnum<rest::ContentType>(
-        _request->contentTypeResponse()));
+    _response->setContentType(_request->contentTypeResponse());
     _response->setPayload(document, generateBody, *options);
   } catch (...) {
-    generateError(rest::ResponseCode::SERVER_ERROR,
-                  TRI_ERROR_INTERNAL, "cannot generate output");
+    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
+                  "cannot generate output");
   }
 }
 
@@ -381,23 +379,19 @@ void RestVocbaseBaseHandler::generateTransactionError(
       return;
 
     case TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD:
-      generateError(rest::ResponseCode::BAD, res,
-                    "invalid document key");
+      generateError(rest::ResponseCode::BAD, res, "invalid document key");
       return;
 
     case TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD:
-      generateError(rest::ResponseCode::BAD, res,
-                    "invalid document handle");
+      generateError(rest::ResponseCode::BAD, res, "invalid document handle");
       return;
 
     case TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE:
-      generateError(rest::ResponseCode::BAD, res,
-                    "invalid edge attribute");
+      generateError(rest::ResponseCode::BAD, res, "invalid edge attribute");
       return;
 
     case TRI_ERROR_ARANGO_OUT_OF_KEYS:
-      generateError(rest::ResponseCode::SERVER_ERROR, res,
-                    "out of keys");
+      generateError(rest::ResponseCode::SERVER_ERROR, res, "out of keys");
       return;
 
     case TRI_ERROR_ARANGO_DOCUMENT_KEY_UNEXPECTED:
@@ -458,8 +452,7 @@ void RestVocbaseBaseHandler::generateTransactionError(
     }
 
     default:
-      generateError(rest::ResponseCode::SERVER_ERROR,
-                    TRI_ERROR_INTERNAL,
+      generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
                     "failed with error: " + std::string(TRI_errno_string(res)));
   }
 }
@@ -536,8 +529,7 @@ void RestVocbaseBaseHandler::generateTransactionError(
     }
 
     case TRI_ERROR_CLUSTER_UNSUPPORTED: {
-      generateError(rest::ResponseCode::NOT_IMPLEMENTED,
-                    result.code);
+      generateError(rest::ResponseCode::NOT_IMPLEMENTED, result.code);
       return;
     }
 
@@ -650,8 +642,8 @@ std::shared_ptr<VPackBuilder> RestVocbaseBaseHandler::parseVelocyPackBody(
   } catch (VPackException const& e) {
     std::string errmsg("VpackError error: ");
     errmsg.append(e.what());
-    generateError(rest::ResponseCode::BAD,
-                  TRI_ERROR_HTTP_CORRUPTED_JSON, errmsg);
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_CORRUPTED_JSON,
+                  errmsg);
   }
   success = false;
   return std::make_shared<VPackBuilder>();
