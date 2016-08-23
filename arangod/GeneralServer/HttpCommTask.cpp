@@ -121,8 +121,8 @@ void HttpCommTask::addResponse(HttpResponse* response) {
 
   // set "connection" header, keep-alive is the default
   response->setConnectionType(_closeRequested
-                                  ? HttpResponse::CONNECTION_CLOSE
-                                  : HttpResponse::CONNECTION_KEEP_ALIVE);
+                                  ? rest::ConnectionType::CONNECTION_CLOSE
+                                  : rest::ConnectionType::CONNECTION_KEEP_ALIVE);
 
   size_t const responseBodyLength = response->bodySize();
 
@@ -216,7 +216,7 @@ bool HttpCommTask::processRead() {
 
       _newRequest = false;
       _startPosition = _readPosition;
-      _protocolVersion = GeneralRequest::ProtocolVersion::UNKNOWN;
+      _protocolVersion = rest::ProtocolVersion::UNKNOWN;
       _requestType = rest::RequestType::ILLEGAL;
       _fullUrl = "";
       _denyCredentials = true;
@@ -280,8 +280,8 @@ bool HttpCommTask::processRead() {
       // check HTTP protocol version
       _protocolVersion = _incompleteRequest->protocolVersion();
 
-      if (_protocolVersion != GeneralRequest::ProtocolVersion::HTTP_1_0 &&
-          _protocolVersion != GeneralRequest::ProtocolVersion::HTTP_1_1) {
+      if (_protocolVersion != rest::ProtocolVersion::HTTP_1_0 &&
+          _protocolVersion != rest::ProtocolVersion::HTTP_1_1) {
         handleSimpleError(
             GeneralResponse::ResponseCode::HTTP_VERSION_NOT_SUPPORTED,
             1);  // FIXME

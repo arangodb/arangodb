@@ -164,8 +164,8 @@ class GeneralCommTask : public SocketTask, public RequestStatisticsAgent {
   // protocol to use http, vpp
   char const* _protocol = "unknown";
 
-  GeneralRequest::ProtocolVersion _protocolVersion =
-      GeneralRequest::ProtocolVersion::UNKNOWN;
+  rest::ProtocolVersion _protocolVersion =
+      rest::ProtocolVersion::UNKNOWN;
 };
 }
 }

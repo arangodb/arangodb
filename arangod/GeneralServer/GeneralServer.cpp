@@ -189,23 +189,23 @@ bool GeneralServer::handleRequest(GeneralCommTask* task,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool GeneralServer::openEndpoint(Endpoint* endpoint) {
-  ConnectionType connectionType;
+  ProtocolType protocolType;
 
   if (endpoint->transport() == Endpoint::TransportType::HTTP) {
     if (endpoint->encryption() == Endpoint::EncryptionType::SSL) {
-      connectionType = ConnectionType::HTTPS;
+      protocolType = ProtocolType::HTTPS;
     } else {
-      connectionType = ConnectionType::HTTP;
+      protocolType = ProtocolType::HTTP;
     }
   } else {
     if (endpoint->encryption() == Endpoint::EncryptionType::SSL) {
-      connectionType = ConnectionType::VPPS;
+      protocolType = ProtocolType::VPPS;
     } else {
-      connectionType = ConnectionType::VPP;
+      protocolType = ProtocolType::VPP;
     }
   }
 
-  ListenTask* task = new GeneralListenTask(this, endpoint, connectionType);
+  ListenTask* task = new GeneralListenTask(this, endpoint, protocolType);
 
   // ...................................................................
   // For some reason we have failed in our endeavor to bind to the socket -

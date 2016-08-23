@@ -34,6 +34,7 @@
 
 #include "CommonDefines.h"
 using arangodb::rest::ContentType;
+using arangodb::rest::ConnectionType;
 
 namespace arangodb {
 namespace velocypack {
@@ -101,12 +102,6 @@ class GeneralResponse {
     HTTP_VERSION_NOT_SUPPORTED = 505,
     BANDWIDTH_LIMIT_EXCEEDED = 509,
     NOT_EXTENDED = 510
-  };
-
-  enum ConnectionType {
-    CONNECTION_NONE,
-    CONNECTION_KEEP_ALIVE,
-    CONNECTION_CLOSE
   };
 
  public:

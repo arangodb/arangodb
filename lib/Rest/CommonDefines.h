@@ -58,13 +58,14 @@ enum class ContentType {
   DUMP,    // application/x-arango-dump
   UNSET
 };
-// enum class ProtocolVersion { HTTP_1_0, HTTP_1_1, VPP_1_0, UNKNOWN };
-//
-// enum ConnectionType {
-//  CONNECTION_NONE,
-//  CONNECTION_KEEP_ALIVE,
-//  CONNECTION_CLOSE
-//};
+
+enum class ProtocolVersion { HTTP_1_0, HTTP_1_1, VPP_1_0, UNKNOWN };
+
+enum ConnectionType {
+  CONNECTION_NONE,
+  CONNECTION_KEEP_ALIVE,
+  CONNECTION_CLOSE
+};
 // enum class ResponseCode {
 //  CONTINUE = 100,
 //  SWITCHING_PROTOCOLS = 101,

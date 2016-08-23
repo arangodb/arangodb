@@ -236,7 +236,7 @@ RestHandler::status RestBatchHandler::execute() {
       httpResponse->body().appendText(TRI_CHAR_LENGTH_PAIR("\r\n\r\n"));
 
       // remove some headers we don't need
-      partResponse->setConnectionType(HttpResponse::CONNECTION_NONE);
+      partResponse->setConnectionType(rest::ConnectionType::CONNECTION_NONE);
       partResponse->setHeaderNC(StaticStrings::Server, "");
 
       // append the part response header
