@@ -519,7 +519,7 @@ bool config_t::merge(VPackSlice const& conf) {
       _compactionStepSize = conf.get(compactionStepSizeStr).getUInt();
       ss << _compactionStepSize << " (persisted)";
     } else {
-      _compactionStepSize = 2;
+      _compactionStepSize = 1000;
       ss << _compactionStepSize << " (default)";
     }
   } else {
