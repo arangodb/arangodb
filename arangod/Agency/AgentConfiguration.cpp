@@ -260,11 +260,11 @@ query_t config_t::poolToBuilder () const {
 void config_t::update(query_t const& message) {
   VPackSlice slice = message->slice();
   std::map<std::string,std::string> pool;
-  for (auto const& p : VPackObjectIterator(message->slice().get("pool"))) {
+  for (auto const& p : VPackObjectIterator(slice.get("pool"))) {
     pool[p.key.copyString()] = p.value.copyString();
   }
   std::vector<std::string> active;
-  for (auto const& a : VPackArrayIterator(message->slice().get("active"))) {
+  for (auto const& a : VPackArrayIterator(slice.get("active"))) {
     active.push_back(a.copyString());
   }
   WRITE_LOCKER(writeLocker, _lock);
