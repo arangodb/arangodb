@@ -138,6 +138,7 @@ MAKE_CMD_PREFIX=""
 CONFIGURE_OPTIONS="-DCMAKE_INSTALL_PREFIX=/ $CMAKE_OPENSSL"
 MAINTAINER_MODE="-DUSE_MAINTAINER_MODE=off"
 
+TAR_SUFFIX=""
 TARGET_DIR=""
 CLANG36=0
 CLANG=0
@@ -211,11 +212,13 @@ while [ $# -gt 0 ];  do
             ;;
 
         --sanitize)
+            TAR_SUFFIX="-sanitize"
             SANITIZE=1
             shift
             ;;
 
         --coverage)
+            TAR_SUFFIX="-coverage"
             COVERAGE=1
             shift
             ;;
@@ -419,7 +422,7 @@ if test -n "${TARGET_DIR}";  then
     echo "building distribution tarball"
     mkdir -p "${TARGET_DIR}"
     dir="${TARGET_DIR}"
-    TARFILE=arangodb.tar.gz
+    TARFILE=arangodb-`uname`${TAR_SUFFIX}.tar.gz
     TARFILE_TMP=`pwd`/arangodb.tar.$$
 
     mkdir -p ${dir}

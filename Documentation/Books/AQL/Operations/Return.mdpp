@@ -29,6 +29,80 @@ scope the *RETURN* is placed in can be used for the computations.
 Note: *RETURN* will close the current scope and eliminate all local variables in
 it.
 
+[Dynamic attribute names](../Fundamentals/DataTypes.md#objects--documents) are
+supported as well:
+
+```js
+FOR u IN users
+  RETURN { [ u._id ]: u.age }
+```
+
+The document *_id* of every user is used as expression to compute the
+attribute key in this example:
+
+```json
+[
+  {
+    "users/9883": 32
+  },
+  {
+    "users/9915": 27
+  },
+  {
+    "users/10074": 69
+  }
+]
+```
+
+The result contains one object per user with a single key/value pair each.
+This is usually not desired. For a single object, that maps user IDs to ages,
+the individual results need to be merged and returned with another `RETURN`:
+
+```js
+RETURN MERGE(
+  FOR u IN users
+    RETURN { [ u._id ]: u.age }
+)
+```
+
+```json
+[
+  {
+    "users/10074": 69,
+    "users/9883": 32,
+    "users/9915": 27
+  }
+]
+```
+
+Keep in mind that if the key expression evaluates to the same value multiple
+times, only one of the key/value pairs with the duplicate name will survive
+[MERGE()](../Functions/Document.md#merge). To avoid this, you can go without
+dynamic attribute names, use static names instead and return all document
+properties as attribute values:
+
+```js
+FOR u IN users
+  RETURN { name: u.name, age: u.age }
+```
+
+```json
+[
+  {
+    "name": "John Smith",
+    "age": 32
+  },
+  {
+    "name": "James Hendrix",
+    "age": 69
+  },
+  {
+    "name": "Katie Foster",
+    "age": 27
+  }
+]
+```
+
 !SUBSECTION RETURN DISTINCT
 
 Since ArangoDB 2.7, *RETURN* can optionally be followed by the *DISTINCT* keyword.

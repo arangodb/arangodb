@@ -645,6 +645,10 @@ function runThere (options, instanceInfo, file) {
         'return runTest(' + JSON.stringify(file) + ', true);';
     }
 
+    if (options.propagateInstanceInfo) {
+      testCode = 'global.instanceInfo = ' + JSON.stringify(instanceInfo) + ';\n' + testCode;
+    }
+
     let httpOptions = makeAuthorizationHeaders(options);
     httpOptions.method = 'POST';
     httpOptions.timeout = 3600;
@@ -3370,6 +3374,7 @@ testFuncs.replication_sync = function (options) {
 testFuncs.resilience = function (options) {
   findTests();
   options.cluster = true;
+  options.propagateInstanceInfo = true;
   if (options.dbServers < 5) {
     options.dbServers = 5;
   }
@@ -3431,6 +3436,7 @@ testFuncs.server_http = function (options) {
 
 testFuncs.shell_server = function (options) {
   findTests();
+  options.propagateInstanceInfo = true;
 
   return performTests(options, testsCases.server, 'shell_server', runThere);
 };

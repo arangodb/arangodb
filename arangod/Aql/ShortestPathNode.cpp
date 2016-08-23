@@ -429,6 +429,6 @@ double ShortestPathNode::estimateCost(size_t& nrItems) const {
 
     edgesCount += edges;
   }
-  nrItems = edgesCount + static_cast<size_t>(log(nodesEstimate) * nodesEstimate);
+  nrItems = edgesCount + static_cast<size_t>(std::log2(nodesEstimate) * nodesEstimate);
   return depCost + nrItems;
 }

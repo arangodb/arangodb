@@ -415,7 +415,7 @@ void Constituent::beginShutdown() {
 /// Start operation
 bool Constituent::start(TRI_vocbase_t* vocbase,
                         aql::QueryRegistry* queryRegistry) {
-  
+  TRI_ASSERT(vocbase != nullptr);
   _vocbase = vocbase;
   _queryRegistry = queryRegistry;
   
@@ -429,6 +429,7 @@ void Constituent::run() {
 
   LOG_TOPIC(DEBUG, Logger::AGENCY)
     << "Pool complete. Starting constituent personality";
+
   _id = _agent->config().id();
 
   TRI_ASSERT(_vocbase != nullptr);
