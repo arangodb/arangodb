@@ -1,7 +1,11 @@
 v3.0.6 (XXXX-XX-XX)
 -------------------
 
-* Properly return 503 in JS actions when backend is gone
+* fix execution of AQL traversal expressions when there are multiple
+  conditions that refer to variables set outside the traversal
+
+* properly return HTTP 503 in JS actions when backend is gone
+
 
 v3.0.5 (2016-08-18)
 -------------------

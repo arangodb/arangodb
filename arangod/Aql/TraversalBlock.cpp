@@ -84,6 +84,14 @@ TraversalBlock::TraversalBlock(ExecutionEngine* engine, TraversalNode const* ep)
         TRI_ASSERT(it->second.registerId < ExecutionNode::MaxRegisterId);
         inRegsCur.emplace_back(it->second.registerId);
       }
+      
+      for (auto const& v : ep->_conditionVariables) {
+        inVarsCur.emplace_back(v);
+        auto it = ep->getRegisterPlan()->varInfo.find(v->id);
+        TRI_ASSERT(it != ep->getRegisterPlan()->varInfo.end());
+        TRI_ASSERT(it->second.registerId < ExecutionNode::MaxRegisterId);
+        inRegsCur.emplace_back(it->second.registerId);
+      }
     }
   }
 
@@ -170,6 +178,7 @@ int TraversalBlock::initialize() {
 void TraversalBlock::executeExpressions() {
   DEBUG_BEGIN_BLOCK();
   AqlItemBlock* cur = _buffer.front();
+  size_t index = 0;
   for (auto& map : *_expressions) {
     for (size_t i = 0; i < map.second.size(); ++i) {
       // Right now no inVars are allowed.
@@ -178,8 +187,8 @@ void TraversalBlock::executeExpressions() {
       if (it != nullptr && it->expression != nullptr) {
         // inVars and inRegs needs fixx
         bool mustDestroy;
-        AqlValue a = it->expression->execute(_trx, cur, _pos, _inVars[i],
-                                             _inRegs[i], mustDestroy);
+        AqlValue a = it->expression->execute(_trx, cur, _pos, _inVars[index],
+                                             _inRegs[index], mustDestroy);
 
         AqlValueGuard guard(a, mustDestroy);
         
@@ -196,6 +205,7 @@ void TraversalBlock::executeExpressions() {
 
         it->compareTo.reset(builder);
       }
+      ++index;
     }
   }
   throwIfKilled();  // check if we were aborted
