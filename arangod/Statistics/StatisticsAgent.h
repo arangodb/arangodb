@@ -110,7 +110,7 @@ class RequestStatisticsAgent
     : public StatisticsAgent<TRI_request_statistics_t,
                              RequestStatisticsAgentDesc> {
  public:
-  void requestStatisticsAgentSetRequestType(GeneralRequest::RequestType b) {
+  void requestStatisticsAgentSetRequestType(rest::RequestType b) {
     if (StatisticsFeature::enabled()) {
       if (_statistics != nullptr) {
         _statistics->_requestType = b;

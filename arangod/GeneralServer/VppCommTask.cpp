@@ -48,31 +48,36 @@ using namespace arangodb::rest;
 
 namespace {
 std::size_t validateAndCount(char const* vpHeaderStart, char const* vpEnd) {
-  VPackValidator validator;
-  // check for slice start to the end of Chunk
-  // isSubPart allows the slice to be shorter than the checked buffer.
-  validator.validate(vpHeaderStart, std::distance(vpHeaderStart, vpEnd),
-                     /*isSubPart =*/true);
+  try {
+    VPackValidator validator;
+    // check for slice start to the end of Chunk
+    // isSubPart allows the slice to be shorter than the checked buffer.
+    validator.validate(vpHeaderStart, std::distance(vpHeaderStart, vpEnd),
+                       /*isSubPart =*/true);
 
-  VPackSlice vpHeader(vpHeaderStart);
-  auto vpPayloadStart = vpHeaderStart + vpHeader.byteSize();
+    VPackSlice vpHeader(vpHeaderStart);
+    auto vpPayloadStart = vpHeaderStart + vpHeader.byteSize();
 
-  std::size_t numPayloads = 0;
-  while (vpPayloadStart != vpEnd) {
-    // validate
-    validator.validate(vpPayloadStart, std::distance(vpPayloadStart, vpEnd),
-                       true);
-    // get offset to next
-    VPackSlice tmp(vpPayloadStart);
-    vpPayloadStart += tmp.byteSize();
-    numPayloads++;
+    std::size_t numPayloads = 0;
+    while (vpPayloadStart != vpEnd) {
+      // validate
+      validator.validate(vpPayloadStart, std::distance(vpPayloadStart, vpEnd),
+                         true);
+      // get offset to next
+      VPackSlice tmp(vpPayloadStart);
+      vpPayloadStart += tmp.byteSize();
+      numPayloads++;
+    }
+    return numPayloads;
+  } catch (std::exception const& e) {
+    throw std::runtime_error(
+        std::string("error during validation of incoming VPack") + e.what());
   }
-  return numPayloads;
 }
 
 template <typename T>
 std::size_t appendToBuffer(StringBuffer* buffer, T& value) {
-  std::size_t len = sizeof(T);
+  constexpr std::size_t len = sizeof(T);
   char charArray[len];
   char const* charPtr = charArray;
   std::memcpy(&charArray, &value, len);
@@ -101,7 +106,7 @@ std::unique_ptr<basics::StringBuffer> createChunkForNetworkDetail(
   // get the lenght of VPack data
   uint32_t dataLength = 0;
   for (auto& slice : slices) {
-	// TODO: is a 32bit value sufficient for all Slices here?
+    // TODO: is a 32bit value sufficient for all Slices here?
     dataLength += static_cast<uint32_t>(slice.byteSize());
   }
 
@@ -278,17 +283,17 @@ bool VppCommTask::processRead() {
     try {
       payloads = validateAndCount(vpackBegin, chunkEnd);
     } catch (std::exception const& e) {
-      handleSimpleError(GeneralResponse::ResponseCode::BAD,
+      handleSimpleError(rest::ResponseCode::BAD,
                         TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, e.what(),
                         chunkHeader._messageID);
       LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "VPack Validation failed!";
-      closeTask(GeneralResponse::ResponseCode::BAD);
+      closeTask(rest::ResponseCode::BAD);
       return false;
     } catch (...) {
-      handleSimpleError(GeneralResponse::ResponseCode::BAD,
+      handleSimpleError(rest::ResponseCode::BAD,
                         chunkHeader._messageID);
       LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "VPack Validation failed!";
-      closeTask(GeneralResponse::ResponseCode::BAD);
+      closeTask(rest::ResponseCode::BAD);
       return false;
     }
 
@@ -315,9 +320,10 @@ bool VppCommTask::processRead() {
           "messages");
     }
 
-	// TODO: is a 32bit value sufficient for the messageLength here?
-    IncompleteVPackMessage message(static_cast<uint32_t>(chunkHeader._messageLength),
-                                   chunkHeader._chunk /*number of chunks*/);
+    // TODO: is a 32bit value sufficient for the messageLength here?
+    IncompleteVPackMessage message(
+        static_cast<uint32_t>(chunkHeader._messageLength),
+        chunkHeader._chunk /*number of chunks*/);
     message._buffer.append(vpackBegin, std::distance(vpackBegin, chunkEnd));
     auto insertPair = _incompleteMessages.emplace(
         std::make_pair(chunkHeader._messageID, std::move(message)));
@@ -351,17 +357,17 @@ bool VppCommTask::processRead() {
                                  im._buffer.data() + im._buffer.byteSize()));
 
       } catch (std::exception const& e) {
-        handleSimpleError(GeneralResponse::ResponseCode::BAD,
+        handleSimpleError(rest::ResponseCode::BAD,
                           TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, e.what(),
                           chunkHeader._messageID);
         LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "VPack Validation failed!";
-        closeTask(GeneralResponse::ResponseCode::BAD);
+        closeTask(rest::ResponseCode::BAD);
         return false;
       } catch (...) {
-        handleSimpleError(GeneralResponse::ResponseCode::BAD,
+        handleSimpleError(rest::ResponseCode::BAD,
                           chunkHeader._messageID);
         LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "VPack Validation failed!";
-        closeTask(GeneralResponse::ResponseCode::BAD);
+        closeTask(rest::ResponseCode::BAD);
         return false;
       }
 
@@ -392,8 +398,13 @@ bool VppCommTask::processRead() {
     VPackSlice header = message.header();
     LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
         << "got request:" << header.toJson();
-
-    auto type = header.get("type").getInt();
+    int type = meta::underlyingValue(rest::RequestType::ILLEGAL);
+    try {
+      type = header.get("type").getInt();
+    } catch (std::exception const& e) {
+      throw std::runtime_error(
+          std::string("Error during Parsing of VppHeader: ") + e.what());
+    }
     if (type == 1000) {
       // do auth
     } else {
@@ -404,7 +415,7 @@ bool VppCommTask::processRead() {
       GeneralServerFeature::HANDLER_FACTORY->setRequestContext(request.get());
       // make sure we have a database
       if (request->requestContext() == nullptr) {
-        handleSimpleError(GeneralResponse::ResponseCode::NOT_FOUND,
+        handleSimpleError(rest::ResponseCode::NOT_FOUND,
                           TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
                           TRI_errno_string(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND),
                           chunkHeader._messageID);
@@ -413,7 +424,7 @@ bool VppCommTask::processRead() {
         _protocolVersion = request->protocolVersion();
 
         std::unique_ptr<VppResponse> response(
-            new VppResponse(GeneralResponse::ResponseCode::SERVER_ERROR,
+            new VppResponse(rest::ResponseCode::SERVER_ERROR,
                             chunkHeader._messageID));
         executeRequest(std::move(request), std::move(response));
       }
@@ -429,7 +440,7 @@ bool VppCommTask::processRead() {
   return doExecute;
 }
 
-void VppCommTask::closeTask(GeneralResponse::ResponseCode code) {
+void VppCommTask::closeTask(rest::ResponseCode code) {
   _processReadVariables._readBufferCursor = nullptr;
   _processReadVariables._currentChunkLength = 0;
   _readBuffer->clear();  // check is this changes the reserved size
@@ -442,7 +453,7 @@ void VppCommTask::closeTask(GeneralResponse::ResponseCode code) {
   _clientClosed = true;
 }
 
-GeneralResponse::ResponseCode VppCommTask::authenticateRequest(
+rest::ResponseCode VppCommTask::authenticateRequest(
     GeneralRequest* request) {
   auto context = (request == nullptr) ? nullptr : request->requestContext();
 
@@ -451,26 +462,24 @@ GeneralResponse::ResponseCode VppCommTask::authenticateRequest(
         GeneralServerFeature::HANDLER_FACTORY->setRequestContext(request);
 
     if (!res) {
-      return GeneralResponse::ResponseCode::NOT_FOUND;
+      return rest::ResponseCode::NOT_FOUND;
     }
-
     context = request->requestContext();
   }
 
   if (context == nullptr) {
-    return GeneralResponse::ResponseCode::SERVER_ERROR;
+    return rest::ResponseCode::SERVER_ERROR;
   }
-
   return context->authenticate();
 }
 
 std::unique_ptr<GeneralResponse> VppCommTask::createResponse(
-    GeneralResponse::ResponseCode responseCode, uint64_t messageId) {
+    rest::ResponseCode responseCode, uint64_t messageId) {
   return std::unique_ptr<GeneralResponse>(
       new VppResponse(responseCode, messageId));
 }
 
-void VppCommTask::handleSimpleError(GeneralResponse::ResponseCode responseCode,
+void VppCommTask::handleSimpleError(rest::ResponseCode responseCode,
                                     int errorNum,
                                     std::string const& errorMessage,
                                     uint64_t messageId) {

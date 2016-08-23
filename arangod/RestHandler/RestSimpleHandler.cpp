@@ -56,7 +56,7 @@ RestHandler::status RestSimpleHandler::execute() {
   // extract the request type
   auto const type = _request->requestType();
 
-  if (type == GeneralRequest::RequestType::PUT) {
+  if (type == rest::RequestType::PUT) {
     bool parsingSuccess = true;
     std::shared_ptr<VPackBuilder> parsedBody =
         parseVelocyPackBody(&VPackOptions::Defaults, parsingSuccess);
@@ -68,7 +68,7 @@ RestHandler::status RestSimpleHandler::execute() {
     VPackSlice body = parsedBody.get()->slice();
 
     if (!body.isObject()) {
-      generateError(GeneralResponse::ResponseCode::BAD, TRI_ERROR_TYPE_ERROR,
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_TYPE_ERROR,
                     "expecting JSON object body");
       return status::DONE;
     }
@@ -80,14 +80,14 @@ RestHandler::status RestSimpleHandler::execute() {
     } else if (prefix == RestVocbaseBaseHandler::SIMPLE_LOOKUP_PATH) {
       lookupByKeys(body);
     } else {
-      generateError(GeneralResponse::ResponseCode::BAD, TRI_ERROR_TYPE_ERROR,
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_TYPE_ERROR,
                     "unsupported value for <operation>");
     }
 
     return status::DONE;
   }
 
-  generateError(GeneralResponse::ResponseCode::METHOD_NOT_ALLOWED,
+  generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                 TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
   return status::DONE;
 }
@@ -152,7 +152,7 @@ void RestSimpleHandler::removeByKeys(VPackSlice const& slice) {
       VPackSlice const value = slice.get("collection");
 
       if (!value.isString()) {
-        generateError(GeneralResponse::ResponseCode::BAD, TRI_ERROR_TYPE_ERROR,
+        generateError(rest::ResponseCode::BAD, TRI_ERROR_TYPE_ERROR,
                       "expecting string for <collection>");
         return;
       }
@@ -170,7 +170,7 @@ void RestSimpleHandler::removeByKeys(VPackSlice const& slice) {
     VPackSlice const keys = slice.get("keys");
 
     if (!keys.isArray()) {
-      generateError(GeneralResponse::ResponseCode::BAD, TRI_ERROR_TYPE_ERROR,
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_TYPE_ERROR,
                     "expecting array for <keys>");
       return;
     }
@@ -258,13 +258,13 @@ void RestSimpleHandler::removeByKeys(VPackSlice const& slice) {
       result.add("error", VPackValue(false));
       result.add(
           "code",
-          VPackValue(static_cast<int>(GeneralResponse::ResponseCode::OK)));
+          VPackValue(static_cast<int>(rest::ResponseCode::OK)));
       if (!silent) {
         result.add("old", queryResult.result->slice());
       }
       result.close();
 
-      generateResult(GeneralResponse::ResponseCode::OK, result.slice(),
+      generateResult(rest::ResponseCode::OK, result.slice(),
                      queryResult.context);
     }
   } catch (arangodb::basics::Exception const& ex) {
@@ -273,7 +273,7 @@ void RestSimpleHandler::removeByKeys(VPackSlice const& slice) {
                   ex.what());
   } catch (...) {
     unregisterQuery();
-    generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
+    generateError(rest::ResponseCode::SERVER_ERROR,
                   TRI_ERROR_INTERNAL);
   }
 }
@@ -295,7 +295,7 @@ void RestSimpleHandler::lookupByKeys(VPackSlice const& slice) {
     {
       VPackSlice const value = slice.get("collection");
       if (!value.isString()) {
-        generateError(GeneralResponse::ResponseCode::BAD, TRI_ERROR_TYPE_ERROR,
+        generateError(rest::ResponseCode::BAD, TRI_ERROR_TYPE_ERROR,
                       "expecting string for <collection>");
         return;
       }
@@ -315,7 +315,7 @@ void RestSimpleHandler::lookupByKeys(VPackSlice const& slice) {
     VPackSlice const keys = slice.get("keys");
 
     if (!keys.isArray()) {
-      generateError(GeneralResponse::ResponseCode::BAD, TRI_ERROR_TYPE_ERROR,
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_TYPE_ERROR,
                     "expecting array for <keys>");
       return;
     }
@@ -358,10 +358,10 @@ void RestSimpleHandler::lookupByKeys(VPackSlice const& slice) {
     VPackBuilder result;
     {
       VPackObjectBuilder guard(&result);
-      setResponseCode(GeneralResponse::ResponseCode::OK);
+      setResponseCode(rest::ResponseCode::OK);
 
       // TODO this should be generalized
-      response->setContentType(HttpResponse::ContentType::JSON);
+      response->setContentType(rest::ContentType::JSON);
 
       if (qResult.isArray()) {
         // This is for internal use of AQL Traverser only.
@@ -457,11 +457,11 @@ void RestSimpleHandler::lookupByKeys(VPackSlice const& slice) {
                   ex.what());
   } catch (std::exception const& ex) {
     unregisterQuery();
-    generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
+    generateError(rest::ResponseCode::SERVER_ERROR,
                   TRI_ERROR_INTERNAL, ex.what());
   } catch (...) {
     unregisterQuery();
-    generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
+    generateError(rest::ResponseCode::SERVER_ERROR,
                   TRI_ERROR_INTERNAL);
   }
 }

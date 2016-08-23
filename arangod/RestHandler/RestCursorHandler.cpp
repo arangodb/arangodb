@@ -53,22 +53,22 @@ RestHandler::status RestCursorHandler::execute() {
   // extract the sub-request type
   auto const type = _request->requestType();
 
-  if (type == GeneralRequest::RequestType::POST) {
+  if (type == rest::RequestType::POST) {
     createCursor();
     return status::DONE;
   }
 
-  if (type == GeneralRequest::RequestType::PUT) {
+  if (type == rest::RequestType::PUT) {
     modifyCursor();
     return status::DONE;
   }
 
-  if (type == GeneralRequest::RequestType::DELETE_REQ) {
+  if (type == rest::RequestType::DELETE_REQ) {
     deleteCursor();
     return status::DONE;
   }
 
-  generateError(GeneralResponse::ResponseCode::METHOD_NOT_ALLOWED,
+  generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                 TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
   return status::DONE;
 }
@@ -82,19 +82,19 @@ bool RestCursorHandler::cancel() { return cancelQuery(); }
 
 void RestCursorHandler::processQuery(VPackSlice const& slice) {
   if (!slice.isObject()) {
-    generateError(GeneralResponse::ResponseCode::BAD, TRI_ERROR_QUERY_EMPTY);
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_QUERY_EMPTY);
     return;
   }
   VPackSlice const querySlice = slice.get("query");
   if (!querySlice.isString()) {
-    generateError(GeneralResponse::ResponseCode::BAD, TRI_ERROR_QUERY_EMPTY);
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_QUERY_EMPTY);
     return;
   }
 
   VPackSlice const bindVars = slice.get("bindVars");
   if (!bindVars.isNone()) {
     if (!bindVars.isObject() && !bindVars.isNull()) {
-      generateError(GeneralResponse::ResponseCode::BAD, TRI_ERROR_TYPE_ERROR,
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_TYPE_ERROR,
                     "expecting object for <bindVars>");
       return;
     }
@@ -136,7 +136,7 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
   TRI_ASSERT(qResult.isArray());
 
   {
-    setResponseCode(GeneralResponse::ResponseCode::CREATED);
+    setResponseCode(rest::ResponseCode::CREATED);
 
     // TODO needs to generalized
     auto* response = dynamic_cast<HttpResponse*>(_response.get());
@@ -146,7 +146,7 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
     }
 
     // TODO: generalize to calling handler setPayload
-    response->setContentType(GeneralResponse::ContentType::JSON);
+    response->setContentType(rest::ContentType::JSON);
 
     std::shared_ptr<VPackBuilder> extra = buildExtra(queryResult);
     VPackSlice opts = options->slice();
@@ -406,7 +406,7 @@ void RestCursorHandler::createCursor() {
   std::vector<std::string> const& suffix = _request->suffix();
 
   if (suffix.size() != 0) {
-    generateError(GeneralResponse::ResponseCode::BAD,
+    generateError(rest::ResponseCode::BAD,
                   TRI_ERROR_HTTP_BAD_PARAMETER, "expecting POST /_api/cursor");
     return;
   }
@@ -428,15 +428,15 @@ void RestCursorHandler::createCursor() {
                   ex.what());
   } catch (std::bad_alloc const&) {
     unregisterQuery();
-    generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
+    generateError(rest::ResponseCode::SERVER_ERROR,
                   TRI_ERROR_OUT_OF_MEMORY);
   } catch (std::exception const& ex) {
     unregisterQuery();
-    generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
+    generateError(rest::ResponseCode::SERVER_ERROR,
                   TRI_ERROR_INTERNAL, ex.what());
   } catch (...) {
     unregisterQuery();
-    generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
+    generateError(rest::ResponseCode::SERVER_ERROR,
                   TRI_ERROR_INTERNAL);
   }
 }
@@ -449,7 +449,7 @@ void RestCursorHandler::modifyCursor() {
   std::vector<std::string> const& suffix = _request->suffix();
 
   if (suffix.size() != 1) {
-    generateError(GeneralResponse::ResponseCode::BAD,
+    generateError(rest::ResponseCode::BAD,
                   TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting PUT /_api/cursor/<cursor-id>");
     return;
@@ -477,7 +477,7 @@ void RestCursorHandler::modifyCursor() {
   }
 
   try {
-    setResponseCode(GeneralResponse::ResponseCode::OK);
+    setResponseCode(rest::ResponseCode::OK);
 
     // TODO needs to generalized
     auto* response = dynamic_cast<HttpResponse*>(_response.get());
@@ -487,7 +487,7 @@ void RestCursorHandler::modifyCursor() {
     }
 
     // TODO: generalize to calling handler setPayload
-    response->setContentType(GeneralResponse::ContentType::JSON);
+    response->setContentType(rest::ContentType::JSON);
 
     response->body().appendChar('{');
     cursor->dump(response->body());
@@ -505,7 +505,7 @@ void RestCursorHandler::modifyCursor() {
   } catch (...) {
     cursors->release(cursor);
 
-    generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
+    generateError(rest::ResponseCode::SERVER_ERROR,
                   TRI_ERROR_INTERNAL);
   }
 }
@@ -518,7 +518,7 @@ void RestCursorHandler::deleteCursor() {
   std::vector<std::string> const& suffix = _request->suffix();
 
   if (suffix.size() != 1) {
-    generateError(GeneralResponse::ResponseCode::BAD,
+    generateError(rest::ResponseCode::BAD,
                   TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting DELETE /_api/cursor/<cursor-id>");
     return;
@@ -534,7 +534,7 @@ void RestCursorHandler::deleteCursor() {
   bool found = cursors->remove(cursorId);
 
   if (!found) {
-    generateError(GeneralResponse::ResponseCode::NOT_FOUND,
+    generateError(rest::ResponseCode::NOT_FOUND,
                   TRI_ERROR_CURSOR_NOT_FOUND);
     return;
   }
@@ -545,8 +545,8 @@ void RestCursorHandler::deleteCursor() {
   builder.add("error", VPackValue(false));
   builder.add(
       "code",
-      VPackValue(static_cast<int>(GeneralResponse::ResponseCode::ACCEPTED)));
+      VPackValue(static_cast<int>(rest::ResponseCode::ACCEPTED)));
   builder.close();
 
-  generateResult(GeneralResponse::ResponseCode::ACCEPTED, builder.slice());
+  generateResult(rest::ResponseCode::ACCEPTED, builder.slice());
 }

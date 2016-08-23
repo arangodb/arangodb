@@ -135,7 +135,7 @@ class v8_action_t : public TRI_action_t {
                   << "'";
 
         result.isValid = true;
-        response->setResponseCode(GeneralResponse::ResponseCode::NOT_FOUND);
+        response->setResponseCode(rest::ResponseCode::NOT_FOUND);
 
         return result;
       }
@@ -404,7 +404,7 @@ static v8::Handle<v8::Object> RequestCppToV8(v8::Isolate* isolate,
   TRI_GET_GLOBAL_STRING(RequestBodyKey);
 
   auto set_request_body_json_or_vpack = [&]() {
-    if (GeneralRequest::ContentType::JSON == request->contentType()) {
+    if (rest::ContentType::JSON == request->contentType()) {
       auto httpreq = dynamic_cast<HttpRequest*>(request);
       if (httpreq == nullptr) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
@@ -412,7 +412,7 @@ static v8::Handle<v8::Object> RequestCppToV8(v8::Isolate* isolate,
       std::string const& body = httpreq->body();
       req->ForceSet(RequestBodyKey, TRI_V8_STD_STRING(body));
       headers["content-length"] = StringUtils::itoa(request->contentLength());
-    } else if (GeneralRequest::ContentType::VPACK == request->contentType()) {
+    } else if (rest::ContentType::VPACK == request->contentType()) {
       // the VPACK is passed as it is to to Javascript
       // should we convert and validate here in a central place?
       // should the work be done in javascript
@@ -449,7 +449,7 @@ static v8::Handle<v8::Object> RequestCppToV8(v8::Isolate* isolate,
 
   // copy request type
   switch (request->requestType()) {
-    case GeneralRequest::RequestType::POST: {
+    case rest::RequestType::POST: {
       TRI_GET_GLOBAL_STRING(PostConstant);
       req->ForceSet(RequestTypeKey, PostConstant);
       // req->ForceSet(RequestBodyKey, TRI_V8_STD_STRING(request->body()));
@@ -457,7 +457,7 @@ static v8::Handle<v8::Object> RequestCppToV8(v8::Isolate* isolate,
       break;
     }
 
-    case GeneralRequest::RequestType::PUT: {
+    case rest::RequestType::PUT: {
       TRI_GET_GLOBAL_STRING(PutConstant);
       req->ForceSet(RequestTypeKey, PutConstant);
       // req->ForceSet(RequestBodyKey, TRI_V8_STD_STRING(request->body()));
@@ -465,29 +465,29 @@ static v8::Handle<v8::Object> RequestCppToV8(v8::Isolate* isolate,
       break;
     }
 
-    case GeneralRequest::RequestType::PATCH: {
+    case rest::RequestType::PATCH: {
       TRI_GET_GLOBAL_STRING(PatchConstant);
       req->ForceSet(RequestTypeKey, PatchConstant);
       // req->ForceSet(RequestBodyKey, TRI_V8_STD_STRING(request->body()));
       set_request_body_json_or_vpack();
       break;
     }
-    case GeneralRequest::RequestType::OPTIONS: {
+    case rest::RequestType::OPTIONS: {
       TRI_GET_GLOBAL_STRING(OptionsConstant);
       req->ForceSet(RequestTypeKey, OptionsConstant);
       break;
     }
-    case GeneralRequest::RequestType::DELETE_REQ: {
+    case rest::RequestType::DELETE_REQ: {
       TRI_GET_GLOBAL_STRING(DeleteConstant);
       req->ForceSet(RequestTypeKey, DeleteConstant);
       break;
     }
-    case GeneralRequest::RequestType::HEAD: {
+    case rest::RequestType::HEAD: {
       TRI_GET_GLOBAL_STRING(HeadConstant);
       req->ForceSet(RequestTypeKey, HeadConstant);
       break;
     }
-    case GeneralRequest::RequestType::GET: {
+    case rest::RequestType::GET: {
       default:
         TRI_GET_GLOBAL_STRING(GetConstant);
         req->ForceSet(RequestTypeKey, GetConstant);
@@ -550,7 +550,7 @@ static v8::Handle<v8::Object> RequestCppToV8(v8::Isolate* isolate,
 static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
                             v8::Handle<v8::Object> const res,
                             GeneralResponse* response) {
-  GeneralResponse::ResponseCode code = GeneralResponse::ResponseCode::OK;
+  rest::ResponseCode code = rest::ResponseCode::OK;
 
   using arangodb::Endpoint;
 
@@ -558,7 +558,7 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
   TRI_GET_GLOBAL_STRING(ResponseCodeKey);
   if (res->Has(ResponseCodeKey)) {
     // Windows has issues with converting from a double to an enumeration type
-    code = (GeneralResponse::ResponseCode)(
+    code = (rest::ResponseCode)(
         (int)(TRI_ObjectToDouble(res->Get(ResponseCodeKey))));
   }
   response->setResponseCode(code);
@@ -725,7 +725,7 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
           }
         }
 
-        response->setContentType(GeneralResponse::ContentType::VPACK);
+        response->setContentType(rest::ContentType::VPACK);
         response->setPayload(builder.slice(), true);
         break;
       } 
@@ -758,7 +758,7 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
 
           httpResponse->body().appendText(msg.c_str(), msg.size());
           response->setResponseCode(
-              GeneralResponse::ResponseCode::SERVER_ERROR);
+              rest::ResponseCode::SERVER_ERROR);
         }
       } break;
 
@@ -766,7 +766,7 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
         VPackBuilder builder;
 
         // create vpack form file
-        response->setContentType(GeneralResponse::ContentType::VPACK);
+        response->setContentType(rest::ContentType::VPACK);
         response->setPayload(builder.slice(), true);
       } break;
 
@@ -911,7 +911,7 @@ static TRI_action_result_t ExecuteActionVocbase(
     result.canceled = false;
 
     // TODO how to generalize this?
-    response->setResponseCode(GeneralResponse::ResponseCode::SERVER_ERROR);
+    response->setResponseCode(rest::ResponseCode::SERVER_ERROR);
 
     if (errorMessage.empty()) {
       errorMessage = TRI_errno_string(errorCode);
@@ -931,7 +931,7 @@ static TRI_action_result_t ExecuteActionVocbase(
 
   else if (tryCatch.HasCaught()) {
     if (tryCatch.CanContinue()) {
-      response->setResponseCode(GeneralResponse::ResponseCode::SERVER_ERROR);
+      response->setResponseCode(rest::ResponseCode::SERVER_ERROR);
 
       // TODO how to generalize this?
       if (response->transportType() ==
@@ -1368,7 +1368,7 @@ void TRI_InitV8Actions(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
 static bool clusterSendToAllServers(
     std::string const& dbname,
     std::string const& path,  // Note: Has to be properly encoded!
-    arangodb::GeneralRequest::RequestType const& method,
+    arangodb::rest::RequestType const& method,
     std::string const& body) {
   ClusterInfo* ci = ClusterInfo::instance();
   ClusterComm* cc = ClusterComm::instance();
@@ -1467,7 +1467,7 @@ static void JS_DebugSetFailAt(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (ServerState::instance()->isCoordinator()) {
     int res = clusterSendToAllServers(
         dbname, "_admin/debug/failat/" + StringUtils::urlEncode(point),
-        arangodb::GeneralRequest::RequestType::PUT, "");
+        arangodb::rest::RequestType::PUT, "");
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_V8_THROW_EXCEPTION(res);
     }
@@ -1511,7 +1511,7 @@ static void JS_DebugRemoveFailAt(
   if (ServerState::instance()->isCoordinator()) {
     int res = clusterSendToAllServers(
         dbname, "_admin/debug/failat/" + StringUtils::urlEncode(point),
-        arangodb::GeneralRequest::RequestType::DELETE_REQ, "");
+        arangodb::rest::RequestType::DELETE_REQ, "");
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_V8_THROW_EXCEPTION(res);
     }
@@ -1554,7 +1554,7 @@ static void JS_DebugClearFailAt(
 
     int res = clusterSendToAllServers(
         dbname, "_admin/debug/failat",
-        arangodb::GeneralRequest::RequestType::DELETE_REQ, "");
+        arangodb::rest::RequestType::DELETE_REQ, "");
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_V8_THROW_EXCEPTION(res);
     }

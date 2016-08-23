@@ -49,10 +49,10 @@ struct VersionTest : public BenchmarkOperation {
     return _url;
   }
 
-  GeneralRequest::RequestType type(int const threadNumber,
+  rest::RequestType type(int const threadNumber,
                                    size_t const threadCounter,
                                    size_t const globalCounter) override {
-    return GeneralRequest::RequestType::GET;
+    return rest::RequestType::GET;
   }
 
   char const* payload(size_t* length, int const threadNumber,
@@ -94,22 +94,22 @@ struct DocumentCrudAppendTest : public BenchmarkOperation {
     }
   }
 
-  GeneralRequest::RequestType type(int const threadNumber,
+  rest::RequestType type(int const threadNumber,
                                    size_t const threadCounter,
                                    size_t const globalCounter) override {
     size_t const mod = globalCounter % 4;
 
     if (mod == 0) {
-      return GeneralRequest::RequestType::POST;
+      return rest::RequestType::POST;
     } else if (mod == 1) {
-      return GeneralRequest::RequestType::GET;
+      return rest::RequestType::GET;
     } else if (mod == 2) {
-      return GeneralRequest::RequestType::PATCH;
+      return rest::RequestType::PATCH;
     } else if (mod == 3) {
-      return GeneralRequest::RequestType::GET;
+      return rest::RequestType::GET;
     } else {
       TRI_ASSERT(false);
-      return GeneralRequest::RequestType::GET;
+      return rest::RequestType::GET;
     }
   }
 
@@ -185,15 +185,15 @@ struct DocumentCrudWriteReadTest : public BenchmarkOperation {
     }
   }
 
-  GeneralRequest::RequestType type(int const threadNumber,
+  rest::RequestType type(int const threadNumber,
                                    size_t const threadCounter,
                                    size_t const globalCounter) override {
     size_t const mod = globalCounter % 2;
 
     if (mod == 0) {
-      return GeneralRequest::RequestType::POST;
+      return rest::RequestType::POST;
     } else {
-      return GeneralRequest::RequestType::GET;
+      return rest::RequestType::GET;
     }
   }
 
@@ -266,17 +266,17 @@ struct ShapesTest : public BenchmarkOperation {
     }
   }
 
-  GeneralRequest::RequestType type(int const threadNumber,
+  rest::RequestType type(int const threadNumber,
                                    size_t const threadCounter,
                                    size_t const globalCounter) override {
     size_t const mod = globalCounter % 3;
 
     if (mod == 0) {
-      return GeneralRequest::RequestType::POST;
+      return rest::RequestType::POST;
     } else if (mod == 1) {
-      return GeneralRequest::RequestType::GET;
+      return rest::RequestType::GET;
     } else {
-      return GeneralRequest::RequestType::DELETE_REQ;
+      return rest::RequestType::DELETE_REQ;
     }
   }
 
@@ -352,15 +352,15 @@ struct ShapesAppendTest : public BenchmarkOperation {
     }
   }
 
-  GeneralRequest::RequestType type(int const threadNumber,
+  rest::RequestType type(int const threadNumber,
                                    size_t const threadCounter,
                                    size_t const globalCounter) override {
     size_t const mod = globalCounter % 2;
 
     if (mod == 0) {
-      return GeneralRequest::RequestType::POST;
+      return rest::RequestType::POST;
     }
-    return GeneralRequest::RequestType::GET;
+    return rest::RequestType::GET;
   }
 
   char const* payload(size_t* length, int const threadNumber,
@@ -438,17 +438,17 @@ struct RandomShapesTest : public BenchmarkOperation {
     }
   }
 
-  GeneralRequest::RequestType type(int const threadNumber,
+  rest::RequestType type(int const threadNumber,
                                    size_t const threadCounter,
                                    size_t const globalCounter) override {
     size_t const mod = globalCounter % 3;
 
     if (mod == 0) {
-      return GeneralRequest::RequestType::POST;
+      return rest::RequestType::POST;
     } else if (mod == 1) {
-      return GeneralRequest::RequestType::GET;
+      return rest::RequestType::GET;
     } else {
-      return GeneralRequest::RequestType::DELETE_REQ;
+      return rest::RequestType::DELETE_REQ;
     }
   }
 
@@ -529,24 +529,24 @@ struct DocumentCrudTest : public BenchmarkOperation {
     }
   }
 
-  GeneralRequest::RequestType type(int const threadNumber,
+  rest::RequestType type(int const threadNumber,
                                    size_t const threadCounter,
                                    size_t const globalCounter) override {
     size_t const mod = globalCounter % 5;
 
     if (mod == 0) {
-      return GeneralRequest::RequestType::POST;
+      return rest::RequestType::POST;
     } else if (mod == 1) {
-      return GeneralRequest::RequestType::GET;
+      return rest::RequestType::GET;
     } else if (mod == 2) {
-      return GeneralRequest::RequestType::PATCH;
+      return rest::RequestType::PATCH;
     } else if (mod == 3) {
-      return GeneralRequest::RequestType::GET;
+      return rest::RequestType::GET;
     } else if (mod == 4) {
-      return GeneralRequest::RequestType::DELETE_REQ;
+      return rest::RequestType::DELETE_REQ;
     } else {
       TRI_ASSERT(false);
-      return GeneralRequest::RequestType::GET;
+      return rest::RequestType::GET;
     }
   }
 
@@ -622,28 +622,28 @@ struct EdgeCrudTest : public BenchmarkOperation {
     }
   }
 
-  GeneralRequest::RequestType type(int const threadNumber,
+  rest::RequestType type(int const threadNumber,
                                    size_t const threadCounter,
                                    size_t const globalCounter) override {
     size_t const mod = globalCounter % 4;
 
     if (mod == 0) {
-      return GeneralRequest::RequestType::POST;
+      return rest::RequestType::POST;
     } else if (mod == 1) {
-      return GeneralRequest::RequestType::GET;
+      return rest::RequestType::GET;
     } else if (mod == 2) {
-      return GeneralRequest::RequestType::PATCH;
+      return rest::RequestType::PATCH;
     } else if (mod == 3) {
-      return GeneralRequest::RequestType::GET;
+      return rest::RequestType::GET;
     }
     /*
     else if (mod == 4) {
-      return GeneralRequest::RequestType::DELETE_REQ;
+      return rest::RequestType::DELETE_REQ;
     }
     */
     else {
       TRI_ASSERT(false);
-      return GeneralRequest::RequestType::GET;
+      return rest::RequestType::GET;
     }
   }
 
@@ -734,22 +734,22 @@ struct SkiplistTest : public BenchmarkOperation {
     }
   }
 
-  GeneralRequest::RequestType type(int const threadNumber,
+  rest::RequestType type(int const threadNumber,
                                    size_t const threadCounter,
                                    size_t const globalCounter) override {
     size_t const mod = globalCounter % 4;
 
     if (mod == 0) {
-      return GeneralRequest::RequestType::POST;
+      return rest::RequestType::POST;
     } else if (mod == 1) {
-      return GeneralRequest::RequestType::GET;
+      return rest::RequestType::GET;
     } else if (mod == 2) {
-      return GeneralRequest::RequestType::PATCH;
+      return rest::RequestType::PATCH;
     } else if (mod == 3) {
-      return GeneralRequest::RequestType::GET;
+      return rest::RequestType::GET;
     } else {
       TRI_ASSERT(false);
-      return GeneralRequest::RequestType::GET;
+      return rest::RequestType::GET;
     }
   }
 
@@ -817,22 +817,22 @@ struct HashTest : public BenchmarkOperation {
     }
   }
 
-  GeneralRequest::RequestType type(int const threadNumber,
+  rest::RequestType type(int const threadNumber,
                                    size_t const threadCounter,
                                    size_t const globalCounter) override {
     size_t const mod = globalCounter % 4;
 
     if (mod == 0) {
-      return GeneralRequest::RequestType::POST;
+      return rest::RequestType::POST;
     } else if (mod == 1) {
-      return GeneralRequest::RequestType::GET;
+      return rest::RequestType::GET;
     } else if (mod == 2) {
-      return GeneralRequest::RequestType::PATCH;
+      return rest::RequestType::PATCH;
     } else if (mod == 3) {
-      return GeneralRequest::RequestType::GET;
+      return rest::RequestType::GET;
     } else {
       TRI_ASSERT(false);
-      return GeneralRequest::RequestType::GET;
+      return rest::RequestType::GET;
     }
   }
 
@@ -906,10 +906,10 @@ struct DocumentImportTest : public BenchmarkOperation {
     return _url;
   }
 
-  GeneralRequest::RequestType type(int const threadNumber,
+  rest::RequestType type(int const threadNumber,
                                    size_t const threadCounter,
                                    size_t const globalCounter) override {
-    return GeneralRequest::RequestType::POST;
+    return rest::RequestType::POST;
   }
 
   char const* payload(size_t* length, int const threadNumber,
@@ -966,10 +966,10 @@ struct DocumentCreationTest : public BenchmarkOperation {
     return _url;
   }
 
-  GeneralRequest::RequestType type(int const threadNumber,
+  rest::RequestType type(int const threadNumber,
                                    size_t const threadCounter,
                                    size_t const globalCounter) override {
-    return GeneralRequest::RequestType::POST;
+    return rest::RequestType::POST;
   }
 
   char const* payload(size_t* length, int const threadNumber,
@@ -1003,10 +1003,10 @@ struct CollectionCreationTest : public BenchmarkOperation {
     return _url;
   }
 
-  GeneralRequest::RequestType type(int const threadNumber,
+  rest::RequestType type(int const threadNumber,
                                    size_t const threadCounter,
                                    size_t const globalCounter) override {
-    return GeneralRequest::RequestType::POST;
+    return rest::RequestType::POST;
   }
 
   char const* payload(size_t* length, int const threadNumber,
@@ -1063,10 +1063,10 @@ struct TransactionAqlTest : public BenchmarkOperation {
     return std::string("/_api/cursor");
   }
 
-  GeneralRequest::RequestType type(int const threadNumber,
+  rest::RequestType type(int const threadNumber,
                                    size_t const threadCounter,
                                    size_t const globalCounter) override {
-    return GeneralRequest::RequestType::POST;
+    return rest::RequestType::POST;
   }
 
   char const* payload(size_t* length, int const threadNumber,
@@ -1152,10 +1152,10 @@ struct TransactionCountTest : public BenchmarkOperation {
     return std::string("/_api/transaction");
   }
 
-  GeneralRequest::RequestType type(int const threadNumber,
+  rest::RequestType type(int const threadNumber,
                                    size_t const threadCounter,
                                    size_t const globalCounter) override {
-    return GeneralRequest::RequestType::POST;
+    return rest::RequestType::POST;
   }
 
   char const* payload(size_t* length, int const threadNumber,
@@ -1207,10 +1207,10 @@ struct TransactionDeadlockTest : public BenchmarkOperation {
     return std::string("/_api/transaction");
   }
 
-  GeneralRequest::RequestType type(int const threadNumber,
+  rest::RequestType type(int const threadNumber,
                                    size_t const threadCounter,
                                    size_t const globalCounter) override {
-    return GeneralRequest::RequestType::POST;
+    return rest::RequestType::POST;
   }
 
   char const* payload(size_t* length, int const threadNumber,
@@ -1276,10 +1276,10 @@ struct TransactionMultiTest : public BenchmarkOperation {
     return std::string("/_api/transaction");
   }
 
-  GeneralRequest::RequestType type(int const threadNumber,
+  rest::RequestType type(int const threadNumber,
                                    size_t const threadCounter,
                                    size_t const globalCounter) override {
-    return GeneralRequest::RequestType::POST;
+    return rest::RequestType::POST;
   }
 
   char const* payload(size_t* length, int const threadNumber,
@@ -1358,10 +1358,10 @@ struct TransactionMultiCollectionTest : public BenchmarkOperation {
     return std::string("/_api/transaction");
   }
 
-  GeneralRequest::RequestType type(int const threadNumber,
+  rest::RequestType type(int const threadNumber,
                                    size_t const threadCounter,
                                    size_t const globalCounter) override {
-    return GeneralRequest::RequestType::POST;
+    return rest::RequestType::POST;
   }
 
   char const* payload(size_t* length, int const threadNumber,
@@ -1431,10 +1431,10 @@ struct AqlInsertTest : public BenchmarkOperation {
     return std::string("/_api/cursor");
   }
 
-  GeneralRequest::RequestType type(int const threadNumber,
+  rest::RequestType type(int const threadNumber,
                                    size_t const threadCounter,
                                    size_t const globalCounter) override {
-    return GeneralRequest::RequestType::POST;
+    return rest::RequestType::POST;
   }
 
   char const* payload(size_t* length, int const threadNumber,
@@ -1485,10 +1485,10 @@ struct AqlV8Test : public BenchmarkOperation {
     return std::string("/_api/cursor");
   }
 
-  GeneralRequest::RequestType type(int const threadNumber,
+  rest::RequestType type(int const threadNumber,
                                    size_t const threadCounter,
                                    size_t const globalCounter) override {
-    return GeneralRequest::RequestType::POST;
+    return rest::RequestType::POST;
   }
 
   char const* payload(size_t* length, int const threadNumber,
@@ -1533,7 +1533,7 @@ static bool DeleteCollection(SimpleHttpClient* client,
   std::unordered_map<std::string, std::string> headerFields;
   SimpleHttpResult* result = nullptr;
 
-  result = client->request(GeneralRequest::RequestType::DELETE_REQ,
+  result = client->request(rest::RequestType::DELETE_REQ,
                            "/_api/collection/" + name, "", 0, headerFields);
 
   bool failed = true;
@@ -1562,7 +1562,7 @@ static bool CreateCollection(SimpleHttpClient* client, std::string const& name,
   std::string payload =
       "{\"name\":\"" + name + "\",\"type\":" + StringUtils::itoa(type) + "}";
   result =
-      client->request(GeneralRequest::RequestType::POST, "/_api/collection",
+      client->request(rest::RequestType::POST, "/_api/collection",
                       payload.c_str(), payload.size(), headerFields);
 
   bool failed = true;
@@ -1590,7 +1590,7 @@ static bool CreateIndex(SimpleHttpClient* client, std::string const& name,
 
   std::string payload =
       "{\"type\":\"" + type + "\",\"fields\":" + fields + ",\"unique\":false}";
-  result = client->request(GeneralRequest::RequestType::POST,
+  result = client->request(rest::RequestType::POST,
                            "/_api/index?collection=" + name, payload.c_str(),
                            payload.size(), headerFields);
 
@@ -1618,7 +1618,7 @@ static bool CreateDocument(SimpleHttpClient* client,
   std::unordered_map<std::string, std::string> headerFields;
   SimpleHttpResult* result = nullptr;
 
-  result = client->request(GeneralRequest::RequestType::POST,
+  result = client->request(rest::RequestType::POST,
                            "/_api/document?collection=" + collection,
                            payload.c_str(), payload.size(), headerFields);
 

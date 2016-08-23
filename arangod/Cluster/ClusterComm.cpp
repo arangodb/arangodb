@@ -314,7 +314,7 @@ OperationID ClusterComm::getOperationID() { return TRI_NewTickServer(); }
 OperationID ClusterComm::asyncRequest(
     ClientTransactionID const clientTransactionID,
     CoordTransactionID const coordTransactionID, std::string const& destination,
-    arangodb::GeneralRequest::RequestType reqtype, std::string const& path,
+    arangodb::rest::RequestType reqtype, std::string const& path,
     std::shared_ptr<std::string const> body,
     std::unique_ptr<std::unordered_map<std::string, std::string>>& headerFields,
     std::shared_ptr<ClusterCommCallback> callback, ClusterCommTimeout timeout,
@@ -455,7 +455,7 @@ OperationID ClusterComm::asyncRequest(
 std::unique_ptr<ClusterCommResult> ClusterComm::syncRequest(
     ClientTransactionID const& clientTransactionID,
     CoordTransactionID const coordTransactionID, std::string const& destination,
-    arangodb::GeneralRequest::RequestType reqtype, std::string const& path,
+    arangodb::rest::RequestType reqtype, std::string const& path,
     std::string const& body,
     std::unordered_map<std::string, std::string> const& headerFields,
     ClusterCommTimeout timeout) {
@@ -946,7 +946,7 @@ void ClusterComm::asyncAnswer(std::string& coordinatorHeader,
   // We add this result to the operation struct without acquiring
   // a lock, since we know that only we do such a thing:
   std::unique_ptr<httpclient::SimpleHttpResult> result(
-      client->request(GeneralRequest::RequestType::PUT, "/_api/shard-comm",
+      client->request(rest::RequestType::PUT, "/_api/shard-comm",
                       body, len, headers));
   if (result.get() == nullptr || !result->isComplete()) {
     cm->brokenConnection(connection);
@@ -1258,9 +1258,9 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
           requests[index].result = res;
           requests[index].done = true;
           nrDone++;
-          if (res.answer_code == GeneralResponse::ResponseCode::OK ||
-              res.answer_code == GeneralResponse::ResponseCode::CREATED ||
-              res.answer_code == GeneralResponse::ResponseCode::ACCEPTED) {
+          if (res.answer_code == rest::ResponseCode::OK ||
+              res.answer_code == rest::ResponseCode::CREATED ||
+              res.answer_code == rest::ResponseCode::ACCEPTED) {
             nrGood++;
           }
           LOG_TOPIC(TRACE, logTopic)
@@ -1358,7 +1358,7 @@ size_t ClusterComm::performSingleRequest(
   // req.result.answer of type GeneralRequest, so we have to translate.
   // Additionally, GeneralRequest is a virtual base class, so we actually
   // have to create an HttpRequest instance:
-  GeneralRequest::ContentType type = GeneralRequest::ContentType::JSON;
+  rest::ContentType type = rest::ContentType::JSON;
 
   basics::StringBuffer& buffer = req.result.result->getBody();
   // auto answer = new FakeRequest(type, buffer.c_str(),
@@ -1370,11 +1370,11 @@ size_t ClusterComm::performSingleRequest(
       req.result.result->getHeaderFields());
 
   req.result.answer.reset(static_cast<GeneralRequest*>(answer));
-  req.result.answer_code = static_cast<GeneralResponse::ResponseCode>(
+  req.result.answer_code = static_cast<rest::ResponseCode>(
       req.result.result->getHttpReturnCode());
-  return (req.result.answer_code == GeneralResponse::ResponseCode::OK ||
-          req.result.answer_code == GeneralResponse::ResponseCode::CREATED ||
-          req.result.answer_code == GeneralResponse::ResponseCode::ACCEPTED)
+  return (req.result.answer_code == rest::ResponseCode::OK ||
+          req.result.answer_code == rest::ResponseCode::CREATED ||
+          req.result.answer_code == rest::ResponseCode::ACCEPTED)
              ? 1
              : 0;
 }

@@ -344,7 +344,7 @@ priv_rpc_ret_t Agent::sendAppendEntriesRPC(std::string const& follower_id) {
     std::make_unique<std::unordered_map<std::string, std::string>>();
   arangodb::ClusterComm::instance()->asyncRequest(
     "1", 1, _config.poolAt(follower_id),
-    arangodb::GeneralRequest::RequestType::POST, path.str(),
+    arangodb::rest::RequestType::POST, path.str(),
     std::make_shared<std::string>(builder.toJson()), headerFields,
     std::make_shared<AgentCallback>(this, follower_id, highest),
     0.5*_config.minPing(), true, 0.75*_config.minPing());

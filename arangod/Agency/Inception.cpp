@@ -60,7 +60,7 @@ void Inception::run() {
   size_t i = 0;
   //bool cs = false;
   while (!this->isStopping()) {
-    
+
     config_t config = _agent->config(); // get a copy of conf
 
     query_t out = std::make_shared<Builder>();
@@ -75,26 +75,26 @@ void Inception::run() {
     out->close();
 
     std::string path = "/_api/agency_priv/gossip";
-    
+
     for (auto const& p : config.gossipPeers()) { // gossip peers
       if (p != config.endpoint()) {
         std::string clientid = config.id() + std::to_string(i++);
         auto hf =
           std::make_unique<std::unordered_map<std::string, std::string>>();
         arangodb::ClusterComm::instance()->asyncRequest(
-          clientid, 1, p, GeneralRequest::RequestType::POST, path,
+          clientid, 1, p, rest::RequestType::POST, path,
           std::make_shared<std::string>(out->toJson()), hf,
           std::make_shared<GossipCallback>(_agent), 1.0, true);
       }
     }
-    
+
     for (auto const& pair : config.pool()) { // pool entries
       if (pair.second != config.endpoint()) {
         std::string clientid = config.id() + std::to_string(i++);
         auto hf =
           std::make_unique<std::unordered_map<std::string, std::string>>();
         arangodb::ClusterComm::instance()->asyncRequest(
-          clientid, 1, pair.second, GeneralRequest::RequestType::POST, path,
+          clientid, 1, pair.second, rest::RequestType::POST, path,
           std::make_shared<std::string>(out->toJson()), hf,
           std::make_shared<GossipCallback>(_agent), 1.0, true);
       }

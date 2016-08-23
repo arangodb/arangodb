@@ -117,7 +117,7 @@ RestHandler::status RestHandler::executeFull() {
   return result;
 }
 
-void RestHandler::setResponseCode(GeneralResponse::ResponseCode code) {
+void RestHandler::setResponseCode(rest::ResponseCode code) {
   TRI_ASSERT(_response != nullptr);
   _response->reset(code);
 }

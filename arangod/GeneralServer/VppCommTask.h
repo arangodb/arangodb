@@ -62,25 +62,25 @@ class VppCommTask : public GeneralCommTask {
   void handleChunk(char const*, size_t) override final {}
 
   std::unique_ptr<GeneralResponse> createResponse(
-      GeneralResponse::ResponseCode, uint64_t messageId) override final;
+      rest::ResponseCode, uint64_t messageId) override final;
 
-  void handleSimpleError(GeneralResponse::ResponseCode code,
+  void handleSimpleError(rest::ResponseCode code,
                          uint64_t id) override {
     VppResponse response(code, id);
     addResponse(&response);
   }
-  void handleSimpleError(GeneralResponse::ResponseCode, int code,
+  void handleSimpleError(rest::ResponseCode, int code,
                          std::string const& errorMessage,
                          uint64_t messageId) override;
 
  private:
   // reets the internal state this method can be called to clean up when the
   // request handling aborts prematurely
-  void closeTask(GeneralResponse::ResponseCode code =
-                     GeneralResponse::ResponseCode::SERVER_ERROR);
+  void closeTask(rest::ResponseCode code =
+                     rest::ResponseCode::SERVER_ERROR);
 
   void addResponse(VppResponse*);
-  GeneralResponse::ResponseCode authenticateRequest(GeneralRequest* request);
+  rest::ResponseCode authenticateRequest(GeneralRequest* request);
 
  private:
   using MessageID = uint64_t;

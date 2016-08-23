@@ -49,7 +49,7 @@ HttpResponse::HttpResponse(ResponseCode code)
       _body(TRI_UNKNOWN_MEM_ZONE, false),
       _bodySize(0) {
   _contentType = ContentType::TEXT;
-  _connectionType = CONNECTION_KEEP_ALIVE;
+  _connectionType = rest::CONNECTION_KEEP_ALIVE;
   if (_body.c_str() == nullptr) {
     // no buffer could be reserved. out of memory!
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
@@ -59,7 +59,7 @@ HttpResponse::HttpResponse(ResponseCode code)
 void HttpResponse::reset(ResponseCode code) {
   _responseCode = code;
   _headers.clear();
-  _connectionType = CONNECTION_KEEP_ALIVE;
+  _connectionType = rest::CONNECTION_KEEP_ALIVE;
   _contentType = ContentType::TEXT;
   _isHeadResponse = false;
   _body.clear();
@@ -218,13 +218,13 @@ void HttpResponse::writeHeader(StringBuffer* output) {
   // add "Connection" response header
   if (!seenConnectionHeader) {
     switch (_connectionType) {
-      case CONNECTION_KEEP_ALIVE:
+      case rest::ConnectionType::CONNECTION_KEEP_ALIVE:
         output->appendText(TRI_CHAR_LENGTH_PAIR("Connection: Keep-Alive\r\n"));
         break;
-      case CONNECTION_CLOSE:
+      case rest::ConnectionType::CONNECTION_CLOSE:
         output->appendText(TRI_CHAR_LENGTH_PAIR("Connection: Close\r\n"));
         break;
-      case CONNECTION_NONE:
+      case rest::ConnectionType::CONNECTION_NONE:
         output->appendText(TRI_CHAR_LENGTH_PAIR("Connection: \r\n"));
         break;
     }
@@ -301,15 +301,15 @@ void HttpResponse::writeHeader(StringBuffer* output) {
 
 void HttpResponse::setPayload(arangodb::velocypack::Slice const& slice,
                               bool generateBody, VPackOptions const& options) {
-  if (_contentType != GeneralResponse::ContentType::CUSTOM) {
+  if (_contentType != rest::ContentType::CUSTOM) {
     // do not overwrite the content type set by the user!!!
     //_contentType = contentType; //FIXME
     //    _contentType =
-    //    meta::enumToEnum<GeneralResponse::ContentType>(request->contentTypeResponse());
+    //    meta::enumToEnum<rest::ContentType>(request->contentTypeResponse());
   }
 
   switch (_contentType) {
-    case GeneralResponse::ContentType::VPACK: {
+    case rest::ContentType::VPACK: {
       size_t length = static_cast<size_t>(slice.byteSize());
       if (generateBody) {
         _body.appendText(slice.startAs<const char>(), length);
@@ -319,7 +319,7 @@ void HttpResponse::setPayload(arangodb::velocypack::Slice const& slice,
       break;
     }
     default: {
-      setContentType(HttpResponse::ContentType::JSON);
+      setContentType(rest::ContentType::JSON);
 
       if (generateBody) {
         arangodb::basics::VelocyPackDumper dumper(&_body, &options);

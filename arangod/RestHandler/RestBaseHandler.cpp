@@ -51,7 +51,7 @@ void RestBaseHandler::handleError(Exception const& ex) {
 /// @brief generates a result from VelocyPack
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestBaseHandler::generateResult(GeneralResponse::ResponseCode code,
+void RestBaseHandler::generateResult(rest::ResponseCode code,
                                      VPackSlice const& slice) {
   setResponseCode(code);
   VPackOptions options(VPackOptions::Defaults);
@@ -64,7 +64,7 @@ void RestBaseHandler::generateResult(GeneralResponse::ResponseCode code,
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestBaseHandler::generateResult(
-    GeneralResponse::ResponseCode code, VPackSlice const& slice,
+    rest::ResponseCode code, VPackSlice const& slice,
     std::shared_ptr<TransactionContext> context) {
   setResponseCode(code);
   writeResult(slice, *(context->getVPackOptionsForDump()));
@@ -74,8 +74,7 @@ void RestBaseHandler::generateResult(
 /// @brief generates an error
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestBaseHandler::generateError(GeneralResponse::ResponseCode code,
-                                    int errorCode) {
+void RestBaseHandler::generateError(rest::ResponseCode code, int errorCode) {
   char const* message = TRI_errno_string(errorCode);
 
   if (message != nullptr) {
@@ -89,8 +88,8 @@ void RestBaseHandler::generateError(GeneralResponse::ResponseCode code,
 /// @brief generates an error
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestBaseHandler::generateError(GeneralResponse::ResponseCode code,
-                                    int errorCode, std::string const& message) {
+void RestBaseHandler::generateError(rest::ResponseCode code, int errorCode,
+                                    std::string const& message) {
   setResponseCode(code);
 
   VPackBuilder builder;
@@ -120,8 +119,7 @@ void RestBaseHandler::generateError(GeneralResponse::ResponseCode code,
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestBaseHandler::generateOOMError() {
-  generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
-                TRI_ERROR_OUT_OF_MEMORY);
+  generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -129,8 +127,7 @@ void RestBaseHandler::generateOOMError() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestBaseHandler::generateCanceled() {
-  return generateError(GeneralResponse::ResponseCode::GONE,
-                       TRI_ERROR_REQUEST_CANCELED);
+  return generateError(rest::ResponseCode::GONE, TRI_ERROR_REQUEST_CANCELED);
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -142,15 +139,14 @@ void RestBaseHandler::writeResult(arangodb::velocypack::Slice const& slice,
   try {
     TRI_ASSERT(options.escapeUnicode);
     if (_request != nullptr) {
-      _response->setContentType(meta::enumToEnum<GeneralResponse::ContentType>(
-          _request->contentTypeResponse()));
+      _response->setContentType(_request->contentTypeResponse());
     }
     _response->setPayload(slice, true, options);
   } catch (std::exception const& ex) {
-    generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
-                  TRI_ERROR_INTERNAL, ex.what());
+    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
+                  ex.what());
   } catch (...) {
-    generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
-                  TRI_ERROR_INTERNAL, "cannot generate output");
+    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
+                  "cannot generate output");
   }
 }

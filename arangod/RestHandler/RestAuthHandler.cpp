@@ -79,8 +79,8 @@ std::string RestAuthHandler::generateJwt(std::string const& username,
 
 RestHandler::status RestAuthHandler::execute() {
   auto const type = _request->requestType();
-  if (type != GeneralRequest::RequestType::POST) {
-    generateError(GeneralResponse::ResponseCode::METHOD_NOT_ALLOWED,
+  if (type != rest::RequestType::POST) {
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                   TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
     return status::DONE;
   }
@@ -126,14 +126,14 @@ RestHandler::status RestAuthHandler::execute() {
     return status::DONE;
   } else {
     // mop: rfc 2616 10.4.2 (if credentials wrong 401)
-    generateError(GeneralResponse::ResponseCode::UNAUTHORIZED,
+    generateError(rest::ResponseCode::UNAUTHORIZED,
                   TRI_ERROR_HTTP_UNAUTHORIZED, "Wrong credentials");
     return status::DONE;
   }
 }
 
 RestHandler::status RestAuthHandler::badRequest() {
-  generateError(GeneralResponse::ResponseCode::BAD,
+  generateError(rest::ResponseCode::BAD,
                 TRI_ERROR_HTTP_BAD_PARAMETER, "invalid JSON");
   return status::DONE;
 }

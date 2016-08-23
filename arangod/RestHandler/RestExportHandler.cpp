@@ -47,7 +47,7 @@ RestExportHandler::RestExportHandler(GeneralRequest* request,
 
 RestHandler::status RestExportHandler::execute() {
   if (ServerState::instance()->isCoordinator()) {
-    generateError(GeneralResponse::ResponseCode::NOT_IMPLEMENTED,
+    generateError(rest::ResponseCode::NOT_IMPLEMENTED,
                   TRI_ERROR_CLUSTER_UNSUPPORTED,
                   "'/_api/export' is not yet supported in a cluster");
     return status::DONE;
@@ -56,22 +56,22 @@ RestHandler::status RestExportHandler::execute() {
   // extract the sub-request type
   auto const type = _request->requestType();
 
-  if (type == GeneralRequest::RequestType::POST) {
+  if (type == rest::RequestType::POST) {
     createCursor();
     return status::DONE;
   }
 
-  if (type == GeneralRequest::RequestType::PUT) {
+  if (type == rest::RequestType::PUT) {
     modifyCursor();
     return status::DONE;
   }
 
-  if (type == GeneralRequest::RequestType::DELETE_REQ) {
+  if (type == rest::RequestType::DELETE_REQ) {
     deleteCursor();
     return status::DONE;
   }
 
-  generateError(GeneralResponse::ResponseCode::METHOD_NOT_ALLOWED,
+  generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                 TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
   return status::DONE;
 }
@@ -180,7 +180,7 @@ void RestExportHandler::createCursor() {
   std::vector<std::string> const& suffix = _request->suffix();
 
   if (suffix.size() != 0) {
-    generateError(GeneralResponse::ResponseCode::BAD,
+    generateError(rest::ResponseCode::BAD,
                   TRI_ERROR_HTTP_BAD_PARAMETER, "expecting POST /_api/export");
     return;
   }
@@ -190,7 +190,7 @@ void RestExportHandler::createCursor() {
   std::string const& name = _request->value("collection", found);
 
   if (!found || name.empty()) {
-    generateError(GeneralResponse::ResponseCode::BAD,
+    generateError(rest::ResponseCode::BAD,
                   TRI_ERROR_ARANGO_COLLECTION_PARAMETER_MISSING,
                   "'collection' is missing, expecting " + EXPORT_PATH +
                       "?collection=<identifier>");
@@ -211,7 +211,7 @@ void RestExportHandler::createCursor() {
 
     if (!body.isNone()) {
       if (!body.isObject()) {
-        generateError(GeneralResponse::ResponseCode::BAD,
+        generateError(rest::ResponseCode::BAD,
                       TRI_ERROR_QUERY_EMPTY);
         return;
       }
@@ -262,7 +262,7 @@ void RestExportHandler::createCursor() {
       bool count = arangodb::basics::VelocyPackHelper::getBooleanValue(
           options, "count", false);
 
-      setResponseCode(GeneralResponse::ResponseCode::CREATED);
+      setResponseCode(rest::ResponseCode::CREATED);
 
       // TODO needs to generalized
       auto* response = dynamic_cast<HttpResponse*>(_response.get());
@@ -272,7 +272,7 @@ void RestExportHandler::createCursor() {
       }
 
       // TODO: generalize to calling handler setPayload
-      response->setContentType(HttpResponse::ContentType::JSON);
+      response->setContentType(rest::ContentType::JSON);
 
       auto cursors = _vocbase->cursorRepository();
       TRI_ASSERT(cursors != nullptr);
@@ -300,7 +300,7 @@ void RestExportHandler::createCursor() {
     generateError(GeneralResponse::responseCode(ex.code()), ex.code(),
                   ex.what());
   } catch (...) {
-    generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
+    generateError(rest::ResponseCode::SERVER_ERROR,
                   TRI_ERROR_INTERNAL);
   }
 }
@@ -309,7 +309,7 @@ void RestExportHandler::modifyCursor() {
   std::vector<std::string> const& suffix = _request->suffix();
 
   if (suffix.size() != 1) {
-    generateError(GeneralResponse::ResponseCode::BAD,
+    generateError(rest::ResponseCode::BAD,
                   TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting PUT /_api/export/<cursor-id>");
     return;
@@ -337,7 +337,7 @@ void RestExportHandler::modifyCursor() {
   }
 
   try {
-    setResponseCode(GeneralResponse::ResponseCode::OK);
+    setResponseCode(rest::ResponseCode::OK);
 
     // TODO this needs to be generalized
     auto* response = dynamic_cast<HttpResponse*>(_response.get());
@@ -346,7 +346,7 @@ void RestExportHandler::modifyCursor() {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
     }
 
-    response->setContentType(HttpResponse::ContentType::JSON);
+    response->setContentType(rest::ContentType::JSON);
 
     response->body().appendChar('{');
     cursor->dump(response->body());
@@ -364,7 +364,7 @@ void RestExportHandler::modifyCursor() {
   } catch (...) {
     cursors->release(cursor);
 
-    generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
+    generateError(rest::ResponseCode::SERVER_ERROR,
                   TRI_ERROR_INTERNAL);
   }
 }
@@ -373,7 +373,7 @@ void RestExportHandler::deleteCursor() {
   std::vector<std::string> const& suffix = _request->suffix();
 
   if (suffix.size() != 1) {
-    generateError(GeneralResponse::ResponseCode::BAD,
+    generateError(rest::ResponseCode::BAD,
                   TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting DELETE /_api/export/<cursor-id>");
     return;
@@ -389,7 +389,7 @@ void RestExportHandler::deleteCursor() {
   bool found = cursors->remove(cursorId);
 
   if (!found) {
-    generateError(GeneralResponse::ResponseCode::NOT_FOUND,
+    generateError(rest::ResponseCode::NOT_FOUND,
                   TRI_ERROR_CURSOR_NOT_FOUND);
     return;
   }
@@ -400,8 +400,8 @@ void RestExportHandler::deleteCursor() {
   result.add("error", VPackValue(false));
   result.add(
       "code",
-      VPackValue(static_cast<int>(GeneralResponse::ResponseCode::ACCEPTED)));
+      VPackValue(static_cast<int>(rest::ResponseCode::ACCEPTED)));
   result.close();
 
-  generateResult(GeneralResponse::ResponseCode::ACCEPTED, result.slice());
+  generateResult(rest::ResponseCode::ACCEPTED, result.slice());
 }

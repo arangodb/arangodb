@@ -154,14 +154,14 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   void generateOk() {
-    setResponseCode(GeneralResponse::ResponseCode::NO_CONTENT);
+    setResponseCode(rest::ResponseCode::NO_CONTENT);
   }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief generates ok message with no body but with certain status code
   //////////////////////////////////////////////////////////////////////////////
 
-  void generateOk(GeneralResponse::ResponseCode code) { setResponseCode(code); }
+  void generateOk(rest::ResponseCode code) { setResponseCode(code); }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief generates message for a saved document
@@ -185,7 +185,7 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
 
   void generateDocumentNotFound(std::string const& /* collection name */,
                                 std::string const& /* document key */) {
-    generateError(GeneralResponse::ResponseCode::NOT_FOUND,
+    generateError(rest::ResponseCode::NOT_FOUND,
                   TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
   }
 

@@ -53,21 +53,21 @@ bool RestAgencyHandler::isDirect() const { return false; }
 inline RestHandler::status RestAgencyHandler::reportErrorEmptyRequest() {
   LOG_TOPIC(WARN, Logger::AGENCY)
       << "Empty request to public agency interface.";
-  generateError(GeneralResponse::ResponseCode::NOT_FOUND, 404);
+  generateError(rest::ResponseCode::NOT_FOUND, 404);
   return status::DONE;
 }
 
 inline RestHandler::status RestAgencyHandler::reportTooManySuffices() {
   LOG_TOPIC(WARN, Logger::AGENCY)
       << "Too many suffixes. Agency public interface takes one path.";
-  generateError(GeneralResponse::ResponseCode::NOT_FOUND, 404);
+  generateError(rest::ResponseCode::NOT_FOUND, 404);
   return status::DONE;
 }
 
 inline RestHandler::status RestAgencyHandler::reportUnknownMethod() {
   LOG_TOPIC(WARN, Logger::AGENCY) << "Public REST interface has no method "
                                   << _request->suffix()[0];
-  generateError(GeneralResponse::ResponseCode::NOT_FOUND, 405);
+  generateError(rest::ResponseCode::NOT_FOUND, 405);
   return status::DONE;
 }
 
@@ -76,17 +76,17 @@ void RestAgencyHandler::redirectRequest(std::string const& leaderId) {
     std::string url =
       Endpoint::uriForm(_agent->config().poolAt(leaderId)) +
         _request->requestPath();
-    setResponseCode(GeneralResponse::ResponseCode::TEMPORARY_REDIRECT);
+    setResponseCode(rest::ResponseCode::TEMPORARY_REDIRECT);
     _response->setHeaderNC(StaticStrings::Location, url);
   } catch (std::exception const& e) {
     LOG_TOPIC(WARN, Logger::AGENCY) << e.what() << " " << __FILE__ << __LINE__;
-    generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
+    generateError(rest::ResponseCode::SERVER_ERROR,
                   TRI_ERROR_INTERNAL, e.what());
   }
 }
 
 RestHandler::status RestAgencyHandler::handleStores() {
-  if (_request->requestType() == GeneralRequest::RequestType::GET) {
+  if (_request->requestType() == rest::RequestType::GET) {
     Builder body;
     body.openObject();
     body.add("spearhead", VPackValue(VPackValueType::Array));
@@ -96,16 +96,16 @@ RestHandler::status RestAgencyHandler::handleStores() {
     _agent->readDB().dumpToBuilder(body);
     body.close();
     body.close();
-    generateResult(GeneralResponse::ResponseCode::OK, body.slice());
+    generateResult(rest::ResponseCode::OK, body.slice());
   } else {
-    generateError(GeneralResponse::ResponseCode::BAD, 400);
+    generateError(rest::ResponseCode::BAD, 400);
   }
   return status::DONE;
 }
 
 RestHandler::status RestAgencyHandler::handleWrite() {
   arangodb::velocypack::Options options;  // TODO: User not wait.
-  if (_request->requestType() == GeneralRequest::RequestType::POST) {
+  if (_request->requestType() == rest::RequestType::POST) {
     query_t query;
 
     try {
@@ -116,7 +116,7 @@ RestHandler::status RestAgencyHandler::handleWrite() {
       body.openObject();
       body.add("message", VPackValue(e.what()));
       body.close();
-      generateResult(GeneralResponse::ResponseCode::BAD, body.slice());
+      generateResult(rest::ResponseCode::BAD, body.slice());
       return status::DONE;
     }
 
@@ -126,7 +126,7 @@ RestHandler::status RestAgencyHandler::handleWrite() {
       body.add("message",
                VPackValue("Excpecting array of arrays as body for writes"));
       body.close();
-      generateResult(GeneralResponse::ResponseCode::BAD, body.slice());
+      generateResult(rest::ResponseCode::BAD, body.slice());
       return status::DONE;
     }
 
@@ -136,7 +136,7 @@ RestHandler::status RestAgencyHandler::handleWrite() {
       body.add(
         "message", VPackValue("Empty request."));
       body.close();
-      generateResult(GeneralResponse::ResponseCode::BAD, body.slice());
+      generateResult(rest::ResponseCode::BAD, body.slice());
       return status::DONE;
     }
 
@@ -189,29 +189,29 @@ RestHandler::status RestAgencyHandler::handleWrite() {
       body.close();
 
       if (errors > 0) {  // Some/all requests failed
-        generateResult(GeneralResponse::ResponseCode::PRECONDITION_FAILED,
+        generateResult(rest::ResponseCode::PRECONDITION_FAILED,
                        body.slice());
       } else {  // All good
-        generateResult(GeneralResponse::ResponseCode::OK, body.slice());
+        generateResult(rest::ResponseCode::OK, body.slice());
       }
     } else {  // Redirect to leader
       redirectRequest(ret.redirect);
     }
   } else {  // Unknown method
-    generateError(GeneralResponse::ResponseCode::METHOD_NOT_ALLOWED, 405);
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, 405);
   }
   return status::DONE;
 }
 
 inline RestHandler::status RestAgencyHandler::handleRead() {
   arangodb::velocypack::Options options;
-  if (_request->requestType() == GeneralRequest::RequestType::POST) {
+  if (_request->requestType() == rest::RequestType::POST) {
     query_t query;
     try {
       query = _request->toVelocyPackBuilderPtr(&options);
     } catch (std::exception const& e) {
       LOG_TOPIC(WARN, Logger::AGENCY) << e.what() << " " << __FILE__ << __LINE__;
-      generateError(GeneralResponse::ResponseCode::BAD, 400);
+      generateError(rest::ResponseCode::BAD, 400);
       return status::DONE;
     }
 
@@ -223,17 +223,17 @@ inline RestHandler::status RestAgencyHandler::handleRead() {
 
     if (ret.accepted) {  // I am leading
       if (ret.success.size() == 1 && !ret.success.at(0)) {
-        generateResult(GeneralResponse::ResponseCode::I_AM_A_TEAPOT,
+        generateResult(rest::ResponseCode::I_AM_A_TEAPOT,
                        ret.result->slice());
       } else {
-        generateResult(GeneralResponse::ResponseCode::OK, ret.result->slice());
+        generateResult(rest::ResponseCode::OK, ret.result->slice());
       }
     } else {  // Redirect to leader
       redirectRequest(ret.redirect);
       return status::DONE;
     }
   } else {
-    generateError(GeneralResponse::ResponseCode::METHOD_NOT_ALLOWED, 405);
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, 405);
     return status::DONE;
   }
   return status::DONE;
@@ -247,7 +247,7 @@ RestHandler::status RestAgencyHandler::handleConfig() {
   body.add("lastCommitted", Value(_agent->lastCommitted()));
   body.add("configuration", _agent->config().toBuilder()->slice());
   body.close();
-  generateResult(GeneralResponse::ResponseCode::OK, body.slice());
+  generateResult(rest::ResponseCode::OK, body.slice());
   return status::DONE;
 }
 
@@ -262,12 +262,12 @@ RestHandler::status RestAgencyHandler::handleState() {
     body.close();
   }
   body.close();
-  generateResult(GeneralResponse::ResponseCode::OK, body.slice());
+  generateResult(rest::ResponseCode::OK, body.slice());
   return status::DONE;
 }
 
 inline RestHandler::status RestAgencyHandler::reportMethodNotAllowed() {
-  generateError(GeneralResponse::ResponseCode::METHOD_NOT_ALLOWED, 405);
+  generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, 405);
   return status::DONE;
 }
 
@@ -283,12 +283,12 @@ RestHandler::status RestAgencyHandler::execute() {
       } else if (_request->suffix()[0] == "read") {
         return handleRead();
       } else if (_request->suffix()[0] == "config") {
-        if (_request->requestType() != GeneralRequest::RequestType::GET) {
+        if (_request->requestType() != rest::RequestType::GET) {
           return reportMethodNotAllowed();
         }
         return handleConfig();
       } else if (_request->suffix()[0] == "state") {
-        if (_request->requestType() != GeneralRequest::RequestType::GET) {
+        if (_request->requestType() != rest::RequestType::GET) {
           return reportMethodNotAllowed();
         }
         return handleState();

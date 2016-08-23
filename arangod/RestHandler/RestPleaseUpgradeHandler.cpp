@@ -43,8 +43,8 @@ RestHandler::status RestPleaseUpgradeHandler::execute() {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   }
 
-  setResponseCode(GeneralResponse::ResponseCode::OK);
-  response->setContentType(GeneralResponse::ContentType::TEXT);
+  setResponseCode(rest::ResponseCode::OK);
+  response->setContentType(rest::ContentType::TEXT);
 
   auto& buffer = response->body();
   buffer.appendText("Database: ");

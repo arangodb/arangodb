@@ -47,7 +47,7 @@ RestQueryHandler::RestQueryHandler(GeneralRequest* request,
     : RestVocbaseBaseHandler(request, response) {}
 
 bool RestQueryHandler::isDirect() const {
-  return _request->requestType() != GeneralRequest::RequestType::POST;
+  return _request->requestType() != rest::RequestType::POST;
 }
 
 RestHandler::status RestQueryHandler::execute() {
@@ -57,16 +57,16 @@ RestHandler::status RestQueryHandler::execute() {
   // execute one of the CRUD methods
   try {
     switch (type) {
-      case GeneralRequest::RequestType::DELETE_REQ:
+      case rest::RequestType::DELETE_REQ:
         deleteQuery();
         break;
-      case GeneralRequest::RequestType::GET:
+      case rest::RequestType::GET:
         readQuery();
         break;
-      case GeneralRequest::RequestType::PUT:
+      case rest::RequestType::PUT:
         replaceProperties();
         break;
-      case GeneralRequest::RequestType::POST:
+      case rest::RequestType::POST:
         parseQuery();
         break;
       default:
@@ -95,7 +95,7 @@ bool RestQueryHandler::readQueryProperties() {
     VPackBuilder result;
     result.add(VPackValue(VPackValueType::Object));
     result.add("error", VPackValue(false));
-    result.add("code", VPackValue((int)GeneralResponse::ResponseCode::OK));
+    result.add("code", VPackValue((int)rest::ResponseCode::OK));
     result.add("enabled", VPackValue(queryList->enabled()));
     result.add("trackSlowQueries", VPackValue(queryList->trackSlowQueries()));
     result.add("maxSlowQueries", VPackValue(queryList->maxSlowQueries()));
@@ -105,7 +105,7 @@ bool RestQueryHandler::readQueryProperties() {
                VPackValue(queryList->maxQueryStringLength()));
     result.close();
 
-    generateResult(GeneralResponse::ResponseCode::OK, result.slice());
+    generateResult(rest::ResponseCode::OK, result.slice());
   } catch (Exception const& err) {
     handleError(err);
   } catch (std::exception const& ex) {
@@ -143,7 +143,7 @@ bool RestQueryHandler::readQuery(bool slow) {
     }
     result.close();
 
-    generateResult(GeneralResponse::ResponseCode::OK, result.slice());
+    generateResult(rest::ResponseCode::OK, result.slice());
   } catch (Exception const& err) {
     handleError(err);
   } catch (std::exception const& ex) {
@@ -166,7 +166,7 @@ bool RestQueryHandler::readQuery() {
   const auto& suffix = _request->suffix();
 
   if (suffix.size() != 1) {
-    generateError(GeneralResponse::ResponseCode::BAD,
+    generateError(rest::ResponseCode::BAD,
                   TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting GET /_api/query/<type>");
     return true;
@@ -182,7 +182,7 @@ bool RestQueryHandler::readQuery() {
     return readQueryProperties();
   }
 
-  generateError(GeneralResponse::ResponseCode::NOT_FOUND,
+  generateError(rest::ResponseCode::NOT_FOUND,
                 TRI_ERROR_HTTP_NOT_FOUND,
                 "unknown type '" + name +
                     "', expecting 'slow', 'current', or 'properties'");
@@ -196,10 +196,10 @@ bool RestQueryHandler::deleteQuerySlow() {
   VPackBuilder result;
   result.add(VPackValue(VPackValueType::Object));
   result.add("error", VPackValue(false));
-  result.add("code", VPackValue((int)GeneralResponse::ResponseCode::OK));
+  result.add("code", VPackValue((int)rest::ResponseCode::OK));
   result.close();
 
-  generateResult(GeneralResponse::ResponseCode::OK, result.slice());
+  generateResult(rest::ResponseCode::OK, result.slice());
 
   return true;
 }
@@ -215,12 +215,12 @@ bool RestQueryHandler::deleteQuery(std::string const& name) {
     VPackBuilder result;
     result.add(VPackValue(VPackValueType::Object));
     result.add("error", VPackValue(false));
-    result.add("code", VPackValue((int)GeneralResponse::ResponseCode::OK));
+    result.add("code", VPackValue((int)rest::ResponseCode::OK));
     result.close();
 
-    generateResult(GeneralResponse::ResponseCode::OK, result.slice());
+    generateResult(rest::ResponseCode::OK, result.slice());
   } else {
-    generateError(GeneralResponse::ResponseCode::BAD, res,
+    generateError(rest::ResponseCode::BAD, res,
                   "cannot kill query '" + name + "'");
   }
 
@@ -235,7 +235,7 @@ bool RestQueryHandler::deleteQuery() {
   const auto& suffix = _request->suffix();
 
   if (suffix.size() != 1) {
-    generateError(GeneralResponse::ResponseCode::BAD,
+    generateError(rest::ResponseCode::BAD,
                   TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting DELETE /_api/query/<id> or /_api/query/slow");
     return true;
@@ -253,7 +253,7 @@ bool RestQueryHandler::replaceProperties() {
   const auto& suffix = _request->suffix();
 
   if (suffix.size() != 1 || suffix[0] != "properties") {
-    generateError(GeneralResponse::ResponseCode::BAD,
+    generateError(rest::ResponseCode::BAD,
                   TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting PUT /_api/query/properties");
     return true;
@@ -269,7 +269,7 @@ bool RestQueryHandler::replaceProperties() {
 
   VPackSlice body = parsedBody.get()->slice();
   if (!body.isObject()) {
-    generateError(GeneralResponse::ResponseCode::BAD,
+    generateError(rest::ResponseCode::BAD,
                   TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting a JSON object as body");
   };
@@ -334,7 +334,7 @@ bool RestQueryHandler::parseQuery() {
   const auto& suffix = _request->suffix();
 
   if (!suffix.empty()) {
-    generateError(GeneralResponse::ResponseCode::BAD,
+    generateError(rest::ResponseCode::BAD,
                   TRI_ERROR_HTTP_BAD_PARAMETER, "expecting POST /_api/query");
     return true;
   }
@@ -350,7 +350,7 @@ bool RestQueryHandler::parseQuery() {
   VPackSlice body = parsedBody.get()->slice();
 
   if (!body.isObject()) {
-    generateError(GeneralResponse::ResponseCode::BAD,
+    generateError(rest::ResponseCode::BAD,
                   TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting a JSON object as body");
   };
@@ -365,7 +365,7 @@ bool RestQueryHandler::parseQuery() {
     auto parseResult = query.parse();
 
     if (parseResult.code != TRI_ERROR_NO_ERROR) {
-      generateError(GeneralResponse::ResponseCode::BAD, parseResult.code,
+      generateError(rest::ResponseCode::BAD, parseResult.code,
                     parseResult.details);
       return true;
     }
@@ -374,7 +374,7 @@ bool RestQueryHandler::parseQuery() {
     {
       VPackObjectBuilder b(&result);
       result.add("error", VPackValue(false));
-      result.add("code", VPackValue((int)GeneralResponse::ResponseCode::OK));
+      result.add("code", VPackValue((int)rest::ResponseCode::OK));
       result.add("parsed", VPackValue(true));
 
       result.add("collections", VPackValue(VPackValueType::Array));
@@ -396,7 +396,7 @@ bool RestQueryHandler::parseQuery() {
       }
     }
 
-    generateResult(GeneralResponse::ResponseCode::OK, result.slice());
+    generateResult(rest::ResponseCode::OK, result.slice());
   } catch (Exception const& err) {
     handleError(err);
   } catch (std::exception const& ex) {
