@@ -45,8 +45,8 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestImportHandler::RestImportHandler(GeneralRequest *request,
-                                     GeneralResponse *response)
+RestImportHandler::RestImportHandler(GeneralRequest* request,
+                                     GeneralResponse* response)
     : RestVocbaseBaseHandler(request, response),
       _onDuplicateAction(DUPLICATE_ERROR) {}
 
@@ -55,7 +55,7 @@ RestHandler::status RestImportHandler::execute() {
   _onDuplicateAction = DUPLICATE_ERROR;
 
   bool found;
-  std::string const &duplicateType = _request->value("onDuplicate", found);
+  std::string const& duplicateType = _request->value("onDuplicate", found);
 
   if (found) {
     if (duplicateType == "update") {
@@ -71,39 +71,40 @@ RestHandler::status RestImportHandler::execute() {
   auto const type = _request->requestType();
 
   switch (type) {
-  case GeneralRequest::RequestType::POST: {
-    std::string const &from = _request->value("fromPrefix", found);
-    if (found) {
-      _fromPrefix = from;
-      if (!_fromPrefix.empty() && _fromPrefix[_fromPrefix.size() - 1] != '/') {
-        _fromPrefix.push_back('/');
+    case GeneralRequest::RequestType::POST: {
+      std::string const& from = _request->value("fromPrefix", found);
+      if (found) {
+        _fromPrefix = from;
+        if (!_fromPrefix.empty() &&
+            _fromPrefix[_fromPrefix.size() - 1] != '/') {
+          _fromPrefix.push_back('/');
+        }
       }
-    }
 
-    std::string const &to = _request->value("toPrefix", found);
-    if (found) {
-      _toPrefix = to;
-      if (!_toPrefix.empty() && _toPrefix[_toPrefix.size() - 1] != '/') {
-        _toPrefix.push_back('/');
+      std::string const& to = _request->value("toPrefix", found);
+      if (found) {
+        _toPrefix = to;
+        if (!_toPrefix.empty() && _toPrefix[_toPrefix.size() - 1] != '/') {
+          _toPrefix.push_back('/');
+        }
       }
+
+      // extract the import type
+      std::string const& documentType = _request->value("type", found);
+
+      if (found && (documentType == "documents" || documentType == "array" ||
+                    documentType == "list" || documentType == "auto")) {
+        createFromJson(documentType);
+      } else {
+        // CSV
+        createFromKeyValueList();
+      }
+      break;
     }
 
-    // extract the import type
-    std::string const &documentType = _request->value("type", found);
-
-    if (found && (documentType == "documents" || documentType == "array" ||
-                  documentType == "list" || documentType == "auto")) {
-      createFromJson(documentType);
-    } else {
-      // CSV
-      createFromKeyValueList();
-    }
-    break;
-  }
-
-  default:
-    generateNotImplemented("ILLEGAL " + IMPORT_PATH);
-    break;
+    default:
+      generateNotImplemented("ILLEGAL " + IMPORT_PATH);
+      break;
   }
 
   // this handler is done
@@ -122,8 +123,8 @@ std::string RestImportHandler::positionize(size_t i) const {
 /// @brief register an error
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestImportHandler::registerError(RestImportResult &result,
-                                      std::string const &errorMsg) {
+void RestImportHandler::registerError(RestImportResult& result,
+                                      std::string const& errorMsg) {
   ++result._numErrors;
 
   result._errors.push_back(errorMsg);
@@ -134,7 +135,7 @@ void RestImportHandler::registerError(RestImportResult &result,
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string RestImportHandler::buildParseError(size_t i,
-                                               char const *lineStart) {
+                                               char const* lineStart) {
   if (lineStart != nullptr) {
     std::string part(lineStart);
     if (part.size() > 255) {
@@ -157,10 +158,10 @@ std::string RestImportHandler::buildParseError(size_t i,
 /// @brief process a single VelocyPack document
 ////////////////////////////////////////////////////////////////////////////////
 
-int RestImportHandler::handleSingleDocument(SingleCollectionTransaction &trx,
-                                            RestImportResult &result,
-                                            VPackBuilder &babies,
-                                            char const *lineStart,
+int RestImportHandler::handleSingleDocument(SingleCollectionTransaction& trx,
+                                            RestImportResult& result,
+                                            VPackBuilder& babies,
+                                            char const* lineStart,
                                             VPackSlice slice,
                                             bool isEdgeCollection, size_t i) {
   if (!slice.isObject()) {
@@ -231,7 +232,7 @@ int RestImportHandler::handleSingleDocument(SingleCollectionTransaction &trx,
           slice, StaticStrings::FromString);
       arangodb::basics::VelocyPackHelper::checkAndGetStringValue(
           slice, StaticStrings::ToString);
-    } catch (arangodb::basics::Exception const &) {
+    } catch (arangodb::basics::Exception const&) {
       std::string part = VPackDumper::toString(slice);
       if (part.size() > 255) {
         // UTF-8 chars in string will be escaped so we can truncate it at any
@@ -256,14 +257,14 @@ int RestImportHandler::handleSingleDocument(SingleCollectionTransaction &trx,
 /// @brief was docuBlock JSF_import_json
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestImportHandler::createFromJson(std::string const &type) {
+bool RestImportHandler::createFromJson(std::string const& type) {
   if (_request == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   }
 
   RestImportResult result;
 
-  std::vector<std::string> const &suffix = _request->suffix();
+  std::vector<std::string> const& suffix = _request->suffix();
 
   if (suffix.size() != 0) {
     generateError(GeneralResponse::ResponseCode::BAD,
@@ -280,7 +281,7 @@ bool RestImportHandler::createFromJson(std::string const &type) {
 
   // extract the collection name
   bool found;
-  std::string const &collectionName = _request->value("collection", found);
+  std::string const& collectionName = _request->value("collection", found);
 
   if (!found || collectionName.empty()) {
     generateError(GeneralResponse::ResponseCode::BAD,
@@ -308,14 +309,16 @@ bool RestImportHandler::createFromJson(std::string const &type) {
     // auto detect import type by peeking at first non-whitespace character
 
     // http required here
-    HttpRequest *req = dynamic_cast<HttpRequest *>(_request);
+    HttpRequest* req = dynamic_cast<HttpRequest*>(_request.get());
+
     if (req == nullptr) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
     }
-    std::string const &body = req->body();
 
-    char const *ptr = body.c_str();
-    char const *end = ptr + body.size();
+    std::string const& body = req->body();
+
+    char const* ptr = body.c_str();
+    char const* end = ptr + body.size();
 
     while (ptr < end) {
       char const c = *ptr;
@@ -366,15 +369,16 @@ bool RestImportHandler::createFromJson(std::string const &type) {
 
   if (linewise) {
     // http required here
-    HttpRequest *req = dynamic_cast<HttpRequest *>(_request);
+    HttpRequest* req = dynamic_cast<HttpRequest*>(_request.get());
+
     if (req == nullptr) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
     }
 
     // each line is a separate JSON document
-    std::string const &body = req->body();
-    char const *ptr = body.c_str();
-    char const *end = ptr + body.size();
+    std::string const& body = req->body();
+    char const* ptr = body.c_str();
+    char const* end = ptr + body.size();
     size_t i = 0;
 
     while (ptr < end) {
@@ -394,8 +398,8 @@ bool RestImportHandler::createFromJson(std::string const &type) {
       }
 
       // now find end of line
-      char const *pos = static_cast<char const *>(memchr(ptr, '\n', end - ptr));
-      char const *oldPtr = nullptr;
+      char const* pos = static_cast<char const*>(memchr(ptr, '\n', end - ptr));
+      char const* oldPtr = nullptr;
 
       std::shared_ptr<VPackBuilder> builder;
 
@@ -410,7 +414,7 @@ bool RestImportHandler::createFromJson(std::string const &type) {
 
       if (pos != nullptr) {
         // non-empty line
-        *(const_cast<char *>(pos)) = '\0';
+        *(const_cast<char*>(pos)) = '\0';
         TRI_ASSERT(ptr != nullptr);
         oldPtr = ptr;
         builder = parseVelocyPackLine(ptr, pos, success);
@@ -452,13 +456,15 @@ bool RestImportHandler::createFromJson(std::string const &type) {
   else {
     // the entire request body is one JSON document
     std::shared_ptr<VPackBuilder> parsedDocuments;
-    HttpRequest *req = dynamic_cast<HttpRequest *>(_request);
+    HttpRequest* req = dynamic_cast<HttpRequest*>(_request.get());
+
     if (req == nullptr) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
     }
+
     try {
       parsedDocuments = VPackParser::fromJson(req->body());
-    } catch (VPackException const &) {
+    } catch (VPackException const&) {
       generateError(GeneralResponse::ResponseCode::BAD,
                     TRI_ERROR_HTTP_BAD_PARAMETER,
                     "expecting a JSON array in the request");
@@ -522,7 +528,7 @@ bool RestImportHandler::createFromKeyValueList() {
 
   RestImportResult result;
 
-  std::vector<std::string> const &suffix = _request->suffix();
+  std::vector<std::string> const& suffix = _request->suffix();
 
   if (suffix.size() != 0) {
     generateError(GeneralResponse::ResponseCode::BAD,
@@ -539,7 +545,7 @@ bool RestImportHandler::createFromKeyValueList() {
 
   // extract the collection name
   bool found;
-  std::string const &collectionName = _request->value("collection", found);
+  std::string const& collectionName = _request->value("collection", found);
 
   if (!found || collectionName.empty()) {
     generateError(GeneralResponse::ResponseCode::BAD,
@@ -551,23 +557,25 @@ bool RestImportHandler::createFromKeyValueList() {
 
   // read line number (optional)
   int64_t lineNumber = 0;
-  std::string const &lineNumValue = _request->value("line", found);
+  std::string const& lineNumValue = _request->value("line", found);
 
   if (found) {
     lineNumber = StringUtils::int64(lineNumValue);
   }
 
-  HttpRequest* httpRequest = dynamic_cast<HttpRequest*>(_request);
-  if(httpRequest == nullptr){
-     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+  HttpRequest* httpRequest = dynamic_cast<HttpRequest*>(_request.get());
+
+  if (httpRequest == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   }
-  std::string const &bodyStr = httpRequest->body();
-  char const *current = bodyStr.c_str();
-  char const *bodyEnd = current + bodyStr.size();
+
+  std::string const& bodyStr = httpRequest->body();
+  char const* current = bodyStr.c_str();
+  char const* bodyEnd = current + bodyStr.size();
 
   // process header
-  char const *next =
-      static_cast<char const *>(memchr(current, '\n', bodyEnd - current));
+  char const* next =
+      static_cast<char const*>(memchr(current, '\n', bodyEnd - current));
 
   if (next == nullptr) {
     generateError(GeneralResponse::ResponseCode::BAD,
@@ -576,8 +584,8 @@ bool RestImportHandler::createFromKeyValueList() {
     return false;
   }
 
-  char const *lineStart = current;
-  char const *lineEnd = next;
+  char const* lineStart = current;
+  char const* lineEnd = next;
 
   // trim line
   while (lineStart < bodyEnd &&
@@ -593,7 +601,7 @@ bool RestImportHandler::createFromKeyValueList() {
     --lineEnd;
   }
 
-  *(const_cast<char *>(lineEnd)) = '\0';
+  *(const_cast<char*>(lineEnd)) = '\0';
   bool success = false;
   std::shared_ptr<VPackBuilder> parsedKeys;
   try {
@@ -650,10 +658,10 @@ bool RestImportHandler::createFromKeyValueList() {
   while (current != nullptr && current < bodyEnd) {
     i++;
 
-    next = static_cast<char const *>(memchr(current, '\n', bodyEnd - current));
+    next = static_cast<char const*>(memchr(current, '\n', bodyEnd - current));
 
-    char const *lineStart = current;
-    char const *lineEnd = next;
+    char const* lineStart = current;
+    char const* lineEnd = next;
 
     if (next == nullptr) {
       // reached the end
@@ -662,7 +670,7 @@ bool RestImportHandler::createFromKeyValueList() {
     } else {
       // got more to read
       current = next + 1;
-      *(const_cast<char *>(lineEnd)) = '\0';
+      *(const_cast<char*>(lineEnd)) = '\0';
     }
 
     // trim line
@@ -740,13 +748,13 @@ bool RestImportHandler::createFromKeyValueList() {
 /// @brief perform the actual import (insert/update/replace) operations
 ////////////////////////////////////////////////////////////////////////////////
 
-int RestImportHandler::performImport(SingleCollectionTransaction &trx,
-                                     RestImportResult &result,
-                                     std::string const &collectionName,
-                                     VPackBuilder const &babies, bool complete,
-                                     OperationOptions const &opOptions) {
-  auto makeError = [&](size_t i, int res, VPackSlice const &slice,
-                       RestImportResult &result) {
+int RestImportHandler::performImport(SingleCollectionTransaction& trx,
+                                     RestImportResult& result,
+                                     std::string const& collectionName,
+                                     VPackBuilder const& babies, bool complete,
+                                     OperationOptions const& opOptions) {
+  auto makeError = [&](size_t i, int res, VPackSlice const& slice,
+                       RestImportResult& result) {
     VPackOptions options(VPackOptions::Defaults);
     options.escapeUnicode = false;
     std::string part = VPackDumper::toString(slice, &options);
@@ -774,7 +782,7 @@ int RestImportHandler::performImport(SingleCollectionTransaction &trx,
     updateReplace.openArray();
     size_t pos = 0;
 
-    for (auto const &it : VPackArrayIterator(resultSlice)) {
+    for (auto const& it : VPackArrayIterator(resultSlice)) {
       if (!it.hasKey("error") || !it.get("error").getBool()) {
         ++result._numCreated;
       } else {
@@ -831,7 +839,7 @@ int RestImportHandler::performImport(SingleCollectionTransaction &trx,
 
       VPackSlice resultSlice = opResult.slice();
       size_t pos = 0;
-      for (auto const &it : VPackArrayIterator(resultSlice)) {
+      for (auto const& it : VPackArrayIterator(resultSlice)) {
         if (!it.hasKey("error") || !it.get("error").getBool()) {
           ++result._numUpdated;
         } else {
@@ -856,8 +864,8 @@ int RestImportHandler::performImport(SingleCollectionTransaction &trx,
 /// @brief create response for number of documents created / failed
 ////////////////////////////////////////////////////////////////////////////////
 
-void
-RestImportHandler::generateDocumentsCreated(RestImportResult const &result) {
+void RestImportHandler::generateDocumentsCreated(
+    RestImportResult const& result) {
   setResponseCode(GeneralResponse::ResponseCode::CREATED);
 
   try {
@@ -871,13 +879,13 @@ RestImportHandler::generateDocumentsCreated(RestImportResult const &result) {
     json.add("ignored", VPackValue(result._numIgnored));
 
     bool found;
-    std::string const &detailsStr = _request->value("details", found);
+    std::string const& detailsStr = _request->value("details", found);
 
     // include failure details?
     if (found && StringUtils::boolean(detailsStr)) {
       json.add("details", VPackValue(VPackValueType::Array));
 
-      for (auto const &elem : result._errors) {
+      for (auto const& elem : result._errors) {
         json.add(VPackValue(elem));
       }
 
@@ -896,12 +904,12 @@ RestImportHandler::generateDocumentsCreated(RestImportResult const &result) {
 /// @brief parse a single document line
 ////////////////////////////////////////////////////////////////////////////////
 
-std::shared_ptr<VPackBuilder>
-RestImportHandler::parseVelocyPackLine(std::string const &line, bool &success) {
+std::shared_ptr<VPackBuilder> RestImportHandler::parseVelocyPackLine(
+    std::string const& line, bool& success) {
   try {
     success = true;
     return VPackParser::fromJson(line);
-  } catch (VPackException const &) {
+  } catch (VPackException const&) {
     success = false;
     VPackParser p;
     return p.steal();
@@ -912,13 +920,12 @@ RestImportHandler::parseVelocyPackLine(std::string const &line, bool &success) {
 /// @brief parse a single document line
 ////////////////////////////////////////////////////////////////////////////////
 
-std::shared_ptr<VPackBuilder>
-RestImportHandler::parseVelocyPackLine(char const *start, char const *end,
-                                       bool &success) {
+std::shared_ptr<VPackBuilder> RestImportHandler::parseVelocyPackLine(
+    char const* start, char const* end, bool& success) {
   try {
     std::string tmp(start, end);
     return parseVelocyPackLine(tmp, success);
-  } catch (std::exception const &) {
+  } catch (std::exception const&) {
     // The line is invalid and could not be transformed into a string
     success = false;
     VPackParser p;
@@ -931,7 +938,7 @@ RestImportHandler::parseVelocyPackLine(char const *start, char const *end,
 ////////////////////////////////////////////////////////////////////////////////
 
 std::shared_ptr<VPackBuilder> RestImportHandler::createVelocyPackObject(
-    VPackSlice const &keys, VPackSlice const &values, std::string &errorMsg,
+    VPackSlice const& keys, VPackSlice const& values, std::string& errorMsg,
     size_t lineNumber) {
   if (!values.isArray()) {
     errorMsg = positionize(lineNumber) + "no valid JSON array data";
@@ -964,7 +971,7 @@ std::shared_ptr<VPackBuilder> RestImportHandler::createVelocyPackObject(
     result->close();
 
     return result;
-  } catch (std::bad_alloc const &) {
+  } catch (std::bad_alloc const&) {
     LOG(ERR) << "out of memory";
     throw;
   }
@@ -974,7 +981,7 @@ std::shared_ptr<VPackBuilder> RestImportHandler::createVelocyPackObject(
 /// @brief validate keys
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestImportHandler::checkKeys(VPackSlice const &keys) const {
+bool RestImportHandler::checkKeys(VPackSlice const& keys) const {
   if (!keys.isArray()) {
     return false;
   }
@@ -985,7 +992,7 @@ bool RestImportHandler::checkKeys(VPackSlice const &keys) const {
     return false;
   }
 
-  for (VPackSlice const &key : VPackArrayIterator(keys)) {
+  for (VPackSlice const& key : VPackArrayIterator(keys)) {
     if (!key.isString()) {
       return false;
     }

@@ -479,8 +479,8 @@ int Syncer::createCollection(VPackSlice const& slice, arangodb::LogicalCollectio
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
 
-  TRI_col_type_e const type = VelocyPackHelper::getNumericValue<TRI_col_type_e>(
-      slice, "type", TRI_COL_TYPE_DOCUMENT);
+  TRI_col_type_e const type = static_cast<TRI_col_type_e>(VelocyPackHelper::getNumericValue<int>(
+      slice, "type", TRI_COL_TYPE_DOCUMENT));
 
   arangodb::LogicalCollection* col = getCollectionByIdOrName(cid, name);
 
@@ -552,7 +552,7 @@ int Syncer::createIndex(VPackSlice const& slice) {
   }
 
   try {
-    CollectionGuard guard(_vocbase, cid, cname);
+    CollectionGuard guard(_vocbase, cid, std::string(cname));
 
     if (guard.collection() == nullptr) {
       return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
@@ -610,7 +610,7 @@ int Syncer::dropIndex(arangodb::velocypack::Slice const& slice) {
   }
 
   try {
-    CollectionGuard guard(_vocbase, cid, cname);
+    CollectionGuard guard(_vocbase, cid, std::string(cname));
 
     if (guard.collection() == nullptr) {
       return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;

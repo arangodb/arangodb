@@ -83,8 +83,9 @@ bool RestHandlerFactory::setRequestContext(GeneralRequest* request) {
 /// @brief creates a new handler
 ////////////////////////////////////////////////////////////////////////////////
 
-RestHandler* RestHandlerFactory::createHandler(GeneralRequest* request,
-                                               GeneralResponse* response) {
+RestHandler* RestHandlerFactory::createHandler(
+    std::unique_ptr<GeneralRequest> request,
+    std::unique_ptr<GeneralResponse> response) {
   std::string const& path = request->requestPath();
 
   // In the bootstrap phase, we would like that coordinators answer the
@@ -96,7 +97,7 @@ RestHandler* RestHandlerFactory::createHandler(GeneralRequest* request,
          path.find("/_api/agency/agency-callbacks") == std::string::npos &&
          path.find("/_api/aql") == std::string::npos)) {
       LOG(DEBUG) << "Maintenance mode: refused path: " << path;
-      return new MaintenanceHandler(request, response);
+      return new MaintenanceHandler(request.release(), response.release());
     }
   }
 
@@ -176,7 +177,7 @@ RestHandler* RestHandlerFactory::createHandler(GeneralRequest* request,
   // no match
   if (i == ii.end()) {
     if (_notFound != nullptr) {
-      return _notFound(request, response, nullptr);
+      return _notFound(request.release(), response.release(), nullptr);
     }
 
     LOG(TRACE) << "no not-found handler, giving up";
@@ -184,7 +185,8 @@ RestHandler* RestHandlerFactory::createHandler(GeneralRequest* request,
   }
 
   LOG(TRACE) << "found handler for path '" << *modifiedPath << "'";
-  return i->second.first(request, response, i->second.second);
+  return i->second.first(request.release(), response.release(),
+                         i->second.second);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -54,7 +54,7 @@ RestHandler::status WorkMonitorHandler::execute() {
       return status::DONE;
     }
 
-    WorkMonitor::requestWorkOverview(_taskId);
+    WorkMonitor::requestWorkOverview(this);
     return status::ASYNC;
   }
 

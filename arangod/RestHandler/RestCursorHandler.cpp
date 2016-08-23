@@ -139,7 +139,7 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
     setResponseCode(GeneralResponse::ResponseCode::CREATED);
 
     // TODO needs to generalized
-    auto* response = dynamic_cast<HttpResponse*>(_response);
+    auto* response = dynamic_cast<HttpResponse*>(_response.get());
 
     if (response == nullptr) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
@@ -202,14 +202,15 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
       }
 
       // TODO generalize
-      auto* httpResponse = dynamic_cast<HttpResponse*>(_response);
+      auto* httpResponse = dynamic_cast<HttpResponse*>(_response.get());
 
       if (httpResponse == nullptr) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
       }
 
       arangodb::basics::VelocyPackDumper dumper(
-          &(httpResponse->body()), queryResult.context->getVPackOptionsForDump());
+          &(httpResponse->body()),
+          queryResult.context->getVPackOptionsForDump());
       dumper.dumpValue(result.slice());
       return;
     }
@@ -479,7 +480,7 @@ void RestCursorHandler::modifyCursor() {
     setResponseCode(GeneralResponse::ResponseCode::OK);
 
     // TODO needs to generalized
-    auto* response = dynamic_cast<HttpResponse*>(_response);
+    auto* response = dynamic_cast<HttpResponse*>(_response.get());
 
     if (response == nullptr) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);

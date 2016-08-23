@@ -65,13 +65,15 @@ class RestHandlerFactory {
   bool setRequestContext(GeneralRequest*);
 
   // creates a new handler
-  RestHandler* createHandler(GeneralRequest*, GeneralResponse*);
+  RestHandler* createHandler(std::unique_ptr<GeneralRequest>,
+                             std::unique_ptr<GeneralResponse>);
 
   // adds a path and constructor to the factory
   void addHandler(std::string const& path, create_fptr, void* data = nullptr);
 
   // adds a prefix path and constructor to the factory
-  void addPrefixHandler(std::string const& path, create_fptr, void* data = nullptr);
+  void addPrefixHandler(std::string const& path, create_fptr,
+                        void* data = nullptr);
 
   // adds a path and constructor to the factory
   void addNotFoundHandler(create_fptr);

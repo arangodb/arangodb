@@ -48,13 +48,16 @@ RestBatchHandler::~RestBatchHandler() {}
 ////////////////////////////////////////////////////////////////////////////////
 
 RestHandler::status RestBatchHandler::execute() {
-  HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(_response);
+  HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(_response.get());
+
   if (httpResponse == nullptr) {
     std::cout << "please fix this for vpack" << std::endl;
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   }
 
-  HttpRequest const* httpRequest = dynamic_cast<HttpRequest const*>(_request);
+  HttpRequest const* httpRequest =
+      dynamic_cast<HttpRequest const*>(_request.get());
+
   if (httpRequest == nullptr) {
     std::cout << "please fix this for vpack" << std::endl;
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
@@ -148,8 +151,9 @@ RestHandler::status RestBatchHandler::execute() {
 
     // set up request object for the part
     LOG(TRACE) << "part header is: " << std::string(headerStart, headerLength);
-    HttpRequest* request = new HttpRequest(_request->connectionInfo(),
-                                           headerStart, headerLength, false);
+
+    std::unique_ptr<HttpRequest> request(new HttpRequest(
+        _request->connectionInfo(), headerStart, headerLength, false));
 
     // we do not have a client task id here
     request->setClientTaskId(0);
@@ -177,25 +181,22 @@ RestHandler::status RestBatchHandler::execute() {
     {
       std::unique_ptr<HttpResponse> response(
           new HttpResponse(GeneralResponse::ResponseCode::SERVER_ERROR));
+
       handler = GeneralServerFeature::HANDLER_FACTORY->createHandler(
-          request, response.get());
+          std::move(request), std::move(response));
 
       if (handler == nullptr) {
-        delete request;
-
         generateError(GeneralResponse::ResponseCode::BAD, TRI_ERROR_INTERNAL,
                       "could not create handler for batch part processing");
 
         return status::FAILED;
       }
-
-      response.release();
     }
 
     // start to work for this handler
     {
       HandlerWorkStack work(handler);
-      RestHandler::status result = handler->executeFull();
+      RestHandler::status result = work.handler()->executeFull();
 
       if (result == status::FAILED) {
         generateError(GeneralResponse::ResponseCode::BAD, TRI_ERROR_INTERNAL,
@@ -268,7 +269,8 @@ RestHandler::status RestBatchHandler::execute() {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestBatchHandler::getBoundaryBody(std::string* result) {
-  HttpRequest const* req = dynamic_cast<HttpRequest const*>(_request);
+  HttpRequest const* req = dynamic_cast<HttpRequest const*>(_request.get());
+
   if (req == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   }

@@ -377,9 +377,6 @@ bool HttpsCommTask::trySSLWrite() {
   }
 
   if (len == 0) {
-    delete _writeBuffer;
-    _writeBuffer = nullptr;
-
     completedWriteBuffer();
   } else if (nr > 0) {
     // nr might have been negative here

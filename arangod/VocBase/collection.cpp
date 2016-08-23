@@ -1287,7 +1287,7 @@ VocbaseCollectionInfo::VocbaseCollectionInfo(TRI_vocbase_t* vocbase,
       _waitForSync(false) {
 
   auto database = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
-  _maximalSize = database->maximalJournalSize();
+  _maximalSize = static_cast<TRI_voc_size_t>(database->maximalJournalSize());
   _waitForSync = database->waitForSync();
 
   size_t pageSize = PageSizeFeature::getPageSize();
@@ -1333,7 +1333,7 @@ VocbaseCollectionInfo::VocbaseCollectionInfo(TRI_vocbase_t* vocbase,
       _waitForSync(false) {
   
   auto database = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
-  _maximalSize = database->maximalJournalSize();
+  _maximalSize = static_cast<TRI_voc_size_t>(database->maximalJournalSize());
   _waitForSync = database->waitForSync();
 
   memset(_name, 0, sizeof(_name));
@@ -1566,11 +1566,11 @@ void VocbaseCollectionInfo::update(VPackSlice const& slice, bool preferDefaults,
       _waitForSync = arangodb::basics::VelocyPackHelper::getBooleanValue(
           slice, "waitForSync", database->waitForSync());
       if (slice.hasKey("journalSize")) {
-        _maximalSize = arangodb::basics::VelocyPackHelper::getNumericValue<int>(
-            slice, "journalSize", database->maximalJournalSize());
+        _maximalSize = arangodb::basics::VelocyPackHelper::getNumericValue<TRI_voc_size_t>(
+            slice, "journalSize", static_cast<TRI_voc_size_t>(database->maximalJournalSize()));
       } else {
-        _maximalSize = arangodb::basics::VelocyPackHelper::getNumericValue<int>(
-            slice, "maximalSize", database->maximalJournalSize());
+        _maximalSize = arangodb::basics::VelocyPackHelper::getNumericValue<TRI_voc_size_t>(
+            slice, "maximalSize", static_cast<TRI_voc_size_t>(database->maximalJournalSize()));
       }
     } else {
       _doCompact = arangodb::basics::VelocyPackHelper::getBooleanValue(

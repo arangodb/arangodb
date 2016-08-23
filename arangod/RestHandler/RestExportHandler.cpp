@@ -265,7 +265,7 @@ void RestExportHandler::createCursor() {
       setResponseCode(GeneralResponse::ResponseCode::CREATED);
 
       // TODO needs to generalized
-      auto* response = dynamic_cast<HttpResponse*>(_response);
+      auto* response = dynamic_cast<HttpResponse*>(_response.get());
 
       if (response == nullptr) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
@@ -340,7 +340,7 @@ void RestExportHandler::modifyCursor() {
     setResponseCode(GeneralResponse::ResponseCode::OK);
 
     // TODO this needs to be generalized
-    auto* response = dynamic_cast<HttpResponse*>(_response);
+    auto* response = dynamic_cast<HttpResponse*>(_response.get());
 
     if (response == nullptr) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
@@ -398,7 +398,9 @@ void RestExportHandler::deleteCursor() {
   result.openObject();
   result.add("id", VPackValue(id));
   result.add("error", VPackValue(false));
-  result.add("code", VPackValue(static_cast<int>(GeneralResponse::ResponseCode::ACCEPTED)));
+  result.add(
+      "code",
+      VPackValue(static_cast<int>(GeneralResponse::ResponseCode::ACCEPTED)));
   result.close();
 
   generateResult(GeneralResponse::ResponseCode::ACCEPTED, result.slice());

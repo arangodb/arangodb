@@ -132,30 +132,18 @@ class GeneralCommTask : public SocketTask, public RequestStatisticsAgent {
   GeneralCommTask(GeneralServer*, TRI_socket_t, ConnectionInfo&&,
                   double keepAliveTimeout);
 
-  // write data from request into _writeBuffers and call fillWriteBuffer
-  virtual void addResponse(GeneralResponse*, bool error) = 0;
+  virtual void addResponse(GeneralResponse*) = 0;
   virtual arangodb::Endpoint::TransportType transportType() = 0;
 
  protected:
-  virtual ~GeneralCommTask();
-
-  // is called in a loop as long as it returns true.
-  // Return false if there is not enough data to do
-  // any more processing and all available data has
-  // been evaluated.
-  virtual bool processRead() = 0;
-
   virtual void handleChunk(char const*, size_t) = 0;
 
- protected:
-  virtual void httpClearRequest(){};  // should be removed
-  virtual void httpNullRequest(){};   // should be removed
-  void executeRequest(GeneralRequest*, GeneralResponse*);
+  virtual std::unique_ptr<GeneralResponse> createResponse(
+      GeneralResponse::ResponseCode, uint64_t messageId) = 0;
 
-  // TODO(fc) move to SocketTask
-  // main callback of this class - called by base SocketTask - this version
-  // calls the SocketTask's handleEvent (called in httpsHandler directly)
-  virtual bool handleEvent(EventToken token, EventType events) override;
+ protected:
+  void executeRequest(std::unique_ptr<GeneralRequest>&&,
+                      std::unique_ptr<GeneralResponse>&&);
 
   void processResponse(GeneralResponse*);
 
@@ -164,33 +152,20 @@ class GeneralCommTask : public SocketTask, public RequestStatisticsAgent {
   virtual void handleSimpleError(GeneralResponse::ResponseCode, int code,
                                  std::string const& errorMessage,
                                  uint64_t messageId) = 0;
-  void fillWriteBuffer();  // fills SocketTasks _writeBuffer
-                           // _writeBufferStatistics from
-                           // _writeBuffers/_writeBuffersStats
 
  private:
   void handleTimeout() override final { _clientClosed = true; }
-  bool handleRead() override final;
   void signalTask(TaskData*) override;
 
  protected:
   // for asynchronous requests
   GeneralServer* const _server;
 
-  // information about the client
-  ConnectionInfo _connectionInfo;
-
   // protocol to use http, vpp
   char const* _protocol = "unknown";
 
   GeneralRequest::ProtocolVersion _protocolVersion =
       GeneralRequest::ProtocolVersion::UNKNOWN;
-
-  // true if a close has been requested by the client
-  bool _closeRequested = false;
-
-  std::deque<basics::StringBuffer*> _writeBuffers;
-  std::deque<TRI_request_statistics_t*> _writeBuffersStats;
 };
 }
 }

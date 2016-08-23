@@ -284,7 +284,7 @@ void RestSimpleHandler::removeByKeys(VPackSlice const& slice) {
 
 void RestSimpleHandler::lookupByKeys(VPackSlice const& slice) {
   // TODO needs to generalized
-  auto response = dynamic_cast<HttpResponse*>(_response);
+  auto response = dynamic_cast<HttpResponse*>(_response.get());
 
   if (response == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
@@ -444,7 +444,7 @@ void RestSimpleHandler::lookupByKeys(VPackSlice const& slice) {
     }
 
     auto customTypeHandler = queryResult.context->orderCustomTypeHandler();
-    VPackOptions options = VPackOptions::Defaults; // copy defaults
+    VPackOptions options = VPackOptions::Defaults;  // copy defaults
     options.customTypeHandler = customTypeHandler.get();
 
     arangodb::basics::VPackStringBufferAdapter buffer(

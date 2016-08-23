@@ -58,7 +58,7 @@ std::string const& lookupStringInMap(
 }
 
 VppRequest::VppRequest(ConnectionInfo const& connectionInfo,
-                       VPackMessage&& message, uint64_t messageId)
+                       VppInputMessage&& message, uint64_t messageId)
     : GeneralRequest(connectionInfo),
       _message(std::move(message)),
       _headers(nullptr),
@@ -71,7 +71,7 @@ VppRequest::VppRequest(ConnectionInfo const& connectionInfo,
 }
 
 VPackSlice VppRequest::payload(VPackOptions const* options) {
-  return _message._payload;
+  return _message.payload();
 }
 
 std::unordered_map<std::string, std::string> const& VppRequest::headers()
@@ -79,9 +79,10 @@ std::unordered_map<std::string, std::string> const& VppRequest::headers()
   if (!_headers) {
     using namespace std;
     _headers = make_unique<unordered_map<string, string>>();
-    VPackSlice meta = _message._header.get("meta");
+    VPackSlice meta = _message.header().get("meta");
     for (auto const& it : VPackObjectIterator(meta)) {
-      _headers->emplace(it.key.copyString(), it.value.copyString());
+      // must lower-case the header key
+      _headers->emplace(StringUtils::tolower(it.key.copyString()), it.value.copyString());
     }
   }
   return *_headers;
@@ -100,13 +101,13 @@ std::string const& VppRequest::header(std::string const& key) const {
 
 void VppRequest::parseHeaderInformation() {
   using namespace std;
-  auto& vHeader = _message._header;
+  auto vHeader = _message.header();
 
   _databaseName = vHeader.get("database").copyString();
   _requestPath = vHeader.get("request").copyString();
   _type = meta::toEnum<RequestType>(vHeader.get("requestType").getInt());
 
-  VPackSlice params = _message._header.get("parameter");
+  VPackSlice params = vHeader.get("parameter");
   for (auto const& it : VPackObjectIterator(params)) {
     if (it.value.isArray()) {
       vector<string> tmp;

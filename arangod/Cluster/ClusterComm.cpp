@@ -23,13 +23,13 @@
 
 #include "Cluster/ClusterComm.h"
 
-#include "Logger/Logger.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/HybridLogicalClock.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Dispatcher/DispatcherThread.h"
+#include "Logger/Logger.h"
 #include "SimpleHttpClient/ConnectionManager.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "Utils/Transaction.h"
@@ -112,12 +112,12 @@ void ClusterCommResult::setDestination(std::string const& dest,
     }
   }
 }
-  
+
 /// @brief stringify the internal error state
 std::string ClusterCommResult::stringifyErrorMessage() const {
   // append status string
   std::string result(stringifyStatus(status));
-  
+
   if (!serverID.empty()) {
     result.append(", cluster node: '");
     result.append(serverID);
@@ -129,7 +129,7 @@ std::string ClusterCommResult::stringifyErrorMessage() const {
     result.append(shardID);
     result.push_back('\'');
   }
-  
+
   if (!endpoint.empty()) {
     result.append(", endpoint: '");
     result.append(endpoint);
@@ -144,7 +144,7 @@ std::string ClusterCommResult::stringifyErrorMessage() const {
 
   return result;
 }
-  
+
 /// @brief return an error code for a result
 int ClusterCommResult::getErrorCode() const {
   switch (status) {
@@ -159,17 +159,17 @@ int ClusterCommResult::getErrorCode() const {
 
     case CL_COMM_ERROR:
       return TRI_ERROR_INTERNAL;
-    
+
     case CL_COMM_DROPPED:
       return TRI_ERROR_INTERNAL;
-    
+
     case CL_COMM_BACKEND_UNAVAILABLE:
       return TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE;
   }
 
   return TRI_ERROR_INTERNAL;
 }
-  
+
 /// @brief stringify a cluster comm status
 char const* ClusterCommResult::stringifyStatus(ClusterCommOpStatus status) {
   switch (status) {
@@ -966,14 +966,15 @@ void ClusterComm::asyncAnswer(std::string& coordinatorHeader,
 /// DBServer node.
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string ClusterComm::processAnswer(std::string& coordinatorHeader,
-                                       GeneralRequest* answer) {
+std::string ClusterComm::processAnswer(
+    std::string const& coordinatorHeader,
+    std::unique_ptr<GeneralRequest>&& answer) {
   if (answer == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   }
 
   TRI_ASSERT(answer != nullptr);
-  // First take apart the header to get the operaitonID:
+  // First take apart the header to get the operationID:
   OperationID operationID;
   size_t start = 0;
   size_t pos;
@@ -1002,9 +1003,9 @@ std::string ClusterComm::processAnswer(std::string& coordinatorHeader,
     if (i != receivedByOpID.end()) {
       TRI_ASSERT(answer != nullptr);
       ClusterCommOperation* op = *(i->second);
-      op->result.answer.reset(answer);
+      op->result.answer = std::move(answer);
       op->result.answer_code = GeneralResponse::responseCode(
-          answer->header("x-arango-response-code"));
+          op->result.answer->header("x-arango-response-code"));
       op->result.status = CL_COMM_RECEIVED;
       // Do we have to do a callback?
       if (nullptr != op->callback.get()) {
@@ -1027,9 +1028,9 @@ std::string ClusterComm::processAnswer(std::string& coordinatorHeader,
       if (i != toSendByOpID.end()) {
         TRI_ASSERT(answer != nullptr);
         ClusterCommOperation* op = *(i->second);
-        op->result.answer.reset(answer);
+        op->result.answer = std::move(answer);
         op->result.answer_code = GeneralResponse::responseCode(
-            answer->header("x-arango-response-code"));
+            op->result.answer->header("x-arango-response-code"));
         op->result.status = CL_COMM_RECEIVED;
         if (nullptr != op->callback) {
           if ((*op->callback)(&op->result)) {
@@ -1043,7 +1044,6 @@ std::string ClusterComm::processAnswer(std::string& coordinatorHeader,
         }
       } else {
         // Nothing known about the request, get rid of it:
-        delete answer;
         return std::string("operation was already dropped by sender");
       }
     }
@@ -1343,12 +1343,12 @@ size_t ClusterComm::performSingleRequest(
                               req.requestType, req.path, *(req.body),
                               *(req.headerFields), timeout);
   }
-  
+
   // mop: helpless attempt to fix segfaulting due to body buffer empty
   if (req.result.status == CL_COMM_BACKEND_UNAVAILABLE) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE);
   }
-  
+
   // Add correct recognition of content type later.
   req.result.status = CL_COMM_RECEIVED;  // a fake, but a good one
   req.done = true;
@@ -1359,7 +1359,7 @@ size_t ClusterComm::performSingleRequest(
   // Additionally, GeneralRequest is a virtual base class, so we actually
   // have to create an HttpRequest instance:
   GeneralRequest::ContentType type = GeneralRequest::ContentType::JSON;
-  
+
   basics::StringBuffer& buffer = req.result.result->getBody();
   // auto answer = new FakeRequest(type, buffer.c_str(),
   //                              static_cast<int64_t>(buffer.length()));
@@ -1368,7 +1368,7 @@ size_t ClusterComm::performSingleRequest(
   auto answer = HttpRequest::createFakeRequest(
       type, buffer.c_str(), static_cast<int64_t>(buffer.length()),
       req.result.result->getHeaderFields());
-  
+
   req.result.answer.reset(static_cast<GeneralRequest*>(answer));
   req.result.answer_code = static_cast<GeneralResponse::ResponseCode>(
       req.result.result->getHttpReturnCode());

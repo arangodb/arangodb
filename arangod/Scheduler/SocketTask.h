@@ -25,16 +25,10 @@
 #ifndef ARANGOD_SCHEDULER_SOCKET_TASK_H
 #define ARANGOD_SCHEDULER_SOCKET_TASK_H 1
 
-#include "Basics/Common.h"
-
 #include "Scheduler/Task.h"
 
 #include "Basics/Thread.h"
 #include "Statistics/StatisticsAgent.h"
-
-#ifdef _WIN32
-#include "Basics/win-utils.h"
-#endif
 
 #include "Basics/socket-utils.h"
 
@@ -45,116 +39,85 @@ class StringBuffer;
 
 namespace rest {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief base class for input-output tasks from sockets
-////////////////////////////////////////////////////////////////////////////////
-
 class SocketTask : virtual public Task, public ConnectionStatisticsAgent {
- private:
-  explicit SocketTask(SocketTask const&);
-  SocketTask& operator=(SocketTask const&);
+  explicit SocketTask(SocketTask const&) = delete;
+  SocketTask& operator=(SocketTask const&) = delete;
 
  private:
   static size_t const READ_BLOCK_SIZE = 10000;
 
  public:
-  // @brief constructs a new task with a given socket
-  SocketTask(TRI_socket_t, double);
+  SocketTask(TRI_socket_t, ConnectionInfo&&, double);
 
  protected:
-  // This method will close the underlying socket.
   ~SocketTask();
 
  public:
-  // set a request timeout
-  void setKeepAliveTimeout(double);
+  void armKeepAliveTimeout();
 
  protected:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief fills the read buffer
-  ///
-  /// The function should be called by the input task if the scheduler has
-  /// indicated that new data is available. It will return true, if data could
-  /// be read and false if the connection has been closed.
-  //////////////////////////////////////////////////////////////////////////////
-
   virtual bool fillReadBuffer();
 
-  virtual bool handleRead() = 0;  // called by handleEvent
-  virtual bool handleWrite();     // called by handleEvent
+  virtual bool handleRead();   // called by handleEvent
+  virtual bool handleWrite();  // called by handleEvent
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief called if write buffer has been sent
-  ///
-  /// This called is called if the current write buffer has been sent
-  /// completly to the client.
-  //////////////////////////////////////////////////////////////////////////////
-
-  virtual void completedWriteBuffer() = 0;
-
-  // handles a keep-alive timeout
   virtual void handleTimeout() = 0;
 
+  // is called in a loop as long as it returns true.
+  // Return false if there is not enough data to do
+  // any more processing and all available data has
+  // been evaluated.
+  virtual bool processRead() = 0;
+
  protected:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief sets an active write buffer
-  //////////////////////////////////////////////////////////////////////////////
+  void addWriteBuffer(std::unique_ptr<basics::StringBuffer> buffer) {
+    addWriteBuffer(std::move(buffer), (RequestStatisticsAgent*)nullptr);
+  }
 
-  void setWriteBuffer(basics::StringBuffer*, TRI_request_statistics_t*);
+  void addWriteBuffer(std::unique_ptr<basics::StringBuffer>,
+                      RequestStatisticsAgent*);
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief checks for presence of an active write buffer
-  //////////////////////////////////////////////////////////////////////////////
+  void addWriteBuffer(basics::StringBuffer*, TRI_request_statistics_t*);
 
-  bool hasWriteBuffer() const;
+  void completedWriteBuffer();
 
  protected:
   bool setup(Scheduler*, EventLoop) override;
-
-  /// @brief cleans up the task by unregistering all watchers
   void cleanup() override;
-
-  // calls handleRead and handleWrite
   bool handleEvent(EventToken token, EventType) override;
 
  protected:
-  /// @brief event for keep-alive timeout
-  EventToken _keepAliveWatcher;
+  double const _keepAliveTimeout;
 
-  /// @brief event for read
-  EventToken _readWatcher;
+ protected:
+  // connection closed
+  bool _closed = false;
 
-  /// @brief event for write
-  EventToken _writeWatcher;
+  // client has closed the connection, immediately close the underlying socket
+  bool _clientClosed = false;
 
-  /// @brief communication socket
+  // the client has requested, close the connection after all data is written
+  bool _closeRequested = false;
+
+ protected:
   TRI_socket_t _commSocket;
+  ConnectionInfo _connectionInfo;
 
-  /// @brief keep-alive timeout in seconds
-  double _keepAliveTimeout;
+  basics::StringBuffer* _readBuffer = nullptr;
 
-  /// @brief the current write buffer
-  basics::StringBuffer* _writeBuffer;
+  basics::StringBuffer* _writeBuffer = nullptr;
+  TRI_request_statistics_t* _writeBufferStatistics = nullptr;
 
-  /// @brief the current write buffer statistics
-  TRI_request_statistics_t* _writeBufferStatistics;
+  std::deque<basics::StringBuffer*> _writeBuffers;
+  std::deque<TRI_request_statistics_t*> _writeBuffersStats;
 
-  /// @brief number of bytes already written
-  size_t _writeLength;
+  EventToken _keepAliveWatcher = nullptr;
+  EventToken _readWatcher = nullptr;
+  EventToken _writeWatcher = nullptr;
 
-  /// @brief read buffer
-  /// The function fillReadBuffer stores the data in this buffer.
-  basics::StringBuffer* _readBuffer;
+  size_t _writeLength = 0;
 
-  /// @brief client has closed the connection
-  bool _clientClosed;
-
- private:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief current thread identifier
-  //////////////////////////////////////////////////////////////////////////////
-
-  TRI_tid_t _tid;
+  TRI_tid_t _tid = 0;
 };
 }
 }
