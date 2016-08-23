@@ -115,6 +115,11 @@ class SortNode : public ExecutionNode {
   /// simplification, and false otherwise
   bool simplify(ExecutionPlan*);
 
+  /// @brief removes the first count conditions from the sort condition
+  /// this can be used if the first conditions of the condition are constant
+  /// values (e.g. when a FILTER condition exists that guarantees this)
+  void removeConditions(size_t count);
+
  private:
   /// @brief pairs, consisting of variable and sort direction
   /// (true = ascending | false = descending)

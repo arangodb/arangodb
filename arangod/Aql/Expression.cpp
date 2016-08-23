@@ -847,6 +847,7 @@ AqlValue Expression::executeSimpleExpressionReference(
   std::string msg("variable not found '");
   msg.append(v->name);
   msg.append("' in executeSimpleExpression()");
+ 
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg.c_str());
 }
 

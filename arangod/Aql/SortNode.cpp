@@ -121,6 +121,12 @@ bool SortNode::simplify(ExecutionPlan* plan) {
 
   return _elements.empty();
 }
+  
+void SortNode::removeConditions(size_t count) {
+  TRI_ASSERT(_elements.size() > count);
+  TRI_ASSERT(count > 0);
+  _elements.erase(_elements.begin(), _elements.begin() + count);
+}
 
 /// @brief returns all sort information
 SortInformation SortNode::getSortInformation(
@@ -178,5 +184,5 @@ double SortNode::estimateCost(size_t& nrItems) const {
   if (nrItems <= 3.0) {
     return depCost + nrItems;
   }
-  return depCost + nrItems * log(static_cast<double>(nrItems));
+  return depCost + nrItems * std::log2(static_cast<double>(nrItems));
 }

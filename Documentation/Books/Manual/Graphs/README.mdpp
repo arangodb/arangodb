@@ -87,6 +87,25 @@ So, if your edges have about a dozen different types, it's okay to choose the co
 the `FILTER` approach is preferred. You can still use `FILTER` operations on edges of course. You can get rid
 of a `FILTER` on the `type` with the former approach, everything else can stay the same.
 
+!SUBSECTION Which part of my data is an Edge and which a Vertex?
+A Vertex documents would be the main objects in your data model. Edges connect and classify relations between these Objects.
+
+!SUBSUBSECTION Vertices
+So lets say we have two vertex collections, `Users` and `Groups`. Documents in the `Groups` collection contain the attributes
+of the Group, i.e. when it was founded, its subject, an icon URL and so on. `Users` documents contain the data specific to a
+user - like all names, birthdays, Avatar URLs, hobbies...
+
+!SUBSUBSECTION Edges
+Now we use one edge collection to create relation between users and groups. Since multiple users may be in an arbitrary number of
+groups, this is an **M:N** relation (see above). So, we have an edge collection `UsersInGroups` with i.e. one edge
+with `_from` pointing to `Users/John` and `_to` pointing to `Groups/BowlingGroupHappyPin`. 
+This makes the user **John** a member of the group **Bowling Group Happy Pin**.
+Attributes of this relation may contain qualifiers to this relation, like the permissions of **John** in this group, the date when he joined the group etc.
+
+!SUBSUBSECTION Advantages of this aproach
+Graphs give you the advantage of not just being able to have a fixed number of **m:n** relations in a row, but an arbitrary number.
+
+
 !SUBSECTION Backup and restore
 
 For sure you want to have backups of your graph data, you can use [Arangodump](../Administration/Arangodump.md) to create the backup,

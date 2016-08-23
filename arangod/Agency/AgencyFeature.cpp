@@ -84,6 +84,9 @@ void AgencyFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options->addOption("--agency.endpoint", "agency endpoints",
                      new VectorParameter<StringParameter>(&_agencyEndpoints));
+  
+  options->addOption("--agency.my-address", "which address to advertise to the outside",
+                     new StringParameter(&_agencyMyAddress));
 
   options->addOption("--agency.supervision",
                      "perform arangodb cluster supervision",
@@ -166,6 +169,15 @@ void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
       << " " << __FILE__ << __LINE__;
   }
 
+  if (!_agencyMyAddress.empty()) {
+    std::string const unified = Endpoint::unifiedForm(_agencyMyAddress);
+
+    if (unified.empty()) {
+      LOG_TOPIC(FATAL, Logger::AGENCY) << "invalid endpoint '"
+        << _agencyMyAddress << "' specified for --agency.my-address";
+      FATAL_ERROR_EXIT();
+    }
+  }
 }
 
 void AgencyFeature::prepare() {
@@ -180,22 +192,27 @@ void AgencyFeature::start() {
   
   // TODO: Port this to new options handling
   std::string endpoint;
-  std::string port = "8529";
-  
-  EndpointFeature* endpointFeature =
-    ApplicationServer::getFeature<EndpointFeature>("Endpoint");
-  auto endpoints = endpointFeature->httpEndpoints();
-  
-  if (!endpoints.empty()) {
-    std::string const& tmp = endpoints.front();
-    size_t pos = tmp.find(':',10);
-    
-    if (pos != std::string::npos) {
-      port = tmp.substr(pos + 1, tmp.size() - pos);
+
+  if (_agencyMyAddress.empty()) {
+    std::string port = "8529";
+
+    EndpointFeature* endpointFeature =
+      ApplicationServer::getFeature<EndpointFeature>("Endpoint");
+    auto endpoints = endpointFeature->httpEndpoints();
+
+    if (!endpoints.empty()) {
+      std::string const& tmp = endpoints.front();
+      size_t pos = tmp.find(':',10);
+
+      if (pos != std::string::npos) {
+        port = tmp.substr(pos + 1, tmp.size() - pos);
+      }
     }
+
+    endpoint = std::string("tcp://localhost:" + port);
+  } else {
+    endpoint = _agencyMyAddress;
   }
-  
-  endpoint = std::string("tcp://localhost:" + port);
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "Agency endpoint " << endpoint;
 
   _agent.reset(
