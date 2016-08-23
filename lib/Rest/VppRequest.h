@@ -77,6 +77,8 @@ class VppRequest : public GeneralRequest {
     return arangodb::Endpoint::TransportType::VPP;
   };
 
+  void setHeaderOptions(VPackOptions* options) { _headerOptions = options; }
+
   std::unordered_map<std::string, std::string> const& headers() const override;
   // get value from headers map. The key must be lowercase.
   std::string const& header(std::string const& key) const override;
@@ -102,6 +104,7 @@ class VppRequest : public GeneralRequest {
   std::unordered_map<std::string, std::vector<std::string>> _arrayValues;
   uint64_t _messageId;
   const std::unordered_map<std::string, std::string> _cookies;  // TODO remove
+  VPackOptions* _headerOptions;
 
   void parseHeaderInformation();
 };

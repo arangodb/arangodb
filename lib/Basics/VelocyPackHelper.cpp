@@ -49,6 +49,7 @@ unsigned long long XXH64(const void* input, size_t length,
 using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
 
 static std::unique_ptr<VPackAttributeTranslator> Translator;
+static std::unique_ptr<VPackAttributeTranslator> HeaderTranslator;
 static std::unique_ptr<VPackAttributeExcludeHandler> ExcludeHandler;
 
 // attribute exclude handler for skipping over system attributes
@@ -130,6 +131,17 @@ void VelocyPackHelper::initialize() {
   TRI_ASSERT(VPackSlice(Translator->translate(ToAttribute - AttributeBase))
                  .copyString() == StaticStrings::ToString);
 
+  HeaderTranslator.reset(new VPackAttributeTranslator);
+  HeaderTranslator->add("version", 6);
+  HeaderTranslator->add("type", 7);
+  HeaderTranslator->add("database", 8);
+  HeaderTranslator->add("requestType", 9);
+  HeaderTranslator->add("request", 0);
+  HeaderTranslator->add("parameter", -1);
+  HeaderTranslator->add("meta", -2);
+  HeaderTranslator->add("responseCode", -3);
+  HeaderTranslator->seal();
+
   // initialize exclude handler for system attributes
   ExcludeHandler.reset(new SystemAttributeExcludeHandler);
 }
@@ -157,6 +169,11 @@ VelocyPackHelper::getExcludeHandler() {
 
 arangodb::velocypack::AttributeTranslator* VelocyPackHelper::getTranslator() {
   return Translator.get();
+}
+
+arangodb::velocypack::AttributeTranslator*
+VelocyPackHelper::getHeaderTranslator() {
+  return HeaderTranslator.get();
 }
 
 bool VelocyPackHelper::AttributeSorterUTF8::operator()(
