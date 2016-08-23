@@ -322,7 +322,7 @@ function createLocalDatabases (plannedDatabases, currentDatabases, writeLocked) 
 
         // TODO: handle options and user information
 
-        console.info("creating local database '%s'", payload.name);
+        console.debug("creating local database '%s'", payload.name);
 
         try {
           db._createDatabase(payload.name);
@@ -528,7 +528,7 @@ function createLocalCollections (plannedCollections, planVersion,
 
                     if (!localCollections.hasOwnProperty(shard)) {
                       // must create this shard
-                      console.info("creating local shard '%s/%s' for central '%s/%s'",
+                      console.debug("creating local shard '%s/%s' for central '%s/%s'",
                         database,
                         shard,
                         database,
@@ -642,7 +642,7 @@ function createLocalCollections (plannedCollections, planVersion,
 
                         if (index.type !== 'primary' && index.type !== 'edge' &&
                           !indexes.hasOwnProperty(index.id)) {
-                          console.info("creating index '%s/%s': %s",
+                          console.debug("creating index '%s/%s': %s",
                             database,
                             shard,
                             JSON.stringify(index));
@@ -982,7 +982,7 @@ function tryLaunchJob () {
           return;
         }
         global.KEY_SET('shardSynchronization', 'running', jobInfo);
-        console.info('scheduleOneShardSynchronization: have launched job', jobInfo);
+        console.debug('scheduleOneShardSynchronization: have launched job', jobInfo);
         delete jobs.scheduled[shards[0]];
         global.KEY_SET('shardSynchronization', 'scheduled', jobs.scheduled);
       }
@@ -1062,7 +1062,7 @@ function synchronizeOneShard (database, shard, planId, leader) {
   var ok = false;
   const rep = require('@arangodb/replication');
 
-  console.info("synchronizeOneShard: trying to synchronize local shard '%s/%s' for central '%s/%s'", database, shard, database, planId);
+  console.debug("synchronizeOneShard: trying to synchronize local shard '%s/%s' for central '%s/%s'", database, shard, database, planId);
   try {
     var ep = ArangoClusterInfo.getServerEndpoint(leader);
     // First once without a read transaction:
@@ -1123,7 +1123,7 @@ function synchronizeOneShard (database, shard, planId, leader) {
             shard);
         }
         if (ok) {
-          console.info('synchronizeOneShard: synchronization worked for shard',
+          console.debug('synchronizeOneShard: synchronization worked for shard',
             shard);
         } else {
           throw 'Did not work for shard ' + shard + '.';
@@ -1139,7 +1139,7 @@ function synchronizeOneShard (database, shard, planId, leader) {
   }
   // Tell others that we are done:
   terminateAndStartOther();
-  console.info('synchronizeOneShard: done, %s/%s, %s/%s',
+  console.debug('synchronizeOneShard: done, %s/%s, %s/%s',
     database, shard, database, planId);
 }
 
@@ -1627,7 +1627,7 @@ var handlePlanChange = function (plan, current) {
   try {
     versions.success = handleChanges(plan, current, writeLocked);
 
-    console.info('plan change handling successful');
+    console.debug('plan change handling successful');
   } catch (err) {
     console.error('error details: %s', JSON.stringify(err));
     console.error('error stack: %s', err.stack);
@@ -1829,7 +1829,8 @@ function rebalanceShards () {
       db._useDatabase('_system');
     }
   }
-
+  
+  console.info("Rebalancing shards");
   console.info(shardMap);
   console.info(dbTab);
 
