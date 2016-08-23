@@ -47,7 +47,7 @@ RestHandler::status RestSimpleQueryHandler::execute() {
   auto const type = _request->requestType();
 
   std::string const& prefix = _request->requestPath();
-  if (type == GeneralRequest::RequestType::PUT) {
+  if (type == rest::RequestType::PUT) {
     if (prefix == RestVocbaseBaseHandler::SIMPLE_QUERY_ALL_PATH) {
       // all query
       allDocuments();

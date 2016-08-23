@@ -35,6 +35,8 @@
 #include <limits>
 #include "CommonDefines.h"
 
+using arangodb::rest::RequestType;
+
 namespace arangodb {
 namespace velocypack {
 class Builder;

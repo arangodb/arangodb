@@ -66,8 +66,8 @@ RestHandler::status RestBatchHandler::execute() {
   // extract the request type
   auto const type = _request->requestType();
 
-  if (type != GeneralRequest::RequestType::POST &&
-      type != GeneralRequest::RequestType::PUT) {
+  if (type != rest::RequestType::POST &&
+      type != rest::RequestType::PUT) {
     generateError(GeneralResponse::ResponseCode::METHOD_NOT_ALLOWED,
                   TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
     return status::DONE;

@@ -70,7 +70,7 @@ class HttpCommTask : public GeneralCommTask {
   bool _acceptDeflate;    // whether the client accepts deflate algorithm
   bool _newRequest;       // new request started
   // TODO(fc) remove
-  GeneralRequest::RequestType _requestType;  // type of request (GET, POST, ...)
+  rest::RequestType _requestType;  // type of request (GET, POST, ...)
   std::string _fullUrl;                      // value of requested URL
   std::string _origin;  // value of the HTTP origin header the client sent (if
                         // any, CORS only)

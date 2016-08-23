@@ -49,7 +49,7 @@ RestHandler::status RestAgencyCallbacksHandler::execute() {
 
   // extract the sub-request type
   auto const type = _request->requestType();
-  if (type != GeneralRequest::RequestType::POST) {
+  if (type != rest::RequestType::POST) {
     generateError(GeneralResponse::ResponseCode::METHOD_NOT_ALLOWED,
                   TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
     return status::DONE;

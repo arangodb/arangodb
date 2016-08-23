@@ -337,7 +337,7 @@ void Constituent::callElection() {
         std::make_unique<std::unordered_map<std::string, std::string>>();
       operationIDs[i] = ClusterComm::instance()->asyncRequest(
         "1", 1, _agent->config().poolAt(i),
-        GeneralRequest::RequestType::GET, path.str(),
+        rest::RequestType::GET, path.str(),
         std::make_shared<std::string>(body), headerFields,
         nullptr, respTimeout, true, initTimeout);
     }

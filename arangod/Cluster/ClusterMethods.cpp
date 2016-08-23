@@ -501,7 +501,7 @@ int revisionOnCoordinator(std::string const& dbname,
         std::make_unique<std::unordered_map<std::string, std::string>>();
     cc->asyncRequest(
         "", coordTransactionID, "shard:" + p.first,
-        arangodb::GeneralRequest::RequestType::GET,
+        arangodb::rest::RequestType::GET,
         "/_db/" + StringUtils::urlEncode(dbname) + "/_api/collection/" +
             StringUtils::urlEncode(p.first) + "/revision",
         std::shared_ptr<std::string const>(), headers, nullptr, 300.0);
@@ -578,7 +578,7 @@ int figuresOnCoordinator(std::string const& dbname, std::string const& collname,
         std::make_unique<std::unordered_map<std::string, std::string>>();
     cc->asyncRequest(
         "", coordTransactionID, "shard:" + p.first,
-        arangodb::GeneralRequest::RequestType::GET,
+        arangodb::rest::RequestType::GET,
         "/_db/" + StringUtils::urlEncode(dbname) + "/_api/collection/" +
             StringUtils::urlEncode(p.first) + "/figures",
         std::shared_ptr<std::string const>(), headers, nullptr, 300.0);
@@ -673,7 +673,7 @@ int countOnCoordinator(std::string const& dbname, std::string const& collname,
   auto body = std::make_shared<std::string>();
   for (auto const& p : *shards) {
     requests.emplace_back("shard:" + p.first,
-                          arangodb::GeneralRequest::RequestType::GET,
+                          arangodb::rest::RequestType::GET,
                           "/_db/" + StringUtils::urlEncode(dbname) +
                           "/_api/collection/" +
                           StringUtils::urlEncode(p.first) + "/count", body);
@@ -805,7 +805,7 @@ int createDocumentOnCoordinator(
     }
 
     requests.emplace_back(
-        "shard:" + it.first, arangodb::GeneralRequest::RequestType::POST,
+        "shard:" + it.first, arangodb::rest::RequestType::POST,
         baseUrl + StringUtils::urlEncode(it.first) + optsUrlPart, body);
   }
 
@@ -962,7 +962,7 @@ int deleteDocumentOnCoordinator(
       }
       requests.emplace_back(
           "shard:" + it.first,
-          arangodb::GeneralRequest::RequestType::DELETE_REQ,
+          arangodb::rest::RequestType::DELETE_REQ,
           baseUrl + StringUtils::urlEncode(it.first) + optsUrlPart, body);
     }
 
@@ -1011,7 +1011,7 @@ int deleteDocumentOnCoordinator(
   auto shardList = ci->getShardList(collid);
   for (auto const& shard : *shardList) {
     requests.emplace_back(
-        "shard:" + shard, arangodb::GeneralRequest::RequestType::DELETE_REQ,
+        "shard:" + shard, arangodb::rest::RequestType::DELETE_REQ,
         baseUrl + StringUtils::urlEncode(shard) + optsUrlPart, body);
   }
 
@@ -1102,7 +1102,7 @@ int truncateCollectionOnCoordinator(std::string const& dbname,
     auto headers =
         std::make_unique<std::unordered_map<std::string, std::string>>();
     cc->asyncRequest("", coordTransactionID, "shard:" + p.first,
-                     arangodb::GeneralRequest::RequestType::PUT,
+                     arangodb::rest::RequestType::PUT,
                      "/_db/" + StringUtils::urlEncode(dbname) +
                          "/_api/collection/" + p.first + "/truncate",
                      std::shared_ptr<std::string>(), headers, nullptr, 60.0);
@@ -1190,15 +1190,15 @@ int getDocumentOnCoordinator(
   std::string optsUrlPart =
       std::string("?ignoreRevs=") + (options.ignoreRevs ? "true" : "false");
 
-  arangodb::GeneralRequest::RequestType reqType;
+  arangodb::rest::RequestType reqType;
   if (!useMultiple) {
     if (options.silent) {
-      reqType = arangodb::GeneralRequest::RequestType::HEAD;
+      reqType = arangodb::rest::RequestType::HEAD;
     } else {
-      reqType = arangodb::GeneralRequest::RequestType::GET;
+      reqType = arangodb::rest::RequestType::GET;
     }
   } else {
-    reqType = arangodb::GeneralRequest::RequestType::PUT;
+    reqType = arangodb::rest::RequestType::PUT;
     if (options.silent) {
       optsUrlPart += std::string("&silent=true");
     }
@@ -1489,7 +1489,7 @@ int getFilteredDocumentsOnCoordinator(
 
     auto bodyString = std::make_shared<std::string>(bodyBuilder.toJson());
     requests.emplace_back("shard:" + shard.first,
-                          arangodb::GeneralRequest::RequestType::PUT,
+                          arangodb::rest::RequestType::PUT,
                           "/_db/" + StringUtils::urlEncode(dbname) +
                               "/_api/simple/lookup-by-keys",
                           bodyString);
@@ -1588,7 +1588,7 @@ int getFilteredEdgesOnCoordinator(
 
   for (auto const& p : *shards) {
     requests.emplace_back(
-        "shard:" + p.first, arangodb::GeneralRequest::RequestType::PUT,
+        "shard:" + p.first, arangodb::rest::RequestType::PUT,
         baseUrl + StringUtils::urlEncode(p.first) + queryParameters,
         reqBodyString);
   }
@@ -1751,9 +1751,9 @@ int modifyDocumentOnCoordinator(
   optsUrlPart +=
       std::string("&ignoreRevs=") + (options.ignoreRevs ? "true" : "false");
 
-  arangodb::GeneralRequest::RequestType reqType;
+  arangodb::rest::RequestType reqType;
   if (isPatch) {
-    reqType = arangodb::GeneralRequest::RequestType::PATCH;
+    reqType = arangodb::rest::RequestType::PATCH;
     if (!options.keepNull) {
       optsUrlPart += "&keepNull=false";
     }
@@ -1763,7 +1763,7 @@ int modifyDocumentOnCoordinator(
       optsUrlPart += "&mergeObjects=false";
     }
   } else {
-    reqType = arangodb::GeneralRequest::RequestType::PUT;
+    reqType = arangodb::rest::RequestType::PUT;
   }
   if (options.returnNew) {
     optsUrlPart += "&returnNew=true";
@@ -1941,7 +1941,7 @@ int flushWalOnAllDBServers(bool waitForSync, bool waitForCollector) {
         std::make_unique<std::unordered_map<std::string, std::string>>();
     // set collection name (shard id)
     cc->asyncRequest("", coordTransactionID, "server:" + *it,
-                     arangodb::GeneralRequest::RequestType::PUT, url, body,
+                     arangodb::rest::RequestType::PUT, url, body,
                      headers, nullptr, 120.0);
   }
 

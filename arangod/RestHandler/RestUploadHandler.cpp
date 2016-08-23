@@ -52,7 +52,7 @@ RestHandler::status RestUploadHandler::execute() {
   // extract the request type
   auto const type = request->requestType();
 
-  if (type != GeneralRequest::RequestType::POST) {
+  if (type != rest::RequestType::POST) {
     generateError(GeneralResponse::ResponseCode::METHOD_NOT_ALLOWED,
                   TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
 

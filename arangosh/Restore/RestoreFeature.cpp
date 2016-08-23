@@ -189,7 +189,7 @@ int RestoreFeature::tryCreateDatabase(ClientFeature* client,
   std::string const body = builder.slice().toJson();
 
   std::unique_ptr<SimpleHttpResult> response(
-      _httpClient->request(GeneralRequest::RequestType::POST, "/_api/database",
+      _httpClient->request(rest::RequestType::POST, "/_api/database",
                            body.c_str(), body.size()));
 
   if (response == nullptr || !response->isComplete()) {
@@ -251,7 +251,7 @@ int RestoreFeature::sendRestoreCollection(VPackSlice const& slice,
   std::string const body = slice.toJson();
 
   std::unique_ptr<SimpleHttpResult> response(_httpClient->request(
-      GeneralRequest::RequestType::PUT, url, body.c_str(), body.size()));
+      rest::RequestType::PUT, url, body.c_str(), body.size()));
 
   if (response == nullptr || !response->isComplete()) {
     errorMsg =
@@ -281,7 +281,7 @@ int RestoreFeature::sendRestoreIndexes(VPackSlice const& slice,
   std::string const body = slice.toJson();
 
   std::unique_ptr<SimpleHttpResult> response(_httpClient->request(
-      GeneralRequest::RequestType::PUT, url, body.c_str(), body.size()));
+      rest::RequestType::PUT, url, body.c_str(), body.size()));
 
   if (response == nullptr || !response->isComplete()) {
     errorMsg =
@@ -313,7 +313,7 @@ int RestoreFeature::sendRestoreData(std::string const& cname,
                           (_force ? "true" : "false");
 
   std::unique_ptr<SimpleHttpResult> response(_httpClient->request(
-      GeneralRequest::RequestType::PUT, url, buffer, bufferSize));
+      rest::RequestType::PUT, url, buffer, bufferSize));
 
   if (response == nullptr || !response->isComplete()) {
     errorMsg =

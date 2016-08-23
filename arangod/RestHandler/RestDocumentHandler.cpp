@@ -46,22 +46,22 @@ RestHandler::status RestDocumentHandler::execute() {
 
   // execute one of the CRUD methods
   switch (type) {
-    case GeneralRequest::RequestType::DELETE_REQ:
+    case rest::RequestType::DELETE_REQ:
       deleteDocument();
       break;
-    case GeneralRequest::RequestType::GET:
+    case rest::RequestType::GET:
       readDocument();
       break;
-    case GeneralRequest::RequestType::HEAD:
+    case rest::RequestType::HEAD:
       checkDocument();
       break;
-    case GeneralRequest::RequestType::POST:
+    case rest::RequestType::POST:
       createDocument();
       break;
-    case GeneralRequest::RequestType::PUT:
+    case rest::RequestType::PUT:
       replaceDocument();
       break;
-    case GeneralRequest::RequestType::PATCH:
+    case rest::RequestType::PATCH:
       updateDocument();
       break;
     default: { generateNotImplemented("ILLEGAL " + DOCUMENT_PATH); }

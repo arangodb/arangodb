@@ -79,7 +79,7 @@ std::string RestAuthHandler::generateJwt(std::string const& username,
 
 RestHandler::status RestAuthHandler::execute() {
   auto const type = _request->requestType();
-  if (type != GeneralRequest::RequestType::POST) {
+  if (type != rest::RequestType::POST) {
     generateError(GeneralResponse::ResponseCode::METHOD_NOT_ALLOWED,
                   TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
     return status::DONE;

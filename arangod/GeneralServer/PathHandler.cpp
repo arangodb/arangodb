@@ -176,7 +176,7 @@ RestHandler::status PathHandler::execute() {
 
   // check if we should use caching and this is an HTTP GET request
   if (cacheMaxAge > 0 &&
-      _request->requestType() == GeneralRequest::RequestType::GET) {
+      _request->requestType() == rest::RequestType::GET) {
     // yes, then set a pro-caching header
     response->setHeaderNC(StaticStrings::CacheControl, maxAgeHeader);
   }

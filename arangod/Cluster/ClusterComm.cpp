@@ -314,7 +314,7 @@ OperationID ClusterComm::getOperationID() { return TRI_NewTickServer(); }
 OperationID ClusterComm::asyncRequest(
     ClientTransactionID const clientTransactionID,
     CoordTransactionID const coordTransactionID, std::string const& destination,
-    arangodb::GeneralRequest::RequestType reqtype, std::string const& path,
+    arangodb::rest::RequestType reqtype, std::string const& path,
     std::shared_ptr<std::string const> body,
     std::unique_ptr<std::unordered_map<std::string, std::string>>& headerFields,
     std::shared_ptr<ClusterCommCallback> callback, ClusterCommTimeout timeout,
@@ -455,7 +455,7 @@ OperationID ClusterComm::asyncRequest(
 std::unique_ptr<ClusterCommResult> ClusterComm::syncRequest(
     ClientTransactionID const& clientTransactionID,
     CoordTransactionID const coordTransactionID, std::string const& destination,
-    arangodb::GeneralRequest::RequestType reqtype, std::string const& path,
+    arangodb::rest::RequestType reqtype, std::string const& path,
     std::string const& body,
     std::unordered_map<std::string, std::string> const& headerFields,
     ClusterCommTimeout timeout) {
@@ -946,7 +946,7 @@ void ClusterComm::asyncAnswer(std::string& coordinatorHeader,
   // We add this result to the operation struct without acquiring
   // a lock, since we know that only we do such a thing:
   std::unique_ptr<httpclient::SimpleHttpResult> result(
-      client->request(GeneralRequest::RequestType::PUT, "/_api/shard-comm",
+      client->request(rest::RequestType::PUT, "/_api/shard-comm",
                       body, len, headers));
   if (result.get() == nullptr || !result->isComplete()) {
     cm->brokenConnection(connection);

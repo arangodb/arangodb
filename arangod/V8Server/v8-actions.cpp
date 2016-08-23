@@ -449,7 +449,7 @@ static v8::Handle<v8::Object> RequestCppToV8(v8::Isolate* isolate,
 
   // copy request type
   switch (request->requestType()) {
-    case GeneralRequest::RequestType::POST: {
+    case rest::RequestType::POST: {
       TRI_GET_GLOBAL_STRING(PostConstant);
       req->ForceSet(RequestTypeKey, PostConstant);
       // req->ForceSet(RequestBodyKey, TRI_V8_STD_STRING(request->body()));
@@ -457,7 +457,7 @@ static v8::Handle<v8::Object> RequestCppToV8(v8::Isolate* isolate,
       break;
     }
 
-    case GeneralRequest::RequestType::PUT: {
+    case rest::RequestType::PUT: {
       TRI_GET_GLOBAL_STRING(PutConstant);
       req->ForceSet(RequestTypeKey, PutConstant);
       // req->ForceSet(RequestBodyKey, TRI_V8_STD_STRING(request->body()));
@@ -465,29 +465,29 @@ static v8::Handle<v8::Object> RequestCppToV8(v8::Isolate* isolate,
       break;
     }
 
-    case GeneralRequest::RequestType::PATCH: {
+    case rest::RequestType::PATCH: {
       TRI_GET_GLOBAL_STRING(PatchConstant);
       req->ForceSet(RequestTypeKey, PatchConstant);
       // req->ForceSet(RequestBodyKey, TRI_V8_STD_STRING(request->body()));
       set_request_body_json_or_vpack();
       break;
     }
-    case GeneralRequest::RequestType::OPTIONS: {
+    case rest::RequestType::OPTIONS: {
       TRI_GET_GLOBAL_STRING(OptionsConstant);
       req->ForceSet(RequestTypeKey, OptionsConstant);
       break;
     }
-    case GeneralRequest::RequestType::DELETE_REQ: {
+    case rest::RequestType::DELETE_REQ: {
       TRI_GET_GLOBAL_STRING(DeleteConstant);
       req->ForceSet(RequestTypeKey, DeleteConstant);
       break;
     }
-    case GeneralRequest::RequestType::HEAD: {
+    case rest::RequestType::HEAD: {
       TRI_GET_GLOBAL_STRING(HeadConstant);
       req->ForceSet(RequestTypeKey, HeadConstant);
       break;
     }
-    case GeneralRequest::RequestType::GET: {
+    case rest::RequestType::GET: {
       default:
         TRI_GET_GLOBAL_STRING(GetConstant);
         req->ForceSet(RequestTypeKey, GetConstant);
@@ -1368,7 +1368,7 @@ void TRI_InitV8Actions(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
 static bool clusterSendToAllServers(
     std::string const& dbname,
     std::string const& path,  // Note: Has to be properly encoded!
-    arangodb::GeneralRequest::RequestType const& method,
+    arangodb::rest::RequestType const& method,
     std::string const& body) {
   ClusterInfo* ci = ClusterInfo::instance();
   ClusterComm* cc = ClusterComm::instance();
@@ -1467,7 +1467,7 @@ static void JS_DebugSetFailAt(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (ServerState::instance()->isCoordinator()) {
     int res = clusterSendToAllServers(
         dbname, "_admin/debug/failat/" + StringUtils::urlEncode(point),
-        arangodb::GeneralRequest::RequestType::PUT, "");
+        arangodb::rest::RequestType::PUT, "");
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_V8_THROW_EXCEPTION(res);
     }
@@ -1511,7 +1511,7 @@ static void JS_DebugRemoveFailAt(
   if (ServerState::instance()->isCoordinator()) {
     int res = clusterSendToAllServers(
         dbname, "_admin/debug/failat/" + StringUtils::urlEncode(point),
-        arangodb::GeneralRequest::RequestType::DELETE_REQ, "");
+        arangodb::rest::RequestType::DELETE_REQ, "");
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_V8_THROW_EXCEPTION(res);
     }
@@ -1554,7 +1554,7 @@ static void JS_DebugClearFailAt(
 
     int res = clusterSendToAllServers(
         dbname, "_admin/debug/failat",
-        arangodb::GeneralRequest::RequestType::DELETE_REQ, "");
+        arangodb::rest::RequestType::DELETE_REQ, "");
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_V8_THROW_EXCEPTION(res);
     }

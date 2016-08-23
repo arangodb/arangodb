@@ -961,7 +961,7 @@ AgencyCommResult AgencyComm::sendServerState(double ttl) {
 
 std::string AgencyComm::getVersion() {
   AgencyCommResult result = sendWithFailover(
-      arangodb::GeneralRequest::RequestType::GET,
+      arangodb::rest::RequestType::GET,
       _globalConnectionOptions._requestTimeout, "version", "", false);
 
   if (result.successful()) {
@@ -1064,7 +1064,7 @@ AgencyCommResult AgencyComm::getValues(std::string const& key) {
   }
 
   AgencyCommResult result = sendWithFailover(
-      arangodb::GeneralRequest::RequestType::POST,
+      arangodb::rest::RequestType::POST,
       _globalConnectionOptions._requestTimeout, url, builder.toJson(), false);
 
   if (!result.successful()) {
@@ -1537,7 +1537,7 @@ AgencyCommResult AgencyComm::sendTransactionWithFailover(
   }
 
   AgencyCommResult result = sendWithFailover(
-      arangodb::GeneralRequest::RequestType::POST,
+      arangodb::rest::RequestType::POST,
       timeout == 0.0 ? _globalConnectionOptions._requestTimeout : timeout, url,
       builder.slice().toJson(), false);
 
@@ -1591,7 +1591,7 @@ AgencyCommResult AgencyComm::sendTransactionWithFailover(
 ////////////////////////////////////////////////////////////////////////////////
 
 AgencyCommResult AgencyComm::sendWithFailover(
-    arangodb::GeneralRequest::RequestType method, double const timeout,
+    arangodb::rest::RequestType method, double const timeout,
     std::string const& url, std::string const& body, bool isWatch) {
   size_t numEndpoints;
 
@@ -1724,13 +1724,13 @@ AgencyCommResult AgencyComm::sendWithFailover(
 
 AgencyCommResult AgencyComm::send(
     arangodb::httpclient::GeneralClientConnection* connection,
-    arangodb::GeneralRequest::RequestType method, double timeout,
+    arangodb::rest::RequestType method, double timeout,
     std::string const& url, std::string const& body) {
   TRI_ASSERT(connection != nullptr);
 
-  if (method == arangodb::GeneralRequest::RequestType::GET ||
-      method == arangodb::GeneralRequest::RequestType::HEAD ||
-      method == arangodb::GeneralRequest::RequestType::DELETE_REQ) {
+  if (method == arangodb::rest::RequestType::GET ||
+      method == arangodb::rest::RequestType::HEAD ||
+      method == arangodb::rest::RequestType::DELETE_REQ) {
     TRI_ASSERT(body.empty());
   }
 
@@ -1752,7 +1752,7 @@ AgencyCommResult AgencyComm::send(
 
   // set up headers
   std::unordered_map<std::string, std::string> headers;
-  if (method == arangodb::GeneralRequest::RequestType::POST) {
+  if (method == arangodb::rest::RequestType::POST) {
     // the agency needs this content-type for the body
     headers["content-type"] = "application/json";
   }

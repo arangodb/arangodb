@@ -185,7 +185,7 @@ int Syncer::sendCreateBarrier(std::string& errorMsg, TRI_voc_tick_t minTick) {
 
   // send request
   std::unique_ptr<SimpleHttpResult> response(_client->retryRequest(
-      GeneralRequest::RequestType::POST, url, body.c_str(), body.size()));
+      rest::RequestType::POST, url, body.c_str(), body.size()));
 
   if (response == nullptr || !response->isComplete()) {
     errorMsg = "could not connect to master at " + _masterInfo._endpoint +
@@ -248,7 +248,7 @@ int Syncer::sendExtendBarrier(TRI_voc_tick_t tick) {
 
   // send request
   std::unique_ptr<SimpleHttpResult> response(_client->request(
-      GeneralRequest::RequestType::PUT, url, body.c_str(), body.size()));
+      rest::RequestType::PUT, url, body.c_str(), body.size()));
 
   if (response == nullptr || !response->isComplete()) {
     return TRI_ERROR_REPLICATION_NO_RESPONSE;
@@ -282,7 +282,7 @@ int Syncer::sendRemoveBarrier() {
 
     // send request
     std::unique_ptr<SimpleHttpResult> response(_client->retryRequest(
-        GeneralRequest::RequestType::DELETE_REQ, url, nullptr, 0));
+        rest::RequestType::DELETE_REQ, url, nullptr, 0));
 
     if (response == nullptr || !response->isComplete()) {
       return TRI_ERROR_REPLICATION_NO_RESPONSE;
@@ -649,7 +649,7 @@ int Syncer::getMasterState(std::string& errorMsg) {
   _client->_retryWaitTime = 500 * 1000;
 
   std::unique_ptr<SimpleHttpResult> response(
-      _client->retryRequest(GeneralRequest::RequestType::GET, url, nullptr, 0));
+      _client->retryRequest(rest::RequestType::GET, url, nullptr, 0));
 
   // restore old settings
   _client->_maxRetries = static_cast<size_t>(maxRetries);

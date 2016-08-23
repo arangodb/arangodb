@@ -71,7 +71,7 @@ RestHandler::status RestImportHandler::execute() {
   auto const type = _request->requestType();
 
   switch (type) {
-    case GeneralRequest::RequestType::POST: {
+    case rest::RequestType::POST: {
       std::string const& from = _request->value("fromPrefix", found);
       if (found) {
         _fromPrefix = from;

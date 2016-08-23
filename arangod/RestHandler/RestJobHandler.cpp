@@ -50,9 +50,9 @@ RestHandler::status RestJobHandler::execute() {
   // extract the sub-request type
   auto const type = _request->requestType();
 
-  if (type == GeneralRequest::RequestType::GET) {
+  if (type == rest::RequestType::GET) {
     getJob();
-  } else if (type == GeneralRequest::RequestType::PUT) {
+  } else if (type == rest::RequestType::PUT) {
     std::vector<std::string> const& suffix = _request->suffix();
 
     if (suffix.size() == 1) {
@@ -63,7 +63,7 @@ RestHandler::status RestJobHandler::execute() {
       generateError(GeneralResponse::ResponseCode::BAD,
                     TRI_ERROR_HTTP_BAD_PARAMETER);
     }
-  } else if (type == GeneralRequest::RequestType::DELETE_REQ) {
+  } else if (type == rest::RequestType::DELETE_REQ) {
     deleteJob();
   } else {
     generateError(GeneralResponse::ResponseCode::METHOD_NOT_ALLOWED,

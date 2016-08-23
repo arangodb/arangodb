@@ -41,13 +41,13 @@ RestHandler::status RestQueryCacheHandler::execute() {
   auto const type = _request->requestType();
 
   switch (type) {
-    case GeneralRequest::RequestType::DELETE_REQ:
+    case rest::RequestType::DELETE_REQ:
       clearCache();
       break;
-    case GeneralRequest::RequestType::GET:
+    case rest::RequestType::GET:
       readProperties();
       break;
-    case GeneralRequest::RequestType::PUT:
+    case rest::RequestType::PUT:
       replaceProperties();
       break;
     default:

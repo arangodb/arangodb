@@ -47,15 +47,15 @@ RestHandler::status RestEdgesHandler::execute() {
   // execute one of the CRUD methods
   try {
     switch (type) {
-      case GeneralRequest::RequestType::GET: {
+      case rest::RequestType::GET: {
         std::vector<traverser::TraverserExpression*> empty;
         readEdges(empty);
         break;
       }
-      case GeneralRequest::RequestType::PUT:
+      case rest::RequestType::PUT:
         readFilteredEdges();
         break;
-      case GeneralRequest::RequestType::POST:
+      case rest::RequestType::POST:
         readEdgesForMultipleVertices();
         break;
       default:

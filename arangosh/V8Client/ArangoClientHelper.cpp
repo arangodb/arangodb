@@ -90,7 +90,7 @@ std::string ArangoClientHelper::getHttpErrorMessage(SimpleHttpResult* result,
 // check if server is a coordinator of a cluster
 bool ArangoClientHelper::getArangoIsCluster(int* err) {
   std::unique_ptr<SimpleHttpResult> response(_httpClient->request(
-      GeneralRequest::RequestType::GET, "/_admin/server/role", "", 0));
+      rest::RequestType::GET, "/_admin/server/role", "", 0));
 
   if (response == nullptr || !response->isComplete()) {
     return false;

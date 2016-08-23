@@ -56,7 +56,7 @@ RestHandler::status RestSimpleHandler::execute() {
   // extract the request type
   auto const type = _request->requestType();
 
-  if (type == GeneralRequest::RequestType::PUT) {
+  if (type == rest::RequestType::PUT) {
     bool parsingSuccess = true;
     std::shared_ptr<VPackBuilder> parsedBody =
         parseVelocyPackBody(&VPackOptions::Defaults, parsingSuccess);

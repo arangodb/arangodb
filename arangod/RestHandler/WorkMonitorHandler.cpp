@@ -46,7 +46,7 @@ RestHandler::status WorkMonitorHandler::execute() {
   size_t const len = suffix.size();
   auto const type = _request->requestType();
 
-  if (type == GeneralRequest::RequestType::GET) {
+  if (type == rest::RequestType::GET) {
     if (len != 0) {
       generateError(GeneralResponse::ResponseCode::BAD,
                     TRI_ERROR_HTTP_BAD_PARAMETER,
@@ -58,7 +58,7 @@ RestHandler::status WorkMonitorHandler::execute() {
     return status::ASYNC;
   }
 
-  if (type == GeneralRequest::RequestType::DELETE_REQ) {
+  if (type == rest::RequestType::DELETE_REQ) {
     if (len != 1) {
       generateError(GeneralResponse::ResponseCode::BAD,
                     TRI_ERROR_HTTP_BAD_PARAMETER,

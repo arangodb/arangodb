@@ -1728,7 +1728,7 @@ OperationResult Transaction::insertLocal(std::string const& collectionName,
       std::vector<ClusterCommRequest> requests;
       for (auto const& f : *followers) {
         requests.emplace_back("server:" + f, 
-                              arangodb::GeneralRequest::RequestType::POST,
+                              arangodb::rest::RequestType::POST,
                               path, body);
       }
       auto cc = arangodb::ClusterComm::instance();
@@ -2083,8 +2083,8 @@ OperationResult Transaction::modifyLocal(
     for (auto const& f : *followers) {
       requests.emplace_back("server:" + f, 
           operation == TRI_VOC_DOCUMENT_OPERATION_REPLACE ?
-          arangodb::GeneralRequest::RequestType::PUT :
-          arangodb::GeneralRequest::RequestType::PATCH,
+          arangodb::rest::RequestType::PUT :
+          arangodb::rest::RequestType::PATCH,
           path, body);
     }
     size_t nrDone = 0;
@@ -2344,7 +2344,7 @@ OperationResult Transaction::removeLocal(std::string const& collectionName,
     std::vector<ClusterCommRequest> requests;
     for (auto const& f : *followers) {
       requests.emplace_back("server:" + f, 
-                            arangodb::GeneralRequest::RequestType::DELETE_REQ,
+                            arangodb::rest::RequestType::DELETE_REQ,
                             path, body);
     }
     size_t nrDone = 0;
@@ -2559,7 +2559,7 @@ OperationResult Transaction::truncateLocal(std::string const& collectionName,
       std::vector<ClusterCommRequest> requests;
       for (auto const& f : *followers) {
         requests.emplace_back("server:" + f, 
-                              arangodb::GeneralRequest::RequestType::PUT,
+                              arangodb::rest::RequestType::PUT,
                               path, body);
       }
       size_t nrDone = 0;

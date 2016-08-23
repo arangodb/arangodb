@@ -44,7 +44,7 @@ bool RestShutdownHandler::isDirect() const { return true; }
 ////////////////////////////////////////////////////////////////////////////////
 
 RestHandler::status RestShutdownHandler::execute() {
-  if (_request->requestType() != GeneralRequest::RequestType::DELETE_REQ) {
+  if (_request->requestType() != rest::RequestType::DELETE_REQ) {
     generateError(GeneralResponse::ResponseCode::METHOD_NOT_ALLOWED, 405);
     return status::DONE;
   }

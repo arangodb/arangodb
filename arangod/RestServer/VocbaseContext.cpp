@@ -235,8 +235,8 @@ GeneralResponse::ResponseCode VocbaseContext::basicAuthentication(
   _request->setUser(std::move(result._username));
 
   if (result._mustChange) {
-    if ((_request->requestType() == GeneralRequest::RequestType::PUT ||
-         _request->requestType() == GeneralRequest::RequestType::PATCH) &&
+    if ((_request->requestType() == rest::RequestType::PUT ||
+         _request->requestType() == rest::RequestType::PATCH) &&
         StringUtils::isPrefix(_request->requestPath(), "/_api/user/")) {
       return GeneralResponse::ResponseCode::OK;
     }

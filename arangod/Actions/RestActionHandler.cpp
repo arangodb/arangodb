@@ -62,17 +62,17 @@ RestHandler::status RestActionHandler::execute() {
   // execute
   else {
     // extract the sub-request type
-    GeneralRequest::RequestType type = _request->requestType();
+    rest::RequestType type = _request->requestType();
 
     // execute one of the HTTP methods
     switch (type) {
-      case GeneralRequest::RequestType::GET:
-      case GeneralRequest::RequestType::POST:
-      case GeneralRequest::RequestType::PUT:
-      case GeneralRequest::RequestType::DELETE_REQ:
-      case GeneralRequest::RequestType::HEAD:
-      case GeneralRequest::RequestType::OPTIONS:
-      case GeneralRequest::RequestType::PATCH: {
+      case rest::RequestType::GET:
+      case rest::RequestType::POST:
+      case rest::RequestType::PUT:
+      case rest::RequestType::DELETE_REQ:
+      case rest::RequestType::HEAD:
+      case rest::RequestType::OPTIONS:
+      case rest::RequestType::PATCH: {
         result = executeAction();
         break;
       }

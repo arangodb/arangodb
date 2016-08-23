@@ -54,7 +54,7 @@ HttpCommTask::HttpCommTask(GeneralServer* server, TRI_socket_t sock,
       _denyCredentials(true),
       _acceptDeflate(false),
       _newRequest(true),
-      _requestType(GeneralRequest::RequestType::ILLEGAL),  // TODO(fc) remove
+      _requestType(rest::RequestType::ILLEGAL),  // TODO(fc) remove
       _fullUrl(),                                          // TODO(fc) remove
       _origin(),                                           // TODO(fc) remove
       _sinceCompactification(0),
@@ -127,7 +127,7 @@ void HttpCommTask::addResponse(HttpResponse* response) {
   size_t const responseBodyLength = response->bodySize();
 
   // TODO(fc) should be handled by the response / request
-  if (_requestType == GeneralRequest::RequestType::HEAD) {
+  if (_requestType == rest::RequestType::HEAD) {
     // clear body if this is an HTTP HEAD request
     // HEAD must not return a body
     response->headResponse(responseBodyLength);
@@ -143,7 +143,7 @@ void HttpCommTask::addResponse(HttpResponse* response) {
   response->writeHeader(buffer.get());
 
   // write body
-  if (_requestType != GeneralRequest::RequestType::HEAD) {
+  if (_requestType != rest::RequestType::HEAD) {
     if (_isChunked) {
       if (0 != responseBodyLength) {
         buffer->appendHex(response->body().length());
@@ -217,7 +217,7 @@ bool HttpCommTask::processRead() {
       _newRequest = false;
       _startPosition = _readPosition;
       _protocolVersion = GeneralRequest::ProtocolVersion::UNKNOWN;
-      _requestType = GeneralRequest::RequestType::ILLEGAL;
+      _requestType = rest::RequestType::ILLEGAL;
       _fullUrl = "";
       _denyCredentials = true;
       _acceptDeflate = false;
@@ -353,21 +353,21 @@ bool HttpCommTask::processRead() {
 
       // handle different HTTP methods
       switch (_requestType) {
-        case GeneralRequest::RequestType::GET:
-        case GeneralRequest::RequestType::DELETE_REQ:
-        case GeneralRequest::RequestType::HEAD:
-        case GeneralRequest::RequestType::OPTIONS:
-        case GeneralRequest::RequestType::POST:
-        case GeneralRequest::RequestType::PUT:
-        case GeneralRequest::RequestType::PATCH: {
+        case rest::RequestType::GET:
+        case rest::RequestType::DELETE_REQ:
+        case rest::RequestType::HEAD:
+        case rest::RequestType::OPTIONS:
+        case rest::RequestType::POST:
+        case rest::RequestType::PUT:
+        case rest::RequestType::PATCH: {
           // technically, sending a body for an HTTP DELETE request is not
           // forbidden, but it is not explicitly supported
           bool const expectContentLength =
-              (_requestType == GeneralRequest::RequestType::POST ||
-               _requestType == GeneralRequest::RequestType::PUT ||
-               _requestType == GeneralRequest::RequestType::PATCH ||
-               _requestType == GeneralRequest::RequestType::OPTIONS ||
-               _requestType == GeneralRequest::RequestType::DELETE_REQ);
+              (_requestType == rest::RequestType::POST ||
+               _requestType == rest::RequestType::PUT ||
+               _requestType == rest::RequestType::PATCH ||
+               _requestType == rest::RequestType::OPTIONS ||
+               _requestType == rest::RequestType::DELETE_REQ);
 
           if (!checkContentLength(_incompleteRequest.get(),
                                   expectContentLength)) {
@@ -467,7 +467,7 @@ bool HttpCommTask::processRead() {
                                          _bodyLength);
 
   bool const isOptionsRequest =
-      (_requestType == GeneralRequest::RequestType::OPTIONS);
+      (_requestType == rest::RequestType::OPTIONS);
   resetState();
 
   // .............................................................................

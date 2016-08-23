@@ -398,7 +398,7 @@ bool VppCommTask::processRead() {
     VPackSlice header = message.header();
     LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
         << "got request:" << header.toJson();
-    int type = meta::underlyingValue(GeneralRequest::RequestType::ILLEGAL);
+    int type = meta::underlyingValue(rest::RequestType::ILLEGAL);
     try {
       type = header.get("type").getInt();
     } catch (std::exception const& e) {

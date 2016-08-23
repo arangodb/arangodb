@@ -95,7 +95,7 @@ RestHandler::status RestAgencyPrivHandler::execute() {
           id;  // leaderId for appendEntries, cadidateId for requestVote
       arangodb::consensus::index_t prevLogIndex, leaderCommit;
       if (_request->suffix()[0] == "appendEntries") {  // appendEntries
-        if (_request->requestType() != GeneralRequest::RequestType::POST) {
+        if (_request->requestType() != rest::RequestType::POST) {
           return reportMethodNotAllowed();
         }
         if (readValue("term", term) && readValue("leaderId", id) &&
@@ -119,7 +119,7 @@ RestHandler::status RestAgencyPrivHandler::execute() {
           result.add("voteGranted", VPackValue(ret.success));
         }
       } else if (_request->suffix()[0] == "notifyAll") {  // notify
-        if (_request->requestType() != GeneralRequest::RequestType::POST) {
+        if (_request->requestType() != rest::RequestType::POST) {
           return reportMethodNotAllowed();
         }
         if (readValue("term", term) && readValue("agencyId", id)) {

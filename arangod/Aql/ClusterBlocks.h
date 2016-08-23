@@ -324,7 +324,7 @@ class RemoteBlock : public ExecutionBlock {
   /// @brief internal method to send a request
  private:
   std::unique_ptr<arangodb::ClusterCommResult> sendRequest(
-      GeneralRequest::RequestType type, std::string const& urlPart,
+      rest::RequestType type, std::string const& urlPart,
       std::string const& body) const;
 
   /// @brief our server, can be like "shard:S1000" or like "server:Claus"

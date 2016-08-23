@@ -47,7 +47,7 @@ RestQueryHandler::RestQueryHandler(GeneralRequest* request,
     : RestVocbaseBaseHandler(request, response) {}
 
 bool RestQueryHandler::isDirect() const {
-  return _request->requestType() != GeneralRequest::RequestType::POST;
+  return _request->requestType() != rest::RequestType::POST;
 }
 
 RestHandler::status RestQueryHandler::execute() {
@@ -57,16 +57,16 @@ RestHandler::status RestQueryHandler::execute() {
   // execute one of the CRUD methods
   try {
     switch (type) {
-      case GeneralRequest::RequestType::DELETE_REQ:
+      case rest::RequestType::DELETE_REQ:
         deleteQuery();
         break;
-      case GeneralRequest::RequestType::GET:
+      case rest::RequestType::GET:
         readQuery();
         break;
-      case GeneralRequest::RequestType::PUT:
+      case rest::RequestType::PUT:
         replaceProperties();
         break;
-      case GeneralRequest::RequestType::POST:
+      case rest::RequestType::POST:
         parseQuery();
         break;
       default:

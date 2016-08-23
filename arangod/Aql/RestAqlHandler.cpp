@@ -566,11 +566,11 @@ RestHandler::status RestAqlHandler::execute() {
   std::vector<std::string> const& suffix = _request->suffix();
 
   // extract the sub-request type
-  GeneralRequest::RequestType type = _request->requestType();
+  rest::RequestType type = _request->requestType();
 
   // execute one of the CRUD methods
   switch (type) {
-    case GeneralRequest::RequestType::POST: {
+    case rest::RequestType::POST: {
       if (suffix.size() != 1) {
         generateError(GeneralResponse::ResponseCode::NOT_FOUND,
                       TRI_ERROR_HTTP_NOT_FOUND);
@@ -589,7 +589,7 @@ RestHandler::status RestAqlHandler::execute() {
       }
       break;
     }
-    case GeneralRequest::RequestType::PUT: {
+    case rest::RequestType::PUT: {
       if (suffix.size() != 2) {
         LOG(ERR) << "unknown PUT API";
         generateError(GeneralResponse::ResponseCode::NOT_FOUND,
@@ -599,7 +599,7 @@ RestHandler::status RestAqlHandler::execute() {
       }
       break;
     }
-    case GeneralRequest::RequestType::GET: {
+    case rest::RequestType::GET: {
       if (suffix.size() != 2) {
         LOG(ERR) << "Unknown GET API";
         generateError(GeneralResponse::ResponseCode::NOT_FOUND,
@@ -609,14 +609,14 @@ RestHandler::status RestAqlHandler::execute() {
       }
       break;
     }
-    case GeneralRequest::RequestType::DELETE_REQ:
-    case GeneralRequest::RequestType::HEAD:
-    case GeneralRequest::RequestType::PATCH:
-    case GeneralRequest::RequestType::OPTIONS:
-    case GeneralRequest::RequestType::VSTREAM_CRED:
-    case GeneralRequest::RequestType::VSTREAM_REGISTER:
-    case GeneralRequest::RequestType::VSTREAM_STATUS:
-    case GeneralRequest::RequestType::ILLEGAL: {
+    case rest::RequestType::DELETE_REQ:
+    case rest::RequestType::HEAD:
+    case rest::RequestType::PATCH:
+    case rest::RequestType::OPTIONS:
+    case rest::RequestType::VSTREAM_CRED:
+    case rest::RequestType::VSTREAM_REGISTER:
+    case rest::RequestType::VSTREAM_STATUS:
+    case rest::RequestType::ILLEGAL: {
       generateError(GeneralResponse::ResponseCode::METHOD_NOT_ALLOWED,
                     TRI_ERROR_NOT_IMPLEMENTED, "illegal method for /_api/aql");
       break;

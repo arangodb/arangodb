@@ -86,7 +86,7 @@ void RestAgencyHandler::redirectRequest(arangodb::consensus::id_t leaderId) {
 }
 
 RestHandler::status RestAgencyHandler::handleStores() {
-  if (_request->requestType() == GeneralRequest::RequestType::GET) {
+  if (_request->requestType() == rest::RequestType::GET) {
     Builder body;
     body.openObject();
     body.add("spearhead", VPackValue(VPackValueType::Array));
@@ -105,7 +105,7 @@ RestHandler::status RestAgencyHandler::handleStores() {
 
 RestHandler::status RestAgencyHandler::handleWrite() {
   arangodb::velocypack::Options options;  // TODO: User not wait.
-  if (_request->requestType() == GeneralRequest::RequestType::POST) {
+  if (_request->requestType() == rest::RequestType::POST) {
     query_t query;
 
     try {
@@ -205,7 +205,7 @@ RestHandler::status RestAgencyHandler::handleWrite() {
 
 inline RestHandler::status RestAgencyHandler::handleRead() {
   arangodb::velocypack::Options options;
-  if (_request->requestType() == GeneralRequest::RequestType::POST) {
+  if (_request->requestType() == rest::RequestType::POST) {
     query_t query;
     try {
       query = _request->toVelocyPackBuilderPtr(&options);
@@ -283,12 +283,12 @@ RestHandler::status RestAgencyHandler::execute() {
       } else if (_request->suffix()[0] == "read") {
         return handleRead();
       } else if (_request->suffix()[0] == "config") {
-        if (_request->requestType() != GeneralRequest::RequestType::GET) {
+        if (_request->requestType() != rest::RequestType::GET) {
           return reportMethodNotAllowed();
         }
         return handleConfig();
       } else if (_request->suffix()[0] == "state") {
-        if (_request->requestType() != GeneralRequest::RequestType::GET) {
+        if (_request->requestType() != rest::RequestType::GET) {
           return reportMethodNotAllowed();
         }
         return handleState();

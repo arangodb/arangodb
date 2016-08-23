@@ -261,7 +261,7 @@ typedef double ClusterCommTimeout;
 
 struct ClusterCommOperation {
   ClusterCommResult result;
-  GeneralRequest::RequestType reqtype;
+  rest::RequestType reqtype;
   std::string path;
   std::shared_ptr<std::string const> body;
   std::unique_ptr<std::unordered_map<std::string, std::string>> headerFields;
@@ -283,7 +283,7 @@ void ClusterCommRestCallback(std::string& coordinator,
 
 struct ClusterCommRequest {
   std::string destination;
-  GeneralRequest::RequestType requestType;
+  rest::RequestType requestType;
   std::string path;
   std::shared_ptr<std::string const> body;
   std::unique_ptr<std::unordered_map<std::string, std::string>> headerFields;
@@ -292,7 +292,7 @@ struct ClusterCommRequest {
 
   ClusterCommRequest() : done(false) {}
 
-  ClusterCommRequest(std::string const& dest, GeneralRequest::RequestType type,
+  ClusterCommRequest(std::string const& dest, rest::RequestType type,
                      std::string const& path,
                      std::shared_ptr<std::string const> body)
       : destination(dest),
@@ -381,7 +381,7 @@ class ClusterComm {
   OperationID asyncRequest(
       ClientTransactionID const clientTransactionID,
       CoordTransactionID const coordTransactionID,
-      std::string const& destination, GeneralRequest::RequestType reqtype,
+      std::string const& destination, rest::RequestType reqtype,
       std::string const& path, std::shared_ptr<std::string const> body,
       std::unique_ptr<std::unordered_map<std::string, std::string>>&
           headerFields,
@@ -395,7 +395,7 @@ class ClusterComm {
   std::unique_ptr<ClusterCommResult> syncRequest(
       ClientTransactionID const& clientTransactionID,
       CoordTransactionID const coordTransactionID,
-      std::string const& destination, GeneralRequest::RequestType reqtype,
+      std::string const& destination, rest::RequestType reqtype,
       std::string const& path, std::string const& body,
       std::unordered_map<std::string, std::string> const& headerFields,
       ClusterCommTimeout timeout);
