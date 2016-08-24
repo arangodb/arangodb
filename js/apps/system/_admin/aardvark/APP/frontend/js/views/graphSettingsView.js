@@ -241,11 +241,21 @@
       'change input[type="color"]': 'checkColor',
       'change select': 'saveGraphSettings',
       'focus #graphSettingsView input': 'lastFocus',
-      'focus #graphSettingsView select': 'lastFocus'
+      'focus #graphSettingsView select': 'lastFocus',
+      'focusout #graphSettingsView input[type="text"]': 'checkinput'
     },
 
     lastFocus: function (e) {
       this.lastFocussed = e.currentTarget.id;
+      this.lastFocussedValue = $(e.currentTarget).val();
+    },
+
+    checkinput: function (e) {
+      if (e.currentTarget.id === this.lastFocussed) {
+        if (this.lastFocussedValue !== $(e.currentTarget).val()) {
+          this.saveGraphSettings();
+        }
+      }
     },
 
     checkEnterKey: function (e) {
