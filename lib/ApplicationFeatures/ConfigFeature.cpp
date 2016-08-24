@@ -24,8 +24,10 @@
 
 #include <iostream>
 
+#include "Basics/directories.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
+#include "Basics/ArangoGlobalContext.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/IniFileParser.h"
 #include "ProgramOptions/ProgramOptions.h"
@@ -119,38 +121,49 @@ void ConfigFeature::loadConfigFile(std::shared_ptr<ProgramOptions> options,
     //
     // clang-format on
 
+    auto context = ArangoGlobalContext::CONTEXT;
     std::string basename = name + ".conf";
-    std::string filename =
-        FileUtils::buildFilename(FileUtils::currentDirectory(), basename);
+    std::string filename;
 
-    LOG_TOPIC(DEBUG, Logger::CONFIG) << "checking '" << filename << "'";
+    if (context != nullptr) {
+      filename = FileUtils::buildFilename(FileUtils::buildFilename(context->runRoot(), _SYSCONFDIR_), basename);
+      LOG_TOPIC(DEBUG, Logger::CONFIG) << "checking '" << filename << "'";
+    }
 
-    if (!FileUtils::exists(filename)) {
-      filename = FileUtils::buildFilename(FileUtils::currentDirectory(),
-                                          "etc/relative/" + basename);
+    if (filename.length() == 0 || !FileUtils::exists(filename)) {
+      
+      filename =  FileUtils::buildFilename(FileUtils::currentDirectory(), basename);
 
       LOG_TOPIC(DEBUG, Logger::CONFIG) << "checking '" << filename << "'";
 
+
       if (!FileUtils::exists(filename)) {
-        filename =
-            FileUtils::buildFilename(FileUtils::homeDirectory(), basename);
+        filename = FileUtils::buildFilename(FileUtils::currentDirectory(),
+                                            "etc/relative/" + basename);
 
         LOG_TOPIC(DEBUG, Logger::CONFIG) << "checking '" << filename << "'";
 
         if (!FileUtils::exists(filename)) {
           filename =
-              FileUtils::buildFilename(FileUtils::configDirectory(), basename);
+            FileUtils::buildFilename(FileUtils::homeDirectory(), basename);
 
           LOG_TOPIC(DEBUG, Logger::CONFIG) << "checking '" << filename << "'";
 
           if (!FileUtils::exists(filename)) {
-            LOG_TOPIC(DEBUG, Logger::CONFIG) << "cannot find any config file";
-            return;
+            filename =
+              FileUtils::buildFilename(FileUtils::configDirectory(), basename);
+
+            LOG_TOPIC(DEBUG, Logger::CONFIG) << "checking '" << filename << "'";
+
+            if (!FileUtils::exists(filename)) {
+              LOG_TOPIC(DEBUG, Logger::CONFIG) << "cannot find any config file";
+              return;
+            }
           }
         }
       }
     }
-
+    
     IniFileParser parser(options.get());
 
     std::string local = filename + ".local";

@@ -27,6 +27,7 @@
 #include "Basics/StringUtils.h"
 #include "Basics/Utf8Helper.h"
 #include "Basics/shell-colors.h"
+#include "Basics/ArangoGlobalContext.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
@@ -808,6 +809,15 @@ void V8ShellFeature::initGlobals() {
   TRI_AddGlobalVariableVocbase(_isolate, context,
                                TRI_V8_ASCII_STRING2(_isolate, "ARANGO_QUIET"),
                                v8::Boolean::New(_isolate, _console->quiet()));
+
+  auto ctx = ArangoGlobalContext::CONTEXT;
+    
+  if (ctx == nullptr) {
+    LOG(ERR) << "failed to get global context.  ";
+    FATAL_ERROR_EXIT();
+  }
+
+   ctx->getCheckPath(_startupDirectory, "javascript.startup-directory");
 
   // initialize standard modules
   std::string modules =

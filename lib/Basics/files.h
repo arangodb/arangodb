@@ -257,6 +257,16 @@ std::string TRI_BinaryName(char const* argv0);
 std::string TRI_LocateBinaryPath(char const* argv0);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief locates toplevel install directory
+/// tries to substract InstallBinaryPath righthandside from binaryPath
+/// (if equal) and returns either "/" if not, or the part of binaryPath
+/// that is left of InstallBinaryPath:
+///    /opt/usr/bin /usr/bin/ => /opt/
+////////////////////////////////////////////////////////////////////////////////
+
+std::string TRI_GetInstallRoot(std::string const& binaryPath, char const *installBinaryPath);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief locates the home directory
 ////////////////////////////////////////////////////////////////////////////////
 

@@ -28,9 +28,7 @@
 
 #include "Basics/debugging.h"
 #include "Basics/files.h"
-#ifdef __arm__
 #include "Basics/FileUtils.h"
-#endif
 #include "Logger/LogAppender.h"
 #include "Logger/Logger.h"
 #include "Rest/InitializeRest.h"
@@ -110,8 +108,11 @@ LONG CALLBACK unhandledExceptionHandler(EXCEPTION_POINTERS* e) {
 
 ArangoGlobalContext* ArangoGlobalContext::CONTEXT = nullptr;
 
-ArangoGlobalContext::ArangoGlobalContext(int argc, char* argv[])
-    : _binaryName(TRI_BinaryName(argv[0])), _ret(EXIT_FAILURE), _useEventLog(true) {
+ArangoGlobalContext::ArangoGlobalContext(int argc, char* argv[], const char *InstallDirectory)
+    : _binaryName(TRI_BinaryName(argv[0])),
+      _runRoot(TRI_GetInstallRoot(TRI_LocateBinaryPath(argv[0]), InstallDirectory)),
+      _ret(EXIT_FAILURE),
+      _useEventLog(true) {
 
   static char const* serverName = "arangod";
   if (_binaryName.size() < strlen(serverName) ||
@@ -270,4 +271,16 @@ void ArangoGlobalContext::tempPathAvailable() {
   miniDumpFilename +=
     "\\minidump_" + std::to_string(GetCurrentProcessId()) + ".dmp";
 #endif
+}
+
+void ArangoGlobalContext::getCheckPath(std::string &path, const char *whichPath) {
+  if (!arangodb::basics::FileUtils::exists(path)) {
+    std::string directory;
+    directory = arangodb::basics::FileUtils::buildFilename(_runRoot, path);
+    if (!arangodb::basics::FileUtils::exists(directory)) {
+      LOG(ERR) << "failed to locate " << whichPath << " directory, its neither available in  '" << path << "' nor in '" << directory << "'";
+      FATAL_ERROR_EXIT();
+    }
+    path = directory;
+  }
 }
