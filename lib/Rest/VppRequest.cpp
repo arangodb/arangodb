@@ -64,7 +64,8 @@ VppRequest::VppRequest(ConnectionInfo const& connectionInfo,
     : GeneralRequest(connectionInfo),
       _message(std::move(message)),
       _headers(nullptr),
-      _messageId(messageId) {
+      _messageId(messageId),
+      _headerOptions(nullptr) {
   _protocol = "vpp";
   _contentType = ContentType::VPACK;
   _contentTypeResponse = ContentType::VPACK;
@@ -106,11 +107,12 @@ void VppRequest::parseHeaderInformation() {
   using namespace std;
   auto vHeader = _message.header();
   try {
-    _databaseName = vHeader.get("database").copyString();
-    _requestPath = vHeader.get("request").copyString();
-    _type = meta::toEnum<RequestType>(vHeader.get("requestType").getInt());
+    _databaseName = vHeader.get("database", _headerOptions).copyString();
+    _requestPath = vHeader.get("request", _headerOptions).copyString();
+    _type = meta::toEnum<RequestType>(
+        vHeader.get("requestType", _headerOptions).getInt());
 
-    VPackSlice params = vHeader.get("parameter");
+    VPackSlice params = vHeader.get("parameter", _headerOptions);
     for (auto const& it : VPackObjectIterator(params)) {
       if (it.value.isArray()) {
         vector<string> tmp;
