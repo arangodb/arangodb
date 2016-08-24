@@ -279,10 +279,10 @@
     buildGraphSubNav: function (graph, activeKey) {
       var menus = {
         Content: {
-          route: '#graph2/' + encodeURIComponent(graph)
+          route: '#graph/' + encodeURIComponent(graph)
         },
         Settings: {
-          route: '#graph2/' + encodeURIComponent(graph) + '/settings'
+          route: '#graph/' + encodeURIComponent(graph) + '/settings'
         }
       };
 
