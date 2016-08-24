@@ -452,20 +452,6 @@ function ReplicationLoggerSuite () {
       assertEqual(true, entry.data.waitForSync);
 
       tick = getLastLogTick();
-      c.rename("_unitfoxx");
-
-      entry = getLogEntries(tick, 2002)[0];
-      assertEqual(2002, entry.type);
-      assertEqual(c._id, entry.cid, JSON.stringify(entry));
-      assertEqual("_unitfoxx", entry.data.name);
-
-      tick = getLastLogTick();
-      c.rename("_unittests");
-
-      entry = getLogEntries(tick, 2002)[0];
-      assertEqual(2002, entry.type);
-      assertEqual(c._id, entry.cid, JSON.stringify(entry));
-      assertEqual("_unittests", entry.data.name);
     },
 
 ////////////////////////////////////////////////////////////////////////////////

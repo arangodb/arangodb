@@ -50,7 +50,8 @@ Supervision::Supervision()
       _frequency(5),
       _gracePeriod(15),
       _jobId(0),
-      _jobIdMax(0) {}
+      _jobIdMax(0),
+      _selfShutdown(false) {}
 
 Supervision::~Supervision() { shutdown(); };
 
@@ -353,6 +354,8 @@ void Supervision::run() {
 
     if (isShuttingDown()) {
       handleShutdown();
+    } else if (_selfShutdown) {
+      ApplicationServer::server->beginShutdown();
     } else if (_agent->leading()) {
       if (!handleJobs()) {
         break;
@@ -381,6 +384,7 @@ bool Supervision::serverGood(const std::string& serverName) {
 }
 
 void Supervision::handleShutdown() {
+  _selfShutdown = true;
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "Waiting for clients to shut down";
   Node::Children const& serversRegistered = _snapshot(currentServersRegisteredPrefix).children();
   bool serversCleared = true;
@@ -401,7 +405,25 @@ void Supervision::handleShutdown() {
   }
 
   if (serversCleared) {
-    ApplicationServer::server->beginShutdown();
+    if (_agent->leading()) {
+
+      query_t del = std::make_shared<Builder>();
+      del->openArray();
+      del->openArray();
+      del->openObject();
+      del->add(_agencyPrefix + "/Shutdown", VPackValue(VPackValueType::Object));
+      del->add("op", VPackValue("delete"));
+      del->close();
+      del->close(); del->close(); del->close();
+      auto result = _agent->write(del);
+      if (result.indices.size() != 1) {
+        LOG(ERR) << "Invalid resultsize of " << result.indices.size() << " found during shutdown";
+      } else {
+        if (!_agent->waitFor(result.indices.at(0))) {
+          LOG(ERR) << "Result was not written to followers during shutdown";
+        }
+      }
+    }
   }
 }
 

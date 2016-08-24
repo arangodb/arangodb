@@ -1271,10 +1271,11 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
         } else if (res.status == CL_COMM_BACKEND_UNAVAILABLE ||
                    (res.status == CL_COMM_TIMEOUT && !res.sendWasComplete)) {
           requests[index].result = res;
+
           // In this case we will retry:
-          dueTime[index] =
-              (std::min)(10.0, (std::max)(0.2, 2 * (now - startTime))) +
-              startTime;
+          dueTime[index] = (std::min)(10.0,
+                                      (std::max)(0.2, 2 * (now - startTime))) +
+                           now;
           if (dueTime[index] >= endTime) {
             requests[index].done = true;
             nrDone++;

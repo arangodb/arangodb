@@ -36,6 +36,7 @@
 #include "Basics/files.h"
 #include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
+#include "Basics/directories.h"
 
 using namespace arangodb::basics;
 
@@ -319,7 +320,7 @@ void TRI_FixIcuDataEnv() {
   std::string p = TRI_LocateInstallDirectory();
 
   if (!p.empty()) {
-    std::string e = "ICU_DATA=" + p + "share\\arangodb3\\";
+    std::string e = "ICU_DATA=" + p + ICU_DESTINATION_DIRECTORY;
     e = StringUtils::replace(e, "\\", "\\\\");
     putenv(e.c_str());
   } else {

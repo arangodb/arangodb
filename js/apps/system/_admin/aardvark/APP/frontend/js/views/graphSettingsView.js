@@ -20,13 +20,13 @@
       },
       'nodeStart': {
         type: 'string',
-        name: 'Starting node',
+        name: 'Startnode',
         desc: 'A valid node id. If empty, a random node will be chosen.',
         value: 2
       },
       'layout': {
         type: 'select',
-        name: 'Layout algorithm',
+        name: 'Layout',
         desc: 'Different graph algorithms. No overlap is very fast (more than 5000 nodes), force is slower (less than 5000 nodes) and fruchtermann is the slowest (less than 500 nodes). The calculation time strongly depends on your nodes and edges counts.',
         noverlap: {
           name: 'No overlap',
@@ -57,7 +57,7 @@
       'depth': {
         desc: 'Search depth, starting from your start node.',
         type: 'number',
-        name: 'Search depth',
+        name: 'Search Depth',
         value: 2
       },
       'limit': {
@@ -81,7 +81,7 @@
       },
       'nodeLabelByCollection': {
         type: 'select',
-        name: 'Use collection name',
+        name: 'Use Collection Name',
         desc: 'Set label text by collection. If activated node label attribute will be ignored.',
         yes: {
           name: 'Yes',
@@ -94,7 +94,7 @@
       },
       'nodeColorByCollection': {
         type: 'select',
-        name: 'Use collection color',
+        name: 'Use Collection Color',
         no: {
           name: 'No',
           val: 'false'
@@ -113,12 +113,12 @@
       },
       'nodeColorAttribute': {
         type: 'string',
-        name: 'Color attribute',
+        name: 'Color Attribute',
         desc: 'If an attribute is given, nodes will then be colorized by the attribute. This setting ignores default node color if set.'
       },
       'nodeSizeByEdges': {
         type: 'select',
-        name: 'Size by edge count',
+        name: 'Size By Edges',
         yes: {
           name: 'Yes',
           val: 'true'
@@ -127,11 +127,11 @@
           name: 'No',
           val: 'false'
         },
-        desc: 'Should nodes be sized by their edges? If enabled, node sizing attribute will be ignored.'
+        desc: 'Should nodes be sized by their edges count? If enabled, node sizing attribute will be ignored.'
       },
       'nodeSize': {
         type: 'string',
-        name: 'Sizing attribute',
+        name: 'Sizing Attribute',
         desc: 'Default node size. Numeric value > 0.'
       },
       'edges': {
@@ -145,7 +145,7 @@
       },
       'edgeLabelByCollection': {
         type: 'select',
-        name: 'Use collection name',
+        name: 'Use Collection Name',
         desc: 'Set label text by collection. If activated edge label attribute will be ignored.',
         yes: {
           name: 'Yes',
@@ -158,7 +158,7 @@
       },
       'edgeColorByCollection': {
         type: 'select',
-        name: 'Use collection color',
+        name: 'Use Collection Color',
         no: {
           name: 'No',
           val: 'false'
@@ -177,7 +177,7 @@
       },
       'edgeColorAttribute': {
         type: 'string',
-        name: 'Color attribute',
+        name: 'Color Attribute',
         desc: 'If an attribute is given, edges will then be colorized by the attribute. This setting ignores default edge color if set.'
       },
       'edgeEditable': {
@@ -251,9 +251,11 @@
     },
 
     checkinput: function (e) {
-      if (e.currentTarget.id === this.lastFocussed) {
-        if (this.lastFocussedValue !== $(e.currentTarget).val()) {
-          this.saveGraphSettings();
+      if ((new Date() - this.lastSaved > 500)) {
+        if (e.currentTarget.id === this.lastFocussed) {
+          if (this.lastFocussedValue !== $(e.currentTarget).val()) {
+            this.saveGraphSettings();
+          }
         }
       }
     },
@@ -284,6 +286,7 @@
 
     saveGraphSettings: function (event, color, nodeStart, overwrite) {
       var self = this;
+      self.lastSaved = new Date();
       var combinedName = window.App.currentDB.toJSON().name + '_' + this.name;
 
       var config = {};
@@ -337,20 +340,21 @@
         layout: 'force',
         renderer: 'canvas',
         depth: '2',
+        limit: '250',
         nodeColor: '#2ecc71',
         nodeColorAttribute: '',
         nodeColorByCollection: 'true',
         edgeColor: '#cccccc',
         edgeColorAttribute: '',
-        edgeColorByCollection: 'false',
+        edgeColorByCollection: 'true',
         nodeLabel: '_key',
         edgeLabel: '',
         edgeType: 'arrow',
         nodeSize: '',
         nodeSizeByEdges: 'true',
-        edgeEditable: 'true',
+        edgeEditable: 'false',
         nodeLabelByCollection: 'false',
-        edgeLabelByCollection: 'true',
+        edgeLabelByCollection: 'false',
         nodeStart: '',
         barnesHutOptimize: true
       };
@@ -382,6 +386,7 @@
 
     render: function () {
       this.getGraphSettings(true);
+      this.lastSaved = new Date();
     },
 
     handleDependencies: function () {

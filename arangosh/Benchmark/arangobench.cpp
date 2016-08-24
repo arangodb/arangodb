@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Basics/Common.h"
+#include "Basics/directories.h"
 
 #include "ApplicationFeatures/ConfigFeature.h"
 #include "ApplicationFeatures/GreetingsFeature.h"
@@ -42,7 +43,7 @@ using namespace arangodb::basics;
 using namespace arangodb::rest;
 
 int main(int argc, char* argv[]) {
-  ArangoGlobalContext context(argc, argv);
+  ArangoGlobalContext context(argc, argv, BIN_DIRECTORY);
   context.installHup();
 
   std::shared_ptr<options::ProgramOptions> options(new options::ProgramOptions(

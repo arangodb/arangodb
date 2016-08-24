@@ -413,3 +413,8 @@
 
 * GITHUB: https://github.com/jacomyal/sigma.js
 * License: [MIT License](https://github.com/jacomyal/sigma.js/blob/master/LICENSE.txt)
+
+#### wheelnav.js
+
+* GITHUB: https://github.com/softwaretailoring/wheelnav
+* License: [MIT License](https://github.com/softwaretailoring/wheelnav/blob/master/LICENSE)
