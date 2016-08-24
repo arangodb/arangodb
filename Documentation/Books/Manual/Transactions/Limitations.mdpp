@@ -1,5 +1,7 @@
 !CHAPTER Limitations
 
+!SECTION In General
+
 Transactions in ArangoDB have been designed with particular use cases 
 in mind. They will be mainly useful for short and small data retrieval 
 and/or modification operations.
@@ -49,3 +51,14 @@ It is legal to not declare read-only collections, but this should be avoided if
 possible to reduce the probability of deadlocks and non-repeatable reads.
 
 Please refer to [Locking and Isolation](LockingAndIsolation.md) for more details.
+
+!SECTION In Clusters
+
+Using a single instance of ArangoDB, multi-document / multi-collection queries
+are guaranteed to be fully ACID. This is more than many other NoSQL database
+systems support. In cluster mode, single-document operations are also fully ACID.
+Multi-document / multi-collection queries in a cluster are not ACID, which is
+equally the case with competing database systems. Transactions in a cluster
+will be supported in a future version of ArangoDB and make these operations
+fully ACID as well. Note that for non-sharded collections in a cluster, the
+transactional properties of a single server apply (fully ACID).
