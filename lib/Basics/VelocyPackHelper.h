@@ -57,7 +57,6 @@ class VelocyPackHelper {
 
   static arangodb::velocypack::AttributeExcludeHandler* getExcludeHandler();
   static arangodb::velocypack::AttributeTranslator* getTranslator();
-  static arangodb::velocypack::AttributeTranslator* getHeaderTranslator();
 
   struct VPackHash {
     size_t operator()(arangodb::velocypack::Slice const&) const;

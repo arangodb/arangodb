@@ -64,8 +64,7 @@ VppRequest::VppRequest(ConnectionInfo const& connectionInfo,
     : GeneralRequest(connectionInfo),
       _message(std::move(message)),
       _headers(nullptr),
-      _messageId(messageId),
-      _headerOptions(nullptr) {
+      _messageId(messageId) {
   _protocol = "vpp";
   _contentType = ContentType::VPACK;
   _contentTypeResponse = ContentType::VPACK;

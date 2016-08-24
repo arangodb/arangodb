@@ -57,8 +57,6 @@ class VppResponse : public GeneralResponse {
     return arangodb::Endpoint::TransportType::VPP;
   };
 
-  void setHeaderOptions(VPackOptions* options) { _headerOptions = options; }
-
   VPackMessageNoOwnBuffer prepareForNetwork();
 
  private:
@@ -69,7 +67,6 @@ class VppResponse : public GeneralResponse {
   VPackBuffer<uint8_t> _payload;
   uint64_t _messageId;
   bool _generateBody;  // this must be true if payload should be send
-  VPackOptions* _headerOptions;
 };
 }
 
