@@ -204,8 +204,6 @@ void VppCommTask::addResponse(VppResponse* response) {
   auto buffer = createChunkForNetworkSingle(slices, id);
 
   addWriteBuffer(std::move(buffer));
-  processRead();  // do not remove this line - or multiple requests in one
-                  // message will break
 }
 
 VppCommTask::ChunkHeader VppCommTask::readChunkHeader() {
