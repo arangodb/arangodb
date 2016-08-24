@@ -402,7 +402,7 @@ bool VppCommTask::processRead() {
         << "got request:" << header.toJson(&_headerOptions);
     int type = meta::underlyingValue(rest::RequestType::ILLEGAL);
     try {
-      type = header.get("type", &_headerOptions).getInt();
+      type = header.get("type").getInt();
     } catch (std::exception const& e) {
       throw std::runtime_error(
           std::string("Error during Parsing of VppHeader: ") + e.what());
