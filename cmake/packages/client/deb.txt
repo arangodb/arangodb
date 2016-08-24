@@ -8,6 +8,8 @@ cmake_minimum_required(VERSION 2.8)
 # variables from the main build have to be explicitely forwarded:
 ################################################################################
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "@PROJECT_BINARY_DIR@/bin/")
+set(CMAKE_INSTALL_BINDIR ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_X ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
 
 ################################################################################
 #   Substitute the install binaries:
@@ -71,6 +73,14 @@ set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-${AR
 ################################################################################
 # Install the external files into the package directory:
 ################################################################################
+include(${PROJECT_SOURCE_DIR}/cmake/GNUInstallDirs.cmake)
+
+set(CMAKE_INSTALL_SYSCONFDIR_ARANGO "${CMAKE_INSTALL_SYSCONFDIR}/arangodb3" CACHE PATH "read-only single-machine data (etc)")
+set(CMAKE_INSTALL_FULL_SYSCONFDIR_ARANGO "${CMAKE_INSTALL_FULL_SYSCONFDIR}/arangodb3" CACHE PATH "read-only single-machine data (etc)")
+set(CMAKE_INSTALL_DATAROOTDIR_ARANGO "${CMAKE_INSTALL_DATAROOTDIR}/arangodb3" CACHE PATH "read-only data (share)")
+set(CMAKE_INSTALL_FULL_DATAROOTDIR_ARANGO "${CMAKE_INSTALL_FULL_DATAROOTDIR}/arangodb3" CACHE PATH "read-only data (share)")
+
+set(INSTALL_MACROS_NO_TARGET_INSTALL TRUE)
 include(${ORIGINAL_SOURCE_DIR}/cmake/InstallMacros.cmake)
 include(${ORIGINAL_SOURCE_DIR}/cmake/InstallArangoDBJSClient.cmake)
 include(${ORIGINAL_SOURCE_DIR}/arangosh/install.cmake)

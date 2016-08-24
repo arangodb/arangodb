@@ -645,6 +645,10 @@ function runThere (options, instanceInfo, file) {
         'return runTest(' + JSON.stringify(file) + ', true);';
     }
 
+    if (options.propagateInstanceInfo) {
+      testCode = 'global.instanceInfo = ' + JSON.stringify(instanceInfo) + ';\n' + testCode;
+    }
+
     let httpOptions = makeAuthorizationHeaders(options);
     httpOptions.method = 'POST';
     httpOptions.timeout = 3600;
@@ -1426,8 +1430,9 @@ function startInstanceAgency (instanceInfo, protocol, options,
 
   for (let i = 0; i < N; i++) {
     let instanceArgs = _.clone(addArgs);
-    instanceArgs['agency.id'] = String(i);
+    instanceArgs['agency.activate'] = 'true';
     instanceArgs['agency.size'] = String(N);
+    instanceArgs['agency.pool-size'] = String(N);
     instanceArgs['agency.wait-for-sync'] = String(wfs);
     instanceArgs['agency.supervision'] = 'true';
     instanceArgs['database.directory'] = dataDir + String(i);
@@ -1442,8 +1447,6 @@ function startInstanceAgency (instanceInfo, protocol, options,
       });
       l.push('--agency.endpoint');
       l.push('tcp://127.0.0.1:' + port);
-      l.push('--agency.notify');
-      l.push('true');
 
       instanceArgs['flatCommands'] = l;
     }
@@ -1451,6 +1454,7 @@ function startInstanceAgency (instanceInfo, protocol, options,
     fs.makeDirectoryRecursive(dir);
 
     instanceInfo.arangods.push(startArango(protocol, options, instanceArgs, rootDir, 'agent'));
+
   }
 
   instanceInfo.endpoint = instanceInfo.arangods[instanceInfo.arangods.length - 1].endpoint;
@@ -3370,6 +3374,7 @@ testFuncs.replication_sync = function (options) {
 testFuncs.resilience = function (options) {
   findTests();
   options.cluster = true;
+  options.propagateInstanceInfo = true;
   if (options.dbServers < 5) {
     options.dbServers = 5;
   }
@@ -3431,6 +3436,7 @@ testFuncs.server_http = function (options) {
 
 testFuncs.shell_server = function (options) {
   findTests();
+  options.propagateInstanceInfo = true;
 
   return performTests(options, testsCases.server, 'shell_server', runThere);
 };

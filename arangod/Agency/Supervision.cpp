@@ -132,7 +132,7 @@ std::vector<check_t> Supervision::checkDBServers() {
       report->add("LastHeartbeatAcked",
                   VPackValue(
                     timepointToString(std::chrono::system_clock::now())));
-      report->add("Status", VPackValue("GOOD"));
+      report->add("Status", VPackValue(Supervision::HEALTH_STATUS_GOOD));
     } else {
       std::chrono::seconds t{0};
       t = std::chrono::duration_cast<std::chrono::seconds>(
@@ -254,17 +254,17 @@ std::vector<check_t> Supervision::checkCoordinators() {
       report->add("LastHeartbeatAcked",
                   VPackValue(
                     timepointToString(std::chrono::system_clock::now())));
-      report->add("Status", VPackValue("GOOD"));
+      report->add("Status", VPackValue(Supervision::HEALTH_STATUS_GOOD));
     } else {
       std::chrono::seconds t{0};
       t = std::chrono::duration_cast<std::chrono::seconds>(
         std::chrono::system_clock::now()-stringToTimepoint(lastHeartbeatAcked));
       if (t.count() > _gracePeriod) {  // Failure
-        if (lastStatus == "BAD") {
-          report->add("Status", VPackValue("FAILED"));
+        if (lastStatus == Supervision::HEALTH_STATUS_BAD) {
+          report->add("Status", VPackValue(Supervision::HEALTH_STATUS_FAILED));
         }
       } else {
-        report->add("Status", VPackValue("BAD"));
+        report->add("Status", VPackValue(Supervision::HEALTH_STATUS_BAD));
       }
     }
 
@@ -346,6 +346,11 @@ void Supervision::run() {
   
   while (!this->isStopping()) {
     updateSnapshot();
+    // mop: always do health checks so shutdown is able to detect if a server failed otherwise
+    if (_agent->leading()) {
+      doChecks();
+    }
+
     if (isShuttingDown()) {
       handleShutdown();
     } else if (_agent->leading()) {
@@ -365,16 +370,33 @@ bool Supervision::isShuttingDown() {
   }
 }
 
+bool Supervision::serverGood(const std::string& serverName) {
+  try {
+    const std::string serverStatus(healthPrefix + serverName + "/Status");
+    const std::string status = _snapshot(serverStatus).getString();
+    return status == Supervision::HEALTH_STATUS_GOOD;
+  } catch (...) {
+    return false;
+  }
+}
+
 void Supervision::handleShutdown() {
-  LOG_TOPIC(DEBUG, Logger::AGENCY) << "Initiating shutdown";
+  LOG_TOPIC(DEBUG, Logger::AGENCY) << "Waiting for clients to shut down";
   Node::Children const& serversRegistered = _snapshot(currentServersRegisteredPrefix).children();
   bool serversCleared = true;
   for (auto const& server : serversRegistered) {
     if (server.first == "Version") {
       continue;
     }
+     
     LOG_TOPIC(DEBUG, Logger::AGENCY)
       << "Waiting for " << server.first << " to shutdown";
+
+    if (!serverGood(server.first)) {
+      LOG_TOPIC(WARN, Logger::AGENCY)
+        << "Server " << server.first << " did not shutdown properly it seems!";
+      continue;
+    }
     serversCleared = false;
   }
 
@@ -390,7 +412,6 @@ bool Supervision::handleJobs() {
   }
 
   // Do supervision
-  doChecks();
   shrinkCluster();
   workJobs();
   
@@ -398,7 +419,6 @@ bool Supervision::handleJobs() {
 }
 
 void Supervision::workJobs() {
-
   Node::Children const& todos = _snapshot(toDoPrefix).children();
   Node::Children const& pends = _snapshot(pendingPrefix).children();
 
@@ -556,7 +576,7 @@ bool Supervision::start() {
 // Start thread with agent
 bool Supervision::start(Agent* agent) {
   _agent = agent;
-  _frequency = static_cast<long>(_agent->config().supervisionFrequency);
+  _frequency = static_cast<long>(_agent->config().supervisionFrequency());
 
   return start();
 }

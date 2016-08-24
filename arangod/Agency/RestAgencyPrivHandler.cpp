@@ -63,13 +63,19 @@ inline RestHandler::status RestAgencyPrivHandler::reportTooManySuffices() {
   return RestHandler::status::DONE;
 }
 
-inline RestHandler::status RestAgencyPrivHandler::reportBadQuery() {
-  generateError(GeneralResponse::ResponseCode::BAD, 400);
+inline RestHandler::status RestAgencyPrivHandler::reportBadQuery(
+  std::string const& message) {
+  generateError(GeneralResponse::ResponseCode::BAD, 400, message);
   return RestHandler::status::DONE;
 }
 
 inline RestHandler::status RestAgencyPrivHandler::reportMethodNotAllowed() {
   generateError(GeneralResponse::ResponseCode::METHOD_NOT_ALLOWED, 405);
+  return RestHandler::status::DONE;
+}
+
+inline RestHandler::status RestAgencyPrivHandler::reportGone() {
+  generateError(GeneralResponse::ResponseCode::GONE, 410);
   return RestHandler::status::DONE;
 }
 
@@ -85,8 +91,7 @@ RestHandler::status RestAgencyPrivHandler::execute() {
     } else {
       term_t term = 0;
       term_t prevLogTerm = 0;
-      arangodb::consensus::id_t
-          id;  // leaderId for appendEntries, cadidateId for requestVote
+      std::string id;  // leaderId for appendEntries, cadidateId for requestVote
       arangodb::consensus::index_t prevLogIndex, leaderCommit;
       if (_request->suffix()[0] == "appendEntries") {  // appendEntries
         if (_request->requestType() != GeneralRequest::RequestType::POST) {
@@ -123,6 +128,25 @@ RestHandler::status RestAgencyPrivHandler::execute() {
           result.add("voteGranted", VPackValue(ret.success));
         } else {
           return reportBadQuery();  // bad query
+        }
+      } else if (_request->suffix()[0] == "gossip") {
+        arangodb::velocypack::Options options;
+        query_t query = _request->toVelocyPackBuilderPtr(&options);
+        try {
+          query_t ret = _agent->gossip(query);
+          result.add("id",ret->slice().get("id"));
+          result.add("endpoint",ret->slice().get("endpoint"));
+          result.add("pool",ret->slice().get("pool"));
+        } catch (std::exception const& e) {
+          return reportBadQuery(e.what());
+        }
+      } else if (_request->suffix()[0] == "inform") {
+        arangodb::velocypack::Options options;
+        query_t query = _request->toVelocyPackBuilderPtr(&options);
+        try {
+          _agent->notify(query);
+        } catch (std::exception const& e) {
+          return reportBadQuery(e.what());
         }
       } else {
         generateError(GeneralResponse::ResponseCode::NOT_FOUND,

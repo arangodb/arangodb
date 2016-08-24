@@ -1,7 +1,7 @@
 devel
 -----
 
-* added a memory expection of V8 memory gets to low
+* added a memory expection in case V8 memory gets too low
 
 * fixed epoch computation in hybrid logical clock
 
@@ -40,8 +40,19 @@ devel
 
 * web interface now allows installing GitHub and zip services in legacy mode
 
+* added module.context.createDocumentationRouter to replace module.context.apiDocumentation
 
-v3.0.5 (XXXX-XX-XX)
+
+v3.0.6 (XXXX-XX-XX)
+-------------------
+
+* fix execution of AQL traversal expressions when there are multiple
+  conditions that refer to variables set outside the traversal
+
+* properly return HTTP 503 in JS actions when backend is gone
+
+
+v3.0.5 (2016-08-18)
 -------------------
 
 * execute AQL ternary operator via C++ if possible
@@ -52,6 +63,15 @@ v3.0.5 (XXXX-XX-XX)
 
 * fix SSL agency endpoint
 
+* Minimum RAFT timeout was one order of magnitude to short.
+
+* Optimized RAFT RPCs from leader to followers for efficiency.
+
+* Optimized RAFT RPC handling on followers with respect to compaction.
+
+* Fixed bug in handling of duplicates and overlapping logs
+
+* Fixed bug in supervision take over after leadership change.
 
 v3.0.4 (2016-08-01)
 -------------------

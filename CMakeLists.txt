@@ -26,7 +26,7 @@ if (NOT (CMAKE_BUILD_TYPE STREQUAL "Debug"
   message(FATAL_ERROR "expecting CMAKE_BUILD_TYPE: None Debug Release RelWithDebInfo MinSizeRel, got ${CMAKE_BUILD_TYPE}.")
 endif ()
 
-set(CMAKE_OSX_DEPLOYMENT_TARGET "10.9" CACHE STRING "deployment target for MacOSX")
+set(CMAKE_OSX_DEPLOYMENT_TARGET "10.11" CACHE STRING "deployment target for MacOSX; adjust to your sysem")
 
 if (WIN32)
   project(arangodb3 CXX C)
@@ -123,11 +123,22 @@ configure_file(
   NEWLINE_STYLE UNIX
 )
 
+
+################################################################################
+## Find the git revision
 find_program (GIT_EXE git)
-set (EXECUTE_COMMAND ${GIT_EXE} describe --all --tags --long --dirty=-dirty)
-execute_process(COMMAND  ${EXECUTE_COMMAND} OUTPUT_VARIABLE GIT_OUTPUT)
-string(STRIP ${GIT_OUTPUT} REPOSITORY_VERSION)
-set(ARANGODB_BUILD_REPOSITORY ${REPOSITORY_VERSION})
+if (DEFINED GIT_EXE AND IS_DIRECTORY "${CMAKE_SOURCE_DIR}/.git")
+  execute_process(
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    COMMAND ${GIT_EXE} describe --all --tags --long --dirty=-dirty
+    OUTPUT_VARIABLE GIT_OUTPUT)
+  string(STRIP ${GIT_OUTPUT} REPOSITORY_VERSION)
+  set(ARANGODB_BUILD_REPOSITORY ${REPOSITORY_VERSION})
+  set(HAVE_ARANGODB_BUILD_REPOSITORY "1")
+else ()
+  set(ARANGODB_BUILD_REPOSITORY "")
+  set(HAVE_ARANGODB_BUILD_REPOSITORY "0")
+endif()
 
 configure_file (
   "${CMAKE_CURRENT_SOURCE_DIR}/lib/Basics/build-repository.h.in"

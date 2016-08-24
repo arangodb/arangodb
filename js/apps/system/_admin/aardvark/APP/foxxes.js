@@ -354,27 +354,21 @@ anonymousRouter.get('/download/zip', function (req, res) {
   Download a foxx service packed in a zip archive.
 `);
 
-
-anonymousRouter.get('/docs/standalone/*', module.context.apiDocumentation(
-  (req, res) => {
-    if (req.suffix === 'swagger.json' && !req.arangoUser && internal.authenticationEnabled()) {
-      res.throw('unauthorized');
-    }
-    return {
-      mount: decodeURIComponent(req.queryParams.mount)
-    };
+anonymousRouter.use('/docs/standalone', module.context.createDocumentationRouter((req, res) => {
+  if (req.suffix === 'swagger.json' && !req.arangoUser && internal.authenticationEnabled()) {
+    res.throw('unauthorized');
   }
-));
+  return {
+    mount: decodeURIComponent(req.queryParams.mount)
+  };
+}));
 
-
-anonymousRouter.get('/docs/*', module.context.apiDocumentation(
-  (req, res) => {
-    if (req.suffix === 'swagger.json' && !req.arangoUser && internal.authenticationEnabled()) {
-      res.throw('unauthorized');
-    }
-    return {
-      mount: decodeURIComponent(req.queryParams.mount),
-      indexFile: 'index-alt.html'
-    };
+anonymousRouter.use('/docs', module.context.createDocumentationRouter((req, res) => {
+  if (req.suffix === 'swagger.json' && !req.arangoUser && internal.authenticationEnabled()) {
+    res.throw('unauthorized');
   }
-));
+  return {
+    mount: decodeURIComponent(req.queryParams.mount),
+    indexFile: 'index-alt.html'
+  };
+}));

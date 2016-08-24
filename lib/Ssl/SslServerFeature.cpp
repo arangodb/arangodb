@@ -85,7 +85,7 @@ void SslServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options->addHiddenOption(
       "--ssl.options", "ssl connection options, see OpenSSL documentation",
-      new DiscreteValuesParameter<UInt64Parameter>(&_sslOptions, sslProtocols));
+      new UInt64Parameter(&_sslOptions));
 
   options->addOption(
       "--ssl.ecdh-curve",

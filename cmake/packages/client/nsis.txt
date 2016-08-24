@@ -1,0 +1,172 @@
+################################################################################
+# the client package is a complete cmake sub package.
+################################################################################
+project(arangodb3-client)
+cmake_minimum_required(VERSION 2.8)
+
+################################################################################
+# variables from the main build have to be explicitely forwarded:
+################################################################################
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY @CMAKE_BINARY_DIR@/bin)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_X @CMAKE_BINARY_DIR@/bin/$<CONFIGURATION>/)
+
+set(CMAKE_BUILD_TYPE @CMAKE_BUILD_TYPE@)
+
+################################################################################
+#   Substitute the install binaries:
+################################################################################
+set(BIN_ARANGOBENCH @BIN_ARANGOBENCH@)
+set(BIN_ARANGODUMP @BIN_ARANGODUMP@)
+set(BIN_ARANGOIMP @BIN_ARANGOIMP@)
+set(BIN_ARANGORESTORE @BIN_ARANGORESTORE@)
+set(BIN_ARANGOSH @BIN_ARANGOSH@)
+set(BIN_ARANGOVPACK @BIN_ARANGOVPACK@)
+
+################################################################################
+#   build specific variables:
+################################################################################
+set(ARANGODB_URL_INFO_ABOUT @ARANGODB_URL_INFO_ABOUT@)
+set(ARANGODB_SOURCE_DIR @ARANGODB_SOURCE_DIR@)
+set(ARANGODB_VERSION @ARANGODB_VERSION@)
+set(ARANGODB_PACKAGE_ARCHITECTURE @ARANGODB_PACKAGE_ARCHITECTURE@)
+set(ARANGODB_PACKAGE_CONTACT @ARANGODB_PACKAGE_CONTACT@)
+set(ARANGODB_PACKAGE_REVISION @ARANGODB_PACKAGE_REVISION@)
+
+set(CMAKE_INSTALL_FULL_BINDIR @CMAKE_INSTALL_FULL_BINDIR@)
+set(CMAKE_TARGET_ARCHITECTURES @CMAKE_TARGET_ARCHITECTURES@)
+
+set(CMAKE_INSTALL_SYSCONFDIR_ARANGO @CMAKE_INSTALL_SYSCONFDIR_ARANGO@)
+set(CMAKE_INSTALL_FULL_SYSCONFDIR_ARANGO @CMAKE_INSTALL_FULL_SYSCONFDIR_ARANGO@)
+
+set(CMAKE_CL_64 @CMAKE_CL_64@)
+if (CMAKE_CL_64)
+  SET(CPACK_NSIS_INSTALL_ROOT "${PROGRAMFILES64}")
+  SET(BITS 64)
+else ()
+  SET(CPACK_NSIS_INSTALL_ROOT "${PROGRAMFILES}")
+  SET(BITS 32)
+endif ()
+
+set(ORIGINAL_SOURCE_DIR @PROJECT_SOURCE_DIR@)
+set(PROJECT_SOURCE_DIR @PROJECT_SOURCE_DIR@)
+
+
+set(LIB_EAY_RELEASE_DLL @LIB_EAY_RELEASE_DLL@)
+set(SSL_EAY_RELEASE_DLL @SSL_EAY_RELEASE_DLL@)
+
+set(ICU_DT @ICU_DT@)
+set(ICU_DT_DEST @ICU_DT_DEST@)
+
+
+################################################################################
+# Get the final values for cpack:
+################################################################################
+set(CPACK_PACKAGE_VERSION "${ARANGODB_VERSION}")
+set(CPACK_PACKAGE_NAME "arangodb3-client")
+set(CPACK_PACKAGE_CONTACT ${ARANGODB_PACKAGE_CONTACT})
+set(CPACK_RESOURCE_FILE_LICENSE "${PROJECT_SOURCE_DIR}/LICENSE")
+
+set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-${ARANGODB_PACKAGE_REVISION}_${ARANGODB_PACKAGE_ARCHITECTURE}")
+
+
+
+
+################################################################################
+# ------------------------------------------------------------------------------
+################################################################################
+
+
+# so we don't need to ship dll's twice, make it one directory:
+set(CMAKE_INSTALL_FULL_SBINDIR     "${CMAKE_INSTALL_FULL_BINDIR}")
+set(W_INSTALL_FILES                "${PROJECT_SOURCE_DIR}/Installation/Windows/")
+set(CPACK_MODULE_PATH              "${W_INSTALL_FILES}/client/Templates")
+set(CPACK_PLUGIN_PATH              "${W_INSTALL_FILES}/client/Plugins")
+set(CPACK_PACKAGE_NAME             "ArangoSH")
+set(CPACK_NSIS_DISPLAY_NAME,       ${ARANGODB_DISPLAY_NAME})
+set(CPACK_NSIS_HELP_LINK           ${ARANGODB_HELP_LINK})
+set(CPACK_NSIS_URL_INFO_ABOUT      ${ARANGODB_URL_INFO_ABOUT})
+set(CPACK_NSIS_CONTACT             ${ARANGODB_CONTACT})
+set(CPACK_NSIS_MODIFY_PATH         ON)
+set(CPACK_NSIS_ENABLE_UNINSTALL_BEFORE_INSTALL 1)
+set(BITS 64)
+if (CMAKE_CL_64)
+  SET(CPACK_NSIS_INSTALL_ROOT "${PROGRAMFILES64}")
+  SET(BITS 64)
+else ()
+  SET(CPACK_NSIS_INSTALL_ROOT "${PROGRAMFILES}")
+  SET(BITS 32)
+endif ()
+
+include(${ORIGINAL_SOURCE_DIR}/cmake/VcMacros.cmake)
+include(${ORIGINAL_SOURCE_DIR}/cmake/GNUInstallDirs.cmake)
+set(CMAKE_INSTALL_SYSCONFDIR_ARANGO "${CMAKE_INSTALL_SYSCONFDIR}/arangodb3")
+set(CMAKE_INSTALL_FULL_SYSCONFDIR_ARANGO "${CMAKE_INSTALL_FULL_SYSCONFDIR}/arangodb3")
+set(CMAKE_INSTALL_DATAROOTDIR_ARANGO "${CMAKE_INSTALL_DATAROOTDIR}/arangodb3")
+set(CMAKE_INSTALL_FULL_DATAROOTDIR_ARANGO "${CMAKE_INSTALL_FULL_DATAROOTDIR}/arangodb3")
+
+set(INSTALL_MACROS_NO_TARGET_INSTALL TRUE)
+include(${ORIGINAL_SOURCE_DIR}/cmake/InstallMacros.cmake)
+
+
+# install the visual studio runtime:
+set(CMAKE_INSTALL_UCRT_LIBRARIES 1)
+include(InstallRequiredSystemLibraries)
+INSTALL(FILES ${CMAKE_INSTALL_SYSTEM_RUNTIME_LIBS} DESTINATION bin COMPONENT Libraries)
+INSTALL(FILES ${CMAKE_INSTALL_SYSTEM_RUNTIME_COMPONENT} DESTINATION bin COMPONENT Libraries)
+
+# install openssl
+if (NOT LIB_EAY_RELEASE_DLL OR NOT SSL_EAY_RELEASE_DLL)
+  message(FATAL_ERROR, "BUNDLE_OPENSSL set but couldn't locate SSL DLLs. Please set LIB_EAY_RELEASE_DLL and SSL_EAY_RELEASE_DLL")
+endif()
+
+install (FILES "${LIB_EAY_RELEASE_DLL}" DESTINATION "${CMAKE_INSTALL_BINDIR}/" COMPONENT Libraries)  
+install (FILES "${SSL_EAY_RELEASE_DLL}" DESTINATION "${CMAKE_INSTALL_BINDIR}/" COMPONENT Libraries)  
+
+# icon paths 
+set (ICON_PATH "${W_INSTALL_FILES}/Icons/")
+install(DIRECTORY "${ICON_PATH}" DESTINATION "resources")
+
+file(TO_NATIVE_PATH "resources/Icons/arangodb.ico" RELATIVE_ARANGO_ICON)
+file(TO_NATIVE_PATH "${ICON_PATH}arangodb.bmp" ARANGO_IMG)
+file(TO_NATIVE_PATH "${ICON_PATH}/arangodb.ico" ARANGO_ICON)
+
+STRING(REGEX REPLACE "\\\\" "\\\\\\\\" RELATIVE_ARANGO_ICON "${RELATIVE_ARANGO_ICON}") 
+STRING(REGEX REPLACE "\\\\" "\\\\\\\\" ARANGO_IMG "${ARANGO_IMG}")
+STRING(REGEX REPLACE "\\\\" "\\\\\\\\" ARANGO_ICON "${ARANGO_ICON}")
+
+set(CPACK_PACKAGE_ICON             ${ARANGO_ICON})
+set(CPACK_NSIS_MUI_ICON            ${ARANGO_ICON})
+set(CPACK_NSIS_MUI_UNIICON         ${ARANGO_ICON})
+set(CPACK_NSIS_INSTALLED_ICON_NAME ${RELATIVE_ARANGO_ICON})
+
+message(STATUS "RELATIVE_ARANGO_ICON: ${RELATIVE_ARANGO_ICON}")
+message(STATUS "ARANGO_IMG:  ${ARANGO_IMG}")
+message(STATUS "ARANGO_ICON: ${ARANGO_ICON}")
+
+# versioning
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${W_INSTALL_FILES}/version")
+
+include("${W_INSTALL_FILES}/version/generate_product_version.cmake")
+
+set(CPACK_ARANGODB_NSIS_DEFINES "
+    !define BITS ${BITS}
+    !define TRI_FRIENDLY_SVC_NAME '${ARANGODB_FRIENDLY_STRING}'
+    !define TRI_AARDVARK_URL 'http://127.0.0.1:8529'
+    ")
+
+
+
+################################################################################
+# Install the external files into the package directory:
+################################################################################
+include(${ORIGINAL_SOURCE_DIR}/cmake/InstallArangoDBJSClient.cmake)
+include(${ORIGINAL_SOURCE_DIR}/arangosh/install.cmake)
+
+install_readme(README.windows README.windows.txt)
+
+# other platforms link the file into the binary
+install(FILES ${ICU_DT}
+  DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/arangodb3"
+  RENAME ${ICU_DT_DEST})
+
+include(CPack)

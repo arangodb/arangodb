@@ -5,7 +5,20 @@ if python -c "import sys ; sys.exit(sys.platform != 'cygwin')"; then
     echo "can't work with cygwin python - move it away!"
     exit 1
 fi
-                                                                     
+
+
+#          debian          mac   
+for f in /usr/bin/md5sum /sbin/md5; do 
+    if test -e ${f}; then
+        MD5=${f}
+        break
+    fi
+done
+if test -z "${f}"; then
+    echo "didn't find a valid MD5SUM binary!"
+    exit 1
+fi
+    
 if test -f /scripts/prepare_buildenv.sh; then
     echo "Sourcing docker container environment settings"
     . /scripts/prepare_buildenv.sh
@@ -35,6 +48,49 @@ case `uname -m` in
         BITS=32
         ;;
 esac
+
+compute_relative()
+{
+    # http://stackoverflow.com/questions/2564634/convert-absolute-path-into-relative-path-given-a-current-directory-using-bash
+    # both $1 and $2 are absolute paths beginning with /
+    # returns relative path to $2/$target from $1/$source
+    source=$1
+    target=$2
+
+    common_part=$source # for now
+    result="" # for now
+
+    while [[ "${target#$common_part}" == "${target}" ]]; do
+        # no match, means that candidate common part is not correct
+        # go up one level (reduce common part)
+        common_part="$(dirname $common_part)"
+        # and record that we went back, with correct / handling
+        if [[ -z $result ]]; then
+            result=".."
+        else
+            result="../$result"
+        fi
+    done
+
+    if [[ $common_part == "/" ]]; then
+        # special case for root (no common path)
+        result="$result/"
+    fi
+
+    # since we now have identified the common part,
+    # compute the non-common part
+    forward_part="${target#$common_part}"
+
+    # and now stick all parts together
+    if [[ -n $result ]] && [[ -n $forward_part ]]; then
+        result="$result$forward_part"
+    elif [[ -n $forward_part ]]; then
+        # extra slash removal
+        result="${forward_part:1}"
+    fi
+
+    echo $result
+}
 
 # check if there are any relevant changes to the source code
 
@@ -79,9 +135,10 @@ MAKE=make
 PACKAGE_MAKE=make
 MAKE_PARAMS=""
 MAKE_CMD_PREFIX=""
-CONFIGURE_OPTIONS="-DCMAKE_INSTALL_PREFIX=/ -DCMAKE_INSTALL_LOCALSTATEDIR=/var$CMAKE_OPENSSL"
+CONFIGURE_OPTIONS="-DCMAKE_INSTALL_PREFIX=/ $CMAKE_OPENSSL"
 MAINTAINER_MODE="-DUSE_MAINTAINER_MODE=off"
 
+TAR_SUFFIX=""
 TARGET_DIR=""
 CLANG36=0
 CLANG=0
@@ -155,16 +212,18 @@ while [ $# -gt 0 ];  do
             ;;
 
         --sanitize)
+            TAR_SUFFIX="-sanitize"
             SANITIZE=1
             shift
             ;;
 
         --coverage)
+            TAR_SUFFIX="-coverage"
             COVERAGE=1
             shift
             ;;
         
-         --msvc)
+        --msvc)
              shift
              MSVC=1
              CC=""
@@ -172,7 +231,6 @@ while [ $# -gt 0 ];  do
              PAR=""
              PARALLEL_BUILDS=""
              GENERATOR="Visual Studio 14 Win64"
-             CPACK="ZIP NSIS"
              MAKE='cmake --build . --config RelWithDebInfo'
              PACKAGE_MAKE='cmake --build . --config RelWithDebInfo --target'
              CONFIGURE_OPTIONS="${CONFIGURE_OPTIONS} -DV8_TARGET_ARCHS=Release"
@@ -193,7 +251,7 @@ while [ $# -gt 0 ];  do
             shift
             ;;
         
-        --builddir)
+        --buildDir)
             shift
             BUILD_DIR=$1
             shift
@@ -231,6 +289,12 @@ while [ $# -gt 0 ];  do
             V8_CFLAGS="${V8_CFLAGS} -static-libgcc"
             V8_CXXFLAGS="${V8_CXXFLAGS} -static-libgcc -static-libstdc++"
             V8_LDFLAGS="${V8_LDFLAGS} -static-libgcc -static-libstdc++"
+            shift
+            ;;
+
+        --parallel)
+            shift
+            PARALLEL_BUILDS=$1
             shift
             ;;
         
@@ -333,54 +397,38 @@ if test ${CLEAN_IT} -eq 1; then
     git clean -f -d -x
 fi
 
+SRC=`pwd`
+
 test -d ${BUILD_DIR} || mkdir ${BUILD_DIR}
 cd ${BUILD_DIR}
 
+DST=`pwd`
+SOURCE_DIR=`compute_relative ${DST}/ ${SRC}/`
+
 if [ ! -f Makefile -o ! -f CMakeCache.txt ];  then
     CFLAGS="${CFLAGS}" CXXFLAGS="${CXXFLAGS}" LDFLAGS="${LDFLAGS}" LIBS="${LIBS}" \
-          cmake .. ${CONFIGURE_OPTIONS} -G "${GENERATOR}"
+          cmake ${SOURCE_DIR} ${CONFIGURE_OPTIONS} -G "${GENERATOR}"
 fi
 
 ${MAKE_CMD_PREFIX} ${MAKE} ${MAKE_PARAMS}
-git rev-parse HEAD > ../last_compiled_version.sha
+(cd ${SOURCE_DIR}; git rev-parse HEAD > last_compiled_version.sha)
 
 if [ -n "$CPACK"  -a -n "${TARGET_DIR}" ];  then
     ${PACKAGE_MAKE} packages
 fi
-#if [ -n "$CPACK"  -a -n "${TARGET_DIR}" ];  then
-#    for PACK in ${CPACK}; do 
-##        if [ "$PACK" == "DEB" ]; then
-##            make prepare_debian
-##        fi
-#        
-#        cpack -G "$PACK"
-#
-#        EXT=`echo $PACK|tr '[:upper:]' '[:lower:]'`
-#        if [ "$PACK" == "Bundle" ]; then
-#            EXT = 'dmg'
-#        fi
-#        if [ "$PACK" == "NSIS" ]; then
-#            true
-#        else
-#            cp *.${EXT} ${TARGET_DIR}
-#        fi
-#    done
-#fi
-
-
 # and install
 
 if test -n "${TARGET_DIR}";  then
     echo "building distribution tarball"
     mkdir -p "${TARGET_DIR}"
     dir="${TARGET_DIR}"
-    TARFILE=arangodb.tar.gz
+    TARFILE=arangodb-`uname`${TAR_SUFFIX}.tar.gz
     TARFILE_TMP=`pwd`/arangodb.tar.$$
 
     mkdir -p ${dir}
     trap "rm -rf ${TARFILE_TMP}" EXIT
 
-    (cd ..
+    (cd ${SOURCE_DIR}
 
      touch 3rdParty/.keepme
      touch arangod/.keepme
@@ -403,7 +451,7 @@ if test -n "${TARGET_DIR}";  then
         tar -u -f ${TARFILE_TMP} \
             --files-from files.$$
 
-        (cd ..
+        (cd ${SOURCE_DIR}
 
          find . \
               \( -name *.cpp -o -name *.h -o -name *.c -o -name *.hpp -o -name *.ll -o -name *.y \) > files.$$
@@ -418,5 +466,5 @@ if test -n "${TARGET_DIR}";  then
     fi
 
     gzip < ${TARFILE_TMP} > ${dir}/${TARFILE}
-    md5sum < ${dir}/${TARFILE} > ${dir}/${TARFILE}.md5
+    ${MD5} < ${dir}/${TARFILE} > ${dir}/${TARFILE}.md5
 fi

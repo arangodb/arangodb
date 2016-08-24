@@ -41,10 +41,6 @@ namespace consensus {
 typedef uint64_t term_t;
 
 
-/// @brief Id type
-typedef uint32_t id_t;
-
-
 /// @brief Agent roles
 enum role_t {FOLLOWER, CANDIDATE, LEADER};
 
@@ -64,10 +60,10 @@ typedef uint64_t index_t;
 /// @brief Read request return type
 struct read_ret_t {
   bool accepted;  ///< @brief Query accepted (i.e. we are leader)
-  id_t redirect;  ///< @brief If not accepted redirect id
+  std::string redirect;  ///< @brief If not accepted redirect id
   std::vector<bool> success; ///< @brief Query's precond OK
   query_t result;  ///< @brief Query result
-  read_ret_t(bool a, id_t id, std::vector<bool> suc = std::vector<bool>(),
+  read_ret_t(bool a, std::string id, std::vector<bool> suc = std::vector<bool>(),
              query_t res = nullptr)
       : accepted(a), redirect(id), success(suc), result(res) {}
 };
@@ -76,12 +72,12 @@ struct read_ret_t {
 /// @brief Write request return type
 struct write_ret_t {
   bool accepted;  ///< @brief Query accepted (i.e. we are leader)
-  id_t redirect;  ///< @brief If not accepted redirect id
+  std::string redirect;  ///< @brief If not accepted redirect id
   std::vector<bool> applied;
   std::vector<index_t> indices;  // Indices of log entries (if any) to wait for
-  write_ret_t() : accepted(false), redirect(0) {}
-  write_ret_t(bool a, id_t id) : accepted(a), redirect(id) {}
-  write_ret_t(bool a, id_t id, std::vector<bool> const& app,
+  write_ret_t() : accepted(false), redirect("") {}
+  write_ret_t(bool a, std::string id) : accepted(a), redirect(id) {}
+  write_ret_t(bool a, std::string id, std::vector<bool> const& app,
               std::vector<index_t> const& idx)
       : accepted(a), redirect(id), applied(app), indices(idx) {}
 };

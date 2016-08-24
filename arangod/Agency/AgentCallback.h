@@ -33,19 +33,19 @@ namespace consensus {
 class Agent;
 
 class AgentCallback : public arangodb::ClusterCommCallback {
- public:
+public:
   AgentCallback();
 
-  AgentCallback(Agent*, arangodb::consensus::id_t, index_t);
+  AgentCallback(Agent*, std::string const&, index_t);
 
   virtual bool operator()(arangodb::ClusterCommResult*) override final;
 
   void shutdown();
 
- private:
+private:
   Agent* _agent;
   index_t _last;
-  arangodb::consensus::id_t _slaveID;
+  std::string _slaveID;
 };
 }
 }  // namespace

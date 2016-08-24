@@ -64,7 +64,7 @@ class Executor {
 
   /// @brief checks if a V8 exception has occurred and throws an appropriate C++
   /// exception from it if so
-  static void HandleV8Error(v8::TryCatch&, v8::Handle<v8::Value>&);
+  static void HandleV8Error(v8::TryCatch&, v8::Handle<v8::Value>&, arangodb::basics::StringBuffer* const, bool duringCompile);
 
  private:
   /// @brief traverse the expression and note all user-defined functions
@@ -152,9 +152,6 @@ class Executor {
 
   /// @brief create the string buffer
   arangodb::basics::StringBuffer* initializeBuffer();
-
-  /// @brief compile a V8 function from the code contained in the buffer
-  v8::Handle<v8::Value> compileExpression();
 
  private:
   /// @brief a string buffer used for operations

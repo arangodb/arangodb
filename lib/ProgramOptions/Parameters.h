@@ -24,6 +24,7 @@
 #define ARANGODB_PROGRAM_OPTIONS_PARAMETERS_H 1
 
 #include "Basics/Common.h"
+#include "Basics/Exceptions.h"
 #include "Basics/fpconv.h"
 
 #include <velocypack/Builder.h>
@@ -305,7 +306,25 @@ template <typename T>
 struct DiscreteValuesParameter : public T {
   DiscreteValuesParameter(typename T::ValueType* ptr,
                    std::unordered_set<typename T::ValueType> const& allowed)
-      : T(ptr), allowed(allowed) {}
+      : T(ptr), allowed(allowed) {
+
+  if (allowed.find(*ptr) == allowed.end()) {
+    // default value is not in list of allowed values
+    std::string msg("invalid default value for DiscreteValues parameter: ");
+    msg.append(stringifyValue(*ptr));
+    msg.append(". allowed values: ");
+    size_t i = 0;
+    for (auto const& it : allowed) {
+      if (i > 0) {
+        msg.append(" or ");
+      }
+      msg.append(stringifyValue(it));
+      ++i;
+    }
+
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg.c_str());
+  }
+}
 
   std::string set(std::string const& value) override {
     auto it = allowed.find(fromString<typename T::ValueType>(value));

@@ -26,6 +26,7 @@
 #include "Basics/Exceptions.h"
 #include "Logger/Logger.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Utf8Helper.h"
 #include "Basics/VPackStringBufferAdapter.h"
@@ -431,19 +432,17 @@ static bool PrintVelocyPack(int fd, VPackSlice const& slice,
     return false;
   }
 
-  TRI_string_buffer_t buffer;
-  TRI_InitStringBuffer(&buffer, TRI_UNKNOWN_MEM_ZONE);
-  arangodb::basics::VPackStringBufferAdapter bufferAdapter(&buffer);
+  arangodb::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE);
+  arangodb::basics::VPackStringBufferAdapter bufferAdapter(buffer.stringBuffer());
   try {
     VPackDumper dumper(&bufferAdapter);
     dumper.dump(slice);
   } catch (...) {
     // Writing failed
-    TRI_AnnihilateStringBuffer(&buffer);
     return false;
   }
 
-  if (TRI_LengthStringBuffer(&buffer) == 0) {
+  if (buffer.length() == 0) {
     // should not happen
     return false;
   }
@@ -451,17 +450,16 @@ static bool PrintVelocyPack(int fd, VPackSlice const& slice,
   if (appendNewline) {
     // add the newline here so we only need one write operation in the ideal
     // case
-    TRI_AppendCharStringBuffer(&buffer, '\n');
+    buffer.appendChar('\n');
   }
 
-  char const* p = TRI_BeginStringBuffer(&buffer);
-  size_t n = TRI_LengthStringBuffer(&buffer);
+  char const* p = buffer.begin();
+  size_t n = buffer.length();
 
   while (0 < n) {
     ssize_t m = TRI_WRITE(fd, p, (TRI_write_t)n);
 
     if (m <= 0) {
-      TRI_AnnihilateStringBuffer(&buffer);
       return false;
     }
 
@@ -469,7 +467,6 @@ static bool PrintVelocyPack(int fd, VPackSlice const& slice,
     p += m;
   }
 
-  TRI_AnnihilateStringBuffer(&buffer);
   return true;
 }
 

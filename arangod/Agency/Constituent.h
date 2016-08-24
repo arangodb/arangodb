@@ -26,7 +26,6 @@
 
 #include "AgencyCommon.h"
 #include "AgentConfiguration.h"
-#include "NotifierThread.h"
 
 #include "Basics/Common.h"
 #include "Basics/Thread.h"
@@ -72,14 +71,14 @@ class Constituent : public arangodb::Thread {
   bool running() const;
 
   /// @brief Called by REST handler
-  bool vote(term_t, arangodb::consensus::id_t, index_t, term_t,
+  bool vote(term_t, std::string, index_t, term_t,
             bool appendEntries = false);
 
   /// @brief My daily business
   void run() override final;
 
   /// @brief Who is leading
-  arangodb::consensus::id_t leaderID() const;
+  std::string leaderID() const;
 
   /// @brief Configuration
   config_t const& config() const;
@@ -95,7 +94,13 @@ class Constituent : public arangodb::Thread {
 
   bool start(TRI_vocbase_t* vocbase, aql::QueryRegistry*);
 
+  friend class Agent;
+
  private:
+
+  /// @brief update leaderId and term if inactive
+  void update(std::string const&, term_t);
+  
   /// @brief set term to new term
   void term(term_t);
 
@@ -103,13 +108,14 @@ class Constituent : public arangodb::Thread {
   std::vector<std::string> const& endpoints() const;
 
   /// @brief Endpoint of agent with id
-  std::string const& endpoint(arangodb::consensus::id_t) const;
+  std::string endpoint(std::string) const;
 
   /// @brief Run for leadership
   void candidate();
 
   /// @brief Become leader
-  void lead(std::vector<bool> const&);
+  void lead(std::map<std::string,bool> const& =
+            std::map<std::string,bool>());
 
   /// @brief Call for vote (by leader or candidates after timeout)
   void callElection();
@@ -120,11 +126,6 @@ class Constituent : public arangodb::Thread {
   /// @brief Wait for sync
   bool waitForSync() const;
 
-  /// @brief Notify everyone, that we are good to go.
-  ///        This is the task of the last process starting up.
-  ///        Will be taken care of by gossip
-  void notifyAll();
-
   /// @brief Sleep for how long
   duration_t sleepFor(double, double);
 
@@ -134,14 +135,12 @@ class Constituent : public arangodb::Thread {
   term_t _term;                /**< @brief term number */
   std::atomic<bool> _cast;     /**< @brief cast a vote this term */
 
-  arangodb::consensus::id_t _leaderID; /**< @brief Current leader */
-  arangodb::consensus::id_t _id;       /**< @brief My own id */
+  std::string _leaderID; /**< @brief Current leader */
+  std::string _id;       /**< @brief My own id */
 
   role_t _role;                        /**< @brief My role */
   Agent* _agent;                       /**< @brief My boss */
-  arangodb::consensus::id_t _votedFor;
-
-  std::unique_ptr<NotifierThread> _notifier;
+  std::string _votedFor;
 
   arangodb::basics::ConditionVariable _cv;  // agency callbacks
   mutable arangodb::Mutex _castLock;
