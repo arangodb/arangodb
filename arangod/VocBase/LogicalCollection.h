@@ -25,6 +25,7 @@
 #define ARANGOD_VOCBASE_LOGICAL_COLLECTION_H 1
 
 #include "Basics/Common.h"
+#include "VocBase/DatafileDescription.h"
 #include "VocBase/PhysicalCollection.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
@@ -47,7 +48,7 @@ class LogicalCollection {
 
   LogicalCollection(TRI_vocbase_t* vocbase, TRI_col_type_e type,
                     TRI_voc_cid_t cid, std::string const& name, TRI_voc_cid_t planId,
-                    std::string const& path, bool isLocal);
+                    std::string const& path, bool isVolatile, bool isLocal);
 
   LogicalCollection(TRI_vocbase_t*, arangodb::velocypack::Slice);
 
@@ -138,6 +139,10 @@ class LogicalCollection {
   int update(arangodb::velocypack::Slice const&, bool);
   int update(VocbaseCollectionInfo const&);
 
+
+  /// @brief return the figures for a collection
+  std::shared_ptr<arangodb::velocypack::Builder> figures();
+  
   
   /// @brief iterates over a collection
   bool iterateDatafiles(std::function<bool(TRI_df_marker_t const*, TRI_datafile_t*)> const& cb) {
@@ -148,9 +153,7 @@ class LogicalCollection {
   int open(bool ignoreErrors);
 
   /// @brief closes an open collection
-  int close() {
-    return getPhysical()->close();
-  }
+  int close();
 
   /// datafile management
 
@@ -200,7 +203,10 @@ class LogicalCollection {
   bool closeDatafiles(std::vector<TRI_datafile_t*> const& files) {
     return getPhysical()->closeDatafiles(files);
   }
-
+  
+  std::vector<DatafileDescription> datafilesInRange(TRI_voc_tick_t dataMin, TRI_voc_tick_t dataMax) {
+    return getPhysical()->datafilesInRange(dataMin, dataMax);
+  }
 
 
   PhysicalCollection* getPhysical() const {

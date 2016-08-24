@@ -48,6 +48,9 @@ class MMFilesCollection final : public PhysicalCollection {
 
   int64_t initialCount() const override;
   
+  /// @brief return engine-specific figures
+  void figures(std::shared_ptr<arangodb::velocypack::Builder>&) override;
+  
   // datafile management
 
   /// @brief closes an open collection
@@ -88,6 +91,10 @@ class MMFilesCollection final : public PhysicalCollection {
 
   /// @brief iterates over a collection
   bool iterateDatafiles(std::function<bool(TRI_df_marker_t const*, TRI_datafile_t*)> const& cb) override;
+
+  /// @brief iterate over a vector of datafiles and pick those with a specific
+  /// data range
+  std::vector<DatafileDescription> datafilesInRange(TRI_voc_tick_t dataMin, TRI_voc_tick_t dataMax) override;
   
  private:
   bool iterateDatafilesVector(std::vector<TRI_datafile_t*> const& files,

@@ -73,33 +73,6 @@ struct DocumentOperation;
 /// @brief predefined collection name for users
 #define TRI_COL_NAME_USERS "_users"
 
-/// @brief collection info
-struct TRI_doc_collection_info_t {
-  TRI_voc_ssize_t _numberDatafiles;
-  TRI_voc_ssize_t _numberJournalfiles;
-  TRI_voc_ssize_t _numberCompactorfiles;
-
-  TRI_voc_ssize_t _numberAlive;
-  TRI_voc_ssize_t _numberDead;
-  TRI_voc_ssize_t _numberDeletions;
-  TRI_voc_ssize_t _numberIndexes;
-
-  int64_t _sizeAlive;
-  int64_t _sizeDead;
-  int64_t _sizeIndexes;
-
-  int64_t _datafileSize;
-  int64_t _journalfileSize;
-  int64_t _compactorfileSize;
-
-  TRI_voc_tick_t _tickMax;
-  uint64_t _uncollectedLogfileEntries;
-  uint64_t _numberDocumentDitches;
-  char const* _waitingForDitch;
-  char const* _lastCompactionStatus;
-  char _lastCompactionStamp[21];
-};
-
 namespace arangodb {
 
 /// @brief collection info block saved to disk as json
@@ -270,13 +243,13 @@ struct TRI_collection_t {
   void setCompactionStatus(char const*);
   void getCompactionStatus(char const*&, char*, size_t);
   
+  void figures(std::shared_ptr<arangodb::velocypack::Builder>& result);
+
   void addIndex(arangodb::Index*);
   std::vector<arangodb::Index*> const& allIndexes() const;
   arangodb::Index* lookupIndex(TRI_idx_iid_t) const;
   arangodb::PrimaryIndex* primaryIndex();
  
-  TRI_doc_collection_info_t* figures();
-
   int beginRead();
   int endRead();
   int beginWrite();
@@ -402,7 +375,7 @@ struct TRI_collection_t {
       VPackSlice const& slice, arangodb::Index** idx);
 
   /// @brief closes an open collection
-  int unload(bool updateStatus);
+  int unload();
 
  private:
   bool openIndex(VPackSlice const& description, arangodb::Transaction* trx);

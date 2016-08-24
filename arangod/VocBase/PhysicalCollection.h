@@ -25,7 +25,10 @@
 #define ARANGOD_VOCBASE_PHYSICAL_COLLECTION_H 1
 
 #include "Basics/Common.h"
+#include "VocBase/DatafileDescription.h"
 #include "VocBase/voc-types.h"
+
+#include <velocypack/Builder.h>
 
 struct TRI_datafile_t;
 struct TRI_df_marker_t;
@@ -46,6 +49,8 @@ class PhysicalCollection {
   virtual void setRevision(TRI_voc_rid_t revision, bool force) = 0;
   
   virtual int64_t initialCount() const = 0;
+
+  virtual void figures(std::shared_ptr<arangodb::velocypack::Builder>&) = 0;
   
   virtual int close() = 0;
 
@@ -87,6 +92,8 @@ class PhysicalCollection {
   
   /// @brief iterates over a collection
   virtual bool iterateDatafiles(std::function<bool(TRI_df_marker_t const*, TRI_datafile_t*)> const& cb) = 0;
+
+  virtual std::vector<DatafileDescription> datafilesInRange(TRI_voc_tick_t dataMin, TRI_voc_tick_t dataMax) = 0;
   
  protected:
   LogicalCollection* _logicalCollection;

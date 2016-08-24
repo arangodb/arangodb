@@ -75,7 +75,7 @@ int revisionOnCoordinator(std::string const& dbname,
 ////////////////////////////////////////////////////////////////////////////////
 
 int figuresOnCoordinator(std::string const& dbname, std::string const& collname,
-                         TRI_doc_collection_info_t*&);
+                         std::shared_ptr<arangodb::velocypack::Builder>&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief counts number of documents in a coordinator

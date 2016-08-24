@@ -251,8 +251,8 @@ class StorageEngine : public application_features::ApplicationFeature {
   
  protected:
   arangodb::LogicalCollection* registerCollection(bool doLock, TRI_vocbase_t* vocbase, TRI_col_type_e type, TRI_voc_cid_t cid, 
-                                        std::string const& name, TRI_voc_cid_t planId, std::string const& path) {
-    return vocbase->registerCollection(doLock, type, cid, name, planId, path);
+                                        std::string const& name, TRI_voc_cid_t planId, std::string const& path, bool isVolatile) {
+    return vocbase->registerCollection(doLock, type, cid, name, planId, path, isVolatile);
   }
  
  private:

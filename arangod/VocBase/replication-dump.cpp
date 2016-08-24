@@ -63,18 +63,6 @@ static void Append(TRI_replication_dump_t* dump, char const* value) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief a datafile descriptor
-////////////////////////////////////////////////////////////////////////////////
-
-struct df_entry_t {
-  TRI_datafile_t const* _data;
-  TRI_voc_tick_t _dataMin;
-  TRI_voc_tick_t _dataMax;
-  TRI_voc_tick_t _tickMax;
-  bool _isJournal;
-};
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief translate a (local) collection id into a collection name
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -103,66 +91,6 @@ static char const* NameFromCid(TRI_replication_dump_t* dump,
   }
 
   return nullptr;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief iterate over a vector of datafiles and pick those with a specific
-/// data range
-////////////////////////////////////////////////////////////////////////////////
-
-static void IterateDatafiles(std::vector<TRI_datafile_t*> const& datafiles,
-                             std::vector<df_entry_t>& result,
-                             TRI_voc_tick_t dataMin, TRI_voc_tick_t dataMax,
-                             bool isJournal) {
-  for (auto& df : datafiles) {
-    df_entry_t entry = {df, df->_dataMin, df->_dataMax, df->_tickMax,
-                        isJournal};
-
-    LOG(TRACE) << "checking datafile " << df->_fid << " with data range " << df->_dataMin << " - " << df->_dataMax << ", tick max: " << df->_tickMax;
-
-    if (df->_dataMin == 0 || df->_dataMax == 0) {
-      // datafile doesn't have any data
-      continue;
-    }
-
-    TRI_ASSERT(df->_tickMin <= df->_tickMax);
-    TRI_ASSERT(df->_dataMin <= df->_dataMax);
-
-    if (dataMax < df->_dataMin) {
-      // datafile is newer than requested range
-      continue;
-    }
-
-    if (dataMin > df->_dataMax) {
-      // datafile is older than requested range
-      continue;
-    }
-
-    result.emplace_back(entry);
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the datafiles of a collection for a specific tick range
-////////////////////////////////////////////////////////////////////////////////
-
-static std::vector<df_entry_t> GetRangeDatafiles(
-    LogicalCollection* collection, TRI_voc_tick_t dataMin,
-    TRI_voc_tick_t dataMax) {
-  LOG(TRACE) << "getting datafiles in data range " << dataMin << " - " << dataMax;
-
-  std::vector<df_entry_t> datafiles;
-
-#warning FIXME
-/*
-  {
-    READ_LOCKER(readLocker, document->_filesLock); 
-
-    IterateDatafiles(document->_datafiles, datafiles, dataMin, dataMax, false);
-    IterateDatafiles(document->_journals, datafiles, dataMin, dataMax, true);
-  }
-*/
-  return datafiles;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -469,10 +397,11 @@ static int DumpCollection(TRI_replication_dump_t* dump,
   TRI_collection_t* document = collection->_collection;
   TRI_string_buffer_t* buffer = dump->_buffer;
 
-  std::vector<df_entry_t> datafiles;
+  std::vector<DatafileDescription> datafiles;
 
   try {
-    datafiles = GetRangeDatafiles(collection, dataMin, dataMax);
+    LOG(TRACE) << "getting datafiles in data range " << dataMin << " - " << dataMax;
+    datafiles = collection->datafilesInRange(dataMin, dataMax);
   } catch (...) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
@@ -488,7 +417,7 @@ static int DumpCollection(TRI_replication_dump_t* dump,
   size_t const n = datafiles.size();
 
   for (size_t i = 0; i < n; ++i) {
-    df_entry_t const& e = datafiles[i];
+    auto const& e = datafiles[i];
     TRI_datafile_t const* datafile = e._data;
 
     // we are reading from a journal that might be modified in parallel

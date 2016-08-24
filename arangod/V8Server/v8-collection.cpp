@@ -865,60 +865,6 @@ static void JS_ExistsVocbaseVPack(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief fetch the figures for a sharded collection
-////////////////////////////////////////////////////////////////////////////////
-
-static TRI_doc_collection_info_t* GetFiguresCoordinator(
-    arangodb::LogicalCollection* collection) {
-  TRI_ASSERT(collection != nullptr);
-
-  std::string const databaseName(collection->dbName());
-  std::string const cid = collection->cid_as_string();
-
-  TRI_doc_collection_info_t* result = nullptr;
-
-  int res = figuresOnCoordinator(databaseName, cid, result);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_set_errno(res);
-    return nullptr;
-  }
-
-  return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief fetch the figures for a local collection
-////////////////////////////////////////////////////////////////////////////////
-
-static TRI_doc_collection_info_t* GetFigures(arangodb::LogicalCollection* collection) {
-  TRI_ASSERT(collection != nullptr);
-
-  SingleCollectionTransaction trx(
-      V8TransactionContext::Create(collection->vocbase(), true),
-      collection->cid(), TRI_TRANSACTION_READ);
-
-  int res = trx.begin();
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_set_errno(res);
-    return nullptr;
-  }
-
-  // READ-LOCK start
-  trx.lockRead();
-
-  TRI_collection_t* document = collection->_collection;
-  TRI_ASSERT(document != nullptr);
-  TRI_doc_collection_info_t* info = document->figures();
-
-  trx.finish(res);
-  // READ-LOCK end
-
-  return info;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock collectionFigures
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -934,100 +880,20 @@ static void JS_FiguresVocbaseCol(
   if (collection == nullptr) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
+    
+  SingleCollectionTransaction trx(V8TransactionContext::Create(collection->vocbase(), true), collection->cid(), 
+                                  TRI_TRANSACTION_READ);
+  int res = trx.begin();
 
-  v8::Handle<v8::Object> result = v8::Object::New(isolate);
-
-  TRI_doc_collection_info_t* info;
-
-  if (ServerState::instance()->isCoordinator()) {
-    info = GetFiguresCoordinator(collection);
-  } else {
-    info = GetFigures(collection);
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_THROW_EXCEPTION(res);
   }
 
-  if (info == nullptr) {
-    TRI_V8_THROW_EXCEPTION_MEMORY();
-  }
+  std::shared_ptr<VPackBuilder> builder = collection->figures();
 
-  v8::Handle<v8::Object> alive = v8::Object::New(isolate);
-
-  result->Set(TRI_V8_ASCII_STRING("alive"), alive);
-  alive->Set(TRI_V8_ASCII_STRING("count"),
-             v8::Number::New(isolate, (double)info->_numberAlive));
-  alive->Set(TRI_V8_ASCII_STRING("size"),
-             v8::Number::New(isolate, (double)info->_sizeAlive));
-
-  v8::Handle<v8::Object> dead = v8::Object::New(isolate);
-
-  result->Set(TRI_V8_ASCII_STRING("dead"), dead);
-  dead->Set(TRI_V8_ASCII_STRING("count"),
-            v8::Number::New(isolate, (double)info->_numberDead));
-  dead->Set(TRI_V8_ASCII_STRING("size"),
-            v8::Number::New(isolate, (double)info->_sizeDead));
-  dead->Set(TRI_V8_ASCII_STRING("deletion"),
-            v8::Number::New(isolate, (double)info->_numberDeletions));
-
-  // datafile info
-  v8::Handle<v8::Object> dfs = v8::Object::New(isolate);
-
-  result->Set(TRI_V8_ASCII_STRING("datafiles"), dfs);
-  dfs->Set(TRI_V8_ASCII_STRING("count"),
-           v8::Number::New(isolate, (double)info->_numberDatafiles));
-  dfs->Set(TRI_V8_ASCII_STRING("fileSize"),
-           v8::Number::New(isolate, (double)info->_datafileSize));
-
-  // journal info
-  v8::Handle<v8::Object> js = v8::Object::New(isolate);
-
-  result->Set(TRI_V8_ASCII_STRING("journals"), js);
-  js->Set(TRI_V8_ASCII_STRING("count"),
-          v8::Number::New(isolate, (double)info->_numberJournalfiles));
-  js->Set(TRI_V8_ASCII_STRING("fileSize"),
-          v8::Number::New(isolate, (double)info->_journalfileSize));
-
-  // compactors info
-  v8::Handle<v8::Object> cs = v8::Object::New(isolate);
-
-  result->Set(TRI_V8_ASCII_STRING("compactors"), cs);
-  cs->Set(TRI_V8_ASCII_STRING("count"),
-          v8::Number::New(isolate, (double)info->_numberCompactorfiles));
-  cs->Set(TRI_V8_ASCII_STRING("fileSize"),
-          v8::Number::New(isolate, (double)info->_compactorfileSize));
-
-  v8::Handle<v8::Object> indexes = v8::Object::New(isolate);
-  result->Set(TRI_V8_ASCII_STRING("indexes"), indexes);
-  indexes->Set(TRI_V8_ASCII_STRING("count"),
-               v8::Number::New(isolate, (double)info->_numberIndexes));
-  indexes->Set(TRI_V8_ASCII_STRING("size"),
-               v8::Number::New(isolate, (double)info->_sizeIndexes));
-
-  result->Set(TRI_V8_ASCII_STRING("lastTick"),
-              V8TickId(isolate, info->_tickMax));
-  result->Set(
-      TRI_V8_ASCII_STRING("uncollectedLogfileEntries"),
-      v8::Number::New(isolate, (double)info->_uncollectedLogfileEntries));
-  result->Set(TRI_V8_ASCII_STRING("documentReferences"),
-              v8::Number::New(isolate, (double)info->_numberDocumentDitches));
-
-  char const* wfd = "-";
-  if (info->_waitingForDitch != nullptr) {
-    wfd = info->_waitingForDitch;
-  }
-  result->Set(TRI_V8_ASCII_STRING("waitingFor"), TRI_V8_ASCII_STRING(wfd));
-
-  v8::Handle<v8::Object> compaction = v8::Object::New(isolate);
-  if (info->_lastCompactionStatus != nullptr) {
-    compaction->Set(TRI_V8_ASCII_STRING("message"),
-                    TRI_V8_ASCII_STRING(info->_lastCompactionStatus));
-    compaction->Set(TRI_V8_ASCII_STRING("time"),
-                    TRI_V8_ASCII_STRING(&info->_lastCompactionStamp[0]));
-  } else {
-    compaction->Set(TRI_V8_ASCII_STRING("message"), TRI_V8_ASCII_STRING("-"));
-    compaction->Set(TRI_V8_ASCII_STRING("time"), TRI_V8_ASCII_STRING("-"));
-  }
-  result->Set(TRI_V8_ASCII_STRING("compactionStatus"), compaction);
-
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, info);
+  trx.finish(TRI_ERROR_NO_ERROR);
+  
+  v8::Handle<v8::Value> result = TRI_VPackToV8(isolate, builder->slice());
 
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END

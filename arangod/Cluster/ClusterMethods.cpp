@@ -36,6 +36,7 @@
 #include "VocBase/ticks.h"
 
 #include <velocypack/Buffer.h>
+#include <velocypack/Collection.h>
 #include <velocypack/Helpers.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
@@ -45,6 +46,81 @@ using namespace arangodb::basics;
 using namespace arangodb::rest;
 
 static double const CL_DEFAULT_TIMEOUT = 60.0;
+
+namespace {
+template<typename T>
+T addFigures(VPackSlice const& v1, VPackSlice const& v2, std::vector<std::string> const& attr) {
+  TRI_ASSERT(v1.isObject());
+  TRI_ASSERT(v2.isObject());
+
+  T value = 0;
+
+  VPackSlice found = v1.get(attr);
+  if (found.isNumber()) {
+    value += found.getNumericValue<T>();
+  }
+
+  found = v2.get(attr);
+  if (found.isNumber()) {
+    value += found.getNumericValue<T>();
+  }
+  
+  return value;
+}
+
+void recursiveAdd(VPackSlice const& value, std::shared_ptr<VPackBuilder>& builder) {
+  TRI_ASSERT(value.isObject());
+  TRI_ASSERT(builder->slice().isObject());
+  TRI_ASSERT(builder->isClosed());
+
+  VPackBuilder updated;
+
+  updated.openObject();
+
+  updated.add("alive", VPackValue(VPackValueType::Object));
+  updated.add("count", VPackValue(addFigures<size_t>(value, builder->slice(), { "alive", "count" })));
+  updated.add("size", VPackValue(addFigures<size_t>(value, builder->slice(), { "alive", "size" })));
+  updated.close();
+  
+  updated.add("dead", VPackValue(VPackValueType::Object));
+  updated.add("count", VPackValue(addFigures<size_t>(value, builder->slice(), { "dead", "count" })));
+  updated.add("size", VPackValue(addFigures<size_t>(value, builder->slice(), { "dead", "size" })));
+  updated.add("deletion", VPackValue(addFigures<size_t>(value, builder->slice(), { "dead", "deletion" })));
+  updated.close();
+  
+  updated.add("indexes", VPackValue(VPackValueType::Object));
+  updated.add("count", VPackValue(addFigures<size_t>(value, builder->slice(), { "indexes", "count" })));
+  updated.add("size", VPackValue(addFigures<size_t>(value, builder->slice(), { "indexes", "size" })));
+  updated.close();
+  
+  updated.add("datafiles", VPackValue(VPackValueType::Object));
+  updated.add("count", VPackValue(addFigures<size_t>(value, builder->slice(), { "datafiles", "count" })));
+  updated.add("fileSize", VPackValue(addFigures<size_t>(value, builder->slice(), { "datafiles", "fileSize" })));
+  updated.close();
+  
+  updated.add("journals", VPackValue(VPackValueType::Object));
+  updated.add("count", VPackValue(addFigures<size_t>(value, builder->slice(), { "journals", "count" })));
+  updated.add("fileSize", VPackValue(addFigures<size_t>(value, builder->slice(), { "journals", "fileSize" })));
+  updated.close();
+
+  updated.add("compactors", VPackValue(VPackValueType::Object));
+  updated.add("count", VPackValue(addFigures<size_t>(value, builder->slice(), { "compactors", "count" })));
+  updated.add("fileSize", VPackValue(addFigures<size_t>(value, builder->slice(), { "compactors", "fileSize" })));
+  updated.close();
+
+  updated.add("documentReferences", VPackValue(addFigures<size_t>(value, builder->slice(), { "documentReferences" })));
+  
+  updated.close();
+
+  TRI_ASSERT(updated.slice().isObject());
+  TRI_ASSERT(updated.isClosed());
+
+  builder.reset(new VPackBuilder(VPackCollection::merge(builder->slice(), updated.slice(), true, false))); 
+  TRI_ASSERT(builder->slice().isObject());
+  TRI_ASSERT(builder->isClosed());
+}
+
+}
 
 namespace arangodb {
 
@@ -547,7 +623,7 @@ int revisionOnCoordinator(std::string const& dbname,
 ////////////////////////////////////////////////////////////////////////////////
 
 int figuresOnCoordinator(std::string const& dbname, std::string const& collname,
-                         TRI_doc_collection_info_t*& result) {
+                         std::shared_ptr<arangodb::velocypack::Builder>& result) {
   // Set a few variables needed for our work:
   ClusterInfo* ci = ClusterInfo::instance();
   ClusterComm* cc = ClusterComm::instance();
@@ -558,14 +634,6 @@ int figuresOnCoordinator(std::string const& dbname, std::string const& collname,
 
   if (collinfo == nullptr) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
-  }
-
-  // prefill with 0s
-  result = (TRI_doc_collection_info_t*)TRI_Allocate(
-      TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_doc_collection_info_t), true);
-
-  if (result == nullptr) {
-    return TRI_ERROR_OUT_OF_MEMORY;
   }
 
   // If we get here, the sharding attributes are not only _key, therefore
@@ -598,39 +666,7 @@ int figuresOnCoordinator(std::string const& dbname, std::string const& collname,
           VPackSlice figures = answer.get("figures");
           if (figures.isObject()) {
             // add to the total
-            result->_numberAlive +=
-                ExtractFigure<TRI_voc_ssize_t>(figures, "alive", "count");
-            result->_numberDead +=
-                ExtractFigure<TRI_voc_ssize_t>(figures, "dead", "count");
-            result->_numberDeletions +=
-                ExtractFigure<TRI_voc_ssize_t>(figures, "dead", "deletion");
-            result->_numberIndexes +=
-                ExtractFigure<TRI_voc_ssize_t>(figures, "indexes", "count");
-
-            result->_sizeAlive +=
-                ExtractFigure<int64_t>(figures, "alive", "size");
-            result->_sizeDead +=
-                ExtractFigure<int64_t>(figures, "dead", "size");
-            result->_sizeIndexes +=
-                ExtractFigure<int64_t>(figures, "indexes", "size");
-
-            result->_numberDatafiles +=
-                ExtractFigure<TRI_voc_ssize_t>(figures, "datafiles", "count");
-            result->_numberJournalfiles +=
-                ExtractFigure<TRI_voc_ssize_t>(figures, "journals", "count");
-            result->_numberCompactorfiles +=
-                ExtractFigure<TRI_voc_ssize_t>(figures, "compactors", "count");
-
-            result->_datafileSize +=
-                ExtractFigure<int64_t>(figures, "datafiles", "fileSize");
-            result->_journalfileSize +=
-                ExtractFigure<int64_t>(figures, "journals", "fileSize");
-            result->_compactorfileSize +=
-                ExtractFigure<int64_t>(figures, "compactors", "fileSize");
-
-            result->_numberDocumentDitches +=
-                arangodb::basics::VelocyPackHelper::getNumericValue<uint64_t>(
-                    figures, "documentReferences", 0);
+            recursiveAdd(figures, result);
           }
           nrok++;
         }
@@ -639,8 +675,6 @@ int figuresOnCoordinator(std::string const& dbname, std::string const& collname,
   }
 
   if (nrok != (int)shards->size()) {
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, result);
-    result = 0;
     return TRI_ERROR_INTERNAL;
   }
 

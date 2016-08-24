@@ -28,6 +28,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
+#include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
 #include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -126,7 +127,8 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
                                      TRI_col_type_e type, TRI_voc_cid_t cid,
                                      std::string const& name,
                                      TRI_voc_cid_t planId,
-                                     std::string const& path, bool isLocal)
+                                     std::string const& path, 
+                                     bool isVolatile, bool isLocal)
     : _internalVersion(0),
       _cid(cid),
       _planId(planId),
@@ -138,7 +140,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
       _isDeleted(false),
       _doCompact(false),
       _isSystem(TRI_collection_t::IsSystemName(name)),
-      _isVolatile(false),
+      _isVolatile(isVolatile),
       _waitForSync(false),
       _journalSize(TRI_JOURNAL_DEFAULT_SIZE),
       _keyOptions(nullptr),
@@ -464,6 +466,21 @@ int LogicalCollection::rename(std::string const& newName) {
   return TRI_ERROR_NO_ERROR;
 }
 
+int LogicalCollection::close() {
+  TRI_ASSERT(_collection != nullptr);
+
+  int res = _collection->unload();
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return res;
+  }
+  
+  delete _collection;
+  _collection = nullptr;
+
+  return getPhysical()->close();
+}
+
 void LogicalCollection::drop() {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   _isDeleted = true;
@@ -574,6 +591,33 @@ int LogicalCollection::update(VPackSlice const& slice, bool preferDefaults) {
   }
 
   return TRI_ERROR_NO_ERROR;
+}
+
+/// @brief return the figures for a collection
+std::shared_ptr<arangodb::velocypack::Builder> LogicalCollection::figures() {
+  auto builder = std::make_shared<VPackBuilder>();
+  
+  if (ServerState::instance()->isCoordinator()) {
+    builder->openObject();
+    builder->close();
+
+    int res = figuresOnCoordinator(dbName(), cid_as_string(), builder); 
+    
+    if (res != TRI_ERROR_NO_ERROR) {
+      THROW_ARANGO_EXCEPTION(res);
+    }
+  } else {
+    TRI_ASSERT(_collection != nullptr);
+    // add figures from TRI_collection_t
+    builder->openObject();
+    _collection->figures(builder);
+  
+    // add engine-specific figures
+    getPhysical()->figures(builder);
+    builder->close();
+  }
+
+  return builder;
 }
 
 PhysicalCollection* LogicalCollection::createPhysical() {

@@ -512,66 +512,58 @@ int TRI_collection_t::beginWriteTimed(uint64_t timeout,
   }
 }
 
-/// @brief returns information about the collection
-/// note: the collection lock must be held when calling this function
-TRI_doc_collection_info_t* TRI_collection_t::figures() {
-  // prefill with 0's to init counters
-  auto info = static_cast<TRI_doc_collection_info_t*>(TRI_Allocate(
-          TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_doc_collection_info_t), true));
-
-  if (info == nullptr) {
-    return nullptr;
-  }
-
+void TRI_collection_t::figures(std::shared_ptr<arangodb::velocypack::Builder>& builder) {
   DatafileStatisticsContainer dfi = _datafileStatistics.all();
-  info->_numberAlive += static_cast<TRI_voc_ssize_t>(dfi.numberAlive);
-  info->_numberDead += static_cast<TRI_voc_ssize_t>(dfi.numberDead);
-  info->_numberDeletions += static_cast<TRI_voc_ssize_t>(dfi.numberDeletions);
 
-  info->_sizeAlive += dfi.sizeAlive;
-  info->_sizeDead += dfi.sizeDead;
+  builder->add("alive", VPackValue(VPackValueType::Object));
+  builder->add("count", VPackValue(dfi.numberAlive));
+  builder->add("size", VPackValue(dfi.sizeAlive));
+  builder->close(); // alive
+  
+  builder->add("dead", VPackValue(VPackValueType::Object));
+  builder->add("count", VPackValue(dfi.numberDead));
+  builder->add("size", VPackValue(dfi.sizeDead));
+  builder->add("deletion", VPackValue(dfi.numberDeletions));
+  builder->close(); // dead
 
-#warning FIXME
-/*
-  // add the file sizes for datafiles and journals
-  for (auto& df : physical->_datafiles) {
-    info->_datafileSize += (int64_t)df->_initSize;
-    ++info->_numberDatafiles;
-  }
-
-  for (auto& df : physical->_journals) {
-    info->_journalfileSize += (int64_t)df->_initSize;
-    ++info->_numberJournalfiles;
-  }
-
-  for (auto& df : physical->_compactors) {
-    info->_compactorfileSize += (int64_t)df->_initSize;
-    ++info->_numberCompactorfiles;
-  }
-*/
   // add index information
-  info->_numberIndexes = 0;
-  info->_sizeIndexes = 0;
-
-  info->_sizeIndexes += static_cast<int64_t>(_masterPointers.memory());
-
+  size_t sizeIndexes = _masterPointers.memory();
+  size_t numIndexes = 0;
   for (auto const& idx : allIndexes()) {
-    info->_sizeIndexes += idx->memory();
-    info->_numberIndexes++;
+    sizeIndexes += static_cast<size_t>(idx->memory());
+    ++numIndexes;
   }
 
-  info->_uncollectedLogfileEntries = _uncollectedLogfileEntries;
-  info->_tickMax = _tickMax;
+  builder->add("indexes", VPackValue(VPackValueType::Object));
+  builder->add("count", VPackValue(numIndexes));
+  builder->add("size", VPackValue(sizeIndexes));
+  builder->close(); // indexes
 
-  info->_numberDocumentDitches = _ditches.numDocumentDitches();
-  info->_waitingForDitch = _ditches.head();
+  builder->add("uncollectedLogfileEntries", VPackValue(_uncollectedLogfileEntries));
+  builder->add("lastTick", VPackValue(_tickMax));
 
+  builder->add("documentReferences", VPackValue(_ditches.numDocumentDitches()));
+  
+  char const* waitingForDitch = _ditches.head();
+  builder->add("waitingFor", VPackValue(waitingForDitch == nullptr ? "-" : waitingForDitch));
+  
   // fills in compaction status
-  getCompactionStatus(info->_lastCompactionStatus,
-                      &info->_lastCompactionStamp[0],
-                      sizeof(info->_lastCompactionStamp));
+  char const* lastCompactionStatus = nullptr;
+  char lastCompactionStamp[21];
+  getCompactionStatus(lastCompactionStatus,
+                      &lastCompactionStamp[0],
+                      sizeof(lastCompactionStamp));
 
-  return info;
+  if (lastCompactionStatus == nullptr) {
+    lastCompactionStatus = "-";
+    lastCompactionStamp[0] = '-';
+    lastCompactionStamp[1] = '\0';
+  }
+  
+  builder->add("compactionStatus", VPackValue(VPackValueType::Object));
+  builder->add("message", VPackValue(lastCompactionStatus));
+  builder->add("time", VPackValue(&lastCompactionStamp[0]));
+  builder->close(); // compactionStatus
 }
 
 /// @brief add an index to the collection
@@ -4362,7 +4354,7 @@ TRI_collection_t* TRI_collection_t::open(TRI_vocbase_t* vocbase,
 }
 
 /// @brief closes an open collection
-int TRI_collection_t::unload(bool updateStats) {
+int TRI_collection_t::unload() {
   auto primaryIndex = this->primaryIndex();
   auto idxSize = primaryIndex->size();
 
@@ -4370,6 +4362,8 @@ int TRI_collection_t::unload(bool updateStats) {
       _info.initialCount() != static_cast<int64_t>(idxSize)) {
     _info.updateCount(idxSize);
   }
+
+  _numberDocuments = 0;
 
   return TRI_ERROR_NO_ERROR;
 }

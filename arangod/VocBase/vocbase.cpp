@@ -74,12 +74,13 @@ void TRI_vocbase_t::signalCleanup() {
 /// caller must hold _collectionsLock in write mode or set doLock
 arangodb::LogicalCollection* TRI_vocbase_t::registerCollection(
     bool doLock, TRI_col_type_e type, TRI_voc_cid_t cid,
-    std::string const& name, TRI_voc_cid_t planId, std::string const& path) {
+    std::string const& name, TRI_voc_cid_t planId, std::string const& path,
+    bool isVolatile) {
   TRI_ASSERT(cid != 0);
 
   // create a new proxy
   auto collection = std::make_unique<arangodb::LogicalCollection>(
-      this, type, cid, name, planId, path, true);
+      this, type, cid, name, planId, path, isVolatile, true);
 
   {
     CONDITIONAL_WRITE_LOCKER(writeLocker, _collectionsLock, doLock);
@@ -220,16 +221,11 @@ bool TRI_vocbase_t::UnloadCollectionCallback(LogicalCollection* collection) {
     // as the cleanup thread has already popped the unload ditch from the
     // ditches list,
     // we need to insert a new one to really executed the unload
-    collection->_collection->_vocbase->unloadCollection(collection, false);
+    collection->vocbase()->unloadCollection(collection, false);
     return false;
   }
 
-  TRI_collection_t* document = collection->_collection;
-
-  TRI_ASSERT(document != nullptr);
-
-  int res = document->unload(true);
-  collection->close();
+  int res = collection->close();
 
   if (res != TRI_ERROR_NO_ERROR) {
     std::string const colName(collection->name());
@@ -239,8 +235,6 @@ bool TRI_vocbase_t::UnloadCollectionCallback(LogicalCollection* collection) {
     collection->setStatus(TRI_VOC_COL_STATUS_CORRUPTED);
     return true;
   }
-
-  delete document;
 
   collection->setStatus(TRI_VOC_COL_STATUS_UNLOADED);
 
@@ -261,20 +255,13 @@ bool TRI_vocbase_t::DropCollectionCallback(arangodb::LogicalCollection* collecti
 
     // unload collection
     if (collection->_collection != nullptr) {
-      TRI_collection_t* document = collection->_collection;
-
-      int res = document->unload(false);
-      collection->close();
+      int res = collection->close();
 
       if (res != TRI_ERROR_NO_ERROR) {
         LOG(ERR) << "failed to close collection '" << name
                 << "': " << TRI_last_error();
         return false;
       }
-
-      delete document;
-
-      collection->_collection = nullptr;
     }
   } // release status lock
 
@@ -331,35 +318,33 @@ arangodb::LogicalCollection* TRI_vocbase_t::createCollectionWorker(
     return nullptr;
   }
 
-  TRI_collection_t* col = document;
-  arangodb::LogicalCollection* collection = nullptr;
   TRI_voc_cid_t planId = parameters.planId();
-  col->_info.setPlanId(planId);
+  document->_info.setPlanId(planId);
 
-  TRI_ASSERT(col->_info.id() != 0);
+  TRI_ASSERT(document->_info.id() != 0);
   
+  arangodb::LogicalCollection* collection = nullptr;
   try {
-    collection = registerCollection(ConditionalWriteLocker::DoNotLock(), col->_info.type(), col->_info.id(), col->_info.name(), planId, col->path());
+    collection = registerCollection(ConditionalWriteLocker::DoNotLock(), document->_info.type(), document->_info.id(), document->_info.name(), planId, document->path(), document->_info.isVolatile());
   } catch (...) {
     // if an exception is caught, collection will be a nullptr
   }
 
   if (collection == nullptr) {
-    document->unload(false);
-    collection->close();
+    document->unload();
     delete document;
     // TODO: does the collection directory need to be removed?
     return nullptr;
   }
 
   // cid might have been assigned
-  cid = col->_info.id();
+  cid = document->_info.id();
 
   collection->setStatus(TRI_VOC_COL_STATUS_LOADED);
   collection->_collection = document;
 
   if (writeMarker) {
-    col->_info.toVelocyPack(builder);
+    document->_info.toVelocyPack(builder);
   }
 
   return collection;

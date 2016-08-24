@@ -82,12 +82,15 @@ int64_t MMFilesCollection::initialCount() const {
 int MMFilesCollection::close() {
   // close compactor files
   closeDatafiles(_compactors);
+  _compactors.clear();
 
   // close journal files
   closeDatafiles(_journals);
+  _journals.clear();
 
   // close datafiles
   closeDatafiles(_datafiles);
+  _datafiles.clear();
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -599,3 +602,71 @@ bool MMFilesCollection::closeDatafiles(std::vector<TRI_datafile_t*> const& files
   
   return result;
 }
+  
+void MMFilesCollection::figures(std::shared_ptr<arangodb::velocypack::Builder>& builder) {
+  READ_LOCKER(readLocker, _filesLock); 
+  
+  size_t sizeDatafiles = 0;
+  builder->add("datafiles", VPackValue(VPackValueType::Object));
+  for (auto const& it : _datafiles) {
+    sizeDatafiles += it->_initSize;
+  }
+
+  builder->add("count", VPackValue(_datafiles.size()));
+  builder->add("fileSize", VPackValue(sizeDatafiles));
+  builder->close(); // datafiles
+  
+  size_t sizeJournals = 0;
+  for (auto const& it : _journals) {
+    sizeJournals += it->_initSize;
+  }
+  builder->add("journals", VPackValue(VPackValueType::Object));
+  builder->add("count", VPackValue(_journals.size()));
+  builder->add("fileSize", VPackValue(sizeJournals));
+  builder->close(); // journals
+  
+  size_t sizeCompactors = 0;
+  for (auto const& it : _compactors) {
+    sizeCompactors += it->_initSize;
+  }
+  builder->add("compactors", VPackValue(VPackValueType::Object));
+  builder->add("count", VPackValue(_compactors.size()));
+  builder->add("fileSize", VPackValue(sizeCompactors));
+  builder->close(); // compactors
+}
+
+/// @brief iterate over a vector of datafiles and pick those with a specific
+/// data range
+std::vector<DatafileDescription> MMFilesCollection::datafilesInRange(TRI_voc_tick_t dataMin, TRI_voc_tick_t dataMax) {
+  std::vector<DatafileDescription> result;
+
+  READ_LOCKER(readLocker, _filesLock); 
+
+  for (auto& it : _datafiles) {
+    DatafileDescription entry = {it, it->_dataMin, it->_dataMax, it->_tickMax, false};
+    LOG(TRACE) << "checking datafile " << it->_fid << " with data range " << it->_dataMin << " - " << it->_dataMax << ", tick max: " << it->_tickMax;
+
+    if (it->_dataMin == 0 || it->_dataMax == 0) {
+      // datafile doesn't have any data
+      continue;
+    }
+
+    TRI_ASSERT(it->_tickMin <= it->_tickMax);
+    TRI_ASSERT(it->_dataMin <= it->_dataMax);
+
+    if (dataMax < it->_dataMin) {
+      // datafile is newer than requested range
+      continue;
+    }
+
+    if (dataMin > it->_dataMax) {
+      // datafile is older than requested range
+      continue;
+    }
+
+    result.emplace_back(entry);
+  }
+
+  return result;
+}
+

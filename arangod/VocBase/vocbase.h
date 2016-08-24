@@ -355,7 +355,8 @@ struct TRI_vocbase_t {
   /// caller must hold _collectionsLock in write mode or set doLock
   arangodb::LogicalCollection* registerCollection(
       bool doLock, TRI_col_type_e type, TRI_voc_cid_t cid,
-      std::string const& name, TRI_voc_cid_t planId, std::string const& path);
+      std::string const& name, TRI_voc_cid_t planId, std::string const& path,
+      bool isVolatile);
 
   /// @brief removes a collection from the global list of collections
   /// This function is called when a collection is dropped.
