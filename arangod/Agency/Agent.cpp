@@ -585,7 +585,7 @@ void Agent::notifyInactive() const {
         auto headerFields =
           std::make_unique<std::unordered_map<std::string, std::string>>();
         arangodb::ClusterComm::instance()->asyncRequest(
-          "1", 1, p.second, arangodb::GeneralRequest::RequestType::POST,
+          "1", 1, p.second, arangodb::rest::RequestType::POST,
           path, std::make_shared<std::string>(out.toJson()), headerFields,
           nullptr, 1.0, true);
       }
