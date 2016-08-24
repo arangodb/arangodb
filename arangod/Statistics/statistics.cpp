@@ -296,7 +296,7 @@ void TRI_FillConnectionStatistics(
   if (!StatisticsFeature::enabled()) {
     // all the below objects may be deleted if we don't have statistics enabled
     for (int i = 0;
-         i < ((int)arangodb::GeneralRequest::RequestType::ILLEGAL) + 1; ++i) {
+         i < ((int)arangodb::rest::RequestType::ILLEGAL) + 1; ++i) {
       methodRequests.emplace_back(StatisticsCounter());
     }
     return;
@@ -552,7 +552,7 @@ void TRI_InitializeStatistics() {
   // initialize counters for all HTTP request types
   TRI_MethodRequestsStatistics.clear();
 
-  for (int i = 0; i < ((int)arangodb::GeneralRequest::RequestType::ILLEGAL) + 1;
+  for (int i = 0; i < ((int)arangodb::rest::RequestType::ILLEGAL) + 1;
        ++i) {
     StatisticsCounter c;
     TRI_MethodRequestsStatistics.emplace_back(c);

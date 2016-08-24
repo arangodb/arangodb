@@ -135,7 +135,7 @@ AqlValue V8Expression::execute(v8::Isolate* isolate, Query* query,
 
     v8g->_query = old;
 
-    Executor::HandleV8Error(tryCatch, result);
+    Executor::HandleV8Error(tryCatch, result, nullptr, false);
   } catch (...) {
     v8g->_query = old;
     // bubble up exception

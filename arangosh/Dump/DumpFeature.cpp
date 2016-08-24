@@ -210,7 +210,7 @@ int DumpFeature::startBatch(std::string DBserver, std::string& errorMsg) {
   }
 
   std::unique_ptr<SimpleHttpResult> response(
-      _httpClient->request(GeneralRequest::RequestType::POST, url + urlExt,
+      _httpClient->request(rest::RequestType::POST, url + urlExt,
                            body.c_str(), body.size()));
 
   if (response == nullptr || !response->isComplete()) {
@@ -263,7 +263,7 @@ void DumpFeature::extendBatch(std::string DBserver) {
   }
 
   std::unique_ptr<SimpleHttpResult> response(
-      _httpClient->request(GeneralRequest::RequestType::PUT, url + urlExt,
+      _httpClient->request(rest::RequestType::PUT, url + urlExt,
                            body.c_str(), body.size()));
 
   // ignore any return value
@@ -283,7 +283,7 @@ void DumpFeature::endBatch(std::string DBserver) {
   _batchId = 0;
 
   std::unique_ptr<SimpleHttpResult> response(_httpClient->request(
-      GeneralRequest::RequestType::DELETE_REQ, url + urlExt, nullptr, 0));
+      rest::RequestType::DELETE_REQ, url + urlExt, nullptr, 0));
 
   // ignore any return value
 }
@@ -314,7 +314,7 @@ int DumpFeature::dumpCollection(int fd, std::string const& cid,
     _stats._totalBatches++;
 
     std::unique_ptr<SimpleHttpResult> response(_httpClient->request(
-        GeneralRequest::RequestType::GET, url, nullptr, 0));
+        rest::RequestType::GET, url, nullptr, 0));
 
     if (response == nullptr || !response->isComplete()) {
       errorMsg =
@@ -403,7 +403,7 @@ void DumpFeature::flushWal() {
       "/_admin/wal/flush?waitForSync=true&waitForCollector=true";
 
   std::unique_ptr<SimpleHttpResult> response(
-      _httpClient->request(GeneralRequest::RequestType::PUT, url, nullptr, 0));
+      _httpClient->request(rest::RequestType::PUT, url, nullptr, 0));
 
   if (response == nullptr || !response->isComplete() ||
       response->wasHttpError()) {
@@ -420,7 +420,7 @@ int DumpFeature::runDump(std::string& dbName, std::string& errorMsg) {
       std::string(_includeSystemCollections ? "true" : "false");
 
   std::unique_ptr<SimpleHttpResult> response(
-      _httpClient->request(GeneralRequest::RequestType::GET, url, nullptr, 0));
+      _httpClient->request(rest::RequestType::GET, url, nullptr, 0));
 
   if (response == nullptr || !response->isComplete()) {
     errorMsg =
@@ -681,7 +681,7 @@ int DumpFeature::dumpShard(int fd, std::string const& DBserver,
     _stats._totalBatches++;
 
     std::unique_ptr<SimpleHttpResult> response(_httpClient->request(
-        GeneralRequest::RequestType::GET, url, nullptr, 0));
+        rest::RequestType::GET, url, nullptr, 0));
 
     if (response == nullptr || !response->isComplete()) {
       errorMsg =
@@ -764,7 +764,7 @@ int DumpFeature::runClusterDump(std::string& errorMsg) {
       std::string(_includeSystemCollections ? "true" : "false");
 
   std::unique_ptr<SimpleHttpResult> response(
-      _httpClient->request(GeneralRequest::RequestType::GET, url, nullptr, 0));
+      _httpClient->request(rest::RequestType::GET, url, nullptr, 0));
 
   if (response == nullptr || !response->isComplete()) {
     errorMsg =

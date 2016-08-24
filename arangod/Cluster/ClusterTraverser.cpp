@@ -135,7 +135,7 @@ void ClusterTraverser::ClusterEdgeGetter::getEdge(
     size_t depth = result.size();
     TRI_ASSERT(_traverser->_iteratorCache.size() == result.size());
     // We have to request the next level
-    arangodb::GeneralResponse::ResponseCode responseCode;
+    arangodb::rest::ResponseCode responseCode;
     std::vector<TraverserExpression*> expEdges;
     auto found = _traverser->_opts.expressions->find(depth);
     if (found != _traverser->_opts.expressions->end()) {
@@ -259,7 +259,7 @@ void ClusterTraverser::ClusterEdgeGetter::getAllEdges(
     expEdges = found->second;
   }
 
-  arangodb::GeneralResponse::ResponseCode responseCode;
+  arangodb::rest::ResponseCode responseCode;
   VPackBuilder resultEdges;
   std::unordered_set<std::string> verticesToFetch;
   while (_traverser->_opts.getCollection(eColIdx++, collName, dir)) {

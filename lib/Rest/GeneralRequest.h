@@ -33,6 +33,7 @@
 #include <velocypack/Options.h>
 #include <velocypack/velocypack-aliases.h>
 #include <limits>
+#include "CommonDefines.h"
 
 namespace arangodb {
 namespace velocypack {
@@ -46,45 +47,16 @@ class StringBuffer;
 
 class RequestContext;
 
+using rest::RequestType;
+using rest::ContentType;
+using rest::ProtocolVersion;
+
 class GeneralRequest {
   GeneralRequest(GeneralRequest const&) = delete;
   GeneralRequest& operator=(GeneralRequest const&) = delete;
 
  public:
   GeneralRequest(GeneralRequest&&) = default;
-
-  // VSTREAM_CRED: This method is used for sending Authentication
-  // request,i.e; username and password.
-  //
-  // VSTREAM_REGISTER: This Method is used for registering event of
-  // some kind
-  //
-  // VSTREAM_STATUS: Returns STATUS code and message for a given
-  // request
-  enum class RequestType {
-    DELETE_REQ = 0,  // windows redefines DELETE
-    GET,
-    POST,
-    PUT,
-    HEAD,
-    PATCH,
-    OPTIONS,
-    VSTREAM_CRED,
-    VSTREAM_REGISTER,
-    VSTREAM_STATUS,
-    ILLEGAL  // must be last
-  };
-
-  enum class ProtocolVersion { HTTP_1_0, HTTP_1_1, VPP_1_0, UNKNOWN };
-  enum class ContentType {
-    CUSTOM,  // use Content-Type from _headers
-    JSON,    // application/json
-    VPACK,   // application/x-velocypack
-    TEXT,    // text/plain
-    HTML,    // text/html
-    DUMP,    // application/x-arango-dump
-    UNSET
-  };
 
  public:
   // translate the HTTP protocol version

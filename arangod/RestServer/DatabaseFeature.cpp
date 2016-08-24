@@ -348,6 +348,12 @@ void DatabaseFeature::start() {
   updateContexts();
 }
 
+void DatabaseFeature::stop() {
+  auto logfileManager = arangodb::wal::LogfileManager::instance();
+  logfileManager->flush(true, true, false);
+  logfileManager->waitForCollector();
+}
+
 void DatabaseFeature::unprepare() {
   // close all databases
   closeDatabases();

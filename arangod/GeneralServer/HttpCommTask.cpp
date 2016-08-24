@@ -54,23 +54,22 @@ HttpCommTask::HttpCommTask(GeneralServer* server, TRI_socket_t sock,
       _denyCredentials(true),
       _acceptDeflate(false),
       _newRequest(true),
-      _requestType(GeneralRequest::RequestType::ILLEGAL),  // TODO(fc) remove
-      _fullUrl(),                                          // TODO(fc) remove
-      _origin(),                                           // TODO(fc) remove
+      _requestType(rest::RequestType::ILLEGAL),  // TODO(fc) remove
+      _fullUrl(),                                // TODO(fc) remove
+      _origin(),                                 // TODO(fc) remove
       _sinceCompactification(0),
       _originalBodyLength(0) {  // TODO(fc) remove
   _protocol = "http";
   connectionStatisticsAgentSetHttp();
 }
 
-void HttpCommTask::handleSimpleError(GeneralResponse::ResponseCode code,
+void HttpCommTask::handleSimpleError(rest::ResponseCode code,
                                      uint64_t /* messageId */) {
   std::unique_ptr<GeneralResponse> response(new HttpResponse(code));
   addResponse(response.get());
 }
 
-void HttpCommTask::handleSimpleError(GeneralResponse::ResponseCode code,
-                                     int errorNum,
+void HttpCommTask::handleSimpleError(rest::ResponseCode code, int errorNum,
                                      std::string const& errorMessage,
                                      uint64_t /* messageId */) {
   std::unique_ptr<GeneralResponse> response(new HttpResponse(code));
@@ -120,14 +119,14 @@ void HttpCommTask::addResponse(HttpResponse* response) {
   }
 
   // set "connection" header, keep-alive is the default
-  response->setConnectionType(_closeRequested
-                                  ? HttpResponse::CONNECTION_CLOSE
-                                  : HttpResponse::CONNECTION_KEEP_ALIVE);
+  response->setConnectionType(
+      _closeRequested ? rest::ConnectionType::CONNECTION_CLOSE
+                      : rest::ConnectionType::CONNECTION_KEEP_ALIVE);
 
   size_t const responseBodyLength = response->bodySize();
 
   // TODO(fc) should be handled by the response / request
-  if (_requestType == GeneralRequest::RequestType::HEAD) {
+  if (_requestType == rest::RequestType::HEAD) {
     // clear body if this is an HTTP HEAD request
     // HEAD must not return a body
     response->headResponse(responseBodyLength);
@@ -143,7 +142,7 @@ void HttpCommTask::addResponse(HttpResponse* response) {
   response->writeHeader(buffer.get());
 
   // write body
-  if (_requestType != GeneralRequest::RequestType::HEAD) {
+  if (_requestType != rest::RequestType::HEAD) {
     if (_isChunked) {
       if (0 != responseBodyLength) {
         buffer->appendHex(response->body().length());
@@ -216,8 +215,8 @@ bool HttpCommTask::processRead() {
 
       _newRequest = false;
       _startPosition = _readPosition;
-      _protocolVersion = GeneralRequest::ProtocolVersion::UNKNOWN;
-      _requestType = GeneralRequest::RequestType::ILLEGAL;
+      _protocolVersion = rest::ProtocolVersion::UNKNOWN;
+      _requestType = rest::RequestType::ILLEGAL;
       _fullUrl = "";
       _denyCredentials = true;
       _acceptDeflate = false;
@@ -251,9 +250,8 @@ bool HttpCommTask::processRead() {
                 << ", request header size is " << headerLength;
 
       // header is too large
-      handleSimpleError(
-          GeneralResponse::ResponseCode::REQUEST_HEADER_FIELDS_TOO_LARGE,
-          1);  // ID does not matter for http (http default is 1)
+      handleSimpleError(rest::ResponseCode::REQUEST_HEADER_FIELDS_TOO_LARGE,
+                        1);  // ID does not matter for http (http default is 1)
 
       return false;
     }
@@ -280,11 +278,10 @@ bool HttpCommTask::processRead() {
       // check HTTP protocol version
       _protocolVersion = _incompleteRequest->protocolVersion();
 
-      if (_protocolVersion != GeneralRequest::ProtocolVersion::HTTP_1_0 &&
-          _protocolVersion != GeneralRequest::ProtocolVersion::HTTP_1_1) {
-        handleSimpleError(
-            GeneralResponse::ResponseCode::HTTP_VERSION_NOT_SUPPORTED,
-            1);  // FIXME
+      if (_protocolVersion != rest::ProtocolVersion::HTTP_1_0 &&
+          _protocolVersion != rest::ProtocolVersion::HTTP_1_1) {
+        handleSimpleError(rest::ResponseCode::HTTP_VERSION_NOT_SUPPORTED,
+                          1);  // FIXME
 
         return false;
       }
@@ -293,7 +290,7 @@ bool HttpCommTask::processRead() {
       _fullUrl = _incompleteRequest->fullUrl();
 
       if (_fullUrl.size() > 16384) {
-        handleSimpleError(GeneralResponse::ResponseCode::REQUEST_URI_TOO_LONG,
+        handleSimpleError(rest::ResponseCode::REQUEST_URI_TOO_LONG,
                           1);  // FIXME
         return false;
       }
@@ -353,21 +350,21 @@ bool HttpCommTask::processRead() {
 
       // handle different HTTP methods
       switch (_requestType) {
-        case GeneralRequest::RequestType::GET:
-        case GeneralRequest::RequestType::DELETE_REQ:
-        case GeneralRequest::RequestType::HEAD:
-        case GeneralRequest::RequestType::OPTIONS:
-        case GeneralRequest::RequestType::POST:
-        case GeneralRequest::RequestType::PUT:
-        case GeneralRequest::RequestType::PATCH: {
+        case rest::RequestType::GET:
+        case rest::RequestType::DELETE_REQ:
+        case rest::RequestType::HEAD:
+        case rest::RequestType::OPTIONS:
+        case rest::RequestType::POST:
+        case rest::RequestType::PUT:
+        case rest::RequestType::PATCH: {
           // technically, sending a body for an HTTP DELETE request is not
           // forbidden, but it is not explicitly supported
           bool const expectContentLength =
-              (_requestType == GeneralRequest::RequestType::POST ||
-               _requestType == GeneralRequest::RequestType::PUT ||
-               _requestType == GeneralRequest::RequestType::PATCH ||
-               _requestType == GeneralRequest::RequestType::OPTIONS ||
-               _requestType == GeneralRequest::RequestType::DELETE_REQ);
+              (_requestType == rest::RequestType::POST ||
+               _requestType == rest::RequestType::PUT ||
+               _requestType == rest::RequestType::PATCH ||
+               _requestType == rest::RequestType::OPTIONS ||
+               _requestType == rest::RequestType::DELETE_REQ);
 
           if (!checkContentLength(_incompleteRequest.get(),
                                   expectContentLength)) {
@@ -397,8 +394,7 @@ bool HttpCommTask::processRead() {
           TRI_invalidatesocket(&_commSocket);
 
           // bad request, method not allowed
-          handleSimpleError(GeneralResponse::ResponseCode::METHOD_NOT_ALLOWED,
-                            1);
+          handleSimpleError(rest::ResponseCode::METHOD_NOT_ALLOWED, 1);
           return false;
         }
       }
@@ -466,8 +462,7 @@ bool HttpCommTask::processRead() {
   requestStatisticsAgentAddReceivedBytes(_bodyPosition - _startPosition +
                                          _bodyLength);
 
-  bool const isOptionsRequest =
-      (_requestType == GeneralRequest::RequestType::OPTIONS);
+  bool const isOptionsRequest = (_requestType == rest::RequestType::OPTIONS);
   resetState();
 
   // .............................................................................
@@ -501,12 +496,11 @@ bool HttpCommTask::processRead() {
   // authenticate
   // .............................................................................
 
-  GeneralResponse::ResponseCode authResult =
-      authenticateRequest(_incompleteRequest.get());
+  rest::ResponseCode authResult = authenticateRequest(_incompleteRequest.get());
 
   // authenticated or an OPTIONS request. OPTIONS requests currently go
   // unauthenticated
-  if (authResult == GeneralResponse::ResponseCode::OK || isOptionsRequest) {
+  if (authResult == rest::ResponseCode::OK || isOptionsRequest) {
     // handle HTTP OPTIONS requests directly
     if (isOptionsRequest) {
       processCorsOptions(std::move(_incompleteRequest));
@@ -515,18 +509,18 @@ bool HttpCommTask::processRead() {
     }
   }
   // not found
-  else if (authResult == GeneralResponse::ResponseCode::NOT_FOUND) {
+  else if (authResult == rest::ResponseCode::NOT_FOUND) {
     handleSimpleError(authResult, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
                       TRI_errno_string(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND), 1);
   }
   // forbidden
-  else if (authResult == GeneralResponse::ResponseCode::FORBIDDEN) {
+  else if (authResult == rest::ResponseCode::FORBIDDEN) {
     handleSimpleError(authResult, TRI_ERROR_USER_CHANGE_PASSWORD,
                       "change password", 1);
   }
   // not authenticated
   else {
-    HttpResponse response(GeneralResponse::ResponseCode::UNAUTHORIZED);
+    HttpResponse response(rest::ResponseCode::UNAUTHORIZED);
     std::string realm = "Bearer token_type=\"JWT\", realm=\"ArangoDB\"";
 
     response.setHeaderNC(StaticStrings::WwwAuthenticate, std::move(realm));
@@ -583,9 +577,8 @@ void HttpCommTask::processRequest(std::unique_ptr<HttpRequest> request) {
 
   // create a handler and execute
   std::unique_ptr<GeneralResponse> response(
-      new HttpResponse(GeneralResponse::ResponseCode::SERVER_ERROR));
-  response->setContentType(meta::enumToEnum<GeneralResponse::ContentType>(
-      request->contentTypeResponse()));
+      new HttpResponse(rest::ResponseCode::SERVER_ERROR));
+  response->setContentType(request->contentTypeResponse());
 
   executeRequest(std::move(request), std::move(response));
 }
@@ -611,7 +604,7 @@ bool HttpCommTask::checkContentLength(HttpRequest* request,
 
   if (bodyLength < 0) {
     // bad request, body length is < 0. this is a client error
-    handleSimpleError(GeneralResponse::ResponseCode::LENGTH_REQUIRED);
+    handleSimpleError(rest::ResponseCode::LENGTH_REQUIRED);
     return false;
   }
 
@@ -628,7 +621,7 @@ bool HttpCommTask::checkContentLength(HttpRequest* request,
               << ", request body size is " << bodyLength;
 
     // request entity too large
-    handleSimpleError(GeneralResponse::ResponseCode::REQUEST_ENTITY_TOO_LARGE,
+    handleSimpleError(rest::ResponseCode::REQUEST_ENTITY_TOO_LARGE,
                       0);  // FIXME
     return false;
   }
@@ -647,7 +640,7 @@ bool HttpCommTask::checkContentLength(HttpRequest* request,
 }
 
 void HttpCommTask::processCorsOptions(std::unique_ptr<HttpRequest> request) {
-  HttpResponse response(GeneralResponse::ResponseCode::OK);
+  HttpResponse response(rest::ResponseCode::OK);
 
   response.setHeaderNC(StaticStrings::Allow, StaticStrings::CorsMethods);
 
@@ -702,7 +695,7 @@ void HttpCommTask::handleChunk(char const* data, size_t len) {
 }
 
 std::unique_ptr<GeneralResponse> HttpCommTask::createResponse(
-    GeneralResponse::ResponseCode responseCode, uint64_t /* messageId */) {
+    rest::ResponseCode responseCode, uint64_t /* messageId */) {
   return std::unique_ptr<GeneralResponse>(new HttpResponse(responseCode));
 }
 
@@ -739,8 +732,7 @@ void HttpCommTask::resetState() {
   _readRequestBody = false;
 }
 
-GeneralResponse::ResponseCode HttpCommTask::authenticateRequest(
-    HttpRequest* request) {
+rest::ResponseCode HttpCommTask::authenticateRequest(HttpRequest* request) {
   auto context = request->requestContext();
 
   if (context == nullptr) {
@@ -748,14 +740,14 @@ GeneralResponse::ResponseCode HttpCommTask::authenticateRequest(
         GeneralServerFeature::HANDLER_FACTORY->setRequestContext(request);
 
     if (!res) {
-      return GeneralResponse::ResponseCode::NOT_FOUND;
+      return rest::ResponseCode::NOT_FOUND;
     }
 
     context = request->requestContext();
   }
 
   if (context == nullptr) {
-    return GeneralResponse::ResponseCode::SERVER_ERROR;
+    return rest::ResponseCode::SERVER_ERROR;
   }
 
   return context->authenticate();

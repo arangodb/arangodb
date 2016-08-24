@@ -207,7 +207,7 @@ int InitialSyncer::run(std::string& errorMsg, bool incremental) {
     setProgress(progress);
 
     std::unique_ptr<SimpleHttpResult> response(
-        _client->retryRequest(GeneralRequest::RequestType::GET, url, nullptr, 0));
+        _client->retryRequest(rest::RequestType::GET, url, nullptr, 0));
 
     if (response == nullptr || !response->isComplete()) {
       errorMsg = "could not connect to master at " +
@@ -289,7 +289,7 @@ int InitialSyncer::sendFlush(std::string& errorMsg) {
   setProgress(progress);
 
   std::unique_ptr<SimpleHttpResult> response(_client->retryRequest(
-      GeneralRequest::RequestType::PUT, url, body.c_str(), body.size()));
+      rest::RequestType::PUT, url, body.c_str(), body.size()));
 
   if (response == nullptr || !response->isComplete()) {
     errorMsg = "could not connect to master at " +
@@ -331,7 +331,7 @@ int InitialSyncer::sendStartBatch(std::string& errorMsg) {
   setProgress(progress);
 
   std::unique_ptr<SimpleHttpResult> response(_client->retryRequest(
-      GeneralRequest::RequestType::POST, url, body.c_str(), body.size()));
+      rest::RequestType::POST, url, body.c_str(), body.size()));
 
   if (response == nullptr || !response->isComplete()) {
     errorMsg = "could not connect to master at " +
@@ -394,7 +394,7 @@ int InitialSyncer::sendExtendBatch() {
   setProgress(progress);
 
   std::unique_ptr<SimpleHttpResult> response(_client->request(
-      GeneralRequest::RequestType::PUT, url, body.c_str(), body.size()));
+      rest::RequestType::PUT, url, body.c_str(), body.size()));
 
   if (response == nullptr || !response->isComplete()) {
     return TRI_ERROR_REPLICATION_NO_RESPONSE;
@@ -430,7 +430,7 @@ int InitialSyncer::sendFinishBatch() {
     setProgress(progress);
 
     std::unique_ptr<SimpleHttpResult> response(_client->retryRequest(
-        GeneralRequest::RequestType::DELETE_REQ, url, nullptr, 0));
+        rest::RequestType::DELETE_REQ, url, nullptr, 0));
 
     if (response == nullptr || !response->isComplete()) {
       return TRI_ERROR_REPLICATION_NO_RESPONSE;
@@ -648,7 +648,7 @@ int InitialSyncer::handleCollectionDump(
       headers["X-Arango-Async"] = "store";
     }
     std::unique_ptr<SimpleHttpResult> response(_client->retryRequest(
-        GeneralRequest::RequestType::GET, url, nullptr, 0, headers));
+        rest::RequestType::GET, url, nullptr, 0, headers));
 
     if (response == nullptr || !response->isComplete()) {
       errorMsg = "could not connect to master at " +
@@ -689,7 +689,7 @@ int InitialSyncer::handleCollectionDump(
         sendExtendBarrier();
 
         std::string const jobUrl = "/_api/job/" + jobId;
-        response.reset(_client->request(GeneralRequest::RequestType::PUT, jobUrl,
+        response.reset(_client->request(rest::RequestType::PUT, jobUrl,
                                         nullptr, 0));
 
         if (response != nullptr && response->isComplete()) {
@@ -841,7 +841,7 @@ int InitialSyncer::handleCollectionSync(
   std::unordered_map<std::string, std::string> headers;
   headers["X-Arango-Async"] = "store";
   std::unique_ptr<SimpleHttpResult> response(_client->retryRequest(
-      GeneralRequest::RequestType::POST, url, nullptr, 0, headers));
+      rest::RequestType::POST, url, nullptr, 0, headers));
 
   if (response == nullptr || !response->isComplete()) {
     errorMsg = "could not connect to master at " +
@@ -880,7 +880,7 @@ int InitialSyncer::handleCollectionSync(
 
     std::string const jobUrl = "/_api/job/" + jobId;
     response.reset(
-        _client->request(GeneralRequest::RequestType::PUT, jobUrl, nullptr, 0));
+        _client->request(rest::RequestType::PUT, jobUrl, nullptr, 0));
 
     if (response != nullptr && response->isComplete()) {
       if (response->hasHeaderField("x-arango-async-id")) {
@@ -959,7 +959,7 @@ int InitialSyncer::handleCollectionSync(
 
     // now delete the keys we ordered
     std::unique_ptr<SimpleHttpResult> response(_client->retryRequest(
-        GeneralRequest::RequestType::DELETE_REQ, url, nullptr, 0));
+        rest::RequestType::DELETE_REQ, url, nullptr, 0));
   };
 
   TRI_DEFER(shutdown());
@@ -1142,7 +1142,7 @@ int InitialSyncer::handleSyncKeys(arangodb::LogicalCollection* col,
   setProgress(progress);
 
   std::unique_ptr<SimpleHttpResult> response(
-      _client->retryRequest(GeneralRequest::RequestType::GET, url, nullptr, 0));
+      _client->retryRequest(rest::RequestType::GET, url, nullptr, 0));
 
   if (response == nullptr || !response->isComplete()) {
     errorMsg = "could not connect to master at " +
@@ -1347,7 +1347,7 @@ int InitialSyncer::handleSyncKeys(arangodb::LogicalCollection* col,
       setProgress(progress);
 
       std::unique_ptr<SimpleHttpResult> response(_client->retryRequest(
-          GeneralRequest::RequestType::PUT, url, nullptr, 0));
+          rest::RequestType::PUT, url, nullptr, 0));
 
       if (response == nullptr || !response->isComplete()) {
         errorMsg = "could not connect to master at " +
@@ -1517,7 +1517,7 @@ int InitialSyncer::handleSyncKeys(arangodb::LogicalCollection* col,
         std::string const keyJsonString(keysBuilder.slice().toJson()); 
 
         std::unique_ptr<SimpleHttpResult> response(
-            _client->retryRequest(GeneralRequest::RequestType::PUT, url,
+            _client->retryRequest(rest::RequestType::PUT, url,
                                   keyJsonString.c_str(), keyJsonString.size()));
 
         if (response == nullptr || !response->isComplete()) {

@@ -44,19 +44,19 @@ class RestBaseHandler : public rest::RestHandler {
 
  public:
   // generates a result from VelocyPack
-  void generateResult(GeneralResponse::ResponseCode,
+  void generateResult(rest::ResponseCode,
                       arangodb::velocypack::Slice const& slice);
 
   // generates a result from VelocyPack
-  void generateResult(GeneralResponse::ResponseCode,
+  void generateResult(rest::ResponseCode,
                       arangodb::velocypack::Slice const& slice,
                       std::shared_ptr<arangodb::TransactionContext> context);
 
   // generates an error
-  void generateError(GeneralResponse::ResponseCode, int);
+  void generateError(rest::ResponseCode, int);
 
   // generates an error
-  void generateError(GeneralResponse::ResponseCode, int, std::string const&);
+  void generateError(rest::ResponseCode, int, std::string const&);
 
   // generates an out of memory error
   void generateOOMError();

@@ -68,7 +68,7 @@ RestHandler::status RestVersionHandler::execute() {
       result.close();
     }
     result.close();
-    generateResult(GeneralResponse::ResponseCode::OK, result.slice());
+    generateResult(rest::ResponseCode::OK, result.slice());
   } catch (...) {
     // Ignore this error
   }

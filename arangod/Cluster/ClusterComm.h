@@ -96,7 +96,7 @@ enum ClusterCommOpStatus {
 /// "ssl://", then `status` is set to CL_COMM_BACKEND_UNAVAILABLE,
 /// `errorMessage` is set but `result` and `answer` are both set
 /// to nullptr. The flag `sendWasComplete` remains false and the
-/// `answer_code` remains GeneralResponse::ResponseCode::PROCESSING.
+/// `answer_code` remains rest::ResponseCode::PROCESSING.
 /// A potentially given ClusterCommCallback is called.
 ///
 /// If no error occurs so far, the status is set to CL_COMM_SUBMITTED.
@@ -192,7 +192,7 @@ struct ClusterCommResult {
   // the field answer is != nullptr if status is == CL_COMM_RECEIVED
   // answer_code is valid iff answer is != 0
   std::shared_ptr<GeneralRequest> answer;
-  GeneralResponse::ResponseCode answer_code;
+  rest::ResponseCode answer_code;
 
   // The following flag indicates whether or not the complete request was
   // sent to the other side. This is often important to judge whether or
@@ -204,7 +204,7 @@ struct ClusterCommResult {
       : status(CL_COMM_BACKEND_UNAVAILABLE),
         dropped(false),
         single(false),
-        answer_code(GeneralResponse::ResponseCode::PROCESSING),
+        answer_code(rest::ResponseCode::PROCESSING),
         sendWasComplete(false) {}
 
   //////////////////////////////////////////////////////////////////////////////
@@ -261,7 +261,7 @@ typedef double ClusterCommTimeout;
 
 struct ClusterCommOperation {
   ClusterCommResult result;
-  GeneralRequest::RequestType reqtype;
+  rest::RequestType reqtype;
   std::string path;
   std::shared_ptr<std::string const> body;
   std::unique_ptr<std::unordered_map<std::string, std::string>> headerFields;
@@ -283,7 +283,7 @@ void ClusterCommRestCallback(std::string& coordinator,
 
 struct ClusterCommRequest {
   std::string destination;
-  GeneralRequest::RequestType requestType;
+  rest::RequestType requestType;
   std::string path;
   std::shared_ptr<std::string const> body;
   std::unique_ptr<std::unordered_map<std::string, std::string>> headerFields;
@@ -292,7 +292,7 @@ struct ClusterCommRequest {
 
   ClusterCommRequest() : done(false) {}
 
-  ClusterCommRequest(std::string const& dest, GeneralRequest::RequestType type,
+  ClusterCommRequest(std::string const& dest, rest::RequestType type,
                      std::string const& path,
                      std::shared_ptr<std::string const> body)
       : destination(dest),
@@ -381,7 +381,7 @@ class ClusterComm {
   OperationID asyncRequest(
       ClientTransactionID const clientTransactionID,
       CoordTransactionID const coordTransactionID,
-      std::string const& destination, GeneralRequest::RequestType reqtype,
+      std::string const& destination, rest::RequestType reqtype,
       std::string const& path, std::shared_ptr<std::string const> body,
       std::unique_ptr<std::unordered_map<std::string, std::string>>&
           headerFields,
@@ -395,7 +395,7 @@ class ClusterComm {
   std::unique_ptr<ClusterCommResult> syncRequest(
       ClientTransactionID const& clientTransactionID,
       CoordTransactionID const coordTransactionID,
-      std::string const& destination, GeneralRequest::RequestType reqtype,
+      std::string const& destination, rest::RequestType reqtype,
       std::string const& path, std::string const& body,
       std::unordered_map<std::string, std::string> const& headerFields,
       ClusterCommTimeout timeout);

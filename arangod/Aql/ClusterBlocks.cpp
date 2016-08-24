@@ -1156,7 +1156,7 @@ RemoteBlock::~RemoteBlock() {}
 
 /// @brief local helper to send a request
 std::unique_ptr<ClusterCommResult> RemoteBlock::sendRequest(
-    arangodb::GeneralRequest::RequestType type,
+    arangodb::rest::RequestType type,
     std::string const& urlPart, std::string const& body) const {
   ENTER_BLOCK
   ClusterComm* cc = ClusterComm::instance();
@@ -1200,7 +1200,7 @@ int RemoteBlock::initialize() {
   }
  
   std::unique_ptr<ClusterCommResult> res =
-      sendRequest(GeneralRequest::RequestType::PUT,
+      sendRequest(rest::RequestType::PUT,
                   "/_api/aql/initialize/", "{}");
   throwExceptionAfterBadSyncRequest(res.get(), false);
  
@@ -1251,7 +1251,7 @@ int RemoteBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
   std::string bodyString(builder.slice().toJson());
 
   std::unique_ptr<ClusterCommResult> res =
-      sendRequest(GeneralRequest::RequestType::PUT,
+      sendRequest(rest::RequestType::PUT,
                   "/_api/aql/initializeCursor/", bodyString);
   throwExceptionAfterBadSyncRequest(res.get(), false);
 
@@ -1283,7 +1283,7 @@ int RemoteBlock::shutdown(int errorCode) {
   // For every call we simply forward via HTTP
 
   std::unique_ptr<ClusterCommResult> res =
-      sendRequest(GeneralRequest::RequestType::PUT, "/_api/aql/shutdown/",
+      sendRequest(rest::RequestType::PUT, "/_api/aql/shutdown/",
                   std::string("{\"code\":" + std::to_string(errorCode) + "}"));
   if (throwExceptionAfterBadSyncRequest(res.get(), true)) {
     // artificially ignore error in case query was not found during shutdown
@@ -1332,7 +1332,7 @@ AqlItemBlock* RemoteBlock::getSome(size_t atLeast, size_t atMost) {
   std::string bodyString(builder.slice().toJson());
 
   std::unique_ptr<ClusterCommResult> res = sendRequest(
-      GeneralRequest::RequestType::PUT, "/_api/aql/getSome/", bodyString);
+      rest::RequestType::PUT, "/_api/aql/getSome/", bodyString);
   throwExceptionAfterBadSyncRequest(res.get(), false);
 
   // If we get here, then res->result is the response which will be
@@ -1367,7 +1367,7 @@ size_t RemoteBlock::skipSome(size_t atLeast, size_t atMost) {
   std::string bodyString(builder.slice().toJson());
 
   std::unique_ptr<ClusterCommResult> res = sendRequest(
-      GeneralRequest::RequestType::PUT, "/_api/aql/skipSome/", bodyString);
+      rest::RequestType::PUT, "/_api/aql/skipSome/", bodyString);
   throwExceptionAfterBadSyncRequest(res.get(), false);
 
   // If we get here, then res->result is the response which will be
@@ -1394,7 +1394,7 @@ bool RemoteBlock::hasMore() {
   ENTER_BLOCK
   // For every call we simply forward via HTTP
   std::unique_ptr<ClusterCommResult> res = sendRequest(
-      GeneralRequest::RequestType::GET, "/_api/aql/hasMore/", std::string());
+      rest::RequestType::GET, "/_api/aql/hasMore/", std::string());
   throwExceptionAfterBadSyncRequest(res.get(), false);
 
   // If we get here, then res->result is the response which will be
@@ -1419,7 +1419,7 @@ int64_t RemoteBlock::count() const {
   ENTER_BLOCK
   // For every call we simply forward via HTTP
   std::unique_ptr<ClusterCommResult> res = sendRequest(
-      GeneralRequest::RequestType::GET, "/_api/aql/count/", std::string());
+      rest::RequestType::GET, "/_api/aql/count/", std::string());
   throwExceptionAfterBadSyncRequest(res.get(), false);
 
   // If we get here, then res->result is the response which will be
@@ -1445,7 +1445,7 @@ int64_t RemoteBlock::remaining() {
   ENTER_BLOCK
   // For every call we simply forward via HTTP
   std::unique_ptr<ClusterCommResult> res =
-      sendRequest(GeneralRequest::RequestType::GET, "/_api/aql/remaining/",
+      sendRequest(rest::RequestType::GET, "/_api/aql/remaining/",
                   std::string());
   throwExceptionAfterBadSyncRequest(res.get(), false);
 

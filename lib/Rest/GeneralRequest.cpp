@@ -87,7 +87,7 @@ std::string GeneralRequest::translateMethod(RequestType method) {
   return "UNKNOWN";  // in order please MSVC
 }
 
-GeneralRequest::RequestType GeneralRequest::translateMethod(
+rest::RequestType GeneralRequest::translateMethod(
     std::string const& method) {
   std::string const methodString = StringUtils::toupper(method);
 
@@ -122,7 +122,7 @@ void GeneralRequest::appendMethod(RequestType method, StringBuffer* buffer) {
   buffer->appendChar(' ');
 }
 
-GeneralRequest::RequestType GeneralRequest::findRequestType(
+rest::RequestType GeneralRequest::findRequestType(
     char const* ptr, size_t const length) {
   switch (length) {
     case 3:

@@ -111,7 +111,7 @@ class RestHandler : public RequestStatisticsAgent, public arangodb::WorkItem {
 
  protected:
   // sets response Code
-  void setResponseCode(GeneralResponse::ResponseCode);
+  void setResponseCode(rest::ResponseCode);
 
  protected:
   // handler id

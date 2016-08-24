@@ -35,12 +35,12 @@ class HttpCommTask : public GeneralCommTask {
   void handleChunk(char const*, size_t) override final;
 
   std::unique_ptr<GeneralResponse> createResponse(
-      GeneralResponse::ResponseCode, uint64_t messageId) override final;
+      rest::ResponseCode, uint64_t messageId) override final;
 
-  void handleSimpleError(GeneralResponse::ResponseCode code,
+  void handleSimpleError(rest::ResponseCode code,
                          uint64_t messageId = 1) override final;
 
-  void handleSimpleError(GeneralResponse::ResponseCode, int code,
+  void handleSimpleError(rest::ResponseCode, int code,
                          std::string const& errorMessage,
                          uint64_t messageId = 1) override final;
 
@@ -56,7 +56,7 @@ class HttpCommTask : public GeneralCommTask {
   // check the content-length header of a request and fail it is broken
   bool checkContentLength(HttpRequest*, bool expectContentLength);
   std::string authenticationRealm() const;  // returns the authentication realm
-  GeneralResponse::ResponseCode authenticateRequest(HttpRequest*);
+  rest::ResponseCode authenticateRequest(HttpRequest*);
 
  private:
   size_t _readPosition;       // current read position
@@ -70,7 +70,7 @@ class HttpCommTask : public GeneralCommTask {
   bool _acceptDeflate;    // whether the client accepts deflate algorithm
   bool _newRequest;       // new request started
   // TODO(fc) remove
-  GeneralRequest::RequestType _requestType;  // type of request (GET, POST, ...)
+  rest::RequestType _requestType;  // type of request (GET, POST, ...)
   std::string _fullUrl;                      // value of requested URL
   std::string _origin;  // value of the HTTP origin header the client sent (if
                         // any, CORS only)

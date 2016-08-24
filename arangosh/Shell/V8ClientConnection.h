@@ -112,12 +112,12 @@ class V8ClientConnection {
   void init(std::unique_ptr<httpclient::GeneralClientConnection>&, std::string const&, std::string const&, std::string const&);
 
   v8::Handle<v8::Value> requestData(
-      v8::Isolate* isolate, GeneralRequest::RequestType method,
+      v8::Isolate* isolate, rest::RequestType method,
       std::string const& location, std::string const& body,
       std::unordered_map<std::string, std::string> const& headerFields);
 
   v8::Handle<v8::Value> requestDataRaw(
-      v8::Isolate* isolate, GeneralRequest::RequestType method,
+      v8::Isolate* isolate, rest::RequestType method,
       std::string const& location, std::string const& body,
       std::unordered_map<std::string, std::string> const& headerFields);
 

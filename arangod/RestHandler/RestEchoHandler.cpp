@@ -43,7 +43,7 @@ RestHandler::status RestEchoHandler::execute() {
 
   if (parseSuccess) {
     VPackBuilder result;
-    generateResult(GeneralResponse::ResponseCode::OK, parsedBody->slice());
+    generateResult(rest::ResponseCode::OK, parsedBody->slice());
   }
 
   return status::DONE;

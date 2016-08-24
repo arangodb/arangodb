@@ -54,14 +54,14 @@ RestHandler::status RestDebugHandler::execute() {
 
   // execute one of the CRUD methods
   switch (type) {
-    case GeneralRequest::RequestType::DELETE_REQ:
+    case rest::RequestType::DELETE_REQ:
       if (len == 1) {
         TRI_ClearFailurePointsDebugging();
       } else {
         TRI_RemoveFailurePointDebugging(suffix[1].c_str());
       }
       break;
-    case GeneralRequest::RequestType::PUT:
+    case rest::RequestType::PUT:
       if (len == 2) {
         TRI_AddFailurePointDebugging(suffix[1].c_str());
       } else {
@@ -75,7 +75,7 @@ RestHandler::status RestDebugHandler::execute() {
   try {
     VPackBuilder result;
     result.add(VPackValue(true));
-    generateResult(GeneralResponse::ResponseCode::OK, result.slice());
+    generateResult(rest::ResponseCode::OK, result.slice());
   } catch (...) {
     // Ignore this error
   }

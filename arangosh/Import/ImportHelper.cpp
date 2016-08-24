@@ -632,18 +632,18 @@ bool ImportHelper::checkCreateCollection() {
   
   std::unordered_map<std::string, std::string> headerFields;
   std::unique_ptr<SimpleHttpResult> result(_client->request(
-      GeneralRequest::RequestType::POST, url, data.c_str(),
+      rest::RequestType::POST, url, data.c_str(),
       data.size(), headerFields));
 
   if (result == nullptr) {
     return false;
   }
 
-  auto code = static_cast<GeneralResponse::ResponseCode>(result->getHttpReturnCode());
-  if (code == GeneralResponse::ResponseCode::CONFLICT ||
-      code == GeneralResponse::ResponseCode::OK ||
-      code == GeneralResponse::ResponseCode::CREATED ||
-      code == GeneralResponse::ResponseCode::ACCEPTED) {
+  auto code = static_cast<rest::ResponseCode>(result->getHttpReturnCode());
+  if (code == rest::ResponseCode::CONFLICT ||
+      code == rest::ResponseCode::OK ||
+      code == rest::ResponseCode::CREATED ||
+      code == rest::ResponseCode::ACCEPTED) {
     // collection already exists or was created successfully
     return true;
   }
@@ -680,7 +680,7 @@ void ImportHelper::sendCsvBuffer() {
   _firstChunk = false;
 
   std::unique_ptr<SimpleHttpResult> result(_client->request(
-      GeneralRequest::RequestType::POST, url, _outputBuffer.c_str(),
+      rest::RequestType::POST, url, _outputBuffer.c_str(),
       _outputBuffer.length(), headerFields));
 
   handleResult(result.get());
@@ -722,7 +722,7 @@ void ImportHelper::sendJsonBuffer(char const* str, size_t len, bool isObject) {
 
   std::unordered_map<std::string, std::string> headerFields;
   std::unique_ptr<SimpleHttpResult> result(_client->request(
-      GeneralRequest::RequestType::POST, url, str, len, headerFields));
+      rest::RequestType::POST, url, str, len, headerFields));
 
   handleResult(result.get());
 }

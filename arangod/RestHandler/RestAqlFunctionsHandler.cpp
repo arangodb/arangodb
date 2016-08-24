@@ -38,7 +38,7 @@ RestHandler::status RestAqlFunctionsHandler::execute() {
   // extract the sub-request type
   auto const type = _request->requestType();
 
-  if (type == GeneralRequest::RequestType::GET) {
+  if (type == rest::RequestType::GET) {
     VPackBuilder builder;
 
     builder.openObject();
@@ -46,11 +46,11 @@ RestHandler::status RestAqlFunctionsHandler::execute() {
     aql::FunctionDefinitions::toVelocyPack(builder);
     builder.close();
 
-    generateResult(GeneralResponse::ResponseCode::OK, builder.slice());
+    generateResult(rest::ResponseCode::OK, builder.slice());
     return status::DONE;
   }
 
-  generateError(GeneralResponse::ResponseCode::METHOD_NOT_ALLOWED,
+  generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                 TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
   return status::DONE;
 }

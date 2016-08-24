@@ -85,7 +85,7 @@ void GeneralCommTask::executeRequest(
 
   if (handler == nullptr) {
     LOG(TRACE) << "no handler is known, giving up";
-    handleSimpleError(GeneralResponse::ResponseCode::NOT_FOUND, messageId);
+    handleSimpleError(rest::ResponseCode::NOT_FOUND, messageId);
     return;
   }
 
@@ -108,7 +108,7 @@ void GeneralCommTask::executeRequest(
 
     if (ok) {
       std::unique_ptr<GeneralResponse> response =
-          createResponse(GeneralResponse::ResponseCode::ACCEPTED, messageId);
+          createResponse(rest::ResponseCode::ACCEPTED, messageId);
 
       if (jobId > 0) {
         // return the job id we just created
@@ -126,7 +126,7 @@ void GeneralCommTask::executeRequest(
   }
 
   if (!ok) {
-    handleSimpleError(GeneralResponse::ResponseCode::SERVER_ERROR, messageId);
+    handleSimpleError(rest::ResponseCode::SERVER_ERROR, messageId);
   }
 }
 

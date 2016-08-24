@@ -41,7 +41,7 @@ class RequestContext {
   virtual ~RequestContext() {}
 
  public:
-  virtual GeneralResponse::ResponseCode authenticate() = 0;
+  virtual rest::ResponseCode authenticate() = 0;
 
  protected:
   GeneralRequest* _request;

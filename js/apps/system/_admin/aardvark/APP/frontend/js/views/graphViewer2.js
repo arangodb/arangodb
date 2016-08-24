@@ -102,6 +102,10 @@
         sigma.classes.graph.addMethod('getNodeEdgesCount', function (id) {
           return this.allNeighborsCount[id];
         });
+
+        sigma.classes.graph.addMethod('getNodesCount', function () {
+          return this.nodesArray.length;
+        });
       } catch (ignore) {}
     },
 
@@ -503,7 +507,6 @@
 
     addNode: function () {
       var self = this;
-
       var x = self.addNodeX / 100;
       var y = self.addNodeY / 100;
 
@@ -518,7 +521,7 @@
           self.currentGraph.graph.addNode({
             id: id,
             label: id.split('/')[1] || '',
-            size: self.graphConfig.nodeSize || Math.random(),
+            size: self.graphConfig.nodeSize || 15,
             color: self.graphConfig.nodeColor || '#2ecc71',
             x: x,
             y: y
@@ -985,7 +988,7 @@
         wheel.colors = hotaru;
         wheel.multiSelect = false;
         wheel.clickModeRotate = false;
-        wheel.sliceHoverAttr = {stroke: '#fff', 'stroke-width': 2};
+        wheel.sliceHoverAttr = {stroke: '#fff', 'stroke-width': 4};
         wheel.slicePathFunction = slicePath().DonutSlice;
         wheel.createWheel([icon.edit, icon.trash, icon.flag, icon.connect, icon.expand]);
 
@@ -1133,8 +1136,8 @@
         }
       });
 
-      $('#nodesCount').text(parseInt($('#nodesCount').text()) + newNodeCounter);
-      $('#edgesCount').text(parseInt($('#edgesCount').text()) + newEdgeCounter);
+      $('#nodesCount').text(parseInt($('#nodesCount').text(), 10) + newNodeCounter);
+      $('#edgesCount').text(parseInt($('#edgesCount').text(), 10) + newEdgeCounter);
 
       // rerender graph
       if (newNodeCounter > 0 || newEdgeCounter > 0) {
@@ -1507,18 +1510,6 @@
           }
         };
 
-        s.bind('rightClickStage', function (e) {
-          self.addNodeX = e.data.captor.x;
-          self.addNodeY = e.data.captor.y;
-          self.createContextMenu(e);
-          self.clearMouseCanvas();
-        });
-
-        s.bind('rightClickNode', function (e) {
-          var nodeId = e.data.node.id;
-          self.createNodeContextMenu(nodeId, e);
-        });
-
         s.bind('clickNode', function (e) {
           if (self.contextState.createEdge === true) {
             // create the edge
@@ -1531,6 +1522,12 @@
             self.addEdgeModal(foundEdgeDefinitions, self.contextState._from, self.contextState._to);
           } else {
             if (!self.dragging) {
+              if (self.contextState.createEdge === true) {
+                self.newEdgeColor = '#ff0000';
+              } else {
+                self.newEdgeColor = '#000000';
+              }
+
               // halo on active nodes:
               if (renderer === 'canvas') {
                 self.currentGraph.renderers[0].halo({
@@ -1548,33 +1545,41 @@
                   nodes: [e.data.node]
                 });
               }
+
+              if (!this.aqlMode) {
+                self.createNodeContextMenu(e.data.node.id, e);
+              }
             }
           }
         });
 
-        s.bind('clickStage', function () {
-          self.clearOldContextMenu(true);
-          self.clearMouseCanvas();
-          s.renderers[0].halo({
-            nodes: self.activeNodes
-          });
+        s.bind('clickStage', function (e) {
+          if (e.data.captor.isDragging) {
+            self.clearOldContextMenu(true);
+            self.clearMouseCanvas();
+          } else {
+            // stage menu
+            if (!$('#nodeContextMenu').is(':visible')) {
+              var offset = $('#graph-container').offset();
+              self.addNodeX = sigma.utils.getX(e) - offset.left / 2;
+              self.addNodeY = sigma.utils.getY(e) - offset.top / 2;
+              // self.addNodeX = e.data.captor.x;
+              // self.addNodeY = e.data.captor.y;
+              self.createContextMenu(e);
+              self.clearMouseCanvas();
+            } else {
+              // cleanup
+              self.clearOldContextMenu(true);
+              self.clearMouseCanvas();
+            }
+
+            // remember halo
+            s.renderers[0].halo({
+              nodes: self.activeNodes
+            });
+          }
         });
       }
-
-      s.bind('doubleClickStage', function () {
-        self.activeNodes = [];
-
-        s.graph.nodes().forEach(function (n) {
-          n.color = n.originalColor;
-        });
-
-        s.graph.edges().forEach(function (e) {
-          e.color = e.originalColor;
-        });
-
-        $('.nodeInfoDiv').remove();
-        s.refresh();
-      });
 
       if (renderer === 'canvas') {
         // render parallel edges
@@ -1584,57 +1589,70 @@
           }
         }
 
-        s.bind('overNode', function (e) {
-          if (self.contextState.createEdge === true) {
-            self.newEdgeColor = '#ff0000';
-          } else {
-            self.newEdgeColor = '#000000';
-          }
-        });
-
         s.bind('clickEdge', function (e) {
           showAttributes(e, false);
         });
 
-        s.bind('doubleClickNode', function (e) {
-          var nodeId = e.data.node.id;
-          var toKeep = s.graph.neighbors(nodeId);
-          toKeep[nodeId] = e.data.node;
-
-          s.graph.nodes().forEach(function (n) {
-            if (toKeep[n.id]) {
-              n.color = n.originalColor;
-            } else {
-              n.color = '#eee';
-            }
-          });
-
-          s.graph.edges().forEach(function (e) {
-            if (toKeep[e.source] && toKeep[e.target]) {
-              e.color = 'rgb(64, 74, 83)';
-            } else {
-              e.color = '#eee';
-            }
-          });
-
-          s.refresh();
-        });
         s.renderers[0].bind('render', function (e) {
           s.renderers[0].halo({
             nodes: self.activeNodes
           });
         });
 
-        if (!this.aqlMode) {
-          s.bind('rightClickNode', function (e) {
+        var unhighlightNodes = function () {
+          self.nodeHighlighted = false;
+          if (s.graph.getNodesCount() < 250) {
+            self.activeNodes = [];
+
+            s.graph.nodes().forEach(function (n) {
+              n.color = n.originalColor;
+            });
+
+            s.graph.edges().forEach(function (e) {
+              e.color = e.originalColor;
+            });
+
+            s.refresh({ skipIndexation: true });
+          }
+        };
+
+        s.bind('rightClickStage', function (e) {
+          unhighlightNodes();
+          self.nodeHighlighted = 'undefinedid';
+        });
+
+        s.bind('rightClickNode', function (e) {
+          if (self.nodeHighlighted !== e.data.node.id) {
             var nodeId = e.data.node.id;
-            self.createNodeContextMenu(nodeId, e);
-          });
-        }
+            var toKeep = s.graph.neighbors(nodeId);
+            toKeep[nodeId] = e.data.node;
+
+            s.graph.nodes().forEach(function (n) {
+              if (toKeep[n.id]) {
+                n.color = n.originalColor;
+              } else {
+                n.color = '#eee';
+              }
+            });
+
+            s.graph.edges().forEach(function (e) {
+              if (toKeep[e.source] && toKeep[e.target]) {
+                e.color = 'rgb(64, 74, 83)';
+              } else {
+                e.color = '#eee';
+              }
+            });
+
+            self.nodeHighlighted = true;
+            s.refresh({ skipIndexation: true });
+          } else {
+            unhighlightNodes();
+          }
+        });
 
         if (this.graphConfig) {
           if (this.graphConfig.edgeEditable) {
-            s.bind('rightClickEdge', function (e) {
+            s.bind('clickEdge', function (e) {
               var edgeId = e.data.edge.id;
               self.createEdgeContextMenu(edgeId, e);
             });
@@ -1792,7 +1810,7 @@
         // clear selected nodes state
         this.selectedNodes = {};
         this.activeNodes = [];
-        this.currentGraph.refresh();
+        this.currentGraph.refresh({ skipIndexation: true });
       } else {
         $('#selectNodes').addClass('activated');
         this.graphLasso.activate();
